@@ -378,15 +378,16 @@
 
     .dashboard-chart {
         width: 100% !important;
+        max-width: 100%;
         display: block;
     }
 
     .dashboard-chart--row {
-        height: clamp(180px, 27vh, 250px) !important;
+        height: clamp(220px, 28vh, 320px) !important;
     }
 
     .dashboard-chart--wide {
-        height: clamp(170px, 22vh, 230px) !important;
+        height: clamp(220px, 24vh, 280px) !important;
     }
     
     /* Sidebar Styles */
@@ -756,7 +757,11 @@
         }
 
         .dashboard-chart--row {
-            height: clamp(170px, 24vh, 220px) !important;
+            height: clamp(210px, 26vh, 280px) !important;
+        }
+
+        .dashboard-chart--wide {
+            height: clamp(210px, 23vh, 260px) !important;
         }
     }
 
@@ -812,11 +817,11 @@
         }
 
         .dashboard-chart--row {
-            height: 200px !important;
+            height: 240px !important;
         }
 
         .dashboard-chart--wide {
-            height: 190px !important;
+            height: 230px !important;
         }
 
         .card-header h6 {
@@ -1011,6 +1016,7 @@ document.addEventListener('DOMContentLoaded', function() {
         sidebarCol.style.width = '0';
         sidebarCol.style.padding = '0';
         localStorage.setItem('dashboardSidebarCollapsed', 'true');
+        requestResponsiveChartsRefresh();
     }
     
     function expandSidebar() {
@@ -1019,11 +1025,292 @@ document.addEventListener('DOMContentLoaded', function() {
         sidebarCol.style.width = '';
         sidebarCol.style.padding = '';
         localStorage.setItem('dashboardSidebarCollapsed', 'false');
+        requestResponsiveChartsRefresh();
     }
     
     // Configuração global dos gráficos
     Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial';
     Chart.defaults.color = '#6c757d';
+    const responsiveCharts = [];
+
+    function requestResponsiveChartsRefresh() {
+        scheduleResponsiveChartRefresh();
+        window.setTimeout(scheduleResponsiveChartRefresh, 320);
+    }
+
+    function getChartViewportProfile(canvas) {
+        const viewportWidth = window.innerWidth;
+        const chartWidth = canvas?.closest('.card-body')?.clientWidth || canvas?.parentElement?.clientWidth || viewportWidth;
+
+        if (chartWidth <= 360 || viewportWidth <= 576) {
+            return {
+                viewportWidth,
+                chartWidth,
+                labelCharsPerLine: 14,
+                labelFontSize: 10,
+                axisFontSize: 10,
+                legendFontSize: 10,
+                legendBoxWidth: 12,
+                legendBoxHeight: 8,
+                legendPadding: 10,
+                horizontalBarThickness: 10,
+                verticalMaxBarThickness: 18,
+                rowUnitHeight: 34,
+                extraLabelLineHeight: 14,
+                minRowHeight: 260,
+                horizontalLegendHeight: 58,
+                wideHeight: 240,
+                barPercentage: 0.78,
+                categoryPercentage: 0.84,
+            };
+        }
+
+        if (chartWidth <= 540 || viewportWidth <= 992) {
+            return {
+                viewportWidth,
+                chartWidth,
+                labelCharsPerLine: 18,
+                labelFontSize: 11,
+                axisFontSize: 11,
+                legendFontSize: 11,
+                legendBoxWidth: 13,
+                legendBoxHeight: 9,
+                legendPadding: 11,
+                horizontalBarThickness: 11,
+                verticalMaxBarThickness: 20,
+                rowUnitHeight: 30,
+                extraLabelLineHeight: 12,
+                minRowHeight: 250,
+                horizontalLegendHeight: 54,
+                wideHeight: 250,
+                barPercentage: 0.76,
+                categoryPercentage: 0.8,
+            };
+        }
+
+        return {
+            viewportWidth,
+            chartWidth,
+            labelCharsPerLine: 26,
+            labelFontSize: 12,
+            axisFontSize: 12,
+            legendFontSize: 12,
+            legendBoxWidth: 14,
+            legendBoxHeight: 10,
+            legendPadding: 12,
+            horizontalBarThickness: 12,
+            verticalMaxBarThickness: 24,
+            rowUnitHeight: 28,
+            extraLabelLineHeight: 12,
+            minRowHeight: 240,
+            horizontalLegendHeight: 50,
+            wideHeight: 270,
+            barPercentage: 0.74,
+            categoryPercentage: 0.76,
+        };
+    }
+
+    function wrapChartLabel(label, canvas) {
+        const { labelCharsPerLine } = getChartViewportProfile(canvas);
+        const normalizedLabel = String(label || '').replace(/\s+/g, ' ').trim();
+
+        if (!normalizedLabel) {
+            return '';
+        }
+
+        const segments = normalizedLabel.split(' ');
+        const lines = [];
+        let currentLine = '';
+
+        segments.forEach(segment => {
+            const candidate = currentLine ? `${currentLine} ${segment}` : segment;
+
+            if (candidate.length <= labelCharsPerLine) {
+                currentLine = candidate;
+                return;
+            }
+
+            if (currentLine) {
+                lines.push(currentLine);
+                currentLine = '';
+            }
+
+            if (segment.length <= labelCharsPerLine) {
+                currentLine = segment;
+                return;
+            }
+
+            let remaining = segment;
+            while (remaining.length > labelCharsPerLine) {
+                lines.push(`${remaining.slice(0, labelCharsPerLine - 1)}-`);
+                remaining = remaining.slice(labelCharsPerLine - 1);
+            }
+            currentLine = remaining;
+        });
+
+        if (currentLine) {
+            lines.push(currentLine);
+        }
+
+        return lines.length > 1 ? lines : lines[0];
+    }
+
+    function countWrappedLines(label) {
+        return Array.isArray(label) ? label.length : 1;
+    }
+
+    function setCanvasHeight(canvas, height) {
+        canvas.style.setProperty('height', `${height}px`, 'important');
+    }
+
+    function getHorizontalChartSizing(labels, canvas) {
+        const profile = getChartViewportProfile(canvas);
+        const wrappedLabels = labels.map(label => wrapChartLabel(label, canvas));
+        const extraLines = wrappedLabels.reduce((total, label) => total + Math.max(countWrappedLines(label) - 1, 0), 0);
+        const height = Math.max(
+            profile.minRowHeight,
+            (wrappedLabels.length * profile.rowUnitHeight) + (extraLines * profile.extraLabelLineHeight) + profile.horizontalLegendHeight
+        );
+
+        return { profile, wrappedLabels, height };
+    }
+
+    function applyLegendSizing(chart, profile, position, align) {
+        chart.options.plugins = chart.options.plugins || {};
+        const currentLegend = chart.options.plugins.legend || {};
+
+        chart.options.plugins.legend = {
+            ...currentLegend,
+            position,
+            align,
+            labels: {
+                ...(currentLegend.labels || {}),
+                boxWidth: profile.legendBoxWidth,
+                boxHeight: profile.legendBoxHeight,
+                padding: profile.legendPadding,
+                font: { size: profile.legendFontSize }
+            }
+        };
+    }
+
+    function resolveRawLabelTooltip(context) {
+        const firstItem = Array.isArray(context) ? context[0] : context;
+        const rawLabel = firstItem?.chart?.$rawLabels?.[firstItem?.dataIndex];
+
+        if (rawLabel) {
+            return rawLabel;
+        }
+
+        if (Array.isArray(firstItem?.label)) {
+            return firstItem.label.join(' ');
+        }
+
+        return firstItem?.label || '';
+    }
+
+    function registerResponsiveChart(chart, canvas, config) {
+        chart.$rawLabels = Array.isArray(config.rawLabels) ? config.rawLabels.slice() : [];
+        responsiveCharts.push({
+            chart,
+            canvas,
+            kind: config.kind,
+            rawLabels: chart.$rawLabels,
+            legendPosition: config.legendPosition || 'bottom',
+            legendAlign: config.legendAlign || 'center',
+        });
+        refreshResponsiveChart(responsiveCharts[responsiveCharts.length - 1]);
+    }
+
+    function refreshResponsiveChart(item) {
+        const { chart, canvas, kind, rawLabels, legendPosition, legendAlign } = item;
+        const profile = getChartViewportProfile(canvas);
+
+        if (kind === 'horizontal') {
+            const sizing = getHorizontalChartSizing(rawLabels, canvas);
+            setCanvasHeight(canvas, sizing.height);
+            chart.data.labels = sizing.wrappedLabels;
+            applyLegendSizing(chart, sizing.profile, legendPosition, legendAlign);
+
+            chart.options.layout = {
+                ...(chart.options.layout || {}),
+                padding: { top: 4, right: 8, bottom: 0, left: 0 }
+            };
+
+            chart.options.scales.x = {
+                ...(chart.options.scales.x || {}),
+                ticks: {
+                    ...((chart.options.scales.x && chart.options.scales.x.ticks) || {}),
+                    font: { size: sizing.profile.axisFontSize },
+                    precision: 0
+                }
+            };
+            chart.options.scales.y = {
+                ...(chart.options.scales.y || {}),
+                ticks: {
+                    ...((chart.options.scales.y && chart.options.scales.y.ticks) || {}),
+                    autoSkip: false,
+                    font: { size: sizing.profile.labelFontSize }
+                }
+            };
+
+            chart.data.datasets.forEach(dataset => {
+                dataset.barThickness = sizing.profile.horizontalBarThickness;
+                dataset.maxBarThickness = sizing.profile.horizontalBarThickness;
+                dataset.categoryPercentage = sizing.profile.categoryPercentage;
+                dataset.barPercentage = sizing.profile.barPercentage;
+            });
+        } else {
+            setCanvasHeight(canvas, profile.wideHeight);
+            applyLegendSizing(chart, profile, legendPosition, legendAlign);
+
+            chart.options.scales.x = {
+                ...(chart.options.scales.x || {}),
+                ticks: {
+                    ...((chart.options.scales.x && chart.options.scales.x.ticks) || {}),
+                    autoSkip: false,
+                    maxRotation: profile.viewportWidth <= 576 ? 45 : 0,
+                    minRotation: profile.viewportWidth <= 576 ? 45 : 0,
+                    font: { size: profile.axisFontSize }
+                }
+            };
+            chart.options.scales.y = {
+                ...(chart.options.scales.y || {}),
+                ticks: {
+                    ...((chart.options.scales.y && chart.options.scales.y.ticks) || {}),
+                    precision: 0,
+                    font: { size: profile.axisFontSize }
+                }
+            };
+
+            chart.data.datasets.forEach(dataset => {
+                delete dataset.barThickness;
+                dataset.maxBarThickness = profile.verticalMaxBarThickness;
+                dataset.categoryPercentage = profile.categoryPercentage;
+                dataset.barPercentage = profile.barPercentage;
+            });
+        }
+
+        chart.resize();
+        chart.update('none');
+    }
+
+    function refreshAllResponsiveCharts() {
+        responsiveCharts.forEach(refreshResponsiveChart);
+    }
+
+    let chartResizeFrame = null;
+    function scheduleResponsiveChartRefresh() {
+        if (chartResizeFrame) {
+            cancelAnimationFrame(chartResizeFrame);
+        }
+
+        chartResizeFrame = requestAnimationFrame(() => {
+            refreshAllResponsiveCharts();
+            chartResizeFrame = null;
+        });
+    }
+
+    window.addEventListener('resize', scheduleResponsiveChartRefresh);
     
     // =====================
     // Gráfico de Treinamentos por Mês
@@ -1045,8 +1332,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     borderColor: 'rgba(23, 162, 184, 1)',
                     borderWidth: 2,
                     borderRadius: 6,
-                    borderSkipped: false,
-                    barThickness: 18
+                    borderSkipped: false
                 }]
             },
             options: {
@@ -1110,6 +1396,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
+        registerResponsiveChart(chartMeses, ctxMeses, {
+            kind: 'wide',
+            rawLabels: meses,
+            legendPosition: 'top',
+            legendAlign: 'end',
+        });
 
         // Feedback visual para indicar que o gráfico é clicável
         ctxMeses.style.cursor = 'pointer';
@@ -1125,28 +1417,26 @@ document.addEventListener('DOMContentLoaded', function() {
         const liderPendentes = [{% for item in treinamentos_por_lider %}{{ item.pendentes }}{% if not forloop.last %}, {% endif %}{% endfor %}];
         
         if (liderLabels.length > 0) {
-            new Chart(ctxLider.getContext('2d'), {
+            const liderChart = new Chart(ctxLider.getContext('2d'), {
                 type: 'bar',
                 data: {
-                    labels: liderLabels.slice(0, 10),
+                    labels: liderLabels,
                     datasets: [
                         {
                             label: 'Vigentes',
-                            data: liderVigentes.slice(0, 10),
+                            data: liderVigentes,
                             backgroundColor: 'rgba(40, 167, 69, 0.8)',
                             borderColor: 'rgba(40, 167, 69, 1)',
                             borderWidth: 1,
-                            borderRadius: 4,
-                            barThickness: 12
+                            borderRadius: 4
                         },
                         {
                             label: 'Pendentes',
-                            data: liderPendentes.slice(0, 10),
+                            data: liderPendentes,
                             backgroundColor: 'rgba(220, 53, 69, 0.8)',
                             borderColor: 'rgba(220, 53, 69, 1)',
                             borderWidth: 1,
-                            borderRadius: 4,
-                            barThickness: 12
+                            borderRadius: 4
                         }
                     ]
                 },
@@ -1157,6 +1447,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     plugins: {
                         legend: {
                             position: 'bottom'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: resolveRawLabelTooltip
+                            }
                         }
                     },
                     scales: {
@@ -1171,6 +1466,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                     }
                 }
+            });
+            registerResponsiveChart(liderChart, ctxLider, {
+                kind: 'horizontal',
+                rawLabels: liderLabels,
             });
         } else {
             document.getElementById('chartLiderFallback').classList.remove('d-none');
@@ -1188,28 +1487,26 @@ document.addEventListener('DOMContentLoaded', function() {
         const setorPendentes = [{% for item in treinamentos_por_setor_turno %}{{ item.pendentes }}{% if not forloop.last %}, {% endif %}{% endfor %}];
         
         if (setorLabels.length > 0) {
-            new Chart(ctxSetorTurno.getContext('2d'), {
+            const setorTurnoChart = new Chart(ctxSetorTurno.getContext('2d'), {
                 type: 'bar',
                 data: {
-                    labels: setorLabels.slice(0, 10),
+                    labels: setorLabels,
                     datasets: [
                         {
                             label: 'Vigentes',
-                            data: setorVigentes.slice(0, 10),
+                            data: setorVigentes,
                             backgroundColor: 'rgba(40, 167, 69, 0.8)',
                             borderColor: 'rgba(40, 167, 69, 1)',
                             borderWidth: 1,
-                            borderRadius: 4,
-                            barThickness: 12
+                            borderRadius: 4
                         },
                         {
                             label: 'Pendentes',
-                            data: setorPendentes.slice(0, 10),
+                            data: setorPendentes,
                             backgroundColor: 'rgba(220, 53, 69, 0.8)',
                             borderColor: 'rgba(220, 53, 69, 1)',
                             borderWidth: 1,
-                            borderRadius: 4,
-                            barThickness: 12
+                            borderRadius: 4
                         }
                     ]
                 },
@@ -1220,6 +1517,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     plugins: {
                         legend: {
                             position: 'bottom'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: resolveRawLabelTooltip
+                            }
                         }
                     },
                     scales: {
@@ -1235,6 +1537,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
             });
+            registerResponsiveChart(setorTurnoChart, ctxSetorTurno, {
+                kind: 'horizontal',
+                rawLabels: setorLabels,
+            });
         } else {
             document.getElementById('chartSetorTurnoFallback').classList.remove('d-none');
             ctxSetorTurno.style.display = 'none';
@@ -1246,61 +1552,49 @@ document.addEventListener('DOMContentLoaded', function() {
     // =====================
     const ctxPlanejamentoInstrutor = document.getElementById('chartPlanejamentoInstrutor');
     if (ctxPlanejamentoInstrutor) {
-        // Função para pegar primeiro e último nome
-        function primeiroUltimoNome(nomeCompleto) {
-            const partes = nomeCompleto.trim().split(/\s+/);
-            if (partes.length <= 2) return nomeCompleto;
-            return partes[0] + ' ' + partes[partes.length - 1];
-        }
-        
-        const plInstrutorLabelsRaw = [{% for item in planejamento_por_instrutor %}'{{ item.instrutor__nome_completo|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
-        const plInstrutorLabels = plInstrutorLabelsRaw.map(primeiroUltimoNome);
+        const plInstrutorLabels = [{% for item in planejamento_por_instrutor %}'{{ item.instrutor__nome_completo|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
         const plInstrutorPlanejado = [{% for item in planejamento_por_instrutor %}{{ item.planejado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
         const plInstrutorConfirmado = [{% for item in planejamento_por_instrutor %}{{ item.confirmado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
         const plInstrutorRealizado = [{% for item in planejamento_por_instrutor %}{{ item.realizado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
         const plInstrutorAtrasado = [{% for item in planejamento_por_instrutor %}{{ item.atrasado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
         
         if (plInstrutorLabels.length > 0) {
-            new Chart(ctxPlanejamentoInstrutor.getContext('2d'), {
+            const planejamentoInstrutorChart = new Chart(ctxPlanejamentoInstrutor.getContext('2d'), {
                 type: 'bar',
                 data: {
-                    labels: plInstrutorLabels.slice(0, 10),
+                    labels: plInstrutorLabels,
                     datasets: [
                         {
                             label: 'Planejado',
-                            data: plInstrutorPlanejado.slice(0, 10),
+                            data: plInstrutorPlanejado,
                             backgroundColor: 'rgba(124, 58, 237, 0.8)',
                             borderColor: 'rgba(124, 58, 237, 1)',
                             borderWidth: 1,
-                            borderRadius: 4,
-                            barThickness: 10
+                            borderRadius: 4
                         },
                         {
                             label: 'Confirmado',
-                            data: plInstrutorConfirmado.slice(0, 10),
+                            data: plInstrutorConfirmado,
                             backgroundColor: 'rgba(23, 162, 184, 0.8)',
                             borderColor: 'rgba(23, 162, 184, 1)',
                             borderWidth: 1,
-                            borderRadius: 4,
-                            barThickness: 10
+                            borderRadius: 4
                         },
                         {
                             label: 'Realizado',
-                            data: plInstrutorRealizado.slice(0, 10),
+                            data: plInstrutorRealizado,
                             backgroundColor: 'rgba(40, 167, 69, 0.8)',
                             borderColor: 'rgba(40, 167, 69, 1)',
                             borderWidth: 1,
-                            borderRadius: 4,
-                            barThickness: 10
+                            borderRadius: 4
                         },
                         {
                             label: 'Atrasado',
-                            data: plInstrutorAtrasado.slice(0, 10),
+                            data: plInstrutorAtrasado,
                             backgroundColor: 'rgba(220, 53, 69, 0.8)',
                             borderColor: 'rgba(220, 53, 69, 1)',
                             borderWidth: 1,
-                            borderRadius: 4,
-                            barThickness: 10
+                            borderRadius: 4
                         }
                     ]
                 },
@@ -1311,6 +1605,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     plugins: {
                         legend: {
                             position: 'bottom'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: resolveRawLabelTooltip
+                            }
                         }
                     },
                     scales: {
@@ -1325,6 +1624,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                     }
                 }
+            });
+            registerResponsiveChart(planejamentoInstrutorChart, ctxPlanejamentoInstrutor, {
+                kind: 'horizontal',
+                rawLabels: plInstrutorLabels,
             });
         } else {
             document.getElementById('chartPlanejamentoInstrutorFallback').classList.remove('d-none');
@@ -1344,46 +1647,42 @@ document.addEventListener('DOMContentLoaded', function() {
         const plSetorAtrasado = [{% for item in planejamento_por_setor_turno %}{{ item.atrasado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
         
         if (plSetorLabels.length > 0) {
-            new Chart(ctxPlanejamentoSetorTurno.getContext('2d'), {
+            const planejamentoSetorTurnoChart = new Chart(ctxPlanejamentoSetorTurno.getContext('2d'), {
                 type: 'bar',
                 data: {
-                    labels: plSetorLabels.slice(0, 10),
+                    labels: plSetorLabels,
                     datasets: [
                         {
                             label: 'Planejado',
-                            data: plSetorPlanejado.slice(0, 10),
+                            data: plSetorPlanejado,
                             backgroundColor: 'rgba(124, 58, 237, 0.8)',
                             borderColor: 'rgba(124, 58, 237, 1)',
                             borderWidth: 1,
-                            borderRadius: 4,
-                            barThickness: 10
+                            borderRadius: 4
                         },
                         {
                             label: 'Confirmado',
-                            data: plSetorConfirmado.slice(0, 10),
+                            data: plSetorConfirmado,
                             backgroundColor: 'rgba(23, 162, 184, 0.8)',
                             borderColor: 'rgba(23, 162, 184, 1)',
                             borderWidth: 1,
-                            borderRadius: 4,
-                            barThickness: 10
+                            borderRadius: 4
                         },
                         {
                             label: 'Realizado',
-                            data: plSetorRealizado.slice(0, 10),
+                            data: plSetorRealizado,
                             backgroundColor: 'rgba(40, 167, 69, 0.8)',
                             borderColor: 'rgba(40, 167, 69, 1)',
                             borderWidth: 1,
-                            borderRadius: 4,
-                            barThickness: 10
+                            borderRadius: 4
                         },
                         {
                             label: 'Atrasado',
-                            data: plSetorAtrasado.slice(0, 10),
+                            data: plSetorAtrasado,
                             backgroundColor: 'rgba(220, 53, 69, 0.8)',
                             borderColor: 'rgba(220, 53, 69, 1)',
                             borderWidth: 1,
-                            borderRadius: 4,
-                            barThickness: 10
+                            borderRadius: 4
                         }
                     ]
                 },
@@ -1394,6 +1693,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     plugins: {
                         legend: {
                             position: 'bottom'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: resolveRawLabelTooltip
+                            }
                         }
                     },
                     scales: {
@@ -1408,6 +1712,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                     }
                 }
+            });
+            registerResponsiveChart(planejamentoSetorTurnoChart, ctxPlanejamentoSetorTurno, {
+                kind: 'horizontal',
+                rawLabels: plSetorLabels,
             });
         } else {
             document.getElementById('chartPlanejamentoSetorTurnoFallback').classList.remove('d-none');
