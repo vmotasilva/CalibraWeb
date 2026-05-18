@@ -12,7 +12,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import HttpResponse
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.core.paginator import Paginator
 from django.views.decorators.http import require_http_methods
 import pandas as pd
@@ -37,6 +37,7 @@ def treinamentos_historico_view(request):
 from procedures.models import (
     Procedimento, RegistroTreinamento, PacoteTreinamento,
     MatrizProcedimento, SubAreaProcedimento,
+    ResponsavelTreinamentoMatriz,
     Fornecedor, AvaliacaoFornecedor, ProcessoCotacao, Orcamento
 )
 from rh.models import Colaborador
@@ -44,7 +45,7 @@ from rh.models import Colaborador
 # Forms
 from procedures.forms import (
     MatrizProcedimentoForm, SubAreaProcedimentoForm,
-    ImportacaoMatrizSubAreaForm,
+    ImportacaoMatrizSubAreaForm, MatrizResponsabilidadeTreinamentoForm,
     ProcedimentoForm, RegistroTreinamentoForm, PacoteTreinamentoForm,
     FornecedorForm, AvaliacaoFornecedorForm, ProcessoCotacaoForm, OrcamentoForm
 )
@@ -538,6 +539,81 @@ def procedimento_matriz_detalhe_view(request, matriz_id):
         'matriz_form': matriz_form,
         'sub_area_form': sub_area_form,
         'sub_areas': sub_areas,
+    })
+
+
+@login_required
+def procedimento_responsabilidades_treinamento_view(request):
+    """Matriz de responsaveis de treinamento por matriz e turno."""
+    if not has_view_access(request.user, 'procedures:procedimento_responsabilidades_treinamento'):
+        messages.error(request, 'Sem permissao para gerenciar responsaveis de treinamento por matriz.')
+        return redirect('procedures:procedimento_matrizes_list')
+
+    nomes_matrizes_com_procedimentos = list(
+        Procedimento.objects.exclude(matriz__isnull=True)
+        .exclude(matriz__exact='')
+        .values_list('matriz', flat=True)
+        .distinct()
+    )
+    total_procedimentos_por_matriz = dict(
+        Procedimento.objects.exclude(matriz__isnull=True)
+        .exclude(matriz__exact='')
+        .values('matriz')
+        .annotate(total=Count('id'))
+        .values_list('matriz', 'total')
+    )
+
+    matrizes = list(
+        MatrizProcedimento.objects.filter(
+            Q(nome__in=nomes_matrizes_com_procedimentos)
+            | Q(responsaveis_treinamento__isnull=False)
+        )
+        .distinct()
+        .order_by('nome')
+    )
+    if not matrizes:
+        matrizes = list(MatrizProcedimento.objects.order_by('nome'))
+
+    responsabilidades = {
+        (responsabilidade.matriz_id, responsabilidade.turno): responsabilidade
+        for responsabilidade in ResponsavelTreinamentoMatriz.objects.select_related('matriz', 'colaborador').filter(
+            matriz__in=matrizes
+        )
+    }
+
+    if request.method == 'POST':
+        form = MatrizResponsabilidadeTreinamentoForm(
+            request.POST,
+            matrizes=matrizes,
+            responsabilidades=responsabilidades,
+        )
+        if form.is_valid():
+            resultado = form.save()
+            total_alteracoes = resultado['atualizadas'] + resultado['removidas']
+            if total_alteracoes:
+                messages.success(
+                    request,
+                    f"Matriz de responsabilidade atualizada com sucesso. {resultado['atualizadas']} atribuicoes salvas e {resultado['removidas']} removidas.",
+                )
+            else:
+                messages.info(request, 'Nenhuma alteracao foi identificada na matriz de responsabilidade.')
+            return redirect('procedures:procedimento_responsabilidades_treinamento')
+    else:
+        form = MatrizResponsabilidadeTreinamentoForm(
+            matrizes=matrizes,
+            responsabilidades=responsabilidades,
+        )
+
+    linhas_matriz = form.build_rows()
+    for linha in linhas_matriz:
+        linha['total_procedimentos'] = total_procedimentos_por_matriz.get(linha['matriz'].nome, 0)
+
+    return render(request, 'procedures/procedimento_matriz_responsabilidades.html', {
+        'form': form,
+        'linhas_matriz': linhas_matriz,
+        'turnos': form.turnos,
+        'total_responsabilidades': len(responsabilidades),
+        'total_matrizes': len(matrizes),
     })
 
 

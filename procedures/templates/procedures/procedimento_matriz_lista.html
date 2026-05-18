@@ -13,6 +13,7 @@
 {% if can_importar_matriz %}
 <a href="{% url 'procedures:importar_matrizes_subareas' %}" class="btn btn-success btn-sm">Importar em Massa</a>
 {% endif %}
+<a href="{% url 'procedures:procedimento_responsabilidades_treinamento' %}" class="btn btn-outline-primary btn-sm">Responsaveis por Turno</a>
 <a href="{% url 'procedures:procedimentos_list' %}" class="btn btn-secondary btn-sm">Voltar para Procedimentos</a>
 {% endblock %}
 

@@ -11,6 +11,7 @@ from django.db import models
 from django.db.models.signals import m2m_changed, post_save
 from django.dispatch import receiver
 from decimal import Decimal
+from core.models import TURNOS_CHOICES
 
 
 # ==============================================================================
@@ -58,6 +59,56 @@ class SubAreaProcedimento(models.Model):
                 fields=["matriz", "nome"],
                 name="uniq_subarea_procedimento_por_matriz",
             )
+        ]
+
+
+class ResponsavelTreinamentoMatriz(models.Model):
+    """Define o colaborador responsável pelos treinamentos de uma matriz em cada turno."""
+
+    matriz = models.ForeignKey(
+        MatrizProcedimento,
+        on_delete=models.CASCADE,
+        related_name="responsaveis_treinamento",
+        verbose_name="Matriz",
+    )
+    turno = models.CharField(
+        max_length=20,
+        choices=TURNOS_CHOICES,
+        verbose_name="Turno",
+    )
+    colaborador = models.ForeignKey(
+        'rh.Colaborador',
+        on_delete=models.PROTECT,
+        related_name="responsabilidades_treinamento",
+        verbose_name="Colaborador Responsável",
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        if self.colaborador_id and self.colaborador.turno != self.turno:
+            raise ValidationError({
+                'colaborador': 'O colaborador selecionado precisa pertencer ao mesmo turno da responsabilidade.'
+            })
+
+    def __str__(self):
+        return f"{self.matriz.nome} - {self.get_turno_display()}: {self.colaborador.nome_completo}"
+
+    class Meta:
+        verbose_name = "Responsável de Treinamento por Matriz"
+        verbose_name_plural = "Responsáveis de Treinamento por Matriz"
+        ordering = ["matriz__nome", "turno"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["matriz", "turno"],
+                name="uniq_responsavel_treinamento_por_matriz_turno",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["turno"], name="resp_trein_matriz_turno_idx"),
+            models.Index(fields=["colaborador"], name="resp_trein_matriz_colab_idx"),
         ]
 
 class Procedimento(models.Model):

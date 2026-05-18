@@ -6,9 +6,10 @@ Consolida forms de training e procurements
 
 from django import forms
 from django.urls import reverse_lazy
+from core.models import TURNOS_CHOICES
 from procedures.models import (
     Procedimento, RegistroTreinamento, PacoteTreinamento,
-    MatrizProcedimento, SubAreaProcedimento,
+    MatrizProcedimento, SubAreaProcedimento, ResponsavelTreinamentoMatriz,
     Fornecedor, AvaliacaoFornecedor, ProcessoCotacao, Orcamento,
     Disciplina, MatrizHabilidade, AvaliacaoHabilidade,
     PerfilTreinamento, GrupoTreinamento, SubGrupoTreinamento,
@@ -61,6 +62,143 @@ class ImportacaoMatrizSubAreaForm(forms.Form):
             'accept': '.xlsx,.xls,.csv',
         }),
     )
+
+
+class MatrizResponsabilidadeTreinamentoForm(forms.Form):
+    turno_choices = TURNOS_CHOICES
+
+    def __init__(self, *args, matrizes=None, responsabilidades=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        from rh.models import Colaborador
+
+        self.matrizes = list(matrizes or [])
+        self.turnos = list(self.turno_choices)
+        self.responsabilidades = responsabilidades or {}
+
+        colaboradores = list(
+            Colaborador.objects.select_related('setor').order_by('nome_completo')
+        )
+        self.colaboradores_por_turno = {turno: [] for turno, _ in self.turnos}
+        for colaborador in colaboradores:
+            if colaborador.turno in self.colaboradores_por_turno:
+                self.colaboradores_por_turno[colaborador.turno].append(colaborador)
+
+        for matriz in self.matrizes:
+            for turno, _ in self.turnos:
+                field_name = self.get_field_name(matriz.id, turno)
+                atual = self.responsabilidades.get((matriz.id, turno))
+                choices = [('', 'Sem responsavel')]
+                choices.extend(
+                    (str(colaborador.id), self.format_colaborador_label(colaborador))
+                    for colaborador in self.colaboradores_por_turno.get(turno, [])
+                )
+                self.fields[field_name] = forms.ChoiceField(
+                    required=False,
+                    choices=choices,
+                    initial=str(atual.colaborador_id) if atual else '',
+                    label='',
+                    widget=forms.Select(attrs={'class': 'form-select form-select-sm'}),
+                )
+
+    @staticmethod
+    def get_field_name(matriz_id, turno):
+        return f'resp_{matriz_id}_{turno}'
+
+    @staticmethod
+    def format_colaborador_label(colaborador):
+        sufixos = []
+        if colaborador.cargo:
+            sufixos.append(colaborador.cargo)
+        if not colaborador.is_active:
+            sufixos.append('Inativo')
+        if colaborador.afastado:
+            sufixos.append('Afastado')
+        if colaborador.em_ferias:
+            sufixos.append('Ferias')
+        if sufixos:
+            return f"{colaborador.nome_completo} ({' | '.join(sufixos)})"
+        return colaborador.nome_completo
+
+    def build_rows(self):
+        rows = []
+        for matriz in self.matrizes:
+            cells = []
+            for turno, turno_label in self.turnos:
+                field_name = self.get_field_name(matriz.id, turno)
+                field = self[field_name]
+                cells.append({
+                    'turno': turno,
+                    'turno_label': turno_label,
+                    'field': field,
+                    'total_opcoes': max(len(field.field.choices) - 1, 0),
+                    'responsabilidade': self.responsabilidades.get((matriz.id, turno)),
+                })
+            rows.append({'matriz': matriz, 'cells': cells})
+        return rows
+
+    def clean(self):
+        cleaned_data = super().clean()
+        from rh.models import Colaborador
+
+        selecionados = {int(value) for value in cleaned_data.values() if value}
+        colaboradores = Colaborador.objects.in_bulk(selecionados)
+
+        for matriz in self.matrizes:
+            for turno, _ in self.turnos:
+                field_name = self.get_field_name(matriz.id, turno)
+                colaborador_id = cleaned_data.get(field_name)
+                if not colaborador_id:
+                    continue
+
+                colaborador = colaboradores.get(int(colaborador_id))
+                if not colaborador:
+                    self.add_error(field_name, 'Colaborador invalido.')
+                    continue
+
+                if colaborador.turno != turno:
+                    self.add_error(field_name, 'Selecione um colaborador do mesmo turno da coluna.')
+
+        return cleaned_data
+
+    def save(self):
+        from rh.models import Colaborador
+
+        selecionados = {int(value) for value in self.cleaned_data.values() if value}
+        colaboradores = Colaborador.objects.in_bulk(selecionados)
+        atualizadas = 0
+        removidas = 0
+
+        for matriz in self.matrizes:
+            for turno, _ in self.turnos:
+                field_name = self.get_field_name(matriz.id, turno)
+                colaborador_id = self.cleaned_data.get(field_name)
+                responsabilidade = self.responsabilidades.get((matriz.id, turno))
+
+                if not colaborador_id:
+                    if responsabilidade:
+                        responsabilidade.delete()
+                        removidas += 1
+                    continue
+
+                colaborador = colaboradores[int(colaborador_id)]
+                if responsabilidade:
+                    if responsabilidade.colaborador_id != colaborador.id:
+                        responsabilidade.colaborador = colaborador
+                        responsabilidade.full_clean()
+                        responsabilidade.save(update_fields=['colaborador', 'atualizado_em'])
+                        atualizadas += 1
+                    continue
+
+                nova_responsabilidade = ResponsavelTreinamentoMatriz(
+                    matriz=matriz,
+                    turno=turno,
+                    colaborador=colaborador,
+                )
+                nova_responsabilidade.full_clean()
+                nova_responsabilidade.save()
+                atualizadas += 1
+
+        return {'atualizadas': atualizadas, 'removidas': removidas}
 
 class ProcedimentoForm(forms.ModelForm):
     """Formulário para criar/editar procedimentos operacionais."""

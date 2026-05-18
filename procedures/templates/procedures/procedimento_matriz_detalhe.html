@@ -4,6 +4,7 @@
 {% block header_title %}Matriz de Procedimentos: {{ matriz.nome }}{% endblock %}
 
 {% block header_actions %}
+<a href="{% url 'procedures:procedimento_responsabilidades_treinamento' %}" class="btn btn-outline-primary btn-sm">Responsaveis por Turno</a>
 <a href="{% url 'procedures:procedimento_matrizes_list' %}" class="btn btn-secondary btn-sm">Voltar para Matrizes</a>
 {% endblock %}
 

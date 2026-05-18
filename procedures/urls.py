@@ -34,6 +34,7 @@ urlpatterns = [
     path('procedimentos/template/download/', views.download_template_procedimentos_view, name='dl_template_procedimentos'),
     path('procedimentos/importar/', views.importar_procedimentos_view, name='importar_procedimentos'),
     path('procedimentos/matrizes/', views.procedimento_matrizes_list_view, name='procedimento_matrizes_list'),
+    path('procedimentos/matrizes/responsabilidades/', views.procedimento_responsabilidades_treinamento_view, name='procedimento_responsabilidades_treinamento'),
     path('procedimentos/matrizes/<int:matriz_id>/', views.procedimento_matriz_detalhe_view, name='procedimento_matriz_detalhe'),
     path('procedimentos/matrizes/importar/', views.importar_matrizes_subareas_view, name='importar_matrizes_subareas'),
     path('procedimentos/matrizes/template/', views.download_template_matrizes_subareas_view, name='download_template_matrizes_subareas'),

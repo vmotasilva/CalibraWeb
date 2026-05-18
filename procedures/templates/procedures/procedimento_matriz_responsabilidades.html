@@ -1,0 +1,164 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}Matriz de Responsabilidade{% endblock %}
+{% block header_title %}Matriz de Responsabilidade pelo Treinamento{% endblock %}
+
+{% block extra_css %}
+<style>
+    .summary-card {
+        border: 1px solid #e9ecef;
+        border-radius: 0.75rem;
+        padding: 1rem;
+        background: #fff;
+        height: 100%;
+    }
+
+    .summary-label {
+        display: block;
+        color: #6c757d;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-bottom: 0.35rem;
+    }
+
+    .summary-value {
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: #212529;
+        line-height: 1;
+    }
+
+    .matrix-table {
+        min-width: 980px;
+    }
+
+    .matrix-table th,
+    .matrix-table td {
+        vertical-align: top;
+    }
+
+    .matrix-name {
+        min-width: 240px;
+    }
+
+    .matrix-name strong {
+        display: block;
+        margin-bottom: 0.35rem;
+    }
+
+    .turno-cell {
+        min-width: 220px;
+    }
+
+    .turno-cell .form-select {
+        min-height: 44px;
+    }
+
+    .helper-text {
+        display: block;
+        margin-top: 0.4rem;
+        font-size: 0.82rem;
+        color: #6c757d;
+    }
+
+    @media (max-width: 767.98px) {
+        .summary-value {
+            font-size: 1.3rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'procedures:procedimento_matrizes_list' %}" class="btn btn-secondary btn-sm">Voltar para Matrizes</a>
+{% endblock %}
+
+{% block main_content %}
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="summary-card">
+            <span class="summary-label">Matrizes</span>
+            <span class="summary-value">{{ total_matrizes }}</span>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="summary-card">
+            <span class="summary-label">Responsabilidades Definidas</span>
+            <span class="summary-value">{{ total_responsabilidades }}</span>
+        </div>
+    </div>
+    <div class="col-12 col-lg-6">
+        <div class="summary-card">
+            <span class="summary-label">Como usar</span>
+            <span class="helper-text mt-0">Cada coluna representa um turno. Em cada celula, selecione o colaborador responsavel pelos treinamentos daquela matriz no respectivo turno.</span>
+            <span class="helper-text">As opcoes exibidas em cada coluna respeitam o turno do colaborador cadastrado no RH.</span>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2">
+        <div>
+            <h5 class="mb-1">Responsaveis por Matriz e Turno</h5>
+            <p class="text-muted mb-0">A matriz cruza as matrizes de procedimentos com os turnos cadastrados no sistema.</p>
+        </div>
+        <span class="badge bg-light text-dark border">{{ turnos|length }} turnos</span>
+    </div>
+    <div class="card-body p-0">
+        <form method="post">
+            {% csrf_token %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 matrix-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="matrix-name">Matriz</th>
+                            {% for turno, turno_label in turnos %}
+                            <th class="turno-cell">{{ turno_label }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for linha in linhas_matriz %}
+                        <tr>
+                            <td class="matrix-name">
+                                <strong>{{ linha.matriz.nome }}</strong>
+                                <span class="badge {% if linha.matriz.ativo %}bg-success{% else %}bg-secondary{% endif %}">
+                                    {% if linha.matriz.ativo %}Ativa{% else %}Inativa{% endif %}
+                                </span>
+                                <span class="helper-text">{{ linha.total_procedimentos }} procedimento{{ linha.total_procedimentos|pluralize }} associado{{ linha.total_procedimentos|pluralize }}</span>
+                            </td>
+                            {% for cell in linha.cells %}
+                            <td class="turno-cell">
+                                {{ cell.field }}
+                                {% if cell.field.errors %}
+                                <div class="text-danger small mt-1">{{ cell.field.errors|join:', ' }}</div>
+                                {% endif %}
+                                {% if cell.total_opcoes == 0 %}
+                                <span class="helper-text">Sem colaboradores cadastrados neste turno.</span>
+                                {% else %}
+                                <span class="helper-text">{{ cell.total_opcoes }} colaborador(es) disponiveis neste turno.</span>
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="{{ turnos|length|add:1 }}" class="text-center text-muted py-5">
+                                Nenhuma matriz de procedimento foi encontrada para montar a grade de responsabilidade.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if linhas_matriz %}
+            <div class="card-footer d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+                <p class="text-muted mb-0">Para remover um responsavel, altere a opcao da celula para "Sem responsavel" e salve.</p>
+                <button type="submit" class="btn btn-primary">Salvar Matriz de Responsabilidade</button>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+</div>
+{% endblock %}

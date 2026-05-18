@@ -564,7 +564,7 @@ NAV_STRUCTURE = [
                     {"nome": "Editar Procedimento", "view_name": ["procedures:editar_procedimento", "qms:editar_procedimento"], "perm": "core.nav_treinamentos_editar_procedimento"},
                     {"nome": "Importar Procedimentos", "view_name": ["procedures:importar_procedimentos", "procedures:dl_template_procedimentos"], "perm": "core.nav_treinamentos_importar_procedimentos"},
                     {"nome": "Exportar Procedimentos (Excel)", "view_name": "procedures:export_procedimentos_excel", "perm": "core.nav_treinamentos_exportar_procedimentos"},
-                    {"nome": "Matrizes e Sub-áreas (Lista)", "view_name": ["procedures:procedimento_matrizes_list", "procedures:procedimento_matriz_detalhe"], "perm": "core.nav_treinamentos_procedimentos_matrizes"},
+                    {"nome": "Matrizes e Sub-áreas (Lista)", "view_name": ["procedures:procedimento_matrizes_list", "procedures:procedimento_matriz_detalhe", "procedures:procedimento_responsabilidades_treinamento"], "perm": "core.nav_treinamentos_procedimentos_matrizes"},
                     {"nome": "Importar Matrizes e Sub-áreas", "view_name": ["procedures:importar_matrizes_subareas", "procedures:download_template_matrizes_subareas"], "perm": "core.nav_treinamentos_procedimentos_matrizes_import"},
                     {"nome": "API Sub-áreas por Matriz", "view_name": "procedures:api_subareas_por_matriz", "perm": "core.nav_treinamentos_procedimentos_subareas_api"},
                 ],
