@@ -193,7 +193,7 @@
                             <tr>
                                 <td>{{ item.nome }}</td>
                                 <td class="text-end">{{ item.total }}</td>
-                                <td class="text-end">{{ item.horas|floatformat:2 }}</td>
+                                <td class="text-end">{{ item.horas_formatada }}</td>
                             </tr>
                             {% empty %}
                             <tr>
@@ -218,6 +218,9 @@
                             <div class="d-flex justify-content-between align-items-center px-3 py-2 bg-light border-bottom">
                                 <h6 class="mb-0">{{ grupo.categoria }}</h6>
                                 <span class="badge text-bg-secondary">{{ grupo.total }} registro{{ grupo.total|pluralize }}</span>
+                            </div>
+                            <div class="px-3 pt-2 pb-0 small text-muted">
+                                <strong>Subtotal de horas:</strong> {{ grupo.total_horas_formatada }}
                             </div>
                             <div class="table-responsive">
                                 <table class="table table-hover align-middle mb-0">

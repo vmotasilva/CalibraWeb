@@ -555,7 +555,8 @@ def _build_dashboard_context(request):
     )
 
 
-    # Calcular totais por categoria, incluindo horas
+
+    # Calcular totais por categoria, incluindo horas (em horas e minutos)
     categoria_horas = {}
     categoria_counter = Counter()
     sem_categoria_total = 0
@@ -573,8 +574,16 @@ def _build_dashboard_context(request):
         categoria_counter["Sem categoria definida"] = sem_categoria_total
         categoria_horas["Sem categoria definida"] = sem_categoria_horas
 
+    def formatar_horas_minutos(valor_horas):
+        total_min = int(round(valor_horas * 60))
+        horas = total_min // 60
+        minutos = total_min % 60
+        if horas:
+            return f"{horas}h {minutos}min"
+        return f"{minutos}min"
+
     por_categoria = [
-        {"nome": nome, "total": total_categoria, "horas": categoria_horas.get(nome, 0)}
+        {"nome": nome, "total": total_categoria, "horas": categoria_horas.get(nome, 0), "horas_formatada": formatar_horas_minutos(categoria_horas.get(nome, 0))}
         for nome, total_categoria in categoria_counter.most_common(10)
     ]
 
@@ -635,6 +644,7 @@ def _build_dashboard_context(request):
             grupos_recentes[categoria_nome] = {
                 "categoria": categoria_nome,
                 "ocorrencias": [],
+                "total_horas": 0.0,
             }
             ocorrencias_recentes_por_categoria.append(grupos_recentes[categoria_nome])
 
@@ -644,9 +654,11 @@ def _build_dashboard_context(request):
                 "contexto_personalizado": _build_contexto_personalizado(ocorrencia),
             }
         )
+        grupos_recentes[categoria_nome]["total_horas"] += float(_duracao_em_horas(ocorrencia))
 
     for grupo in ocorrencias_recentes_por_categoria:
         grupo["total"] = len(grupo["ocorrencias"])
+        grupo["total_horas_formatada"] = formatar_horas_minutos(grupo["total_horas"])
 
     context = {
         "inicio": inicio_str,
