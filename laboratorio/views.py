@@ -554,24 +554,32 @@ def _build_dashboard_context(request):
         Decimal("0"),
     )
 
-    categoria_counter = Counter(
-        ocorrencia.categoria.nome for ocorrencia in ocorrencias_lista if ocorrencia.categoria
-    )
-    sem_categoria = sum(1 for ocorrencia in ocorrencias_lista if not ocorrencia.categoria)
-    if sem_categoria:
-        categoria_counter["Sem categoria definida"] = sem_categoria
+
+    # Calcular totais por categoria, incluindo horas
+    categoria_horas = {}
+    categoria_counter = Counter()
+    sem_categoria_total = 0
+    sem_categoria_horas = 0
+    for ocorrencia in ocorrencias_lista:
+        nome = ocorrencia.categoria.nome if ocorrencia.categoria else "Sem categoria definida"
+        horas = float(_duracao_em_horas(ocorrencia))
+        if ocorrencia.categoria:
+            categoria_counter[nome] += 1
+            categoria_horas[nome] = categoria_horas.get(nome, 0) + horas
+        else:
+            sem_categoria_total += 1
+            sem_categoria_horas += horas
+    if sem_categoria_total:
+        categoria_counter["Sem categoria definida"] = sem_categoria_total
+        categoria_horas["Sem categoria definida"] = sem_categoria_horas
+
     por_categoria = [
-        {"nome": nome, "total": total_categoria}
+        {"nome": nome, "total": total_categoria, "horas": categoria_horas.get(nome, 0)}
         for nome, total_categoria in categoria_counter.most_common(10)
     ]
 
-    assunto_counter = Counter(
-        ocorrencia.assunto for ocorrencia in ocorrencias_lista if ocorrencia.assunto
-    )
-    por_assunto = [
-        {"nome": nome, "total": total_assunto}
-        for nome, total_assunto in assunto_counter.most_common(10)
-    ]
+    # Remover cálculo e uso de por_assunto
+    por_assunto = []
 
     perdas_por_unidade_map = {}
     for ocorrencia in ocorrencias_lista:
@@ -655,7 +663,7 @@ def _build_dashboard_context(request):
         "total_absenteismo_horas": total_absenteismo_horas,
         "perdas_por_unidade": perdas_por_unidade,
         "por_categoria": por_categoria,
-        "por_assunto": por_assunto,
+        "por_assunto": por_assunto,  # Mantido vazio para compatibilidade do template
         "por_periodo": por_periodo,
         "resumo_executivo": resumo_executivo,
         "ocorrencias_recentes_por_categoria": ocorrencias_recentes_por_categoria,
