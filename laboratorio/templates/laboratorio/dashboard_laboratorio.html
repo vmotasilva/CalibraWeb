@@ -242,7 +242,7 @@
                                             <td><span class="badge text-bg-{{ ocorrencia.impacto_badge_class }}">{{ ocorrencia.get_impacto_display }}</span></td>
                                             <td class="text-end">
                                                 <div class="d-flex justify-content-end gap-2">
-                                                    <a href="{% url 'laboratorio:ocorrencia_detail' ocorrencia.pk %}" class="btn btn-sm btn-outline-secondary">Detalhes</a>
+                                                    <a href="{% url 'laboratorio:ocorrencia_detail' ocorrencia.pk %}" class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener">Detalhes</a>
                                                     {% if not ocorrencia.data_encerramento %}
                                                     <a href="{% url 'laboratorio:ocorrencia_detail' ocorrencia.pk %}?modal=encerramento&amp;next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-success">Encerrar</a>
                                                     {% endif %}
