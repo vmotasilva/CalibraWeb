@@ -10,13 +10,13 @@
         <div class="d-flex justify-content-between align-items-center bg-white rounded shadow-sm px-4 py-2">
             <div>
                 <h1 class="h5 mb-0"><i class="bi bi-graph-up text-primary me-2"></i>Dashboard de Treinamentos</h1>
-                <small class="text-muted" style="font-size: 0.75rem;">Visão geral de estatísticas e conformidade</small>
+                <small class="text-muted dashboard-desc">Visão geral de estatísticas e conformidade</small>
             </div>
             <div class="d-flex align-items-center gap-3">
                 <button id="exportCsv" class="btn btn-outline-success btn-sm py-1">
                     <i class="bi bi-file-earmark-excel me-1"></i>Exportar CSV
                 </button>
-                <span class="badge bg-light text-dark" style="font-size: 0.7rem;">
+                <span class="badge bg-light text-dark dashboard-badge-time">
                     <i class="bi bi-clock me-1"></i>Atualizado: {% now "d/m/Y H:i" %}
                 </span>
             </div>
@@ -164,7 +164,7 @@
                                     <input id="filterColaboradorQ" type="text" class="form-control form-control-sm" placeholder="Nome ou matrícula" value="{{ filtro_colaborador_q|default:'' }}" list="colabSuggestions" autocomplete="off">
                                     <input id="filterColaboradorId" type="hidden" value="{{ filtro_colaborador_id|default:'' }}">
                                     <datalist id="colabSuggestions"></datalist>
-                                <small class="text-muted" style="font-size: 0.7rem;">Filtro por nome ou matrícula</small>
+                                <small class="text-muted dashboard-filter-hint">Filtro por nome ou matrícula</small>
                             </div>
                         </div>
                         
@@ -189,7 +189,7 @@
         <div id="sidebar2Col" class="col-auto sidebar2-col">
             <div id="indicatorsSidebar" class="indicators-sidebar">
                 <div class="sidebar2-content">
-                    <h6 class="mb-2 fw-bold text-center" style="font-size: 0.8rem;"><i class="bi bi-speedometer2 text-primary me-1"></i>Indicadores</h6>
+                    <h6 class="mb-2 fw-bold text-center dashboard-indic-title"><i class="bi bi-speedometer2 text-primary me-1"></i>Indicadores</h6>
                     
                     <!-- Total Treinamentos -->
                     <div class="indicator-card mb-1">
@@ -198,8 +198,8 @@
                                 <i class="bi bi-journal-check text-primary"></i>
                             </div>
                             <div class="ms-2 flex-grow-1">
-                                <small class="text-muted d-block" style="font-size: 0.65rem;">Total</small>
-                                <span class="fw-bold text-primary" style="font-size: 1rem;">{{ total_treinamentos|default:"0" }}</span>
+                                <small class="text-muted d-block dashboard-indic-label">Total</small>
+                                <span class="fw-bold text-primary dashboard-indic-value">{{ total_treinamentos|default:"0" }}</span>
                             </div>
                         </div>
                     </div>
@@ -211,8 +211,8 @@
                                 <i class="bi bi-check-circle text-success"></i>
                             </div>
                             <div class="ms-2 flex-grow-1">
-                                <small class="text-muted d-block" style="font-size: 0.65rem;">Vigentes</small>
-                                <span class="fw-bold text-success" style="font-size: 1rem;">{{ treinamentos_vigentes|default:"0" }}</span>
+                                <small class="text-muted d-block dashboard-indic-label">Vigentes</small>
+                                <span class="fw-bold text-success dashboard-indic-value">{{ treinamentos_vigentes|default:"0" }}</span>
                             </div>
                         </div>
                     </div>
@@ -224,8 +224,8 @@
                                 <i class="bi bi-exclamation-triangle text-danger"></i>
                             </div>
                             <div class="ms-2 flex-grow-1">
-                                <small class="text-muted d-block" style="font-size: 0.65rem;">Pendentes</small>
-                                <span class="fw-bold text-danger" style="font-size: 1rem;">{{ treinamentos_pendentes|default:"0" }}</span>
+                                <small class="text-muted d-block dashboard-indic-label">Pendentes</small>
+                                <span class="fw-bold text-danger dashboard-indic-value">{{ treinamentos_pendentes|default:"0" }}</span>
                             </div>
                         </div>
                     </div>
@@ -237,8 +237,8 @@
                                 <i class="bi bi-people text-info"></i>
                             </div>
                             <div class="ms-2 flex-grow-1">
-                                <small class="text-muted d-block" style="font-size: 0.65rem;">Colaboradores</small>
-                                <span class="fw-bold text-info" style="font-size: 1rem;">{{ total_colaboradores_treinados|default:"0" }}</span>
+                                <small class="text-muted d-block dashboard-indic-label">Colaboradores</small>
+                                <span class="fw-bold text-info dashboard-indic-value">{{ total_colaboradores_treinados|default:"0" }}</span>
                             </div>
                         </div>
                     </div>
@@ -246,7 +246,7 @@
                     <!-- Taxa de Conformidade -->
                     <div class="indicator-card">
                         <div class="text-center">
-                            <small class="text-muted d-block mb-1" style="font-size: 0.65rem;">Taxa de Conformidade</small>
+                            <small class="text-muted d-block mb-1 dashboard-indic-label">Taxa de Conformidade</small>
                             <div class="d-flex align-items-center justify-content-center">
                                 <div class="circular-progress-sm">
                                     <svg viewBox="0 0 36 36" class="circular-chart-sm">
@@ -254,8 +254,37 @@
                                         <path class="circle-green" stroke-dasharray="{{ taxa_conformidade|default:0 }}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
                                     </svg>
                                 </div>
-                                <span class="fw-bold text-success ms-1" style="font-size: 1rem;">{{ taxa_conformidade|default:"0" }}%</span>
+                                <span class="fw-bold text-success ms-1 dashboard-indic-value">{{ taxa_conformidade|default:"0" }}%</span>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Responsáveis por Matriz/Turno -->
+                    <div class="indicator-card dashboard-card-resp-matriz">
+                        <div>
+                            <small class="text-muted d-block mb-1 dashboard-indic-label">
+                                <i class="bi bi-person-workspace text-secondary me-1"></i>Responsáveis por Matriz/Turno
+                            </small>
+                            <table class="table table-sm table-borderless mb-0 dashboard-table-resp-matriz">
+                                <thead>
+                                    <tr>
+                                        <th class="text-start">Matriz</th>
+                                        <th class="text-center">Turno</th>
+                                        <th class="text-end">Responsável</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for r in responsaveis_matriz_turno %}
+                                    <tr>
+                                        <td class="text-start">{{ r.matriz }}</td>
+                                        <td class="text-center">{{ r.turno }}</td>
+                                        <td class="text-end">{{ r.colaborador }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr><td colspan="3" class="text-center text-muted">Nenhum responsável definido</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -272,7 +301,7 @@
         <div class="col-md-6">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-header bg-white border-0 py-1 px-2">
-                    <h6 class="mb-0 fw-bold" style="font-size: 0.75rem;"><i class="bi bi-person-badge text-success me-1"></i>Demanda por Líder</h6>
+                    <h6 class="mb-0 fw-bold dashboard-chart-title"><i class="bi bi-person-badge text-success me-1"></i>Demanda por Líder</h6>
                 </div>
                 <div class="card-body py-1 px-2">
                     <canvas id="chartLider" class="dashboard-chart dashboard-chart--row"></canvas>
@@ -288,7 +317,7 @@
         <div class="col-md-6">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-header bg-white border-0 py-1 px-2">
-                    <h6 class="mb-0 fw-bold" style="font-size: 0.75rem;"><i class="bi bi-building text-warning me-1"></i>Demanda por Setor/Turno</h6>
+                    <h6 class="mb-0 fw-bold dashboard-chart-title"><i class="bi bi-building text-warning me-1"></i>Demanda por Setor/Turno</h6>
                 </div>
                 <div class="card-body py-1 px-2">
                     <canvas id="chartSetorTurno" class="dashboard-chart dashboard-chart--row"></canvas>
@@ -301,13 +330,35 @@
         </div>
     </div>
 
-    <!-- Gráficos Linha 2 - Planejamento -->
+    <!-- Gráfico Linha 2 - Demanda por Instrutor Responsável -->
+    <div class="row mb-2 g-2">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 py-1 px-2">
+                    <h6 class="mb-0 fw-bold dashboard-chart-title"><i class="bi bi-person-workspace text-secondary me-1"></i>Demanda por Instrutor Responsável</h6>
+                </div>
+                <div class="card-body py-1 px-2">
+                    <canvas id="chartDemandaInstrutor" class="dashboard-chart dashboard-chart--row"></canvas>
+                    <div id="chartDemandaInstrutorFallback" class="text-center text-muted py-2 d-none">
+                        <i class="bi bi-person-workspace fs-4 text-muted"></i>
+                        {% if total_responsabilidades_treinamento %}
+                        <p class="mt-1 small mb-0">Nenhuma demanda encontrada para os responsáveis configurados.</p>
+                        {% else %}
+                        <p class="mt-1 small mb-0">Defina responsáveis na matriz de treinamento para gerar este gráfico.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráficos Linha 3 - Planejamento -->
     <div class="row mb-2 g-2">
         <!-- Planejamento por Instrutor -->
         <div class="col-md-6">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-header bg-white border-0 py-1 px-2">
-                    <h6 class="mb-0 fw-bold" style="font-size: 0.75rem;"><i class="bi bi-calendar-check text-primary me-1"></i>Planejamento por Instrutor</h6>
+                    <h6 class="mb-0 fw-bold dashboard-chart-title"><i class="bi bi-calendar-check text-primary me-1"></i>Planejamento por Instrutor</h6>
                 </div>
                 <div class="card-body py-1 px-2">
                     <canvas id="chartPlanejamentoInstrutor" class="dashboard-chart dashboard-chart--row"></canvas>
@@ -323,7 +374,7 @@
         <div class="col-md-6">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-header bg-white border-0 py-1 px-2">
-                    <h6 class="mb-0 fw-bold" style="font-size: 0.75rem;"><i class="bi bi-calendar2-week text-info me-1"></i>Planejamento por Setor/Turno</h6>
+                    <h6 class="mb-0 fw-bold dashboard-chart-title"><i class="bi bi-calendar2-week text-info me-1"></i>Planejamento por Setor/Turno</h6>
                 </div>
                 <div class="card-body py-1 px-2">
                     <canvas id="chartPlanejamentoSetorTurno" class="dashboard-chart dashboard-chart--row"></canvas>
@@ -341,7 +392,17 @@
         <div class="col-12">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-white border-0 py-1 px-2">
-                    <h6 class="mb-0 fw-bold" style="font-size: 0.75rem;"><i class="bi bi-bar-chart text-info me-1"></i>Treinamentos Últimos 12 Meses</h6>
+                    <h6 class="mb-0 fw-bold dashboard-chart-title"><i class="bi bi-bar-chart text-info me-1"></i>Treinamentos Últimos 12 Meses</h6>
+                    /* Dashboard custom classes para estilos migrados do inline */
+                    .dashboard-desc { font-size: 0.75rem; }
+                    .dashboard-badge-time { font-size: 0.7rem; }
+                    .dashboard-filter-hint { font-size: 0.7rem; }
+                    .dashboard-indic-title { font-size: 0.8rem; }
+                    .dashboard-indic-label { font-size: 0.65rem; }
+                    .dashboard-indic-value { font-size: 1rem; }
+                    .dashboard-card-resp-matriz { max-height: 180px; overflow-y: auto; }
+                    .dashboard-table-resp-matriz { font-size: 0.75rem; }
+                    .dashboard-chart-title { font-size: 0.75rem; }
                 </div>
                 <div class="card-body py-1 px-2">
                     <canvas id="chartMeses" class="dashboard-chart dashboard-chart--wide"></canvas>
@@ -383,12 +444,17 @@
     }
 
     .dashboard-chart--row {
-        height: clamp(220px, 28vh, 320px) !important;
+        height: clamp(300px, 36vh, 420px) !important;
     }
 
     .dashboard-chart--wide {
-        height: clamp(220px, 24vh, 280px) !important;
+        height: clamp(260px, 32vh, 360px) !important;
     }
+        /* Aumenta o padding dos cards dos gráficos para mais espaço visual */
+        .card-body.py-1.px-2 {
+            padding-top: 1.25rem !important;
+            padding-bottom: 1.25rem !important;
+        }
     
     /* Sidebar Styles */
     .sidebar-col {
@@ -684,6 +750,7 @@
         cursor: pointer;
         background-color: #fff;
         user-select: none;
+        -webkit-user-select: none;
         transition: background-color 0.2s ease;
     }
     
@@ -1234,16 +1301,20 @@ document.addEventListener('DOMContentLoaded', function() {
             rawLabels,
             legendPosition: config.legendPosition || 'bottom',
             legendAlign: config.legendAlign || 'center',
+            labelFontScale: config.labelFontScale || 1,
+            axisFontScale: config.axisFontScale || 1,
         });
-        refreshResponsiveChart(responsiveCharts[responsiveCharts.length - 1]);
+        scheduleResponsiveChartRefresh();
     }
 
     function refreshResponsiveChart(item) {
-        const { chart, canvas, kind, rawLabels, legendPosition, legendAlign } = item;
+        const { chart, canvas, kind, rawLabels, legendPosition, legendAlign, labelFontScale, axisFontScale } = item;
         const profile = getChartViewportProfile(canvas);
 
         if (kind === 'horizontal') {
             const sizing = getHorizontalChartSizing(rawLabels, canvas);
+            sizing.profile.labelFontSize = Math.max(8, Math.round(sizing.profile.labelFontSize * labelFontScale));
+            sizing.profile.axisFontSize = Math.max(8, Math.round(sizing.profile.axisFontSize * axisFontScale));
             setCanvasHeight(canvas, sizing.height);
             chart.data.labels = sizing.wrappedLabels;
             applyLegendSizing(chart, sizing.profile, legendPosition, legendAlign);
@@ -1477,10 +1548,82 @@ document.addEventListener('DOMContentLoaded', function() {
             registerResponsiveChart(liderChart, ctxLider, {
                 kind: 'horizontal',
                 rawLabels: liderLabels,
+                labelFontScale: 0.84,
+                axisFontScale: 0.9,
             });
         } else {
             document.getElementById('chartLiderFallback').classList.remove('d-none');
             ctxLider.style.display = 'none';
+        }
+    }
+
+    // =====================
+    // Gráfico Demanda por Instrutor Responsável (Horizontal Bar)
+    // =====================
+    const ctxDemandaInstrutor = document.getElementById('chartDemandaInstrutor');
+    if (ctxDemandaInstrutor) {
+        const demandaInstrutorLabels = [{% for item in demanda_por_instrutor %}'{{ item.nome|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const demandaInstrutorVigentes = [{% for item in demanda_por_instrutor %}{{ item.vigentes }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const demandaInstrutorPendentes = [{% for item in demanda_por_instrutor %}{{ item.pendentes }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+
+        if (demandaInstrutorLabels.length > 0) {
+            const demandaInstrutorChart = new Chart(ctxDemandaInstrutor.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: demandaInstrutorLabels,
+                    datasets: [
+                        {
+                            label: 'Vigentes',
+                            data: demandaInstrutorVigentes,
+                            backgroundColor: 'rgba(40, 167, 69, 0.8)',
+                            borderColor: 'rgba(40, 167, 69, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'Pendentes',
+                            data: demandaInstrutorPendentes,
+                            backgroundColor: 'rgba(220, 53, 69, 0.8)',
+                            borderColor: 'rgba(220, 53, 69, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: resolveRawLabelTooltip
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            stacked: true,
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        },
+                        y: {
+                            stacked: true,
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+            registerResponsiveChart(demandaInstrutorChart, ctxDemandaInstrutor, {
+                kind: 'horizontal',
+                rawLabels: demandaInstrutorLabels,
+            });
+        } else {
+            document.getElementById('chartDemandaInstrutorFallback').classList.remove('d-none');
+            ctxDemandaInstrutor.style.display = 'none';
         }
     }
     

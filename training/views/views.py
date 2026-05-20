@@ -368,7 +368,7 @@ def dashboard_treinamentos_view(request):
     from datetime import timedelta, date
     from core.models import TURNOS_CHOICES
     from django.core.cache import cache
-    from procedures.models import PlanejamentoTreinamento, Procedimento
+    from procedures.models import PlanejamentoTreinamento, Procedimento, ResponsavelTreinamentoMatriz
     from organization.models import Setor
     
     # Capturar filtros da URL (suportar múltiplos valores)
@@ -788,6 +788,61 @@ def dashboard_treinamentos_view(request):
     treinamentos_por_lider.sort(key=lambda x: x['vigentes'] + x['pendentes'], reverse=True)
     treinamentos_por_lider = treinamentos_por_lider[:10]
 
+    # Gráfico por Instrutor Responsável (baseado na matriz de responsabilidade)
+    demanda_por_instrutor = []
+    responsabilidades_treinamento = {
+        ((responsabilidade.matriz.nome or '').strip(), responsabilidade.turno): responsabilidade.colaborador
+        for responsabilidade in ResponsavelTreinamentoMatriz.objects.select_related('matriz', 'colaborador')
+        if responsabilidade.colaborador_id and responsabilidade.turno and (responsabilidade.matriz.nome or '').strip()
+    }
+
+    if responsabilidades_treinamento:
+        demanda_por_matriz_turno = (
+            registros_unicos
+            .exclude(procedimento__matriz__isnull=True)
+            .exclude(procedimento__matriz__exact='')
+            .values('procedimento__matriz', 'colaborador__turno')
+            .annotate(
+                vigentes=Count(
+                    'id',
+                    filter=Q(
+                        data_treinamento__isnull=False,
+                        revisao_treinada=F('procedimento__numero_revisao')
+                    )
+                ),
+                pendentes=Count(
+                    'id',
+                    filter=Q(data_treinamento__isnull=True)
+                    | ~Q(revisao_treinada=F('procedimento__numero_revisao'))
+                )
+            )
+        )
+
+        demanda_por_instrutor_map = {}
+        for row in demanda_por_matriz_turno:
+            matriz_nome = (row.get('procedimento__matriz') or '').strip()
+            turno = row.get('colaborador__turno')
+            responsavel = responsabilidades_treinamento.get((matriz_nome, turno))
+            if not responsavel:
+                continue
+
+            item = demanda_por_instrutor_map.setdefault(
+                responsavel.id,
+                {
+                    'nome': responsavel.nome_completo or f'Colaborador {responsavel.id}',
+                    'vigentes': 0,
+                    'pendentes': 0,
+                }
+            )
+            item['vigentes'] += int(row.get('vigentes') or 0)
+            item['pendentes'] += int(row.get('pendentes') or 0)
+
+        demanda_por_instrutor = sorted(
+            demanda_por_instrutor_map.values(),
+            key=lambda x: x['vigentes'] + x['pendentes'],
+            reverse=True,
+        )[:10]
+
     # Gráfico por Setor e Turno - evitar N+1: 1 query agregada
     treinamentos_por_setor_turno = []
     turno_dict = dict(TURNOS_CHOICES)
@@ -870,6 +925,15 @@ def dashboard_treinamentos_view(request):
     )
     
     # Montar contexto
+    # Novo: lista de responsáveis por matriz/turno para o card
+    responsaveis_matriz_turno = []
+    for r in ResponsavelTreinamentoMatriz.objects.select_related('matriz', 'colaborador').order_by('matriz__nome', 'turno'):
+        responsaveis_matriz_turno.append({
+            'matriz': r.matriz.nome,
+            'turno': dict(TURNOS_CHOICES).get(r.turno, r.turno),
+            'colaborador': r.colaborador.nome_completo if r.colaborador else '-',
+        })
+
     context = {
         'total_treinamentos': total_treinamentos,
         'treinamentos_vigentes': treinamentos_vigentes,
@@ -881,9 +945,12 @@ def dashboard_treinamentos_view(request):
         'status_distribuicao': status_distribuicao,
         'treinamentos_por_mes': treinamentos_por_mes,
         'treinamentos_por_lider': treinamentos_por_lider,
+        'demanda_por_instrutor': demanda_por_instrutor,
         'treinamentos_por_setor_turno': treinamentos_por_setor_turno,
         'planejamento_por_instrutor': list(planejamento_instrutor),
         'planejamento_por_setor_turno': list(planejamento_setor_turno_pl),
+        'total_responsabilidades_treinamento': len(responsabilidades_treinamento),
+        'responsaveis_matriz_turno': responsaveis_matriz_turno,
     }
     
     # Adicionar dados de filtros dinâmicos - OTIMIZADO
