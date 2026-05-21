@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
@@ -8,9 +9,11 @@ from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth import update_session_auth_hash
 from django.http import JsonResponse
 from django.shortcuts import render
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_GET
+from django.views.decorators.csrf import csrf_exempt
 
 from django_otp.plugins.otp_totp.models import TOTPDevice
+
 
 @login_required
 def home_view(request):
@@ -139,3 +142,46 @@ def api_reset_password_totp(request):
     user.save(update_fields=['password'])
 
     return JsonResponse({'success': True, 'message': 'Senha redefinida com sucesso. Você já pode entrar.'})
+
+
+@csrf_exempt
+@require_GET
+def run_cron_tasks(request):
+    """
+    HTTP endpoint to trigger periodic tasks in serverless environment (Vercel).
+    Protected by CRON_SECRET token via Authorization Header (Bearer) or secret query param.
+    """
+    secret = request.GET.get('secret')
+    auth_header = request.headers.get('authorization')
+    expected_secret = os.getenv('CRON_SECRET')
+    
+    authorized = False
+    if expected_secret:
+        if secret == expected_secret:
+            authorized = True
+        elif auth_header == f"Bearer {expected_secret}":
+            authorized = True
+            
+    if not authorized:
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+
+        
+    results = {}
+    
+    # 1. Update status of delayed actions
+    try:
+        from acoes.tasks import atualizar_status_acoes_atrasadas
+        results['acoes_atrasadas'] = atualizar_status_acoes_atrasadas()
+    except Exception as e:
+        results['acoes_atrasadas'] = {'error': str(e)}
+        
+    # 2. Update status of vacations
+    try:
+        from rh.tasks.ferias_tasks import atualizar_status_ferias_logic, sincronizar_em_ferias
+        results['ferias_status'] = atualizar_status_ferias_logic()
+        results['ferias_sincronizacao'] = sincronizar_em_ferias()
+    except Exception as e:
+        results['ferias_tasks'] = {'error': str(e)}
+        
+    return JsonResponse({'success': True, 'results': results})
+

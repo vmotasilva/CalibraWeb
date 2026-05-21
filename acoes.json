@@ -1,0 +1,68 @@
+[
+  {
+    "model": "acoes.tiposolucao",
+    "pk": 1,
+    "fields": {
+      "nome": "Plano de Ação",
+      "descricao": null,
+      "ativo": true,
+      "criado_em": "2026-05-01T03:29:15.857Z",
+      "atualizado_em": "2026-05-01T03:29:15.857Z"
+    }
+  },
+  {
+    "model": "acoes.tiposolucao",
+    "pk": 2,
+    "fields": {
+      "nome": "A3",
+      "descricao": null,
+      "ativo": true,
+      "criado_em": "2026-05-01T03:29:15.861Z",
+      "atualizado_em": "2026-05-01T03:29:15.861Z"
+    }
+  },
+  {
+    "model": "acoes.tiposolucao",
+    "pk": 3,
+    "fields": {
+      "nome": "8D",
+      "descricao": null,
+      "ativo": true,
+      "criado_em": "2026-05-01T03:29:15.861Z",
+      "atualizado_em": "2026-05-01T03:29:15.861Z"
+    }
+  },
+  {
+    "model": "acoes.tiposolucao",
+    "pk": 4,
+    "fields": {
+      "nome": "RNC",
+      "descricao": null,
+      "ativo": true,
+      "criado_em": "2026-05-01T03:29:15.861Z",
+      "atualizado_em": "2026-05-01T03:29:15.861Z"
+    }
+  },
+  {
+    "model": "acoes.tiposolucao",
+    "pk": 5,
+    "fields": {
+      "nome": "Gestão de Mudança",
+      "descricao": null,
+      "ativo": true,
+      "criado_em": "2026-05-01T03:29:15.861Z",
+      "atualizado_em": "2026-05-01T03:29:15.861Z"
+    }
+  },
+  {
+    "model": "acoes.tiposolucao",
+    "pk": 6,
+    "fields": {
+      "nome": "Revisão Gerencial",
+      "descricao": null,
+      "ativo": true,
+      "criado_em": "2026-05-01T03:29:15.861Z",
+      "atualizado_em": "2026-05-01T03:29:15.861Z"
+    }
+  }
+]

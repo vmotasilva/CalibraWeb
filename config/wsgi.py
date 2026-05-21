@@ -22,6 +22,8 @@ logger.info("[WSGI] Initializing Django application...")
 try:
     application = get_wsgi_application()
     logger.info("[WSGI] Django application initialized successfully")
+    app = application
 except Exception as e:
     logger.error(f"[WSGI] Failed to initialize Django: {e}", exc_info=True)
     sys.exit(1)
+

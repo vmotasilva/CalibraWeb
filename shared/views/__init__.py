@@ -18,6 +18,7 @@ from .views import (
     retry_import_job_view,
     seed_demo_view,
     fix_historico_proxima_view,
+    run_cron_tasks,
 )
 
 __all__ = [
@@ -40,4 +41,6 @@ __all__ = [
     'retry_import_job_view',
     'seed_demo_view',
     'fix_historico_proxima_view',
+    'run_cron_tasks',
 ]
+

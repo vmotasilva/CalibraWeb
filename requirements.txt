@@ -1,22 +1,47 @@
-# requirements.txt para produção CalibraWeb
+# Production and Integration dependencies for Vercel Deployment
+asgiref==3.11.0
+charset-normalizer==3.4.4
+crispy-bootstrap5==2025.6
+dj-database-url==3.0.1
+Django==5.0.14
+django-crispy-forms==2.5
+django-widget-tweaks==1.5.0
+gunicorn==23.0.0
+whitenoise==6.11.0
+psycopg2-binary==2.9.11
+celery==5.3.1
+redis==4.6.0
+django-redis==5.4.0
 
-# Core Django
-Django>=5.0,<6.0
+# Data processing
+numpy==2.3.5
+pandas
+openpyxl
+et_xmlfile==2.0.0
+pillow==12.0.0
+reportlab==4.4.5
+PyPDF2==3.0.1
+pypdf==5.2.0
+PyMuPDF==1.26.6
+python-dateutil==2.9.0.post0
+django-storages==1.14.2
+boto3==1.34.0
 
-# Banco de dados
-psycopg2>=2.9
+# Utilities
+python-decouple==3.8
+pytz==2025.2
+six==1.17.0
+sqlparse==0.5.3
+tzdata==2025.2
+packaging==25.0
+python-dotenv==1.0.1
 
-# Cache e fila
-redis>=5.0
-celery>=5.2
-django-redis>=5.3
+# 2FA Authentication
+django-two-factor-auth==1.18.1
+django-otp==1.7.0
+django-formtools==2.5.1
+phonenumbers==8.13.55
+qrcode==8.2
 
-# Outras dependências comuns
-python-dotenv
-Pillow
-python-dateutil
-requests
-
-# Testes e dev
-pytest
-django-debug-toolbar
+# Appwrite Integration
+appwrite>=5.0.0,<6.0.0

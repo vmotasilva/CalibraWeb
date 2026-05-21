@@ -19,4 +19,6 @@ urlpatterns = [
     # path('', views.dashboard_view, name='dashboard'),
     # path('health/', views.health_check, name='health_check'),
     # Mais URLs serão adicionadas na Fase 3
+    path('api/cron/run-tasks/', views.run_cron_tasks, name='run_cron_tasks'),
 ]
+

@@ -1,0 +1,22 @@
+[
+  {
+    "model": "otp_totp.totpdevice",
+    "pk": 1,
+    "fields": {
+      "user": 3,
+      "name": "default",
+      "confirmed": true,
+      "throttling_failure_timestamp": null,
+      "throttling_failure_count": 0,
+      "created_at": "2026-05-18T13:27:28.792Z",
+      "last_used_at": null,
+      "key": "482685c72e4c0d8ca796bf62aefa83c70c8330f7",
+      "step": 30,
+      "t0": 0,
+      "digits": 6,
+      "tolerance": 1,
+      "drift": 0,
+      "last_t": -1
+    }
+  }
+]

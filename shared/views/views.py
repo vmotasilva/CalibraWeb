@@ -19,7 +19,8 @@ from django.core.management import call_command
 from django.db.models import Q
 from django.urls import NoReverseMatch, reverse
 from django.utils import timezone
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_GET
+from django.views.decorators.csrf import csrf_exempt
 import pandas as pd
 import logging
 from django.conf import settings
@@ -1136,3 +1137,45 @@ def fix_historico_proxima_view(request):
         messages.error(request, f'Falha no recalculo: {e}')
     
     return redirect('modulo_metrologia')
+
+
+@csrf_exempt
+@require_GET
+def run_cron_tasks(request):
+    """
+    HTTP endpoint to trigger periodic tasks in serverless environment (Vercel).
+    Protected by CRON_SECRET token via Authorization Header (Bearer) or secret query param.
+    """
+    secret = request.GET.get('secret')
+    auth_header = request.headers.get('authorization')
+    expected_secret = os.getenv('CRON_SECRET')
+    
+    authorized = False
+    if expected_secret:
+        if secret == expected_secret:
+            authorized = True
+        elif auth_header == f"Bearer {expected_secret}":
+            authorized = True
+            
+    if not authorized:
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+        
+    results = {}
+    
+    # 1. Update status of delayed actions
+    try:
+        from acoes.tasks import atualizar_status_acoes_atrasadas
+        results['acoes_atrasadas'] = atualizar_status_acoes_atrasadas()
+    except Exception as e:
+        results['acoes_atrasadas'] = {'error': str(e)}
+        
+    # 2. Update status of vacations
+    try:
+        from rh.tasks.ferias_tasks import atualizar_status_ferias_logic, sincronizar_em_ferias
+        results['ferias_status'] = atualizar_status_ferias_logic()
+        results['ferias_sincronizacao'] = sincronizar_em_ferias()
+    except Exception as e:
+        results['ferias_tasks'] = {'error': str(e)}
+        
+    return JsonResponse({'success': True, 'results': results})
+

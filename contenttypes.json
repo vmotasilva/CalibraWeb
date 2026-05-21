@@ -1,0 +1,962 @@
+[
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 1,
+    "fields": {
+      "app_label": "core",
+      "model": "navigationpermission"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 2,
+    "fields": {
+      "app_label": "admin",
+      "model": "logentry"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 3,
+    "fields": {
+      "app_label": "auth",
+      "model": "permission"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 4,
+    "fields": {
+      "app_label": "auth",
+      "model": "group"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 5,
+    "fields": {
+      "app_label": "auth",
+      "model": "user"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 6,
+    "fields": {
+      "app_label": "contenttypes",
+      "model": "contenttype"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 7,
+    "fields": {
+      "app_label": "sessions",
+      "model": "session"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 8,
+    "fields": {
+      "app_label": "otp_static",
+      "model": "staticdevice"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 9,
+    "fields": {
+      "app_label": "otp_static",
+      "model": "statictoken"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 10,
+    "fields": {
+      "app_label": "otp_totp",
+      "model": "totpdevice"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 11,
+    "fields": {
+      "app_label": "phonenumber",
+      "model": "phonedevice"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 12,
+    "fields": {
+      "app_label": "core",
+      "model": "unidademedida"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 13,
+    "fields": {
+      "app_label": "organization",
+      "model": "centrocusto"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 14,
+    "fields": {
+      "app_label": "organization",
+      "model": "hierarquiasetor"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 15,
+    "fields": {
+      "app_label": "organization",
+      "model": "setor"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 16,
+    "fields": {
+      "app_label": "rh",
+      "model": "documentopessoal"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 17,
+    "fields": {
+      "app_label": "rh",
+      "model": "ferias"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 18,
+    "fields": {
+      "app_label": "rh",
+      "model": "ocorrencia"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 19,
+    "fields": {
+      "app_label": "rh",
+      "model": "colaborador"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 20,
+    "fields": {
+      "app_label": "rh",
+      "model": "historicocolaborador"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 21,
+    "fields": {
+      "app_label": "rh",
+      "model": "historicoposto"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 22,
+    "fields": {
+      "app_label": "rh",
+      "model": "historicosalario"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 23,
+    "fields": {
+      "app_label": "rh",
+      "model": "historicosetor"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 24,
+    "fields": {
+      "app_label": "metrologia",
+      "model": "arquivopadrao"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 25,
+    "fields": {
+      "app_label": "metrologia",
+      "model": "ordemcalibracao"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 26,
+    "fields": {
+      "app_label": "metrologia",
+      "model": "resultadofaixacalibracao"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 27,
+    "fields": {
+      "app_label": "metrologia",
+      "model": "categoriainstrumento"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 28,
+    "fields": {
+      "app_label": "metrologia",
+      "model": "faixamedicao"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 29,
+    "fields": {
+      "app_label": "metrologia",
+      "model": "historicocalibracao"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 30,
+    "fields": {
+      "app_label": "metrologia",
+      "model": "instrumento"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 31,
+    "fields": {
+      "app_label": "metrologia",
+      "model": "faixamedicaopadrao"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 32,
+    "fields": {
+      "app_label": "metrologia",
+      "model": "instrumentoreferencia"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 33,
+    "fields": {
+      "app_label": "metrologia",
+      "model": "cotacao"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 34,
+    "fields": {
+      "app_label": "metrologia",
+      "model": "ocorrenciacotacao"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 35,
+    "fields": {
+      "app_label": "metrologia",
+      "model": "cotacaofornecedor"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 36,
+    "fields": {
+      "app_label": "metrologia",
+      "model": "itemsolicitacaocotacao"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 37,
+    "fields": {
+      "app_label": "metrologia",
+      "model": "itemcotacao"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 38,
+    "fields": {
+      "app_label": "metrologia",
+      "model": "atendimentosolicitacao"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 39,
+    "fields": {
+      "app_label": "metrologia",
+      "model": "processoautomatizacao"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 40,
+    "fields": {
+      "app_label": "metrologia",
+      "model": "solicitacaocotacao"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 41,
+    "fields": {
+      "app_label": "metrologia",
+      "model": "itemsolicitacaofaixa"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 42,
+    "fields": {
+      "app_label": "metrologia",
+      "model": "faixamedicaopadraocategoria"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 43,
+    "fields": {
+      "app_label": "procedures",
+      "model": "procedimento"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 44,
+    "fields": {
+      "app_label": "procedures",
+      "model": "area"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 45,
+    "fields": {
+      "app_label": "procedures",
+      "model": "pacotetreinamento"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 46,
+    "fields": {
+      "app_label": "procedures",
+      "model": "procedimentorevisao"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 47,
+    "fields": {
+      "app_label": "procedures",
+      "model": "registrotreinamento"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 48,
+    "fields": {
+      "app_label": "procedures",
+      "model": "fornecedor"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 49,
+    "fields": {
+      "app_label": "procedures",
+      "model": "avaliacaofornecedor"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 50,
+    "fields": {
+      "app_label": "procedures",
+      "model": "processocotacao"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 51,
+    "fields": {
+      "app_label": "procedures",
+      "model": "orcamento"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 52,
+    "fields": {
+      "app_label": "procedures",
+      "model": "disciplina"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 53,
+    "fields": {
+      "app_label": "procedures",
+      "model": "perfiltreinamento"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 54,
+    "fields": {
+      "app_label": "procedures",
+      "model": "matrizhabilidade"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 55,
+    "fields": {
+      "app_label": "procedures",
+      "model": "grupotreinamento"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 56,
+    "fields": {
+      "app_label": "procedures",
+      "model": "planejamentotreinamento"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 57,
+    "fields": {
+      "app_label": "procedures",
+      "model": "subgrupotreinamento"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 58,
+    "fields": {
+      "app_label": "procedures",
+      "model": "avaliacaohabilidade"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 59,
+    "fields": {
+      "app_label": "procedures",
+      "model": "colaboradorperfil"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 60,
+    "fields": {
+      "app_label": "procedures",
+      "model": "listapresenca"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 61,
+    "fields": {
+      "app_label": "procedures",
+      "model": "participanteexterno"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 62,
+    "fields": {
+      "app_label": "procedures",
+      "model": "colaboradormatrizhabilidade"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 63,
+    "fields": {
+      "app_label": "procedures",
+      "model": "historicoavaliacaohabilidade"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 64,
+    "fields": {
+      "app_label": "procedures",
+      "model": "historicovalidacaomassa"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 65,
+    "fields": {
+      "app_label": "procedures",
+      "model": "solicitacaovalidacaomatriz"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 66,
+    "fields": {
+      "app_label": "procedures",
+      "model": "disciplinaprocedimento"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 67,
+    "fields": {
+      "app_label": "procedures",
+      "model": "templatelistapresenca"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 68,
+    "fields": {
+      "app_label": "procedures",
+      "model": "mapeamentocampolistapresenca"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 69,
+    "fields": {
+      "app_label": "procedures",
+      "model": "matrizprocedimento"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 70,
+    "fields": {
+      "app_label": "procedures",
+      "model": "subareaprocedimento"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 71,
+    "fields": {
+      "app_label": "documents",
+      "model": "configuracaocarimbo"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 72,
+    "fields": {
+      "app_label": "documents",
+      "model": "documentogerado"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 73,
+    "fields": {
+      "app_label": "fornecedores",
+      "model": "categoriadocumento"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 74,
+    "fields": {
+      "app_label": "fornecedores",
+      "model": "fornecedor"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 75,
+    "fields": {
+      "app_label": "fornecedores",
+      "model": "perguntaavaliacao"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 76,
+    "fields": {
+      "app_label": "fornecedores",
+      "model": "documentofornecedor"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 77,
+    "fields": {
+      "app_label": "fornecedores",
+      "model": "avaliacaofornecedor"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 78,
+    "fields": {
+      "app_label": "fornecedores",
+      "model": "ocorrencianota"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 79,
+    "fields": {
+      "app_label": "fornecedores",
+      "model": "respostaavaliacao"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 80,
+    "fields": {
+      "app_label": "fornecedores",
+      "model": "respostamatrizavaliacao"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 81,
+    "fields": {
+      "app_label": "acoes",
+      "model": "acaocorretiva"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 82,
+    "fields": {
+      "app_label": "acoes",
+      "model": "acaocomentario"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 83,
+    "fields": {
+      "app_label": "acoes",
+      "model": "solucao"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 84,
+    "fields": {
+      "app_label": "acoes",
+      "model": "revisaogerencial"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 85,
+    "fields": {
+      "app_label": "acoes",
+      "model": "planoacao"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 86,
+    "fields": {
+      "app_label": "acoes",
+      "model": "solucao8d"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 87,
+    "fields": {
+      "app_label": "acoes",
+      "model": "solucaoa3"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 88,
+    "fields": {
+      "app_label": "acoes",
+      "model": "solucaogestaodemudanca"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 89,
+    "fields": {
+      "app_label": "acoes",
+      "model": "solucaornc"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 90,
+    "fields": {
+      "app_label": "acoes",
+      "model": "templatesolucao"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 91,
+    "fields": {
+      "app_label": "acoes",
+      "model": "origemproblema"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 92,
+    "fields": {
+      "app_label": "acoes",
+      "model": "linhaacao"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 93,
+    "fields": {
+      "app_label": "acoes",
+      "model": "kpiopcao"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 94,
+    "fields": {
+      "app_label": "acoes",
+      "model": "tiposolucao"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 95,
+    "fields": {
+      "app_label": "auditoria",
+      "model": "modeloauditoria"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 96,
+    "fields": {
+      "app_label": "auditoria",
+      "model": "perguntaauditoria"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 97,
+    "fields": {
+      "app_label": "auditoria",
+      "model": "registroauditoria"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 98,
+    "fields": {
+      "app_label": "auditoria",
+      "model": "respostaauditoria"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 99,
+    "fields": {
+      "app_label": "auditoria",
+      "model": "comentarioauditoria"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 100,
+    "fields": {
+      "app_label": "auditoria",
+      "model": "comentariorespostaauditoria"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 101,
+    "fields": {
+      "app_label": "auditoria",
+      "model": "relatoriocompartilhadoauditoria"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 102,
+    "fields": {
+      "app_label": "insumos",
+      "model": "modeloauditoria"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 103,
+    "fields": {
+      "app_label": "insumos",
+      "model": "perguntaauditoria"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 104,
+    "fields": {
+      "app_label": "insumos",
+      "model": "registroauditoria"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 105,
+    "fields": {
+      "app_label": "insumos",
+      "model": "respostaauditoria"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 106,
+    "fields": {
+      "app_label": "insumos",
+      "model": "comentarioinsumos"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 107,
+    "fields": {
+      "app_label": "insumos",
+      "model": "comentariorespostainsumos"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 108,
+    "fields": {
+      "app_label": "laboratorio",
+      "model": "categorialaboratorio"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 109,
+    "fields": {
+      "app_label": "laboratorio",
+      "model": "ocorrencialaboratorio"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 110,
+    "fields": {
+      "app_label": "laboratorio",
+      "model": "ocorrencialaboratorioanotacao"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 111,
+    "fields": {
+      "app_label": "maquinas",
+      "model": "maquina"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 112,
+    "fields": {
+      "app_label": "maquinas",
+      "model": "categoriamaquina"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 113,
+    "fields": {
+      "app_label": "qms",
+      "model": "solicitacaoinstrumento"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 114,
+    "fields": {
+      "app_label": "qms",
+      "model": "ocorrenciainstrumento"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 115,
+    "fields": {
+      "app_label": "qms",
+      "model": "importjob"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 116,
+    "fields": {
+      "app_label": "training",
+      "model": "area"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 117,
+    "fields": {
+      "app_label": "training",
+      "model": "procedimento"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 118,
+    "fields": {
+      "app_label": "training",
+      "model": "pacotetreinamento"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 119,
+    "fields": {
+      "app_label": "training",
+      "model": "procedimentorevisao"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 120,
+    "fields": {
+      "app_label": "training",
+      "model": "registrotreinamento"
+    }
+  }
+]

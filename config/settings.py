@@ -31,8 +31,11 @@ def _is_platform_runtime() -> bool:
             "RENDER",
             "RENDER_SERVICE_ID",
             "DYNO",
+            "VERCEL",
+            "VERCEL_ENV",
         )
     )
+
 
 
 IS_LOCAL_ENV = DJANGO_ENV in {"local", "dev", "development"}
@@ -68,6 +71,13 @@ if not SECRET_KEY:
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver,0.0.0.0").split(",")
 ALLOWED_HOSTS = [h.strip() for h in ALLOWED_HOSTS if h.strip()]
 
+# Vercel Environment Auto-Configuration
+if os.environ.get("VERCEL"):
+    ALLOWED_HOSTS.append(".vercel.app")
+    vercel_url = os.environ.get("VERCEL_URL")
+    if vercel_url:
+        ALLOWED_HOSTS.append(vercel_url)
+
 # Ensure ALLOWED_HOSTS is not empty
 if not ALLOWED_HOSTS:
     ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0", "testserver"]
@@ -79,6 +89,14 @@ csrf_origins = os.environ.get(
     "https://*.railway.app,https://*.up.railway.app,http://localhost:8000,http://127.0.0.1:8000,http://localhost:18000,http://127.0.0.1:18000"
 ).split(",")
 CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in csrf_origins if origin.strip()]
+
+# Vercel CSRF Auto-Configuration
+if os.environ.get("VERCEL"):
+    CSRF_TRUSTED_ORIGINS.append("https://*.vercel.app")
+    vercel_url = os.environ.get("VERCEL_URL")
+    if vercel_url:
+        CSRF_TRUSTED_ORIGINS.append(f"https://{vercel_url}")
+
 
 
 # Application definition
