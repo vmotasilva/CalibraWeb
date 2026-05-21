@@ -14,7 +14,7 @@ redis==4.6.0
 django-redis==5.4.0
 
 # Data processing
-numpy==2.3.5
+numpy==1.26.4
 pandas
 openpyxl
 et_xmlfile==2.0.0
