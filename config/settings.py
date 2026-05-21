@@ -1,4 +1,5 @@
 import os
+import sys
 from urllib.parse import urlparse
 from pathlib import Path
 
@@ -17,6 +18,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Default is False (safer). In dev set DEBUG='True' in the environment.
 
 DJANGO_ENV = os.environ.get("DJANGO_ENV", "").strip().lower()
+TESTING = 'test' in sys.argv or DJANGO_ENV == "test" or getattr(sys, '_called_from_test', False) or 'pytest' in sys.modules
+
 
 
 def _is_platform_runtime() -> bool:
