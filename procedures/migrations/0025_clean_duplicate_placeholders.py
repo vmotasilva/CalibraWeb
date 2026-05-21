@@ -15,7 +15,7 @@ def clean_duplicates(apps, schema_editor):
     if vazios.exists():
         count = vazios.count()
         vazios.delete()
-        print(f"✓ Deletados {count} registros com placeholder vazio")
+        print(f"[OK] Deletados {count} registros com placeholder vazio")
     
     # Encontrar e remover duplicatas
     mapeamentos = MapeamentoCampoListaPresenca.objects.all().order_by('template_id', 'placeholder', 'id')
@@ -33,9 +33,9 @@ def clean_duplicates(apps, schema_editor):
     if ids_to_delete:
         count = len(ids_to_delete)
         MapeamentoCampoListaPresenca.objects.filter(id__in=ids_to_delete).delete()
-        print(f"✓ Deletados {count} registros duplicados")
+        print(f"[OK] Deletados {count} registros duplicados")
     
-    print("✓ Limpeza de dados concluída!")
+    print("[OK] Limpeza de dados concluída!")
 
 
 class Migration(migrations.Migration):

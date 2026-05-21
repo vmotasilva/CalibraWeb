@@ -211,8 +211,8 @@ class LaboratorioModuleTests(TestCase):
         self.assertEqual(response.context["encerradas"], 1)
         self.assertEqual(response.context["por_categoria"][0]["nome"], categoria.nome)
         self.assertIn(
-            ocorrencia_encerrada.assunto,
-            [item["nome"] for item in response.context["por_assunto"]],
+            ocorrencia_encerrada,
+            [item["obj"] for g in response.context["ocorrencias_recentes_por_categoria"] for item in g["ocorrencias"]]
         )
         self.assertEqual(response.context["total_absenteismo_horas"], Decimal("0"))
         self.assertContains(response, "Ocorrencias recentes por categoria no periodo filtrado")
@@ -313,9 +313,9 @@ class LaboratorioModuleTests(TestCase):
         self.assertEqual(response.context["total"], 2)
         self.assertEqual(response.context["inicio"], "2026-04-27")
         self.assertEqual(response.context["fim"], "2026-05-03")
-        self.assertContains(response, "Encerrada na semana")
-        self.assertContains(response, "Aberta na semana")
-        self.assertNotContains(response, "Fora do recorte semanal")
+        self.assertContains(response, "Abriu antes e encerrou na semana.")
+        self.assertContains(response, "Registrada dentro da semana selecionada.")
+        self.assertNotContains(response, "Nao cruza a semana solicitada.")
         self.assertContains(response, 'id="dashboard-semana-picker"')
         self.assertContains(response, "Semana 18/2026 (27/04/2026 a 03/05/2026)")
         self.assertContains(response, "Limpar filtros")

@@ -11,7 +11,8 @@ def buscar_acoes_appwrite(filtros=None):
     Busca ações na collection 'acoes' do Appwrite, aplicando filtros se fornecidos.
     filtros: dict com possíveis chaves (tipo_solucao, origem, responsavel_id, status, ano, busca)
     """
-    if getattr(settings, 'TESTING', False):
+    from core.appwrite_client import APPWRITE_ENDPOINT, APPWRITE_PROJECT, APPWRITE_API_KEY
+    if getattr(settings, 'TESTING', False) or not (APPWRITE_ENDPOINT and APPWRITE_PROJECT and APPWRITE_API_KEY):
         from acoes.models import AcaoCorretiva
         from django.db.models import Q
         from django.utils import timezone
