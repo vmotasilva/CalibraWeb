@@ -357,6 +357,10 @@ CELERY_BROKER_URL = _build_redis_url()
 # Also build result backend from scratch (ignore broken CELERY_RESULT_BACKEND env var)
 CELERY_RESULT_BACKEND = _build_redis_url()
 
+# Serverless (Vercel) fallback: run Celery tasks synchronously
+if os.environ.get("VERCEL"):
+    CELERY_TASK_ALWAYS_EAGER = True
+
 USE_I18N = True
 
 USE_TZ = True
