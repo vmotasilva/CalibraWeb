@@ -16,23 +16,17 @@
   "crons": [
     {
       "path": "/api/cron/run-tasks/",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 0 * * *"
     }
   ],
   "routes": [
     {
       "src": "/static/(.*)",
-      "dest": "/staticfiles/$1"
+      "dest": "/$1"
     },
     {
       "src": "/(.*)",
       "dest": "config/wsgi.py"
     }
-  ],
-  "functions": {
-    "config/wsgi.py": {
-      "memory": 1024,
-      "maxDuration": 60
-    }
-  }
+  ]
 }

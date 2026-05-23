@@ -19,10 +19,11 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
 logger.info("[WSGI] Initializing Django application...")
 
+application = get_wsgi_application()
+app = application
+
 try:
-    application = get_wsgi_application()
     logger.info("[WSGI] Django application initialized successfully")
-    app = application
 except Exception as e:
     logger.error(f"[WSGI] Failed to initialize Django: {e}", exc_info=True)
     sys.exit(1)

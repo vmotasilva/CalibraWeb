@@ -5,6 +5,7 @@ from django.http import HttpResponse
 from django.templatetags.static import static
 from django.test import TestCase, Client
 from django.contrib.auth.models import User
+from django.contrib.auth.signals import user_logged_in
 from django.urls import reverse
 from datetime import date, timedelta
 from django.core.cache import cache
@@ -13,6 +14,7 @@ from django.urls import NoReverseMatch
 
 from shared.middleware import AuthNoCacheMiddleware
 from shared.views import hub_view
+
 
 
 class SharedViewsTests(TestCase):
@@ -152,3 +154,44 @@ class SharedAuthPagesTests(TestCase):
         self.assertEqual(response["Cache-Control"], "no-cache, no-store, must-revalidate, max-age=0")
         self.assertIn("Cookie", response["Vary"])
     
+
+class SharedTrustedMachineTests(TestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.user = User.objects.create_user(
+            username='test_trusted',
+            password='password123'
+        )
+
+    def test_session_expiry_with_trusted_machine(self):
+        request = self.factory.post('/login/')
+        from django.contrib.sessions.middleware import SessionMiddleware
+        middleware = SessionMiddleware(lambda req: HttpResponse())
+        middleware.process_request(request)
+        
+        # Set trusted_machine cookie
+        request.COOKIES['trusted_machine'] = '1'
+        
+        # Trigger login signal
+        user_logged_in.send(sender=User, request=request, user=self.user)
+        
+        # Verify session expiry is 30 days (2592000 seconds)
+        self.assertEqual(request.session.get_expiry_age(), 2592000)
+        self.assertFalse(request.session.get_expire_at_browser_close())
+
+    def test_session_expiry_without_trusted_machine(self):
+        request = self.factory.post('/login/')
+        from django.contrib.sessions.middleware import SessionMiddleware
+        middleware = SessionMiddleware(lambda req: HttpResponse())
+        middleware.process_request(request)
+        
+        # Do not set trusted_machine cookie or set it to '0'
+        request.COOKIES['trusted_machine'] = '0'
+        
+        # Trigger login signal
+        user_logged_in.send(sender=User, request=request, user=self.user)
+        
+        # Verify session is set to expire on browser close
+        self.assertTrue(request.session.get_expire_at_browser_close())
+
+

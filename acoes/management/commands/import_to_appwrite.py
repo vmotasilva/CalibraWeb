@@ -10,6 +10,9 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         # 1. Carregar variáveis
+        from dotenv import load_dotenv
+        load_dotenv()
+        
         endpoint = os.getenv('APPWRITE_ENDPOINT')
         project = os.getenv('APPWRITE_PROJECT')
         api_key = os.getenv('APPWRITE_API_KEY')

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Install dependencies
-python3 -m pip install -r requirements.txt
+python3 -m pip install -r requirements.txt --break-system-packages
 
 # Run migrations (only if database environment variables are set)
 if [ -n "$DATABASE_URL" ] || [ -n "$POSTGRES_URL" ] || [ -n "$PGHOST" ]; then

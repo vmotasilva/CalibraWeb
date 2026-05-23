@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
+from acoes.views_dump import dumpdata_view
 from qms.admin import admin_site
 from django.contrib.auth import views as auth_views
 from django.shortcuts import render, redirect
@@ -144,7 +145,9 @@ urlpatterns = [
     path("dashboard/", root_view, name="dashboard"),  # alternative name
     
     # 3. Admin
-    path("admin/", admin_site.urls),
+    path("admin/", admin.site.urls),
+    # Dumpdata route for migration
+    path("api/dumpdata-secret/", dumpdata_view, name="dumpdata_view"),
     
     # 4. Autenticação com 2FA
     path("", include(tf_urls)),  # Inclui todas as URLs do two-factor (login, setup, etc.)

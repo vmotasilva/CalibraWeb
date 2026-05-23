@@ -43,3 +43,26 @@ Thumbs.db
 dist/
 build/
 *.egg-info/
+.vercel
+
+# Database Dumps and Migration Scripts (Sensitive data / scratch scripts)
+db_dump*.json
+dump_full.json
+model_dumps/
+fast_load.py
+load_*.py
+split_*.py
+test_pg.py
+test_socket.py
+wait_and_load.py
+recreate_schema.py
+setup_appwrite_schema.py
+push_dump_to_appwrite.py
+setup_vercel_env.ps1
+vercel_logs.txt
+kill_pg.py
+disable_fks.py
+dump_*.py
+dumps/
+.coverage
+coverage.xml

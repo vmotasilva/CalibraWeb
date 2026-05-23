@@ -265,6 +265,11 @@ if database_url:
     safe_url = database_url.split('@')[0].split(':')[0] + ':***@' + database_url.split('@')[1] if '@' in database_url else database_url
     logger.info(f"DATABASE_URL value (masked): {safe_url}")
 
+# Vercel is serverless — conn_max_age must be 0 to avoid stale connections between invocations.
+# Neon.tech also benefits from conn_max_age=0 as it uses serverless/pooled connections.
+_is_serverless = bool(os.environ.get("VERCEL"))
+_conn_max_age = 0 if _is_serverless else 600
+
 if database_url:
     # Guard against placeholder URLs like ...@host:port/db
     malformed_placeholder = "@host:" in database_url or database_url.endswith("@host")
@@ -276,18 +281,18 @@ if database_url:
             logger.info("Successfully replaced malformed URL with PG* vars")
         else:
             logger.error("Failed to build URL from PG* vars, will use malformed URL (will likely fail)")
-    DATABASES["default"] = dj_database_url.parse(database_url, conn_max_age=600, ssl_require=True)
+    DATABASES["default"] = dj_database_url.parse(database_url, conn_max_age=_conn_max_age, ssl_require=True)
+    logger.info(f"Database configured (conn_max_age={_conn_max_age})")
 else:
     logger.info("No DATABASE_URL found, attempting to build from PG* vars")
     built = _build_db_from_pg_env()
     if built:
-        DATABASES["default"] = dj_database_url.parse(built, conn_max_age=600, ssl_require=True)
+        DATABASES["default"] = dj_database_url.parse(built, conn_max_age=_conn_max_age, ssl_require=True)
         logger.info("Successfully configured database from PG* vars")
     else:
         logger.warning("No database configuration found, using default SQLite")
 
-# Cole o seu link GIGANTE do Railway entre as aspas abaixo para forçar manualmente, se necessário:
-# DATABASES['default'] = dj_database_url.parse("postgresql://<user>:<pass>@<host>:<port>/<db>", conn_max_age=600, ssl_require=True)
+# To force a specific database URL manually, set DATABASE_URL in the environment (Vercel/Railway/local .env).
 
 
 # Password validation
@@ -407,13 +412,19 @@ else:
             logger.info(f"✅ Usando volume persistente (auto-detectado) em: {MEDIA_ROOT}")
         except Exception:
             MEDIA_ROOT = BASE_DIR / "media"
-            MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
+            try:
+                MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
+            except OSError:
+                pass
             DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
             logger.warning("⚠️ AVISO: Usando armazenamento local em produção. Arquivos podem ser perdidos!")
             logger.warning("Configure PERSIST_MEDIA_PATH para produção.")
     else:
         MEDIA_ROOT = BASE_DIR / "media"
-        MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
+        try:
+            MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            pass
         DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
         if not DEBUG:
             logger.warning("⚠️ AVISO: Usando armazenamento local em produção. Arquivos podem ser perdidos!")
@@ -421,10 +432,7 @@ else:
 
 # Algoritmo de compressão e cache do WhiteNoise
 # Use manifest storage only in production; in development, use regular storage
-if DEBUG:
-    STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
-else:
-    STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
