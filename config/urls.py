@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from acoes.views_dump import dumpdata_view, reset_sequences_view
+from acoes.views_dump import dumpdata_view
 from qms.admin import admin_site
 from django.contrib.auth import views as auth_views
 from django.shortcuts import render, redirect
@@ -148,7 +148,6 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     # Dumpdata route for migration
     path("api/dumpdata-secret/", dumpdata_view, name="dumpdata_view"),
-    path("api/reset-sequences/", reset_sequences_view, name="reset_sequences_view"),
     
     # 4. Autenticação com 2FA
     path("", include(tf_urls)),  # Inclui todas as URLs do two-factor (login, setup, etc.)
