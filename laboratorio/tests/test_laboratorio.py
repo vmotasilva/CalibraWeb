@@ -414,6 +414,40 @@ class LaboratorioModuleTests(TestCase):
         self.assertEqual(response.context["total_filtrados"], 1)
         self.assertEqual(response.context["total_registros"], 2)
 
+    def test_listagem_filtra_por_responsavel(self):
+        outro_usuario = get_user_model().objects.create_user(
+            username="lab.responsavel2",
+            password="senha-forte-456",
+        )
+        abertura = timezone.now().replace(second=0, microsecond=0)
+
+        OcorrenciaLaboratorio.objects.create(
+            assunto="Ocorrencia do responsavel 1",
+            detalhamento="Detalhe 1",
+            impacto=CategoriaLaboratorio.IMPACTO_MEDIO,
+            responsavel=self.user,
+            data_abertura=abertura,
+        )
+        OcorrenciaLaboratorio.objects.create(
+            assunto="Ocorrencia do responsavel 2",
+            detalhamento="Detalhe 2",
+            impacto=CategoriaLaboratorio.IMPACTO_MEDIO,
+            responsavel=outro_usuario,
+            data_abertura=abertura - timedelta(hours=1),
+        )
+
+        response = self.client.get(
+            reverse("laboratorio:ocorrencias_list"),
+            {"responsavel": outro_usuario.pk},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Ocorrencia do responsavel 2")
+        self.assertNotContains(response, "Ocorrencia do responsavel 1")
+        self.assertEqual(response.context["filtros"]["responsavel"], str(outro_usuario.pk))
+        self.assertEqual(response.context["total_filtrados"], 1)
+        self.assertEqual(response.context["total_registros"], 2)
+
     def test_listagem_filtra_por_semana_considerando_abertura_ou_encerramento_na_semana(self):
         semana_referencia = date.fromisocalendar(2026, 18, 1)
         categoria = CategoriaLaboratorio.objects.create(

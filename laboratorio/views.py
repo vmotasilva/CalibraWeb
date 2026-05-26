@@ -256,6 +256,7 @@ def ocorrencias_list(request):
     filtros = {
         "q": (request.GET.get("q") or "").strip(),
         "categoria": request.GET.get("categoria") or "",
+        "responsavel": request.GET.get("responsavel") or "",
         "semana": request.GET.get("semana") or "",
         "impacto": request.GET.get("impacto") or "",
         "status": request.GET.get("status") or "",
@@ -279,6 +280,9 @@ def ocorrencias_list(request):
     if filtros["categoria"]:
         ocorrencias = ocorrencias.filter(categoria_id=filtros["categoria"])
 
+    if filtros["responsavel"]:
+        ocorrencias = ocorrencias.filter(responsavel_id=filtros["responsavel"])
+
     if filtros["impacto"]:
         ocorrencias = ocorrencias.filter(impacto=filtros["impacto"])
 
@@ -299,9 +303,13 @@ def ocorrencias_list(request):
 
     total_filtrados = ocorrencias.count()
 
+    from django.contrib.auth import get_user_model
+    responsaveis = get_user_model().objects.order_by("first_name", "username")
+
     context = {
         "ocorrencias": ocorrencias.order_by("-data_abertura"),
         "categorias": CategoriaLaboratorio.objects.order_by("nome"),
+        "responsaveis": responsaveis,
         "impacto_choices": CategoriaLaboratorio.IMPACTO_CHOICES,
         "filtros": filtros,
         "semana_filtro_label": _format_week_label(semana_inicio),

@@ -60,6 +60,15 @@
                     <label for="filtro-fim" class="form-label">Abertura final</label>
                     <input type="date" id="filtro-fim" name="fim" class="form-control" value="{{ filtros.fim }}" placeholder="aaaa-mm-dd" title="Filtrar por abertura final">
                 </div>
+                <div class="col-xl-2 col-md-6">
+                    <label for="filtro-responsavel" class="form-label">Responsavel</label>
+                    <select id="filtro-responsavel" name="responsavel" class="form-select" title="Filtrar por responsavel">
+                        <option value="">Todos</option>
+                        {% for r in responsaveis %}
+                        <option value="{{ r.pk }}" {% if filtros.responsavel == r.pk|stringformat:'s' %}selected{% endif %}>{{ r.get_full_name|default:r.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
                 <div class="col-xl-2 col-md-6 d-grid">
                     <button type="submit" class="btn btn-outline-primary">Filtrar</button>
                 </div>
