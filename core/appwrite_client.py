@@ -3,10 +3,26 @@ Configuração do cliente Appwrite para uso no backend Django.
 Coloque este arquivo em core/appwrite_client.py e use em seus serviços.
 """
 import os
+import requests
+import requests.api
+import appwrite.client
 from appwrite.client import Client
 from appwrite.services.databases import Databases
 from appwrite.services.account import Account
 from appwrite.services.storage import Storage
+
+# Monkey-patch para corrigir o bug do SDK do Appwrite (que envia data={} em GET),
+# evitando o erro 400 "request cannot have request body" no Appwrite Cloud.
+_original_request = requests.request
+
+def _patched_request(method, url, **kwargs):
+    if method.lower() == 'get' and kwargs.get('data') == {}:
+        kwargs['data'] = None
+    return _original_request(method, url, **kwargs)
+
+requests.request = _patched_request
+requests.api.request = _patched_request
+appwrite.client.requests.request = _patched_request
 
 APPWRITE_ENDPOINT = (os.getenv('APPWRITE_ENDPOINT') or '').strip()
 APPWRITE_PROJECT = (os.getenv('APPWRITE_PROJECT') or '').strip()
