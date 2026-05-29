@@ -8,10 +8,12 @@ from appwrite.services.databases import Databases
 from appwrite.services.account import Account
 from appwrite.services.storage import Storage
 
-APPWRITE_ENDPOINT = os.getenv('APPWRITE_ENDPOINT')
-APPWRITE_PROJECT = os.getenv('APPWRITE_PROJECT')
-APPWRITE_API_KEY = os.getenv('APPWRITE_API_KEY')
-APPWRITE_DATABASE_ID = os.getenv('APPWRITE_DATABASE_ID', 'default')
+APPWRITE_ENDPOINT = (os.getenv('APPWRITE_ENDPOINT') or '').strip()
+APPWRITE_PROJECT = (os.getenv('APPWRITE_PROJECT') or '').strip()
+APPWRITE_API_KEY = (os.getenv('APPWRITE_API_KEY') or '').strip()
+APPWRITE_DATABASE_ID = (os.getenv('APPWRITE_DATABASE_ID') or '').strip()
+if not APPWRITE_DATABASE_ID:
+    APPWRITE_DATABASE_ID = 'default'
 
 client = Client()
 
