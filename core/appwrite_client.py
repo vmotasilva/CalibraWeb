@@ -11,8 +11,7 @@ from appwrite.services.databases import Databases
 from appwrite.services.account import Account
 from appwrite.services.storage import Storage
 
-# Monkey-patch para corrigir o bug do SDK do Appwrite (que envia data={} em GET),
-# evitando o erro 400 "request cannot have request body" no Appwrite Cloud.
+# Guardar referência ao requests.request original globalmente
 _original_request = requests.request
 
 def _patched_request(method, url, **kwargs):
@@ -20,9 +19,39 @@ def _patched_request(method, url, **kwargs):
         kwargs['data'] = None
     return _original_request(method, url, **kwargs)
 
-requests.request = _patched_request
-requests.api.request = _patched_request
-appwrite.client.requests.request = _patched_request
+def patch_appwrite_requests():
+    import sys
+    
+    # 1. Encontrar e patchear todos os módulos "requests" e "requests.api" em sys.modules
+    for name, module in list(sys.modules.items()):
+        if not module:
+            continue
+        
+        # Patch na função request do módulo requests e requests.api (incluindo versões do _vendor)
+        if name in ('requests', '_vendor.requests') or name.endswith('.requests'):
+            if hasattr(module, 'request') and module.request != _patched_request:
+                try:
+                    module.request = _patched_request
+                except Exception:
+                    pass
+                    
+        if name in ('requests.api', '_vendor.requests.api') or name.endswith('.requests.api'):
+            if hasattr(module, 'request') and module.request != _patched_request:
+                try:
+                    module.request = _patched_request
+                except Exception:
+                    pass
+                    
+        # 2. Encontrar e patchear a referência ao requests no appwrite.client
+        if name in ('appwrite.client', '_vendor.appwrite.client') or name.endswith('.appwrite.client'):
+            if hasattr(module, 'requests'):
+                try:
+                    module.requests.request = _patched_request
+                except Exception:
+                    pass
+
+# Executar imediatamente ao importar
+patch_appwrite_requests()
 
 APPWRITE_ENDPOINT = (os.getenv('APPWRITE_ENDPOINT') or '').strip()
 APPWRITE_PROJECT = (os.getenv('APPWRITE_PROJECT') or '').strip()
