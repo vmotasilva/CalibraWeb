@@ -37,13 +37,29 @@
         border-bottom: 2px solid #dee2e6;
         font-weight: 600;
         color: #495057;
-        padding: 12px 16px;
+        padding: 8px 10px;
         white-space: nowrap;
+        vertical-align: middle;
     }
 
     .table tbody td {
-        padding: 12px 16px;
+        padding: 8px 10px;
         vertical-align: middle;
+        font-size: 0.875rem;
+    }
+
+    .col-date-header {
+        white-space: normal !important;
+        width: 85px;
+        max-width: 85px;
+        font-size: 0.8rem;
+        line-height: 1.1;
+        text-align: center;
+    }
+
+    .col-date-cell {
+        font-size: 0.825rem;
+        text-align: center;
     }
 
     .table tbody tr:hover {
@@ -161,15 +177,15 @@
             <table class="table table-hover mb-0">
                 <thead>
                     <tr>
-                        <th>Código</th>
+                        <th style="width: 80px;">Código</th>
                         <th>Nome</th>
-                        <th>Classificação</th>
-                        <th>Criticidade</th>
-                        <th class="text-center">Revisão</th>
-                        <th>Última Revisão</th>
-                        <th>Data Aprovação</th>
-                        <th>Data Validade</th>
-                        <th class="text-end pe-3">Ações</th>
+                        <th style="width: 120px;">Classificação</th>
+                        <th style="width: 100px;">Criticidade</th>
+                        <th class="text-center" style="width: 70px;">Revisão</th>
+                        <th class="col-date-header">Última Revisão</th>
+                        <th class="col-date-header">Data Aprovação</th>
+                        <th class="col-date-header">Data Validade</th>
+                        <th class="text-end pe-3" style="width: 85px;">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -209,13 +225,13 @@
                         <td class="text-center">
                             {{ proc.numero_revisao|default:"-" }}
                         </td>
-                        <td>
+                        <td class="col-date-cell">
                             {{ proc.ultima_revisao|date:"d/m/Y"|default:"-" }}
                         </td>
-                        <td>
+                        <td class="col-date-cell">
                             {{ proc.data_aprovacao|date:"d/m/Y"|default:"-" }}
                         </td>
-                        <td>
+                        <td class="col-date-cell">
                             {{ proc.data_validade|date:"d/m/Y"|default:"-" }}
                         </td>
                         <td class="text-end pe-3">
