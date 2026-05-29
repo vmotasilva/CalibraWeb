@@ -167,6 +167,8 @@
                         <th>Criticidade</th>
                         <th class="text-center">Revisão</th>
                         <th>Última Revisão</th>
+                        <th>Data Aprovação</th>
+                        <th>Data Validade</th>
                         <th class="text-end pe-3">Ações</th>
                     </tr>
                 </thead>
@@ -210,6 +212,12 @@
                         <td>
                             {{ proc.ultima_revisao|date:"d/m/Y"|default:"-" }}
                         </td>
+                        <td>
+                            {{ proc.data_aprovacao|date:"d/m/Y"|default:"-" }}
+                        </td>
+                        <td>
+                            {{ proc.data_validade|date:"d/m/Y"|default:"-" }}
+                        </td>
                         <td class="text-end pe-3">
                             <a href="{% url 'procedures:detalhe_procedimento' proc.id %}" 
                                class="btn btn-sm btn-outline-info" title="Visualizar">
@@ -223,7 +231,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7" class="text-center text-muted py-4">
+                        <td colspan="9" class="text-center text-muted py-4">
                             Nenhum procedimento encontrado
                         </td>
                     </tr>
