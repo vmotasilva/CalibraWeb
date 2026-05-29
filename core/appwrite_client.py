@@ -15,8 +15,26 @@ from appwrite.services.storage import Storage
 _original_request = requests.request
 
 def _patched_request(method, url, **kwargs):
-    if method.lower() == 'get' and kwargs.get('data') == {}:
-        kwargs['data'] = None
+    if method.lower() == 'get':
+        # 1. Limpar data se for vazio ou dicionário vazio
+        if 'data' in kwargs:
+            if kwargs['data'] == {} or kwargs['data'] is None:
+                kwargs['data'] = None
+            else:
+                kwargs['data'] = None
+                
+        # 2. Limpar files se for vazio ou dicionário vazio
+        if 'files' in kwargs:
+            if kwargs['files'] == {} or kwargs['files'] is None:
+                kwargs['files'] = None
+                
+        # 3. Remover cabeçalho Content-Type (case-insensitive)
+        headers = kwargs.get('headers')
+        if headers:
+            for k in list(headers.keys()):
+                if k.lower() == 'content-type':
+                    del headers[k]
+                    
     return _original_request(method, url, **kwargs)
 
 def patch_appwrite_requests():

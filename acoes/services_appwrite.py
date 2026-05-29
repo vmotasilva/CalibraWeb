@@ -11,24 +11,8 @@ def buscar_acoes_appwrite(filtros=None):
     Busca ações na collection 'acoes' do Appwrite, aplicando filtros se fornecidos.
     filtros: dict com possíveis chaves (tipo_solucao, origem, responsavel_id, status, ano, busca)
     """
-    import sys
-    appwrite_mods = {k: str(v) for k, v in sys.modules.items() if 'appwrite' in k}
-    requests_mods = {k: str(v) for k, v in sys.modules.items() if 'requests' in k}
-    
-    has_patched = "N/A"
-    try:
-        import appwrite.client
-        has_patched = str(getattr(appwrite.client.requests, 'request', None))
-    except Exception as e:
-        has_patched = f"Err: {e}"
-        
-    debug_info = {
-        'sys.path': sys.path,
-        'appwrite_mods': appwrite_mods,
-        'requests_mods': requests_mods,
-        'has_patched': has_patched,
-    }
-    raise Exception(f"DEBUG_VERCEL_ENV: {debug_info}")
+    from core.appwrite_client import patch_appwrite_requests, APPWRITE_ENDPOINT, APPWRITE_PROJECT, APPWRITE_API_KEY
+    patch_appwrite_requests()
     if getattr(settings, 'TESTING', False) or not (APPWRITE_ENDPOINT and APPWRITE_PROJECT and APPWRITE_API_KEY):
         from acoes.models import AcaoCorretiva
         from django.db.models import Q
