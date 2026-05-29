@@ -306,7 +306,7 @@
                                                                                     <tr>
                                                                                         <th class="text-start ps-3" style="width: 30%;">Procedimento</th>
                                                                                         <th style="width: 15%;">Revisão Atual</th>
-                                                                                        <th style="width: 13%;">Data Revisão Doc.</th>
+                                                                                        <th style="width: 13%;">Data Aprovação Doc.</th>
                                                                                         <th style="width: 13%;">Data Realização</th>
                                                                                         <th style="width: 13%;">Validade</th>
                                                                                         <th style="width: 16%;">Status</th>
@@ -325,7 +325,7 @@
                                                                                                 <br><small class="text-muted">(Treinado: {{ item.treinamento.revisao_treinada }})</small>
                                                                                             {% endif %}
                                                                                         </td>
-                                                                                        <td>{{ item.procedimento.ultima_revisao|date:"d/m/Y"|default:"-" }}</td>
+                                                                                        <td>{{ item.procedimento.data_aprovacao|date:"d/m/Y"|default:"-" }}</td>
                                                                                         <td>
                                                                                             {% if item.treinamento and item.treinamento.data_treinamento %}
                                                                                                 {{ item.treinamento.data_treinamento|date:"d/m/Y" }}

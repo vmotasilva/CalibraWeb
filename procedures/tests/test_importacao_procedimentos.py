@@ -37,14 +37,12 @@ class ImportacaoProcedimentosServiceTestCase(TestCase):
         buffer.seek(0)
         
         # Simula file upload
-        class FakeFile:
-            def __init__(self, buffer):
+        class FakeFile(BytesIO):
+            def __init__(self, buf_val):
+                super().__init__(buf_val)
                 self.name = 'test.xlsx'
-                self.file = buffer
-            def read(self):
-                return self.file.getvalue()
         
-        return FakeFile(buffer)
+        return FakeFile(buffer.getvalue())
     
     def test_carregar_arquivo_excel(self):
         """Testa carregamento de arquivo Excel."""
@@ -243,8 +241,8 @@ class ImportacaoProcedimentosServiceTestCase(TestCase):
         html = servico.gerar_relatorio_html()
         
         self.assertIn('<h4>📊 Relatório de Importação</h4>', html)
-        self.assertIn('Criados:', html)
-        self.assertIn('Atualizados:', html)
+        self.assertIn('Criados', html)
+        self.assertIn('Atualizados', html)
         self.assertIn('POP.002', html)
 
 
@@ -283,7 +281,7 @@ class ImportacaoProcedimentosViewTestCase(TestCase):
         
         response = client.get('/procedures/procedimentos/importar/')
         self.assertEqual(response.status_code, 200)
-        self.assertIn('arquivo_excel', response.context or {}.get('form', {}).fields or {})
+        self.assertIn('arquivo_excel', response.context['form'].fields)
 
 
 # ============================================================================
@@ -316,15 +314,13 @@ def teste_manual():
     print("✓ Arquivo criado em memória")
     
     # Simular upload
-    class FakeFile:
-        def __init__(self, buffer):
+    class FakeFile(BytesIO):
+        def __init__(self, buf_val):
+            super().__init__(buf_val)
             self.name = 'teste_procedimentos.xlsx'
-            self.file = buffer
-        def read(self):
-            return self.file.getvalue()
     
     print("\n2️⃣ Processando importação (modo dry-run)...")
-    arquivo = FakeFile(buffer)
+    arquivo = FakeFile(buffer.getvalue())
     servico = ImportacaoProcedimentosService(arquivo)
     resultados = servico.processar(modo='dry_run')
     

@@ -563,33 +563,30 @@ def dashboard_treinamentos_view(request):
     # Queryset filtrado apenas com registros únicos
     registros_unicos = valid_registros.filter(id__in=ultimos_registros_ids)
     
+    # Definição unificada de status vigente e pendente (referência: data de aprovação do documento)
+    vigentes_q = Q(data_treinamento__isnull=False) & (
+        Q(procedimento__data_aprovacao__isnull=True) |
+        Q(data_treinamento__gte=F('procedimento__data_aprovacao'))
+    )
+    pendentes_q = Q(data_treinamento__isnull=True) | (
+        Q(procedimento__data_aprovacao__isnull=False) &
+        Q(data_treinamento__lt=F('procedimento__data_aprovacao'))
+    )
+
     # Estatísticas gerais - USANDO REGISTROS ÚNICOS (sem duplicatas)
     total_treinamentos = registros_unicos.count()
     
-    # Treinamentos vigentes: têm data E revisão coincide
-    # OTIMIZAÇÃO: Usar query SQL ao invés de carregar tudo na memória
-    treinamentos_vigentes = registros_unicos.filter(
-        data_treinamento__isnull=False,
-        revisao_treinada=F('procedimento__numero_revisao')
-    ).count()
+    # Treinamentos vigentes: têm data e foram após a data de aprovação (ou sem aprovação cadastrada)
+    treinamentos_vigentes = registros_unicos.filter(vigentes_q).count()
     
-    # Pendentes: sem data OU revisão desatualizada (também usando registros únicos)
-    treinamentos_pendentes = registros_unicos.filter(
-        Q(data_treinamento__isnull=True) | 
-        ~Q(revisao_treinada=F('procedimento__numero_revisao'))
-    ).count()
+    # Pendentes: sem data ou antes da data de aprovação
+    treinamentos_pendentes = registros_unicos.filter(pendentes_q).count()
     
-    # Colaboradores com treinamentos vigentes (com data e revisão OK)
-    total_colaboradores_treinados = registros_unicos.filter(
-        data_treinamento__isnull=False,
-        revisao_treinada=F('procedimento__numero_revisao')
-    ).values('colaborador_id').distinct().count()
+    # Colaboradores com treinamentos vigentes
+    total_colaboradores_treinados = registros_unicos.filter(vigentes_q).values('colaborador_id').distinct().count()
     
     # Procedimentos únicos treinados
-    total_procedimentos_unicos = registros_unicos.filter(
-        data_treinamento__isnull=False,
-        revisao_treinada=F('procedimento__numero_revisao')
-    ).values('procedimento_id').distinct().count()
+    total_procedimentos_unicos = registros_unicos.filter(vigentes_q).values('procedimento_id').distinct().count()
     
     # Treinamentos nos últimos 30 dias - AQUI USA valid_registros (todos os registros)
     # pois queremos ver quantos treinamentos realmente aconteceram
@@ -760,15 +757,11 @@ def dashboard_treinamentos_view(request):
             .annotate(
                 vigentes=Count(
                     'id',
-                    filter=Q(
-                        data_treinamento__isnull=False,
-                        revisao_treinada=F('procedimento__numero_revisao')
-                    )
+                    filter=vigentes_q
                 ),
                 pendentes=Count(
                     'id',
-                    filter=Q(data_treinamento__isnull=True)
-                    | ~Q(revisao_treinada=F('procedimento__numero_revisao'))
+                    filter=pendentes_q
                 )
             )
         )
@@ -805,15 +798,11 @@ def dashboard_treinamentos_view(request):
             .annotate(
                 vigentes=Count(
                     'id',
-                    filter=Q(
-                        data_treinamento__isnull=False,
-                        revisao_treinada=F('procedimento__numero_revisao')
-                    )
+                    filter=vigentes_q
                 ),
                 pendentes=Count(
                     'id',
-                    filter=Q(data_treinamento__isnull=True)
-                    | ~Q(revisao_treinada=F('procedimento__numero_revisao'))
+                    filter=pendentes_q
                 )
             )
         )
@@ -854,15 +843,11 @@ def dashboard_treinamentos_view(request):
         .annotate(
             vigentes=Count(
                 'id',
-                filter=Q(
-                    data_treinamento__isnull=False,
-                    revisao_treinada=F('procedimento__numero_revisao')
-                )
+                filter=vigentes_q
             ),
             pendentes=Count(
                 'id',
-                filter=Q(data_treinamento__isnull=True)
-                | ~Q(revisao_treinada=F('procedimento__numero_revisao'))
+                filter=pendentes_q
             )
         )
     )
@@ -1069,12 +1054,22 @@ def dashboard_treinamentos_filtered_view(request):
         except:
             pass
 
+    # Definição unificada de status vigente e pendente (referência: data de aprovação do documento)
+    vigentes_q = Q(data_treinamento__isnull=False) & (
+        Q(procedimento__data_aprovacao__isnull=True) |
+        Q(data_treinamento__gte=F('procedimento__data_aprovacao'))
+    )
+    pendentes_q = Q(data_treinamento__isnull=True) | (
+        Q(procedimento__data_aprovacao__isnull=False) &
+        Q(data_treinamento__lt=F('procedimento__data_aprovacao'))
+    )
+
     # Novo: permitir filtrar por status (vigente / pendente)
     status_param = (request.GET.get('status') or '').strip().lower()
     if status_param == 'vigente':
-        base_query &= Q(data_treinamento__isnull=False) & Q(revisao_treinada=F('procedimento__numero_revisao'))
+        base_query &= vigentes_q
     elif status_param == 'pendente':
-        base_query &= Q(Q(data_treinamento__isnull=True) | ~Q(revisao_treinada=F('procedimento__numero_revisao')))
+        base_query &= pendentes_q
 
     
     # Base: todos os registros que atendem aos filtros
@@ -1098,14 +1093,8 @@ def dashboard_treinamentos_filtered_view(request):
     
     # Contagens usando REGISTROS ÚNICOS (sem duplicatas por colaborador+procedimento)
     total_treinamentos = treinamentos.count()
-    treinamentos_vigentes = treinamentos.filter(
-        data_treinamento__isnull=False,
-        revisao_treinada=F('procedimento__numero_revisao')
-    ).count()
-    treinamentos_pendentes = treinamentos.filter(
-        Q(data_treinamento__isnull=True) | 
-        ~Q(revisao_treinada=F('procedimento__numero_revisao'))
-    ).count()
+    treinamentos_vigentes = treinamentos.filter(vigentes_q).count()
+    treinamentos_pendentes = treinamentos.filter(pendentes_q).count()
     
     # Taxa de conformidade
     if total_treinamentos > 0:
@@ -1159,16 +1148,13 @@ def dashboard_treinamentos_filtered_view(request):
         
         # Contar REGISTROS ÚNICOS com status vigente ou pendente
         vigentes_count = treinamentos.filter(
-            colaborador_id__in=liderados_ids,
-            data_treinamento__isnull=False,
-            revisao_treinada=F('procedimento__numero_revisao')
+            vigentes_q,
+            colaborador_id__in=liderados_ids
         ).count()
         
         pendentes_count = treinamentos.filter(
+            pendentes_q,
             colaborador_id__in=liderados_ids
-        ).filter(
-            Q(data_treinamento__isnull=True) | 
-            ~Q(revisao_treinada=F('procedimento__numero_revisao'))
         ).count()
         
         total = vigentes_count + pendentes_count
@@ -1210,18 +1196,15 @@ def dashboard_treinamentos_filtered_view(request):
             
             # Contar REGISTROS ÚNICOS com status vigente ou pendente para este setor/turno
             vigentes_count = treinamentos.filter(
+                vigentes_q,
                 colaborador__setor_id=setor_id,
-                colaborador__turno=turno_val,
-                data_treinamento__isnull=False,
-                revisao_treinada=F('procedimento__numero_revisao')
+                colaborador__turno=turno_val
             ).count()
             
             pendentes_count = treinamentos.filter(
+                pendentes_q,
                 colaborador__setor_id=setor_id,
                 colaborador__turno=turno_val
-            ).filter(
-                Q(data_treinamento__isnull=True) | 
-                ~Q(revisao_treinada=F('procedimento__numero_revisao'))
             ).count()
             
             total = vigentes_count + pendentes_count
@@ -1494,9 +1477,7 @@ def dashboard_treinamentos_exportar_csv_view(request):
     # Dados
     for treinamento in registros:
         # Determinar status
-        if not treinamento.data_treinamento:
-            status = 'PENDENTE'
-        elif treinamento.revisao_treinada == treinamento.procedimento.numero_revisao:
+        if treinamento.status_treinamento == 'OK':
             status = 'VIGENTE'
         else:
             status = 'PENDENTE'

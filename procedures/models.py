@@ -469,43 +469,19 @@ class RegistroTreinamento(models.Model):
     def status_treinamento(self):
         """
         Status: OK, PENDENTE ou NAO_INICIADO
-        Se há lista de presença: treinamento aconteceu, compara apenas a data com última revisão
-        Se não há lista: verifica se tem data (se não tem = NAO_INICIADO)
+        Se não há data de treinamento: NAO_INICIADO
+        Se há data de treinamento: compara com a data de aprovação do documento
         """
-        # Se há lista de presença, o treinamento aconteceu
-        if self.lista_presenca:
-            # Comparar data_treinamento com última revisão do procedimento
-            if self.procedimento and self.procedimento.ultima_revisao:
-                if self.data_treinamento and self.data_treinamento >= self.procedimento.ultima_revisao:
-                    return "OK"  # Treinamento ocorreu após a última revisão
-                else:
-                    return "PENDENTE"  # Treinamento é anterior à última revisão
-            else:
-                # Se não tem última revisão do procedimento, considerar OK (treinamento aconteceu)
-                return "OK"
-        
-        # Sem lista de presença: verificar se tem data
         if not self.data_treinamento:
-            # Sem data = Não iniciado
             return "NAO_INICIADO"
-        
-        # Tem data mas sem lista: verificar se é procedimento
-        if not self.procedimento:
-            return "OK" if self.data_treinamento else "NAO_INICIADO"
-        
-        # Se tem procedimento com numero_revisao, verificar se revisão bate
-        if self.procedimento.numero_revisao:
-            if str(self.revisao_treinada).strip() != str(self.procedimento.numero_revisao).strip():
-                return "PENDENTE"
-        
-        # Verificar se foi após a última revisão do documento
-        if self.procedimento.ultima_revisao:
-            if self.data_treinamento >= self.procedimento.ultima_revisao:
+            
+        if self.procedimento and self.procedimento.data_aprovacao:
+            if self.data_treinamento >= self.procedimento.data_aprovacao:
                 return "OK"
             else:
                 return "PENDENTE"
-        
-        # Se não tem data de revisão do documento mas treinou na revisão atual, considerar OK
+                
+        # Se não tem procedimento ou não tem data de aprovação, mas o treinamento foi realizado, está OK
         return "OK"
     
     def get_status_badge(self):

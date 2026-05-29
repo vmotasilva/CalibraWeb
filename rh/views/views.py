@@ -129,7 +129,7 @@ def _compute_treinamento_stats_por_colaborador_ids(colaborador_ids):
             'revisao_treinada',
             'lista_presenca_id',
             'procedimento__id',
-            'procedimento__ultima_revisao',
+            'procedimento__data_aprovacao',
             'procedimento__numero_revisao',
         )
     )

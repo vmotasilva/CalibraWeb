@@ -247,7 +247,7 @@ def get_user_cobrancas_counts(user: Any) -> dict[str, int]:
                 validador=colaborador,
             ).count()
 
-            # Demanda de Treinamento: registros pendentes (não iniciado / revisão desatualizada / anterior à última revisão)
+            # Demanda de Treinamento: registros pendentes (não iniciado / revisão desatualizada / anterior à data de aprovação)
             pendencias_q = (
                 Q(data_treinamento__isnull=True)
                 | (
@@ -258,15 +258,15 @@ def get_user_cobrancas_counts(user: Any) -> dict[str, int]:
                             & ~Q(revisao_treinada=F("procedimento__numero_revisao"))
                         )
                         | (
-                            Q(procedimento__ultima_revisao__isnull=False)
-                            & Q(data_treinamento__lt=F("procedimento__ultima_revisao"))
+                            Q(procedimento__data_aprovacao__isnull=False)
+                            & Q(data_treinamento__lt=F("procedimento__data_aprovacao"))
                         )
                     )
                 )
                 | (
                     Q(lista_presenca__isnull=False)
-                    & Q(procedimento__ultima_revisao__isnull=False)
-                    & Q(data_treinamento__lt=F("procedimento__ultima_revisao"))
+                    & Q(procedimento__data_aprovacao__isnull=False)
+                    & Q(data_treinamento__lt=F("procedimento__data_aprovacao"))
                 )
             )
 
