@@ -102,31 +102,49 @@ def listar_acoes(request):
 
     acoes = buscar_acoes_appwrite(filtros)
     
+    # Auto-migração automática (Self-healing): se o Appwrite retornar vazio mas existirem registros no SQL
+    from django.conf import settings
+    from core.appwrite_client import APPWRITE_ENDPOINT, APPWRITE_PROJECT, APPWRITE_API_KEY
+    if not acoes and not any(filtros.values()) and (APPWRITE_ENDPOINT and APPWRITE_PROJECT and APPWRITE_API_KEY) and not getattr(settings, 'TESTING', False):
+        if AcaoCorretiva.objects.exists():
+            from acoes.signals import sync_all_acoes_to_appwrite
+            sync_all_acoes_to_appwrite()
+            # Tentar buscar novamente
+            acoes = buscar_acoes_appwrite(filtros)
 
-    # Para filtros, pode-se buscar os valores únicos via Appwrite ou manter cache/local
-    tipos_solucao = []  # TODO: Buscar do Appwrite se necessário
-    origens = []        # TODO: Buscar do Appwrite se necessário
-    anos = []           # TODO: Buscar do Appwrite se necessário
-    responsaveis = []   # TODO: Buscar do Appwrite se necessário
+    # Popular os filtros usando o banco relacional
+    from rh.models import Colaborador
+    tipos_solucao = TipoSolucao.objects.filter(ativo=True)
+    origens = sorted(list(set(AcaoCorretiva.objects.exclude(origem='').exclude(origem=None).values_list('origem', flat=True))))
+    anos = sorted(list(set(AcaoCorretiva.objects.exclude(ano=None).values_list('ano', flat=True))), reverse=True)
+    responsaveis = Colaborador.objects.filter(is_active=True).order_by('nome_completo')
     
-    # Filtros
+    # Filtros do request
     filtro_tipo_solucao = request.GET.get('tipo_solucao', '')
     filtro_origem = request.GET.get('origem', '')
     filtro_responsavel = request.GET.get('responsavel', '')
     filtro_status = request.GET.get('status', '')
     filtro_ano = request.GET.get('ano', '')
     filtro_busca = request.GET.get('busca', '')
-    
-
-    # Filtros já aplicados via Appwrite
-    
-
-    # TODO: Calcular totais gerais via Appwrite se necessário
-    total_concluido = total_em_andamento = total_cancelado = total_atrasado = 0
-    
-    # Montar tooltip de resumo de status das ações associadas (Linhas de Ação do plano)
 
     acoes_list = list(acoes)
+
+    # Calcular totais dinamicamente a partir dos registros
+    total_concluido = 0
+    total_em_andamento = 0
+    total_cancelado = 0
+    total_atrasado = 0
+    
+    for a in acoes_list:
+        status_val = (a.get('status') or '').strip().lower()
+        if status_val in ('concluida', 'concluido'):
+            total_concluido += 1
+        elif status_val in ('em_progresso', 'em andamento', 'em_andamento', 'aberta', 'aberto'):
+            total_em_andamento += 1
+        elif status_val in ('cancelada', 'cancelado'):
+            total_cancelado += 1
+        elif status_val in ('atrasada', 'atrasado'):
+            total_atrasado += 1
     acao_ids = [a['$id'] for a in acoes_list]
 
 

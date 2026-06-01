@@ -67,6 +67,7 @@ def buscar_acoes_appwrite(filtros=None):
         for acao in qs:
             doc = AppwriteMockDoc({
                 '$id': f"django_{acao.id}",
+                'id': acao.id,
                 'numero_registro': acao.numero_registro or '',
                 'ano': acao.ano or 0,
                 'unidade': acao.unidade or '',
@@ -112,6 +113,25 @@ def buscar_acoes_appwrite(filtros=None):
         collection_id='acoes',
         queries=queries
     )
-    if hasattr(result, 'to_dict'):
-        return result.to_dict().get('documents', [])
-    return result.get('documents', [])
+    docs = result.to_dict().get('documents', []) if hasattr(result, 'to_dict') else result.get('documents', [])
+    
+    # Garantir compatibilidade do ID (extrai o ID numérico do $id do Appwrite se possível)
+    for doc in docs:
+        doc_id = doc.get('$id') or doc.get('id')
+        if doc_id:
+            if str(doc_id).startswith('django_'):
+                try:
+                    doc['id'] = int(str(doc_id).split('_')[1])
+                except ValueError:
+                    doc['id'] = doc_id
+            else:
+                try:
+                    doc['id'] = int(doc_id)
+                except ValueError:
+                    doc['id'] = doc_id
+            
+            # Garantir dot-access se for uma instância de classe ou objeto customizado
+            if hasattr(doc, '__dict__'):
+                doc.id = doc['id']
+                
+    return docs
