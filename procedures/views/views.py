@@ -652,15 +652,32 @@ def procedimento_responsabilidades_treinamento_view(request):
             responsabilidades=responsabilidades,
         )
         if form.is_valid():
-            resultado = form.save()
+            matriz_selecionada = None
+            matriz_id = request.POST.get('save_matrix_id')
+            if matriz_id:
+                try:
+                    matriz_id = int(matriz_id)
+                except (TypeError, ValueError):
+                    matriz_id = None
+                else:
+                    matriz_selecionada = next(
+                        (matrix_group['matriz'] for matrix_group in matrix_groups if matrix_group['matriz'].id == matriz_id),
+                        None,
+                    )
+
+            resultado = form.save(matriz_id=matriz_id)
             total_alteracoes = resultado['atualizadas'] + resultado['removidas']
             if total_alteracoes:
+                escopo_mensagem = f" para a matriz '{matriz_selecionada.nome}'" if matriz_selecionada else ''
                 messages.success(
                     request,
-                    f"Matriz de responsabilidade atualizada com sucesso. {resultado['atualizadas']} atribuicoes salvas e {resultado['removidas']} removidas.",
+                    f"Matriz de responsabilidade atualizada com sucesso{escopo_mensagem}. {resultado['atualizadas']} atribuicoes salvas e {resultado['removidas']} removidas.",
                 )
             else:
-                messages.info(request, 'Nenhuma alteracao foi identificada na matriz de responsabilidade.')
+                if matriz_selecionada:
+                    messages.info(request, f"Nenhuma alteracao foi identificada na matriz '{matriz_selecionada.nome}'.")
+                else:
+                    messages.info(request, 'Nenhuma alteracao foi identificada na matriz de responsabilidade.')
             return redirect('procedures:procedimento_responsabilidades_treinamento')
     else:
         form = MatrizResponsabilidadeTreinamentoForm(

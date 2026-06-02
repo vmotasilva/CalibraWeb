@@ -201,7 +201,7 @@ class MatrizResponsabilidadeTreinamentoForm(forms.Form):
 
         return cleaned_data
 
-    def save(self):
+    def save(self, matriz_id=None):
         from rh.models import Colaborador
 
         selecionados = {int(value) for value in self.cleaned_data.values() if value}
@@ -210,6 +210,8 @@ class MatrizResponsabilidadeTreinamentoForm(forms.Form):
         removidas = 0
 
         for matriz, section in self.iter_sections():
+            if matriz_id is not None and matriz.id != matriz_id:
+                continue
             sub_area = section.get('sub_area')
             sub_area_id = sub_area.id if sub_area else None
             for turno, _ in self.turnos:
