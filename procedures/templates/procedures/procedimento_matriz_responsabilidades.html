@@ -212,7 +212,7 @@
             {% if matrix_groups %}
             <div class="d-flex flex-column gap-3">
                 {% for matrix_group in matrix_groups %}
-                <section class="matrix-band">
+                <section class="matrix-band" data-matrix-id="{{ matrix_group.matriz.id }}">
                     <div class="matrix-band-header d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2">
                         <div>
                             <span class="matrix-band-title">{{ matrix_group.matriz.nome }}</span>
@@ -223,7 +223,17 @@
                                 <span class="helper-text mt-0">{{ matrix_group.total_procedimentos }} procedimento{{ matrix_group.total_procedimentos|pluralize }} associado{{ matrix_group.total_procedimentos|pluralize }}</span>
                             </div>
                         </div>
-                        <span class="badge bg-light text-dark border">{{ matrix_group.total_sub_areas }} sub-área{{ matrix_group.total_sub_areas|pluralize }}</span>
+                        <div class="d-flex flex-wrap align-items-center gap-2 justify-content-lg-end">
+                            <button
+                                type="button"
+                                class="btn btn-outline-primary btn-sm js-open-matrix-fill-modal"
+                                data-bs-toggle="modal"
+                                data-bs-target="#matrixFillModal"
+                                data-matrix-id="{{ matrix_group.matriz.id }}"
+                                data-matrix-name="{{ matrix_group.matriz.nome|escape }}"
+                            >Preencher matriz</button>
+                            <span class="badge bg-light text-dark border">{{ matrix_group.total_sub_areas }} sub-área{{ matrix_group.total_sub_areas|pluralize }}</span>
+                        </div>
                     </div>
                     <div class="subarea-grid">
                         <div class="row g-3">
@@ -242,7 +252,7 @@
                                     <div class="row g-3">
                                         {% for cell in section.cells %}
                                         <div class="col-12 col-md-6 col-xxl-4">
-                                            <div class="turno-card">
+                                            <div class="turno-card" data-turno="{{ cell.turno }}">
                                                 <span class="turno-card-label">{{ cell.turno_label }}</span>
                                                 <div class="responsabilidade-picker">
                                                     <div class="picker-select">{{ cell.field }}</div>
@@ -316,6 +326,37 @@
     </div>
 </div>
 
+<div class="modal fade" id="matrixFillModal" tabindex="-1" aria-labelledby="matrixFillModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title" id="matrixFillModalLabel">Preencher matriz inteira</h5>
+                    <small class="text-muted" id="matrixFillModalContext">Selecione um responsável por turno para aplicar em todas as sub-áreas e no escopo geral.</small>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    {% for turno, turno_label in turnos %}
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold small text-uppercase">{{ turno_label }}</label>
+                        <select class="form-select" data-batch-turno="{{ turno }}">
+                            <option value="">Sem responsavel</option>
+                        </select>
+                        <small class="text-muted d-block mt-1">O valor escolhido será replicado em todas as seções desta matriz para este turno.</small>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="applyMatrixFillButton">Aplicar na matriz</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const modalElement = document.getElementById('colaboradorSearchModal');
@@ -324,8 +365,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const emptyState = document.getElementById('colaboradorSearchEmpty');
     const contextLabel = document.getElementById('colaboradorSearchModalContext');
     const clearSelectionButton = document.getElementById('clearColaboradorSelection');
+    const matrixFillModalElement = document.getElementById('matrixFillModal');
+    const matrixFillContext = document.getElementById('matrixFillModalContext');
+    const applyMatrixFillButton = document.getElementById('applyMatrixFillButton');
     let activeSelect = null;
     let availableOptions = [];
+    let activeMatrixId = null;
 
     function extractOptions(selectElement) {
         return Array.from(selectElement.options)
@@ -369,6 +414,37 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    function getMatrixTurnSelects(matrixId, turno) {
+        return Array.from(
+            document.querySelectorAll(`.matrix-band[data-matrix-id="${matrixId}"] .turno-card[data-turno="${turno}"] select`)
+        );
+    }
+
+    function populateMatrixFillModal(matrixId) {
+        matrixFillModalElement?.querySelectorAll('[data-batch-turno]').forEach(modalSelect => {
+            const turno = modalSelect.dataset.batchTurno;
+            const matrixSelects = getMatrixTurnSelects(matrixId, turno);
+            const sourceSelect = matrixSelects[0];
+
+            modalSelect.innerHTML = '';
+            if (!sourceSelect) {
+                modalSelect.disabled = true;
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'Sem campo disponível';
+                modalSelect.appendChild(option);
+                return;
+            }
+
+            modalSelect.disabled = false;
+            Array.from(sourceSelect.options).forEach(option => {
+                const clone = option.cloneNode(true);
+                modalSelect.appendChild(clone);
+            });
+            modalSelect.value = sourceSelect.value;
+        });
+    }
+
     document.querySelectorAll('.js-open-colaborador-modal').forEach(button => {
         button.addEventListener('click', function() {
             const fieldId = button.dataset.fieldId;
@@ -384,6 +460,15 @@ document.addEventListener('DOMContentLoaded', function() {
             contextLabel.textContent = `Selecionando para ${matriz} / ${subarea} / ${turno}.`;
             searchInput.value = '';
             renderOptions('');
+        });
+    });
+
+    document.querySelectorAll('.js-open-matrix-fill-modal').forEach(button => {
+        button.addEventListener('click', function() {
+            activeMatrixId = button.dataset.matrixId;
+            const matrixName = button.dataset.matrixName || 'Matriz';
+            matrixFillContext.textContent = `Escolha um responsável para cada turno e replique em todas as sub-áreas e no escopo geral de ${matrixName}.`;
+            populateMatrixFillModal(activeMatrixId);
         });
     });
 
@@ -411,6 +496,27 @@ document.addEventListener('DOMContentLoaded', function() {
         activeSelect.value = '';
         activeSelect.dispatchEvent(new Event('change', { bubbles: true }));
         const modalInstance = bootstrap.Modal.getInstance(modalElement);
+        modalInstance?.hide();
+    });
+
+    applyMatrixFillButton?.addEventListener('click', function() {
+        if (!activeMatrixId) {
+            return;
+        }
+
+        matrixFillModalElement.querySelectorAll('[data-batch-turno]').forEach(modalSelect => {
+            if (modalSelect.disabled) {
+                return;
+            }
+
+            const turno = modalSelect.dataset.batchTurno;
+            getMatrixTurnSelects(activeMatrixId, turno).forEach(select => {
+                select.value = modalSelect.value;
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+        });
+
+        const modalInstance = bootstrap.Modal.getInstance(matrixFillModalElement);
         modalInstance?.hide();
     });
 

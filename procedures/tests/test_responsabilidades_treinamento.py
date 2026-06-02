@@ -61,6 +61,8 @@ class ResponsabilidadesTreinamentoViewTest(TestCase):
         self.assertContains(response, 'MATRIZ A')
         self.assertContains(response, 'Bloco A')
         self.assertContains(response, 'Sem sub-área')
+        self.assertContains(response, 'Preencher matriz')
+        self.assertContains(response, 'Preencher matriz inteira')
 
     def test_salva_responsabilidades_por_subarea_e_escopo_geral(self):
         self.client.force_login(self.user)
