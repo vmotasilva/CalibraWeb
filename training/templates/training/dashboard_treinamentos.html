@@ -94,6 +94,28 @@
                             </div>
                         </div>
 
+                        <!-- Instrutor Responsável -->
+                        <div class="filter-group">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="filter-title">Instrutor Responsável</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <div class="d-flex flex-column gap-1">
+                                    {% for instrutor in instrutores_responsaveis %}
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ instrutor.id }}" data-category="instrutor_responsavel" id="instrutor_resp_{{ instrutor.id }}" {% if instrutor.id|stringformat:"s" in filtro_instrutor_responsavel_list %}checked{% endif %}>
+                                        <label class="form-check-label small text-truncate" for="instrutor_resp_{{ instrutor.id }}" title="{{ instrutor.nome }}">
+                                            {{ instrutor.nome }}
+                                        </label>
+                                    </div>
+                                    {% empty %}
+                                    <small class="text-muted">Nenhum instrutor responsável cadastrado.</small>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Criticidade -->
                         <div class="filter-group">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
@@ -258,35 +280,6 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- Responsáveis por Matriz/Turno -->
-                    <div class="indicator-card dashboard-card-resp-matriz">
-                        <div>
-                            <small class="text-muted d-block mb-1 dashboard-indic-label">
-                                <i class="bi bi-person-workspace text-secondary me-1"></i>Responsáveis por Matriz/Turno
-                            </small>
-                            <table class="table table-sm table-borderless mb-0 dashboard-table-resp-matriz">
-                                <thead>
-                                    <tr>
-                                        <th class="text-start">Matriz</th>
-                                        <th class="text-center">Turno</th>
-                                        <th class="text-end">Responsável</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for r in responsaveis_matriz_turno %}
-                                    <tr>
-                                        <td class="text-start">{{ r.matriz }}</td>
-                                        <td class="text-center">{{ r.turno }}</td>
-                                        <td class="text-end">{{ r.colaborador }}</td>
-                                    </tr>
-                                    {% empty %}
-                                    <tr><td colspan="3" class="text-center text-muted">Nenhum responsável definido</td></tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -393,19 +386,52 @@
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-white border-0 py-1 px-2">
                     <h6 class="mb-0 fw-bold dashboard-chart-title"><i class="bi bi-bar-chart text-info me-1"></i>Treinamentos Últimos 12 Meses</h6>
-                    /* Dashboard custom classes para estilos migrados do inline */
-                    .dashboard-desc { font-size: 0.75rem; }
-                    .dashboard-badge-time { font-size: 0.7rem; }
-                    .dashboard-filter-hint { font-size: 0.7rem; }
-                    .dashboard-indic-title { font-size: 0.8rem; }
-                    .dashboard-indic-label { font-size: 0.65rem; }
-                    .dashboard-indic-value { font-size: 1rem; }
-                    .dashboard-card-resp-matriz { max-height: 180px; overflow-y: auto; }
-                    .dashboard-table-resp-matriz { font-size: 0.75rem; }
-                    .dashboard-chart-title { font-size: 0.75rem; }
                 </div>
                 <div class="card-body py-1 px-2">
                     <canvas id="chartMeses" class="dashboard-chart dashboard-chart--wide"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-2 g-2">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 py-1 px-2 d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 fw-bold dashboard-chart-title"><i class="bi bi-table text-danger me-1"></i>Treinamentos Pendentes</h6>
+                    <span class="badge bg-danger">{{ total_pendencias_dashboard }}</span>
+                </div>
+                <div class="card-body py-1 px-2">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle dashboard-pending-table mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Colaborador</th>
+                                    <th>Matrícula</th>
+                                    <th>Procedimento</th>
+                                    <th>Matriz</th>
+                                    <th>Instrutor Responsável</th>
+                                    <th>Último Treinamento</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pendencia in pendencias_dashboard %}
+                                <tr>
+                                    <td>{{ pendencia.colaborador }}</td>
+                                    <td>{{ pendencia.matricula }}</td>
+                                    <td>{{ pendencia.procedimento }}</td>
+                                    <td>{{ pendencia.matriz }}</td>
+                                    <td>{{ pendencia.instrutor_responsavel }}</td>
+                                    <td>{{ pendencia.ultimo_treinamento }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-3">Nenhum treinamento pendente com os filtros atuais.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -416,6 +442,22 @@
 </div><!-- Fim dashboard-wrapper -->
 
 <style>
+    .dashboard-desc { font-size: 0.75rem; }
+    .dashboard-badge-time { font-size: 0.7rem; }
+    .dashboard-filter-hint { font-size: 0.7rem; }
+    .dashboard-indic-title { font-size: 0.8rem; }
+    .dashboard-indic-label { font-size: 0.65rem; }
+    .dashboard-indic-value { font-size: 1rem; }
+    .dashboard-chart-title { font-size: 0.75rem; }
+    .dashboard-pending-table {
+        font-size: 0.78rem;
+    }
+
+    .dashboard-pending-table th,
+    .dashboard-pending-table td {
+        white-space: nowrap;
+    }
+
     /* Dashboard Layout - Full Height */
     .dashboard-wrapper {
         display: flex;
@@ -933,7 +975,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const params = new URLSearchParams(window.location.search);
 
         // Remover apenas categorias controladas pelos checkboxes
-        ['setor', 'turno', 'lider', 'criticidade', 'matriz', 'sub_area'].forEach(category => {
+        ['setor', 'turno', 'lider', 'instrutor_responsavel', 'criticidade', 'matriz', 'sub_area'].forEach(category => {
             params.delete(category);
         });
 
