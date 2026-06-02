@@ -261,6 +261,62 @@ class TestDashboardTreinamentosView(TestCase):
             ],
         )
 
+    def test_dashboard_pagina_tabela_de_pendencias(self):
+        self.client.force_login(self.user)
+
+        perfil_paginacao = PerfilTreinamento.objects.create(nome='Perfil Paginação')
+        grupo_paginacao = GrupoTreinamento.objects.create(perfil=perfil_paginacao, nome='Grupo Paginação')
+        subgrupo_paginacao = SubGrupoTreinamento.objects.create(grupo=grupo_paginacao, nome='Subgrupo Paginação')
+        ColaboradorPerfil.objects.create(
+            colaborador=self.outro_colaborador,
+            perfil=perfil_paginacao,
+            data_atribuicao=date.today(),
+        )
+
+        for index in range(10):
+            procedimento_extra = Procedimento.objects.create(
+                codigo=f'PROC-10{index}',
+                nome=f'Procedimento Paginação {index:02}',
+                numero_revisao='01',
+                matriz='MATRIZ EXTRA',
+            )
+            subgrupo_paginacao.procedimentos.add(procedimento_extra)
+            RegistroTreinamento.objects.create(
+                colaborador=self.outro_colaborador,
+                procedimento=procedimento_extra,
+                data_treinamento=None,
+                revisao_treinada='00',
+                tipo='PROCEDIMENTO',
+            )
+
+        filtros = {'matriz': ['MATRIZ TESTE', 'MATRIZ EXTRA']}
+        response = self.client.get(reverse('training:dashboard_treinamentos'), filtros)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['total_pendencias_dashboard'], 14)
+        self.assertEqual(response.context['pendencias_page_size'], 10)
+        self.assertEqual(len(response.context['pendencias_dashboard']), 10)
+        self.assertTrue(response.context['pendencias_page_obj'].has_next())
+        self.assertContains(response, 'Mostrando 1-10 de 14 pendências')
+        self.assertContains(response, 'Itens por página')
+
+        second_page = self.client.get(
+            reverse('training:dashboard_treinamentos'),
+            {
+                'matriz': ['MATRIZ TESTE', 'MATRIZ EXTRA'],
+                'pendencias_page': '2',
+            },
+        )
+
+        self.assertEqual(second_page.status_code, 200)
+        self.assertEqual(second_page.context['pendencias_page_start'], 11)
+        self.assertEqual(second_page.context['pendencias_page_end'], 14)
+        self.assertEqual(
+            [item['procedimento'] for item in second_page.context['pendencias_dashboard']],
+            ['PROC-106', 'PROC-107', 'PROC-108', 'PROC-109'],
+        )
+        self.assertContains(second_page, 'Mostrando 11-14 de 14 pendências')
+
     def test_export_csv_respeita_filtro_instrutor_responsavel(self):
         self.client.force_login(self.user)
 

@@ -438,6 +438,58 @@
                             </tbody>
                         </table>
                     </div>
+                    <div class="dashboard-pending-footer d-flex flex-column flex-xl-row justify-content-between align-items-xl-center gap-2">
+                        <div class="dashboard-pending-summary text-muted small">
+                            Mostrando {{ pendencias_page_start }}-{{ pendencias_page_end }} de {{ total_pendencias_dashboard }} pendências
+                        </div>
+                        {% if pendencias_page_obj and pendencias_page_obj.paginator.num_pages > 1 %}
+                        <nav aria-label="Paginação da tabela de pendências">
+                            <ul class="pagination pagination-sm justify-content-center mb-0">
+                                {% if pendencias_page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% if pendencias_querystring %}{{ pendencias_querystring }}&{% endif %}pendencias_page=1" title="Primeira página">&laquo;&laquo;</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% if pendencias_querystring %}{{ pendencias_querystring }}&{% endif %}pendencias_page={{ pendencias_page_obj.previous_page_number }}" title="Página anterior">&laquo;</a>
+                                </li>
+                                {% else %}
+                                <li class="page-item disabled"><span class="page-link">&laquo;&laquo;</span></li>
+                                <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+                                {% endif %}
+
+                                {% for num in pendencias_page_obj.paginator.page_range %}
+                                    {% if pendencias_page_obj.number == num %}
+                                    <li class="page-item active" aria-current="page"><span class="page-link">{{ num }}</span></li>
+                                    {% elif num > pendencias_page_obj.number|add:'-3' and num < pendencias_page_obj.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?{% if pendencias_querystring %}{{ pendencias_querystring }}&{% endif %}pendencias_page={{ num }}">{{ num }}</a>
+                                    </li>
+                                    {% endif %}
+                                {% endfor %}
+
+                                {% if pendencias_page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% if pendencias_querystring %}{{ pendencias_querystring }}&{% endif %}pendencias_page={{ pendencias_page_obj.next_page_number }}" title="Próxima página">&raquo;</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% if pendencias_querystring %}{{ pendencias_querystring }}&{% endif %}pendencias_page={{ pendencias_page_obj.paginator.num_pages }}" title="Última página">&raquo;&raquo;</a>
+                                </li>
+                                {% else %}
+                                <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+                                <li class="page-item disabled"><span class="page-link">&raquo;&raquo;</span></li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                        {% endif %}
+                        <div class="dashboard-pending-page-size ms-xl-auto">
+                            <label for="pendenciasPageSize" class="form-label small text-muted mb-1">Itens por página</label>
+                            <select id="pendenciasPageSize" class="form-select form-select-sm">
+                                {% for size in pendencias_page_size_options %}
+                                <option value="{{ size }}" {% if size == pendencias_page_size %}selected{% endif %}>{{ size }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -483,6 +535,22 @@
         color: #6c757d;
         font-size: 0.75rem;
         white-space: normal;
+    }
+
+    .dashboard-pending-footer {
+        padding: 0.75rem 0.1rem 0;
+    }
+
+    .dashboard-pending-summary {
+        min-width: 220px;
+    }
+
+    .dashboard-pending-page-size {
+        min-width: 110px;
+    }
+
+    .dashboard-pending-page-size .form-select {
+        min-width: 90px;
     }
 
     /* Dashboard Layout - Full Height */
@@ -1017,6 +1085,8 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
+        params.delete('pendencias_page');
+
         const colaboradorId = (document.getElementById('filterColaboradorId')?.value || '').trim();
         const colaboradorQ = (document.getElementById('filterColaboradorQ')?.value || '').trim();
         if (colaboradorId) {
@@ -1054,6 +1124,15 @@ document.addEventListener('DOMContentLoaded', function() {
             window.location.href = window.location.pathname;
         });
     }
+
+    const pendingPageSizeSelect = document.getElementById('pendenciasPageSize');
+    pendingPageSizeSelect?.addEventListener('change', function() {
+        const params = new URLSearchParams(window.location.search);
+        params.set('pendencias_page_size', pendingPageSizeSelect.value);
+        params.delete('pendencias_page');
+        const url = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+        window.location.href = url;
+    });
 
     // =====================
     // Autocomplete de Colaborador (datalist)

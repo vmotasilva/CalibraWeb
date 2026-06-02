@@ -34,6 +34,14 @@ def _coerce_int_list(values):
     return [int(value) for value in values if str(value).strip().isdigit()]
 
 
+def _coerce_positive_int(value, default):
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+    return parsed if parsed > 0 else default
+
+
 def _normalize_scope_name(value):
     return (value or "").strip().casefold()
 
@@ -96,6 +104,32 @@ def _build_responsavel_scope_q(responsabilidades_por_subarea, responsabilidades_
             item_q &= (Q(procedimento__sub_area__isnull=True) | Q(procedimento__sub_area__exact=''))
         scope_q = item_q if scope_q is None else (scope_q | item_q)
     return scope_q
+
+
+def _paginate_dashboard_pendencias(request, context):
+    pendencias = list(context.get('pendencias_dashboard') or [])
+    total_pendencias = context.get('total_pendencias_dashboard')
+    if total_pendencias is None:
+        total_pendencias = len(pendencias)
+        context['total_pendencias_dashboard'] = total_pendencias
+
+    page_size = _coerce_positive_int(request.GET.get('pendencias_page_size'), 10)
+    if page_size not in {10, 25, 50, 100}:
+        page_size = 10
+
+    paginator = Paginator(pendencias, page_size)
+    page_obj = paginator.get_page(request.GET.get('pendencias_page') or 1)
+    query_params = request.GET.copy()
+    query_params.pop('pendencias_page', None)
+
+    context['pendencias_dashboard'] = list(page_obj.object_list)
+    context['pendencias_page_obj'] = page_obj
+    context['pendencias_page_size'] = page_size
+    context['pendencias_page_size_options'] = [10, 25, 50, 100]
+    context['pendencias_querystring'] = query_params.urlencode()
+    context['pendencias_page_start'] = page_obj.start_index() if paginator.count else 0
+    context['pendencias_page_end'] = page_obj.end_index() if paginator.count else 0
+    return context
 
 # Imports dos models
 from procedures.models import Procedimento, RegistroTreinamento, PacoteTreinamento
@@ -520,6 +554,7 @@ def dashboard_treinamentos_view(request):
     if not has_filters:
         cached_data = cache.get(cache_key)
         if cached_data:
+            cached_data = dict(cached_data)
             # Adicionar dados de filtros ao cache
             cached_data['filtro_setor'] = filtro_setor
             cached_data['filtro_turno'] = filtro_turno
@@ -534,6 +569,7 @@ def dashboard_treinamentos_view(request):
             cached_data.setdefault('instrutores_responsaveis', [])
             cached_data.setdefault('pendencias_dashboard', [])
             cached_data.setdefault('total_pendencias_dashboard', 0)
+            _paginate_dashboard_pendencias(request, cached_data)
             return render(request, 'training/dashboard_treinamentos.html', cached_data)
     
     # Base query: apenas registros com colaborador ATIVO, NÃO AFASTADO, NÃO EM FÉRIAS e procedimento vinculado
@@ -1238,6 +1274,8 @@ def dashboard_treinamentos_view(request):
     # Cachear contexto por 5 minutos (300 segundos) - apenas sem filtros
     if not has_filters:
         cache.set(cache_key, context, 300)
+
+    _paginate_dashboard_pendencias(request, context)
     
     return render(request, 'training/dashboard_treinamentos.html', context)
 
