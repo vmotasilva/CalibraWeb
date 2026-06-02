@@ -29,29 +29,74 @@
         line-height: 1;
     }
 
-    .matrix-table {
-        min-width: 980px;
+    .matrix-band {
+        border: 1px solid #e9ecef;
+        border-radius: 1rem;
+        overflow: hidden;
+        background: #fff;
     }
 
-    .matrix-table th,
-    .matrix-table td {
-        vertical-align: top;
+    .matrix-band + .matrix-band {
+        margin-top: 1rem;
     }
 
-    .matrix-name {
-        min-width: 240px;
+    .matrix-band-header {
+        padding: 1rem 1.25rem;
+        background: linear-gradient(135deg, #f8fafc 0%, #eef3f8 100%);
+        border-bottom: 1px solid #e9ecef;
     }
 
-    .matrix-name strong {
+    .matrix-band-title {
         display: block;
         margin-bottom: 0.35rem;
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: #1f2937;
     }
 
-    .turno-cell {
-        min-width: 220px;
+    .subarea-grid {
+        padding: 1rem;
     }
 
-    .turno-cell .form-select {
+    .subarea-panel {
+        border: 1px solid #e9ecef;
+        border-radius: 0.9rem;
+        padding: 1rem;
+        height: 100%;
+        background: #fff;
+        box-shadow: 0 0.25rem 0.75rem rgba(15, 23, 42, 0.04);
+    }
+
+    .subarea-panel.is-general {
+        background: #fcfcfd;
+    }
+
+    .subarea-title {
+        font-size: 0.98rem;
+        font-weight: 700;
+        color: #212529;
+        margin-bottom: 0.15rem;
+    }
+
+    .turno-card {
+        border: 1px solid #edf1f5;
+        border-radius: 0.85rem;
+        padding: 0.85rem;
+        background: #fbfcfe;
+        height: 100%;
+    }
+
+    .turno-card-label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: #4b5563;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+
+    .turno-card .form-select {
         min-height: 44px;
     }
 
@@ -137,12 +182,18 @@
             <span class="summary-value">{{ total_responsabilidades }}</span>
         </div>
     </div>
-    <div class="col-12 col-lg-6">
+    <div class="col-6 col-lg-3">
+        <div class="summary-card">
+            <span class="summary-label">Seções de Sub-área</span>
+            <span class="summary-value">{{ total_secoes }}</span>
+        </div>
+    </div>
+    <div class="col-12 col-lg-3">
         <div class="summary-card">
             <span class="summary-label">Como usar</span>
-            <span class="helper-text mt-0">Cada coluna representa um turno. Em cada celula, selecione o colaborador responsavel pelos treinamentos daquela matriz no respectivo turno.</span>
+            <span class="helper-text mt-0">Cada faixa representa uma matriz. Dentro dela, cada seção representa uma sub-área ou o bloco sem sub-área.</span>
             <span class="helper-text">As opcoes exibidas em cada coluna usam toda a base de colaboradores cadastrados no RH.</span>
-            <span class="helper-text">O mesmo colaborador pode ser definido em mais de uma celula quando ele responder por mais de uma matriz ou turno.</span>
+            <span class="helper-text">O mesmo colaborador pode ser definido em mais de uma seção ou turno quando responder por escopos diferentes.</span>
         </div>
     </div>
 </div>
@@ -150,73 +201,89 @@
 <div class="card">
     <div class="card-header d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2">
         <div>
-            <h5 class="mb-1">Responsaveis por Matriz e Turno</h5>
-            <p class="text-muted mb-0">A matriz cruza as matrizes de procedimentos com os turnos cadastrados no sistema.</p>
+            <h5 class="mb-1">Responsaveis por Matriz, Sub-area e Turno</h5>
+            <p class="text-muted mb-0">Cada matriz abre uma faixa própria, e cada sub-área reutiliza o mesmo esquema de atribuição por turno.</p>
         </div>
         <span class="badge bg-light text-dark border">{{ turnos|length }} turnos</span>
     </div>
-    <div class="card-body p-0">
+    <div class="card-body">
         <form method="post">
             {% csrf_token %}
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0 matrix-table">
-                    <thead class="table-light">
-                        <tr>
-                            <th class="matrix-name">Matriz</th>
-                            {% for turno, turno_label in turnos %}
-                            <th class="turno-cell">{{ turno_label }}</th>
-                            {% endfor %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for linha in linhas_matriz %}
-                        <tr>
-                            <td class="matrix-name">
-                                <strong>{{ linha.matriz.nome }}</strong>
-                                <span class="badge {% if linha.matriz.ativo %}bg-success{% else %}bg-secondary{% endif %}">
-                                    {% if linha.matriz.ativo %}Ativa{% else %}Inativa{% endif %}
+            {% if matrix_groups %}
+            <div class="d-flex flex-column gap-3">
+                {% for matrix_group in matrix_groups %}
+                <section class="matrix-band">
+                    <div class="matrix-band-header d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2">
+                        <div>
+                            <span class="matrix-band-title">{{ matrix_group.matriz.nome }}</span>
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                <span class="badge {% if matrix_group.matriz.ativo %}bg-success{% else %}bg-secondary{% endif %}">
+                                    {% if matrix_group.matriz.ativo %}Ativa{% else %}Inativa{% endif %}
                                 </span>
-                                <span class="helper-text">{{ linha.total_procedimentos }} procedimento{{ linha.total_procedimentos|pluralize }} associado{{ linha.total_procedimentos|pluralize }}</span>
-                            </td>
-                            {% for cell in linha.cells %}
-                            <td class="turno-cell">
-                                <div class="responsabilidade-picker">
-                                    <div class="picker-select">{{ cell.field }}</div>
-                                    <button
-                                        type="button"
-                                        class="btn btn-outline-secondary btn-sm picker-action js-open-colaborador-modal"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#colaboradorSearchModal"
-                                        data-field-id="{{ cell.field.auto_id }}"
-                                        data-matriz="{{ linha.matriz.nome|escape }}"
-                                        data-turno-label="{{ cell.turno_label|escape }}"
-                                    >Buscar</button>
+                                <span class="helper-text mt-0">{{ matrix_group.total_procedimentos }} procedimento{{ matrix_group.total_procedimentos|pluralize }} associado{{ matrix_group.total_procedimentos|pluralize }}</span>
+                            </div>
+                        </div>
+                        <span class="badge bg-light text-dark border">{{ matrix_group.total_sub_areas }} sub-área{{ matrix_group.total_sub_areas|pluralize }}</span>
+                    </div>
+                    <div class="subarea-grid">
+                        <div class="row g-3">
+                            {% for section in matrix_group.sections %}
+                            <div class="col-12 col-xl-6">
+                                <div class="subarea-panel{% if section.is_general %} is-general{% endif %}">
+                                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-start gap-2 mb-3">
+                                        <div>
+                                            <div class="subarea-title">{{ section.display_name }}</div>
+                                            <span class="helper-text mt-0">{{ section.total_procedimentos }} procedimento{{ section.total_procedimentos|pluralize }} associado{{ section.total_procedimentos|pluralize }}</span>
+                                        </div>
+                                        <span class="badge {% if section.is_general %}bg-light text-dark border{% else %}bg-primary-subtle text-primary-emphasis{% endif %}">
+                                            {% if section.is_general %}Escopo geral{% else %}Sub-área{% endif %}
+                                        </span>
+                                    </div>
+                                    <div class="row g-3">
+                                        {% for cell in section.cells %}
+                                        <div class="col-12 col-md-6 col-xxl-4">
+                                            <div class="turno-card">
+                                                <span class="turno-card-label">{{ cell.turno_label }}</span>
+                                                <div class="responsabilidade-picker">
+                                                    <div class="picker-select">{{ cell.field }}</div>
+                                                    <button
+                                                        type="button"
+                                                        class="btn btn-outline-secondary btn-sm picker-action js-open-colaborador-modal"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#colaboradorSearchModal"
+                                                        data-field-id="{{ cell.field.auto_id }}"
+                                                        data-matriz="{{ matrix_group.matriz.nome|escape }}"
+                                                        data-subarea="{{ section.display_name|escape }}"
+                                                        data-turno-label="{{ cell.turno_label|escape }}"
+                                                    >Buscar</button>
+                                                </div>
+                                                {% if cell.field.errors %}
+                                                <div class="text-danger small mt-1">{{ cell.field.errors|join:', ' }}</div>
+                                                {% endif %}
+                                                {% if cell.total_opcoes == 0 %}
+                                                <span class="helper-text">Nenhum colaborador com perfil ativo e treinamentos deste escopo neste turno.</span>
+                                                {% else %}
+                                                <span class="helper-text">{{ cell.total_opcoes }} colaborador(es) com perfil ativo e treinamentos deste escopo neste turno.</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
                                 </div>
-                                {% if cell.field.errors %}
-                                <div class="text-danger small mt-1">{{ cell.field.errors|join:', ' }}</div>
-                                {% endif %}
-                                {% if cell.total_opcoes == 0 %}
-                                <span class="helper-text">Nenhum colaborador com perfil ativo e treinamentos desta matriz neste turno.</span>
-                                {% else %}
-                                <span class="helper-text">{{ cell.total_opcoes }} colaborador(es) com perfil ativo e treinamentos desta matriz neste turno.</span>
-                                {% endif %}
-                            </td>
+                            </div>
                             {% endfor %}
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="{{ turnos|length|add:1 }}" class="text-center text-muted py-5">
-                                Nenhuma matriz de procedimento foi encontrada para montar a grade de responsabilidade.
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                        </div>
+                    </div>
+                </section>
+                {% endfor %}
             </div>
-            {% if linhas_matriz %}
             <div class="card-footer d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
                 <p class="text-muted mb-0">Para remover um responsavel, altere a opcao da celula para "Sem responsavel" e salve.</p>
                 <button type="submit" class="btn btn-primary">Salvar Matriz de Responsabilidade</button>
+            </div>
+            {% else %}
+            <div class="text-center text-muted py-5">
+                Nenhuma matriz de procedimento foi encontrada para montar a grade de responsabilidade.
             </div>
             {% endif %}
         </form>
@@ -312,8 +379,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
             availableOptions = extractOptions(activeSelect);
             const matriz = button.dataset.matriz || 'Matriz';
+            const subarea = button.dataset.subarea || 'Escopo';
             const turno = button.dataset.turnoLabel || 'Turno';
-            contextLabel.textContent = `Selecionando para ${matriz} / ${turno}.`;
+            contextLabel.textContent = `Selecionando para ${matriz} / ${subarea} / ${turno}.`;
             searchInput.value = '';
             renderOptions('');
         });

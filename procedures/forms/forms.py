@@ -67,11 +67,27 @@ class ImportacaoMatrizSubAreaForm(forms.Form):
 class MatrizResponsabilidadeTreinamentoForm(forms.Form):
     turno_choices = TURNOS_CHOICES
 
-    def __init__(self, *args, matrizes=None, responsabilidades=None, **kwargs):
+    def __init__(self, *args, matrix_groups=None, matrizes=None, responsabilidades=None, **kwargs):
         super().__init__(*args, **kwargs)
         from rh.models import Colaborador
 
-        self.matrizes = list(matrizes or [])
+        if matrix_groups is None and matrizes:
+            matrix_groups = [
+                {
+                    'matriz': matriz,
+                    'sections': [
+                        {
+                            'sub_area': None,
+                            'display_name': matriz.nome,
+                            'is_general': True,
+                            'total_procedimentos': 0,
+                        }
+                    ],
+                }
+                for matriz in matrizes
+            ]
+
+        self.matrix_groups = list(matrix_groups or [])
         self.turnos = list(self.turno_choices)
         self.responsabilidades = responsabilidades or {}
 
@@ -85,10 +101,12 @@ class MatrizResponsabilidadeTreinamentoForm(forms.Form):
             for colaborador in self.colaboradores
         )
 
-        for matriz in self.matrizes:
+        for matriz, section in self.iter_sections():
+            sub_area = section.get('sub_area')
+            sub_area_id = sub_area.id if sub_area else None
             for turno, _ in self.turnos:
-                field_name = self.get_field_name(matriz.id, turno)
-                atual = self.responsabilidades.get((matriz.id, turno))
+                field_name = self.get_field_name(matriz.id, sub_area_id, turno)
+                atual = self.responsabilidades.get((matriz.id, sub_area_id, turno))
                 self.fields[field_name] = forms.ChoiceField(
                     required=False,
                     choices=self.colaborador_choices,
@@ -98,8 +116,12 @@ class MatrizResponsabilidadeTreinamentoForm(forms.Form):
                 )
 
     @staticmethod
-    def get_field_name(matriz_id, turno):
-        return f'resp_{matriz_id}_{turno}'
+    def get_scope_token(sub_area_id):
+        return f'sa{sub_area_id}' if sub_area_id else 'geral'
+
+    @classmethod
+    def get_field_name(cls, matriz_id, sub_area_id, turno):
+        return f"resp_{matriz_id}_{cls.get_scope_token(sub_area_id)}_{turno}"
 
     @staticmethod
     def format_colaborador_label(colaborador):
@@ -116,22 +138,45 @@ class MatrizResponsabilidadeTreinamentoForm(forms.Form):
             return f"{colaborador.nome_completo} ({' | '.join(sufixos)})"
         return colaborador.nome_completo
 
-    def build_rows(self, colaboradores_qualificados=None):
+    def iter_sections(self):
+        for matrix_group in self.matrix_groups:
+            matriz = matrix_group['matriz']
+            for section in matrix_group.get('sections', []):
+                yield matriz, section
+
+    def build_groups(self, colaboradores_qualificados=None):
         colaboradores_qualificados = colaboradores_qualificados or {}
+        groups = []
+        for matrix_group in self.matrix_groups:
+            matriz = matrix_group['matriz']
+            sections = []
+            for section in matrix_group.get('sections', []):
+                sub_area = section.get('sub_area')
+                sub_area_id = sub_area.id if sub_area else None
+                cells = []
+                for turno, turno_label in self.turnos:
+                    field_name = self.get_field_name(matriz.id, sub_area_id, turno)
+                    field = self[field_name]
+                    cells.append({
+                        'turno': turno,
+                        'turno_label': turno_label,
+                        'field': field,
+                        'total_opcoes': colaboradores_qualificados.get((matriz.id, sub_area_id, turno), 0),
+                        'responsabilidade': self.responsabilidades.get((matriz.id, sub_area_id, turno)),
+                    })
+                sections.append({**section, 'cells': cells})
+            groups.append({**matrix_group, 'sections': sections})
+        return groups
+
+    def build_rows(self, colaboradores_qualificados=None):
         rows = []
-        for matriz in self.matrizes:
-            cells = []
+        for matrix_group in self.build_groups(colaboradores_qualificados=colaboradores_qualificados):
+            matriz = matrix_group['matriz']
             for turno, turno_label in self.turnos:
-                field_name = self.get_field_name(matriz.id, turno)
-                field = self[field_name]
-                cells.append({
-                    'turno': turno,
-                    'turno_label': turno_label,
-                    'field': field,
-                    'total_opcoes': colaboradores_qualificados.get((matriz.nome, turno), 0),
-                    'responsabilidade': self.responsabilidades.get((matriz.id, turno)),
-                })
-            rows.append({'matriz': matriz, 'cells': cells})
+                for section in matrix_group.get('sections', []):
+                    for cell in section.get('cells', []):
+                        if cell['turno'] == turno:
+                            rows.append({'matriz': matriz, 'sub_area': section.get('sub_area'), 'cells': [cell]})
         return rows
 
     def clean(self):
@@ -141,9 +186,11 @@ class MatrizResponsabilidadeTreinamentoForm(forms.Form):
         selecionados = {int(value) for value in cleaned_data.values() if value}
         colaboradores = Colaborador.objects.in_bulk(selecionados)
 
-        for matriz in self.matrizes:
+        for matriz, section in self.iter_sections():
+            sub_area = section.get('sub_area')
+            sub_area_id = sub_area.id if sub_area else None
             for turno, _ in self.turnos:
-                field_name = self.get_field_name(matriz.id, turno)
+                field_name = self.get_field_name(matriz.id, sub_area_id, turno)
                 colaborador_id = cleaned_data.get(field_name)
                 if not colaborador_id:
                     continue
@@ -162,11 +209,13 @@ class MatrizResponsabilidadeTreinamentoForm(forms.Form):
         atualizadas = 0
         removidas = 0
 
-        for matriz in self.matrizes:
+        for matriz, section in self.iter_sections():
+            sub_area = section.get('sub_area')
+            sub_area_id = sub_area.id if sub_area else None
             for turno, _ in self.turnos:
-                field_name = self.get_field_name(matriz.id, turno)
+                field_name = self.get_field_name(matriz.id, sub_area_id, turno)
                 colaborador_id = self.cleaned_data.get(field_name)
-                responsabilidade = self.responsabilidades.get((matriz.id, turno))
+                responsabilidade = self.responsabilidades.get((matriz.id, sub_area_id, turno))
 
                 if not colaborador_id:
                     if responsabilidade:
@@ -185,6 +234,7 @@ class MatrizResponsabilidadeTreinamentoForm(forms.Form):
 
                 nova_responsabilidade = ResponsavelTreinamentoMatriz(
                     matriz=matriz,
+                    sub_area=sub_area,
                     turno=turno,
                     colaborador=colaborador,
                 )

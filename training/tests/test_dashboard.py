@@ -11,6 +11,7 @@ from procedures.models import (
     Procedimento,
     RegistroTreinamento,
     ResponsavelTreinamentoMatriz,
+    SubAreaProcedimento,
     SubGrupoTreinamento,
 )
 from rh.models import Colaborador
@@ -81,21 +82,36 @@ class TestDashboardTreinamentosView(TestCase):
             grupo='Produção',
             turno='ADM',
         )
+        self.colaborador_geral = Colaborador.objects.create(
+            matricula='4002',
+            nome_completo='COLABORADOR GERAL',
+            grupo='Produção',
+            turno='ADM',
+        )
 
         self.matriz = MatrizProcedimento.objects.create(nome='MATRIZ TESTE')
         self.outra_matriz = MatrizProcedimento.objects.create(nome='MATRIZ EXTRA')
+        self.sub_area = SubAreaProcedimento.objects.create(matriz=self.matriz, nome='SUBAREA A')
 
         self.procedimento = Procedimento.objects.create(
             codigo='PROC-001',
             nome='Procedimento Pendente',
             numero_revisao='01',
             matriz='MATRIZ TESTE',
+            sub_area='SUBAREA A',
         )
         self.outro_procedimento = Procedimento.objects.create(
             codigo='PROC-002',
             nome='Outro Procedimento',
             numero_revisao='01',
             matriz='MATRIZ EXTRA',
+        )
+        self.procedimento_geral = Procedimento.objects.create(
+            codigo='PROC-003',
+            nome='Procedimento Geral da Matriz',
+            numero_revisao='01',
+            matriz='MATRIZ TESTE',
+            sub_area='',
         )
 
         perfil = PerfilTreinamento.objects.create(nome='Perfil Teste')
@@ -108,6 +124,11 @@ class TestDashboardTreinamentosView(TestCase):
         outro_subgrupo = SubGrupoTreinamento.objects.create(grupo=outro_grupo, nome='Subgrupo Extra')
         outro_subgrupo.procedimentos.add(self.outro_procedimento)
 
+        perfil_geral = PerfilTreinamento.objects.create(nome='Perfil Geral')
+        grupo_geral = GrupoTreinamento.objects.create(perfil=perfil_geral, nome='Grupo Geral')
+        subgrupo_geral = SubGrupoTreinamento.objects.create(grupo=grupo_geral, nome='Subgrupo Geral')
+        subgrupo_geral.procedimentos.add(self.procedimento_geral)
+
         ColaboradorPerfil.objects.create(
             colaborador=self.colaborador,
             perfil=perfil,
@@ -118,9 +139,20 @@ class TestDashboardTreinamentosView(TestCase):
             perfil=outro_perfil,
             data_atribuicao=date.today(),
         )
+        ColaboradorPerfil.objects.create(
+            colaborador=self.colaborador_geral,
+            perfil=perfil_geral,
+            data_atribuicao=date.today(),
+        )
 
         ResponsavelTreinamentoMatriz.objects.create(
             matriz=self.matriz,
+            turno='ADM',
+            colaborador=self.outro_instrutor,
+        )
+        ResponsavelTreinamentoMatriz.objects.create(
+            matriz=self.matriz,
+            sub_area=self.sub_area,
             turno='ADM',
             colaborador=self.instrutor_responsavel,
         )
@@ -144,6 +176,13 @@ class TestDashboardTreinamentosView(TestCase):
             revisao_treinada='00',
             tipo='PROCEDIMENTO',
         )
+        RegistroTreinamento.objects.create(
+            colaborador=self.colaborador_geral,
+            procedimento=self.procedimento_geral,
+            data_treinamento=None,
+            revisao_treinada='00',
+            tipo='PROCEDIMENTO',
+        )
 
     def test_dashboard_renderiza_filtro_tabela_pendencias_e_nome_abreviado(self):
         self.client.force_login(self.user)
@@ -158,10 +197,21 @@ class TestDashboardTreinamentosView(TestCase):
         self.assertContains(response, 'Treinamentos Pendentes')
         self.assertContains(response, 'PROC-001')
         self.assertNotContains(response, 'PROC-002')
+        self.assertNotContains(response, 'PROC-003')
         self.assertNotContains(response, 'Responsáveis por Matriz/Turno')
         self.assertNotContains(response, 'Dashboard custom classes para estilos migrados do inline')
         self.assertEqual(response.context['total_pendencias_dashboard'], 1)
         self.assertEqual(response.context['demanda_por_instrutor'][0]['nome'], 'ELMO JUNIOR')
+
+    def test_dashboard_prioriza_responsavel_da_subarea_antes_do_geral(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse('training:dashboard_treinamentos'))
+
+        self.assertEqual(response.status_code, 200)
+        demanda = {item['nome']: item for item in response.context['demanda_por_instrutor']}
+        self.assertEqual(demanda['ELMO JUNIOR']['pendentes'], 1)
+        self.assertEqual(demanda['GEORGE SILVA']['pendentes'], 2)
 
     def test_export_csv_respeita_filtro_instrutor_responsavel(self):
         self.client.force_login(self.user)
@@ -175,3 +225,4 @@ class TestDashboardTreinamentosView(TestCase):
         content = response.content.decode('utf-8-sig')
         self.assertIn('PROC-001', content)
         self.assertNotIn('PROC-002', content)
+        self.assertNotIn('PROC-003', content)

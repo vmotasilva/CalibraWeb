@@ -1744,7 +1744,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // =====================
     const ctxPlanejamentoInstrutor = document.getElementById('chartPlanejamentoInstrutor');
     if (ctxPlanejamentoInstrutor) {
-        const plInstrutorLabels = [{% for item in planejamento_por_instrutor %}'{{ item.instrutor__nome_completo|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const plInstrutorLabels = [{% for item in planejamento_por_instrutor %}'{{ item.nome_abreviado|default:item.instrutor__nome_completo|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
         const plInstrutorPlanejado = [{% for item in planejamento_por_instrutor %}{{ item.planejado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
         const plInstrutorConfirmado = [{% for item in planejamento_por_instrutor %}{{ item.confirmado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
         const plInstrutorRealizado = [{% for item in planejamento_por_instrutor %}{{ item.realizado }}{% if not forloop.last %}, {% endif %}{% endfor %}];

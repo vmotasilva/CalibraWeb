@@ -544,8 +544,12 @@ def procedimento_matriz_detalhe_view(request, matriz_id):
 
 @login_required
 def procedimento_responsabilidades_treinamento_view(request):
-    """Matriz de responsaveis de treinamento por matriz e turno."""
+    """Matriz de responsaveis de treinamento por matriz, sub-area e turno."""
     from procedures.models import ColaboradorPerfil
+    from core.models import TURNOS_CHOICES
+
+    def normalize_scope_name(value):
+        return (value or '').strip().casefold()
 
     if not has_view_access(request.user, 'procedures:procedimento_responsabilidades_treinamento'):
         messages.error(request, 'Sem permissao para gerenciar responsaveis de treinamento por matriz.')
@@ -564,6 +568,24 @@ def procedimento_responsabilidades_treinamento_view(request):
         .annotate(total=Count('id'))
         .values_list('matriz', 'total')
     )
+    total_procedimentos_por_sub_area = {
+        (normalize_scope_name(matriz_nome), normalize_scope_name(sub_area_nome)): total
+        for matriz_nome, sub_area_nome, total in Procedimento.objects.exclude(matriz__isnull=True)
+        .exclude(matriz__exact='')
+        .exclude(sub_area__isnull=True)
+        .exclude(sub_area__exact='')
+        .values('matriz', 'sub_area')
+        .annotate(total=Count('id'))
+        .values_list('matriz', 'sub_area', 'total')
+    }
+    total_procedimentos_sem_sub_area = dict(
+        Procedimento.objects.exclude(matriz__isnull=True)
+        .exclude(matriz__exact='')
+        .filter(Q(sub_area__isnull=True) | Q(sub_area__exact=''))
+        .values('matriz')
+        .annotate(total=Count('id'))
+        .values_list('matriz', 'total')
+    )
 
     matrizes = list(
         MatrizProcedimento.objects.filter(
@@ -577,16 +599,56 @@ def procedimento_responsabilidades_treinamento_view(request):
         matrizes = list(MatrizProcedimento.objects.order_by('nome'))
 
     responsabilidades = {
-        (responsabilidade.matriz_id, responsabilidade.turno): responsabilidade
-        for responsabilidade in ResponsavelTreinamentoMatriz.objects.select_related('matriz', 'colaborador').filter(
+        (responsabilidade.matriz_id, responsabilidade.sub_area_id, responsabilidade.turno): responsabilidade
+        for responsabilidade in ResponsavelTreinamentoMatriz.objects.select_related('matriz', 'sub_area', 'colaborador').filter(
             matriz__in=matrizes
         )
     }
 
+    matrix_groups = []
+    matrix_ids_by_name = {}
+    subareas_by_scope = {}
+    total_secoes = 0
+    for matriz in matrizes:
+        matrix_ids_by_name[normalize_scope_name(matriz.nome)] = matriz.id
+        sections = []
+        sub_areas = list(matriz.sub_areas.order_by('nome'))
+        for sub_area in sub_areas:
+            subareas_by_scope[(matriz.id, normalize_scope_name(sub_area.nome))] = sub_area.id
+            sections.append({
+                'sub_area': sub_area,
+                'display_name': sub_area.nome,
+                'is_general': False,
+                'total_procedimentos': total_procedimentos_por_sub_area.get(
+                    (normalize_scope_name(matriz.nome), normalize_scope_name(sub_area.nome)),
+                    0,
+                ),
+            })
+
+        possui_responsabilidade_geral = any(
+            (matriz.id, None, turno) in responsabilidades for turno, _ in TURNOS_CHOICES
+        )
+        total_sem_sub_area = total_procedimentos_sem_sub_area.get(matriz.nome, 0)
+        if total_sem_sub_area or possui_responsabilidade_geral or not sections:
+            sections.insert(0, {
+                'sub_area': None,
+                'display_name': 'Sem sub-área',
+                'is_general': True,
+                'total_procedimentos': total_sem_sub_area,
+            })
+
+        total_secoes += len(sections)
+        matrix_groups.append({
+            'matriz': matriz,
+            'sections': sections,
+            'total_procedimentos': total_procedimentos_por_matriz.get(matriz.nome, 0),
+            'total_sub_areas': len([section for section in sections if not section.get('is_general')]),
+        })
+
     if request.method == 'POST':
         form = MatrizResponsabilidadeTreinamentoForm(
             request.POST,
-            matrizes=matrizes,
+            matrix_groups=matrix_groups,
             responsabilidades=responsabilidades,
         )
         if form.is_valid():
@@ -602,7 +664,7 @@ def procedimento_responsabilidades_treinamento_view(request):
             return redirect('procedures:procedimento_responsabilidades_treinamento')
     else:
         form = MatrizResponsabilidadeTreinamentoForm(
-            matrizes=matrizes,
+            matrix_groups=matrix_groups,
             responsabilidades=responsabilidades,
         )
 
@@ -619,30 +681,37 @@ def procedimento_responsabilidades_treinamento_view(request):
         if not colaborador or not colaborador.turno:
             continue
 
-        matrizes_do_perfil = set(
+        escopos_do_perfil = set(
             colaborador_perfil.get_procedimentos_necessarios()
             .exclude(matriz__isnull=True)
             .exclude(matriz__exact='')
             .filter(matriz__in=nomes_matrizes)
-            .values_list('matriz', flat=True)
+            .values_list('matriz', 'sub_area')
         )
-        for matriz_nome in matrizes_do_perfil:
-            chave = (matriz_nome, colaborador.turno)
+        for matriz_nome, sub_area_nome in escopos_do_perfil:
+            matriz_id = matrix_ids_by_name.get(normalize_scope_name(matriz_nome))
+            if not matriz_id:
+                continue
+
+            sub_area_id = None
+            if sub_area_nome and str(sub_area_nome).strip():
+                sub_area_id = subareas_by_scope.get((matriz_id, normalize_scope_name(sub_area_nome)))
+
+            chave = (matriz_id, sub_area_id, colaborador.turno)
             colaboradores_por_chave.setdefault(chave, set()).add(colaborador.id)
 
     for chave, colaboradores_ids in colaboradores_por_chave.items():
         colaboradores_qualificados[chave] = len(colaboradores_ids)
 
-    linhas_matriz = form.build_rows(colaboradores_qualificados=colaboradores_qualificados)
-    for linha in linhas_matriz:
-        linha['total_procedimentos'] = total_procedimentos_por_matriz.get(linha['matriz'].nome, 0)
+    matrix_groups_render = form.build_groups(colaboradores_qualificados=colaboradores_qualificados)
 
     return render(request, 'procedures/procedimento_matriz_responsabilidades.html', {
         'form': form,
-        'linhas_matriz': linhas_matriz,
+        'matrix_groups': matrix_groups_render,
         'turnos': form.turnos,
         'total_responsabilidades': len(responsabilidades),
         'total_matrizes': len(matrizes),
+        'total_secoes': total_secoes,
     })
 
 
