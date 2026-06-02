@@ -88,7 +88,7 @@ class MatrizResponsabilidadeTreinamentoForm(forms.Form):
             ]
 
         self.matrix_groups = list(matrix_groups or [])
-        self.turnos = list(self.turno_choices)
+        self.turnos = [choice for choice in self.turno_choices if choice[0] != '12X36']
         self.responsabilidades = responsabilidades or {}
 
         colaboradores = list(
