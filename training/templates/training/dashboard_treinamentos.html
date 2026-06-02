@@ -407,6 +407,8 @@
                             <thead class="table-light">
                                 <tr class="small text-uppercase">
                                     <th>Procedimento</th>
+                                    <th>Nome do Procedimento</th>
+                                    <th>Sub-área</th>
                                     <th>Colaborador</th>
                                     <th>Matrícula</th>
                                     <th>Matriz</th>
@@ -417,12 +419,11 @@
                             <tbody>
                                 {% for pendencia in pendencias_dashboard %}
                                 <tr>
+                                    <td><span class="dashboard-pending-code">{{ pendencia.procedimento }}</span></td>
                                     <td>
-                                        <span class="dashboard-pending-code">{{ pendencia.procedimento }}</span>
-                                        {% if pendencia.sub_area and pendencia.sub_area != '-' %}
-                                        <small class="dashboard-pending-meta">{{ pendencia.sub_area }}</small>
-                                        {% endif %}
+                                        <span class="dashboard-pending-name">{{ pendencia.procedimento_nome }}</span>
                                     </td>
+                                    <td>{{ pendencia.sub_area }}</td>
                                     <td>{{ pendencia.colaborador }}</td>
                                     <td>{{ pendencia.matricula }}</td>
                                     <td>{{ pendencia.matriz }}</td>
@@ -431,7 +432,7 @@
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="6" class="text-center text-muted py-3">Nenhum treinamento pendente com os filtros atuais.</td>
+                                    <td colspan="8" class="text-center text-muted py-3">Nenhum treinamento pendente com os filtros atuais.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -476,11 +477,11 @@
         color: #1f2937;
     }
 
-    .dashboard-pending-meta {
+    .dashboard-pending-name {
         display: block;
-        margin-top: 0.1rem;
+        min-width: 220px;
         color: #6c757d;
-        font-size: 0.72rem;
+        font-size: 0.75rem;
         white-space: normal;
     }
 

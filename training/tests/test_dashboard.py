@@ -214,6 +214,8 @@ class TestDashboardTreinamentosView(TestCase):
         self.assertContains(response, 'Instrutor Responsável')
         self.assertContains(response, 'Treinamentos Pendentes')
         self.assertContains(response, 'PROC-001')
+        self.assertContains(response, 'Procedimento Pendente')
+        self.assertContains(response, 'SUBAREA A')
         self.assertNotContains(response, 'PROC-002')
         self.assertNotContains(response, 'PROC-003')
         self.assertNotContains(response, 'Responsáveis por Matriz/Turno')
@@ -245,15 +247,17 @@ class TestDashboardTreinamentosView(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'table table-sm table-striped table-hover align-middle dashboard-pending-table mb-0', html=False)
+        self.assertContains(response, 'Nome do Procedimento')
+        self.assertContains(response, 'Sub-área')
 
         pendencias = response.context['pendencias_dashboard']
         self.assertEqual(
-            [(item['procedimento'], item['colaborador']) for item in pendencias],
+            [(item['procedimento'], item['procedimento_nome'], item['sub_area'], item['colaborador']) for item in pendencias],
             [
-                ('PROC-001', 'ALFA COLABORADOR'),
-                ('PROC-001', 'COLABORADOR TESTE'),
-                ('PROC-002', 'COLABORADOR EXTRA'),
-                ('PROC-003', 'COLABORADOR GERAL'),
+                ('PROC-001', 'Procedimento Pendente', 'SUBAREA A', 'ALFA COLABORADOR'),
+                ('PROC-001', 'Procedimento Pendente', 'SUBAREA A', 'COLABORADOR TESTE'),
+                ('PROC-002', 'Outro Procedimento', '-', 'COLABORADOR EXTRA'),
+                ('PROC-003', 'Procedimento Geral da Matriz', '-', 'COLABORADOR GERAL'),
             ],
         )
 
