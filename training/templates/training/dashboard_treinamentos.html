@@ -402,13 +402,13 @@
                     <span class="badge bg-danger">{{ total_pendencias_dashboard }}</span>
                 </div>
                 <div class="card-body py-1 px-2">
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover align-middle dashboard-pending-table mb-0">
+                    <div class="table-responsive dashboard-pending-table-shell">
+                        <table class="table table-sm table-striped table-hover align-middle dashboard-pending-table mb-0">
                             <thead class="table-light">
-                                <tr>
+                                <tr class="small text-uppercase">
+                                    <th>Procedimento</th>
                                     <th>Colaborador</th>
                                     <th>Matrícula</th>
-                                    <th>Procedimento</th>
                                     <th>Matriz</th>
                                     <th>Instrutor Responsável</th>
                                     <th>Último Treinamento</th>
@@ -417,9 +417,14 @@
                             <tbody>
                                 {% for pendencia in pendencias_dashboard %}
                                 <tr>
+                                    <td>
+                                        <span class="dashboard-pending-code">{{ pendencia.procedimento }}</span>
+                                        {% if pendencia.sub_area and pendencia.sub_area != '-' %}
+                                        <small class="dashboard-pending-meta">{{ pendencia.sub_area }}</small>
+                                        {% endif %}
+                                    </td>
                                     <td>{{ pendencia.colaborador }}</td>
                                     <td>{{ pendencia.matricula }}</td>
-                                    <td>{{ pendencia.procedimento }}</td>
                                     <td>{{ pendencia.matriz }}</td>
                                     <td>{{ pendencia.instrutor_responsavel }}</td>
                                     <td>{{ pendencia.ultimo_treinamento }}</td>
@@ -453,9 +458,30 @@
         font-size: 0.78rem;
     }
 
+    .dashboard-pending-table-shell {
+        background: #fff;
+        border: 1px solid #eef1f4;
+        border-radius: 0.75rem;
+        overflow: hidden;
+    }
+
     .dashboard-pending-table th,
     .dashboard-pending-table td {
         white-space: nowrap;
+    }
+
+    .dashboard-pending-code {
+        display: block;
+        font-weight: 700;
+        color: #1f2937;
+    }
+
+    .dashboard-pending-meta {
+        display: block;
+        margin-top: 0.1rem;
+        color: #6c757d;
+        font-size: 0.72rem;
+        white-space: normal;
     }
 
     /* Dashboard Layout - Full Height */

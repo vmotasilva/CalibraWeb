@@ -1096,7 +1096,7 @@ def dashboard_treinamentos_view(request):
     pendencias_dashboard = []
     epoch_date = date(1970, 1, 1)
     if colaborador_obj is not None and perfil_procedimentos_ids:
-        procedimentos_pendentes = Procedimento.objects.filter(id__in=perfil_procedimentos_ids).order_by('codigo')
+        procedimentos_pendentes = Procedimento.objects.filter(id__in=perfil_procedimentos_ids).order_by('codigo', 'nome')
         for procedimento in procedimentos_pendentes:
             ultimo_registro = ultimo_treinamento_por_procedimento.get(procedimento.id)
             if ultimo_registro and ultimo_registro.data_treinamento != epoch_date and ultimo_registro.status_treinamento == 'OK':
@@ -1123,7 +1123,12 @@ def dashboard_treinamentos_view(request):
             registros_unicos
             .filter(pendentes_q)
             .select_related('colaborador', 'procedimento')
-            .order_by('colaborador__nome_completo', 'procedimento__codigo')[:100]
+            .order_by(
+                'procedimento__codigo',
+                'procedimento__nome',
+                'colaborador__nome_completo',
+                'colaborador__matricula',
+            )[:100]
         )
         for registro in pendencias_queryset:
             responsavel = _resolve_responsavel_treinamento(

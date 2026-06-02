@@ -88,6 +88,12 @@ class TestDashboardTreinamentosView(TestCase):
             grupo='Produção',
             turno='ADM',
         )
+        self.colaborador_alpha = Colaborador.objects.create(
+            matricula='4003',
+            nome_completo='ALFA COLABORADOR',
+            grupo='Produção',
+            turno='ADM',
+        )
 
         self.matriz = MatrizProcedimento.objects.create(nome='MATRIZ TESTE')
         self.outra_matriz = MatrizProcedimento.objects.create(nome='MATRIZ EXTRA')
@@ -144,6 +150,11 @@ class TestDashboardTreinamentosView(TestCase):
             perfil=perfil_geral,
             data_atribuicao=date.today(),
         )
+        ColaboradorPerfil.objects.create(
+            colaborador=self.colaborador_alpha,
+            perfil=perfil,
+            data_atribuicao=date.today(),
+        )
 
         ResponsavelTreinamentoMatriz.objects.create(
             matriz=self.matriz,
@@ -183,6 +194,13 @@ class TestDashboardTreinamentosView(TestCase):
             revisao_treinada='00',
             tipo='PROCEDIMENTO',
         )
+        RegistroTreinamento.objects.create(
+            colaborador=self.colaborador_alpha,
+            procedimento=self.procedimento,
+            data_treinamento=None,
+            revisao_treinada='00',
+            tipo='PROCEDIMENTO',
+        )
 
     def test_dashboard_renderiza_filtro_tabela_pendencias_e_nome_abreviado(self):
         self.client.force_login(self.user)
@@ -200,7 +218,14 @@ class TestDashboardTreinamentosView(TestCase):
         self.assertNotContains(response, 'PROC-003')
         self.assertNotContains(response, 'Responsáveis por Matriz/Turno')
         self.assertNotContains(response, 'Dashboard custom classes para estilos migrados do inline')
-        self.assertEqual(response.context['total_pendencias_dashboard'], 1)
+        self.assertEqual(response.context['total_pendencias_dashboard'], 2)
+        self.assertEqual(
+            [(item['procedimento'], item['colaborador']) for item in response.context['pendencias_dashboard']],
+            [
+                ('PROC-001', 'ALFA COLABORADOR'),
+                ('PROC-001', 'COLABORADOR TESTE'),
+            ],
+        )
         self.assertEqual(response.context['demanda_por_instrutor'][0]['nome'], 'ELMO JUNIOR')
 
     def test_dashboard_prioriza_responsavel_da_subarea_antes_do_geral(self):
@@ -210,8 +235,27 @@ class TestDashboardTreinamentosView(TestCase):
 
         self.assertEqual(response.status_code, 200)
         demanda = {item['nome']: item for item in response.context['demanda_por_instrutor']}
-        self.assertEqual(demanda['ELMO JUNIOR']['pendentes'], 1)
+        self.assertEqual(demanda['ELMO JUNIOR']['pendentes'], 2)
         self.assertEqual(demanda['GEORGE SILVA']['pendentes'], 2)
+
+    def test_dashboard_ordena_pendencias_por_procedimento_e_colaborador(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse('training:dashboard_treinamentos'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'table table-sm table-striped table-hover align-middle dashboard-pending-table mb-0', html=False)
+
+        pendencias = response.context['pendencias_dashboard']
+        self.assertEqual(
+            [(item['procedimento'], item['colaborador']) for item in pendencias],
+            [
+                ('PROC-001', 'ALFA COLABORADOR'),
+                ('PROC-001', 'COLABORADOR TESTE'),
+                ('PROC-002', 'COLABORADOR EXTRA'),
+                ('PROC-003', 'COLABORADOR GERAL'),
+            ],
+        )
 
     def test_export_csv_respeita_filtro_instrutor_responsavel(self):
         self.client.force_login(self.user)
