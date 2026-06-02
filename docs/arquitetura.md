@@ -15,14 +15,14 @@ CalibraWeb/
 ├── scripts/             # Scripts auxiliares
 ├── docs/                # Documentação
 ├── manage.py            # Gerenciador Django
-├── Procfile             # Configuração Railway
+├── vercel.json          # Configuração de deploy
 └── requirements.txt     # Dependências Python
 ```
 
 ## Stack Tecnológico
 
 - **Framework**: Django 5.0
-- **Banco de Dados**: PostgreSQL (produção) / SQLite (desenvolvimento)
+- **Banco de Dados**: Neon PostgreSQL (produção) / SQLite (desenvolvimento)
 - **Cache**: Redis
 - **Fila de Mensagens**: Celery
 - **Scheduler**: Celery Beat
@@ -30,23 +30,19 @@ CalibraWeb/
 - **Frontend**: Bootstrap 5 + Django Templates
 - **Armazenamento**: AWS S3 (produção)
 
-## Fluxo de Deploy no Railway
+## Fluxo de Deploy
 
-1. Railway detecta push no Git
+1. Vercel detecta push no Git
 2. Instala dependências: `pip install -r requirements.txt`
 3. Coleta arquivos estáticos: `python manage.py collectstatic --noinput`
 4. Executa migrações: `python manage.py migrate`
-5. Inicia processos (Procfile):
-   - **Web**: Gunicorn (WSGI)
-   - **Worker**: Celery
-   - **Beat**: Celery Beat (agendamentos)
-   - **Flower**: Monitoring Celery
+5. Expõe a aplicação Django via `config/wsgi.py`
 
 ## Arquivos Críticos (NÃO MOVER)
 
 - `manage.py` - Entry point Django
 - `config/wsgi.py` - WSGI application
-- `Procfile` - Definição de processos
+- `vercel.json` - Definição de deploy
 - `requirements.txt` - Dependências
 - `start.sh`, `start-worker.sh`, `start-beat.sh` - Scripts de inicialização
 

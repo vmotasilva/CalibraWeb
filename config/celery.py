@@ -89,7 +89,7 @@ if _has_unresolved_template(broker_url) or _has_unresolved_template(result_backe
     print(f"[ERROR] CRITICAL: Celery Redis URL still has unresolved templates")
     print(f"   broker_url={broker_url}")
     print(f"   result_backend={result_backend}")
-    print(f"   Fix Railway env vars: prefer only REDIS_URL (no '${{...}}' placeholders).")
+    print(f"   Fix env vars: prefer only REDIS_URL (no '${{...}}' placeholders).")
 else:
     if CELERY_ENV_DEBUG:
         short_broker = f"{broker_url[:30]}..." if len(str(broker_url)) > 30 else str(broker_url)

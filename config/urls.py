@@ -42,9 +42,9 @@ from shared.views import (
     dl_template_colab_dados
 )
 
-# Health check view for Railway
+# Health check view for platform probes
 def health_check(request):
-    """Ultra-simple health check endpoint for Railway infrastructure"""
+    """Ultra-simple health check endpoint for infrastructure probes."""
     try:
         return JsonResponse({"status": "ok"}, status=200)
     except Exception as e:

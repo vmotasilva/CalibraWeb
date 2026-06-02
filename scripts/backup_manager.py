@@ -388,7 +388,7 @@ def print_scheduling_instructions():
         environment:
           - DJANGO_SETTINGS_MODULE=config.settings
     
-    RAILWAY / CLOUD PLATFORMS
+    CLOUD PLATFORMS
     ──────────────────────────────────────────────────────────────────────────────
     
     1. Create separate service/worker for backups

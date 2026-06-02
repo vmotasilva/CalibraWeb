@@ -18,7 +18,7 @@ from .models import (
     AcaoCorretiva, Solucao, PlanoAcao, LinhaAcao, SolucaoA3, Solucao8D, SolucaoRNC,
     SolucaoGestaoDeMudanca, RevisaoGerencial, TipoSolucao
 )
-from .services_appwrite import buscar_acoes_appwrite
+from .services import buscar_acoes
 from .forms import (
     PlanoAcaoForm, SolucaoA3Form, Solucao8DForm,
     SolucaoRNCForm, SolucaoGestaoDeMudancaForm, RevisaoGerencialForm,
@@ -34,11 +34,7 @@ from .forms import (
 def listar_acoes(request):
     """Lista todas as ações corretivas/preventivas com filtros."""
     from rh.models import Colaborador
-    from django.utils import timezone
     from collections import defaultdict
-
-
-    # No Appwrite, status devem ser atualizados via script separado se necessário
 
     def normalize_spaces(value):
         return " ".join(value.split())
@@ -100,17 +96,7 @@ def listar_acoes(request):
     if filtro_busca:
         filtros['busca'] = filtro_busca
 
-    acoes = buscar_acoes_appwrite(filtros)
-    
-    # Auto-migração automática (Self-healing): se o Appwrite retornar vazio mas existirem registros no SQL
-    from django.conf import settings
-    from core.appwrite_client import APPWRITE_ENDPOINT, APPWRITE_PROJECT, APPWRITE_API_KEY
-    if not acoes and not any(filtros.values()) and (APPWRITE_ENDPOINT and APPWRITE_PROJECT and APPWRITE_API_KEY) and not getattr(settings, 'TESTING', False):
-        if AcaoCorretiva.objects.exists():
-            from acoes.signals import sync_all_acoes_to_appwrite
-            sync_all_acoes_to_appwrite()
-            # Tentar buscar novamente
-            acoes = buscar_acoes_appwrite(filtros)
+    acoes = buscar_acoes(filtros)
 
     # Popular os filtros usando o banco relacional
     from rh.models import Colaborador
@@ -149,9 +135,7 @@ def listar_acoes(request):
 
 
     counts_by_acao_id = defaultdict(dict)
-    # TODO: Buscar linhas de ação do Appwrite se necessário
-    from django.conf import settings
-    if getattr(settings, 'TESTING', False) and acao_ids:
+    if acao_ids:
         # Extrair IDs numéricos locais a partir dos IDs em formato "django_X" ou "X"
         int_ids = []
         id_map = {}

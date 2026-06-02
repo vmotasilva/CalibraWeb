@@ -2,7 +2,7 @@
 
 Sistema integrado de gestão metrológica, recursos humanos e procedimentos com suporte a calibração, treinamentos e certificação digital.
 
-**Status**: ✅ Em Produção (Railway)
+**Status**: ✅ Em Produção (Vercel + Neon)
 
 ## Início Rápido
 
@@ -20,10 +20,10 @@ python manage.py runserver
 
 Acesse: http://localhost:8000
 
-### Deploy no Railway
+### Deploy na Vercel
 ```bash
 git push origin main
-# Railway detecta mudanças e faz deploy automático
+# Vercel detecta mudanças e faz deploy automático
 ```
 
 ## 📚 Documentação
@@ -44,13 +44,13 @@ git push origin main
 ├── organization/    # Estrutura org.
 ├── shared/          # Utilitários
 ├── docs/            # 📖 Documentação
-└── Procfile         # Processos Railway
+└── vercel.json      # Configuração de deploy
 ```
 
 ## 🛠️ Tech Stack
 
 - **Backend**: Django 5.0
-- **Banco**: PostgreSQL (prod) / SQLite (dev)
+- **Banco**: Neon PostgreSQL (prod) / SQLite (dev)
 - **Cache**: Redis
 - **Fila**: Celery + Beat
 - **Frontend**: Bootstrap 5
@@ -65,7 +65,7 @@ git push origin main
 
 ## 🚀 Deploy em Produção
 
-1. Configurar variáveis no Railway:
+1. Configurar variáveis na Vercel:
    - `DATABASE_URL`
    - `REDIS_URL`
    - `SECRET_KEY`
@@ -77,7 +77,7 @@ git push origin main
    git push origin main
    ```
 
-3. Railway faz build automático via `Procfile`
+3. Vercel faz build automático via `vercel.json`
 
 ## 📝 Testes
 
@@ -116,4 +116,4 @@ Para dúvidas sobre deploy ou troubleshooting, consulte [Fluxos de Negócio](doc
 
 ---
 
-**Última atualização**: Janeiro 2026 | **Ambiente**: Railway + PostgreSQL + Redis + S3
+**Última atualização**: Junho 2026 | **Ambiente**: Vercel + Neon + Redis + S3

@@ -81,7 +81,6 @@ OTIMIZACAO*
 PROCEDIMENTO*
 PROJETO*
 README*
-RAILWAY*
 RELATORIO*
 SOLUCAO*
 TASK*
@@ -142,7 +141,6 @@ db.sqlite3
 *.log
 server.log
 server_output.log
-railway_logs.txt
 
 # Test files
 test_*.txt

@@ -389,6 +389,17 @@ def test_listar_acoes_filtra_atrasadas_e_resume_linhas(auth_client, colaborador)
 
 
 @pytest.mark.django_db
+def test_listar_acoes_usa_consulta_relacional(auth_client, colaborador):
+    create_acao(colaborador, status="aberta")
+
+    response = auth_client.get(reverse("acoes:listar_acoes"))
+
+    assert response.status_code == 200
+    assert len(response.context["acoes"]) == 1
+    assert response.context["acoes"][0].status == "aberta"
+
+
+@pytest.mark.django_db
 def test_detalhe_acao_exibe_plano_e_linhas(auth_client, colaborador):
     acao = create_acao(colaborador)
     solucao = create_solucao(colaborador, "plano_acao", acao_corretiva=acao)

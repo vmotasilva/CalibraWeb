@@ -105,7 +105,7 @@ check("SSL", "SECURE_SSL_REDIRECT", secure_ssl_redirect, "Warning: Set to True u
 check("HSTS", "SECURE_HSTS_SECONDS configured", secure_hsts > 0, f"Current: {secure_hsts}")
 
 if not secure_ssl_redirect:
-    print(f"      ℹ️  INFO: Railway/reverse-proxy handles SSL redirect, this is OK")
+    print(f"      ℹ️  INFO: Reverse proxy or platform SSL redirect may handle this, which can be OK")
 
 # 5. FRAMEWORK SECURITY
 print("\n" + "=" * 80)

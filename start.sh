@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Railway entrypoint script - runs migrations and collectstatic before starting server
+# Container web entrypoint - runs migrations and collectstatic before starting server
 
 set -e  # Exit on error
 

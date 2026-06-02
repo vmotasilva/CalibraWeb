@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: CI Pipeline
 
 on:
   push:
@@ -111,31 +111,3 @@ jobs:
     - name: Check for known vulnerabilities
       run: safety check --json || true
 
-  deploy:
-    needs: [test, security]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    
-    steps:
-    - uses: actions/checkout@v3
-
-    - name: Set up Node.js (Railway CLI)
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-
-    - name: Install Railway CLI
-      run: npm i -g @railway/cli
-
-    - name: Deploy to Railway (production)
-      env:
-        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
-        RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
-      run: |
-        if [ -z "$RAILWAY_TOKEN" ] || [ -z "$RAILWAY_PROJECT_ID" ] || [ -z "$RAILWAY_SERVICE_ID" ]; then
-          echo "Missing required secrets: RAILWAY_TOKEN, RAILWAY_PROJECT_ID, RAILWAY_SERVICE_ID"
-          exit 1
-        fi
-        railway link --project "$RAILWAY_PROJECT_ID"
-        railway up --service "$RAILWAY_SERVICE_ID" --detach

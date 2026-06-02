@@ -1,6 +1,5 @@
 import os
 import sys
-from urllib.parse import urlparse
 from pathlib import Path
 
 import dj_database_url
@@ -27,10 +26,6 @@ def _is_platform_runtime() -> bool:
     return any(
         os.environ.get(key)
         for key in (
-            "RAILWAY_PROJECT_ID",
-            "RAILWAY_ENVIRONMENT",
-            "RAILWAY_SERVICE_ID",
-            "RAILWAY_STATIC_URL",
             "RENDER",
             "RENDER_SERVICE_ID",
             "DYNO",
@@ -38,8 +33,6 @@ def _is_platform_runtime() -> bool:
             "VERCEL_ENV",
         )
     )
-
-
 
 IS_LOCAL_ENV = DJANGO_ENV in {"local", "dev", "development"}
 if not IS_LOCAL_ENV and not _is_platform_runtime():
@@ -86,10 +79,10 @@ if not ALLOWED_HOSTS:
     ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0", "testserver"]
 
 
-# Configuração necessária para o formulário de login funcionar no Railway (HTTPS) e em desenvolvimento
+# Configuração necessária para o formulário de login funcionar em produção (HTTPS) e em desenvolvimento.
 csrf_origins = os.environ.get(
     "CSRF_TRUSTED_ORIGINS", 
-    "https://*.railway.app,https://*.up.railway.app,http://localhost:8000,http://127.0.0.1:8000,http://localhost:18000,http://127.0.0.1:18000"
+    "http://localhost:8000,http://127.0.0.1:8000,http://localhost:18000,http://127.0.0.1:18000"
 ).split(",")
 CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in csrf_origins if origin.strip()]
 
@@ -188,35 +181,13 @@ DATABASES = {
     }
 }
 
-# Configuração de Produção (Railway)
+# Configuração de Produção
 import logging
 logger = logging.getLogger(__name__)
 
 
-def _is_railway_runtime() -> bool:
-    """Best-effort detection of Railway runtime."""
-    return any(
-        os.environ.get(key)
-        for key in (
-            "RAILWAY_PROJECT_ID",
-            "RAILWAY_ENVIRONMENT",
-            "RAILWAY_SERVICE_ID",
-            "RAILWAY_STATIC_URL",
-        )
-    )
-
-
-def _is_railway_internal_db_url(url: str) -> bool:
-    """True when DATABASE_URL points to Railway internal network host."""
-    try:
-        hostname = urlparse(url).hostname or ""
-    except Exception:
-        return False
-    hostname = hostname.lower()
-    return hostname.endswith(".railway.internal") or hostname == "railway.internal"
-
 def _build_db_from_pg_env() -> str | None:
-    """Build a PostgreSQL URL from Railway-style PG* env vars if present.
+    """Build a PostgreSQL URL from PG* env vars if present.
     Expected vars: PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE
     Returns a DSN string or None if insufficient info.
     """
@@ -243,21 +214,9 @@ def _build_db_from_pg_env() -> str | None:
 # Prefer an explicit DATABASE_URL; fall back to common alt names and PG* vars
 database_url = (
     os.environ.get("DATABASE_URL")
-    or os.environ.get("RAILWAY_DATABASE_URL")
     or os.environ.get("POSTGRES_URL")
     or os.environ.get("POSTGRESQL_URL")
 )
-
-# If a Railway-internal hostname leaks into local env, it will break local DNS.
-# In that case, fall back to SQLite unless explicitly forced.
-allow_internal = os.environ.get("ALLOW_RAILWAY_INTERNAL_DB", "").lower() in ("1", "true", "yes")
-if database_url and _is_railway_internal_db_url(database_url) and not _is_railway_runtime() and not allow_internal:
-    logger.warning(
-        "Detected Railway-internal DATABASE_URL outside Railway runtime; "
-        "ignoring it and falling back to SQLite. "
-        "Set ALLOW_RAILWAY_INTERNAL_DB=true to force." 
-    )
-    database_url = None
 
 logger.info(f"DATABASE_URL present: {bool(database_url)}")
 if database_url:
@@ -292,7 +251,7 @@ else:
     else:
         logger.warning("No database configuration found, using default SQLite")
 
-# To force a specific database URL manually, set DATABASE_URL in the environment (Vercel/Railway/local .env).
+# To force a specific database URL manually, set DATABASE_URL in the environment.
 
 
 # Password validation
@@ -323,14 +282,14 @@ TIME_ZONE = os.getenv("TIME_ZONE", "UTC")
 
 # Celery / Redis configuration - Build URL robustly
 def _build_redis_url():
-    """Build Redis URL from Railway environment variables or fallback to defaults."""
+    """Build Redis URL from environment variables or fallback to defaults."""
     
-    # First try: Direct REDIS_URL (Railway provides this)
+    # First try: direct REDIS_URL.
     redis_url = os.getenv("REDIS_URL")
     if redis_url and "${" not in redis_url and "%24%7B" not in redis_url:
         return redis_url
     
-    # Second try: Build from individual components (Railway Railway Redis)
+    # Second try: build from individual components.
     redis_host = os.getenv("REDIS_HOST", "")
     redis_port = os.getenv("REDIS_PORT", "")
     redis_password = os.getenv("REDIS_PASSWORD", "")
@@ -381,7 +340,7 @@ STATICFILES_DIRS = [
 
 # Media (user-uploaded files)
 # Em desenvolvimento, os arquivos serão servidos via `django.views.static.serve`.
-# Em produção (Railway/Gunicorn), recomenda-se usar um storage externo (ex.: S3)
+# Em produção, recomenda-se usar um storage externo (ex.: S3)
 # ou montar um volume persistente e servir via NGINX. WhiteNoise não serve MEDIA.
 MEDIA_URL = "/media/"
 
@@ -396,7 +355,7 @@ if os.environ.get('PERSIST_MEDIA_PATH'):
 else:
     logger = __import__('logging').getLogger(__name__)
 
-    # Auto-detect common production mount points used by Railway and containers.
+    # Auto-detect common production mount points used by containers.
     # If one is available, prefer it even when PERSIST_MEDIA_PATH is not explicitly set.
     candidate_media_roots = [Path("/data/media"), Path("/app/media")]
     detected_media_root = next(
@@ -464,7 +423,7 @@ IS_LOCAL = any(host in ALLOWED_HOSTS for host in ['localhost', '127.0.0.1', '0.0
 
 if not DEBUG and not IS_LOCAL:
     # Production security settings (HTTPS only)
-    # Assume TLS terminates at the platform proxy (Railway/Render) and trust forwarded proto.
+    # Assume TLS terminates at the platform proxy and trust forwarded proto.
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SECURE_SSL_REDIRECT = os.environ.get("SECURE_SSL_REDIRECT", "true").lower() in ("1", "true", "yes")
 

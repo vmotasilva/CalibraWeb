@@ -15,7 +15,7 @@ Usages (examples):
   # Apply fixes (migrate + optional admin creation) -- make sure SECRET_KEY and DB are configured
   ADMIN_USERNAME=admin ADMIN_PASSWORD='S3cure!' python scripts/bootstrap_deploy.py --apply
 
-This tool is helpful when executed as a one-off process on the host (Railway console, container shell, SSH).
+This tool is helpful when executed as a one-off process on the host (container shell, SSH, platform console).
 """
 import os
 import sys

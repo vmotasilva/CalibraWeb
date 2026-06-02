@@ -56,8 +56,6 @@ test_pg.py
 test_socket.py
 wait_and_load.py
 recreate_schema.py
-setup_appwrite_schema.py
-push_dump_to_appwrite.py
 setup_vercel_env.ps1
 vercel_logs.txt
 kill_pg.py

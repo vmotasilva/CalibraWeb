@@ -18,8 +18,8 @@ def _is_platform_runtime() -> bool:
     return any(
         os.environ.get(key)
         for key in (
-            "RAILWAY_PROJECT_ID",
-            "RAILWAY_ENVIRONMENT",
+            "VERCEL",
+            "VERCEL_ENV",
             "RENDER",
             "RENDER_SERVICE_ID",
             "DYNO",
@@ -33,7 +33,7 @@ def main():
     env_local_path = os.path.join(BASE_DIR, ".env.local")
 
     # Only load file-based env in explicit local dev.
-    # In hosted runtimes (Railway/Render/etc), configuration must come from env vars.
+    # In hosted runtimes, configuration must come from env vars.
     if _is_local_env() and not _is_platform_runtime():
         if os.path.exists(env_path):
             load_dotenv(env_path)
