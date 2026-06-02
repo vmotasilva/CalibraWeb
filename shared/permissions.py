@@ -470,7 +470,7 @@ NAV_STRUCTURE = [
                     },
                     {"nome": "Planejamento", "view_name": "procedures:planejamentos_list", "perm": "core.nav_treinamentos_planejamento"},
                     {"nome": "Novo Planejamento", "view_name": ["procedures:novo_planejamento", "procedures:novo_planejamento_com_tipo"], "perm": "core.nav_treinamentos_planejamento"},
-                    {"nome": "Editar Planejamento", "view_name": "procedures:editar_planejamento", "perm": "core.nav_treinamentos_planejamento"},
+                    {"nome": "Editar Planejamento", "view_name": "procedures:editar_planejamento", "perm": "core.nav_treinamentos_planejamento_edit"},
                     {"nome": "Deletar Planejamento", "view_name": "procedures:deletar_planejamento", "perm": "core.nav_treinamentos_planejamento_delete"},
                     {"nome": "Excluir Planejamentos (Massa)", "view_name": "procedures:excluir_planejamentos_massa", "perm": "core.nav_treinamentos_planejamento_mass_delete"},
                     {"nome": "Exportar Planejamentos (Excel)", "view_name": ["procedures:exportar_lista_planejamentos_excel", "procedures:exportar_detalhe_planejamento_excel"], "perm": "core.nav_treinamentos_planejamento_export"},

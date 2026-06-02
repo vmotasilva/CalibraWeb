@@ -1165,7 +1165,7 @@ def dashboard_treinamentos_view(request):
                 'procedimento__nome',
                 'colaborador__nome_completo',
                 'colaborador__matricula',
-            )[:100]
+            )
         )
         for registro in pendencias_queryset:
             responsavel = _resolve_responsavel_treinamento(

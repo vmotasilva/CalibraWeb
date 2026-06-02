@@ -2383,8 +2383,6 @@ def api_atualizar_permissoes_lote(request):
                         str(c)
                         for c in codenames
                         if str(c).startswith('nav_')
-                        and (not str(c).endswith('_edit'))
-                        and (not str(c).endswith('_delete'))
                     }
 
                     # Módulo (nav_mod_*) como mestre: se o módulo não estiver selecionado,
@@ -2601,8 +2599,8 @@ def api_copiar_permissoes(request):
                 ).values_list('codename', flat=True)
             )
 
-        # Não copiar permissões derivadas (modelo caso-a-caso)
-        source_core_nav = {c for c in source_core_nav if (not c.endswith('_edit')) and (not c.endswith('_delete'))}
+        # Copiar todas as permissões de navegação (incluindo edições e exclusões)
+        source_core_nav = {c for c in source_core_nav}
 
         # Mestre: módulos (nav_mod_*) controlam blocos/funções
         selected_modules = {c for c in source_core_nav if c in module_codenames}
