@@ -78,6 +78,7 @@
 {% can_nav_view request.user 'procedures:excluir_planejamentos_massa' 'procedures' as can_excluir_planejamentos_massa %}
 {% can_nav_view request.user 'procedures:planejamentos_list' 'procedures' as can_ver_planejamento %}
 {% can_nav_view request.user 'procedures:editar_planejamento' 'procedures' as can_editar_planejamento %}
+{% can_nav_view request.user 'exibir_botoes_acoes' 'usuarios' as can_exibir_botoes_acoes %}
 <div class="container-fluid py-4">
     <!-- Estatísticas -->
     <div class="row mb-3">
@@ -295,12 +296,12 @@
                                 {% endif %}
                             </td>
                             <td class="text-center">
-                                {% if can_ver_planejamento or perms.procedures.view_planejamentotreinamento or request.user.is_superuser or request.user.is_staff or p.instrutor.user_django_id == request.user.id %}
+                                {% if can_ver_planejamento or perms.procedures.view_planejamentotreinamento or request.user.is_superuser or request.user.is_staff or can_exibir_botoes_acoes or p.instrutor.user_django_id == request.user.id %}
                                     <a href="{% url 'procedures:detalhe_planejamento' p.id %}" class="btn btn-sm btn-outline-info" title="Ver detalhes">
                                         <i class="bi bi-eye"></i>
                                     </a>
                                 {% endif %}
-                                {% if can_editar_planejamento or perms.procedures.change_planejamentotreinamento or request.user.is_superuser or request.user.is_staff or p.instrutor.user_django_id == request.user.id %}
+                                {% if can_editar_planejamento or perms.procedures.change_planejamentotreinamento or request.user.is_superuser or request.user.is_staff or can_exibir_botoes_acoes or p.instrutor.user_django_id == request.user.id %}
                                     <a href="{% url 'procedures:editar_planejamento' p.id %}" class="btn btn-sm btn-outline-warning" title="Editar">
                                         <i class="bi bi-pencil"></i>
                                     </a>

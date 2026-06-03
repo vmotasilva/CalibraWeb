@@ -931,6 +931,7 @@ NAV_STRUCTURE = [
                 "perm": "core.nav_mod_usuarios",
                 "funcoes": [
                     {"nome": "Lista de Usuários", "view_name": "rh:listar_usuarios", "perm": "core.nav_usuarios_lista"},
+                    {"nome": "Exibir Botões de Ações", "view_name": "exibir_botoes_acoes", "perm": "core.nav_global_action_buttons"},
                 ],
             }
         ],

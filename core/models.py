@@ -169,6 +169,7 @@ class NavigationPermission(models.Model):
             ("nav_treinamentos_lista_presenca_upload_assinada", "NAV: Treinamentos / Upload Lista Assinada"),
             ("nav_treinamentos_lista_presenca_remover_assinada", "NAV: Treinamentos / Remover Lista Assinada"),
             ("nav_treinamentos_planejamento", "NAV: Treinamentos / Planejamento"),
+            ("nav_treinamentos_planejamento_edit", "NAV: Treinamentos / Editar Planejamento"),
             ("nav_treinamentos_planejamento_delete", "NAV: Treinamentos / Deletar Planejamento"),
             ("nav_treinamentos_planejamento_mass_delete", "NAV: Treinamentos / Excluir Planejamentos (Massa)"),
             ("nav_treinamentos_planejamento_export", "NAV: Treinamentos / Exportar Planejamentos (Excel)"),
@@ -401,4 +402,5 @@ class NavigationPermission(models.Model):
 
             # --- USUÁRIOS: funções ---
             ("nav_usuarios_lista", "NAV: Usuários / Lista"),
+            ("nav_global_action_buttons", "NAV: Global / Exibir Botões de Ações em Tabelas"),
         ]
