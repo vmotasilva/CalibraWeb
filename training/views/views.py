@@ -1741,18 +1741,20 @@ def dashboard_treinamentos_exportar_csv_view(request):
                             data_treinamento=None,
                             revisao_treinada=None,
                         )
-                    itens_export.append(t)
+                    # Apenas pendências
+                    if t.status_treinamento != 'OK':
+                        itens_export.append(t)
         except Exception:
             itens_export = None
 
-    # Fallback: exportar TODOS os registros (não paginar)
+    # Fallback: exportar registros de pendências (não paginar)
     registros = itens_export if isinstance(itens_export, list) else RegistroTreinamento.objects.filter(base_query).select_related(
         'colaborador', 'procedimento'
     )
 
-    # No modo queryset, manter consistência com o dashboard: apenas itens associados a algum perfil ativo
+    # No modo queryset, manter consistência com o dashboard: apenas itens associados a algum perfil ativo e que estejam pendentes
     if not isinstance(registros, list):
-        from django.db.models import Exists, OuterRef
+        from django.db.models import Exists, OuterRef, F, Max
         from procedures.models import ColaboradorPerfil
 
         perfil_exists_qs = ColaboradorPerfil.objects.filter(
@@ -1762,7 +1764,30 @@ def dashboard_treinamentos_exportar_csv_view(request):
         )
         registros = registros.annotate(_associado_perfil=Exists(perfil_exists_qs)).filter(_associado_perfil=True)
 
-    registros = registros if isinstance(registros, list) else registros.order_by('-data_treinamento', '-id')
+        # Obter o registro mais recente por colaborador + procedimento
+        ultimos_registros_ids = registros.values(
+            'colaborador_id', 'procedimento_id'
+        ).annotate(
+            ultimo_id=Max('id')
+        ).values_list('ultimo_id', flat=True)
+        
+        registros = RegistroTreinamento.objects.filter(id__in=ultimos_registros_ids).select_related(
+            'colaborador', 'procedimento'
+        )
+
+        # Filtrar apenas pendentes
+        pendentes_q = Q(data_treinamento__isnull=True) | (
+            Q(procedimento__data_aprovacao__isnull=False) &
+            Q(data_treinamento__lt=F('procedimento__data_aprovacao'))
+        )
+        registros = registros.filter(pendentes_q)
+
+    registros = registros if isinstance(registros, list) else registros.order_by(
+        'procedimento__codigo',
+        'procedimento__nome',
+        'colaborador__nome_completo',
+        'colaborador__matricula',
+    )
     
     # Criar resposta CSV
     response = HttpResponse(content_type='text/csv;charset=utf-8')
