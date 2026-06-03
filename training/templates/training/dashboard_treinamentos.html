@@ -411,12 +411,11 @@
                                 <tr class="small text-uppercase">
                                     <th>Procedimento</th>
                                     <th>Nome do Procedimento</th>
-                                    <th>Sub-área</th>
                                     <th>Colaborador</th>
                                     <th>Matrícula</th>
                                     <th>Matriz</th>
+                                    <th>Sub-área</th>
                                     <th>Instrutor Responsável</th>
-                                    <th>Último Treinamento</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -426,16 +425,15 @@
                                     <td>
                                         <span class="dashboard-pending-name">{{ pendencia.procedimento_nome }}</span>
                                     </td>
-                                    <td>{{ pendencia.sub_area }}</td>
                                     <td>{{ pendencia.colaborador }}</td>
                                     <td>{{ pendencia.matricula }}</td>
                                     <td>{{ pendencia.matriz }}</td>
+                                    <td>{{ pendencia.sub_area }}</td>
                                     <td>{{ pendencia.instrutor_responsavel }}</td>
-                                    <td>{{ pendencia.ultimo_treinamento }}</td>
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="8" class="text-center text-muted py-3">Nenhum treinamento pendente com os filtros atuais.</td>
+                                    <td colspan="7" class="text-center text-muted py-3">Nenhum treinamento pendente com os filtros atuais.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -448,12 +446,11 @@
                             <tr>
                                 <th>Procedimento</th>
                                 <th>Nome do Procedimento</th>
-                                <th>Sub-área</th>
                                 <th>Colaborador</th>
                                 <th>Matrícula</th>
                                 <th>Matriz</th>
+                                <th>Sub-área</th>
                                 <th>Instrutor Responsável</th>
-                                <th>Último Treinamento</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -461,12 +458,11 @@
                             <tr>
                                 <td>{{ pendencia.procedimento }}</td>
                                 <td>{{ pendencia.procedimento_nome }}</td>
-                                <td>{{ pendencia.sub_area }}</td>
                                 <td>{{ pendencia.colaborador }}</td>
                                 <td>{{ pendencia.matricula }}</td>
                                 <td>{{ pendencia.matriz }}</td>
+                                <td>{{ pendencia.sub_area }}</td>
                                 <td>{{ pendencia.instrutor_responsavel }}</td>
-                                <td>{{ pendencia.ultimo_treinamento }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -531,6 +527,28 @@
             </div><!-- Fim charts-scroll-area -->
         </div><!-- Fim main-content -->
     </div><!-- Fim dashboard-body -->
+    <!-- Modal de Confirmação de Exportação PDF -->
+    <div id="exportPdfModal" class="custom-modal-overlay d-none">
+        <div class="custom-modal-content">
+            <div class="custom-modal-header">
+                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-file-earmark-pdf text-danger me-2"></i>Exportar PDF</h5>
+                <button class="custom-modal-close-btn" id="closeExportModal">&times;</button>
+            </div>
+            <div class="custom-modal-body py-3">
+                <p class="text-secondary small mb-3">Escolha a opção de exportação do relatório:</p>
+                <div class="d-flex flex-column gap-2">
+                    <button id="exportTableOnly" class="btn btn-outline-danger btn-block text-start py-2 px-3">
+                        <i class="bi bi-table me-2"></i><strong>Apenas Tabela</strong>
+                        <span class="d-block small text-muted font-weight-normal mt-1">Exporta a relação completa de treinamentos pendentes.</span>
+                    </button>
+                    <button id="exportAllPdf" class="btn btn-danger btn-block text-start py-2 px-3 text-white">
+                        <i class="bi bi-graph-up me-2"></i><strong>Gráficos e Tabela</strong>
+                        <span class="d-block small text-white-50 font-weight-normal mt-1">Exporta os gráficos do painel seguidos da tabela de pendências.</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div><!-- Fim dashboard-wrapper -->
 
 <style>
@@ -1065,6 +1083,78 @@
         .card-header h6 {
             font-size: 0.72rem !important;
         }
+    }
+
+    /* Custom Modal Overlay */
+    .custom-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(15, 34, 64, 0.4);
+        backdrop-filter: blur(4px);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+    }
+
+    .custom-modal-content {
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        width: clamp(320px, 90vw, 420px);
+        overflow: hidden;
+        animation: modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes modalFadeIn {
+        from {
+            opacity: 0;
+            transform: scale(0.95) translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+    }
+
+    .custom-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #eef1f4;
+    }
+
+    .custom-modal-close-btn {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        color: #a0aec0;
+        cursor: pointer;
+        line-height: 1;
+        padding: 0;
+        transition: color 0.2s;
+    }
+
+    .custom-modal-close-btn:hover {
+        color: #4a5568;
+    }
+
+    .custom-modal-body {
+        padding: 1.25rem;
+    }
+
+    .custom-modal-body .btn {
+        text-align: left;
+        transition: all 0.2s ease;
+    }
+    .custom-modal-body .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
     }
 </style>
 
@@ -2093,10 +2183,38 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // =====================
-    // Exportar PDF - Gráficos e Tabela Completa de Pendências
+    // Exportar PDF - Com Seleção de Opções (Modal Pop-up)
     // =====================
     const exportPdfBtn = document.getElementById('exportPdf');
+    const exportPdfModal = document.getElementById('exportPdfModal');
+    const closeExportModal = document.getElementById('closeExportModal');
+    const exportTableOnlyBtn = document.getElementById('exportTableOnly');
+    const exportAllPdfBtn = document.getElementById('exportAllPdf');
+
     exportPdfBtn?.addEventListener('click', function() {
+        exportPdfModal?.classList.remove('d-none');
+    });
+
+    closeExportModal?.addEventListener('click', function() {
+        exportPdfModal?.classList.add('d-none');
+    });
+
+    exportPdfModal?.addEventListener('click', function(e) {
+        if (e.target === exportPdfModal) {
+            exportPdfModal.classList.add('d-none');
+        }
+    });
+
+    exportTableOnlyBtn?.addEventListener('click', function() {
+        generatePdfReport(false);
+    });
+
+    exportAllPdfBtn?.addEventListener('click', function() {
+        generatePdfReport(true);
+    });
+
+    function generatePdfReport(includeCharts) {
+        exportPdfModal?.classList.add('d-none');
         const originalContent = exportPdfBtn.innerHTML;
         exportPdfBtn.disabled = true;
         exportPdfBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Gerando PDF...';
@@ -2180,50 +2298,52 @@ document.addEventListener('DOMContentLoaded', function() {
                 doc.setLineWidth(0.4);
                 doc.line(15, 61, 195, 61);
 
-                // Adding charts dynamically
                 let currentY = 66;
 
-                function addChartToPdf(canvasId, title) {
-                    const canvas = document.getElementById(canvasId);
-                    if (!canvas || canvas.style.display === 'none') return;
+                // Adding charts dynamically (only if selected)
+                if (includeCharts) {
+                    function addChartToPdf(canvasId, title) {
+                        const canvas = document.getElementById(canvasId);
+                        if (!canvas || canvas.style.display === 'none') return;
 
-                    const imgHeight = 65;
-                    const imgWidth = 170;
-                    const margin = 15;
+                        const imgHeight = 65;
+                        const imgWidth = 170;
+                        const margin = 15;
 
-                    // A4 page height is 297mm. Safe bottom limit is 282mm.
-                    if (currentY + imgHeight + 15 > 282) {
-                        doc.addPage();
-                        currentY = 18;
+                        // A4 page height is 297mm. Safe bottom limit is 282mm.
+                        if (currentY + imgHeight + 15 > 282) {
+                            doc.addPage();
+                            currentY = 18;
+                        }
+
+                        doc.setFont("helvetica", "bold");
+                        doc.setFontSize(9.5);
+                        doc.setTextColor(33, 37, 41);
+                        doc.text(title, margin, currentY);
+                        currentY += 4;
+
+                        try {
+                            const imgData = canvas.toDataURL('image/png');
+                            doc.setFillColor(255, 255, 255);
+                            doc.rect(margin, currentY, imgWidth, imgHeight, 'F');
+                            doc.addImage(imgData, 'PNG', margin, currentY, imgWidth, imgHeight);
+                        } catch (e) {
+                            console.error("Erro ao exportar gráfico " + canvasId, e);
+                            doc.setFont("helvetica", "italic");
+                            doc.setFontSize(8.5);
+                            doc.setTextColor(150);
+                            doc.text("[Gráfico não disponível para exportação]", margin + 5, currentY + 12);
+                        }
+                        currentY += imgHeight + 10;
                     }
 
-                    doc.setFont("helvetica", "bold");
-                    doc.setFontSize(9.5);
-                    doc.setTextColor(33, 37, 41);
-                    doc.text(title, margin, currentY);
-                    currentY += 4;
-
-                    try {
-                        const imgData = canvas.toDataURL('image/png');
-                        doc.setFillColor(255, 255, 255);
-                        doc.rect(margin, currentY, imgWidth, imgHeight, 'F');
-                        doc.addImage(imgData, 'PNG', margin, currentY, imgWidth, imgHeight);
-                    } catch (e) {
-                        console.error("Erro ao exportar gráfico " + canvasId, e);
-                        doc.setFont("helvetica", "italic");
-                        doc.setFontSize(8.5);
-                        doc.setTextColor(150);
-                        doc.text("[Gráfico não disponível para exportação]", margin + 5, currentY + 12);
-                    }
-                    currentY += imgHeight + 10;
+                    addChartToPdf('chartLider', 'Demanda por Líder');
+                    addChartToPdf('chartSetorTurno', 'Demanda por Setor/Turno');
+                    addChartToPdf('chartDemandaInstrutor', 'Demanda por Instrutor Responsável');
+                    addChartToPdf('chartPlanejamentoInstrutor', 'Planejamento por Instrutor');
+                    addChartToPdf('chartPlanejamentoSetorTurno', 'Planejamento por Setor/Turno');
+                    addChartToPdf('chartMeses', 'Treinamentos Últimos 12 Meses');
                 }
-
-                addChartToPdf('chartLider', 'Demanda por Líder');
-                addChartToPdf('chartSetorTurno', 'Demanda por Setor/Turno');
-                addChartToPdf('chartDemandaInstrutor', 'Demanda por Instrutor Responsável');
-                addChartToPdf('chartPlanejamentoInstrutor', 'Planejamento por Instrutor');
-                addChartToPdf('chartPlanejamentoSetorTurno', 'Planejamento por Setor/Turno');
-                addChartToPdf('chartMeses', 'Treinamentos Últimos 12 Meses');
 
                 // Relação de Treinamentos Pendentes Table
                 if (currentY + 25 > 282) {
@@ -2257,13 +2377,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     },
                     columnStyles: {
                         0: { cellWidth: 18 },
-                        1: { cellWidth: 40 },
-                        2: { cellWidth: 18 },
-                        3: { cellWidth: 30 },
-                        4: { cellWidth: 14 },
-                        5: { cellWidth: 18 },
-                        6: { cellWidth: 24 },
-                        7: { cellWidth: 18 },
+                        1: { cellWidth: 45 },
+                        2: { cellWidth: 35 },
+                        3: { cellWidth: 14 },
+                        4: { cellWidth: 20 },
+                        5: { cellWidth: 20 },
+                        6: { cellWidth: 28 },
                     }
                 });
 
@@ -2296,7 +2415,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 exportPdfBtn.innerHTML = originalContent;
             }
         }, 150);
-    });
+    }
 });
 </script>
 {% endblock %}

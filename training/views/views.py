@@ -1186,6 +1186,15 @@ def dashboard_treinamentos_view(request):
                 'instrutor_responsavel': responsavel.nome_completo if responsavel else '-',
                 'ultimo_treinamento': registro.data_treinamento.strftime('%d/%m/%Y') if registro.data_treinamento else 'Não iniciado',
             })
+    # Ordenar as informações da tabela de pendências conforme solicitado:
+    # 1. Matriz, 2. Sub-área, 3. Instrutor Responsável, 4. Procedimento, 5. Colaborador
+    pendencias_dashboard.sort(key=lambda x: (
+        str(x.get('matriz') or '').strip().upper(),
+        str(x.get('sub_area') or '').strip().upper(),
+        str(x.get('instrutor_responsavel') or '').strip().upper(),
+        str(x.get('procedimento') or '').strip().upper(),
+        str(x.get('colaborador') or '').strip().upper(),
+    ))
 
     context = {
         'total_treinamentos': total_treinamentos,
@@ -1782,12 +1791,35 @@ def dashboard_treinamentos_exportar_csv_view(request):
         )
         registros = registros.filter(pendentes_q)
 
-    registros = registros if isinstance(registros, list) else registros.order_by(
-        'procedimento__codigo',
-        'procedimento__nome',
-        'colaborador__nome_completo',
-        'colaborador__matricula',
-    )
+    # Converter para lista e ordenar conforme a regra:
+    # 1. Matriz, 2. Sub-área, 3. Instrutor Responsável, 4. Procedimento, 5. Colaborador
+    def get_sort_key(treinamento):
+        matriz = getattr(treinamento.procedimento, 'matriz', '') or ''
+        sub_area = getattr(treinamento.procedimento, 'sub_area', '') or ''
+        turno = getattr(treinamento.colaborador, 'turno', None)
+        
+        responsavel = _resolve_responsavel_treinamento(
+            responsabilidades_por_subarea,
+            responsabilidades_gerais,
+            matriz,
+            sub_area,
+            turno,
+        )
+        instrutor = getattr(responsavel, 'nome_completo', '') or ''
+        
+        proc_codigo = getattr(treinamento.procedimento, 'codigo', '') or ''
+        colab_nome = getattr(treinamento.colaborador, 'nome_completo', '') or ''
+        
+        return (
+            str(matriz).strip().upper(),
+            str(sub_area).strip().upper(),
+            str(instrutor).strip().upper(),
+            str(proc_codigo).strip().upper(),
+            str(colab_nome).strip().upper()
+        )
+        
+    registros = list(registros)
+    registros.sort(key=get_sort_key)
     
     # Criar resposta CSV
     response = HttpResponse(content_type='text/csv;charset=utf-8')
@@ -1804,6 +1836,9 @@ def dashboard_treinamentos_exportar_csv_view(request):
         'Matrícula',
         'Cargo',
         'Setor',
+        'Matriz',
+        'Sub-área',
+        'Instrutor Responsável',
         'Procedimento',
         'Código',
         'Data Treinamento',
@@ -1820,12 +1855,28 @@ def dashboard_treinamentos_exportar_csv_view(request):
             status = 'VIGENTE'
         else:
             status = 'PENDENTE'
+            
+        matriz = getattr(treinamento.procedimento, 'matriz', '') or ''
+        sub_area = getattr(treinamento.procedimento, 'sub_area', '') or ''
+        turno = getattr(treinamento.colaborador, 'turno', None)
+        
+        responsavel = _resolve_responsavel_treinamento(
+            responsabilidades_por_subarea,
+            responsabilidades_gerais,
+            matriz,
+            sub_area,
+            turno,
+        )
+        instrutor = getattr(responsavel, 'nome_completo', '') or ''
         
         writer.writerow([
             treinamento.colaborador.nome_completo if treinamento.colaborador else '',
             treinamento.colaborador.matricula if treinamento.colaborador else '',
             treinamento.colaborador.cargo if treinamento.colaborador else '',
             treinamento.colaborador.setor.nome if treinamento.colaborador and treinamento.colaborador.setor else '',
+            matriz,
+            sub_area,
+            instrutor,
             treinamento.procedimento.nome if treinamento.procedimento else '',
             treinamento.procedimento.codigo if treinamento.procedimento else '',
             treinamento.data_treinamento.strftime('%d/%m/%Y') if treinamento.data_treinamento else '',
