@@ -73,11 +73,11 @@
 {% endblock %}
 
 {% block content %}
-{% can_nav_view user 'procedures:novo_planejamento' 'procedures' as can_novo_planejamento %}
-{% can_nav_view user 'procedures:exportar_lista_planejamentos_excel' 'procedures' as can_exportar_planejamentos %}
-{% can_nav_view user 'procedures:excluir_planejamentos_massa' 'procedures' as can_excluir_planejamentos_massa %}
-{% can_nav_view user 'procedures:planejamentos_list' 'procedures' as can_ver_planejamento %}
-{% can_nav_view user 'procedures:editar_planejamento' 'procedures' as can_editar_planejamento %}
+{% can_nav_view request.user 'procedures:novo_planejamento' 'procedures' as can_novo_planejamento %}
+{% can_nav_view request.user 'procedures:exportar_lista_planejamentos_excel' 'procedures' as can_exportar_planejamentos %}
+{% can_nav_view request.user 'procedures:excluir_planejamentos_massa' 'procedures' as can_excluir_planejamentos_massa %}
+{% can_nav_view request.user 'procedures:planejamentos_list' 'procedures' as can_ver_planejamento %}
+{% can_nav_view request.user 'procedures:editar_planejamento' 'procedures' as can_editar_planejamento %}
 <div class="container-fluid py-4">
     <!-- Estatísticas -->
     <div class="row mb-3">
@@ -122,7 +122,7 @@
             </div>
         </div>
         <div class="col-md-2">
-            {% if user.is_superuser or user.is_staff or can_novo_planejamento %}
+            {% if request.user.is_superuser or request.user.is_staff or can_novo_planejamento %}
                 <a href="{% url 'procedures:novo_planejamento' %}" class="btn btn-primary btn-lg w-100 h-100 d-flex align-items-center justify-content-center">
                     <i class="bi bi-plus-circle me-2"></i> Novo Planejamento
                 </a>
@@ -295,12 +295,12 @@
                                 {% endif %}
                             </td>
                             <td class="text-center">
-                                {% if can_ver_planejamento or perms.procedures.view_planejamentotreinamento or p.instrutor.user_django_id == user.id %}
+                                {% if can_ver_planejamento or perms.procedures.view_planejamentotreinamento or request.user.is_superuser or request.user.is_staff or p.instrutor.user_django_id == request.user.id %}
                                     <a href="{% url 'procedures:detalhe_planejamento' p.id %}" class="btn btn-sm btn-outline-info" title="Ver detalhes">
                                         <i class="bi bi-eye"></i>
                                     </a>
                                 {% endif %}
-                                {% if can_editar_planejamento or perms.procedures.change_planejamentotreinamento or p.instrutor.user_django_id == user.id %}
+                                {% if can_editar_planejamento or perms.procedures.change_planejamentotreinamento or request.user.is_superuser or request.user.is_staff or p.instrutor.user_django_id == request.user.id %}
                                     <a href="{% url 'procedures:editar_planejamento' p.id %}" class="btn btn-sm btn-outline-warning" title="Editar">
                                         <i class="bi bi-pencil"></i>
                                     </a>
@@ -316,7 +316,7 @@
             <div class="p-4 text-center text-muted">
                 <i class="bi bi-calendar-x"></i>
                 <p>Nenhum planejamento encontrado.</p>
-                {% if user.is_superuser or user.is_staff or can_novo_planejamento %}
+                {% if request.user.is_superuser or request.user.is_staff or can_novo_planejamento %}
                     <a href="{% url 'procedures:novo_planejamento' %}" class="btn btn-primary">
                         Criar Primeiro Planejamento
                     </a>
