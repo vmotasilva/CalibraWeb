@@ -405,68 +405,82 @@
                     <span class="badge bg-danger">{{ total_pendencias_dashboard }}</span>
                 </div>
                 <div class="card-body py-1 px-2">
-                    <div class="table-responsive dashboard-pending-table-shell">
-                        <table class="table table-sm table-striped table-hover align-middle dashboard-pending-table mb-0">
-                            <thead class="table-light">
-                                <tr class="small text-uppercase">
-                                    <th>Procedimento</th>
-                                    <th>Nome do Procedimento</th>
-                                    <th>Colaborador</th>
-                                    <th>Matrícula</th>
-                                    <th>Matriz</th>
-                                    <th>Sub-área</th>
-                                    <th>Instrutor Responsável</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for pendencia in pendencias_dashboard %}
-                                <tr>
-                                    <td><span class="dashboard-pending-code">{{ pendencia.procedimento }}</span></td>
-                                    <td>
-                                        <span class="dashboard-pending-name">{{ pendencia.procedimento_nome }}</span>
-                                    </td>
-                                    <td>{{ pendencia.colaborador }}</td>
-                                    <td>{{ pendencia.matricula }}</td>
-                                    <td>{{ pendencia.matriz }}</td>
-                                    <td>{{ pendencia.sub_area }}</td>
-                                    <td>{{ pendencia.instrutor_responsavel }}</td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="7" class="text-center text-muted py-3">Nenhum treinamento pendente com os filtros atuais.</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                    {% regroup pendencias_dashboard by instrutor_responsavel as pendencias_por_instrutor %}
+                    {% for grupo in pendencias_por_instrutor %}
+                    <div class="mb-4">
+                        <div class="d-flex align-items-center mb-2 mt-2 px-1">
+                            <h6 class="mb-0 fw-bold text-dark" style="font-size: 0.8rem;">
+                                <i class="bi bi-person-badge-fill text-danger me-1"></i>
+                                Instrutor: {{ grupo.grouper|default:"Sem Instrutor Definido" }}
+                            </h6>
+                            <span class="badge bg-secondary ms-2 text-white">{{ grupo.list|length }}</span>
+                        </div>
+                        <div class="table-responsive dashboard-pending-table-shell">
+                            <table class="table table-sm table-striped table-hover align-middle dashboard-pending-table mb-0">
+                                <thead class="table-light">
+                                    <tr class="small text-uppercase">
+                                        <th>Procedimento</th>
+                                        <th>Nome do Procedimento</th>
+                                        <th>Colaborador</th>
+                                        <th>Matrícula</th>
+                                        <th>Matriz</th>
+                                        <th>Sub-área</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for pendencia in grupo.list %}
+                                    <tr>
+                                        <td><span class="dashboard-pending-code">{{ pendencia.procedimento }}</span></td>
+                                        <td>
+                                            <span class="dashboard-pending-name">{{ pendencia.procedimento_nome }}</span>
+                                        </td>
+                                        <td>{{ pendencia.colaborador }}</td>
+                                        <td>{{ pendencia.matricula }}</td>
+                                        <td>{{ pendencia.matriz }}</td>
+                                        <td>{{ pendencia.sub_area }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center text-muted py-3">Nenhum treinamento pendente com os filtros atuais.</div>
+                    {% endfor %}
+
+                    <!-- Tabela Oculta Completa de Pendências para Exportação PDF (Agrupadas por Instrutor) -->
+                    <div id="hiddenPendingTablesContainer" class="d-none">
+                        {% regroup todas_pendencias_dashboard by instrutor_responsavel as todas_pendencias_por_instrutor %}
+                        {% for grupo in todas_pendencias_por_instrutor %}
+                        <div class="hidden-pdf-table-group" data-instructor="{{ grupo.grouper|default:'Sem Instrutor Definido' }}">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Procedimento</th>
+                                        <th>Nome do Procedimento</th>
+                                        <th>Colaborador</th>
+                                        <th>Matrícula</th>
+                                        <th>Matriz</th>
+                                        <th>Sub-área</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for pendencia in grupo.list %}
+                                    <tr>
+                                        <td>{{ pendencia.procedimento }}</td>
+                                        <td>{{ pendencia.procedimento_nome }}</td>
+                                        <td>{{ pendencia.colaborador }}</td>
+                                        <td>{{ pendencia.matricula }}</td>
+                                        <td>{{ pendencia.matriz }}</td>
+                                        <td>{{ pendencia.sub_area }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% endfor %}
                     </div>
 
-                    <!-- Tabela Oculta Completa de Pendências para Exportação PDF -->
-                    <table id="hiddenPendingTable" class="d-none">
-                        <thead>
-                            <tr>
-                                <th>Procedimento</th>
-                                <th>Nome do Procedimento</th>
-                                <th>Colaborador</th>
-                                <th>Matrícula</th>
-                                <th>Matriz</th>
-                                <th>Sub-área</th>
-                                <th>Instrutor Responsável</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for pendencia in todas_pendencias_dashboard %}
-                            <tr>
-                                <td>{{ pendencia.procedimento }}</td>
-                                <td>{{ pendencia.procedimento_nome }}</td>
-                                <td>{{ pendencia.colaborador }}</td>
-                                <td>{{ pendencia.matricula }}</td>
-                                <td>{{ pendencia.matriz }}</td>
-                                <td>{{ pendencia.sub_area }}</td>
-                                <td>{{ pendencia.instrutor_responsavel }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
 
                     <div class="dashboard-pending-footer d-flex flex-column flex-xl-row justify-content-between align-items-xl-center gap-2">
                         <div class="dashboard-pending-summary text-muted small">
@@ -2345,46 +2359,67 @@ document.addEventListener('DOMContentLoaded', function() {
                     addChartToPdf('chartMeses', 'Treinamentos Últimos 12 Meses');
                 }
 
-                // Relação de Treinamentos Pendentes Table
-                if (currentY + 25 > 282) {
-                    doc.addPage();
-                    currentY = 18;
+                // Relação de Treinamentos Pendentes Tables (Agrupados por Instrutor)
+                const hiddenTableGroups = document.querySelectorAll('#hiddenPendingTablesContainer .hidden-pdf-table-group');
+                if (hiddenTableGroups.length > 0) {
+                    hiddenTableGroups.forEach((group, index) => {
+                        const instructorName = group.getAttribute('data-instructor') || 'Desconhecido';
+                        const tableEl = group.querySelector('table');
+                        
+                        // Verificar espaço restante na página atual antes de desenhar o título do grupo + cabeçalho da tabela (cerca de 25mm)
+                        if (currentY + 25 > 282) {
+                            doc.addPage();
+                            currentY = 18;
+                        } else {
+                            currentY += (index === 0 ? 4 : 8);
+                        }
+
+                        doc.setFont("helvetica", "bold");
+                        doc.setFontSize(9.5);
+                        doc.setTextColor(220, 53, 69);
+                        doc.text(`Pendências - Instrutor: ${instructorName}`, 15, currentY);
+                        currentY += 4;
+
+                        doc.autoTable({
+                            html: tableEl,
+                            startY: currentY,
+                            margin: { left: 15, right: 15 },
+                            styles: {
+                                fontSize: 7.5,
+                                cellPadding: 1.8,
+                            },
+                            headStyles: {
+                                fillColor: [220, 53, 69],
+                                textColor: [255, 255, 255],
+                                fontStyle: 'bold',
+                            },
+                            alternateRowStyles: {
+                                fillColor: [248, 249, 250],
+                            },
+                            columnStyles: {
+                                0: { cellWidth: 20 },
+                                1: { cellWidth: 60 },
+                                2: { cellWidth: 45 },
+                                3: { cellWidth: 15 },
+                                4: { cellWidth: 20 },
+                                5: { cellWidth: 20 },
+                            }
+                        });
+
+                        currentY = doc.lastAutoTable.finalY;
+                    });
                 } else {
-                    currentY += 4;
-                }
-
-                doc.setFont("helvetica", "bold");
-                doc.setFontSize(10.5);
-                doc.setTextColor(220, 53, 69);
-                doc.text("Relação de Treinamentos Pendentes", 15, currentY);
-                currentY += 5;
-
-                doc.autoTable({
-                    html: '#hiddenPendingTable',
-                    startY: currentY,
-                    margin: { left: 15, right: 15 },
-                    styles: {
-                        fontSize: 7.5,
-                        cellPadding: 1.8,
-                    },
-                    headStyles: {
-                        fillColor: [220, 53, 69],
-                        textColor: [255, 255, 255],
-                        fontStyle: 'bold',
-                    },
-                    alternateRowStyles: {
-                        fillColor: [248, 249, 250],
-                    },
-                    columnStyles: {
-                        0: { cellWidth: 18 },
-                        1: { cellWidth: 45 },
-                        2: { cellWidth: 35 },
-                        3: { cellWidth: 14 },
-                        4: { cellWidth: 20 },
-                        5: { cellWidth: 20 },
-                        6: { cellWidth: 28 },
+                    if (currentY + 15 > 282) {
+                        doc.addPage();
+                        currentY = 18;
+                    } else {
+                        currentY += 4;
                     }
-                });
+                    doc.setFont("helvetica", "italic");
+                    doc.setFontSize(9);
+                    doc.setTextColor(120);
+                    doc.text("Nenhum treinamento pendente com os filtros atuais.", 15, currentY);
+                }
 
                 // Post-process to write page numbers and footer on all pages
                 const pageCount = doc.internal.getNumberOfPages();
@@ -2406,7 +2441,47 @@ document.addEventListener('DOMContentLoaded', function() {
                     doc.text(`Página ${i} de ${pageCount}`, 195, 291, { align: 'right' });
                 }
 
-                doc.save('dashboard_treinamentos.pdf');
+                // Build dynamic PDF filename based on active filters
+                let pdfFileName = 'dashboard_treinamentos';
+                const filenameFilters = {};
+                
+                document.querySelectorAll('.filter-checkbox:checked').forEach(checkbox => {
+                    const category = checkbox.dataset.category;
+                    const labelText = checkbox.nextElementSibling?.textContent?.trim();
+                    if (category && labelText) {
+                        if (!filenameFilters[category]) {
+                            filenameFilters[category] = [];
+                        }
+                        filenameFilters[category].push(labelText);
+                    }
+                });
+                
+                const colabQValue = document.getElementById('filterColaboradorQ')?.value?.trim();
+                if (colabQValue) {
+                    filenameFilters['colaborador'] = [colabQValue];
+                }
+
+                const filterSuffixParts = [];
+                for (const [category, values] of Object.entries(filenameFilters)) {
+                    const joinedValues = values.join('-');
+                    const cleanValues = joinedValues
+                        .normalize("NFD")
+                        .replace(/[\u0300-\u036f]/g, "") // remove accents
+                        .replace(/[^a-zA-Z0-9-_]/g, "_") // replace spaces and special characters with _
+                        .replace(/_+/g, "_")             // collapse multiple underscores
+                        .replace(/^_+|_+$/g, "")         // trim leading/trailing underscores
+                        .trim();
+                    if (cleanValues) {
+                        filterSuffixParts.push(`${category}_${cleanValues}`);
+                    }
+                }
+                
+                if (filterSuffixParts.length > 0) {
+                    pdfFileName += '_' + filterSuffixParts.join('_');
+                }
+                pdfFileName += '.pdf';
+
+                doc.save(pdfFileName);
             } catch (error) {
                 console.error("Erro ao gerar PDF:", error);
                 alert("Ocorreu um erro ao gerar o PDF. Por favor, tente novamente.");
