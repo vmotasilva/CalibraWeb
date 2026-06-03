@@ -2,12 +2,6 @@
 
 {% load nav_access %}
 
-{% can_nav_view user 'procedures:novo_planejamento' 'procedures' as can_novo_planejamento %}
-{% can_nav_view user 'procedures:exportar_lista_planejamentos_excel' 'procedures' as can_exportar_planejamentos %}
-{% can_nav_view user 'procedures:excluir_planejamentos_massa' 'procedures' as can_excluir_planejamentos_massa %}
-{% can_nav_view user 'procedures:planejamentos_list' 'procedures' as can_ver_planejamento %}
-{% can_nav_view user 'procedures:editar_planejamento' 'procedures' as can_editar_planejamento %}
-
 {% block title %}Planejamento de Treinamentos{% endblock %}
 {% block header_title %}Planejamento de Treinamentos{% endblock %}
 
@@ -79,6 +73,11 @@
 {% endblock %}
 
 {% block content %}
+{% can_nav_view user 'procedures:novo_planejamento' 'procedures' as can_novo_planejamento %}
+{% can_nav_view user 'procedures:exportar_lista_planejamentos_excel' 'procedures' as can_exportar_planejamentos %}
+{% can_nav_view user 'procedures:excluir_planejamentos_massa' 'procedures' as can_excluir_planejamentos_massa %}
+{% can_nav_view user 'procedures:planejamentos_list' 'procedures' as can_ver_planejamento %}
+{% can_nav_view user 'procedures:editar_planejamento' 'procedures' as can_editar_planejamento %}
 <div class="container-fluid py-4">
     <!-- Estatísticas -->
     <div class="row mb-3">
@@ -296,12 +295,12 @@
                                 {% endif %}
                             </td>
                             <td class="text-center">
-                                {% if can_ver_planejamento or perms.procedures.view_planejamentotreinamento %}
+                                {% if can_ver_planejamento or perms.procedures.view_planejamentotreinamento or p.instrutor.user_django_id == user.id %}
                                     <a href="{% url 'procedures:detalhe_planejamento' p.id %}" class="btn btn-sm btn-outline-info" title="Ver detalhes">
                                         <i class="bi bi-eye"></i>
                                     </a>
                                 {% endif %}
-                                {% if can_editar_planejamento or perms.procedures.change_planejamentotreinamento %}
+                                {% if can_editar_planejamento or perms.procedures.change_planejamentotreinamento or p.instrutor.user_django_id == user.id %}
                                     <a href="{% url 'procedures:editar_planejamento' p.id %}" class="btn btn-sm btn-outline-warning" title="Editar">
                                         <i class="bi bi-pencil"></i>
                                     </a>
