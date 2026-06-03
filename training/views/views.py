@@ -122,6 +122,7 @@ def _paginate_dashboard_pendencias(request, context):
     query_params = request.GET.copy()
     query_params.pop('pendencias_page', None)
 
+    context['todas_pendencias_dashboard'] = pendencias
     context['pendencias_dashboard'] = list(page_obj.object_list)
     context['pendencias_page_obj'] = page_obj
     context['pendencias_page_size'] = page_size

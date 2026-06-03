@@ -16,6 +16,9 @@
                 <button id="exportCsv" class="btn btn-outline-success btn-sm py-1">
                     <i class="bi bi-file-earmark-excel me-1"></i>Exportar CSV
                 </button>
+                <button id="exportPdf" class="btn btn-outline-danger btn-sm py-1">
+                    <i class="bi bi-file-earmark-pdf me-1"></i>Exportar PDF
+                </button>
                 <span class="badge bg-light text-dark dashboard-badge-time">
                     <i class="bi bi-clock me-1"></i>Atualizado: {% now "d/m/Y H:i" %}
                 </span>
@@ -438,6 +441,37 @@
                             </tbody>
                         </table>
                     </div>
+
+                    <!-- Tabela Oculta Completa de Pendências para Exportação PDF -->
+                    <table id="hiddenPendingTable" class="d-none">
+                        <thead>
+                            <tr>
+                                <th>Procedimento</th>
+                                <th>Nome do Procedimento</th>
+                                <th>Sub-área</th>
+                                <th>Colaborador</th>
+                                <th>Matrícula</th>
+                                <th>Matriz</th>
+                                <th>Instrutor Responsável</th>
+                                <th>Último Treinamento</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for pendencia in todas_pendencias_dashboard %}
+                            <tr>
+                                <td>{{ pendencia.procedimento }}</td>
+                                <td>{{ pendencia.procedimento_nome }}</td>
+                                <td>{{ pendencia.sub_area }}</td>
+                                <td>{{ pendencia.colaborador }}</td>
+                                <td>{{ pendencia.matricula }}</td>
+                                <td>{{ pendencia.matriz }}</td>
+                                <td>{{ pendencia.instrutor_responsavel }}</td>
+                                <td>{{ pendencia.ultimo_treinamento }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+
                     <div class="dashboard-pending-footer d-flex flex-column flex-xl-row justify-content-between align-items-xl-center gap-2">
                         <div class="dashboard-pending-summary text-muted small">
                             Mostrando {{ pendencias_page_start }}-{{ pendencias_page_end }} de {{ total_pendencias_dashboard }} pendências
@@ -1036,6 +1070,9 @@
 
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+<!-- jsPDF e jsPDF-AutoTable -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const colaboradoresAutocompleteUrl = "{% url 'training:colaboradores_autocomplete' %}";
@@ -2053,6 +2090,212 @@ document.addEventListener('DOMContentLoaded', function() {
         const baseUrl = '{% url "training:dashboard_exportar_csv" %}';
         const url = baseUrl + (params.toString() ? '?' + params.toString() : '');
         window.location.href = url;
+    });
+
+    // =====================
+    // Exportar PDF - Gráficos e Tabela Completa de Pendências
+    // =====================
+    const exportPdfBtn = document.getElementById('exportPdf');
+    exportPdfBtn?.addEventListener('click', function() {
+        const originalContent = exportPdfBtn.innerHTML;
+        exportPdfBtn.disabled = true;
+        exportPdfBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Gerando PDF...';
+
+        setTimeout(() => {
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF('p', 'mm', 'a4');
+
+                // Accent Top Color Bar (Navy/Dark Blue brand color)
+                doc.setFillColor(15, 34, 64);
+                doc.rect(0, 0, 210, 8, 'F');
+
+                // Title
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(16);
+                doc.setTextColor(15, 34, 64);
+                doc.text("CalibraWeb", 15, 20);
+
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(11);
+                doc.setTextColor(100);
+                doc.text("Relatório - Dashboard de Treinamentos", 15, 25);
+
+                // Divider line
+                doc.setDrawColor(220, 224, 230);
+                doc.setLineWidth(0.4);
+                doc.line(15, 28, 195, 28);
+
+                // Indicators grid block
+                doc.setFillColor(248, 249, 250);
+                doc.roundedRect(15, 32, 180, 20, 2, 2, 'F');
+
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(7.5);
+                doc.setTextColor(120);
+
+                doc.text("TOTAL DE TREINAMENTOS", 18, 38);
+                doc.text("VIGENTES", 60, 38);
+                doc.text("PENDENTES", 95, 38);
+                doc.text("COLABORADORES", 130, 38);
+                doc.text("CONFORMIDADE", 168, 38);
+
+                doc.setFontSize(10.5);
+                doc.setTextColor(15, 34, 64);
+                doc.text("{{ total_treinamentos|default:'0' }}", 18, 46);
+
+                doc.setTextColor(40, 167, 69); // Green
+                doc.text("{{ treinamentos_vigentes|default:'0' }}", 60, 46);
+
+                doc.setTextColor(220, 53, 69); // Red
+                doc.text("{{ treinamentos_pendentes|default:'0' }}", 95, 46);
+
+                doc.setTextColor(23, 162, 184); // Info/Blue
+                doc.text("{{ total_colaboradores_treinados|default:'0' }}", 130, 46);
+
+                doc.setTextColor(40, 167, 69); // Green
+                doc.text("{{ taxa_conformidade|default:'0' }}%", 168, 46);
+
+                // Collect active filters details
+                const filterLabels = [];
+                document.querySelectorAll('.filter-checkbox:checked').forEach(checkbox => {
+                    const labelText = checkbox.nextElementSibling?.textContent?.trim();
+                    const category = checkbox.dataset.category;
+                    if (labelText && category) {
+                        filterLabels.push(`${category.toUpperCase()}: ${labelText}`);
+                    }
+                });
+                const colabQ = document.getElementById('filterColaboradorQ')?.value?.trim();
+                if (colabQ) {
+                    filterLabels.push(`COLABORADOR: ${colabQ}`);
+                }
+                const filterText = filterLabels.length > 0 ? filterLabels.join(', ') : 'Nenhum';
+
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(8);
+                doc.setTextColor(110);
+                doc.text(`Filtros ativos: ${filterText}`, 15, 58);
+
+                doc.setDrawColor(220, 224, 230);
+                doc.setLineWidth(0.4);
+                doc.line(15, 61, 195, 61);
+
+                // Adding charts dynamically
+                let currentY = 66;
+
+                function addChartToPdf(canvasId, title) {
+                    const canvas = document.getElementById(canvasId);
+                    if (!canvas || canvas.style.display === 'none') return;
+
+                    const imgHeight = 65;
+                    const imgWidth = 170;
+                    const margin = 15;
+
+                    // A4 page height is 297mm. Safe bottom limit is 282mm.
+                    if (currentY + imgHeight + 15 > 282) {
+                        doc.addPage();
+                        currentY = 18;
+                    }
+
+                    doc.setFont("helvetica", "bold");
+                    doc.setFontSize(9.5);
+                    doc.setTextColor(33, 37, 41);
+                    doc.text(title, margin, currentY);
+                    currentY += 4;
+
+                    try {
+                        const imgData = canvas.toDataURL('image/png');
+                        doc.setFillColor(255, 255, 255);
+                        doc.rect(margin, currentY, imgWidth, imgHeight, 'F');
+                        doc.addImage(imgData, 'PNG', margin, currentY, imgWidth, imgHeight);
+                    } catch (e) {
+                        console.error("Erro ao exportar gráfico " + canvasId, e);
+                        doc.setFont("helvetica", "italic");
+                        doc.setFontSize(8.5);
+                        doc.setTextColor(150);
+                        doc.text("[Gráfico não disponível para exportação]", margin + 5, currentY + 12);
+                    }
+                    currentY += imgHeight + 10;
+                }
+
+                addChartToPdf('chartLider', 'Demanda por Líder');
+                addChartToPdf('chartSetorTurno', 'Demanda por Setor/Turno');
+                addChartToPdf('chartDemandaInstrutor', 'Demanda por Instrutor Responsável');
+                addChartToPdf('chartPlanejamentoInstrutor', 'Planejamento por Instrutor');
+                addChartToPdf('chartPlanejamentoSetorTurno', 'Planejamento por Setor/Turno');
+                addChartToPdf('chartMeses', 'Treinamentos Últimos 12 Meses');
+
+                // Relação de Treinamentos Pendentes Table
+                if (currentY + 25 > 282) {
+                    doc.addPage();
+                    currentY = 18;
+                } else {
+                    currentY += 4;
+                }
+
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(10.5);
+                doc.setTextColor(220, 53, 69);
+                doc.text("Relação de Treinamentos Pendentes", 15, currentY);
+                currentY += 5;
+
+                doc.autoTable({
+                    html: '#hiddenPendingTable',
+                    startY: currentY,
+                    margin: { left: 15, right: 15 },
+                    styles: {
+                        fontSize: 7.5,
+                        cellPadding: 1.8,
+                    },
+                    headStyles: {
+                        fillColor: [220, 53, 69],
+                        textColor: [255, 255, 255],
+                        fontStyle: 'bold',
+                    },
+                    alternateRowStyles: {
+                        fillColor: [248, 249, 250],
+                    },
+                    columnStyles: {
+                        0: { cellWidth: 18 },
+                        1: { cellWidth: 40 },
+                        2: { cellWidth: 18 },
+                        3: { cellWidth: 30 },
+                        4: { cellWidth: 14 },
+                        5: { cellWidth: 18 },
+                        6: { cellWidth: 24 },
+                        7: { cellWidth: 18 },
+                    }
+                });
+
+                // Post-process to write page numbers and footer on all pages
+                const pageCount = doc.internal.getNumberOfPages();
+                const currentDate = new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+                for (let i = 1; i <= pageCount; i++) {
+                    doc.setPage(i);
+
+                    doc.setFont("helvetica", "normal");
+                    doc.setFontSize(7.5);
+                    doc.setTextColor(150);
+
+                    // Separator line above footer
+                    doc.setDrawColor(230, 230, 230);
+                    doc.setLineWidth(0.3);
+                    doc.line(15, 286, 195, 286);
+
+                    doc.text(`CalibraWeb - Gerado em ${currentDate}`, 15, 291);
+                    doc.text(`Página ${i} de ${pageCount}`, 195, 291, { align: 'right' });
+                }
+
+                doc.save('dashboard_treinamentos.pdf');
+            } catch (error) {
+                console.error("Erro ao gerar PDF:", error);
+                alert("Ocorreu um erro ao gerar o PDF. Por favor, tente novamente.");
+            } finally {
+                exportPdfBtn.disabled = false;
+                exportPdfBtn.innerHTML = originalContent;
+            }
+        }, 150);
     });
 });
 </script>
