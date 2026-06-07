@@ -35,17 +35,27 @@ class ExportadorMatrizHabilidade:
 
         # Header
         writer.writerow([
-            'Matriz Código',
-            'Matriz Nome',
-            'Disciplina Código',
-            'Disciplina Nome',
-            'Colaborador Matrícula',
-            'Colaborador Nome',
-            'Nível de Competência',
-            'Observações'
+            'Matriz',
+            'Disciplina',
+            'Colaborador',
+            'Turno',
+            'Nota',
+            'Data'
         ])
 
-        # Dados - Matriz -> Disciplina -> Colaborador (via AvaliacaoHabilidade)
+        from procedures.models import AvaliacaoHabilidade, ColaboradorMatrizHabilidade
+        from core.models import TURNOS_CHOICES
+
+        turno_dict = dict(TURNOS_CHOICES)
+
+        # Pre-fetch all evaluations to lookup by (matriz_id, disciplina_id, colaborador_id)
+        avaliacoes = AvaliacaoHabilidade.objects.select_related('colaborador', 'disciplina', 'matriz').all()
+        av_map = {}
+        for av in avaliacoes:
+            key = (av.matriz_id, av.disciplina_id, av.colaborador_id)
+            av_map[key] = av
+
+        # Dados - Matriz -> Disciplina -> Colaborador (via ColaboradorMatrizHabilidade)
         for matriz in MatrizHabilidade.objects.prefetch_related(
             'disciplinas_matriz'
         ).all():
@@ -54,40 +64,43 @@ class ExportadorMatrizHabilidade:
             if not disciplinas.exists():
                 # Matriz sem disciplinas
                 writer.writerow([
-                    matriz.codigo,
-                    matriz.nome,
+                    f"{matriz.codigo} - {matriz.nome}",
                     '', '', '', '', ''
                 ])
             else:
-                for disciplina in disciplinas:
-                    # Buscar colaboradores que têm avaliação nesta disciplina e matriz
-                    from procedures.models import AvaliacaoHabilidade
-                    avaliacoes = AvaliacaoHabilidade.objects.filter(
-                        matriz=matriz,
-                        disciplina=disciplina
-                    ).select_related('colaborador').order_by('colaborador').distinct()
+                # Obter todos os colaboradores associados a esta matriz
+                colaboradores_assoc = ColaboradorMatrizHabilidade.objects.filter(
+                    matriz=matriz,
+                    ativo=True
+                ).select_related('colaborador').order_by('colaborador__nome_completo')
 
-                    if not avaliacoes.exists():
-                        # Disciplina sem colaboradores com avaliação
+                if not colaboradores_assoc.exists():
+                    # Disciplinas existem, mas nenhum colaborador associado
+                    for disciplina in disciplinas:
                         writer.writerow([
-                            matriz.codigo,
-                            matriz.nome,
-                            disciplina.codigo,
-                            disciplina.nome,
+                            f"{matriz.codigo} - {matriz.nome}",
+                            f"{disciplina.codigo} - {disciplina.nome}",
                             '', '', '', ''
                         ])
-                    else:
-                        for avaliacao in avaliacoes:
-                            colaborador = avaliacao.colaborador
+                else:
+                    for colaborador_assoc in colaboradores_assoc:
+                        colaborador = colaborador_assoc.colaborador
+                        turno_label = turno_dict.get(colaborador.turno, colaborador.turno)
+
+                        for disciplina in disciplinas:
+                            key = (matriz.id, disciplina.id, colaborador.id)
+                            av = av_map.get(key)
+
+                            nota = av.get_nivel_display() if av else ''
+                            data_avaliacao = av.data_avaliacao.strftime("%d/%m/%Y") if (av and av.data_avaliacao) else ''
+
                             writer.writerow([
-                                matriz.codigo,
-                                matriz.nome,
-                                disciplina.codigo,
-                                disciplina.nome,
-                                colaborador.matricula,
-                                colaborador.nome,
-                                avaliacao.get_nivel_display() or '',
-                                avaliacao.observacoes or ''
+                                f"{matriz.codigo} - {matriz.nome}",
+                                f"{disciplina.codigo} - {disciplina.nome}",
+                                colaborador.nome_completo,
+                                turno_label,
+                                nota,
+                                data_avaliacao
                             ])
 
         filename = f"exportacao_matrizes_{self.timestamp}.csv"
@@ -117,14 +130,12 @@ class ExportadorMatrizHabilidade:
 
         # Headers
         headers = [
-            'Matriz Código',
-            'Matriz Nome',
-            'Disciplina Código',
-            'Disciplina Nome',
-            'Colaborador Matrícula',
-            'Colaborador Nome',
-            'Nível de Competência',
-            'Observações'
+            'Matriz',
+            'Disciplina',
+            'Colaborador',
+            'Turno',
+            'Nota',
+            'Data'
         ]
 
         for col_num, header in enumerate(headers, 1):
@@ -136,7 +147,18 @@ class ExportadorMatrizHabilidade:
             cell.border = border
 
         # Dados
-        from procedures.models import AvaliacaoHabilidade
+        from procedures.models import AvaliacaoHabilidade, ColaboradorMatrizHabilidade
+        from core.models import TURNOS_CHOICES
+
+        turno_dict = dict(TURNOS_CHOICES)
+
+        # Pre-fetch all evaluations to lookup by (matriz_id, disciplina_id, colaborador_id)
+        avaliacoes = AvaliacaoHabilidade.objects.select_related('colaborador', 'disciplina', 'matriz').all()
+        av_map = {}
+        for av in avaliacoes:
+            key = (av.matriz_id, av.disciplina_id, av.colaborador_id)
+            av_map[key] = av
+
         row_num = 2
         for matriz in MatrizHabilidade.objects.prefetch_related(
             'disciplinas_matriz'
@@ -145,43 +167,52 @@ class ExportadorMatrizHabilidade:
 
             if not disciplinas.exists():
                 # Matriz sem disciplinas
-                ws.cell(row=row_num, column=1).value = matriz.codigo
-                ws.cell(row=row_num, column=2).value = matriz.nome
+                ws.cell(row=row_num, column=1).value = f"{matriz.codigo} - {matriz.nome}"
+                for col in range(1, 7):
+                    ws.cell(row=row_num, column=col).border = border
                 row_num += 1
             else:
-                for disciplina in disciplinas:
-                    avaliacoes = AvaliacaoHabilidade.objects.filter(
-                        matriz=matriz,
-                        disciplina=disciplina
-                    ).select_related('colaborador').order_by('colaborador').distinct()
+                # Obter todos os colaboradores associados a esta matriz
+                colaboradores_assoc = ColaboradorMatrizHabilidade.objects.filter(
+                    matriz=matriz,
+                    ativo=True
+                ).select_related('colaborador').order_by('colaborador__nome_completo')
 
-                    if not avaliacoes.exists():
-                        # Disciplina sem colaboradores com avaliação
-                        ws.cell(row=row_num, column=1).value = matriz.codigo
-                        ws.cell(row=row_num, column=2).value = matriz.nome
-                        ws.cell(row=row_num, column=3).value = disciplina.codigo
-                        ws.cell(row=row_num, column=4).value = disciplina.nome
+                if not colaboradores_assoc.exists():
+                    # Disciplinas existem, mas nenhum colaborador associado
+                    for disciplina in disciplinas:
+                        ws.cell(row=row_num, column=1).value = f"{matriz.codigo} - {matriz.nome}"
+                        ws.cell(row=row_num, column=2).value = f"{disciplina.codigo} - {disciplina.nome}"
+                        for col in range(1, 7):
+                            ws.cell(row=row_num, column=col).border = border
                         row_num += 1
-                    else:
-                        for avaliacao in avaliacoes:
-                            colaborador = avaliacao.colaborador
-                            ws.cell(row=row_num, column=1).value = matriz.codigo
-                            ws.cell(row=row_num, column=2).value = matriz.nome
-                            ws.cell(row=row_num, column=3).value = disciplina.codigo
-                            ws.cell(row=row_num, column=4).value = disciplina.nome
-                            ws.cell(row=row_num, column=5).value = colaborador.matricula
-                            ws.cell(row=row_num, column=6).value = colaborador.nome
-                            ws.cell(row=row_num, column=7).value = avaliacao.get_nivel_display() or ''
-                            ws.cell(row=row_num, column=8).value = avaliacao.observacoes or ''
+                else:
+                    for colaborador_assoc in colaboradores_assoc:
+                        colaborador = colaborador_assoc.colaborador
+                        turno_label = turno_dict.get(colaborador.turno, colaborador.turno)
 
-                            # Aplicar border a todas as células
-                            for col in range(1, 9):
+                        for disciplina in disciplinas:
+                            key = (matriz.id, disciplina.id, colaborador.id)
+                            av = av_map.get(key)
+
+                            nota = av.get_nivel_display() if av else ''
+                            data_avaliacao = av.data_avaliacao.strftime("%d/%m/%Y") if (av and av.data_avaliacao) else ''
+
+                            ws.cell(row=row_num, column=1).value = f"{matriz.codigo} - {matriz.nome}"
+                            ws.cell(row=row_num, column=2).value = f"{disciplina.codigo} - {disciplina.nome}"
+                            ws.cell(row=row_num, column=3).value = colaborador.nome_completo
+                            ws.cell(row=row_num, column=4).value = turno_label
+                            ws.cell(row=row_num, column=5).value = nota
+                            ws.cell(row=row_num, column=6).value = data_avaliacao
+
+                            # Aplicar border a todas as 6 células
+                            for col in range(1, 7):
                                 ws.cell(row=row_num, column=col).border = border
 
                             row_num += 1
 
         # Ajustar largura das colunas
-        column_widths = [15, 25, 15, 25, 18, 25, 20, 40]
+        column_widths = [30, 30, 30, 15, 25, 15]
         for idx, width in enumerate(column_widths, 1):
             ws.column_dimensions[get_column_letter(idx)].width = width
 
