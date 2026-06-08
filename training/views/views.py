@@ -1261,6 +1261,14 @@ def dashboard_treinamentos_view(request):
     ).distinct().order_by('nome_completo').values('id', 'nome_completo')
     context['lideres'] = [{'id': l['id'], 'nome': l['nome_completo']} for l in lideres]
     
+    # Colaboradores ativos, não afastados e não em férias - OTIMIZADO
+    colaboradores = Colaborador.objects.filter(
+        is_active=True,
+        afastado=False,
+        em_ferias=False
+    ).distinct().order_by('nome_completo').values('id', 'nome_completo')
+    context['colaboradores_todos'] = [{'id': c['id'], 'nome': c['nome_completo']} for c in colaboradores]
+    
     # Adicionar filtros selecionados ao contexto (como listas completas)
     context['filtro_setor_list'] = filtro_setor_list
     context['filtro_turno_list'] = filtro_turno_list

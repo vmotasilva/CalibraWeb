@@ -330,3 +330,32 @@ class TestDashboardTreinamentosView(TestCase):
         self.assertIn('PROC-001', content)
         self.assertNotIn('PROC-002', content)
         self.assertNotIn('PROC-003', content)
+
+    def test_dashboard_contem_apenas_colaboradores_ativos_nao_afastados_nao_em_ferias(self):
+        self.client.force_login(self.user)
+        
+        # Criar colaboradores inativos/afastados/ferias para verificar se são excluídos
+        colab_inativo = Colaborador.objects.create(
+            matricula='9991', nome_completo='COLAB INATIVO', is_active=False
+        )
+        colab_afastado = Colaborador.objects.create(
+            matricula='9992', nome_completo='COLAB AFASTADO', afastado=True
+        )
+        colab_ferias = Colaborador.objects.create(
+            matricula='9993', nome_completo='COLAB FERIAS', em_ferias=True
+        )
+        
+        response = self.client.get(reverse('training:dashboard_treinamentos'))
+        self.assertEqual(response.status_code, 200)
+        
+        colaboradores_todos = response.context['colaboradores_todos']
+        colab_ids = [c['id'] for c in colaboradores_todos]
+        
+        # Inativo, afastado e em ferias não devem estar na lista
+        self.assertNotIn(colab_inativo.id, colab_ids)
+        self.assertNotIn(colab_afastado.id, colab_ids)
+        self.assertNotIn(colab_ferias.id, colab_ids)
+        
+        # Colaborador ativo comum deve estar na lista
+        self.assertIn(self.colaborador.id, colab_ids)
+

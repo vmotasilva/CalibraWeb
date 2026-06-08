@@ -179,17 +179,19 @@
                             </div>
                         </div>
 
-                        <!-- Colaborador (texto) -->
+                        <!-- Colaborador (Select) -->
                         <div class="filter-group open">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
                                 <label class="filter-title">Colaborador</label>
                                 <i class="bi bi-chevron-down"></i>
                             </div>
                             <div class="filter-content">
-                                    <input id="filterColaboradorQ" type="text" class="form-control form-control-sm" placeholder="Nome ou matrícula" value="{{ filtro_colaborador_q|default:'' }}" list="colabSuggestions" autocomplete="off">
-                                    <input id="filterColaboradorId" type="hidden" value="{{ filtro_colaborador_id|default:'' }}">
-                                    <datalist id="colabSuggestions"></datalist>
-                                <small class="text-muted dashboard-filter-hint">Filtro por nome ou matrícula</small>
+                                <select id="filterColaboradorId" class="form-select form-select-sm">
+                                    <option value="">Todos</option>
+                                    {% for c in colaboradores_todos %}
+                                    <option value="{{ c.id }}" {% if filtro_colaborador_id == c.id|stringformat:"s" %}selected{% endif %}>{{ c.nome }}</option>
+                                    {% endfor %}
+                                </select>
                             </div>
                         </div>
                         
@@ -1179,7 +1181,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const colaboradoresAutocompleteUrl = "{% url 'training:colaboradores_autocomplete' %}";
 
     // =====================
     // Toggle Filter Groups (Accordion)
@@ -1258,10 +1259,8 @@ document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('.filter-checkbox').forEach(checkbox => {
                 checkbox.checked = false;
             });
-            const colabInput = document.getElementById('filterColaboradorQ');
-            if (colabInput) colabInput.value = '';
-            const colabIdInput = document.getElementById('filterColaboradorId');
-            if (colabIdInput) colabIdInput.value = '';
+            const colabSelect = document.getElementById('filterColaboradorId');
+            if (colabSelect) colabSelect.value = '';
             window.location.href = window.location.pathname;
         });
     }
@@ -1275,76 +1274,7 @@ document.addEventListener('DOMContentLoaded', function() {
         window.location.href = url;
     });
 
-    // =====================
-    // Autocomplete de Colaborador (datalist)
-    // =====================
-    const colabInput = document.getElementById('filterColaboradorQ');
-    const colabIdInput = document.getElementById('filterColaboradorId');
-    const colabDatalist = document.getElementById('colabSuggestions');
-    let colabDebounce = null;
-    let lastColabQuery = '';
-    let colabSuggestionsMap = {};
-
-    async function fetchColaboradoresSuggestions(query) {
-        const url = colaboradoresAutocompleteUrl + '?q=' + encodeURIComponent(query);
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        });
-        if (!response.ok) return { results: [] };
-        return response.json();
-    }
-
-    if (colabInput && colabDatalist) {
-        colabInput.addEventListener('input', function() {
-            const query = (colabInput.value || '').trim();
-
-            // Se digitou manualmente, zera o ID até selecionar uma sugestão exata
-            if (colabIdInput) colabIdInput.value = '';
-
-            if (query.length < 2) {
-                colabDatalist.innerHTML = '';
-                colabSuggestionsMap = {};
-                lastColabQuery = '';
-                return;
-            }
-
-            if (query === lastColabQuery) return;
-            lastColabQuery = query;
-
-            if (colabDebounce) clearTimeout(colabDebounce);
-            colabDebounce = setTimeout(async () => {
-                try {
-                    const current = (colabInput.value || '').trim();
-                    if (current !== query) return;
-                    const data = await fetchColaboradoresSuggestions(query);
-                    if (((colabInput.value || '').trim()) !== query) return;
-
-                    const results = Array.isArray(data?.results) ? data.results : [];
-                    colabDatalist.innerHTML = '';
-                    colabSuggestionsMap = {};
-                    results.forEach(item => {
-                        const opt = document.createElement('option');
-                        opt.value = item.nome_completo;
-                        colabDatalist.appendChild(opt);
-                        colabSuggestionsMap[item.nome_completo] = String(item.id);
-                    });
-
-                    // Se o valor bate exatamente com uma sugestão, seta o ID
-                    const exact = colabSuggestionsMap[(colabInput.value || '').trim()];
-                    if (exact && colabIdInput) colabIdInput.value = exact;
-                } catch (err) {
-                    // Silencioso: autocomplete não pode quebrar o dashboard
-                }
-            }, 250);
-        });
-
-        // Ao perder foco, se bater exatamente com sugestão, setar ID
-        colabInput.addEventListener('change', function() {
-            const exact = colabSuggestionsMap[(colabInput.value || '').trim()];
-            if (exact && colabIdInput) colabIdInput.value = exact;
-        });
-    }
+    // (Autocomplete removed because Collaborator filter is now a select list)
     
     // Sidebar Toggle (Old - Keep for compatibility)
     const sidebar = document.getElementById('filterSidebar');
@@ -2456,7 +2386,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 });
                 
-                const colabQValue = document.getElementById('filterColaboradorQ')?.value?.trim();
+                const colabSelect = document.getElementById('filterColaboradorId');
+                const colabQValue = colabSelect && colabSelect.selectedIndex > 0 ? colabSelect.options[colabSelect.selectedIndex].text : '';
                 if (colabQValue) {
                     filenameFilters['colaborador'] = [colabQValue];
                 }
