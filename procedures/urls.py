@@ -178,6 +178,7 @@ urlpatterns = [
     # APIs para Modal de Avaliação
     path('api/avaliacoes/<int:matriz_id>/<int:colaborador_id>/<int:disciplina_id>/', avaliacoes_views.obter_avaliacao_api, name='obter_avaliacao_api'),
     path('api/avaliacoes/<int:matriz_id>/<int:colaborador_id>/<int:disciplina_id>/salvar/', avaliacoes_views.salvar_avaliacao_api, name='salvar_avaliacao_modal_api'),
+    path('api/avaliacoes/<int:matriz_id>/disciplina/<int:disciplina_id>/salvar-lote/', avaliacoes_views.salvar_avaliacao_lote_api, name='salvar_avaliacao_lote_api'),
     
     # Gerenciamento de Colaboradores na Matriz
     path('matrizes/<int:matriz_id>/desassociar-colaboradores/', avaliacoes_views.desassociar_colaboradores_view, name='desassociar_colaboradores'),

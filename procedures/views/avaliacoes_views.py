@@ -736,6 +736,162 @@ def salvar_avaliacao_api(request, matriz_id, colaborador_id, disciplina_id):
 
 
 @login_required
+@require_http_methods(["POST"])
+def salvar_avaliacao_lote_api(request, matriz_id, disciplina_id):
+    """
+    API para salvar avaliações em lote para uma coluna (disciplina) inteira.
+    """
+    try:
+        data = json.loads(request.body)
+        
+        matriz = get_object_or_404(MatrizHabilidade, id=matriz_id)
+        disciplina = get_object_or_404(Disciplina, id=disciplina_id)
+        
+        nivel = data.get('nivel')
+        data_avaliacao_str = data.get('data_avaliacao')
+        observacoes = data.get('observacoes', '')
+        somente_sem_avaliacao = data.get('somente_sem_avaliacao', False)
+        
+        # Filtros e targets
+        colaborador_ids = data.get('colaborador_ids', [])
+        setor_id = data.get('setor_id')
+        turno = data.get('turno')
+        termo_colab = data.get('termo_colab', '').strip()
+        
+        # Validações
+        if nivel is None or nivel == '':
+            return JsonResponse({'sucesso': False, 'erro': 'Nível é obrigatório'}, status=400)
+        
+        if not data_avaliacao_str:
+            return JsonResponse({'sucesso': False, 'erro': 'Data é obrigatória'}, status=400)
+        
+        # Converter nível para inteiro
+        try:
+            nivel = int(nivel)
+        except ValueError:
+            return JsonResponse({'sucesso': False, 'erro': 'Nível inválido'}, status=400)
+        
+        # Converter data para objeto date
+        from datetime import datetime
+        try:
+            data_avaliacao = datetime.strptime(data_avaliacao_str, '%Y-%m-%d').date()
+        except ValueError:
+            return JsonResponse({'sucesso': False, 'erro': 'Formato de data inválido'}, status=400)
+            
+        # Determinar os colaboradores alvo
+        from procedures.models import ColaboradorMatrizHabilidade
+        colaboradores_assoc = ColaboradorMatrizHabilidade.objects.filter(
+            matriz=matriz,
+            ativo=True
+        ).select_related('colaborador')
+        
+        colaboradores_qs = Colaborador.objects.filter(
+            id__in=colaboradores_assoc.values_list('colaborador_id', flat=True)
+        )
+        
+        if colaborador_ids:
+            colaboradores_qs = colaboradores_qs.filter(id__in=colaborador_ids)
+        else:
+            # Se não passou ID específico, aplicar filtros da tela atual (se houver)
+            if setor_id:
+                try:
+                    colaboradores_qs = colaboradores_qs.filter(setor_id=int(setor_id))
+                except ValueError:
+                    pass
+            if turno:
+                colaboradores_qs = colaboradores_qs.filter(turno=turno)
+            if termo_colab:
+                colaboradores_qs = colaboradores_qs.filter(
+                    Q(nome_completo__icontains=termo_colab) |
+                    Q(matricula__icontains=termo_colab)
+                )
+        
+        target_colaboradores = list(colaboradores_qs)
+        if not target_colaboradores:
+            return JsonResponse({'sucesso': True, 'mensagem': 'Nenhum colaborador elegível encontrado.', 'count': 0})
+            
+        # Loop para salvar/atualizar
+        count_updated = 0
+        from django.db import transaction
+        with transaction.atomic():
+            for colab in target_colaboradores:
+                # Buscar se já existe avaliação
+                avaliacao = AvaliacaoHabilidade.objects.filter(
+                    matriz=matriz,
+                    colaborador=colab,
+                    disciplina=disciplina
+                ).first()
+                
+                if avaliacao:
+                    # Se for pra aplicar somente em células vazias, pular esta
+                    if somente_sem_avaliacao:
+                        continue
+                        
+                    # Guardar valores antigos
+                    nivel_anterior = avaliacao.nivel
+                    data_anterior = avaliacao.data_avaliacao
+                    observacoes_anterior = avaliacao.observacoes
+                    
+                    # Atualizar
+                    avaliacao.nivel = nivel
+                    avaliacao.data_avaliacao = data_avaliacao
+                    avaliacao.observacoes = observacoes
+                    avaliacao.avaliador = request.user.colaborador if hasattr(request.user, 'colaborador') else None
+                    avaliacao.save()
+                    
+                    # Gravar no histórico
+                    HistoricoAvaliacaoHabilidade.objects.create(
+                        avaliacao=avaliacao,
+                        nivel_anterior=nivel_anterior,
+                        nivel_novo=nivel,
+                        avaliador=request.user.colaborador if hasattr(request.user, 'colaborador') else None,
+                        data_avaliacao=data_anterior,
+                        data_avaliacao_nova=data_avaliacao,
+                        observacoes_anterior=observacoes_anterior,
+                        observacoes_nova=observacoes,
+                        tipo_alteracao='atualizacao'
+                    )
+                else:
+                    # Criar nova
+                    avaliacao = AvaliacaoHabilidade.objects.create(
+                        matriz=matriz,
+                        colaborador=colab,
+                        disciplina=disciplina,
+                        nivel=nivel,
+                        data_avaliacao=data_avaliacao,
+                        observacoes=observacoes,
+                        avaliador=request.user.colaborador if hasattr(request.user, 'colaborador') else None,
+                    )
+                    
+                    # Gravar histórico
+                    HistoricoAvaliacaoHabilidade.objects.create(
+                        avaliacao=avaliacao,
+                        nivel_anterior=None,
+                        nivel_novo=nivel,
+                        avaliador=request.user.colaborador if hasattr(request.user, 'colaborador') else None,
+                        data_avaliacao=None,
+                        data_avaliacao_nova=data_avaliacao,
+                        observacoes_anterior=None,
+                        observacoes_nova=observacoes,
+                        tipo_alteracao='criacao'
+                    )
+                
+                count_updated += 1
+                
+        return JsonResponse({
+            'sucesso': True,
+            'mensagem': f'{count_updated} avaliação(ões) salva(s) com sucesso!',
+            'count': count_updated
+        })
+        
+    except Exception as e:
+        import traceback
+        print(f"Erro ao salvar avaliações em lote: {str(e)}")
+        print(traceback.format_exc())
+        return JsonResponse({'sucesso': False, 'erro': str(e)}, status=500)
+
+
+@login_required
 def exportar_matriz_excel_view(request):
     """
     Exporta a matriz de avaliações (filtrada) para Excel

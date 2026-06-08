@@ -53,7 +53,7 @@
         min-width: 130px;
         width: 130px;
         flex-shrink: 0;
-        padding: 10px 8px;
+        padding: 10px 22px 10px 8px;
         font-weight: 600;
         text-align: center;
         border-right: 1px solid #dee2e6;
@@ -65,6 +65,18 @@
         vertical-align: middle !important;
         line-height: 1.5;
         overflow: visible !important;
+    }
+
+    .btn-lote-trigger {
+        opacity: 0.3;
+        transition: opacity 0.2s, transform 0.2s;
+    }
+    .btn-lote-trigger:hover {
+        opacity: 1 !important;
+        transform: scale(1.1);
+    }
+    .disciplina-header-cell:hover .btn-lote-trigger {
+        opacity: 0.8;
     }
 
     .disciplina-header {
@@ -560,8 +572,15 @@
                     <div class="matriz-header-scroll" id="headerScroll">
                         <div class="matriz-header-content">
                             {% for disc in disciplinas %}
-                            <div class="disciplina-header-cell" title="{{ disc.nome }}">
+                            <div class="disciplina-header-cell position-relative" title="{{ disc.nome }}">
                                 <div class="disciplina-header">{{ disc.nome }}</div>
+                                <button class="btn btn-sm btn-link text-muted position-absolute end-0 top-50 translate-middle-y p-0 me-1 btn-lote-trigger" 
+                                        type="button" 
+                                        data-disciplina-id="{{ disc.id }}" 
+                                        data-disciplina-nome="{{ disc.nome }}" 
+                                        title="Aplicar nota em lote para {{ disc.nome }}">
+                                    <i class="bi bi-three-dots-vertical"></i>
+                                </button>
                             </div>
                             {% endfor %}
                         </div>
@@ -864,17 +883,151 @@
     </div>
 </div>
 
+<!-- Modal de Avaliação em Lote -->
+<div class="modal fade" id="modalLoteAvaliacao" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-grid-3x3-gap"></i> Aplicar Avaliação em Lote
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div>
+                    <!-- Informações -->
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <p class="mb-1"><strong>Disciplina:</strong></p>
+                            <p class="text-info fs-5" id="modalLoteDisciplinaNome"></p>
+                        </div>
+                    </div>
+
+                    <hr class="my-2">
+
+                    <!-- Seleção de Nível -->
+                    <h6 class="mb-2"><strong>1. Selecione o nível de competência:</strong></h6>
+                    <div class="row g-2 mb-3">
+                        <div class="col-4 col-md-2">
+                            <div class="card nivel-card-lote text-center h-100" data-nivel="-1" onclick="selecionarNivelLote(this)">
+                                <div class="card-body p-2">
+                                    <span class="nivel-badge-modal nivel-na-bg">N/A</span>
+                                    <p class="small mb-0 mt-1">Não se Aplica</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-4 col-md-2">
+                            <div class="card nivel-card-lote text-center h-100" data-nivel="0" onclick="selecionarNivelLote(this)">
+                                <div class="card-body p-2">
+                                    <span class="nivel-badge-modal nivel-0-bg">0</span>
+                                    <p class="small mb-0 mt-1">Há Intenção</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-4 col-md-2">
+                            <div class="card nivel-card-lote text-center h-100" data-nivel="1" onclick="selecionarNivelLote(this)">
+                                <div class="card-body p-2">
+                                    <span class="nivel-badge-modal nivel-1-bg">1</span>
+                                    <p class="small mb-0 mt-1">Em Treinamento</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-4 col-md-2">
+                            <div class="card nivel-card-lote text-center h-100" data-nivel="2" onclick="selecionarNivelLote(this)">
+                                <div class="card-body p-2">
+                                    <span class="nivel-badge-modal nivel-2-bg">2</span>
+                                    <p class="small mb-0 mt-1">Treinado</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-4 col-md-2">
+                            <div class="card nivel-card-lote text-center h-100" data-nivel="3" onclick="selecionarNivelLote(this)">
+                                <div class="card-body p-2">
+                                    <span class="nivel-badge-modal nivel-3-bg">3</span>
+                                    <p class="small mb-0 mt-1">LOFT</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Critério de Aplicação -->
+                    <h6 class="mb-2"><strong>2. Critério de Aplicação:</strong></h6>
+                    <div class="card mb-3 bg-light border-0">
+                        <div class="card-body p-3">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="radio" name="somenteSemAvaliacao" id="loteSomenteSemTrue" value="true" checked>
+                                <label class="form-check-label small" for="loteSomenteSemTrue">
+                                    <strong>Apenas sem avaliação:</strong> Aplicar apenas aos colaboradores que não possuem avaliação (preservar notas já preenchidas).
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="somenteSemAvaliacao" id="loteSomenteSemFalse" value="false">
+                                <label class="form-check-label small text-danger fw-semibold" for="loteSomenteSemFalse">
+                                    <strong>Sobrescrever tudo:</strong> Aplicar a todos os colaboradores (substituir avaliações existentes).
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Escopo dos Colaboradores -->
+                    <h6 class="mb-2"><strong>3. Escopo dos Colaboradores:</strong></h6>
+                    <div class="card mb-3 bg-light border-0">
+                        <div class="card-body p-3">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="radio" name="escopoLote" id="escopoLoteTodos" value="todos" checked>
+                                <label class="form-check-label small" for="escopoLoteTodos">
+                                    <strong>Todos os colaboradores da matriz:</strong> Aplicar a todos os colaboradores associados a esta matriz (respeitando os filtros ativos de setor, turno e busca).
+                                </label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="radio" name="escopoLote" id="escopoLotePagina" value="pagina">
+                                <label class="form-check-label small" for="escopoLotePagina">
+                                    <strong>Colaboradores da página atual:</strong> Aplicar apenas aos colaboradores exibidos nesta página da matriz.
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="escopoLote" id="escopoLoteSelecionados" value="selecionados">
+                                <label class="form-check-label small" for="escopoLoteSelecionados">
+                                    <strong>Colaboradores selecionados:</strong> Aplicar apenas aos colaboradores atualmente marcados com checkbox (<span id="loteSelecionadosText">0</span> colaboradores).
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Data e Observações -->
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="modalLoteDataAvaliacao" class="form-label"><strong>Data da Avaliação</strong></label>
+                            <input type="date" id="modalLoteDataAvaliacao" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="modalLoteObservacoes" class="form-label">Observações (opcional)</label>
+                            <textarea id="modalLoteObservacoes" class="form-control" rows="2" placeholder="Ex: Treinamento em massa..."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnSalvarLoteAvaliacao" disabled>
+                    <i class="bi bi-check-circle"></i> Aplicar em Lote
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
-    .nivel-card-modal {
+    .nivel-card-modal, .nivel-card-lote {
         cursor: pointer;
         transition: all 0.3s;
         border: 2px solid transparent;
     }
-    .nivel-card-modal:hover {
+    .nivel-card-modal:hover, .nivel-card-lote:hover {
         transform: translateY(-3px);
         box-shadow: 0 4px 8px rgba(0,0,0,0.15);
     }
-    .nivel-card-modal.selected {
+    .nivel-card-modal.selected, .nivel-card-lote.selected {
         border-color: #0d6efd !important;
         box-shadow: 0 0 10px rgba(13, 110, 253, 0.6) !important;
         background-color: rgba(13, 110, 253, 0.08) !important;
@@ -1427,6 +1580,156 @@
         .catch(error => {
             console.error('Erro:', error);
             alert('Erro ao associar colaborador');
+        });
+    });
+
+    // ===== JAVASCRIPT AVALIAÇÃO EM LOTE =====
+    
+    let loteAvaliacaoAtual = {
+        matrizId: null,
+        disciplinaId: null,
+        nivelSelecionado: null
+    };
+
+    // Registrar clique no botão do header
+    document.querySelectorAll('.btn-lote-trigger').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation(); // Evitar comportamentos indesejados no header
+            const disciplinaId = this.dataset.disciplinaId;
+            const disciplinaNome = this.dataset.disciplinaNome;
+            abrirModalLote(matrizId, disciplinaId, disciplinaNome);
+        });
+    });
+
+    function selecionarNivelLote(element) {
+        document.querySelectorAll('.nivel-card-lote').forEach(c => c.classList.remove('selected'));
+        element.classList.add('selected');
+        loteAvaliacaoAtual.nivelSelecionado = element.getAttribute('data-nivel');
+        document.getElementById('btnSalvarLoteAvaliacao').disabled = false;
+    }
+
+    function abrirModalLote(matrizId, disciplinaId, disciplinaNome) {
+        loteAvaliacaoAtual = {
+            matrizId: matrizId,
+            disciplinaId: disciplinaId,
+            nivelSelecionado: null
+        };
+        
+        // Limpar seleções de nível
+        document.querySelectorAll('.nivel-card-lote').forEach(c => c.classList.remove('selected'));
+        document.getElementById('modalLoteObservacoes').value = '';
+        
+        // Preencher nome da disciplina
+        document.getElementById('modalLoteDisciplinaNome').textContent = disciplinaNome;
+        
+        // Data de avaliação padrão (hoje)
+        const hoje = new Date().toISOString().split('T')[0];
+        document.getElementById('modalLoteDataAvaliacao').value = hoje;
+        
+        // Contar colaboradores selecionados por checkbox
+        const selecionados = document.querySelectorAll('.checkbox-colaborador:checked');
+        const countSelecionados = selecionados.length;
+        
+        document.getElementById('loteSelecionadosText').textContent = countSelecionados;
+        
+        // Habilitar/desabilitar a opção "Apenas os selecionados" dependendo se tem checkboxes marcados
+        const inputSelecionados = document.getElementById('escopoLoteSelecionados');
+        if (countSelecionados === 0) {
+            inputSelecionados.disabled = true;
+            if (inputSelecionados.checked) {
+                document.getElementById('escopoLoteTodos').checked = true;
+            }
+        } else {
+            inputSelecionados.disabled = false;
+        }
+        
+        document.getElementById('btnSalvarLoteAvaliacao').disabled = true;
+        
+        // Abrir modal
+        const modal = new bootstrap.Modal(document.getElementById('modalLoteAvaliacao'));
+        modal.show();
+    }
+
+    // Salvar avaliação em lote
+    document.getElementById('btnSalvarLoteAvaliacao').addEventListener('click', function() {
+        if (loteAvaliacaoAtual.nivelSelecionado === null) {
+            alert('Por favor, selecione um nível de competência!');
+            return;
+        }
+        
+        const dataAvaliacao = document.getElementById('modalLoteDataAvaliacao').value;
+        if (!dataAvaliacao) {
+            alert('Por favor, informe a data da avaliação!');
+            return;
+        }
+        
+        const observacoes = document.getElementById('modalLoteObservacoes').value;
+        const somenteSemAvaliacao = document.querySelector('input[name="somenteSemAvaliacao"]:checked').value === 'true';
+        const escopo = document.querySelector('input[name="escopoLote"]:checked').value;
+        
+        // Determinar lista de IDs de colaboradores conforme o escopo
+        let colaboradorIds = [];
+        if (escopo === 'pagina') {
+            // Obter IDs dos colaboradores na página (todos os checkboxes na coluna da esquerda)
+            document.querySelectorAll('.checkbox-colaborador').forEach(cb => {
+                colaboradorIds.push(parseInt(cb.value));
+            });
+        } else if (escopo === 'selecionados') {
+            // Obter apenas os colaboradores selecionados por checkbox
+            document.querySelectorAll('.checkbox-colaborador:checked').forEach(cb => {
+                colaboradorIds.push(parseInt(cb.value));
+            });
+        }
+        
+        // Obter filtros da URL se for para aplicar a "todos" com filtros atuais
+        const urlParams = new URLSearchParams(window.location.search);
+        const setorId = urlParams.get('setor') || null;
+        const turno = urlParams.get('turno') || null;
+        const termoColab = urlParams.get('colaborador') || '';
+        
+        // Desabilitar botão
+        this.disabled = true;
+        this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Salvando...';
+        
+        fetch(`/procedures/api/avaliacoes/${loteAvaliacaoAtual.matrizId}/disciplina/${loteAvaliacaoAtual.disciplinaId}/salvar-lote/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                nivel: loteAvaliacaoAtual.nivelSelecionado,
+                data_avaliacao: dataAvaliacao,
+                observacoes: observacoes,
+                somente_sem_avaliacao: somenteSemAvaliacao,
+                colaborador_ids: colaboradorIds,
+                setor_id: setorId,
+                turno: turno,
+                termo_colab: termoColab
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.sucesso) {
+                // Fechar modal
+                bootstrap.Modal.getInstance(document.getElementById('modalLoteAvaliacao')).hide();
+                
+                // Feedback visual e recarregar a página
+                mostrarToast(data.mensagem || 'Avaliações em lote salvas com sucesso!', 'success');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                alert('Erro: ' + data.erro);
+                this.disabled = false;
+                this.innerHTML = '<i class="bi bi-check-circle"></i> Aplicar em Lote';
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao salvar avaliações em lote');
+            this.disabled = false;
+            this.innerHTML = '<i class="bi bi-check-circle"></i> Aplicar em Lote';
         });
     });
 </script>
