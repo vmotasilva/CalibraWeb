@@ -48,6 +48,8 @@ def matriz_avaliacoes_view(request):
     turnos_disponiveis = []
     pagination = None
     query_params = None
+    colaboradores_desligados_ids = []
+    desligados_ids_json = '[]'
     
     if matriz_id:
         matriz_selecionada = get_object_or_404(MatrizHabilidade, id=matriz_id)
@@ -112,6 +114,14 @@ def matriz_avaliacoes_view(request):
                     )
                 )
             ).filter(num_avaliacoes__lt=disciplinas.count())
+        
+        # Obter IDs dos colaboradores desligados associados à matriz
+        colaboradores_desligados_ids = list(Colaborador.objects.filter(
+            id__in=ColaboradorMatrizHabilidade.objects.filter(matriz=matriz_selecionada, ativo=True).values_list('colaborador_id', flat=True),
+            is_active=False
+        ).values_list('id', flat=True))
+        import json
+        desligados_ids_json = json.dumps(colaboradores_desligados_ids)
         
         # Paginar colaboradores usando o OffsetPaginator padrão
         from qms.pagination import OffsetPaginator, PaginationHelper
@@ -179,6 +189,8 @@ def matriz_avaliacoes_view(request):
         'termo_colab': termo_colab,
         'pagination': pagination,
         'query_params': query_params,
+        'colaboradores_desligados_ids': colaboradores_desligados_ids,
+        'desligados_ids_json': desligados_ids_json,
     }
     
     return render(request, 'procedures/matriz_avaliacao.html', context)
@@ -492,7 +504,9 @@ def colaboradores_disponiveis_view(request, matriz_id):
             is_active=True
         ).exclude(
             id__in=associados
-        ).values('id', 'nome_completo', 'matricula').order_by('nome_completo')
+        ).select_related('setor', 'lider').values(
+            'id', 'nome_completo', 'matricula', 'setor_id', 'setor__nome', 'lider_id', 'lider__nome_completo', 'turno'
+        ).order_by('nome_completo')
         
         return JsonResponse({
             'colaboradores': list(disponiveis)

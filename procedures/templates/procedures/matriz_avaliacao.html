@@ -390,11 +390,16 @@
                     </select>
                 </div>
                 
-                <div class="col-md-2 ms-auto">
+                <div class="col-md-4 ms-auto">
                     <label class="form-label">&nbsp;</label>
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-search"></i> Filtrar
-                    </button>
+                    <div class="d-flex gap-2">
+                        <a href="{% if matriz_id %}?matriz={{ matriz_id }}{% else %}{% url 'procedures:matriz_avaliacoes' %}{% endif %}" class="btn btn-outline-secondary w-100">
+                            <i class="bi bi-x-circle"></i> Limpar
+                        </a>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-search"></i> Filtrar
+                        </button>
+                    </div>
                 </div>
             </form>
             </div>
@@ -492,6 +497,19 @@
         </button>
     </div>
 
+    <!-- Alerta de Colaboradores Desligados -->
+    {% if colaboradores_desligados_ids %}
+    <div class="alert alert-warning d-flex justify-content-between align-items-center mb-3 shadow-sm border-warning">
+        <div>
+            <i class="bi bi-exclamation-triangle-fill text-warning fs-5 me-2"></i>
+            <strong>Colaboradores Desligados:</strong> Encontramos <strong>{{ colaboradores_desligados_ids|length }}</strong> colaborador(es) associado(s) a esta matriz que foi(foram) desligado(s) no cadastro de RH.
+        </div>
+        <button type="button" class="btn btn-danger btn-sm" id="btn-remover-desligados" data-ids="{{ desligados_ids_json }}">
+            <i class="bi bi-person-x"></i> Remover da Matriz
+        </button>
+    </div>
+    {% endif %}
+ 
     <!-- Matriz -->
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
@@ -561,9 +579,14 @@
                                     <div style="width: 100%; display: flex; align-items: center; gap: 10px;">
                                         <input type="checkbox" class="form-check-input checkbox-colaborador" value="{{ linha.colaborador.id }}" title="Selecionar">
                                         <div class="colaborador-info">
-                                            <a href="/rh/colaborador/{{ linha.colaborador.id }}/" class="colaborador-nome">
-                                                {{ linha.colaborador.nome_completo }}
-                                            </a>
+                                            <div class="d-flex align-items-center flex-wrap gap-1">
+                                                <a href="/rh/colaborador/{{ linha.colaborador.id }}/" class="colaborador-nome">
+                                                    {{ linha.colaborador.nome_completo }}
+                                                </a>
+                                                {% if not linha.colaborador.is_active %}
+                                                    <span class="badge bg-danger p-1" style="font-size: 0.65rem;" title="Colaborador desligado no RH">Desligado</span>
+                                                {% endif %}
+                                            </div>
                                             {% if linha.colaborador.setor %}
                                             <small class="colaborador-setor">{{ linha.colaborador.setor }}</small>
                                             {% endif %}
@@ -687,6 +710,29 @@
                     <div class="mb-3">
                         <label class="form-label">Pesquise um colaborador:</label>
                         <input type="text" id="inputPesquisaColab" class="form-control mb-2" placeholder="Digite o nome ou matrícula...">
+                        
+                        <!-- Filtros Dinâmicos no Modal -->
+                        <div class="row g-2 mb-3 bg-light p-2 rounded border">
+                            <div class="col-md-4">
+                                <label class="form-label small mb-1">Setor</label>
+                                <select id="modalFilterSetor" class="form-select form-select-sm">
+                                    <option value="">Todos</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small mb-1">Líder</label>
+                                <select id="modalFilterLider" class="form-select form-select-sm">
+                                    <option value="">Todos</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small mb-1">Turno</label>
+                                <select id="modalFilterTurno" class="form-select form-select-sm">
+                                    <option value="">Todos</option>
+                                </select>
+                            </div>
+                        </div>
+                        
                         <select id="selectColaborador" class="form-select" required>
                             <option value="">Carregando colaboradores disponíveis...</option>
                         </select>
@@ -1185,15 +1231,65 @@
         });
     });
 
+    // ===== Remover Colaboradores Desligados =====
+    const btnRemoverDesligados = document.getElementById('btn-remover-desligados');
+    if (btnRemoverDesligados) {
+        btnRemoverDesligados.addEventListener('click', function() {
+            const ids = JSON.parse(this.dataset.ids);
+            if (!ids || ids.length === 0) return;
+            
+            if (!confirm(`Deseja realmente remover os ${ids.length} colaborador(es) desligado(s) desta matriz?`)) {
+                return;
+            }
+            
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Removendo...';
+            
+            fetch(`/procedures/matrizes/${matrizId}/desassociar-colaboradores/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    colaboradores: ids
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.sucesso) {
+                    alert(`${data.quantidade} colaborador(es) desligado(s) desassociado(s) com sucesso!`);
+                    location.reload();
+                } else {
+                    alert('Erro: ' + (data.erro || 'Falha ao remover'));
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                alert('Erro ao desassociar colaboradores desligados');
+            })
+            .finally(() => {
+                this.disabled = false;
+                this.innerHTML = '<i class="bi bi-person-x"></i> Remover da Matriz';
+            });
+        });
+    }
+
     // ===== Carregar Colaboradores Disponíveis =====
     document.getElementById('modalAssociarColab').addEventListener('show.bs.modal', function() {
         const select = document.getElementById('selectColaborador');
         const alerta = document.getElementById('alerta-nenhum');
         const inputPesquisa = document.getElementById('inputPesquisaColab');
+        const selectSetor = document.getElementById('modalFilterSetor');
+        const selectLider = document.getElementById('modalFilterLider');
+        const selectTurno = document.getElementById('modalFilterTurno');
         
         select.innerHTML = '<option value="">Carregando...</option>';
         alerta.style.display = 'none';
         inputPesquisa.value = '';
+        selectSetor.innerHTML = '<option value="">Carregando...</option>';
+        selectLider.innerHTML = '<option value="">Carregando...</option>';
+        selectTurno.innerHTML = '<option value="">Carregando...</option>';
 
         fetch(`/procedures/matrizes/${matrizId}/colaboradores-disponiveis/`)
             .then(response => response.json())
@@ -1203,24 +1299,82 @@
                     select.disabled = true;
                     inputPesquisa.disabled = true;
                     alerta.style.display = 'block';
+                    selectSetor.innerHTML = '<option value="">Todos</option>';
+                    selectLider.innerHTML = '<option value="">Todos</option>';
+                    selectTurno.innerHTML = '<option value="">Todos</option>';
                 } else {
                     // Armazenar dados para filtrar
                     window.colaboradoresDisponiveis = data.colaboradores;
+                    
+                    // Extrair opções únicas para os filtros
+                    const setoresMap = new Map();
+                    const lideresMap = new Map();
+                    const turnosSet = new Set();
+                    
+                    data.colaboradores.forEach(c => {
+                        if (c.setor_id && c.setor__nome) {
+                            setoresMap.set(String(c.setor_id), c.setor__nome);
+                        }
+                        if (c.lider_id && c.lider__nome_completo) {
+                            lideresMap.set(String(c.lider_id), c.lider__nome_completo);
+                        }
+                        if (c.turno) {
+                            turnosSet.add(c.turno);
+                        }
+                    });
+                    
+                    // Preencher Setor
+                    selectSetor.innerHTML = '<option value="">Todos</option>' + 
+                        Array.from(setoresMap.entries())
+                            .sort((a, b) => a[1].localeCompare(b[1]))
+                            .map(entry => `<option value="${entry[0]}">${entry[1]}</option>`)
+                            .join('');
+                            
+                    // Preencher Líder
+                    selectLider.innerHTML = '<option value="">Todos</option>' + 
+                        Array.from(lideresMap.entries())
+                            .sort((a, b) => a[1].localeCompare(b[1]))
+                            .map(entry => `<option value="${entry[0]}">${entry[1]}</option>`)
+                            .join('');
+                            
+                    // Preencher Turno
+                    selectTurno.innerHTML = '<option value="">Todos</option>' + 
+                        Array.from(turnosSet)
+                            .sort()
+                            .map(t => `<option value="${t}">${t}</option>`)
+                            .join('');
                     
                     // Renderizar inicialmente todos
                     atualizarSelectColaboradores(data.colaboradores);
                     select.disabled = false;
                     inputPesquisa.disabled = false;
                     
-                    // Adicionar filtro em tempo real
-                    inputPesquisa.addEventListener('input', function() {
-                        const termo = this.value.toLowerCase();
-                        const filtrados = window.colaboradoresDisponiveis.filter(c => 
-                            c.nome_completo.toLowerCase().includes(termo) || 
-                            (c.matricula && c.matricula.toLowerCase().includes(termo))
-                        );
+                    // Filtrar colaboradores dinamicamente
+                    function filtrarColaboradoresModal() {
+                        const termo = inputPesquisa.value.toLowerCase();
+                        const setorId = selectSetor.value;
+                        const liderId = selectLider.value;
+                        const turnoVal = selectTurno.value;
+                        
+                        const filtrados = window.colaboradoresDisponiveis.filter(c => {
+                            const matchesTermo = !termo || 
+                                c.nome_completo.toLowerCase().includes(termo) || 
+                                (c.matricula && c.matricula.toLowerCase().includes(termo));
+                                
+                            const matchesSetor = !setorId || String(c.setor_id) === setorId;
+                            const matchesLider = !liderId || String(c.lider_id) === liderId;
+                            const matchesTurno = !turnoVal || c.turno === turnoVal;
+                            
+                            return matchesTermo && matchesSetor && matchesLider && matchesTurno;
+                        });
                         atualizarSelectColaboradores(filtrados);
-                    });
+                    }
+                    
+                    // Adicionar ouvintes para filtro dinâmico
+                    inputPesquisa.addEventListener('input', filtrarColaboradoresModal);
+                    selectSetor.addEventListener('change', filtrarColaboradoresModal);
+                    selectLider.addEventListener('change', filtrarColaboradoresModal);
+                    selectTurno.addEventListener('change', filtrarColaboradoresModal);
                 }
             })
             .catch(error => {
