@@ -68,3 +68,11 @@ def nav_notifications(request: Any) -> dict[str, int]:
     return {
         "nav_notifications_total": total,
     }
+
+
+def system_version(request: Any) -> dict[str, str]:
+    """Context processor: disponibiliza a versão do sistema globalmente."""
+    from django.conf import settings
+    return {
+        "system_version": getattr(settings, "SYSTEM_VERSION", "1.0.0"),
+    }

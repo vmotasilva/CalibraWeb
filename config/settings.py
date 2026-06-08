@@ -162,6 +162,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "shared.context_processors.nav_notifications",
                 "shared.context_processors.template_variants",
+                "shared.context_processors.system_version",
             ],
         },
     },
@@ -536,3 +537,6 @@ CSRF_USE_SESSIONS = os.environ.get("CSRF_USE_SESSIONS", "false").lower() in (
     "true",
     "yes",
 )
+
+# System version
+SYSTEM_VERSION = "2.4.0"

@@ -19,57 +19,57 @@
     
     <style>
         body { background-color: #f4f6f9; font-family: 'Segoe UI', sans-serif; padding-top: 80px; }
-        .navbar-brand { font-weight: bold; letter-spacing: 1px; }
-        .navbar > .container-fluid { padding-left: 0.5rem; padding-right: 0.5rem; }
-        .navbar-brand img { height: 34px !important; max-width: 110px !important; }
+        .navbar-brand { font-weight: bold; letter-spacing: 0.5px; }
+        .navbar > .container-fluid { padding-left: 0.4rem; padding-right: 0.4rem; }
+        .navbar-brand img { height: 28px !important; max-width: 95px !important; }
         .dropdown-item:active { background-color: #0d6efd; }
-        .nav-icon { font-size: 1.0rem; }
+        .nav-icon { font-size: 0.85rem; }
         .nav-text {
             display: inline;
-            margin-left: 0.35rem;
-            font-size: clamp(0.72rem, 0.7vw, 0.9rem);
+            margin-left: 0.2rem;
+            font-size: clamp(0.65rem, 0.6vw, 0.82rem);
             vertical-align: middle;
         }
 
         /* Navbar sempre visível (sem colapsar) */
         .navbar .navbar-toggler { display: none; }
-        .navbar .navbar-collapse { display: flex !important; flex-basis: auto; flex-grow: 1; flex-wrap: nowrap; gap: 0.15rem; }
+        .navbar .navbar-collapse { display: flex !important; flex-basis: auto; flex-grow: 1; flex-wrap: nowrap; gap: 0.1rem; }
         .navbar .navbar-collapse.collapse { display: flex !important; }
         .navbar .navbar-nav { flex: 1 1 auto; min-width: 0; flex-direction: row; flex-wrap: nowrap; align-items: center; white-space: nowrap; }
-        .navbar .nav-link { padding: 0.3rem 0.38rem; white-space: nowrap; }
+        .navbar .nav-link { padding: 0.2rem 0.26rem; white-space: nowrap; }
         .navbar-actions { flex: 0 1 auto; min-width: 0; margin-left: auto; flex-wrap: nowrap; white-space: nowrap; }
-        .navbar-actions .btn.btn-sm { padding: 0.22rem 0.42rem; }
-        .navbar-actions.border-start { padding-left: 0.5rem !important; margin-left: 0.4rem !important; }
-        .navbar-actions .me-2 { margin-right: 0.35rem !important; }
+        .navbar-actions .btn.btn-sm { padding: 0.18rem 0.32rem; }
+        .navbar-actions.border-start { padding-left: 0.35rem !important; margin-left: 0.3rem !important; }
+        .navbar-actions .me-2 { margin-right: 0.25rem !important; }
 
-        .navbar-user { max-width: clamp(120px, 14vw, 200px); overflow: hidden; }
+        .navbar-user { max-width: clamp(100px, 12vw, 175px); overflow: hidden; }
         .navbar-user .fw-bold,
         .navbar-user .text-muted { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
         @media (max-width: 1199.98px) {
-            .navbar .nav-link { padding: 0.28rem 0.34rem; }
-            .nav-divider { margin: 0 0.4rem; }
+            .navbar .nav-link { padding: 0.16rem 0.22rem; }
+            .nav-divider { margin: 0 0.2rem; }
         }
 
         @media (max-width: 991.98px) {
-            .nav-text { font-size: 0.9rem; }
-            .navbar .nav-link { padding: 0.26rem 0.3rem; }
+            .nav-text { font-size: 0.78rem; }
+            .navbar .nav-link { padding: 0.14rem 0.18rem; }
             .nav-divider { display: none; }
         }
         @media (max-width: 767.98px) {
-            .nav-text { font-size: 0.85rem; }
-            .navbar .nav-link { padding: 0.24rem 0.28rem; }
+            .nav-text { font-size: 0.74rem; }
+            .navbar .nav-link { padding: 0.12rem 0.16rem; }
         }
         @media (max-width: 575.98px) {
-            .nav-text { font-size: 0.8rem; }
-            .navbar .nav-link { padding: 0.22rem 0.26rem; }
+            .nav-text { font-size: 0.7rem; }
+            .navbar .nav-link { padding: 0.1rem 0.14rem; }
         }
 
         .nav-divider {
             width: 1px;
-            height: 26px;
+            height: 24px;
             background-color: rgba(255, 255, 255, 0.2);
-            margin: 0 0.4rem;
+            margin: 0 0.25rem;
             align-self: center;
         }
     </style>
@@ -82,7 +82,7 @@
 <nav class="navbar navbar-expand-lg navbar-dark fixed-top shadow calibra-topbar">
     <div class="container-fluid">
         <a class="navbar-brand ms-1 d-flex align-items-center gap-2" href="{% url 'home' %}">
-            <img src="{% static 'shared/logo_calibraweb.svg' %}" alt="CalibraWeb Logo" height="38" style="max-width:120px;object-fit:contain;" onerror="this.onerror=null;this.src='{% static 'favicon.png' %}';">
+            <img src="{% static 'shared/logo_calibraweb.svg' %}" alt="CalibraWeb Logo" height="30" style="max-width:100px;object-fit:contain;" onerror="this.onerror=null;this.src='{% static 'favicon.png' %}';">
         </a>
         
         <div class="collapse navbar-collapse" id="navbarContent">
