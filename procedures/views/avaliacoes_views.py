@@ -31,6 +31,7 @@ def matriz_avaliacoes_view(request):
     setor = request.GET.get('setor', '')
     turno = request.GET.get('turno', '')
     termo_colab = request.GET.get('colaborador', '').strip()
+    nivel_filtro = request.GET.get('nivel_filtro', '')
 
     setor_id = None
     if setor and str(setor).isdigit():
@@ -92,6 +93,25 @@ def matriz_avaliacoes_view(request):
                 Q(nome_completo__icontains=termo_colab) |
                 Q(matricula__icontains=termo_colab)
             )
+        
+        if nivel_filtro in ['-1', '0', '1', '2', '3']:
+            nivel_val = int(nivel_filtro)
+            colaboradores_qs = colaboradores_qs.filter(
+                avaliacoes_habilidade__matriz=matriz_selecionada,
+                avaliacoes_habilidade__disciplina__in=disciplinas,
+                avaliacoes_habilidade__nivel=nivel_val
+            ).distinct()
+        elif nivel_filtro == 'pendente' and disciplinas.exists():
+            from django.db.models import Count
+            colaboradores_qs = colaboradores_qs.annotate(
+                num_avaliacoes=Count(
+                    'avaliacoes_habilidade',
+                    filter=Q(
+                        avaliacoes_habilidade__matriz=matriz_selecionada,
+                        avaliacoes_habilidade__disciplina__in=disciplinas
+                    )
+                )
+            ).filter(num_avaliacoes__lt=disciplinas.count())
         
         # Paginar colaboradores usando o OffsetPaginator padrão
         from qms.pagination import OffsetPaginator, PaginationHelper
@@ -724,24 +744,46 @@ def exportar_matriz_excel_view(request):
     colaboradores_assoc = ColaboradorMatrizHabilidade.objects.filter(
         matriz=matriz_selecionada,
         ativo=True
-    ).select_related('colaborador').order_by('colaborador__nome_completo')
+    ).select_related('colaborador')
 
-    colaboradores = [assoc.colaborador for assoc in colaboradores_assoc]
+    nivel_filtro = request.GET.get('nivel_filtro', '')
+
+    colaboradores_qs = Colaborador.objects.filter(
+        id__in=colaboradores_assoc.values_list('colaborador_id', flat=True)
+    ).select_related('setor').order_by('nome_completo')
 
     if setor and str(setor).isdigit():
-        colaboradores = [c for c in colaboradores if c.setor_id == int(setor)]
+        colaboradores_qs = colaboradores_qs.filter(setor_id=int(setor))
     
     if turno:
-        colaboradores = [c for c in colaboradores if c.turno == turno]
+        colaboradores_qs = colaboradores_qs.filter(turno=turno)
     
     if termo_colab:
-        colaboradores = [
-            c for c in colaboradores 
-            if termo_colab.lower() in c.nome_completo.lower() or 
-               termo_colab.lower() in (c.matricula or '').lower()
-        ]
-    
-    colaboradores = sorted(colaboradores, key=lambda c: (c.nome_completo or '').lower())
+        colaboradores_qs = colaboradores_qs.filter(
+            Q(nome_completo__icontains=termo_colab) |
+            Q(matricula__icontains=termo_colab)
+        )
+
+    if nivel_filtro in ['-1', '0', '1', '2', '3']:
+        nivel_val = int(nivel_filtro)
+        colaboradores_qs = colaboradores_qs.filter(
+            avaliacoes_habilidade__matriz=matriz_selecionada,
+            avaliacoes_habilidade__disciplina__in=disciplinas,
+            avaliacoes_habilidade__nivel=nivel_val
+        ).distinct()
+    elif nivel_filtro == 'pendente' and disciplinas.exists():
+        from django.db.models import Count
+        colaboradores_qs = colaboradores_qs.annotate(
+            num_avaliacoes=Count(
+                'avaliacoes_habilidade',
+                filter=Q(
+                    avaliacoes_habilidade__matriz=matriz_selecionada,
+                    avaliacoes_habilidade__disciplina__in=disciplinas
+                )
+            )
+        ).filter(num_avaliacoes__lt=disciplinas.count())
+
+    colaboradores = list(colaboradores_qs)
     
     avaliacoes = AvaliacaoHabilidade.objects.filter(
         matriz=matriz_selecionada,
