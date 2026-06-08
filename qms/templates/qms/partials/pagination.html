@@ -13,12 +13,12 @@
                 <li class="page-item">
                     <a class="page-link" href="?page=1{% if query_params %}&{{ query_params.urlencode }}{% endif %}" 
                        title="First page">
-                        <i class="fas fa-angle-double-left"></i>
+                        <i class="bi bi-chevron-double-left"></i>
                     </a>
                 </li>
             {% else %}
                 <li class="page-item disabled">
-                    <span class="page-link"><i class="fas fa-angle-double-left"></i></span>
+                    <span class="page-link"><i class="bi bi-chevron-double-left"></i></span>
                 </li>
             {% endif %}
             
@@ -27,12 +27,12 @@
                 <li class="page-item">
                     <a class="page-link" href="?page={{ pagination.previous_page }}{% if query_params %}&{{ query_params.urlencode }}{% endif %}" 
                        title="Previous page">
-                        <i class="fas fa-angle-left"></i>
+                        <i class="bi bi-chevron-left"></i>
                     </a>
                 </li>
             {% else %}
                 <li class="page-item disabled">
-                    <span class="page-link"><i class="fas fa-angle-left"></i></span>
+                    <span class="page-link"><i class="bi bi-chevron-left"></i></span>
                 </li>
             {% endif %}
             
@@ -73,12 +73,12 @@
                 <li class="page-item">
                     <a class="page-link" href="?page={{ pagination.next_page }}{% if query_params %}&{{ query_params.urlencode }}{% endif %}" 
                        title="Next page">
-                        <i class="fas fa-angle-right"></i>
+                        <i class="bi bi-chevron-right"></i>
                     </a>
                 </li>
             {% else %}
                 <li class="page-item disabled">
-                    <span class="page-link"><i class="fas fa-angle-right"></i></span>
+                    <span class="page-link"><i class="bi bi-chevron-right"></i></span>
                 </li>
             {% endif %}
             
@@ -87,12 +87,12 @@
                 <li class="page-item">
                     <a class="page-link" href="?page={{ pagination.total_pages }}{% if query_params %}&{{ query_params.urlencode }}{% endif %}" 
                        title="Last page">
-                        <i class="fas fa-angle-double-right"></i>
+                        <i class="bi bi-chevron-double-right"></i>
                     </a>
                 </li>
             {% else %}
                 <li class="page-item disabled">
-                    <span class="page-link"><i class="fas fa-angle-double-right"></i></span>
+                    <span class="page-link"><i class="bi bi-chevron-double-right"></i></span>
                 </li>
             {% endif %}
         </ul>

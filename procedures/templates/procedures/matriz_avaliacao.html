@@ -1,4 +1,5 @@
 {% extends "procedures/procedimento_base.html" %}
+{% load pagination_tags %}
 
 {% block title %}Matriz de Avaliações{% endblock %}
 {% block header_title %}Matriz de Avaliações de Habilidade{% endblock %}
@@ -488,10 +489,15 @@
                 </h6>
             </div>
             <div class="d-flex gap-2 align-items-center">
-                <span class="badge bg-info">{{ matriz_dados|length }} colaboradores × {{ disciplinas.count }} disciplinas</span>
+                <span class="badge bg-info">{% if pagination %}{{ pagination.total_items }}{% else %}{{ matriz_dados|length }}{% endif %} colaboradores × {{ disciplinas.count }} disciplinas</span>
                 
                 <!-- Botões de Validação -->
                 <div class="btn-group" role="group">
+                    <a href="{% url 'procedures:exportar_matriz_excel' %}?matriz={{ matriz_selecionada.id }}&setor={{ setor }}&turno={{ turno }}&colaborador={{ termo_colab }}" 
+                       class="btn btn-outline-success btn-sm" 
+                       title="Exportar dados da matriz para Excel">
+                        <i class="bi bi-file-earmark-excel"></i> Exportar Excel
+                    </a>
                     <a href="{% url 'procedures:solicitar_validacao' matriz_selecionada.id %}" 
                        class="btn btn-outline-primary btn-sm" 
                        title="Solicitar validação para um líder/supervisor">
@@ -642,6 +648,11 @@
             </div>
             {% endif %}
         </div>
+        {% if pagination and pagination.total_pages > 1 %}
+        <div class="card-footer bg-white border-top px-4 py-1">
+            {% render_pagination pagination query_params %}
+        </div>
+        {% endif %}
     </div>
     {% else %}
     <div class="alert alert-info text-center">

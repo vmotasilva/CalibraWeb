@@ -45,6 +45,8 @@ def matriz_avaliacoes_view(request):
     colaboradores = []
     avaliacoes_dict = {}
     turnos_disponiveis = []
+    pagination = None
+    query_params = None
     
     if matriz_id:
         matriz_selecionada = get_object_or_404(MatrizHabilidade, id=matriz_id)
@@ -57,7 +59,7 @@ def matriz_avaliacoes_view(request):
         colaboradores_assoc = ColaboradorMatrizHabilidade.objects.filter(
             matriz=matriz_selecionada,
             ativo=True
-        ).select_related('colaborador').order_by('colaborador__nome_completo')
+        ).select_related('colaborador')
 
         # Setores disponíveis para esta matriz (antes de aplicar filtros/limites)
         setores_ids_matriz = list(
@@ -66,29 +68,45 @@ def matriz_avaliacoes_view(request):
             .distinct()
         )
         
-        # Extrair lista de colaboradores
-        colaboradores = [assoc.colaborador for assoc in colaboradores_assoc]
+        # Obter turnos únicos disponíveis nesta matriz (antes de aplicar filtros)
+        turnos_disponiveis = sorted(list(set(
+            colaboradores_assoc.values_list('colaborador__turno', flat=True)
+            .exclude(colaborador__turno__isnull=True)
+            .exclude(colaborador__turno='')
+            .distinct()
+        )))
         
-        # Obter turnos únicos disponíveis nesta matriz
-        turnos_disponiveis = sorted(list(set([c.turno for c in colaboradores if c.turno])))
+        # Filtrar o queryset de Colaboradores associados à matriz
+        colaboradores_qs = Colaborador.objects.filter(
+            id__in=colaboradores_assoc.values_list('colaborador_id', flat=True)
+        ).select_related('setor').order_by('nome_completo')
         
         if setor_id is not None:
-            colaboradores = [c for c in colaboradores if c.setor_id == setor_id]
+            colaboradores_qs = colaboradores_qs.filter(setor_id=setor_id)
         
         if turno:
-            colaboradores = [c for c in colaboradores if c.turno == turno]
+            colaboradores_qs = colaboradores_qs.filter(turno=turno)
         
         if termo_colab:
-            colaboradores = [
-                c for c in colaboradores 
-                if termo_colab.lower() in c.nome_completo.lower() or 
-                   termo_colab.lower() in (c.matricula or '').lower()
-            ]
+            colaboradores_qs = colaboradores_qs.filter(
+                Q(nome_completo__icontains=termo_colab) |
+                Q(matricula__icontains=termo_colab)
+            )
         
-        colaboradores = colaboradores[:50]  # Limitar para performance
-
-        # Garantir ordem alfabética crescente mesmo após filtros (A→Z)
-        colaboradores = sorted(colaboradores, key=lambda c: (c.nome_completo or '').lower())
+        # Paginar colaboradores usando o OffsetPaginator padrão
+        from qms.pagination import OffsetPaginator, PaginationHelper
+        page = PaginationHelper.get_page_from_request(request)
+        paginator = OffsetPaginator(page_size=50)
+        
+        colaboradores, pagination_metadata = paginator.paginate_queryset(
+            colaboradores_qs,
+            page=page
+        )
+        pagination = pagination_metadata.to_dict()
+        
+        query_params = request.GET.copy()
+        if 'page' in query_params:
+            query_params.pop('page')
         
         # Buscar avaliações existentes
         avaliacoes = AvaliacaoHabilidade.objects.filter(
@@ -139,6 +157,8 @@ def matriz_avaliacoes_view(request):
         'setor': setor,
         'turno': turno,
         'termo_colab': termo_colab,
+        'pagination': pagination,
+        'query_params': query_params,
     }
     
     return render(request, 'procedures/matriz_avaliacao.html', context)
@@ -679,3 +699,113 @@ def salvar_avaliacao_api(request, matriz_id, colaborador_id, disciplina_id):
         print(f"Erro ao salvar avaliação: {str(e)}")
         print(traceback.format_exc())
         return JsonResponse({'sucesso': False, 'erro': str(e)}, status=500)
+
+
+@login_required
+def exportar_matriz_excel_view(request):
+    """
+    Exporta a matriz de avaliações (filtrada) para Excel
+    """
+    matriz_id = request.GET.get('matriz', '')
+    setor = request.GET.get('setor', '')
+    turno = request.GET.get('turno', '')
+    termo_colab = request.GET.get('colaborador', '').strip()
+
+    if not matriz_id:
+        messages.error(request, 'Selecione uma matriz para exportar!')
+        return redirect('procedures:matriz_avaliacoes')
+
+    matriz_selecionada = get_object_or_404(MatrizHabilidade, id=matriz_id)
+    
+    from django.db.models.functions import Lower
+    disciplinas = matriz_selecionada.disciplinas_matriz.filter(ativo=True).order_by(Lower('nome'))
+    
+    from procedures.models import ColaboradorMatrizHabilidade
+    colaboradores_assoc = ColaboradorMatrizHabilidade.objects.filter(
+        matriz=matriz_selecionada,
+        ativo=True
+    ).select_related('colaborador').order_by('colaborador__nome_completo')
+
+    colaboradores = [assoc.colaborador for assoc in colaboradores_assoc]
+
+    if setor and str(setor).isdigit():
+        colaboradores = [c for c in colaboradores if c.setor_id == int(setor)]
+    
+    if turno:
+        colaboradores = [c for c in colaboradores if c.turno == turno]
+    
+    if termo_colab:
+        colaboradores = [
+            c for c in colaboradores 
+            if termo_colab.lower() in c.nome_completo.lower() or 
+               termo_colab.lower() in (c.matricula or '').lower()
+        ]
+    
+    colaboradores = sorted(colaboradores, key=lambda c: (c.nome_completo or '').lower())
+    
+    avaliacoes = AvaliacaoHabilidade.objects.filter(
+        matriz=matriz_selecionada,
+        colaborador__in=colaboradores,
+        disciplina__in=disciplinas
+    ).select_related('colaborador', 'disciplina')
+    
+    avaliacoes_map = {
+        (av.colaborador_id, av.disciplina_id): av.nivel
+        for av in avaliacoes
+    }
+    
+    rows = []
+    for col in colaboradores:
+        row = {
+            'Matrícula': col.matricula or '',
+            'Colaborador': col.nome_completo or '',
+            'Setor': str(col.setor) if col.setor else '',
+            'Turno': col.turno or '',
+        }
+        for disc in disciplinas:
+            nivel = avaliacoes_map.get((col.id, disc.id))
+            if nivel is None:
+                row[disc.nome] = ''
+            elif nivel == -1:
+                row[disc.nome] = 'N/A'
+            else:
+                row[disc.nome] = nivel
+        rows.append(row)
+
+    import io
+    import pandas as pd
+    from django.http import HttpResponse
+    
+    df = pd.DataFrame(rows)
+    
+    cols = ['Matrícula', 'Colaborador', 'Setor', 'Turno'] + [disc.nome for disc in disciplinas]
+    for col_name in cols:
+        if col_name not in df.columns:
+            df[col_name] = ''
+    df = df[cols]
+    
+    b = io.BytesIO()
+    with pd.ExcelWriter(b, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Matriz de Habilidades')
+        
+        workbook = writer.book
+        worksheet = writer.sheets['Matriz de Habilidades']
+        
+        from openpyxl.utils import get_column_letter
+        for col_idx, col_name in enumerate(df.columns, 1):
+            max_len = max(
+                df[col_name].astype(str).map(len).max(),
+                len(str(col_name))
+            ) + 3
+            max_len = min(max_len, 50)
+            worksheet.column_dimensions[get_column_letter(col_idx)].width = max_len
+
+    b.seek(0)
+    
+    nome_matriz = matriz_selecionada.nome.replace(' ', '_').replace('/', '_')
+    filename = f"Matriz_Habilidades_{nome_matriz}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    
+    response = HttpResponse(b, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+

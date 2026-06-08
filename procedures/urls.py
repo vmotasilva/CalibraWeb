@@ -169,6 +169,7 @@ urlpatterns = [
     # AVALIAÇÕES DE HABILIDADE
     # ==========================
     path('avaliacoes/', avaliacoes_views.matriz_avaliacoes_view, name='matriz_avaliacoes'),
+    path('avaliacoes/exportar/', avaliacoes_views.exportar_matriz_excel_view, name='exportar_matriz_excel'),
     path('avaliacoes/<int:matriz_id>/<int:colaborador_id>/<int:disciplina_id>/', avaliacoes_views.editar_avaliacao_view, name='editar_avaliacao'),
     path('avaliacoes/colaborador/<int:colaborador_id>/', avaliacoes_views.avaliacoes_colaborador_view, name='avaliacoes_colaborador'),
     path('avaliacoes/rapida/', avaliacoes_views.avaliacao_rapida_view, name='avaliacao_rapida'),

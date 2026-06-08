@@ -499,7 +499,7 @@ NAV_STRUCTURE = [
                     {"nome": "Disciplinas", "view_name": "procedures:disciplinas_list", "perm": "core.nav_treinamentos_disciplinas"},
                     {"nome": "Editar Disciplina", "view_name": "procedures:editar_disciplina", "perm": "core.nav_treinamentos_disciplinas"},
                     {"nome": "Deletar Disciplina", "view_name": "procedures:deletar_disciplina", "perm": "core.nav_treinamentos_disciplinas_delete"},
-                    {"nome": "Avaliações de Colaboradores", "view_name": "procedures:matriz_avaliacoes", "perm": "core.nav_treinamentos_avaliacoes"},
+                    {"nome": "Avaliações de Colaboradores", "view_name": ["procedures:matriz_avaliacoes", "procedures:exportar_matriz_excel"], "perm": "core.nav_treinamentos_avaliacoes"},
                     {"nome": "Editar Avaliação", "view_name": "procedures:editar_avaliacao", "perm": "core.nav_treinamentos_avaliacao_edit"},
                     {"nome": "Salvar Avaliação (API)", "view_name": ["procedures:salvar_avaliacao_api", "procedures:salvar_avaliacao_modal_api"], "perm": "core.nav_treinamentos_avaliacoes"},
 
