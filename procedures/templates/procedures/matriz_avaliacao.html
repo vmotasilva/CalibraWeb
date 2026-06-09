@@ -572,8 +572,24 @@
                     <div class="matriz-header-scroll" id="headerScroll">
                         <div class="matriz-header-content">
                             {% for disc in disciplinas %}
-                            <div class="disciplina-header-cell position-relative" title="{{ disc.nome }}">
-                                <div class="disciplina-header">{{ disc.nome }}</div>
+                            <div class="disciplina-header-cell position-relative">
+                                <div class="disciplina-header">
+                                    {{ disc.nome }}
+                                    <i class="bi bi-info-circle text-muted ms-1 info-col-tooltip" 
+                                       data-bs-toggle="tooltip" 
+                                       data-bs-html="true" 
+                                       data-bs-placement="bottom"
+                                       style="cursor: pointer; font-size: 0.75rem;"
+                                       title="<div class='text-start small'>
+                                                <strong>Resumo de Avaliações:</strong><br>
+                                                <span class='badge bg-secondary me-1'>P</span> Pendentes: {{ disc.resumo_lote.pendentes }}<br>
+                                                <span class='badge bg-light text-dark border me-1'>N/A</span> Não se Aplica: {{ disc.resumo_lote.na }}<br>
+                                                <span class='badge bg-danger me-1'>0</span> Nível 0: {{ disc.resumo_lote.nivel_0 }}<br>
+                                                <span class='badge bg-warning text-dark me-1'>1</span> Nível 1: {{ disc.resumo_lote.nivel_1 }}<br>
+                                                <span class='badge bg-success me-1'>2</span> Nível 2: {{ disc.resumo_lote.nivel_2 }}<br>
+                                                <span class='badge bg-primary me-1'>3</span> Nível 3: {{ disc.resumo_lote.nivel_3 }}
+                                              </div>"></i>
+                                </div>
                                 <button class="btn btn-sm btn-link text-muted position-absolute end-0 top-50 translate-middle-y p-0 me-1 btn-lote-trigger" 
                                         type="button" 
                                         data-disciplina-id="{{ disc.id }}" 

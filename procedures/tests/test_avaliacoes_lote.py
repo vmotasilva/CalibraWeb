@@ -165,3 +165,36 @@ class BatchApplyEvaluationsTest(TestCase):
         
         # colab3 continua sem avaliação
         self.assertFalse(AvaliacaoHabilidade.objects.filter(colaborador=self.colab3, disciplina=self.disc).exists())
+
+    def test_column_statistics_in_matrix_view(self):
+        self.client.force_login(self.user)
+        url = reverse('procedures:matriz_avaliacoes')
+        
+        # Carregar matriz sem filtros adicionais
+        response = self.client.get(url, {'matriz': self.matriz.id})
+        self.assertEqual(response.status_code, 200)
+        
+        disciplinas = response.context['disciplinas']
+        disc_obj = [d for d in disciplinas if d.id == self.disc.id][0]
+        
+        # Verificar o resumo calculado
+        resumo = disc_obj.resumo_lote
+        self.assertEqual(resumo['na'], 0)
+        self.assertEqual(resumo['nivel_0'], 0)
+        self.assertEqual(resumo['nivel_1'], 1) # colab1 tem nivel 1
+        self.assertEqual(resumo['nivel_2'], 0)
+        self.assertEqual(resumo['nivel_3'], 0)
+        self.assertEqual(resumo['pendentes'], 2) # colab2 e colab3 estão pendentes
+
+        # Carregar matriz filtrando pelo setor 2 (apenas colab3)
+        response = self.client.get(url, {'matriz': self.matriz.id, 'setor': self.setor2.id})
+        self.assertEqual(response.status_code, 200)
+        
+        disciplinas = response.context['disciplinas']
+        disc_obj = [d for d in disciplinas if d.id == self.disc.id][0]
+        resumo = disc_obj.resumo_lote
+        
+        # Sob o filtro do setor 2, apenas colab3 (pendente) deve ser considerado
+        self.assertEqual(resumo['nivel_1'], 0)
+        self.assertEqual(resumo['pendentes'], 1)
+

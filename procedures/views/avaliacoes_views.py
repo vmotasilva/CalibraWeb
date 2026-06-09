@@ -164,6 +164,36 @@ def matriz_avaliacoes_view(request):
                     'avaliacao': avaliacao
                 })
             matriz_dados.append(linha)
+
+        # Obter estatísticas das colunas (disciplinas) para toda a matriz (respeitando filtros atuais)
+        colaboradores_ids_filtrados = list(colaboradores_qs.values_list('id', flat=True))
+        total_colab_filtrados = len(colaboradores_ids_filtrados)
+        
+        todas_avaliacoes = AvaliacaoHabilidade.objects.filter(
+            matriz=matriz_selecionada,
+            disciplina__in=disciplinas,
+            colaborador_id__in=colaboradores_ids_filtrados
+        ).values('disciplina_id', 'nivel')
+        
+        resumos_disciplinas = {d.id: {-1: 0, 0: 0, 1: 0, 2: 0, 3: 0, 'total_avaliados': 0} for d in disciplinas}
+        for av in todas_avaliacoes:
+            d_id = av['disciplina_id']
+            nivel = av['nivel']
+            if d_id in resumos_disciplinas:
+                if nivel in resumos_disciplinas[d_id]:
+                    resumos_disciplinas[d_id][nivel] += 1
+                resumos_disciplinas[d_id]['total_avaliados'] += 1
+                
+        for disc in disciplinas:
+            resumo = resumos_disciplinas.get(disc.id, {-1: 0, 0: 0, 1: 0, 2: 0, 3: 0, 'total_avaliados': 0})
+            disc.resumo_lote = {
+                'na': resumo.get(-1, 0),
+                'nivel_0': resumo.get(0, 0),
+                'nivel_1': resumo.get(1, 0),
+                'nivel_2': resumo.get(2, 0),
+                'nivel_3': resumo.get(3, 0),
+                'pendentes': max(0, total_colab_filtrados - resumo.get('total_avaliados', 0))
+            }
     
     # Buscar setores disponíveis (com nome) para o filtro
     if matriz_id and matriz_selecionada:
