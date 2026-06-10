@@ -95,12 +95,16 @@
                     <!-- Search -->
                     <div class="col-md-3">
                         <label class="form-label">Pesquisar</label>
+                        <!-- Dummy inputs to intercept Chrome autofill -->
+                        <input type="text" name="chrome_autofill_dummy_user" style="display:none;" aria-hidden="true" autocomplete="off" />
+                        <input type="password" name="chrome_autofill_dummy_pass" style="display:none;" aria-hidden="true" autocomplete="off" />
                         <input 
-                            type="text" 
+                            type="search" 
                             name="q" 
                             class="form-control form-control-sm"
                             placeholder="Tag, descrição, código..." 
                             value="{{ search_query }}"
+                            autocomplete="one-time-code"
                         >
                     </div>
 

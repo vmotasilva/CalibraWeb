@@ -71,10 +71,14 @@
                     </div>
                     <!-- Campo de busca/filtro -->
                     <div class="mb-3">
-                        <input type="text" 
+                        <!-- Dummy inputs to intercept Chrome autofill -->
+                        <input type="text" name="chrome_autofill_dummy_user" style="display:none;" aria-hidden="true" autocomplete="off" />
+                        <input type="password" name="chrome_autofill_dummy_pass" style="display:none;" aria-hidden="true" autocomplete="off" />
+                        <input type="search" 
                                id="{{ name }}_search" 
                                class="form-control" 
-                               placeholder="🔍 Filtrar por TAG, descrição ou categoria...">
+                               placeholder="🔍 Filtrar por TAG, descrição ou categoria..."
+                               autocomplete="one-time-code">
                     </div>
                     
                     <!-- Tabela de instrumentos -->

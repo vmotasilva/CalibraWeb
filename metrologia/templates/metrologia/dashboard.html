@@ -150,9 +150,12 @@
 
             <!-- Busca e ações dos filtros (sem títulos adicionais) -->
             <div class="mb-2 flex-shrink-0">
+                <!-- Dummy inputs to intercept Chrome autofill -->
+                <input type="text" name="chrome_autofill_dummy_user" style="display:none;" aria-hidden="true" autocomplete="off" />
+                <input type="password" name="chrome_autofill_dummy_pass" style="display:none;" aria-hidden="true" autocomplete="off" />
                 <div class="input-group input-group-sm">
                     <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                    <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Tag, Descrição...">
+                    <input type="search" id="searchInput" class="form-control border-start-0" placeholder="Tag, Descrição..." autocomplete="one-time-code">
                 </div>
                 <div class="d-flex justify-content-end mt-2">
                     <button class="btn btn-sm btn-outline-secondary" type="button" onclick="limparFiltros()">Limpar filtros</button>
