@@ -320,23 +320,45 @@ def detalhe_planejamento_view(request, planejamento_id):
     registros = RegistroTreinamento.objects.filter(
         procedimento__in=planejamento.procedimentos.all(),
         colaborador__in=planejamento.colaboradores.all()
-    ).select_related('colaborador').order_by('-data_treinamento')
+    ).select_related('colaborador', 'procedimento').order_by('-data_treinamento')
     
-    # Identificar colaboradores que já realizaram
-    colaboradores_treinados = set(registros.values_list('colaborador_id', flat=True))
-    
-    # Preparar lista de colaboradores com status
+    # Criar mapeamento (colaborador_id, procedimento_id) -> registro de treinamento mais recente
+    registros_dict = {}
+    for r in registros:
+        key = (r.colaborador_id, r.procedimento_id)
+        if key not in registros_dict:
+            registros_dict[key] = r
+            
+    # Preparar lista de colaboradores com status detalhado
     colaboradores_info = []
     treinados_count = 0
+    total_procedimentos = planejamento.procedimentos.count()
+    
     for colab in planejamento.colaboradores.select_related('setor').all():
-        registro = registros.filter(colaborador=colab).first()
-        treinado = colab.id in colaboradores_treinados
+        procedimentos_status = []
+        quantidade_treinada = 0
+        for proc in planejamento.procedimentos.all():
+            reg = registros_dict.get((colab.id, proc.id))
+            treinado_proc = reg is not None
+            if treinado_proc:
+                quantidade_treinada += 1
+            procedimentos_status.append({
+                'procedimento': proc,
+                'treinado': treinado_proc,
+                'registro': reg
+            })
+            
+        # O colaborador é considerado "Treinado" no planejamento se tiver treinado em todos os procedimentos
+        treinado = (quantidade_treinada == total_procedimentos) if total_procedimentos > 0 else False
         if treinado:
             treinados_count += 1
+            
         colaboradores_info.append({
             'colaborador': colab,
             'treinado': treinado,
-            'registro': registro
+            'quantidade_treinada': quantidade_treinada,
+            'total_procedimentos': total_procedimentos,
+            'procedimentos_status': procedimentos_status,
         })
     
     pendentes_count = len(colaboradores_info) - treinados_count

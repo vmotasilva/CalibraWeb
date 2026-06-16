@@ -298,8 +298,8 @@
                             <th>Nome</th>
                             <th width="110">Matrícula</th>
                             <th width="180">Setor</th>
-                            <th width="120" class="text-center">Status</th>
-                            <th width="130" class="text-center">Último Treino</th>
+                            <th width="130" class="text-center">Progresso</th>
+                            <th width="320">Status por Procedimento</th>
                             {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
                             <th width="60" class="text-center">Ação</th>
                             {% endif %}
@@ -318,22 +318,33 @@
                             <td>{{ info.colaborador.matricula|default:"-" }}</td>
                             <td><span class="text-muted">{{ info.colaborador.setor|default:"-" }}</span></td>
                             <td class="text-center">
-                                {% if info.treinado %}
-                                    <span class="badge bg-success badge-code">
-                                        <i class="bi bi-check-circle"></i> Treinado
-                                    </span>
-                                {% else %}
-                                    <span class="badge bg-warning badge-code">
-                                        <i class="bi bi-clock"></i> Pendente
-                                    </span>
-                                {% endif %}
+                                <span class="badge {% if info.quantidade_treinada == info.total_procedimentos %}bg-success{% else %}bg-warning{% endif %} badge-code">
+                                    {{ info.quantidade_treinada }} / {{ info.total_procedimentos }}
+                                </span>
                             </td>
-                            <td class="text-center">
-                                {% if info.registro %}
-                                    <span class="text-muted small">{{ info.registro.data_treinamento|date:"d/m/Y" }}</span>
-                                {% else %}
-                                    <span class="text-muted">-</span>
-                                {% endif %}
+                            <td>
+                                <div class="d-flex flex-column gap-1">
+                                    {% for sp in info.procedimentos_status %}
+                                        <div class="d-flex align-items-center justify-content-between small py-1 border-bottom border-light">
+                                            <span class="badge bg-secondary badge-code me-2" title="{{ sp.procedimento.nome }}">{{ sp.procedimento.codigo }}</span>
+                                            <div class="d-flex align-items-center gap-2">
+                                                {% if sp.treinado %}
+                                                    <span class="text-success small">
+                                                        <i class="bi bi-check-circle-fill"></i> Treinado
+                                                    </span>
+                                                    <span class="text-muted small">({{ sp.registro.data_treinamento|date:"d/m/Y" }})</span>
+                                                {% else %}
+                                                    <span class="text-warning small">
+                                                        <i class="bi bi-clock-fill"></i> Pendente
+                                                    </span>
+                                                    <span class="text-muted small">(-)</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    {% empty %}
+                                        <span class="text-muted small">Nenhum procedimento associado</span>
+                                    {% endfor %}
+                                </div>
                             </td>
                             {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
                             <td class="text-center">
