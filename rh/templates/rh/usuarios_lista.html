@@ -126,10 +126,10 @@
                 <input
                     type="search"
                     class="form-control"
-                    id="searchUser"
-                    name="user_search"
+                    id="txtSearchQuery"
+                    name="q"
                     placeholder="Buscar por nome de usuário ou colaborador..."
-                    autocomplete="off"
+                    autocomplete="one-time-code"
                     autocapitalize="none"
                     spellcheck="false"
                 >
@@ -217,7 +217,7 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const searchInput = document.getElementById('searchUser');
+    const searchInput = document.getElementById('txtSearchQuery');
     
     // Busca de usuários
     searchInput.addEventListener('input', function() {

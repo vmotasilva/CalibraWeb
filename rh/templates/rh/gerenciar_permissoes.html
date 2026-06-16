@@ -149,7 +149,7 @@
         <div class="col-md-4">
             <div class="input-group search-box">
                 <span class="input-group-text"><i class="fas fa-search"></i></span>
-                <input type="text" class="form-control" id="searchUser" placeholder="Buscar usuário...">
+                <input type="text" class="form-control" id="txtSearchQuery" placeholder="Buscar usuário..." autocomplete="one-time-code">
             </div>
         </div>
         <div class="col-md-8 d-flex flex-wrap gap-2 align-items-center justify-content-start justify-content-md-end">
@@ -547,7 +547,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Busca de usuários
-    const searchInput = document.getElementById('searchUser');
+    const searchInput = document.getElementById('txtSearchQuery');
     searchInput.addEventListener('input', function() {
         const searchTerm = this.value.toLowerCase();
         document.querySelectorAll('#permissionsTableBody tr').forEach(row => {
