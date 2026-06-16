@@ -3,6 +3,10 @@ from django.contrib.auth.models import User
 from rh.models import Colaborador
 
 class Board(models.Model):
+    TIPO_CHOICES = [
+        ('PADRAO', 'Padrão'),
+        ('PLANOS_ACAO', 'Planos de Ação'),
+    ]
     nome = models.CharField(max_length=100, verbose_name="Nome do Quadro")
     descricao = models.TextField(blank=True, null=True, verbose_name="Descrição")
     criado_por = models.ForeignKey(
@@ -18,12 +22,22 @@ class Board(models.Model):
     )
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
+    arquivado = models.BooleanField(default=False, verbose_name="Arquivado")
+    tipo = models.CharField(
+        max_length=20,
+        choices=TIPO_CHOICES,
+        default='PADRAO',
+        verbose_name="Tipo de Quadro"
+    )
 
     def __str__(self):
         return self.nome
 
     @property
     def total_tasks(self):
+        if self.tipo == 'PLANOS_ACAO':
+            from acoes.models import LinhaAcao
+            return LinhaAcao.objects.filter(classificacao__in=['corretiva', 'preventiva']).count()
         return Card.objects.filter(coluna__quadro=self).count()
 
     class Meta:
@@ -37,6 +51,12 @@ class BoardColumn(models.Model):
     nome = models.CharField(max_length=100, verbose_name="Nome da Coluna")
     ordem = models.IntegerField(default=0)
     criado_em = models.DateTimeField(auto_now_add=True)
+    status_linha_acao = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
+        verbose_name="Status da Linha de Ação"
+    )
 
     class Meta:
         ordering = ['ordem', 'criado_em']
@@ -67,13 +87,11 @@ class Card(models.Model):
     coluna = models.ForeignKey(BoardColumn, on_delete=models.CASCADE, related_name="cartoes")
     titulo = models.CharField(max_length=200, verbose_name="Título da Tarefa")
     descricao = models.TextField(blank=True, null=True, verbose_name="Descrição")
-    responsavel = models.ForeignKey(
+    responsaveis = models.ManyToManyField(
         Colaborador, 
-        on_delete=models.SET_NULL, 
-        null=True, 
         blank=True, 
         related_name="cartoes_atribuidos", 
-        verbose_name="Responsável"
+        verbose_name="Responsáveis"
     )
     data_entrega = models.DateField(blank=True, null=True, verbose_name="Data de Entrega")
     prioridade = models.CharField(
@@ -97,6 +115,7 @@ class Card(models.Model):
     )
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
+
 
     class Meta:
         ordering = ['ordem', 'criado_em']

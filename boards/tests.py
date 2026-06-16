@@ -37,11 +37,11 @@ class BoardsTestCase(TestCase):
             coluna=self.coluna_todo,
             titulo='Tarefa de Teste',
             descricao='Descrição da tarefa de teste',
-            responsavel=self.colaborador,
             prioridade='BAIXA',
             criado_por=self.colaborador,
             ordem=0
         )
+        self.card.responsaveis.add(self.colaborador)
         
         self.client = Client()
         self.client.login(username='testuser', password='password123')
@@ -50,7 +50,7 @@ class BoardsTestCase(TestCase):
         """Verifica a integridade dos relacionamentos dos modelos"""
         self.assertEqual(self.board.colunas.count(), 2)
         self.assertEqual(self.coluna_todo.cartoes.count(), 1)
-        self.assertEqual(self.card.responsavel, self.colaborador)
+        self.assertIn(self.colaborador, self.card.responsaveis.all())
 
     def test_dashboard_view(self):
         """Testa o acesso à view do dashboard"""
@@ -91,12 +91,13 @@ class BoardsTestCase(TestCase):
         post_data = {
             'titulo': 'Nova Tarefa no Quadro',
             'descricao': 'Breve detalhe',
-            'responsavel': self.colaborador.id,
+            'responsaveis': [self.colaborador.id],
             'prioridade': 'MEDIA'
         }
         response = self.client.post(reverse('boards:create_card', args=[self.coluna_todo.id]), post_data)
         self.assertEqual(response.status_code, 302)
-        self.assertTrue(Card.objects.filter(coluna=self.coluna_todo, titulo='Nova Tarefa no Quadro').exists())
+        card = Card.objects.get(coluna=self.coluna_todo, titulo='Nova Tarefa no Quadro')
+        self.assertIn(self.colaborador, card.responsaveis.all())
 
     def test_api_move_card(self):
         """Testa a movimentação de um cartão via API AJAX (Drag and Drop)"""
@@ -163,12 +164,13 @@ class BoardsTestCase(TestCase):
         # Cria um item no checklist para verificar se ele será copiado
         ChecklistItem.objects.create(cartao=self.card, descricao='Subtarefa a copiar', concluido=True)
         
-        # Move o cartão para a coluna "Concluído" via API
+        # Move o cartão para a coluna "Concluído" via API com confirmação de recriação
         url = reverse('boards:api_move_card')
         post_json = {
             'card_id': self.card.id,
             'to_column_id': self.coluna_done.id,
-            'card_order_ids': [self.card.id]
+            'card_order_ids': [self.card.id],
+            'recreate': True
         }
         response = self.client.post(
             url, 
@@ -190,7 +192,7 @@ class BoardsTestCase(TestCase):
         
         # O novo cartão herda os dados corretos
         self.assertEqual(new_card.periodicidade, 'MENSAL')
-        self.assertEqual(new_card.responsavel, self.colaborador)
+        self.assertIn(self.colaborador, new_card.responsaveis.all())
         
         # O prazo do novo cartão deve ser exatamente 1 mês à frente
         months_to_add = 1
@@ -208,3 +210,103 @@ class BoardsTestCase(TestCase):
         # O checklist deve ter sido copiado como desmarcado
         self.assertEqual(new_card.checklist_itens.count(), 1)
         self.assertFalse(new_card.checklist_itens.first().concluido)
+
+    def test_recurring_task_no_spawning(self):
+        """Testa que se o usuário não confirmar a recriação, ela não é criada e o cartão original mantém a periodicidade"""
+        import datetime
+        from django.utils import timezone
+        hoje = timezone.now().date()
+        self.card.data_entrega = hoje
+        self.card.periodicidade = 'MENSAL'
+        self.card.save()
+        
+        url = reverse('boards:api_move_card')
+        post_json = {
+            'card_id': self.card.id,
+            'to_column_id': self.coluna_done.id,
+            'card_order_ids': [self.card.id],
+            'recreate': False
+        }
+        response = self.client.post(
+            url, 
+            data=json.dumps(post_json), 
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        
+        self.card.refresh_from_db()
+        self.assertEqual(self.card.coluna, self.coluna_done)
+        # Como recreate foi False, o cartão original mantém sua periodicidade
+        self.assertEqual(self.card.periodicidade, 'MENSAL')
+        
+        # Não deve ter nascido nenhum cartão novo
+        new_cards = Card.objects.filter(coluna=self.coluna_todo, titulo=self.card.titulo)
+        self.assertEqual(new_cards.count(), 0)
+
+    def test_planos_acao_board_integration(self):
+        """Testa o quadro fixo de planos de ação, exibição virtual e movimentação de LinhaAcao"""
+        from acoes.models import PlanoAcao, LinhaAcao, Solucao, AcaoCorretiva
+        import datetime
+        
+        acao = AcaoCorretiva.objects.create(
+            numero_registro='AC-TEST-123',
+            titulo='Acao de Teste',
+            descricao='NC',
+            data_vencimento=datetime.date.today()
+        )
+        sol = Solucao.objects.create(
+            acao_corretiva=acao,
+            tipo='plano_acao',
+            titulo='Plano de Acao Teste',
+            descricao='Plano'
+        )
+        plano = PlanoAcao.objects.create(
+            solucao=sol,
+            numero_registro='PLANO-TEST-123'
+        )
+        
+        # Criar LinhaAcao
+        linha = LinhaAcao.objects.create(
+            plano_acao=plano,
+            numero_acao=1,
+            descricao='Ação Corretiva Virtual',
+            classificacao='corretiva',
+            status='planejada',
+            prioridade=True,
+            data_deadline=datetime.date.today(),
+            responsavel_acao=self.colaborador
+        )
+        
+        # 1. Garante que o quadro PLANOS_ACAO existe
+        # Chamamos a view do dashboard para criar o quadro fixado no setup
+        response = self.client.get(reverse('boards:dashboard'))
+        self.assertEqual(response.status_code, 200)
+        
+        board_fixed = Board.objects.get(tipo='PLANOS_ACAO')
+        self.assertEqual(board_fixed.total_tasks, 1)
+        
+        # 2. Testa a visualização de detalhes do quadro fixado
+        response = self.client.get(reverse('boards:board_detail', args=[board_fixed.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Ação Corretiva Virtual')
+        
+        # 3. Testa a movimentação da LinhaAcao via API
+        col_em_curso = board_fixed.colunas.get(status_linha_acao='em_curso')
+        url = reverse('boards:api_move_card')
+        post_json = {
+            'card_id': linha.id,
+            'to_column_id': col_em_curso.id,
+            'card_order_ids': [linha.id]
+        }
+        response = self.client.post(
+            url,
+            data=json.dumps(post_json),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        
+        # Verifica se o status da linha de ação mudou no banco
+        linha.refresh_from_db()
+        self.assertEqual(linha.status, 'em_curso')
+
+

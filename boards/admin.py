@@ -22,10 +22,16 @@ class CardCommentInline(admin.TabularInline):
 
 @admin.register(Card)
 class CardAdmin(admin.ModelAdmin):
-    list_display = ('titulo', 'coluna', 'responsavel', 'prioridade', 'data_entrega', 'ordem')
+    list_display = ('titulo', 'coluna', 'get_responsaveis', 'prioridade', 'data_entrega', 'ordem')
     list_filter = ('prioridade', 'coluna__quadro', 'data_entrega')
     search_fields = ('titulo', 'descricao')
+    filter_horizontal = ('responsaveis',)
     inlines = [ChecklistItemInline, CardCommentInline]
+
+    def get_responsaveis(self, obj):
+        return ", ".join([r.nome_completo for r in obj.responsaveis.all()])
+    get_responsaveis.short_description = "Responsáveis"
+
 
 @admin.register(BoardColumn)
 class BoardColumnAdmin(admin.ModelAdmin):

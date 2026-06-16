@@ -22,14 +22,44 @@ def get_user_colaborador(user):
 def dashboard_view(request):
     """Exibe todos os quadros que o usuário gerencia ou participa"""
     colab = get_user_colaborador(request.user)
-    
-    # Superusuários vêm todos os quadros, colaboradores comuns vêm apenas os seus ou onde são membros
+    # Garante que o quadro fixado de Planos de Ação existe
+
+    board_fixed, created = Board.objects.get_or_create(
+        tipo='PLANOS_ACAO',
+        defaults={
+            'nome': 'Ações Corretivas e Preventivas',
+            'descricao': 'Quadro fixado contendo as ações corretivas e preventivas dos Planos de Ações.',
+            'arquivado': False
+        }
+    )
+    if created:
+        # Criar as 5 colunas vinculadas aos status das ações
+        colunas_padrao = [
+            ("Planejada", "planejada"),
+            ("Em Curso/Andamento", "em_curso"),
+            ("Retardo/Atrasada", "retardo"),
+            ("Completa/Concluído", "completa"),
+            ("Cancelada", "cancelada"),
+        ]
+        for idx, (nome_col, status_val) in enumerate(colunas_padrao):
+            BoardColumn.objects.create(
+                quadro=board_fixed, 
+                nome=nome_col, 
+                ordem=idx,
+                status_linha_acao=status_val
+            )
+            
+    # Superusuários vêm todos os quadros, colaboradores comuns vêm apenas os seus, onde são membros, ou o quadro fixo
     if request.user.is_superuser:
-        quadros = Board.objects.all().distinct()
+        quadros_base = Board.objects.all().distinct()
     else:
-        quadros = Board.objects.filter(
-            Q(criado_por=colab) | Q(membros=colab)
+        quadros_base = Board.objects.filter(
+            Q(criado_por=colab) | Q(membros=colab) | Q(tipo='PLANOS_ACAO')
         ).distinct()
+
+    quadros = quadros_base.filter(arquivado=False)
+    quadros_arquivados = quadros_base.filter(arquivado=True)
+
 
     if request.method == 'POST':
         form = BoardForm(request.POST)
@@ -60,6 +90,7 @@ def dashboard_view(request):
         
     context = {
         'quadros': quadros,
+        'quadros_arquivados': quadros_arquivados,
         'form': form,
         'titulo': 'Quadros de Atividades'
     }
@@ -76,60 +107,141 @@ def board_detail_view(request, board_id):
         board = get_object_or_404(Board, id=board_id)
     else:
         board = get_object_or_404(
-            Board.objects.filter(Q(criado_por=colab) | Q(membros=colab)), 
+            Board.objects.filter(Q(criado_por=colab) | Q(membros=colab) | Q(tipo='PLANOS_ACAO')), 
             id=board_id
         )
         
     # Colunas e cartões pré-carregados
-    colunas = board.colunas.prefetch_related('cartoes__responsavel', 'cartoes__checklist_itens').all()
+    colunas = board.colunas.prefetch_related('cartoes__responsaveis', 'cartoes__checklist_itens').all()
     
-    # Calcular Métricas de Carga de Trabalho da Equipe
-    total_cartoes = Card.objects.filter(coluna__quadro=board).count()
-    
-    # Identificar coluna de conclusão (última coluna por ordem ou contendo "concluido/concluído/done" no nome)
-    concluido_colunas_ids = []
-    for col in colunas:
-        nome_low = col.nome.lower()
-        if "concluido" in nome_low or "concluído" in nome_low or "done" in nome_low or "terminado" in nome_low or "pronto" in nome_low:
-            concluido_colunas_ids.append(col.id)
+    if board.tipo == 'PLANOS_ACAO':
+        from acoes.models import LinhaAcao
+        
+        # Obter todas as linhas de ação corretiva e preventiva
+        linhas = LinhaAcao.objects.filter(
+            classificacao__in=['corretiva', 'preventiva']
+        ).select_related('plano_acao__solucao', 'responsavel_acao').prefetch_related('responsaveis_multiplos').all()
+        
+        total_cartoes = len(linhas)
+        
+        # Identificar colunas concluídas
+        concluido_colunas_ids = [col.id for col in colunas if col.status_linha_acao in ['completa', 'cancelada']]
+        
+        cartoes_concluidos = sum(1 for l in linhas if l.status in ['completa', 'cancelada'])
+        
+        porcentagem_concluida = 0
+        if total_cartoes > 0:
+            porcentagem_concluida = int((cartoes_concluidos / total_cartoes) * 100)
             
-    # Se não achar nenhuma pelo nome, assume a última
-    if not concluido_colunas_ids and colunas.exists():
-        concluido_colunas_ids.append(colunas.last().id)
+        hoje = timezone.now().date()
+        cartoes_atrasados = sum(1 for l in linhas if l.data_deadline and l.data_deadline < hoje and l.status not in ['completa', 'cancelada'])
         
-    cartoes_concluidos = Card.objects.filter(coluna_id__in=concluido_colunas_ids).count()
-    
-    porcentagem_concluida = 0
-    if total_cartoes > 0:
-        porcentagem_concluida = int((cartoes_concluidos / total_cartoes) * 100)
+        # Carga de trabalho por colaborador (linhas de ação pendentes)
+        carga_membros_dict = {}
+        for l in linhas:
+            if l.status in ['completa', 'cancelada']:
+                continue
+            # responsavel principal
+            if l.responsavel_acao:
+                carga_membros_dict[l.responsavel_acao] = carga_membros_dict.get(l.responsavel_acao, 0) + 1
+            # responsaveis multiplos
+            for r in l.responsaveis_multiplos.all():
+                if r != l.responsavel_acao:
+                    carga_membros_dict[r] = carga_membros_dict.get(r, 0) + 1
+                    
+        # Ordenar carga de trabalho por quantidade de tarefas decrescente
+        carga_membros_sorted = sorted(carga_membros_dict.items(), key=lambda x: x[1], reverse=True)
+        chart_membros_nomes = [m.nome_completo for m, _ in carga_membros_sorted]
+        chart_membros_valores = [v for _, v in carga_membros_sorted]
         
-    hoje = timezone.now().date()
-    cartoes_atrasados = Card.objects.filter(
-        coluna__quadro=board,
-        data_entrega__lt=hoje
-    ).exclude(coluna_id__in=concluido_colunas_ids).count()
-    
-    # Carga de trabalho por colaborador (exclui concluídos para focar no trabalho pendente)
-    carga_membros = Colaborador.objects.filter(
-        Q(quadros_participa=board) | Q(quadros_criados=board)
-    ).annotate(
-        tarefas_ativas=Count(
-            'cartoes_atribuidos',
-            filter=Q(cartoes_atribuidos__coluna__quadro=board) & ~Q(cartoes_atribuidos__coluna_id__in=concluido_colunas_ids)
-        )
-    ).filter(tarefas_ativas__gt=0).order_by('-tarefas_ativas')
-    
-    # Preparar dados para o Chart.js
-    chart_membros_nomes = [m.nome_completo for m in carga_membros]
-    chart_membros_valores = [m.tarefas_ativas for m in carga_membros]
-    
-    # Distribuição por colunas
-    distribuicao_colunas = []
-    for col in colunas:
-        distribuicao_colunas.append({
-            'nome': col.nome,
-            'quantidade': col.cartoes.count()
-        })
+        # Distribuição por colunas e associar cartões virtuais a colunas
+        distribuicao_colunas = []
+        for col in colunas:
+            col_linhas = [l for l in linhas if l.status == col.status_linha_acao]
+            distribuicao_colunas.append({
+                'nome': col.nome,
+                'quantidade': len(col_linhas)
+            })
+            
+            # Construir cartões virtuais
+            col.cartoes_list = []
+            for l in col_linhas:
+                resps = []
+                if l.responsavel_acao:
+                    resps.append(l.responsavel_acao)
+                for r in l.responsaveis_multiplos.all():
+                    if r not in resps:
+                        resps.append(r)
+                        
+                plan_ref = l.plano_acao.numero_registro or l.plano_acao.solucao.titulo or "Plano de Ação"
+                card_title = f"Ação #{l.numero_acao} - {plan_ref}"
+                
+                col.cartoes_list.append({
+                    'id': l.id,
+                    'titulo': card_title,
+                    'descricao': l.descricao,
+                    'prioridade': 'ALTA' if l.prioridade else 'BAIXA',
+                    'data_entrega': l.data_deadline,
+                    'responsaveis': {
+                        'all': resps
+                    },
+                    'periodicidade': 'AVULSA',
+                    'checklist_itens': {
+                        'exists': False
+                    },
+                    'plano_acao_id': l.plano_acao.id
+                })
+    else:
+        # Calcular Métricas de Carga de Trabalho da Equipe (Quadro Padrão)
+        total_cartoes = Card.objects.filter(coluna__quadro=board).count()
+        
+        # Identificar coluna de conclusão (última coluna por ordem ou contendo "concluido/concluído/done" no nome)
+        concluido_colunas_ids = []
+        for col in colunas:
+            nome_low = col.nome.lower()
+            if "concluido" in nome_low or "concluído" in nome_low or "done" in nome_low or "terminado" in nome_low or "pronto" in nome_low:
+                concluido_colunas_ids.append(col.id)
+                
+        # Se não achar nenhuma pelo nome, assume a última
+        if not concluido_colunas_ids and colunas.exists():
+            concluido_colunas_ids.append(colunas.last().id)
+            
+        cartoes_concluidos = Card.objects.filter(coluna_id__in=concluido_colunas_ids).count()
+        
+        porcentagem_concluida = 0
+        if total_cartoes > 0:
+            porcentagem_concluida = int((cartoes_concluidos / total_cartoes) * 100)
+            
+        hoje = timezone.now().date()
+        cartoes_atrasados = Card.objects.filter(
+            coluna__quadro=board,
+            data_entrega__lt=hoje
+        ).exclude(coluna_id__in=concluido_colunas_ids).count()
+        
+        # Carga de trabalho por colaborador (exclui concluídos para focar no trabalho pendente)
+        carga_membros = Colaborador.objects.filter(
+            Q(quadros_participa=board) | Q(quadros_criados=board)
+        ).annotate(
+            tarefas_ativas=Count(
+                'cartoes_atribuidos',
+                filter=Q(cartoes_atribuidos__coluna__quadro=board) & ~Q(cartoes_atribuidos__coluna_id__in=concluido_colunas_ids)
+            )
+        ).filter(tarefas_ativas__gt=0).order_by('-tarefas_ativas')
+        
+        # Preparar dados para o Chart.js
+        chart_membros_nomes = [m.nome_completo for m in carga_membros]
+        chart_membros_valores = [m.tarefas_ativas for m in carga_membros]
+        
+        # Distribuição por colunas
+        distribuicao_colunas = []
+        for col in colunas:
+            distribuicao_colunas.append({
+                'nome': col.nome,
+                'quantidade': col.cartoes.count()
+            })
+            
+            # Cartões normais
+            col.cartoes_list = col.cartoes.all()
         
     # Atividades recentes do quadro (limita a 20)
     atividades = board.atividades.select_related('colaborador')[:20]
@@ -137,12 +249,23 @@ def board_detail_view(request, board_id):
     # Formulários para criação rápida
     card_form = CardForm(board=board)
     
-    # Lista de colaboradores para o dropdown de transferência de responsável
-    todos_colaboradores = Colaborador.objects.filter(is_active=True).order_by('nome_completo')
-    
+    # Lista de colaboradores para o dropdown de transferência de responsável (membros do quadro + criador)
+    if board.tipo == 'PLANOS_ACAO':
+        todos_colaboradores = Colaborador.objects.filter(is_active=True).order_by('nome_completo')
+    else:
+        membros_ids = list(board.membros.values_list('id', flat=True))
+        if board.criado_por:
+            membros_ids.append(board.criado_por.id)
+        todos_colaboradores = Colaborador.objects.filter(id__in=membros_ids, is_active=True).distinct().order_by('nome_completo')
+        
+    colunas_andamento = [col for col in colunas if col.id not in concluido_colunas_ids]
+    colunas_concluidas = [col for col in colunas if col.id in concluido_colunas_ids]
+
     context = {
         'board': board,
         'colunas': colunas,
+        'colunas_andamento': colunas_andamento,
+        'colunas_concluidas': colunas_concluidas,
         'card_form': card_form,
         'total_cartoes': total_cartoes,
         'cartoes_concluidos': cartoes_concluidos,
@@ -156,6 +279,7 @@ def board_detail_view(request, board_id):
         'titulo': f"Quadro - {board.nome}"
     }
     return render(request, 'boards/board_detail.html', context)
+
 
 
 @login_required
@@ -222,8 +346,8 @@ def create_card_view(request, column_id):
         # Pega a maior ordem na coluna
         maior_ordem = coluna.cartoes.aggregate(Max('ordem'))['ordem__max']
         card.ordem = (maior_ordem + 1) if maior_ordem is not None else 0
-        
         card.save()
+        form.save_m2m()
         
         BoardActivity.objects.create(
             quadro=board,
@@ -284,13 +408,14 @@ def spawn_recurring_card(card):
         coluna=first_column,
         titulo=card.titulo,
         descricao=card.descricao,
-        responsavel=card.responsavel,
         data_entrega=next_date,
         prioridade=card.prioridade,
         periodicidade=card.periodicidade,
         ordem=new_ordem,
         criado_por=card.criado_por
     )
+    new_card.responsaveis.set(card.responsaveis.all())
+
     
     # Copia os itens do checklist (como não concluídos)
     for item in card.checklist_itens.all():
@@ -324,13 +449,36 @@ def api_move_card_view(request):
         to_column_id = data.get('to_column_id')
         card_order_ids = data.get('card_order_ids', []) # Array de IDs na nova ordem
         
+        nova_coluna = get_object_or_404(BoardColumn, id=to_column_id)
+        
+        if nova_coluna.quadro.tipo == 'PLANOS_ACAO':
+            from acoes.models import LinhaAcao
+            linha = get_object_or_404(LinhaAcao, id=card_id)
+            old_status = linha.status
+            new_status = nova_coluna.status_linha_acao
+            
+            linha.status = new_status
+            if new_status == 'completa':
+                linha.data_conclusao = timezone.now().date()
+            else:
+                linha.data_conclusao = None
+            linha.save()
+            
+            if old_status != new_status:
+                BoardActivity.objects.create(
+                    quadro=nova_coluna.quadro,
+                    colaborador=colab,
+                    descricao=f"alterou o status da ação #{linha.numero_acao} de '{old_status}' para '{new_status}'."
+                )
+            return JsonResponse({'success': True})
+            
         card = get_object_or_404(Card, id=card_id)
         old_col_nome = card.coluna.nome
-        nova_coluna = get_object_or_404(BoardColumn, id=to_column_id)
         
         # Atualizar a coluna do cartão movido
         card.coluna = nova_coluna
         card.save()
+
         
         # Verificar se é coluna de conclusão para tarefas recorrentes
         nome_low = nova_coluna.nome.lower()
@@ -341,8 +489,10 @@ def api_move_card_view(request):
             if last_col and last_col.id == nova_coluna.id:
                 is_concluida = True
                 
-        if is_concluida and card.periodicidade != 'AVULSA':
+        recreate = data.get('recreate', False)
+        if is_concluida and card.periodicidade != 'AVULSA' and recreate:
             spawn_recurring_card(card)
+
             
         # Atualizar a ordem de todos os cartões na coluna destino
         with transaction.atomic():
@@ -384,8 +534,8 @@ def api_card_detail_view(request, card_id):
             'id': card.id,
             'titulo': card.titulo,
             'descricao': card.descricao or '',
-            'responsavel_id': card.responsavel.id if card.responsavel else '',
-            'responsavel_nome': card.responsavel.nome_completo if card.responsavel else 'Não atribuído',
+            'responsaveis_ids': list(card.responsaveis.values_list('id', flat=True)),
+            'responsaveis_nomes': ", ".join([r.nome_completo for r in card.responsaveis.all()]) or 'Não atribuído',
             'prioridade': card.prioridade,
             'prioridade_label': card.get_prioridade_display(),
             'periodicidade': card.periodicidade,
@@ -403,11 +553,9 @@ def api_card_detail_view(request, card_id):
             card.titulo = data.get('titulo', card.titulo).strip()
             card.descricao = data.get('descricao', card.descricao)
             
-            resp_id = data.get('responsavel_id')
-            if resp_id:
-                card.responsavel = get_object_or_404(Colaborador, id=resp_id)
-            else:
-                card.responsavel = None
+            resp_ids = data.get('responsaveis_ids', [])
+            val_ids = [int(i) for i in resp_ids if i]
+            card.responsaveis.set(Colaborador.objects.filter(id__in=val_ids))
                 
             prioridade = data.get('prioridade')
             if prioridade in dict(Card.PRIORIDADE_CHOICES):
@@ -601,3 +749,66 @@ def delete_board_view(request, board_id):
     
     messages.success(request, f"Quadro '{nome_board}' excluído permanentemente.")
     return redirect('boards:dashboard')
+
+
+@login_required
+@require_POST
+def archive_board_view(request, board_id):
+    """Arquiva um quadro de atividades"""
+    colab = get_user_colaborador(request.user)
+    board = get_object_or_404(Board, id=board_id)
+    
+    if board.criado_por != colab and not request.user.is_superuser:
+        messages.error(request, "Apenas o criador do quadro pode arquivá-lo.")
+        return redirect('boards:dashboard')
+        
+    board.arquivado = True
+    board.save()
+    
+    BoardActivity.objects.create(
+        quadro=board,
+        colaborador=colab,
+        descricao="arquivou o quadro."
+    )
+    messages.success(request, f"Quadro '{board.nome}' arquivado com sucesso!")
+    return redirect('boards:dashboard')
+
+
+@login_required
+@require_POST
+def unarchive_board_view(request, board_id):
+    """Desarquiva/restaura um quadro de atividades"""
+    colab = get_user_colaborador(request.user)
+    board = get_object_or_404(Board, id=board_id)
+    
+    if board.criado_por != colab and not request.user.is_superuser:
+        messages.error(request, "Apenas o criador do quadro pode desarquivá-lo.")
+        return redirect('boards:dashboard')
+        
+    board.arquivado = False
+    board.save()
+    
+    BoardActivity.objects.create(
+        quadro=board,
+        colaborador=colab,
+        descricao="desarquivou o quadro."
+    )
+    messages.success(request, f"Quadro '{board.nome}' restaurado com sucesso!")
+    return redirect('boards:dashboard')
+
+
+@login_required
+@require_POST
+def api_move_column_view(request):
+    """Endpoint API para reordenar colunas via AJAX Drag and Drop"""
+    try:
+        data = json.loads(request.body)
+        column_order_ids = data.get('column_order_ids', [])
+        
+        with transaction.atomic():
+            for idx, col_id in enumerate(column_order_ids):
+                BoardColumn.objects.filter(id=col_id).update(ordem=idx)
+                
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)

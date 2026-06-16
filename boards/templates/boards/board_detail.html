@@ -12,7 +12,7 @@
         overflow-x: auto;
         align-items: start;
         gap: 1rem;
-        min-height: calc(100vh - 220px);
+        min-height: 280px;
         padding-bottom: 1.5rem;
     }
     
@@ -23,7 +23,7 @@
         border-radius: 10px;
         display: flex;
         flex-direction: column;
-        max-height: calc(100vh - 240px);
+        max-height: 500px;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
     }
     
@@ -194,6 +194,7 @@
                 <div class="vr mx-2"></div>
                 
                 <!-- Botões de Ações do Quadro -->
+                {% if board.tipo != 'PLANOS_ACAO' %}
                 <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#boardConfigModal" title="Configurar Quadro">
                     <i class="bi bi-gear"></i>
                 </button>
@@ -205,113 +206,217 @@
                     </button>
                 </form>
                 {% endif %}
+                {% endif %}
+
             </div>
         </div>
     </div>
 
     <!-- Conteúdo das Abas -->
-    <div class="tab-content" id="boardTabContent">
+    <div class="tab-content" id="boardTab">
         <!-- ABA 1: KANBAN BOARD -->
         <div class="tab-pane fade show active" id="kanban" role="tabpanel">
-            <div class="kanban-container">
-                {% for col in colunas %}
-                <div class="kanban-column" id="col-{{ col.id }}">
-                    <!-- Cabeçalho da Coluna -->
-                    <div class="column-header">
-                        <span class="text-truncate fw-bold">{{ col.nome }}</span>
-                        <div class="dropdown">
-                            <button class="btn btn-sm btn-link text-muted p-0" type="button" data-bs-toggle="dropdown">
-                                <i class="bi bi-three-dots"></i>
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end shadow">
-                                <li>
-                                    <form action="{% url 'boards:delete_column' col.id %}" method="POST" onsubmit="return confirm('Excluir esta coluna e TODAS as tarefas nela contidas?');">
-                                        {% csrf_token %}
-                                        <button type="submit" class="dropdown-item text-danger"><i class="bi bi-trash me-2"></i>Excluir Coluna</button>
-                                    </form>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                    
-                    <!-- Container dos Cartões -->
-                    <div class="card-container" id="cards-col-{{ col.id }}" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }})">
-                        {% for card in col.cartoes.all %}
-                        <div class="kanban-card priority-{{ card.prioridade|lower }}" id="card-{{ card.id }}" draggable="true" ondragstart="drag(event)" onclick="openCardModal({{ card.id }})">
-                            <div class="fw-semibold text-dark">{{ card.titulo }}</div>
-                            {% if card.descricao %}
-                                <div class="text-muted small text-truncate mt-1">{{ card.descricao }}</div>
-                            {% endif %}
-                            
-                            <!-- Subtarefas progresso -->
-                            {% if card.checklist_itens.exists %}
-                                {% with completed=card.checklist_itens.all|filter_concluido|length total=card.checklist_itens.count %}
-                                    <div class="d-flex align-items-center justify-content-between mt-2" style="font-size: 0.7rem; color: #5e6c84;">
-                                        <span><i class="bi bi-check2-square me-1"></i>{{ completed }}/{{ total }}</span>
-                                        {% with pct=completed|percent:total %}
-                                            <div class="progress progress-mini flex-grow-1 ms-2" style="max-width: 80px;">
-                                                <div class="progress-bar bg-success" style="width: {{ pct }}%;"></div>
-                                            </div>
-                                        {% endwith %}
-                                    </div>
-                                {% endwith %}
-                            {% endif %}
-                            
-                            <!-- Metadados -->
-                            <div class="card-meta">
-                                <div class="d-flex align-items-center gap-1">
-                                    {% if card.data_entrega %}
-                                        <span class="badge-date {% if card.data_entrega < hoje and col.id != colunas.last.id %}date-overdue{% else %}date-future{% endif %}" title="Data de Entrega">
-                                            <i class="bi bi-calendar-event me-1"></i>{{ card.data_entrega|date:"d M" }}
-                                        </span>
-                                    {% endif %}
-                                    {% if card.periodicidade != 'AVULSA' %}
-                                        <span class="badge bg-light text-secondary border rounded-pill" style="font-size: 0.65rem;" title="Tarefa Recorrente: {{ card.get_periodicidade_display }}">
-                                            <i class="bi bi-repeat me-1 text-primary"></i>{{ card.get_periodicidade_display }}
-                                        </span>
-                                    {% endif %}
-                                </div>
-                                
-                                {% if card.responsavel %}
-                                    <div class="avatar-circle" title="Responsável: {{ card.responsavel.nome_completo }}">
-                                        {{ card.responsavel.nome_completo|slice:":2" }}
-                                    </div>
-                                {% else %}
-                                    <div class="avatar-circle bg-light text-muted" title="Sem responsável">
-                                        <i class="bi bi-person"></i>
-                                    </div>
-                                {% endif %}
+            <!-- Seção 1: Atividades em Andamento -->
+            <div class="mb-5">
+                <h5 class="fw-bold text-dark mb-3"><i class="bi bi-play-circle text-primary me-2"></i>Atividades em Andamento</h5>
+                <div class="kanban-container" id="kanban-andamento-container">
+                    {% for col in colunas_andamento %}
+                    <div class="kanban-column" id="col-{{ col.id }}">
+                        <!-- Cabeçalho da Coluna -->
+                        <div class="column-header" {% if board.tipo != 'PLANOS_ACAO' %}draggable="true" ondragstart="dragColumn(event)" ondragover="allowDropColumn(event)" ondrop="dropColumn(event, {{ col.id }})" style="cursor: move;"{% endif %}>
+                            <span class="text-truncate fw-bold">{% if board.tipo != 'PLANOS_ACAO' %}<i class="bi bi-grip-vertical text-muted me-1"></i>{% endif %}{{ col.nome }}</span>
+                            {% if board.tipo != 'PLANOS_ACAO' %}
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-link text-muted p-0" type="button" data-bs-toggle="dropdown">
+                                    <i class="bi bi-three-dots"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow">
+                                    <li>
+                                        <form action="{% url 'boards:delete_column' col.id %}" method="POST" onsubmit="return confirm('Excluir esta coluna e TODAS as tarefas nela contidas?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="dropdown-item text-danger"><i class="bi bi-trash me-2"></i>Excluir Coluna</button>
+                                        </form>
+                                    </li>
+                                </ul>
                             </div>
+                            {% endif %}
                         </div>
-                        {% endfor %}
-                    </div>
-                    
-                    <!-- Adicionar Cartão -->
-                    <button class="btn-add-card" onclick="openAddCardModal({{ col.id }}, '{{ col.nome }}')">
-                        <i class="bi bi-plus-lg me-1"></i>Adicionar tarefa
-                    </button>
-                </div>
-                {% endfor %}
-                
-                <!-- Adicionar Coluna -->
-                <div class="kanban-column bg-transparent border-0 shadow-none" style="width: 250px; min-width: 250px;">
-                    <button class="btn btn-outline-secondary w-100 py-2" data-bs-toggle="collapse" data-bs-target="#addColumnForm" aria-expanded="false" style="border-radius:10px; border-style:dashed;">
-                        <i class="bi bi-plus-lg me-2"></i>Nova Coluna
-                    </button>
-                    <div class="collapse mt-2" id="addColumnForm">
-                        <div class="card card-body p-2 border-0 shadow-sm">
-                            <form action="{% url 'boards:create_column' board.id %}" method="POST">
-                                {% csrf_token %}
-                                <input type="text" name="nome" class="form-control form-control-sm mb-2" placeholder="Nome da coluna..." required autocomplete="off">
-                                <div class="d-flex justify-content-end gap-1">
-                                    <button type="button" class="btn btn-sm btn-light" data-bs-toggle="collapse" data-bs-target="#addColumnForm">Cancelar</button>
-                                    <button type="submit" class="btn btn-sm btn-primary">Adicionar</button>
+                        
+                        <!-- Container dos Cartões -->
+                        <div class="card-container" id="cards-col-{{ col.id }}" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }})" data-is-concluida="false">
+                            {% for card in col.cartoes_list %}
+                            <div class="kanban-card priority-{{ card.prioridade|lower }}" id="card-{{ card.id }}" draggable="true" ondragstart="drag(event)" onclick="{% if board.tipo == 'PLANOS_ACAO' %}window.open('{% url 'acoes:plano_acao_detail' card.plano_acao_id %}', '_blank'){% else %}openCardModal({{ card.id }}){% endif %}" data-periodicidade="{{ card.periodicidade }}" data-periodicidade-label="{{ card.get_periodicidade_display }}" data-titulo="{{ card.titulo }}">
+                                <div class="fw-semibold text-dark">{{ card.titulo }}</div>
+                                {% if card.descricao %}
+                                    <div class="text-muted small text-truncate mt-1">{{ card.descricao }}</div>
+                                {% endif %}
+                                
+                                <!-- Subtarefas progresso -->
+                                {% if card.checklist_itens.exists %}
+                                    {% with completed=card.checklist_itens.all|filter_concluido|length total=card.checklist_itens.count %}
+                                        <div class="d-flex align-items-center justify-content-between mt-2" style="font-size: 0.7rem; color: #5e6c84;">
+                                            <span><i class="bi bi-check2-square me-1"></i>{{ completed }}/{{ total }}</span>
+                                            {% with pct=completed|percent:total %}
+                                                <div class="progress progress-mini flex-grow-1 ms-2" style="max-width: 80px;">
+                                                    <div class="progress-bar bg-success" style="width: {{ pct }}%;"></div>
+                                                </div>
+                                            {% endwith %}
+                                        </div>
+                                    {% endwith %}
+                                {% endif %}
+                                
+                                <!-- Metadados -->
+                                <div class="card-meta">
+                                    <div class="d-flex align-items-center gap-1">
+                                        {% if card.data_entrega %}
+                                            <span class="badge-date {% if card.data_entrega < hoje %}date-overdue{% else %}date-future{% endif %}" title="Data de Entrega">
+                                                <i class="bi bi-calendar-event me-1"></i>{{ card.data_entrega|date:"d M" }}
+                                            </span>
+                                        {% endif %}
+                                        {% if card.periodicidade != 'AVULSA' %}
+                                            <span class="badge bg-light text-secondary border rounded-pill" style="font-size: 0.65rem;" title="Tarefa Recorrente: {{ card.get_periodicidade_display }}">
+                                                <i class="bi bi-repeat me-1 text-primary"></i>{{ card.get_periodicidade_display }}
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="d-flex align-items-center gap-1">
+                                        {% for resp in card.responsaveis.all %}
+                                            <div class="avatar-circle" title="Responsável: {{ resp.nome_completo }}">
+                                                {{ resp.nome_completo|slice:":2" }}
+                                            </div>
+                                        {% empty %}
+                                            <div class="avatar-circle bg-light text-muted" title="Sem responsável">
+                                                <i class="bi bi-person"></i>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
                                 </div>
-                            </form>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <!-- Adicionar Cartão -->
+                        {% if board.tipo != 'PLANOS_ACAO' %}
+                        <button class="btn-add-card" onclick="openAddCardModal({{ col.id }}, '{{ col.nome }}')">
+                            <i class="bi bi-plus-lg me-1"></i>Adicionar tarefa
+                        </button>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                    
+                    <!-- Adicionar Coluna -->
+                    <div class="kanban-column bg-transparent border-0 shadow-none" style="width: 250px; min-width: 250px;">
+                        <button class="btn btn-outline-secondary w-100 py-2" data-bs-toggle="collapse" data-bs-target="#addColumnForm" aria-expanded="false" style="border-radius:10px; border-style:dashed;">
+                            <i class="bi bi-plus-lg me-2"></i>Nova Coluna
+                        </button>
+                        <div class="collapse mt-2" id="addColumnForm">
+                            <div class="card card-body p-2 border-0 shadow-sm">
+                                <form action="{% url 'boards:create_column' board.id %}" method="POST">
+                                    {% csrf_token %}
+                                    <input type="text" name="nome" class="form-control form-control-sm mb-2" placeholder="Nome da coluna..." required autocomplete="off">
+                                    <div class="d-flex justify-content-end gap-1">
+                                        <button type="button" class="btn btn-sm btn-light" data-bs-toggle="collapse" data-bs-target="#addColumnForm">Cancelar</button>
+                                        <button type="submit" class="btn btn-sm btn-primary">Adicionar</button>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <!-- Seção 2: Atividades Concluídas -->
+            <div>
+                <h5 class="fw-bold text-dark mb-3"><i class="bi bi-check-circle text-success me-2"></i>Atividades Concluídas</h5>
+                <div class="kanban-container" id="kanban-concluido-container">
+                    {% for col in colunas_concluidas %}
+                    <div class="kanban-column" id="col-{{ col.id }}">
+                        <!-- Cabeçalho da Coluna -->
+                        <div class="column-header" {% if board.tipo != 'PLANOS_ACAO' %}draggable="true" ondragstart="dragColumn(event)" ondragover="allowDropColumn(event)" ondrop="dropColumn(event, {{ col.id }})" style="cursor: move;"{% endif %}>
+                            <span class="text-truncate fw-bold">{% if board.tipo != 'PLANOS_ACAO' %}<i class="bi bi-grip-vertical text-muted me-1"></i>{% endif %}{{ col.nome }}</span>
+                            {% if board.tipo != 'PLANOS_ACAO' %}
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-link text-muted p-0" type="dropdown">
+                                    <i class="bi bi-three-dots"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow">
+                                    <li>
+                                        <form action="{% url 'boards:delete_column' col.id %}" method="POST" onsubmit="return confirm('Excluir esta coluna e TODAS as tarefas nela contidas?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="dropdown-item text-danger"><i class="bi bi-trash me-2"></i>Excluir Coluna</button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Container dos Cartões -->
+                        <div class="card-container" id="cards-col-{{ col.id }}" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }})" data-is-concluida="true">
+                            {% for card in col.cartoes_list %}
+                            <div class="kanban-card priority-{{ card.prioridade|lower }}" id="card-{{ card.id }}" draggable="true" ondragstart="drag(event)" onclick="{% if board.tipo == 'PLANOS_ACAO' %}window.open('{% url 'acoes:plano_acao_detail' card.plano_acao_id %}', '_blank'){% else %}openCardModal({{ card.id }}){% endif %}" data-periodicidade="{{ card.periodicidade }}" data-periodicidade-label="{{ card.get_periodicidade_display }}" data-titulo="{{ card.titulo }}">
+                                <div class="fw-semibold text-dark">{{ card.titulo }}</div>
+                                {% if card.descricao %}
+                                    <div class="text-muted small text-truncate mt-1">{{ card.descricao }}</div>
+                                {% endif %}
+                                
+                                <!-- Subtarefas progresso -->
+                                {% if card.checklist_itens.exists %}
+                                    {% with completed=card.checklist_itens.all|filter_concluido|length total=card.checklist_itens.count %}
+                                        <div class="d-flex align-items-center justify-content-between mt-2" style="font-size: 0.7rem; color: #5e6c84;">
+                                            <span><i class="bi bi-check2-square me-1"></i>{{ completed }}/{{ total }}</span>
+                                            {% with pct=completed|percent:total %}
+                                                <div class="progress progress-mini flex-grow-1 ms-2" style="max-width: 80px;">
+                                                    <div class="progress-bar bg-success" style="width: {{ pct }}%;"></div>
+                                                </div>
+                                            {% endwith %}
+                                        </div>
+                                    {% endwith %}
+                                {% endif %}
+                                
+                                <!-- Metadados -->
+                                <div class="card-meta">
+                                    <div class="d-flex align-items-center gap-1">
+                                        {% if card.data_entrega %}
+                                            <span class="badge-date date-future" title="Data de Entrega">
+                                                <i class="bi bi-calendar-event me-1"></i>{{ card.data_entrega|date:"d M" }}
+                                            </span>
+                                        {% endif %}
+                                        {% if card.periodicidade != 'AVULSA' %}
+                                            <span class="badge bg-light text-secondary border rounded-pill" style="font-size: 0.65rem;" title="Tarefa Recorrente: {{ card.get_periodicidade_display }}">
+                                                <i class="bi bi-repeat me-1 text-primary"></i>{{ card.get_periodicidade_display }}
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="d-flex align-items-center gap-1">
+                                        {% for resp in card.responsaveis.all %}
+                                            <div class="avatar-circle" title="Responsável: {{ resp.nome_completo }}">
+                                                {{ resp.nome_completo|slice:":2" }}
+                                            </div>
+                                        {% empty %}
+                                            <div class="avatar-circle bg-light text-muted" title="Sem responsável">
+                                                <i class="bi bi-person"></i>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <!-- Adicionar Cartão -->
+                        {% if board.tipo != 'PLANOS_ACAO' %}
+                        <button class="btn-add-card" onclick="openAddCardModal({{ col.id }}, '{{ col.nome }}')">
+                            <i class="bi bi-plus-lg me-1"></i>Adicionar tarefa
+                        </button>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
         </div>
         
         <!-- ABA 2: TEAM METRICS & WORKLOAD -->
@@ -438,8 +543,8 @@
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Responsável</label>
-                            {{ card_form.responsavel }}
+                            <label class="form-label fw-bold">Responsáveis</label>
+                            {{ card_form.responsaveis }}
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold">Prioridade</label>
@@ -513,9 +618,8 @@
                     <div class="col-md-4">
                         <div class="card bg-light border-0 p-3" style="border-radius: 8px;">
                             <div class="mb-3">
-                                <label class="form-label fw-bold text-muted small d-block">Responsável</label>
-                                <select id="cardDetailResp" class="form-select form-select-sm">
-                                    <option value="">Ninguém</option>
+                                <label class="form-label fw-bold text-muted small d-block">Responsáveis</label>
+                                <select id="cardDetailResp" class="form-select form-select-sm" multiple size="4">
                                     {% for c in todos_colaboradores %}
                                         <option value="{{ c.id }}">{{ c.nome_completo }}</option>
                                     {% endfor %}
@@ -644,6 +748,15 @@
         const targetContainer = document.getElementById(`cards-col-${columnId}`);
         
         if (cardEl && targetContainer) {
+            const isConcluida = targetContainer.getAttribute('data-is-concluida') === 'true';
+            const periodicidade = cardEl.getAttribute('data-periodicidade');
+            const periodicidadeLabel = cardEl.getAttribute('data-periodicidade-label');
+            
+            let recreate = false;
+            if (isConcluida && periodicidade && periodicidade !== 'AVULSA') {
+                recreate = confirm(`Esta atividade possui periodicidade (${periodicidadeLabel}). Gostaria de reaplicar a atividade de acordo com o período e recriá-la?`);
+            }
+
             // Adiciona o cartão ao container da coluna destino
             targetContainer.appendChild(cardEl);
             
@@ -664,7 +777,8 @@
                 body: JSON.stringify({
                     card_id: cardId,
                     to_column_id: columnId,
-                    card_order_ids: cardOrderIds
+                    card_order_ids: cardOrderIds,
+                    recreate: recreate
                 })
             })
             .then(res => res.json())
@@ -672,6 +786,8 @@
                 if (!data.success) {
                     console.error("Erro ao mover cartão:", data.error);
                     alert("Não foi possível salvar a movimentação da tarefa.");
+                    location.reload();
+                } else if (recreate) {
                     location.reload();
                 }
             })
@@ -681,6 +797,7 @@
             });
         }
     }
+
 
     // ============================================
     // MODAL DE CRIAÇÃO E DETALHE DO CARTÃO
@@ -708,7 +825,12 @@
         .then(card => {
             document.getElementById('cardDetailTitle').textContent = card.titulo;
             document.getElementById('cardDetailDesc').value = card.descricao;
-            document.getElementById('cardDetailResp').value = card.responsavel_id;
+            
+            const respSelect = document.getElementById('cardDetailResp');
+            Array.from(respSelect.options).forEach(option => {
+                option.selected = card.responsaveis_ids.includes(parseInt(option.value));
+            });
+            
             document.getElementById('cardDetailPriority').value = card.prioridade;
             document.getElementById('cardDetailDueDate').value = card.data_entrega;
             document.getElementById('cardDetailPeriodicidade').value = card.periodicidade || 'AVULSA';
@@ -888,7 +1010,8 @@
     // Save Card Details
     document.getElementById('btnSaveCardDetails').addEventListener('click', () => {
         const desc = document.getElementById('cardDetailDesc').value;
-        const respId = document.getElementById('cardDetailResp').value;
+        const respSelect = document.getElementById('cardDetailResp');
+        const respIds = Array.from(respSelect.selectedOptions).map(opt => parseInt(opt.value)).filter(val => !isNaN(val));
         const priority = document.getElementById('cardDetailPriority').value;
         const dueDate = document.getElementById('cardDetailDueDate').value;
         const periodicidade = document.getElementById('cardDetailPeriodicidade').value;
@@ -901,7 +1024,7 @@
             },
             body: JSON.stringify({
                 descricao: desc,
-                responsavel_id: respId,
+                responsaveis_ids: respIds,
                 prioridade: priority,
                 data_entrega: dueDate,
                 periodicidade: periodicidade
