@@ -1,0 +1,937 @@
+{% extends "base.html" %}
+{% load boards_tags %}
+
+{% block title %}Quadro: {{ board.nome }} - Calibra QMS{% endblock %}
+{% block header_title %}{{ board.nome }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .kanban-container {
+        display: flex;
+        flex-direction: row;
+        overflow-x: auto;
+        align-items: start;
+        gap: 1rem;
+        min-height: calc(100vh - 220px);
+        padding-bottom: 1.5rem;
+    }
+    
+    .kanban-column {
+        width: 300px;
+        min-width: 300px;
+        background-color: #ebecf0;
+        border-radius: 10px;
+        display: flex;
+        flex-direction: column;
+        max-height: calc(100vh - 240px);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+    
+    .column-header {
+        padding: 0.75rem 1rem;
+        font-weight: 700;
+        color: #172b4d;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    .card-container {
+        padding: 0.75rem;
+        overflow-y: auto;
+        flex-grow: 1;
+        min-height: 100px;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .kanban-card {
+        background-color: white;
+        border-radius: 8px;
+        padding: 0.75rem;
+        box-shadow: 0 1.5px 3px rgba(0,0,0,0.1);
+        cursor: grab;
+        transition: box-shadow 0.15s ease, transform 0.15s ease;
+        border-left: 4px solid #6c757d;
+    }
+    
+    .kanban-card:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        transform: translateY(-2px);
+    }
+    
+    .kanban-card:active {
+        cursor: grabbing;
+    }
+    
+    .priority-alta { border-left-color: #dc3545 !important; }
+    .priority-media { border-left-color: #ffc107 !important; }
+    .priority-baixa { border-left-color: #198754 !important; }
+    
+    .card-meta {
+        font-size: 0.75rem;
+        color: #5e6c84;
+        margin-top: 0.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .avatar-circle {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background-color: #0d6efd;
+        color: white;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+    
+    .btn-add-card {
+        width: 100%;
+        background-color: transparent;
+        border: none;
+        color: #5e6c84;
+        padding: 0.5rem 0.75rem;
+        text-align: left;
+        border-bottom-left-radius: 10px;
+        border-bottom-right-radius: 10px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        transition: background-color 0.2s ease, color 0.2s ease;
+    }
+    
+    .btn-add-card:hover {
+        background-color: rgba(9, 30, 66, 0.08);
+        color: #172b4d;
+    }
+    
+    .badge-date {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.4rem;
+        border-radius: 4px;
+    }
+    
+    .date-overdue {
+        background-color: #f8d7da;
+        color: #842029;
+    }
+    
+    .date-future {
+        background-color: #e2e3e5;
+        color: #41464b;
+    }
+    
+    .progress-mini {
+        height: 4px;
+        margin-top: 0.5rem;
+        border-radius: 2px;
+    }
+    
+    .tab-content {
+        margin-top: 1rem;
+    }
+    
+    .activity-item {
+        border-left: 2px solid #dee2e6;
+        padding-left: 1rem;
+        position: relative;
+    }
+    
+    .activity-item::before {
+        content: '';
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background-color: #0d6efd;
+        position: absolute;
+        left: -6px;
+        top: 6px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <!-- Topo / Título do Quadro e Abas -->
+    <div class="card mb-3 shadow-sm border-0">
+        <div class="card-body py-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+            <div>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-1">
+                        <li class="breadcrumb-item"><a href="{% url 'boards:dashboard' %}">Quadros</a></li>
+                        <li class="breadcrumb-item active">{{ board.nome }}</li>
+                    </ol>
+                </nav>
+                <div class="d-flex align-items-center gap-2">
+                    <h4 class="fw-bold text-dark mb-0">{{ board.nome }}</h4>
+                    <span class="badge bg-secondary text-white" style="font-size:0.75rem;">
+                        {{ total_cartoes }} Tarefa{{ total_cartoes|pluralize }}
+                    </span>
+                </div>
+            </div>
+            
+            <div class="d-flex align-items-center gap-2">
+                <!-- Abas Customizadas (Navegação interna) -->
+                <ul class="nav nav-pills" id="boardTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active px-3" id="kanban-tab" data-bs-toggle="tab" data-bs-target="#kanban" type="button" role="tab"><i class="bi bi-kanban me-2"></i>Quadro</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link px-3" id="metrics-tab" data-bs-toggle="tab" data-bs-target="#metrics" type="button" role="tab"><i class="bi bi-pie-chart me-2"></i>Métricas da Equipe</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link px-3" id="activities-tab" data-bs-toggle="tab" data-bs-target="#activities" type="button" role="tab"><i class="bi bi-clock-history me-2"></i>Atividades</button>
+                    </li>
+                </ul>
+                
+                <div class="vr mx-2"></div>
+                
+                <!-- Botões de Ações do Quadro -->
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#boardConfigModal" title="Configurar Quadro">
+                    <i class="bi bi-gear"></i>
+                </button>
+                {% if board.criado_por == user.colaborador or user.is_superuser %}
+                <form action="{% url 'boards:delete_board' board.id %}" method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir este quadro permanentemente? Todos os cartões e colunas serão perdidos.');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-danger btn-sm" title="Excluir Quadro">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Conteúdo das Abas -->
+    <div class="tab-content" id="boardTabContent">
+        <!-- ABA 1: KANBAN BOARD -->
+        <div class="tab-pane fade show active" id="kanban" role="tabpanel">
+            <div class="kanban-container">
+                {% for col in colunas %}
+                <div class="kanban-column" id="col-{{ col.id }}">
+                    <!-- Cabeçalho da Coluna -->
+                    <div class="column-header">
+                        <span class="text-truncate fw-bold">{{ col.nome }}</span>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-link text-muted p-0" type="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-three-dots"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow">
+                                <li>
+                                    <form action="{% url 'boards:delete_column' col.id %}" method="POST" onsubmit="return confirm('Excluir esta coluna e TODAS as tarefas nela contidas?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="dropdown-item text-danger"><i class="bi bi-trash me-2"></i>Excluir Coluna</button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- Container dos Cartões -->
+                    <div class="card-container" id="cards-col-{{ col.id }}" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }})">
+                        {% for card in col.cartoes.all %}
+                        <div class="kanban-card priority-{{ card.prioridade|lower }}" id="card-{{ card.id }}" draggable="true" ondragstart="drag(event)" onclick="openCardModal({{ card.id }})">
+                            <div class="fw-semibold text-dark">{{ card.titulo }}</div>
+                            {% if card.descricao %}
+                                <div class="text-muted small text-truncate mt-1">{{ card.descricao }}</div>
+                            {% endif %}
+                            
+                            <!-- Subtarefas progresso -->
+                            {% if card.checklist_itens.exists %}
+                                {% with completed=card.checklist_itens.all|filter_concluido|length total=card.checklist_itens.count %}
+                                    <div class="d-flex align-items-center justify-content-between mt-2" style="font-size: 0.7rem; color: #5e6c84;">
+                                        <span><i class="bi bi-check2-square me-1"></i>{{ completed }}/{{ total }}</span>
+                                        {% with pct=completed|percent:total %}
+                                            <div class="progress progress-mini flex-grow-1 ms-2" style="max-width: 80px;">
+                                                <div class="progress-bar bg-success" style="width: {{ pct }}%;"></div>
+                                            </div>
+                                        {% endwith %}
+                                    </div>
+                                {% endwith %}
+                            {% endif %}
+                            
+                            <!-- Metadados -->
+                            <div class="card-meta">
+                                <div>
+                                    {% if card.data_entrega %}
+                                        <span class="badge-date {% if card.data_entrega < hoje and col.id != colunas.last.id %}date-overdue{% else %}date-future{% endif %}" title="Data de Entrega">
+                                            <i class="bi bi-calendar-event me-1"></i>{{ card.data_entrega|date:"d M" }}
+                                        </span>
+                                    {% endif %}
+                                </div>
+                                
+                                {% if card.responsavel %}
+                                    <div class="avatar-circle" title="Responsável: {{ card.responsavel.nome_completo }}">
+                                        {{ card.responsavel.nome_completo|slice:":2" }}
+                                    </div>
+                                {% else %}
+                                    <div class="avatar-circle bg-light text-muted" title="Sem responsável">
+                                        <i class="bi bi-person"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <!-- Adicionar Cartão -->
+                    <button class="btn-add-card" onclick="openAddCardModal({{ col.id }}, '{{ col.nome }}')">
+                        <i class="bi bi-plus-lg me-1"></i>Adicionar tarefa
+                    </button>
+                </div>
+                {% endfor %}
+                
+                <!-- Adicionar Coluna -->
+                <div class="kanban-column bg-transparent border-0 shadow-none" style="width: 250px; min-width: 250px;">
+                    <button class="btn btn-outline-secondary w-100 py-2" data-bs-toggle="collapse" data-bs-target="#addColumnForm" aria-expanded="false" style="border-radius:10px; border-style:dashed;">
+                        <i class="bi bi-plus-lg me-2"></i>Nova Coluna
+                    </button>
+                    <div class="collapse mt-2" id="addColumnForm">
+                        <div class="card card-body p-2 border-0 shadow-sm">
+                            <form action="{% url 'boards:create_column' board.id %}" method="POST">
+                                {% csrf_token %}
+                                <input type="text" name="nome" class="form-control form-control-sm mb-2" placeholder="Nome da coluna..." required autocomplete="off">
+                                <div class="d-flex justify-content-end gap-1">
+                                    <button type="button" class="btn btn-sm btn-light" data-bs-toggle="collapse" data-bs-target="#addColumnForm">Cancelar</button>
+                                    <button type="submit" class="btn btn-sm btn-primary">Adicionar</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ABA 2: TEAM METRICS & WORKLOAD -->
+        <div class="tab-pane fade" id="metrics" role="tabpanel">
+            <div class="row g-4">
+                <!-- KPI Widgets -->
+                <div class="col-md-4">
+                    <div class="card border-0 shadow-sm p-3" style="border-radius: 12px; background: linear-gradient(135deg, #198754 0%, #157347 100%); color:white;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-white-50 mb-1 fw-bold">TAXA DE CONCLUSÃO</h6>
+                                <h2 class="fw-bold mb-0">{{ porcentagem_concluida }}%</h2>
+                            </div>
+                            <i class="bi bi-check2-circle fs-1 text-white-50"></i>
+                        </div>
+                        <div class="mt-3 text-white-50 small">
+                            {{ cartoes_concluidos }} de {{ total_cartoes }} tarefas concluídas.
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card border-0 shadow-sm p-3" style="border-radius: 12px; background: linear-gradient(135deg, #dc3545 0%, #bb2d3b 100%); color:white;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-white-50 mb-1 fw-bold">TAREFAS ATRASADAS</h6>
+                                <h2 class="fw-bold mb-0">{{ cartoes_atrasados }}</h2>
+                            </div>
+                            <i class="bi bi-exclamation-triangle fs-1 text-white-50"></i>
+                        </div>
+                        <div class="mt-3 text-white-50 small">
+                            Tarefas com prazo vencido e não concluídas.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card border-0 shadow-sm p-3" style="border-radius: 12px; background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%); color:white;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-white-50 mb-1 fw-bold">TOTAL DO PROJETO</h6>
+                                <h2 class="fw-bold mb-0">{{ total_cartoes }}</h2>
+                            </div>
+                            <i class="bi bi-stack fs-1 text-white-50"></i>
+                        </div>
+                        <div class="mt-3 text-white-50 small">
+                            Total de tarefas cadastradas neste quadro.
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Gráficos -->
+                <div class="col-md-8">
+                    <div class="card border-0 shadow-sm" style="border-radius: 12px;">
+                        <div class="card-header bg-white border-0 pt-3 fw-bold"><i class="bi bi-bar-chart-fill text-primary me-2"></i>Carga de Trabalho da Equipe (Atividades Ativas)</div>
+                        <div class="card-body">
+                            <div style="height: 300px; position: relative;">
+                                <canvas id="workloadChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card border-0 shadow-sm" style="border-radius: 12px;">
+                        <div class="card-header bg-white border-0 pt-3 fw-bold"><i class="bi bi-pie-chart-fill text-info me-2"></i>Distribuição por Colunas</div>
+                        <div class="card-body d-flex justify-content-center">
+                            <div style="height: 300px; width: 100%; position: relative;">
+                                <canvas id="distributionChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ABA 3: HISTORY ACTIVITY LOG -->
+        <div class="tab-pane fade" id="activities" role="tabpanel">
+            <div class="card border-0 shadow-sm p-4" style="border-radius: 12px;">
+                <h5 class="fw-bold mb-4"><i class="bi bi-clock-history text-primary me-2"></i>Atividades do Quadro</h5>
+                <div class="d-flex flex-column gap-3">
+                    {% for act in atividades %}
+                    <div class="activity-item pb-3">
+                        <div class="fw-semibold small text-dark">
+                            {{ act.colaborador.nome_completo|default:"Sistema" }}
+                        </div>
+                        <div class="text-muted small mt-1">
+                            {{ act.descricao }}
+                        </div>
+                        <div class="text-muted" style="font-size: 0.65rem;">
+                            {{ act.criado_em|date:"d/m/Y H:i" }}
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center text-muted py-5">
+                        <i class="bi bi-clock-history fs-1"></i>
+                        <p class="mt-2 mb-0">Nenhuma atividade registrada.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Criação de Cartão -->
+<div class="modal fade" id="addCardModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 14px;">
+            <div class="modal-header bg-primary text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                <h5 class="modal-title fw-bold" id="addCardModalTitle"><i class="bi bi-plus-circle me-2"></i>Adicionar Tarefa</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="addCardForm" method="POST" action="">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Título da Tarefa</label>
+                        {{ card_form.titulo }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Descrição</label>
+                        {{ card_form.descricao }}
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Responsável</label>
+                            {{ card_form.responsavel }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Prioridade</label>
+                            {{ card_form.prioridade }}
+                        </div>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label fw-bold">Data de Entrega</label>
+                        {{ card_form.data_entrega }}
+                    </div>
+                </div>
+                <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary px-4">Adicionar Tarefa</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Detalhado do Cartão -->
+<div class="modal fade" id="cardDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 14px;">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold" id="cardDetailTitle">Título da Tarefa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body pt-2 px-4">
+                <div class="row g-4">
+                    <!-- Detalhes do Cartão (Lado Esquerdo) -->
+                    <div class="col-md-8">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-muted small uppercase">Descrição</label>
+                            <textarea id="cardDetailDesc" class="form-control" rows="3" placeholder="Insira uma descrição..."></textarea>
+                        </div>
+                        
+                        <!-- Checklist -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-muted small d-block">Subtarefas / Checklist</label>
+                            <div class="progress mb-2" style="height: 8px;">
+                                <div id="checklistProgress" class="progress-bar bg-success" style="width: 0%;"></div>
+                            </div>
+                            <div id="checklistContainer" class="d-flex flex-column gap-2 mb-2"></div>
+                            
+                            <!-- Input para nova subtarefa -->
+                            <div class="input-group input-group-sm">
+                                <input type="text" id="newChecklistItemInput" class="form-control" placeholder="Adicionar item ao checklist...">
+                                <button class="btn btn-primary" type="button" id="btnAddChecklistItem"><i class="bi bi-plus-lg"></i></button>
+                            </div>
+                        </div>
+                        
+                        <!-- Comentários -->
+                        <div>
+                            <label class="form-label fw-bold text-muted small">Comentários</label>
+                            <div class="input-group input-group-sm mb-3">
+                                <input type="text" id="newCommentInput" class="form-control" placeholder="Escreva um comentário...">
+                                <button class="btn btn-success" type="button" id="btnPostComment"><i class="bi bi-chat-left-text"></i> Enviar</button>
+                            </div>
+                            <div id="commentsContainer" class="d-flex flex-column gap-2" style="max-height: 250px; overflow-y: auto;"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Controles/Metadados (Lado Direito) -->
+                    <div class="col-md-4">
+                        <div class="card bg-light border-0 p-3" style="border-radius: 8px;">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold text-muted small d-block">Responsável</label>
+                                <select id="cardDetailResp" class="form-select form-select-sm">
+                                    <option value="">Ninguém</option>
+                                    {% for c in todos_colaboradores %}
+                                        <option value="{{ c.id }}">{{ c.nome_completo }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold text-muted small d-block">Prioridade</label>
+                                <select id="cardDetailPriority" class="form-select form-select-sm">
+                                    <option value="BAIXA">Baixa</option>
+                                    <option value="MEDIA">Média</option>
+                                    <option value="ALTA">Alta</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold text-muted small d-block">Prazo de Entrega</label>
+                                <input type="text" id="cardDetailDueDate" class="form-control form-control-sm js-week-datepicker" placeholder="aaaa-mm-dd">
+                            </div>
+                            
+                            <hr>
+                            
+                            <div class="d-flex flex-column gap-2 mt-3">
+                                <button type="button" id="btnSaveCardDetails" class="btn btn-primary btn-sm"><i class="bi bi-save me-1"></i>Salvar Alterações</button>
+                                <form id="deleteCardForm" method="POST" action="" onsubmit="return confirm('Deseja excluir esta tarefa definitivamente?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-danger btn-sm w-100"><i class="bi bi-trash me-1"></i>Excluir Tarefa</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Configurações do Quadro -->
+<div class="modal fade" id="boardConfigModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg" style="border-radius: 14px;">
+            <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                <h5 class="modal-title fw-bold"><i class="bi bi-gear me-2"></i>Configurações do Quadro</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{% url 'boards:edit_board' board.id %}">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nome do Quadro</label>
+                        <input type="text" name="nome" value="{{ board.nome }}" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Descrição</label>
+                        <textarea name="descricao" class="form-control" rows="3">{{ board.descricao|default:'' }}</textarea>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label fw-bold">Membros da Equipe</label>
+                        <select name="membros" class="form-select" multiple size="8">
+                            {% for c in todos_colaboradores %}
+                                <option value="{{ c.id }}" {% if c in board.membros.all %}selected{% endif %}>{{ c.nome_completo }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted">Use CTRL para marcar ou desmarcar colaboradores.</small>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    <button type="submit" class="btn btn-primary px-4">Salvar Configurações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js para gráficos -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+
+<script>
+    // ============================================
+    // KANBAN DRAG AND DROP
+    // ============================================
+    function drag(ev) {
+        ev.dataTransfer.setData("text", ev.target.id);
+    }
+
+    function allowDrop(ev) {
+        ev.preventDefault();
+    }
+
+    function drop(ev, columnId) {
+        ev.preventDefault();
+        const cardIdStr = ev.dataTransfer.getData("text");
+        const cardEl = document.getElementById(cardIdStr);
+        const targetContainer = document.getElementById(`cards-col-${columnId}`);
+        
+        if (cardEl && targetContainer) {
+            // Adiciona o cartão ao container da coluna destino
+            targetContainer.appendChild(cardEl);
+            
+            // Pega a lista ordenada de cartões na coluna destino
+            const cardOrderIds = Array.from(targetContainer.querySelectorAll('.kanban-card')).map(card => {
+                return parseInt(card.id.replace('card-', ''));
+            });
+            
+            const cardId = parseInt(cardIdStr.replace('card-', ''));
+            
+            // Envia requisição AJAX para salvar no banco
+            fetch("{% url 'boards:api_move_card' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    card_id: cardId,
+                    to_column_id: columnId,
+                    card_order_ids: cardOrderIds
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) {
+                    console.error("Erro ao mover cartão:", data.error);
+                    alert("Não foi possível salvar a movimentação da tarefa.");
+                    location.reload();
+                }
+            })
+            .catch(err => {
+                console.error("Erro de conexão AJAX:", err);
+                location.reload();
+            });
+        }
+    }
+
+    // ============================================
+    // MODAL DE CRIAÇÃO E DETALHE DO CARTÃO
+    // ============================================
+    function openAddCardModal(columnId, columnName) {
+        const form = document.getElementById('addCardForm');
+        form.action = `/boards/colunas/${columnId}/cartoes/novo/`;
+        document.getElementById('addCardModalTitle').textContent = `Adicionar Tarefa em: ${columnName}`;
+        
+        const modal = new bootstrap.Modal(document.getElementById('addCardModal'));
+        modal.show();
+    }
+    
+    let activeCardId = null;
+    
+    function openCardModal(cardId) {
+        activeCardId = cardId;
+        
+        // Define a rota de exclusão no form do modal
+        document.getElementById('deleteCardForm').action = `/boards/cartoes/${cardId}/excluir/`;
+        
+        // Carrega os dados via API JSON
+        fetch(`/boards/cartoes/${cardId}/detalhes/`)
+        .then(res => res.json())
+        .then(card => {
+            document.getElementById('cardDetailTitle').textContent = card.titulo;
+            document.getElementById('cardDetailDesc').value = card.descricao;
+            document.getElementById('cardDetailResp').value = card.responsavel_id;
+            document.getElementById('cardDetailPriority').value = card.prioridade;
+            document.getElementById('cardDetailDueDate').value = card.data_entrega;
+            
+            // Renderiza checklist
+            renderChecklist(card.checklist);
+            
+            // Renderiza comentários
+            renderComments(card.comentarios);
+            
+            const modal = new bootstrap.Modal(document.getElementById('cardDetailModal'));
+            modal.show();
+        })
+        .catch(err => console.error("Erro ao carregar detalhes do cartão:", err));
+    }
+    
+    // Checklist render
+    function renderChecklist(checklist) {
+        const container = document.getElementById('checklistContainer');
+        container.innerHTML = '';
+        
+        let concluidos = 0;
+        const total = checklist.length;
+        
+        checklist.forEach(item => {
+            if (item.concluido) concluidos++;
+            
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'd-flex align-items-center justify-content-between p-2 bg-light border rounded small';
+            itemDiv.innerHTML = `
+                <div class="form-check mb-0">
+                    <input class="form-check-input" type="checkbox" ${item.concluido ? 'checked' : ''} onchange="toggleChecklistItem(${item.id})">
+                    <label class="form-check-label ${item.concluido ? 'text-decoration-line-through text-muted' : ''}">${item.descricao}</label>
+                </div>
+                <button class="btn btn-sm btn-link text-danger p-0" onclick="deleteChecklistItem(${item.id})"><i class="bi bi-trash"></i></button>
+            `;
+            container.appendChild(itemDiv);
+        });
+        
+        // Atualiza barra de progresso
+        const progress = document.getElementById('checklistProgress');
+        const pct = total > 0 ? Math.round((concluidos / total) * 100) : 0;
+        progress.style.width = `${pct}%`;
+        progress.textContent = total > 0 ? `${pct}%` : '';
+    }
+    
+    // Toggle Checklist Item
+    function toggleChecklistItem(itemId) {
+        fetch(`/boards/checklist/${itemId}/toggle/`, {
+            method: 'POST',
+            headers: {'X-CSRFToken': '{{ csrf_token }}'}
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                // Atualizar detalhes recarregando dados do cartão
+                fetch(`/boards/cartoes/${activeCardId}/detalhes/`)
+                .then(res => res.json())
+                .then(card => renderChecklist(card.checklist));
+            }
+        });
+    }
+    
+    // Add Checklist Item
+    document.getElementById('btnAddChecklistItem').addEventListener('click', () => {
+        const input = document.getElementById('newChecklistItemInput');
+        const desc = input.value.trim();
+        
+        if (!desc) return;
+        
+        fetch(`/boards/cartoes/${activeCardId}/checklist/novo/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({descricao: desc})
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                input.value = '';
+                // Recarregar checklist
+                fetch(`/boards/cartoes/${activeCardId}/detalhes/`)
+                .then(res => res.json())
+                .then(card => renderChecklist(card.checklist));
+            }
+        });
+    });
+    
+    // Delete Checklist Item
+    function deleteChecklistItem(itemId) {
+        if (!confirm('Deseja excluir este item do checklist?')) return;
+        
+        fetch(`/boards/checklist/${itemId}/excluir/`, {
+            method: 'POST',
+            headers: {'X-CSRFToken': '{{ csrf_token }}'}
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                fetch(`/boards/cartoes/${activeCardId}/detalhes/`)
+                .then(res => res.json())
+                .then(card => renderChecklist(card.checklist));
+            }
+        });
+    }
+    
+    // Comments render
+    function renderComments(comentarios) {
+        const container = document.getElementById('commentsContainer');
+        container.innerHTML = '';
+        
+        comentarios.forEach(c => {
+            const commentDiv = document.createElement('div');
+            commentDiv.className = 'p-2 bg-light rounded border small';
+            commentDiv.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="fw-bold text-primary">${c.autor}</span>
+                    <span class="text-muted" style="font-size:0.65rem;">${c.data}</span>
+                </div>
+                <div>${c.texto}</div>
+                <div class="text-end mt-1">
+                    <button class="btn btn-sm btn-link text-danger p-0 small" onclick="deleteComment(${c.id})" style="font-size:0.7rem;"><i class="bi bi-trash me-1"></i>Excluir</button>
+                </div>
+            `;
+            container.appendChild(commentDiv);
+        });
+    }
+    
+    // Post Comment
+    document.getElementById('btnPostComment').addEventListener('click', () => {
+        const input = document.getElementById('newCommentInput');
+        const text = input.value.trim();
+        
+        if (!text) return;
+        
+        fetch(`/boards/cartoes/${activeCardId}/comentarios/novo/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({texto: text})
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                input.value = '';
+                fetch(`/boards/cartoes/${activeCardId}/detalhes/`)
+                .then(res => res.json())
+                .then(card => renderComments(card.comentarios));
+            }
+        });
+    });
+    
+    // Delete Comment
+    function deleteComment(commentId) {
+        if (!confirm('Deseja excluir este comentário?')) return;
+        
+        fetch(`/boards/comentarios/${commentId}/excluir/`, {
+            method: 'POST',
+            headers: {'X-CSRFToken': '{{ csrf_token }}'}
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                fetch(`/boards/cartoes/${activeCardId}/detalhes/`)
+                .then(res => res.json())
+                .then(card => renderComments(card.comentarios));
+            } else {
+                alert("Você não tem permissão para excluir este comentário.");
+            }
+        });
+    }
+    
+    // Save Card Details
+    document.getElementById('btnSaveCardDetails').addEventListener('click', () => {
+        const desc = document.getElementById('cardDetailDesc').value;
+        const respId = document.getElementById('cardDetailResp').value;
+        const priority = document.getElementById('cardDetailPriority').value;
+        const dueDate = document.getElementById('cardDetailDueDate').value;
+        
+        fetch(`/boards/cartoes/${activeCardId}/detalhes/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                descricao: desc,
+                responsavel_id: respId,
+                prioridade: priority,
+                data_entrega: dueDate
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            }
+        });
+    });
+
+    // ============================================
+    // CHARTS RENDERING (CHART.JS)
+    // ============================================
+    document.addEventListener('DOMContentLoaded', () => {
+        // Grafico de carga de trabalho (Membros da equipe)
+        const ctxWorkload = document.getElementById('workloadChart');
+        if (ctxWorkload) {
+            new Chart(ctxWorkload, {
+                type: 'bar',
+                data: {
+                    labels: {{ chart_membros_nomes|safe }},
+                    datasets: [{
+                        label: 'Tarefas Ativas',
+                        data: {{ chart_membros_valores|safe }},
+                        backgroundColor: '#0d6efd',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1 }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Grafico de distribuição por colunas
+        const ctxDistribution = document.getElementById('distributionChart');
+        if (ctxDistribution) {
+            const rawData = {{ distribuicao_colunas|safe }};
+            const labels = rawData.map(d => d.nome);
+            const data = rawData.map(d => d.quantidade);
+            
+            new Chart(ctxDistribution, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: [
+                            '#6c757d', // A fazer (Gray)
+                            '#ffc107', // Em andamento (Yellow)
+                            '#198754', // Concluido (Green)
+                            '#0dcaf0', // Outros
+                            '#fd7e14'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

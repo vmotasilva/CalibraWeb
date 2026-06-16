@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}Quadros de Atividades - Calibra QMS{% endblock %}
+{% block header_title %}Quadros de Atividades{% endblock %}
+
+{% block extra_css %}
+<style>
+    .board-card {
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
+        cursor: pointer;
+        border: none;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    
+    .board-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.12) !important;
+    }
+    
+    .board-gradient-header {
+        height: 60px;
+        background: linear-gradient(135deg, #0d6efd 0%, #0dcaf0 100%);
+    }
+    
+    .board-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background-color: #e9ecef;
+        color: #495057;
+        font-weight: 600;
+        font-size: 0.8rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid white;
+        margin-right: -8px;
+        text-transform: uppercase;
+    }
+    
+    .avatar-stack {
+        display: inline-flex;
+        flex-direction: row;
+        padding-left: 8px;
+    }
+    
+    .btn-create-board {
+        border-radius: 12px;
+        height: 100%;
+        min-height: 180px;
+        border: 2px dashed #0d6efd;
+        color: #0d6efd;
+        background-color: transparent;
+        transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+    
+    .btn-create-board:hover {
+        background-color: rgba(13, 110, 253, 0.05);
+        border-color: #0b5ed7;
+        color: #0b5ed7;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Cabeçalho -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold text-dark mb-1"><i class="bi bi-kanban me-2 text-primary"></i>Quadros de Atividades</h3>
+            <p class="text-muted mb-0">Organize tarefas, colabore com a equipe e monitore prazos e cargas de trabalho.</p>
+        </div>
+        <button type="button" class="btn btn-primary px-4 py-2" data-bs-toggle="modal" data-bs-target="#newBoardModal" style="border-radius: 10px;">
+            <i class="bi bi-plus-lg me-2"></i>Novo Quadro
+        </button>
+    </div>
+
+    <!-- Lista de Quadros -->
+    <div class="row g-4">
+        <!-- Card de Criação Rápida -->
+        <div class="col-12 col-sm-6 col-md-4 col-xl-3">
+            <button class="btn btn-create-board w-100 d-flex flex-column align-items-center justify-content-center" data-bs-toggle="modal" data-bs-target="#newBoardModal">
+                <i class="bi bi-plus-circle-dotted fs-1 mb-2"></i>
+                <span class="fw-bold">Criar Novo Quadro</span>
+            </button>
+        </div>
+
+        {% for board in quadros %}
+        <div class="col-12 col-sm-6 col-md-4 col-xl-3" onclick="location.href='{% url 'boards:board_detail' board.id %}'">
+            <div class="card board-card h-100 shadow-sm">
+                <!-- Topo Colorido -->
+                <div class="board-gradient-header"></div>
+                <div class="card-body d-flex flex-column justify-content-between p-3">
+                    <div>
+                        <h5 class="card-title fw-bold text-dark mb-2">{{ board.nome }}</h5>
+                        <p class="card-text text-muted small mb-3">
+                            {{ board.descricao|default:"Sem descrição adicional."|truncatewords:20 }}
+                        </p>
+                    </div>
+                    
+                    <div class="pt-3 border-top d-flex justify-content-between align-items-center mt-3">
+                        <!-- Participantes -->
+                        <div class="avatar-stack">
+                            {% if board.criado_por %}
+                            <div class="board-avatar bg-primary text-white" title="Criador: {{ board.criado_por.nome_completo }}">
+                                {{ board.criado_por.nome_completo|slice:":2" }}
+                            </div>
+                            {% endif %}
+                            
+                            {% for membro in board.membros.all|slice:":4" %}
+                            {% if membro != board.criado_por %}
+                            <div class="board-avatar" title="Membro: {{ membro.nome_completo }}">
+                                {{ membro.nome_completo|slice:":2" }}
+                            </div>
+                            {% endif %}
+                            {% endfor %}
+                            
+                            {% if board.membros.count > 4 %}
+                            <div class="board-avatar bg-secondary text-white" style="font-size:0.7rem;" title="+{{ board.membros.count|add:"-3" }} membros">
+                                +{{ board.membros.count|add:"-3" }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Contagem Rápida -->
+                        <div class="text-muted small">
+                            <span class="me-2" title="Colunas"><i class="bi bi-columns-gap me-1"></i>{{ board.colunas.count }}</span>
+                            <span title="Total de Tarefas"><i class="bi bi-card-checklist me-1"></i>{{ board.total_tasks }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <!-- Caso não haja quadros -->
+        <div class="col-12 text-center py-5">
+            <div class="mb-3">
+                <i class="bi bi-kanban text-muted" style="font-size: 5rem;"></i>
+            </div>
+            <h4 class="text-secondary fw-bold">Nenhum Quadro Encontrado</h4>
+            <p class="text-muted">Você ainda não criou e nem faz parte de nenhum quadro de atividades.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal Novo Quadro -->
+<div class="modal fade" id="newBoardModal" tabindex="-1" aria-labelledby="newBoardModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg" style="border-radius: 14px;">
+            <div class="modal-header bg-primary text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                <h5 class="modal-title fw-bold" id="newBoardModalLabel"><i class="bi bi-plus-square me-2"></i>Criar Novo Quadro</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Nome do Quadro</label>
+                        {{ form.nome }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Descrição</label>
+                        {{ form.descricao }}
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label fw-bold text-dark">Membros da Equipe (Selecione múltiplos)</label>
+                        {{ form.membros }}
+                        <small class="form-text text-muted">Use CTRL (ou Command no Mac) para selecionar mais de um colaborador.</small>
+                    </div>
+                </div>
+                <div class="modal-footer p-3 bg-light border-top" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px;">Cancelar</button>
+                    <button type="submit" class="btn btn-primary px-4" style="border-radius: 8px;">Criar Quadro</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

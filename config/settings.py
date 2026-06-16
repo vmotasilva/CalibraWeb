@@ -126,6 +126,7 @@ INSTALLED_APPS = [
     "insumos.apps.InsumosConfig",
     "laboratorio.apps.LaboratorioConfig",
     "maquinas",
+    "boards.apps.BoardsConfig",
     # Módulo legado (compatibilidade - mantém 3 cross-app models: SolicitacaoInstrumento, OcorrenciaInstrumento, ImportJob)
     "qms",
     "training",  # Adicionado para compatibilidade com dashboard de gráficos

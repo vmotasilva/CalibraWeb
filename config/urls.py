@@ -239,6 +239,9 @@ urlpatterns = [
     
     # 9. Documents app URLs
     path("documents/", include("documents.urls")),
+    
+    # 10. Boards app URLs
+    path("boards/", include("boards.urls")),
 ]
 
 # Configuração para servir arquivos de mídia/estáticos em modo Debug

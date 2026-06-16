@@ -376,6 +376,11 @@
                 {% endif %}
 
                 {% can_nav_view user 'procedures:procedimentos_list' 'procedures' as nav_procedimentos_list %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'boards:dashboard' %}">
+                        <i class="bi bi-kanban nav-icon"></i><span class="nav-text">Quadros</span>
+                    </a>
+                </li>
                 {% if nav_procedimentos_list %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'procedures:procedimentos_list' %}">
