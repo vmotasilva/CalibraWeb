@@ -655,6 +655,8 @@
                             <hr>
                             
                             <div class="d-flex flex-column gap-2 mt-3">
+                                <button type="button" id="btnCompleteCard" class="btn btn-success btn-sm"><i class="bi bi-check2-circle me-1"></i>Concluir Atividade</button>
+                                <button type="button" id="btnReopenCard" class="btn btn-warning btn-sm"><i class="bi bi-arrow-counterclockwise me-1"></i>Reabrir Atividade</button>
                                 <button type="button" id="btnSaveCardDetails" class="btn btn-primary btn-sm"><i class="bi bi-save me-1"></i>Salvar Alterações</button>
                                 <form id="deleteCardForm" method="POST" action="" onsubmit="return confirm('Deseja excluir esta tarefa definitivamente?');">
                                     {% csrf_token %}
@@ -840,6 +842,19 @@
             
             // Renderiza comentários
             renderComments(card.comentarios);
+            
+            // Controle de exibição dos botões Concluir e Reabrir
+            const cardEl = document.getElementById(`card-${cardId}`);
+            if (cardEl) {
+                const isCompleted = cardEl.closest('.card-container').getAttribute('data-is-concluida') === 'true';
+                if (isCompleted) {
+                    document.getElementById('btnCompleteCard').style.display = 'none';
+                    document.getElementById('btnReopenCard').style.display = 'block';
+                } else {
+                    document.getElementById('btnCompleteCard').style.display = 'block';
+                    document.getElementById('btnReopenCard').style.display = 'none';
+                }
+            }
             
             const modal = new bootstrap.Modal(document.getElementById('cardDetailModal'));
             modal.show();
@@ -1035,6 +1050,100 @@
             if (data.success) {
                 location.reload();
             }
+        });
+    });
+
+    // Complete Card
+    document.getElementById('btnCompleteCard').addEventListener('click', () => {
+        const cardEl = document.getElementById(`card-${activeCardId}`);
+        if (!cardEl) return;
+        
+        const firstCompletedContainer = document.querySelector('#kanban-concluido-container .card-container');
+        if (!firstCompletedContainer) {
+            alert("Nenhuma coluna de conclusão encontrada neste quadro.");
+            return;
+        }
+        
+        const toColumnId = parseInt(firstCompletedContainer.id.replace('cards-col-', ''));
+        const periodicidade = cardEl.getAttribute('data-periodicidade');
+        const periodicidadeLabel = cardEl.getAttribute('data-periodicidade-label');
+        
+        let recreate = false;
+        if (periodicidade && periodicidade !== 'AVULSA') {
+            recreate = confirm(`Esta atividade possui periodicidade (${periodicidadeLabel}). Gostaria de reaplicar a atividade de acordo com o período e recriá-la?`);
+        }
+        
+        const cardOrderIds = Array.from(firstCompletedContainer.querySelectorAll('.kanban-card')).map(card => {
+            return parseInt(card.id.replace('card-', ''));
+        });
+        cardOrderIds.push(activeCardId);
+        
+        fetch("{% url 'boards:api_move_card' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                card_id: activeCardId,
+                to_column_id: toColumnId,
+                card_order_ids: cardOrderIds,
+                recreate: recreate
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert("Erro ao concluir atividade: " + data.error);
+            }
+        })
+        .catch(err => {
+            console.error("Erro ao concluir atividade:", err);
+            alert("Erro de conexão.");
+        });
+    });
+
+    // Reopen Card
+    document.getElementById('btnReopenCard').addEventListener('click', () => {
+        const firstInProgressContainer = document.querySelector('#kanban-andamento-container .card-container');
+        if (!firstInProgressContainer) {
+            alert("Nenhuma coluna de andamento encontrada neste quadro.");
+            return;
+        }
+        
+        const toColumnId = parseInt(firstInProgressContainer.id.replace('cards-col-', ''));
+        
+        const cardOrderIds = Array.from(firstInProgressContainer.querySelectorAll('.kanban-card')).map(card => {
+            return parseInt(card.id.replace('card-', ''));
+        });
+        cardOrderIds.push(activeCardId);
+        
+        fetch("{% url 'boards:api_move_card' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                card_id: activeCardId,
+                to_column_id: toColumnId,
+                card_order_ids: cardOrderIds,
+                recreate: false
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert("Erro ao reabrir atividade: " + data.error);
+            }
+        })
+        .catch(err => {
+            console.error("Erro ao reabrir atividade:", err);
+            alert("Erro de conexão.");
         });
     });
 
