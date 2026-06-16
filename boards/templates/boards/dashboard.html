@@ -164,10 +164,27 @@
                         <label class="form-label fw-bold text-dark">Descrição</label>
                         {{ form.descricao }}
                     </div>
+                    <div class="mb-3 position-relative">
+                        <label class="form-label fw-bold text-dark"><i class="bi bi-search me-1"></i>Buscar Colaboradores</label>
+                        <div class="input-group shadow-sm" style="border-radius: 8px; overflow: hidden;">
+                            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                            <input type="text" id="memberSearchInput" class="form-control border-start-0" placeholder="Digite o nome para buscar..." autocomplete="off">
+                        </div>
+                        <div id="searchSuggestions" class="list-group position-absolute w-100 shadow-lg mt-1 overflow-auto" style="max-height: 200px; z-index: 1050; display: none;">
+                            <!-- Sugestões carregadas via JS -->
+                        </div>
+                    </div>
+                    
                     <div class="mb-0">
-                        <label class="form-label fw-bold text-dark">Membros da Equipe (Selecione múltiplos)</label>
+                        <label class="form-label fw-bold text-dark mb-2">Membros Adicionados ao Quadro</label>
+                        <div id="selectedMembersContainer" class="d-flex flex-wrap gap-2 p-3 border rounded bg-light" style="min-height: 80px; max-height: 200px; overflow-y: auto; border-radius: 8px !important;">
+                            <span id="noMembersText" class="text-muted small align-self-center w-100 text-center">Nenhum membro selecionado</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Select original oculto -->
+                    <div class="d-none">
                         {{ form.membros }}
-                        <small class="form-text text-muted">Use CTRL (ou Command no Mac) para selecionar mais de um colaborador.</small>
                     </div>
                 </div>
                 <div class="modal-footer p-3 bg-light border-top" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
@@ -178,4 +195,141 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const originalSelect = document.querySelector('#newBoardModal select[name="membros"]');
+    if (!originalSelect) return;
+
+    const searchInput = document.getElementById('memberSearchInput');
+    const suggestionsContainer = document.getElementById('searchSuggestions');
+    const selectedContainer = document.getElementById('selectedMembersContainer');
+    const noMembersText = document.getElementById('noMembersText');
+    
+    const collaborators = [];
+    Array.from(originalSelect.options).forEach(opt => {
+        collaborators.push({
+            id: parseInt(opt.value),
+            name: opt.text.trim(),
+            selected: opt.selected
+        });
+    });
+
+    function updateDisplay() {
+        const selectedTags = selectedContainer.querySelectorAll('.selected-member-tag');
+        selectedTags.forEach(el => el.remove());
+
+        let hasSelected = false;
+        
+        collaborators.forEach(colab => {
+            const option = Array.from(originalSelect.options).find(opt => parseInt(opt.value) === colab.id);
+            if (option) {
+                option.selected = colab.selected;
+            }
+
+            if (colab.selected) {
+                hasSelected = true;
+                const initials = getInitials(colab.name);
+                
+                const tag = document.createElement('div');
+                tag.className = 'badge bg-white text-dark border p-2 d-inline-flex align-items-center gap-2 shadow-sm rounded-pill selected-member-tag';
+                tag.style.fontWeight = '500';
+                tag.style.fontSize = '0.85rem';
+                tag.innerHTML = `
+                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 24px; height: 24px; font-size: 0.7rem; font-weight: 600;">
+                        ${initials}
+                    </div>
+                    <span>${colab.name.replace(/\(\d+\)/g, '').trim()}</span>
+                    <button type="button" class="btn-close ms-1" style="font-size: 0.65rem;"></button>
+                `;
+                
+                tag.querySelector('.btn-close').addEventListener('click', function() {
+                    colab.selected = false;
+                    updateDisplay();
+                });
+                
+                selectedContainer.appendChild(tag);
+            }
+        });
+
+        if (hasSelected) {
+            noMembersText.style.display = 'none';
+        } else {
+            noMembersText.style.display = 'block';
+        }
+    }
+
+    function getInitials(name) {
+        const cleanName = name.replace(/\(\d+\)/g, '').trim();
+        const parts = cleanName.split(' ');
+        if (parts.length >= 2) {
+            return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        }
+        return cleanName.slice(0, 2).toUpperCase();
+    }
+
+    searchInput.addEventListener('input', function() {
+        const query = searchInput.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        suggestionsContainer.innerHTML = '';
+        
+        if (!query) {
+            suggestionsContainer.style.display = 'none';
+            return;
+        }
+
+        const filtered = collaborators.filter(colab => {
+            const normalizedName = colab.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            return !colab.selected && normalizedName.includes(query);
+        });
+
+        if (filtered.length === 0) {
+            suggestionsContainer.innerHTML = '<div class="list-group-item text-muted small">Nenhum colaborador encontrado</div>';
+            suggestionsContainer.style.display = 'block';
+            return;
+        }
+
+        filtered.forEach(colab => {
+            const cleanName = colab.name.replace(/\(\d+\)/g, '').trim();
+            const initials = getInitials(colab.name);
+            const item = document.createElement('a');
+            item.href = '#';
+            item.className = 'list-group-item list-group-item-action d-flex align-items-center justify-content-between p-2 py-2';
+            item.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2" style="width: 30px; height: 30px; font-size: 0.8rem; font-weight: 600;">
+                        ${initials}
+                    </div>
+                    <div>
+                        <span class="fw-semibold small text-dark">${cleanName}</span>
+                    </div>
+                </div>
+                <span class="badge bg-light text-primary border border-primary-subtle rounded-pill">Adicionar</span>
+            `;
+            
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                colab.selected = true;
+                searchInput.value = '';
+                suggestionsContainer.style.display = 'none';
+                updateDisplay();
+                searchInput.focus();
+            });
+            
+            suggestionsContainer.appendChild(item);
+        });
+
+        suggestionsContainer.style.display = 'block';
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !suggestionsContainer.contains(e.target)) {
+            suggestionsContainer.style.display = 'none';
+        }
+    });
+
+    updateDisplay();
+});
+</script>
 {% endblock %}

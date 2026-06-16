@@ -21,8 +21,8 @@ def dashboard_view(request):
     """Exibe todos os quadros que o usuário gerencia ou participa"""
     colab = get_user_colaborador(request.user)
     
-    # Administradores vêm todos os quadros, usuários comuns vêm apenas os seus ou onde são membros
-    if request.user.is_superuser or request.user.is_staff:
+    # Superusuários vêm todos os quadros, colaboradores comuns vêm apenas os seus ou onde são membros
+    if request.user.is_superuser:
         quadros = Board.objects.all().distinct()
     else:
         quadros = Board.objects.filter(
@@ -70,7 +70,7 @@ def board_detail_view(request, board_id):
     colab = get_user_colaborador(request.user)
     
     # Permissão de acesso
-    if request.user.is_superuser or request.user.is_staff:
+    if request.user.is_superuser:
         board = get_object_or_404(Board, id=board_id)
     else:
         board = get_object_or_404(
@@ -496,7 +496,7 @@ def delete_board_view(request, board_id):
     board = get_object_or_404(Board, id=board_id)
     
     # Apenas o criador ou superuser pode excluir
-    if board.criado_por != colab and not (request.user.is_superuser or request.user.is_staff):
+    if board.criado_por != colab and not request.user.is_superuser:
         messages.error(request, "Apenas o criador do quadro pode excluí-lo.")
         return redirect('boards:board_detail', board_id=board.id)
         
