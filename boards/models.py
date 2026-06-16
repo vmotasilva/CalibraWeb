@@ -53,6 +53,17 @@ class Card(models.Model):
         ('MEDIA', 'Média'),
         ('ALTA', 'Alta'),
     ]
+    PERIODICIDADE_CHOICES = [
+        ('AVULSA', 'Nenhuma (Avulsa)'),
+        ('DIARIA', 'Diária'),
+        ('SEMANAL', 'Semanal'),
+        ('QUINZENAL', 'Quinzenal'),
+        ('MENSAL', 'Mensal'),
+        ('BIMESTRAL', 'Bimestral'),
+        ('TRIMESTRAL', 'Trimestral'),
+        ('SEMESTRAL', 'Semestral'),
+        ('ANUAL', 'Anual'),
+    ]
     coluna = models.ForeignKey(BoardColumn, on_delete=models.CASCADE, related_name="cartoes")
     titulo = models.CharField(max_length=200, verbose_name="Título da Tarefa")
     descricao = models.TextField(blank=True, null=True, verbose_name="Descrição")
@@ -70,6 +81,12 @@ class Card(models.Model):
         choices=PRIORIDADE_CHOICES, 
         default='BAIXA', 
         verbose_name="Prioridade"
+    )
+    periodicidade = models.CharField(
+        max_length=15, 
+        choices=PERIODICIDADE_CHOICES, 
+        default='AVULSA', 
+        verbose_name="Periodicidade"
     )
     ordem = models.IntegerField(default=0)
     criado_por = models.ForeignKey(

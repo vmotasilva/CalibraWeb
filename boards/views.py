@@ -7,6 +7,8 @@ from django.db import transaction
 from django.utils import timezone
 from django.db.models import Count, Q, Max
 import json
+import datetime
+import calendar
 
 from boards.models import Board, BoardColumn, Card, ChecklistItem, CardComment, BoardActivity
 from boards.forms import BoardForm, CardForm
@@ -235,6 +237,82 @@ def create_card_view(request, column_id):
     return redirect('boards:board_detail', board_id=board.id)
 
 
+def spawn_recurring_card(card):
+    """Gera uma nova tarefa recorrente na primeira coluna do quadro com prazo atualizado"""
+    base_date = card.data_entrega or timezone.now().date()
+    
+    if card.periodicidade == 'DIARIA':
+        next_date = base_date + datetime.timedelta(days=1)
+    elif card.periodicidade == 'SEMANAL':
+        next_date = base_date + datetime.timedelta(weeks=1)
+    elif card.periodicidade == 'QUINZENAL':
+        next_date = base_date + datetime.timedelta(days=15)
+    elif card.periodicidade in ('MENSAL', 'BIMESTRAL', 'TRIMESTRAL', 'SEMESTRAL'):
+        months_to_add = {
+            'MENSAL': 1,
+            'BIMESTRAL': 2,
+            'TRIMESTRAL': 3,
+            'SEMESTRAL': 6
+        }[card.periodicidade]
+        
+        month = base_date.month + months_to_add
+        year = base_date.year
+        while month > 12:
+            month -= 12
+            year += 1
+            
+        last_day = calendar.monthrange(year, month)[1]
+        day = min(base_date.day, last_day)
+        next_date = datetime.date(year, month, day)
+    elif card.periodicidade == 'ANUAL':
+        year = base_date.year + 1
+        if base_date.month == 2 and base_date.day == 29 and not calendar.isleap(year):
+            next_date = datetime.date(year, 2, 28)
+        else:
+            next_date = datetime.date(year, base_date.month, base_date.day)
+    else:
+        return None
+        
+    first_column = card.coluna.quadro.colunas.order_by('ordem', 'criado_em').first()
+    if not first_column:
+        first_column = card.coluna
+        
+    maior_ordem = first_column.cartoes.aggregate(Max('ordem'))['ordem__max']
+    new_ordem = (maior_ordem + 1) if maior_ordem is not None else 0
+    
+    new_card = Card.objects.create(
+        coluna=first_column,
+        titulo=card.titulo,
+        descricao=card.descricao,
+        responsavel=card.responsavel,
+        data_entrega=next_date,
+        prioridade=card.prioridade,
+        periodicidade=card.periodicidade,
+        ordem=new_ordem,
+        criado_por=card.criado_por
+    )
+    
+    # Copia os itens do checklist (como não concluídos)
+    for item in card.checklist_itens.all():
+        ChecklistItem.objects.create(
+            cartao=new_card,
+            descricao=item.descricao,
+            concluido=False
+        )
+        
+    BoardActivity.objects.create(
+        quadro=card.coluna.quadro,
+        colaborador=None,
+        descricao=f"Criada tarefa recorrente automática '{new_card.titulo}' para {new_card.data_entrega.strftime('%d/%m/%Y')}."
+    )
+    
+    # O cartão original deixa de ser recorrente para não gerar duplicatas
+    card.periodicidade = 'AVULSA'
+    card.save()
+    
+    return new_card
+
+
 @login_required
 @require_POST
 def api_move_card_view(request):
@@ -254,6 +332,18 @@ def api_move_card_view(request):
         card.coluna = nova_coluna
         card.save()
         
+        # Verificar se é coluna de conclusão para tarefas recorrentes
+        nome_low = nova_coluna.nome.lower()
+        is_concluida = "concluido" in nome_low or "concluído" in nome_low or "done" in nome_low or "terminado" in nome_low or "pronto" in nome_low
+        if not is_concluida:
+            # Fallback: se for a última coluna do quadro
+            last_col = nova_coluna.quadro.colunas.order_by('ordem', 'criado_em').last()
+            if last_col and last_col.id == nova_coluna.id:
+                is_concluida = True
+                
+        if is_concluida and card.periodicidade != 'AVULSA':
+            spawn_recurring_card(card)
+            
         # Atualizar a ordem de todos os cartões na coluna destino
         with transaction.atomic():
             for idx, c_id in enumerate(card_order_ids):
@@ -298,6 +388,8 @@ def api_card_detail_view(request, card_id):
             'responsavel_nome': card.responsavel.nome_completo if card.responsavel else 'Não atribuído',
             'prioridade': card.prioridade,
             'prioridade_label': card.get_prioridade_display(),
+            'periodicidade': card.periodicidade,
+            'periodicidade_label': card.get_periodicidade_display(),
             'data_entrega': card.data_entrega.strftime('%Y-%m-%d') if card.data_entrega else '',
             'checklist': checklist,
             'comentarios': comentarios
@@ -320,6 +412,10 @@ def api_card_detail_view(request, card_id):
             prioridade = data.get('prioridade')
             if prioridade in dict(Card.PRIORIDADE_CHOICES):
                 card.prioridade = prioridade
+                
+            periodicidade = data.get('periodicidade')
+            if periodicidade in dict(Card.PERIODICIDADE_CHOICES):
+                card.periodicidade = periodicidade
                 
             data_entrega_raw = data.get('data_entrega')
             if data_entrega_raw:

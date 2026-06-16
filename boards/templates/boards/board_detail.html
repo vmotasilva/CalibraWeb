@@ -259,10 +259,15 @@
                             
                             <!-- Metadados -->
                             <div class="card-meta">
-                                <div>
+                                <div class="d-flex align-items-center gap-1">
                                     {% if card.data_entrega %}
                                         <span class="badge-date {% if card.data_entrega < hoje and col.id != colunas.last.id %}date-overdue{% else %}date-future{% endif %}" title="Data de Entrega">
                                             <i class="bi bi-calendar-event me-1"></i>{{ card.data_entrega|date:"d M" }}
+                                        </span>
+                                    {% endif %}
+                                    {% if card.periodicidade != 'AVULSA' %}
+                                        <span class="badge bg-light text-secondary border rounded-pill" style="font-size: 0.65rem;" title="Tarefa Recorrente: {{ card.get_periodicidade_display }}">
+                                            <i class="bi bi-repeat me-1 text-primary"></i>{{ card.get_periodicidade_display }}
                                         </span>
                                     {% endif %}
                                 </div>
@@ -441,9 +446,15 @@
                             {{ card_form.prioridade }}
                         </div>
                     </div>
-                    <div class="mb-0">
-                        <label class="form-label fw-bold">Data de Entrega</label>
-                        {{ card_form.data_entrega }}
+                    <div class="row">
+                        <div class="col-md-6 mb-0">
+                            <label class="form-label fw-bold">Data de Entrega</label>
+                            {{ card_form.data_entrega }}
+                        </div>
+                        <div class="col-md-6 mb-0">
+                            <label class="form-label fw-bold">Periodicidade</label>
+                            {{ card_form.periodicidade }}
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
@@ -521,6 +532,20 @@
                             <div class="mb-3">
                                 <label class="form-label fw-bold text-muted small d-block">Prazo de Entrega</label>
                                 <input type="text" id="cardDetailDueDate" class="form-control form-control-sm js-week-datepicker" placeholder="aaaa-mm-dd">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold text-muted small d-block">Periodicidade</label>
+                                <select id="cardDetailPeriodicidade" class="form-select form-select-sm">
+                                    <option value="AVULSA">Nenhuma (Avulsa)</option>
+                                    <option value="DIARIA">Diária</option>
+                                    <option value="SEMANAL">Semanal</option>
+                                    <option value="QUINZENAL">Quinzenal</option>
+                                    <option value="MENSAL">Mensal</option>
+                                    <option value="BIMESTRAL">Bimestral</option>
+                                    <option value="TRIMESTRAL">Trimestral</option>
+                                    <option value="SEMESTRAL">Semestral</option>
+                                    <option value="ANUAL">Anual</option>
+                                </select>
                             </div>
                             
                             <hr>
@@ -686,6 +711,7 @@
             document.getElementById('cardDetailResp').value = card.responsavel_id;
             document.getElementById('cardDetailPriority').value = card.prioridade;
             document.getElementById('cardDetailDueDate').value = card.data_entrega;
+            document.getElementById('cardDetailPeriodicidade').value = card.periodicidade || 'AVULSA';
             
             // Renderiza checklist
             renderChecklist(card.checklist);
@@ -865,6 +891,7 @@
         const respId = document.getElementById('cardDetailResp').value;
         const priority = document.getElementById('cardDetailPriority').value;
         const dueDate = document.getElementById('cardDetailDueDate').value;
+        const periodicidade = document.getElementById('cardDetailPeriodicidade').value;
         
         fetch(`/boards/cartoes/${activeCardId}/detalhes/`, {
             method: 'POST',
@@ -876,7 +903,8 @@
                 descricao: desc,
                 responsavel_id: respId,
                 prioridade: priority,
-                data_entrega: dueDate
+                data_entrega: dueDate,
+                periodicidade: periodicidade
             })
         })
         .then(res => res.json())

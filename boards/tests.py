@@ -150,3 +150,61 @@ class BoardsTestCase(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertTrue(CardComment.objects.filter(cartao=self.card, texto='Excelente trabalho!').exists())
+
+    def test_recurring_task_spawning(self):
+        """Testa o nascimento de uma nova tarefa recorrente ao concluir a tarefa atual"""
+        import datetime
+        from django.utils import timezone
+        hoje = timezone.now().date()
+        self.card.data_entrega = hoje
+        self.card.periodicidade = 'MENSAL'
+        self.card.save()
+        
+        # Cria um item no checklist para verificar se ele será copiado
+        ChecklistItem.objects.create(cartao=self.card, descricao='Subtarefa a copiar', concluido=True)
+        
+        # Move o cartão para a coluna "Concluído" via API
+        url = reverse('boards:api_move_card')
+        post_json = {
+            'card_id': self.card.id,
+            'to_column_id': self.coluna_done.id,
+            'card_order_ids': [self.card.id]
+        }
+        response = self.client.post(
+            url, 
+            data=json.dumps(post_json), 
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        
+        # O cartão original deve ter mudado para a coluna concluído
+        self.card.refresh_from_db()
+        self.assertEqual(self.card.coluna, self.coluna_done)
+        # O cartão original deixa de ser recorrente para evitar ciclos infinitos
+        self.assertEqual(self.card.periodicidade, 'AVULSA')
+        
+        # Deve ter nascido um novo cartão na coluna de origem ("A Fazer")
+        new_cards = Card.objects.filter(coluna=self.coluna_todo, titulo=self.card.titulo)
+        self.assertEqual(new_cards.count(), 1)
+        new_card = new_cards.first()
+        
+        # O novo cartão herda os dados corretos
+        self.assertEqual(new_card.periodicidade, 'MENSAL')
+        self.assertEqual(new_card.responsavel, self.colaborador)
+        
+        # O prazo do novo cartão deve ser exatamente 1 mês à frente
+        months_to_add = 1
+        month = hoje.month + months_to_add
+        year = hoje.year
+        if month > 12:
+            month -= 12
+            year += 1
+        import calendar
+        last_day = calendar.monthrange(year, month)[1]
+        day = min(hoje.day, last_day)
+        expected_date = datetime.date(year, month, day)
+        self.assertEqual(new_card.data_entrega, expected_date)
+        
+        # O checklist deve ter sido copiado como desmarcado
+        self.assertEqual(new_card.checklist_itens.count(), 1)
+        self.assertFalse(new_card.checklist_itens.first().concluido)

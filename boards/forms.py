@@ -21,13 +21,14 @@ class BoardForm(forms.ModelForm):
 class CardForm(forms.ModelForm):
     class Meta:
         model = Card
-        fields = ['titulo', 'descricao', 'responsavel', 'prioridade', 'data_entrega']
+        fields = ['titulo', 'descricao', 'responsavel', 'prioridade', 'data_entrega', 'periodicidade']
         widgets = {
             'titulo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Título da tarefa'}),
             'descricao': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Descrição detalhada...'}),
             'responsavel': forms.Select(attrs={'class': 'form-select'}),
             'prioridade': forms.Select(attrs={'class': 'form-select'}),
             'data_entrega': forms.DateInput(attrs={'class': 'form-control js-week-datepicker', 'type': 'text'}),
+            'periodicidade': forms.Select(attrs={'class': 'form-select'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -44,3 +45,4 @@ class CardForm(forms.ModelForm):
         
         self.fields['responsavel'].required = False
         self.fields['data_entrega'].required = False
+        self.fields['periodicidade'].required = False
