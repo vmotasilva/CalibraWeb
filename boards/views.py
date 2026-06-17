@@ -10,7 +10,7 @@ import json
 import datetime
 import calendar
 
-from boards.models import Board, BoardColumn, Card, ChecklistItem, CardComment, BoardActivity, BoardSubSection
+from boards.models import Board, BoardColumn, Card, ChecklistItem, CardComment, BoardActivity, BoardSubSection, BoardLabel
 from boards.forms import BoardForm, CardForm
 from rh.models import Colaborador
 
@@ -189,7 +189,12 @@ def board_detail_view(request, board_id):
                     'checklist_itens': {
                         'exists': False
                     },
-                    'plano_acao_id': l.plano_acao.id
+                    'plano_acao_id': l.plano_acao.id,
+                    'etiquetas': {
+                        'all': []
+                    },
+                    'antecessora': None,
+                    'historia': []
                 })
     else:
         # Calcular Métricas de Carga de Trabalho da Equipe (Quadro Padrão)
@@ -414,9 +419,11 @@ def spawn_recurring_card(card):
         prioridade=card.prioridade,
         periodicidade=card.periodicidade,
         ordem=new_ordem,
-        criado_por=card.criado_por
+        criado_por=card.criado_por,
+        antecessora=card
     )
     new_card.responsaveis.set(card.responsaveis.all())
+    new_card.etiquetas.set(card.etiquetas.all())
 
     
     # Copia os itens do checklist (como não concluídos)
@@ -540,6 +547,34 @@ def api_card_detail_view(request, card_id):
                 'data': c.criado_em.strftime('%d/%m/%Y %H:%M')
             })
             
+        etiquetas = [{'id': et.id, 'nome': et.nome, 'cor': et.cor} for et in card.etiquetas.all()]
+        
+        # Encontrar raiz do histórico
+        raiz = card
+        while raiz.antecessora is not None:
+            raiz = raiz.antecessora
+            
+        historia = []
+        curr = raiz
+        while curr is not None:
+            nome_col_low = curr.coluna.nome.lower()
+            is_concluida = "concluido" in nome_col_low or "concluído" in nome_col_low or "done" in nome_col_low or "terminado" in nome_col_low or "pronto" in nome_col_low
+            if not is_concluida:
+                last_col = curr.coluna.quadro.colunas.order_by('ordem', 'criado_em').last()
+                if last_col and last_col.id == curr.coluna_id:
+                    is_concluida = True
+                    
+            status_str = f"Concluída ({curr.coluna.nome})" if is_concluida else f"Ativa ({curr.coluna.nome})"
+            historia.append({
+                'id': curr.id,
+                'titulo': curr.titulo,
+                'coluna_nome': curr.coluna.nome,
+                'status': status_str,
+                'data': curr.criado_em.strftime('%d/%m/%Y %H:%M'),
+                'is_current': curr.id == card.id
+            })
+            curr = curr.sucessoras.first()
+            
         data = {
             'id': card.id,
             'coluna_id': card.coluna_id,
@@ -554,7 +589,9 @@ def api_card_detail_view(request, card_id):
             'periodicidade_label': card.get_periodicidade_display(),
             'data_entrega': card.data_entrega.strftime('%Y-%m-%d') if card.data_entrega else '',
             'checklist': checklist,
-            'comentarios': comentarios
+            'comentarios': comentarios,
+            'etiquetas': etiquetas,
+            'historia': historia if len(historia) > 1 else []
         }
         return JsonResponse(data)
         
@@ -597,6 +634,10 @@ def api_card_detail_view(request, card_id):
             else:
                 card.data_entrega = None
                 
+            etiquetas_ids = data.get('etiquetas_ids', [])
+            val_et_ids = [int(i) for i in etiquetas_ids if i]
+            card.etiquetas.set(BoardLabel.objects.filter(id__in=val_et_ids, quadro=board))
+            
             card.save()
             
             BoardActivity.objects.create(
@@ -869,3 +910,43 @@ def delete_subsection_view(request, subsection_id):
     subsecao.delete()
     messages.success(request, f"Sub-sessão '{nome}' excluída com sucesso!")
     return redirect('boards:board_detail', board_id=board_id)
+
+
+@login_required
+@require_POST
+def create_label_view(request, board_id):
+    board = get_object_or_404(Board, id=board_id)
+    colab = get_user_colaborador(request.user)
+    if not request.user.is_superuser:
+        if board.criado_por != colab and not board.membros.filter(id=colab.id).exists():
+            messages.error(request, "Acesso negado.")
+            return redirect('boards:dashboard')
+            
+    nome = request.POST.get('nome', '').strip()
+    cor = request.POST.get('cor', '#0d6efd').strip()
+    if nome:
+        if BoardLabel.objects.filter(quadro=board, nome__iexact=nome).exists():
+            messages.error(request, f"Já existe uma etiqueta chamada '{nome}' neste quadro.")
+        else:
+            BoardLabel.objects.create(quadro=board, nome=nome, cor=cor)
+            messages.success(request, f"Etiqueta '{nome}' criada!")
+    else:
+        messages.error(request, "O nome da etiqueta é obrigatório.")
+    return redirect('boards:board_detail', board_id=board.id)
+
+
+@login_required
+@require_POST
+def delete_label_view(request, label_id):
+    label = get_object_or_404(BoardLabel, id=label_id)
+    board = label.quadro
+    colab = get_user_colaborador(request.user)
+    if not request.user.is_superuser:
+        if board.criado_por != colab and not board.membros.filter(id=colab.id).exists():
+            messages.error(request, "Acesso negado.")
+            return redirect('boards:dashboard')
+            
+    nome = label.nome
+    label.delete()
+    messages.success(request, f"Etiqueta '{nome}' excluída.")
+    return redirect('boards:board_detail', board_id=board.id)

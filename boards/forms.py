@@ -1,5 +1,5 @@
 from django import forms
-from boards.models import Board, Card, BoardSubSection
+from boards.models import Board, Card, BoardSubSection, BoardLabel
 from rh.models import Colaborador
 
 class BoardForm(forms.ModelForm):
@@ -28,7 +28,7 @@ class CardForm(forms.ModelForm):
 
     class Meta:
         model = Card
-        fields = ['titulo', 'descricao', 'responsaveis', 'subsecao', 'prioridade', 'data_entrega', 'periodicidade']
+        fields = ['titulo', 'descricao', 'responsaveis', 'subsecao', 'prioridade', 'data_entrega', 'periodicidade', 'etiquetas']
         widgets = {
             'titulo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Título da tarefa'}),
             'descricao': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Descrição detalhada...'}),
@@ -36,6 +36,7 @@ class CardForm(forms.ModelForm):
             'subsecao': forms.Select(attrs={'class': 'form-select'}),
             'prioridade': forms.Select(attrs={'class': 'form-select'}),
             'periodicidade': forms.Select(attrs={'class': 'form-select'}),
+            'etiquetas': forms.CheckboxSelectMultiple(),
         }
 
     def __init__(self, *args, **kwargs):
@@ -52,6 +53,13 @@ class CardForm(forms.ModelForm):
             
         self.fields['subsecao'].required = False
         self.fields['subsecao'].label = "Sub-sessão"
+        
+        if board:
+            self.fields['etiquetas'].queryset = board.etiquetas.all().order_by('nome')
+        else:
+            self.fields['etiquetas'].queryset = BoardLabel.objects.none()
+        self.fields['etiquetas'].required = False
+        self.fields['etiquetas'].label = "Etiquetas"
         
         if board:
             # Filtra os responsáveis apenas para os membros desse quadro + o criador

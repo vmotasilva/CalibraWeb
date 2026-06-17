@@ -81,6 +81,19 @@ class BoardSubSection(models.Model):
     def __str__(self):
         return f"{self.coluna.nome} - {self.nome}"
 
+class BoardLabel(models.Model):
+    quadro = models.ForeignKey(Board, on_delete=models.CASCADE, related_name="etiquetas")
+    nome = models.CharField(max_length=50, verbose_name="Nome da Etiqueta")
+    cor = models.CharField(max_length=7, default="#0d6efd", verbose_name="Cor (Hex)")
+
+    class Meta:
+        unique_together = ('quadro', 'nome')
+        verbose_name = "Etiqueta do Quadro"
+        verbose_name_plural = "Etiquetas do Quadro"
+
+    def __str__(self):
+        return f"{self.quadro.nome} - {self.nome} ({self.cor})"
+
 
 class Card(models.Model):
     PRIORIDADE_CHOICES = [
@@ -108,6 +121,16 @@ class Card(models.Model):
         related_name="cartoes",
         verbose_name="Sub-sessão"
     )
+    etiquetas = models.ManyToManyField(BoardLabel, blank=True, related_name="cartoes", verbose_name="Etiquetas")
+    antecessora = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="sucessoras",
+        verbose_name="Tarefa Antecessora"
+    )
+
     titulo = models.CharField(max_length=200, verbose_name="Título da Tarefa")
     descricao = models.TextField(blank=True, null=True, verbose_name="Descrição")
     responsaveis = models.ManyToManyField(

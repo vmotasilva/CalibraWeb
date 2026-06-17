@@ -23,4 +23,7 @@ urlpatterns = [
     path('colunas/mover/', views.api_move_column_view, name='api_move_column'),
     path('colunas/<int:column_id>/subsecoes/nova/', views.create_subsection_view, name='create_subsection'),
     path('subsecoes/<int:subsection_id>/excluir/', views.delete_subsection_view, name='delete_subsection'),
+    path('<int:board_id>/etiquetas/nova/', views.create_label_view, name='create_label'),
+    path('etiquetas/<int:label_id>/excluir/', views.delete_label_view, name='delete_label'),
 ]
+

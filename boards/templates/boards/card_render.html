@@ -1,5 +1,14 @@
 {% load boards_tags %}
 <div class="kanban-card priority-{{ card.prioridade|lower }}" id="card-{{ card.id }}" draggable="true" ondragstart="drag(event)" onclick="{% if board.tipo == 'PLANOS_ACAO' %}window.open('{% url 'acoes:plano_acao_detail' card.plano_acao_id %}', '_blank'){% else %}openCardModal({{ card.id }}){% endif %}" data-periodicidade="{{ card.periodicidade }}" data-periodicidade-label="{{ card.get_periodicidade_display }}" data-titulo="{{ card.titulo }}">
+    {% if card.etiquetas.all %}
+        <div class="d-flex flex-wrap gap-1 mb-1 js-card-labels-container" data-card-id="{{ card.id }}">
+            {% for etiqueta in card.etiquetas.all %}
+                <span class="badge rounded-pill text-truncate" style="background-color: {{ etiqueta.cor }}; font-size: 0.62rem; color: #fff; max-width: 100px;" title="{{ etiqueta.nome }}">
+                    {{ etiqueta.nome }}
+                </span>
+            {% endfor %}
+        </div>
+    {% endif %}
     <div class="fw-semibold text-dark">{{ card.titulo }}</div>
     {% if card.descricao %}
         <div class="text-muted small text-truncate mt-1">{{ card.descricao }}</div>

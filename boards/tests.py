@@ -1,7 +1,7 @@
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.contrib.auth.models import User
-from boards.models import Board, BoardColumn, Card, ChecklistItem, CardComment, BoardActivity
+from boards.models import Board, BoardColumn, Card, ChecklistItem, CardComment, BoardActivity, BoardLabel
 from rh.models import Colaborador
 import json
 
@@ -377,5 +377,89 @@ class BoardsTestCase(TestCase):
         self.coluna_todo.refresh_from_db()
         self.assertEqual(self.coluna_done.ordem, 0)
         self.assertEqual(self.coluna_todo.ordem, 1)
+
+    def test_labels_and_recurrence_history(self):
+        """Testa o gerenciamento de etiquetas e o vínculo de histórico de tarefas recorrentes"""
+        # 1. Criar etiqueta
+        create_label_url = reverse('boards:create_label', args=[self.board.id])
+        response = self.client.post(create_label_url, {'nome': 'Label Test', 'cor': '#ff0000'})
+        self.assertEqual(response.status_code, 302)
+        
+        self.assertTrue(BoardLabel.objects.filter(quadro=self.board, nome='Label Test').exists())
+        label = BoardLabel.objects.get(quadro=self.board, nome='Label Test')
+        self.assertEqual(label.cor, '#ff0000')
+        
+        # 2. Associar etiqueta ao cartão e testar api_card_detail_view POST e GET
+        detail_url = reverse('boards:api_card_detail', args=[self.card.id])
+        
+        post_json = {
+            'titulo': self.card.titulo,
+            'descricao': self.card.descricao,
+            'responsaveis_ids': [self.colaborador.id],
+            'prioridade': 'BAIXA',
+            'periodicidade': 'DIARIA',
+            'data_entrega': '2026-06-17',
+            'etiquetas_ids': [label.id]
+        }
+        response = self.client.post(
+            detail_url,
+            data=json.dumps(post_json),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        self.card.refresh_from_db()
+        self.assertIn(label, self.card.etiquetas.all())
+        self.assertEqual(self.card.periodicidade, 'DIARIA')
+        
+        # GET para verificar dados de etiquetas e histórico
+        response = self.client.get(detail_url)
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertEqual(len(data['etiquetas']), 1)
+        self.assertEqual(data['etiquetas'][0]['nome'], 'Label Test')
+        
+        # 3. Completar cartão (remover para coluna concluída com recriação)
+        move_url = reverse('boards:api_move_card')
+        move_json = {
+            'card_id': self.card.id,
+            'to_column_id': self.coluna_done.id,
+            'card_order_ids': [self.card.id],
+            'recreate': True
+        }
+        response = self.client.post(
+            move_url,
+            data=json.dumps(move_json),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        
+        self.card.refresh_from_db()
+        self.assertEqual(self.card.periodicidade, 'AVULSA')
+        
+        # Uma nova tarefa sucessora deve ter sido gerada na primeira coluna (coluna_todo)
+        self.assertTrue(Card.objects.filter(coluna=self.coluna_done, antecessora=self.card).exists())
+        new_card = Card.objects.get(coluna=self.coluna_done, antecessora=self.card)
+        self.assertEqual(new_card.titulo, self.card.titulo)
+        self.assertIn(label, new_card.etiquetas.all())
+        
+        # 4. Verificar o histórico completo na API GET de ambas as tarefas
+        # Na tarefa original
+        response = self.client.get(reverse('boards:api_card_detail', args=[self.card.id]))
+        data = json.loads(response.content)
+        self.assertEqual(len(data['historia']), 2)
+        self.assertEqual(data['historia'][0]['id'], self.card.id)
+        self.assertEqual(data['historia'][1]['id'], new_card.id)
+        
+        # Na nova tarefa
+        response = self.client.get(reverse('boards:api_card_detail', args=[new_card.id]))
+        data = json.loads(response.content)
+        self.assertEqual(len(data['historia']), 2)
+        
+        # 5. Excluir etiqueta
+        delete_label_url = reverse('boards:delete_label', args=[label.id])
+        response = self.client.post(delete_label_url)
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(BoardLabel.objects.filter(id=label.id).exists())
+
 
 

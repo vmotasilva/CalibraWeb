@@ -154,6 +154,52 @@
         left: -6px;
         top: 6px;
     }
+    
+    .btn-outline-custom-label {
+        background-color: transparent;
+        transition: all 0.15s ease-in-out;
+    }
+    .btn-outline-custom-label:hover {
+        background-color: var(--label-color) !important;
+        color: white !important;
+        border-color: var(--label-color) !important;
+    }
+    .btn-outline-custom-label:hover i {
+        color: white !important;
+    }
+    .btn-check:checked + .btn-outline-custom-label {
+        background-color: var(--label-color) !important;
+        color: white !important;
+        border-color: var(--label-color) !important;
+    }
+    .btn-check:checked + .btn-outline-custom-label i {
+        color: white !important;
+    }
+    
+    .timeline-history-item {
+        position: relative;
+        padding-bottom: 1rem;
+        padding-left: 1.25rem;
+        border-left: 2px solid #dee2e6;
+    }
+    .timeline-history-item:last-child {
+        border-left: 2px solid transparent;
+        padding-bottom: 0;
+    }
+    .timeline-history-item::before {
+        content: "";
+        position: absolute;
+        left: -6px;
+        top: 4px;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background-color: #ced4da;
+    }
+    .timeline-history-item.is-current::before {
+        background-color: #0d6efd;
+        box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
+    }
 </style>
 {% endblock %}
 
@@ -195,6 +241,9 @@
                 
                 <!-- Botões de Ações do Quadro -->
                 {% if board.tipo != 'PLANOS_ACAO' %}
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#boardLabelsModal" title="Gerenciar Etiquetas do Quadro">
+                    <i class="bi bi-tags"></i>
+                </button>
                 <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#boardConfigModal" title="Configurar Quadro">
                     <i class="bi bi-gear"></i>
                 </button>
@@ -557,6 +606,23 @@
                             {{ card_form.subsecao }}
                         </div>
                     </div>
+                    {% if board.tipo != 'PLANOS_ACAO' and board.etiquetas.all %}
+                    <div class="row mt-3">
+                        <div class="col-md-12 mb-0">
+                            <label class="form-label fw-bold">Etiquetas</label>
+                            <div class="d-flex flex-wrap gap-2 mt-1">
+                                {% for label in board.etiquetas.all %}
+                                    <div class="form-check-inline m-0">
+                                        <input type="checkbox" name="etiquetas" value="{{ label.id }}" class="btn-check" id="addCardLabel-{{ label.id }}" autocomplete="off">
+                                        <label class="btn btn-outline-custom-label btn-sm rounded-pill px-3 py-1" for="addCardLabel-{{ label.id }}" style="--label-color: {{ label.cor }}; border-color: {{ label.cor }}; color: #444; font-weight: 500; font-size: 0.78rem;">
+                                            <i class="bi bi-tag-fill me-1" style="color: {{ label.cor }};"></i>{{ label.nome }}
+                                        </label>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
                 <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -608,6 +674,14 @@
                             </div>
                             <div id="commentsContainer" class="d-flex flex-column gap-2" style="max-height: 250px; overflow-y: auto;"></div>
                         </div>
+                        
+                        <!-- Histórico de Repetições -->
+                        <div class="mt-4 pt-3 border-top" id="detailCardHistoryContainer" style="display: none;">
+                            <label class="form-label fw-bold text-muted small mb-2"><i class="bi bi-clock-history me-1 text-primary"></i>Histórico de Repetições</label>
+                            <div class="position-relative ps-1 mt-2" id="detailCardHistoryList" style="font-size: 0.85rem;">
+                                <!-- Linha do tempo inserida via JS -->
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- Controles/Metadados (Lado Direito) -->
@@ -633,6 +707,32 @@
                                     </select>
                                 </div>
                             </div>
+                            
+                            <!-- Etiquetas da Tarefa -->
+                            {% if board.tipo != 'PLANOS_ACAO' %}
+                            <div class="mb-3">
+                                <label class="form-label fw-bold text-muted small d-block">Etiquetas</label>
+                                <div id="detailCardActiveLabels" class="d-flex flex-wrap gap-1 mb-2"></div>
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-secondary btn-sm w-100 dropdown-toggle text-start d-flex justify-content-between align-items-center" type="button" id="dropdownManageLabels" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                                        <span><i class="bi bi-tags me-1"></i>Gerenciar Etiquetas</span>
+                                    </button>
+                                    <ul class="dropdown-menu p-3 shadow-lg" aria-labelledby="dropdownManageLabels" style="min-width: 230px; border-radius: 8px;">
+                                        <h6 class="dropdown-header px-0 py-1 text-dark fw-bold" style="font-size: 0.85rem;">Etiquetas do Quadro</h6>
+                                        <div id="detailCardLabelsDropdownList" class="d-flex flex-column gap-2 my-2" style="max-height: 180px; overflow-y: auto;">
+                                            <!-- Populados via JS -->
+                                        </div>
+                                        <hr class="my-2">
+                                        <li>
+                                            <button type="button" class="btn btn-link text-primary btn-sm p-0 w-100 text-start" onclick="openBoardLabelsFromDetail()">
+                                                <i class="bi bi-plus-lg me-1"></i>Criar/Editar Etiquetas
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
                             <div class="mb-3" id="detailCardSubsecaoContainer" style="display: none;">
                                 <label class="form-label fw-bold text-muted small d-block">Sub-sessão</label>
                                 <select id="cardDetailSubsecao" class="form-select form-select-sm">
@@ -764,6 +864,74 @@
         </div>
     </div>
 </div>
+
+<!-- Modal Gerenciar Etiquetas do Quadro -->
+<div class="modal fade" id="boardLabelsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg" style="border-radius: 14px;">
+            <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                <h5 class="modal-title fw-bold"><i class="bi bi-tags me-2"></i>Gerenciar Etiquetas do Quadro</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Listagem das Etiquetas Existentes -->
+                <label class="form-label fw-bold mb-2">Etiquetas Existentes</label>
+                <div id="boardLabelsModalList" class="d-flex flex-column gap-2 mb-4" style="max-height: 200px; overflow-y: auto;">
+                    {% for label in board.etiquetas.all %}
+                        <div class="d-flex align-items-center justify-content-between p-2 border rounded bg-light">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge rounded-pill" style="background-color: {{ label.cor }}; font-size: 0.85rem; color: #fff;">
+                                    {{ label.nome }}
+                                </span>
+                            </div>
+                            <form action="{% url 'boards:delete_label' label.id %}" method="POST" class="d-inline" onsubmit="return confirm('Deseja excluir esta etiqueta? Ela será removida de todos os cartões.');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger border-0"><i class="bi bi-trash"></i></button>
+                            </form>
+                        </div>
+                    {% empty %}
+                        <p class="text-muted small my-2 text-center" id="noLabelsText">Nenhuma etiqueta criada ainda.</p>
+                    {% endfor %}
+                </div>
+                
+                <hr>
+                
+                <!-- Criar Nova Etiqueta -->
+                <form action="{% url 'boards:create_label' board.id %}" method="POST">
+                    {% csrf_token %}
+                    <label class="form-label fw-bold mb-2">Nova Etiqueta</label>
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">Nome da Etiqueta</label>
+                        <input type="text" name="nome" class="form-control form-control-sm" placeholder="Ex: Urgente, Revisão, Financeiro..." required autocomplete="off">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">Cor da Etiqueta</label>
+                        <div class="d-flex align-items-center gap-2">
+                            <!-- Paleta rápida de cores HSL modernas -->
+                            <div class="d-flex flex-wrap gap-1" id="quickColorPalette">
+                                <button type="button" class="btn p-0 rounded-circle border border-2 border-white shadow-sm" style="width: 26px; height: 26px; background-color: #dc3545;" onclick="selectQuickColor('#dc3545')" title="Vermelho"></button>
+                                <button type="button" class="btn p-0 rounded-circle border border-2 border-white shadow-sm" style="width: 26px; height: 26px; background-color: #fd7e14;" onclick="selectQuickColor('#fd7e14')" title="Laranja"></button>
+                                <button type="button" class="btn p-0 rounded-circle border border-2 border-white shadow-sm" style="width: 26px; height: 26px; background-color: #ffc107;" onclick="selectQuickColor('#ffc107')" title="Amarelo"></button>
+                                <button type="button" class="btn p-0 rounded-circle border border-2 border-white shadow-sm" style="width: 26px; height: 26px; background-color: #198754;" onclick="selectQuickColor('#198754')" title="Verde"></button>
+                                <button type="button" class="btn p-0 rounded-circle border border-2 border-white shadow-sm" style="width: 26px; height: 26px; background-color: #0d6efd;" onclick="selectQuickColor('#0d6efd')" title="Azul"></button>
+                                <button type="button" class="btn p-0 rounded-circle border border-2 border-white shadow-sm" style="width: 26px; height: 26px; background-color: #6f42c1;" onclick="selectQuickColor('#6f42c1')" title="Roxo"></button>
+                                <button type="button" class="btn p-0 rounded-circle border border-2 border-white shadow-sm" style="width: 26px; height: 26px; background-color: #d63384;" onclick="selectQuickColor('#d63384')" title="Rosa"></button>
+                                <button type="button" class="btn p-0 rounded-circle border border-2 border-white shadow-sm" style="width: 26px; height: 26px; background-color: #20c997;" onclick="selectQuickColor('#20c997')" title="Teal"></button>
+                            </div>
+                            <div class="vr"></div>
+                            <!-- Picker de Cor Customizado -->
+                            <input type="color" name="cor" id="labelColorPicker" class="form-control form-control-color" style="width: 45px; height: 32px; padding: 2px;" value="#0d6efd" title="Escolha outra cor">
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end gap-2 mt-3">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
+                        <button type="submit" class="btn btn-primary btn-sm px-4">Salvar Etiqueta</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -783,6 +951,16 @@
             ],
         {% endfor %}
     };
+
+    const BOARD_LABELS = [
+        {% for label in board.etiquetas.all %}
+            { "id": {{ label.id }}, "nome": "{{ label.nome|escapejs }}", "cor": "{{ label.cor|escapejs }}" },
+        {% endfor %}
+    ];
+
+    function selectQuickColor(color) {
+        document.getElementById('labelColorPicker').value = color;
+    }
 
     function openCreateSubSectionModal(columnId) {
         const form = document.getElementById('addSubSectionForm');
@@ -1183,11 +1361,208 @@
                 }
             }
             
+            // Render active labels
+            const activeLabelsContainer = document.getElementById('detailCardActiveLabels');
+            if (activeLabelsContainer) {
+                activeLabelsContainer.innerHTML = '';
+                if (card.etiquetas && card.etiquetas.length > 0) {
+                    card.etiquetas.forEach(et => {
+                        const pill = document.createElement('span');
+                        pill.className = 'badge rounded-pill text-truncate';
+                        pill.style.backgroundColor = et.cor;
+                        pill.style.fontSize = '0.78rem';
+                        pill.style.color = '#fff';
+                        pill.style.maxWidth = '120px';
+                        pill.title = et.nome;
+                        pill.textContent = et.nome;
+                        activeLabelsContainer.appendChild(pill);
+                    });
+                } else {
+                    activeLabelsContainer.innerHTML = '<span class="text-muted small">Nenhuma etiqueta</span>';
+                }
+            }
+            
+            // Populate checkboxes in the dropdown list
+            const dropdownList = document.getElementById('detailCardLabelsDropdownList');
+            if (dropdownList && typeof BOARD_LABELS !== 'undefined') {
+                dropdownList.innerHTML = '';
+                const cardLabelIds = card.etiquetas ? card.etiquetas.map(et => et.id) : [];
+                BOARD_LABELS.forEach(label => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'form-check mb-0 d-flex align-items-center gap-2 px-2 py-1 hover-bg-light rounded';
+                    const checkedStr = cardLabelIds.includes(label.id) ? 'checked' : '';
+                    itemDiv.innerHTML = `
+                        <input class="form-check-input js-card-label-toggle-checkbox" type="checkbox" value="${label.id}" id="detailCardLabelCheck-${label.id}" ${checkedStr} onchange="toggleCardLabel(${label.id})">
+                        <label class="form-check-label flex-grow-1 badge rounded-pill text-start text-white text-truncate py-1.5 px-3 cursor-pointer mb-0" for="detailCardLabelCheck-${label.id}" style="background-color: ${label.cor}; font-size: 0.78rem; margin-left: 5px;" title="${label.nome}">
+                            ${label.nome}
+                        </label>
+                    `;
+                    dropdownList.appendChild(itemDiv);
+                });
+            }
+            
+            // Render recurrence history
+            const historyContainer = document.getElementById('detailCardHistoryContainer');
+            const historyList = document.getElementById('detailCardHistoryList');
+            if (historyContainer && historyList) {
+                historyList.innerHTML = '';
+                if (card.historia && card.historia.length > 0) {
+                    historyContainer.style.display = 'block';
+                    card.historia.forEach(item => {
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = `timeline-history-item${item.is_current ? ' is-current' : ''}`;
+                        
+                        let linkHtml = ``;
+                        if (item.is_current) {
+                            linkHtml = `<span class="fw-bold text-primary">${item.titulo}</span>`;
+                        } else {
+                            linkHtml = `<a href="javascript:void(0)" onclick="switchCardModal(${item.id})" class="text-decoration-none fw-semibold text-dark hover-text-primary">${item.titulo}</a>`;
+                        }
+                        
+                        itemDiv.innerHTML = `
+                            <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-start gap-1">
+                                <div>
+                                    ${linkHtml}
+                                    <div class="text-muted small mt-0.5">${item.status}</div>
+                                </div>
+                                <span class="text-muted text-sm-end" style="font-size: 0.75rem;">${item.data}</span>
+                            </div>
+                        `;
+                        historyList.appendChild(itemDiv);
+                    });
+                } else {
+                    historyContainer.style.display = 'none';
+                }
+            }
+            
             const modal = new bootstrap.Modal(document.getElementById('cardDetailModal'));
             modal.show();
         })
         .catch(err => console.error("Erro ao carregar detalhes do cartão:", err));
     }
+    
+    let openedLabelsFromDetail = false;
+    
+    function toggleCardLabel(labelId) {
+        const checkboxes = document.querySelectorAll('.js-card-label-toggle-checkbox');
+        const etiquetasIds = [];
+        checkboxes.forEach(cb => {
+            if (cb.checked) {
+                etiquetasIds.push(parseInt(cb.value));
+            }
+        });
+        
+        fetch(`/boards/cartoes/${activeCardId}/detalhes/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                titulo: document.getElementById('cardDetailTitle').textContent,
+                descricao: document.getElementById('cardDetailDesc').value,
+                subsecao_id: document.getElementById('cardDetailSubsecao') ? document.getElementById('cardDetailSubsecao').value : null,
+                responsaveis_ids: Array.from(document.getElementById('cardDetailResp').options).filter(opt => opt.selected).map(opt => parseInt(opt.value)),
+                prioridade: document.getElementById('cardDetailPriority').value,
+                data_entrega: document.getElementById('cardDetailDueDate').value,
+                periodicidade: document.getElementById('cardDetailPeriodicidade').value,
+                etiquetas_ids: etiquetasIds
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const activeLabelsContainer = document.getElementById('detailCardActiveLabels');
+                if (activeLabelsContainer) {
+                    activeLabelsContainer.innerHTML = '';
+                    const checkedLabels = BOARD_LABELS.filter(l => etiquetasIds.includes(l.id));
+                    if (checkedLabels.length > 0) {
+                        checkedLabels.forEach(et => {
+                            const pill = document.createElement('span');
+                            pill.className = 'badge rounded-pill text-truncate';
+                            pill.style.backgroundColor = et.cor;
+                            pill.style.fontSize = '0.78rem';
+                            pill.style.color = '#fff';
+                            pill.style.maxWidth = '120px';
+                            pill.title = et.nome;
+                            pill.textContent = et.nome;
+                            activeLabelsContainer.appendChild(pill);
+                        });
+                    } else {
+                        activeLabelsContainer.innerHTML = '<span class="text-muted small">Nenhuma etiqueta</span>';
+                    }
+                }
+                
+                const cardEl = document.getElementById(`card-${activeCardId}`);
+                if (cardEl) {
+                    let cardLabelsContainer = cardEl.querySelector('.js-card-labels-container');
+                    if (!cardLabelsContainer) {
+                        cardLabelsContainer = document.createElement('div');
+                        cardLabelsContainer.className = 'd-flex flex-wrap gap-1 mb-1 js-card-labels-container';
+                        cardLabelsContainer.setAttribute('data-card-id', activeCardId);
+                        cardEl.insertBefore(cardLabelsContainer, cardEl.firstChild);
+                    }
+                    cardLabelsContainer.innerHTML = '';
+                    const checkedLabels = BOARD_LABELS.filter(l => etiquetasIds.includes(l.id));
+                    checkedLabels.forEach(et => {
+                        const pill = document.createElement('span');
+                        pill.className = 'badge rounded-pill text-truncate';
+                        pill.style.backgroundColor = et.cor;
+                        pill.style.fontSize = '0.62rem';
+                        pill.style.color = '#fff';
+                        pill.style.maxWidth = '100px';
+                        pill.title = et.nome;
+                        pill.textContent = et.nome;
+                        cardLabelsContainer.appendChild(pill);
+                    });
+                    if (checkedLabels.length === 0) {
+                        cardLabelsContainer.remove();
+                    }
+                }
+            }
+        })
+        .catch(err => console.error("Erro ao salvar etiquetas:", err));
+    }
+
+    function switchCardModal(cardId) {
+        const detailModalEl = document.getElementById('cardDetailModal');
+        const detailModal = bootstrap.Modal.getInstance(detailModalEl);
+        if (detailModal) {
+            detailModal.hide();
+        }
+        setTimeout(() => {
+            openCardModal(cardId);
+        }, 300);
+    }
+
+    function openBoardLabelsFromDetail() {
+        openedLabelsFromDetail = true;
+        const detailModalEl = document.getElementById('cardDetailModal');
+        const detailModal = bootstrap.Modal.getInstance(detailModalEl);
+        if (detailModal) {
+            detailModal.hide();
+        }
+        setTimeout(() => {
+            const labelsModal = new bootstrap.Modal(document.getElementById('boardLabelsModal'));
+            labelsModal.show();
+        }, 300);
+    }
+    
+    document.addEventListener("DOMContentLoaded", function() {
+        const boardLabelsModalEl = document.getElementById('boardLabelsModal');
+        if (boardLabelsModalEl) {
+            boardLabelsModalEl.addEventListener('hidden.bs.modal', function () {
+                if (openedLabelsFromDetail) {
+                    openedLabelsFromDetail = false;
+                    if (activeCardId) {
+                        setTimeout(() => {
+                            openCardModal(activeCardId);
+                        }, 300);
+                    }
+                }
+            });
+        }
+    });
     
     // Checklist render
     function renderChecklist(checklist) {

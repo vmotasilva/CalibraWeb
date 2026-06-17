@@ -1,5 +1,5 @@
 from django.contrib import admin
-from boards.models import Board, BoardColumn, Card, ChecklistItem, CardComment, BoardActivity
+from boards.models import Board, BoardColumn, Card, ChecklistItem, CardComment, BoardActivity, BoardLabel
 
 class BoardColumnInline(admin.TabularInline):
     model = BoardColumn
@@ -56,3 +56,11 @@ class BoardActivityAdmin(admin.ModelAdmin):
     list_display = ('quadro', 'colaborador', 'descricao', 'criado_em')
     list_filter = ('quadro',)
     search_fields = ('descricao',)
+
+
+@admin.register(BoardLabel)
+class BoardLabelAdmin(admin.ModelAdmin):
+    list_display = ('nome', 'quadro', 'cor')
+    list_filter = ('quadro',)
+    search_fields = ('nome',)
+
