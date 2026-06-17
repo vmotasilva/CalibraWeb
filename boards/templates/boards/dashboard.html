@@ -229,6 +229,12 @@
                             <option value="Média">Média</option>
                             <option value="Baixa">Baixa</option>
                         </select>
+                        <select id="actionsFilterResp" class="form-select form-select-sm" style="width: 170px;" onchange="filterActionsTableView()">
+                            <option value="">Responsável: Todos</option>
+                            {% for c in todos_colaboradores %}
+                            <option value="{{ c.nome_completo }}">{{ c.nome_completo }}</option>
+                            {% endfor %}
+                        </select>
                         <div class="input-group input-group-sm" style="max-width: 250px;">
                             <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
                             <input type="search" id="actionsSearchInput" class="form-control border-start-0" placeholder="Buscar ações/tarefas..." oninput="filterActionsTableView()" readonly onfocus="this.removeAttribute('readonly');" autocomplete="new-password">
@@ -537,6 +543,7 @@ function filterActionsTableView() {
     
     const filterBoard = document.getElementById('actionsFilterBoard') ? document.getElementById('actionsFilterBoard').value : "";
     const filterPrior = document.getElementById('actionsFilterPrior') ? document.getElementById('actionsFilterPrior').value : "";
+    const filterResp = document.getElementById('actionsFilterResp') ? document.getElementById('actionsFilterResp').value.trim() : "";
     
     const rows = document.querySelectorAll('#globalActionsTable tbody tr');
     
@@ -562,7 +569,19 @@ function filterActionsTableView() {
         const priorText = row.cells[6].textContent.trim();
         const priorMatch = !filterPrior || priorText === filterPrior;
         
-        if (textMatch && boardMatch && priorMatch) {
+        // 4. Responsible Match (index 3)
+        let respMatch = !filterResp;
+        if (filterResp && row.cells[3]) {
+            const avatars = row.cells[3].querySelectorAll('.board-avatar, .avatar-circle');
+            avatars.forEach(avatar => {
+                const title = avatar.getAttribute('title');
+                if (title && title.trim() === filterResp) {
+                    respMatch = true;
+                }
+            });
+        }
+        
+        if (textMatch && boardMatch && priorMatch && respMatch) {
             row.style.display = '';
         } else {
             row.style.display = 'none';

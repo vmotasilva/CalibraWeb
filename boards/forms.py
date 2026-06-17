@@ -31,6 +31,12 @@ class CardForm(forms.ModelForm):
         widget=forms.DateInput(attrs={'class': 'form-control js-week-datepicker', 'type': 'text', 'autocomplete': 'off'}),
         label="Data de Conclusão"
     )
+    data_inicio = forms.DateField(
+        input_formats=['%d/%m/%Y', '%Y-%m-%d'],
+        required=False,
+        widget=forms.DateInput(attrs={'class': 'form-control js-week-datepicker', 'type': 'text', 'autocomplete': 'off'}),
+        label="Data de Início"
+    )
     hora_inicio = forms.TimeField(
         required=False,
         widget=forms.TimeInput(attrs={'class': 'form-control', 'type': 'time'}),
@@ -44,7 +50,7 @@ class CardForm(forms.ModelForm):
 
     class Meta:
         model = Card
-        fields = ['titulo', 'descricao', 'responsaveis', 'subsecao', 'prioridade', 'data_entrega', 'periodicidade', 'etiquetas', 'data_conclusao', 'hora_inicio', 'hora_fim']
+        fields = ['titulo', 'descricao', 'responsaveis', 'subsecao', 'prioridade', 'data_entrega', 'periodicidade', 'etiquetas', 'data_conclusao', 'hora_inicio', 'hora_fim', 'data_inicio']
         widgets = {
             'titulo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Título da tarefa'}),
             'descricao': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Descrição detalhada...'}),

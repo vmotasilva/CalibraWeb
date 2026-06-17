@@ -149,12 +149,14 @@ def dashboard_view(request):
     
     # Mapear cada quadro
     quadros_list = list(quadros)
+    todos_colaboradores = Colaborador.objects.filter(is_active=True).order_by('nome_completo')
     
     context = {
         'quadros': quadros,
         'quadros_list': quadros_list,
         'quadros_arquivados': quadros_arquivados,
         'todas_acoes': todas_acoes,
+        'todos_colaboradores': todos_colaboradores,
         'form': form,
         'titulo': 'Quadros de Atividades',
         'hoje': timezone.now().date()
@@ -291,6 +293,7 @@ def board_detail_view(request, board_id):
                         'exists': False
                     },
                     'plano_acao_id': l.plano_acao.id,
+                    'is_virtual': True,
                     'etiquetas': {
                         'all': []
                     },
@@ -422,6 +425,7 @@ def board_detail_view(request, board_id):
         'cartoes_atrasados': cartoes_atrasados,
         'atividades': atividades,
         'todos_colaboradores': todos_colaboradores,
+        'colaboradores_sistema': Colaborador.objects.filter(is_active=True).order_by('nome_completo'),
         'chart_membros_nomes': json.dumps(chart_membros_nomes),
         'chart_membros_valores': json.dumps(chart_membros_valores),
         'distribuicao_colunas': json.dumps(distribuicao_colunas),

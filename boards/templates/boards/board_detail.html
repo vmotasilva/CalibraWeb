@@ -5,6 +5,7 @@
 {% block header_title %}{{ board.nome }}{% endblock %}
 
 {% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
 <style>
     .kanban-container {
         display: flex;
@@ -237,6 +238,9 @@
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link px-3" id="table-view-tab" data-bs-toggle="tab" data-bs-target="#table-view" type="button" role="tab"><i class="bi bi-table me-2"></i>Tabela</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link px-3" id="calendar-view-tab" data-bs-toggle="tab" data-bs-target="#calendar-view" type="button" role="tab"><i class="bi bi-calendar3 me-2"></i>Calendário</button>
                     </li>
                 </ul>
                 
@@ -547,6 +551,12 @@
                             <option value="Média">Média</option>
                             <option value="Baixa">Baixa</option>
                         </select>
+                        <select id="tableFilterResp" class="form-select form-select-sm" style="width: 170px;" onchange="filterTableView()">
+                            <option value="">Responsável: Todos</option>
+                            {% for c in todos_colaboradores %}
+                            <option value="{{ c.nome_completo }}">{{ c.nome_completo }}</option>
+                            {% endfor %}
+                        </select>
                         <div class="input-group input-group-sm" style="max-width: 250px;">
                             <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
                             <input type="search" id="tableSearchInput" class="form-control border-start-0" placeholder="Buscar na tabela..." oninput="filterTableView()" readonly onfocus="this.removeAttribute('readonly');" autocomplete="new-password">
@@ -667,6 +677,17 @@
                 </div>
             </div>
         </div>
+        
+        <!-- ABA 5: CALENDÁRIO VIEW -->
+        <div class="tab-pane fade" id="calendar-view" role="tabpanel">
+            <div class="card border-0 shadow-sm p-4" style="border-radius: 12px;">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold mb-0"><i class="bi bi-calendar3 text-primary me-2"></i>Calendário de Atividades</h5>
+                    <span class="text-muted small">Clique em uma atividade para ver detalhes.</span>
+                </div>
+                <div id="calendar" style="min-height: 600px; background-color: #fff;"></div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -719,6 +740,32 @@
                         <div class="col-md-6 mb-0">
                             <label class="form-label fw-bold">Periodicidade</label>
                             {{ card_form.periodicidade }}
+                        </div>
+                    </div>
+                    <!-- Switch para planejar horário -->
+                    <div class="row mt-3">
+                        <div class="col-md-12 mb-0">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="addCardCheckPlanejar" onchange="toggleAddCardPlanning(this.checked)">
+                                <label class="form-check-label fw-bold text-dark" for="addCardCheckPlanejar">
+                                    <i class="bi bi-clock-history me-1 text-primary"></i>Planejar atividade com início/fim
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Campos de Planejamento (Início/Fim) -->
+                    <div class="row mt-3" id="addCardPlanningFields" style="display: none;">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Data de Início</label>
+                            {{ card_form.data_inicio }}
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Hora de Início</label>
+                            {{ card_form.hora_inicio }}
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Hora de Fim</label>
+                            {{ card_form.hora_fim }}
                         </div>
                     </div>
                     <div class="row mt-3" id="addCardSubsecaoRow" style="display: none;">
@@ -880,24 +927,41 @@
                                 <label class="form-label fw-bold text-muted small d-block">Prazo de Entrega</label>
                                 <input type="text" id="cardDetailDueDate" class="form-control form-control-sm js-week-datepicker" placeholder="aaaa-mm-dd" autocomplete="off">
                             </div>
-                            <div class="row g-2 mb-3">
-                                <div class="col-6">
-                                    <label class="form-label fw-bold text-muted small d-block">Data de Início</label>
-                                    <input type="text" id="cardDetailStartDate" class="form-control form-control-sm js-week-datepicker" placeholder="aaaa-mm-dd" autocomplete="off">
+                            <!-- Switch para planejar horário -->
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="cardDetailCheckPlanejar" onchange="toggleDetailCardPlanning(this.checked)">
+                                <label class="form-check-label fw-bold text-muted small" for="cardDetailCheckPlanejar">
+                                    <i class="bi bi-clock me-1 text-primary"></i>Planejar horário (início/fim)
+                                </label>
+                            </div>
+
+                            <!-- Campos de Planejamento -->
+                            <div id="cardDetailPlanningFields" style="display: none;">
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6">
+                                        <label class="form-label fw-bold text-muted small d-block">Data de Início</label>
+                                        <input type="text" id="cardDetailStartDate" class="form-control form-control-sm js-week-datepicker" placeholder="aaaa-mm-dd" autocomplete="off">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label fw-bold text-muted small d-block">Hora de Início</label>
+                                        <input type="time" id="cardDetailHoraInicio" class="form-control form-control-sm" autocomplete="off">
+                                    </div>
                                 </div>
-                                <div class="col-6">
-                                    <label class="form-label fw-bold text-muted small d-block">Hora de Início</label>
-                                    <input type="time" id="cardDetailHoraInicio" class="form-control form-control-sm" autocomplete="off">
+                                <div class="row g-2 mb-3">
+                                    <div class="col-12">
+                                        <label class="form-label fw-bold text-muted small d-block">Hora de Fim</label>
+                                        <input type="time" id="cardDetailHoraFim" class="form-control form-control-sm" autocomplete="off">
+                                    </div>
                                 </div>
                             </div>
-                            <div class="row g-2 mb-3">
-                                <div class="col-6">
-                                    <label class="form-label fw-bold text-muted small d-block">Data de Conclusão</label>
-                                    <input type="text" id="cardDetailConcludedDate" class="form-control form-control-sm js-week-datepicker" placeholder="aaaa-mm-dd" autocomplete="off">
-                                </div>
-                                <div class="col-6">
-                                    <label class="form-label fw-bold text-muted small d-block">Hora de Fim</label>
-                                    <input type="time" id="cardDetailHoraFim" class="form-control form-control-sm" autocomplete="off">
+
+                            <!-- Seção de Conclusão -->
+                            <div id="cardDetailConclusaoFields" style="display: none;">
+                                <div class="row g-2 mb-3">
+                                    <div class="col-12">
+                                        <label class="form-label fw-bold text-muted small d-block">Data de Conclusão</label>
+                                        <input type="text" id="cardDetailConcludedDate" class="form-control form-control-sm js-week-datepicker" placeholder="aaaa-mm-dd" autocomplete="off">
+                                    </div>
                                 </div>
                             </div>
                             <div class="mb-3">
@@ -974,7 +1038,7 @@
                     <!-- Select original oculto -->
                     <div class="d-none">
                         <select name="membros" class="form-select" multiple>
-                            {% for c in todos_colaboradores %}
+                            {% for c in colaboradores_sistema %}
                                 <option value="{{ c.id }}" {% if c in board.membros.all %}selected{% endif %}>{{ c.nome_completo }}</option>
                             {% endfor %}
                         </select>
@@ -1086,6 +1150,8 @@
 {% block extra_js %}
 <!-- Chart.js para gráficos -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+<!-- FullCalendar JS -->
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 
 <script>
     // ============================================
@@ -1442,6 +1508,12 @@
         addCardCollaborators.forEach(colab => colab.selected = false);
         updateAddCardDisplay();
         
+        const addCardCheckPlanejar = document.getElementById('addCardCheckPlanejar');
+        if (addCardCheckPlanejar) {
+            addCardCheckPlanejar.checked = false;
+            toggleAddCardPlanning(false);
+        }
+        
         const modal = new bootstrap.Modal(document.getElementById('addCardModal'));
         modal.show();
     }
@@ -1513,6 +1585,22 @@
             const colSelect = document.getElementById('cardDetailColumn');
             if (colSelect) {
                 colSelect.value = card.coluna_id;
+            }
+            
+            const isPlanned = !!(card.data_inicio || card.hora_inicio || card.hora_fim);
+            const checkPlanejar = document.getElementById('cardDetailCheckPlanejar');
+            if (checkPlanejar) {
+                checkPlanejar.checked = isPlanned;
+                toggleDetailCardPlanning(isPlanned);
+            }
+            
+            const conclusaoFields = document.getElementById('cardDetailConclusaoFields');
+            if (conclusaoFields) {
+                if (card.data_conclusao) {
+                    conclusaoFields.style.display = 'block';
+                } else {
+                    conclusaoFields.style.display = 'none';
+                }
             }
             
             // Renderiza checklist
@@ -2422,6 +2510,7 @@
         
         const filterCol = document.getElementById('tableFilterCol') ? document.getElementById('tableFilterCol').value : "";
         const filterPrior = document.getElementById('tableFilterPrior') ? document.getElementById('tableFilterPrior').value : "";
+        const filterResp = document.getElementById('tableFilterResp') ? document.getElementById('tableFilterResp').value.trim() : "";
         
         const rows = document.querySelectorAll('#tasksTable tbody tr');
         
@@ -2448,12 +2537,149 @@
             const priorText = cells[7].textContent.trim();
             const priorMatch = !filterPrior || priorText === filterPrior;
             
-            if (textMatch && colMatch && priorMatch) {
+            // 4. Responsible Match (index 3)
+            let respMatch = !filterResp;
+            if (filterResp && cells[3]) {
+                const avatars = cells[3].querySelectorAll('.board-avatar, .avatar-circle');
+                avatars.forEach(avatar => {
+                    const title = avatar.getAttribute('title');
+                    if (title && title.trim() === filterResp) {
+                        respMatch = true;
+                    }
+                });
+            }
+            
+            if (textMatch && colMatch && priorMatch && respMatch) {
                 row.style.display = '';
             } else {
                 row.style.display = 'none';
             }
         });
     }
+
+    // ============================================
+    // TOGGLE PLANNING FIELDS (CREATION & DETAIL)
+    // ============================================
+    function toggleAddCardPlanning(checked) {
+        const fields = document.getElementById('addCardPlanningFields');
+        if (fields) {
+            if (checked) {
+                fields.style.display = 'flex';
+            } else {
+                fields.style.display = 'none';
+                const inputs = fields.querySelectorAll('input');
+                inputs.forEach(input => input.value = '');
+            }
+        }
+    }
+
+    function toggleDetailCardPlanning(checked) {
+        const fields = document.getElementById('cardDetailPlanningFields');
+        if (fields) {
+            if (checked) {
+                fields.style.display = 'block';
+            } else {
+                fields.style.display = 'none';
+                document.getElementById('cardDetailStartDate').value = '';
+                document.getElementById('cardDetailHoraInicio').value = '';
+                document.getElementById('cardDetailHoraFim').value = '';
+            }
+        }
+    }
+
+    // ============================================
+    // FULLCALENDAR INITIALIZATION & EVENTS
+    // ============================================
+    const CALENDAR_EVENTS = [
+        {% for col in colunas %}
+            {% for card in col.cartoes_list %}
+                {
+                    id: "{{ card.id }}",
+                    title: "{{ card.titulo|escapejs }}",
+                    {% if card.data_inicio %}
+                        start: "{{ card.data_inicio|date:'Y-m-d' }}{% if card.hora_inicio %}T{{ card.hora_inicio|time:'H:i:s' }}{% endif %}",
+                    {% elif card.data_entrega %}
+                        start: "{{ card.data_entrega|date:'Y-m-d' }}",
+                    {% else %}
+                        start: "{{ card.criado_em|date:'Y-m-d' }}",
+                    {% endif %}
+                    
+                    {% if card.data_entrega %}
+                        end: "{{ card.data_entrega|date:'Y-m-d' }}{% if card.hora_fim %}T{{ card.hora_fim|time:'H:i:s' }}{% endif %}",
+                    {% else %}
+                        end: null,
+                    {% endif %}
+                    
+                    allDay: {% if card.hora_inicio or card.hora_fim %}false{% else %}true{% endif %},
+                    
+                    {% if card.prioridade == 'ALTA' %}
+                        backgroundColor: '#dc3545',
+                        borderColor: '#dc3545',
+                        textColor: '#ffffff',
+                    {% elif card.prioridade == 'MEDIA' %}
+                        backgroundColor: '#ffc107',
+                        borderColor: '#ffc107',
+                        textColor: '#212529',
+                    {% else %}
+                        backgroundColor: '#198754',
+                        borderColor: '#198754',
+                        textColor: '#ffffff',
+                    {% endif %}
+                    extendedProps: {
+                        coluna: "{{ col.nome|escapejs }}",
+                        prioridade: "{% if card.prioridade == 'ALTA' %}Alta{% elif card.prioridade == 'MEDIA' %}Média{% else %}Baixa{% endif %}",
+                        is_virtual: {% if card.is_virtual %}true{% else %}false{% endif %},
+                        plano_acao_id: {% if card.plano_acao_id %}{{ card.plano_acao_id }}{% else %}null{% endif %}
+                    }
+                },
+            {% endfor %}
+        {% endfor %}
+    ];
+
+    let fcCalendar = null;
+    document.addEventListener('DOMContentLoaded', function() {
+        const calendarEl = document.getElementById('calendar');
+        if (calendarEl) {
+            fcCalendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'pt-br',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
+                buttonText: {
+                    today: 'Hoje',
+                    month: 'Mês',
+                    week: 'Semana',
+                    day: 'Dia'
+                },
+                events: CALENDAR_EVENTS,
+                eventClick: function(info) {
+                    const cardId = info.event.id;
+                    const isVirtual = info.event.extendedProps.is_virtual;
+                    if (isVirtual) {
+                        const planoAcaoId = info.event.extendedProps.plano_acao_id;
+                        if (planoAcaoId) {
+                            window.open(`/acoes/planos/${planoAcaoId}/`, '_blank');
+                        }
+                    } else {
+                        openCardModal(cardId);
+                    }
+                },
+                eventDidMount: function(info) {
+                    info.el.title = `${info.event.title} (${info.event.extendedProps.coluna})`;
+                }
+            });
+            fcCalendar.render();
+            
+            const calendarTabTrigger = document.getElementById('calendar-view-tab');
+            if (calendarTabTrigger) {
+                calendarTabTrigger.addEventListener('shown.bs.tab', function () {
+                    fcCalendar.updateSize();
+                });
+            }
+        }
+    });
 </script>
 {% endblock %}
