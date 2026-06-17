@@ -235,6 +235,9 @@
                     <li class="nav-item" role="presentation">
                         <button class="nav-link px-3" id="activities-tab" data-bs-toggle="tab" data-bs-target="#activities" type="button" role="tab"><i class="bi bi-clock-history me-2"></i>Atividades</button>
                     </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link px-3" id="table-view-tab" data-bs-toggle="tab" data-bs-target="#table-view" type="button" role="tab"><i class="bi bi-table me-2"></i>Tabela</button>
+                    </li>
                 </ul>
                 
                 <div class="vr mx-2"></div>
@@ -297,7 +300,7 @@
                         </div>
                         
                         <!-- Container dos Cartões -->
-                        <div class="card-container" id="cards-col-{{ col.id }}" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }}, null)" data-is-concluida="false">
+                        <div class="card-container" id="cards-col-{{ col.id }}-pending" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }}, null)" data-is-concluida="false">
                             {% if col.subsecoes_list %}
                                 <!-- Sub-sessões -->
                                 {% for sub in col.subsecoes_list %}
@@ -311,8 +314,8 @@
                                         </form>
                                         {% endif %}
                                     </div>
-                                    <div class="card-container-subsection" id="cards-col-{{ col.id }}-sub-{{ sub.id }}" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }}, {{ sub.id }})" data-column-id="{{ col.id }}" data-subsection-id="{{ sub.id }}" style="min-height: 40px; display: flex; flex-direction: column; gap: 0.5rem; padding: 4px;">
-                                        {% for card in sub.cartoes_list %}
+                                    <div class="card-container-subsection" id="cards-col-{{ col.id }}-sub-{{ sub.id }}-pending" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }}, {{ sub.id }})" data-column-id="{{ col.id }}" data-subsection-id="{{ sub.id }}" style="min-height: 40px; display: flex; flex-direction: column; gap: 0.5rem; padding: 4px;">
+                                        {% for card in sub.cartoes_list_andamento %}
                                             {% include "boards/card_render.html" with card=card %}
                                         {% endfor %}
                                     </div>
@@ -320,15 +323,15 @@
                                 {% endfor %}
                                 
                                 <!-- Geral / Sem Sub-sessão -->
-                                <div class="card-container-subsection mt-2" id="cards-col-{{ col.id }}-unclassified" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }}, null)" data-column-id="{{ col.id }}" data-subsection-id="null" style="min-height: 50px; display: flex; flex-direction: column; gap: 0.5rem; border: 1px dashed rgba(0,0,0,0.1); border-radius: 6px; padding: 6px; background-color: rgba(0,0,0,0.01);">
+                                <div class="card-container-subsection mt-2" id="cards-col-{{ col.id }}-unclassified-pending" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }}, null)" data-column-id="{{ col.id }}" data-subsection-id="null" style="min-height: 50px; display: flex; flex-direction: column; gap: 0.5rem; border: 1px dashed rgba(0,0,0,0.1); border-radius: 6px; padding: 6px; background-color: rgba(0,0,0,0.01);">
                                     <div class="text-muted text-center" style="font-size: 0.65rem; font-weight: 600; pointer-events: none;">Geral / Sem Sub-sessão</div>
-                                    {% for card in col.cartoes_sem_subsecao %}
+                                    {% for card in col.cartoes_sem_subsecao_andamento %}
                                         {% include "boards/card_render.html" with card=card %}
                                     {% endfor %}
                                 </div>
                             {% else %}
                                 <!-- Listagem Simples -->
-                                {% for card in col.cartoes_list %}
+                                {% for card in col.cartoes_list_andamento %}
                                     {% include "boards/card_render.html" with card=card %}
                                 {% endfor %}
                             {% endif %}
@@ -369,49 +372,23 @@
                 <h5 class="fw-bold text-dark mb-3"><i class="bi bi-check-circle text-success me-2"></i>Atividades Concluídas</h5>
                 <div class="kanban-container" id="kanban-concluido-container">
                     {% for col in colunas_concluidas %}
-                    <div class="kanban-column" id="col-{{ col.id }}">
+                    <div class="kanban-column" id="col-{{ col.id }}-completed">
                         <!-- Cabeçalho da Coluna -->
-                        <div class="column-header" {% if board.tipo != 'PLANOS_ACAO' %}draggable="true" ondragstart="dragColumn(event)" ondragover="allowDropColumn(event)" ondrop="dropColumn(event, {{ col.id }})" style="cursor: move;"{% endif %}>
-                            <span class="text-truncate fw-bold">{% if board.tipo != 'PLANOS_ACAO' %}<i class="bi bi-grip-vertical text-muted me-1"></i>{% endif %}{{ col.nome }}</span>
-                            {% if board.tipo != 'PLANOS_ACAO' %}
-                            <div class="dropdown">
-                                <button class="btn btn-sm btn-link text-muted p-0" type="dropdown">
-                                    <i class="bi bi-three-dots"></i>
-                                </button>
-                                <ul class="dropdown-menu dropdown-menu-end shadow">
-                                    <li>
-                                        <button class="dropdown-item" type="button" onclick="openCreateSubSectionModal({{ col.id }})">
-                                            <i class="bi bi-folder-plus me-2"></i>Nova Sub-sessão
-                                        </button>
-                                    </li>
-                                    <li>
-                                        <form action="{% url 'boards:delete_column' col.id %}" method="POST" onsubmit="return confirm('Excluir esta coluna e TODAS as tarefas nela contidas?');">
-                                            {% csrf_token %}
-                                            <button type="submit" class="dropdown-item text-danger"><i class="bi bi-trash me-2"></i>Excluir Coluna</button>
-                                        </form>
-                                    </li>
-                                </ul>
-                            </div>
-                            {% endif %}
+                        <div class="column-header">
+                            <span class="text-truncate fw-bold">{{ col.nome }}</span>
                         </div>
                         
                         <!-- Container dos Cartões -->
-                        <div class="card-container" id="cards-col-{{ col.id }}" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }}, null)" data-is-concluida="true">
+                        <div class="card-container" id="cards-col-{{ col.id }}-completed" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }}, null)" data-is-concluida="true">
                             {% if col.subsecoes_list %}
                                 <!-- Sub-sessões -->
                                 {% for sub in col.subsecoes_list %}
                                 <div class="subsection-group mb-2 border rounded p-1 bg-white shadow-xs" style="background-color: #fcfcfc !important;">
                                     <div class="subsection-header d-flex justify-content-between align-items-center px-2 py-1 mb-1 border-bottom bg-light rounded-top" style="font-size: 0.75rem; font-weight: 600; color: #495057;">
                                         <span><i class="bi bi-folder2-open text-primary me-1"></i>{{ sub.nome }}</span>
-                                        {% if board.tipo != 'PLANOS_ACAO' %}
-                                        <form action="{% url 'boards:delete_subsection' sub.id %}" method="POST" class="d-inline" onsubmit="return confirm('Deseja excluir esta sub-sessão? As tarefas nela contidas serão mantidas na coluna.');">
-                                            {% csrf_token %}
-                                            <button type="submit" class="btn btn-sm btn-link text-danger p-0 border-0" style="line-height: 1;"><i class="bi bi-trash"></i></button>
-                                        </form>
-                                        {% endif %}
                                     </div>
-                                    <div class="card-container-subsection" id="cards-col-{{ col.id }}-sub-{{ sub.id }}" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }}, {{ sub.id }})" data-column-id="{{ col.id }}" data-subsection-id="{{ sub.id }}" style="min-height: 40px; display: flex; flex-direction: column; gap: 0.5rem; padding: 4px;">
-                                        {% for card in sub.cartoes_list %}
+                                    <div class="card-container-subsection" id="cards-col-{{ col.id }}-sub-{{ sub.id }}-completed" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }}, {{ sub.id }})" data-column-id="{{ col.id }}" data-subsection-id="{{ sub.id }}" style="min-height: 40px; display: flex; flex-direction: column; gap: 0.5rem; padding: 4px;">
+                                        {% for card in sub.cartoes_list_concluido %}
                                             {% include "boards/card_render.html" with card=card %}
                                         {% endfor %}
                                     </div>
@@ -419,26 +396,19 @@
                                 {% endfor %}
                                 
                                 <!-- Geral / Sem Sub-sessão -->
-                                <div class="card-container-subsection mt-2" id="cards-col-{{ col.id }}-unclassified" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }}, null)" data-column-id="{{ col.id }}" data-subsection-id="null" style="min-height: 50px; display: flex; flex-direction: column; gap: 0.5rem; border: 1px dashed rgba(0,0,0,0.1); border-radius: 6px; padding: 6px; background-color: rgba(0,0,0,0.01);">
+                                <div class="card-container-subsection mt-2" id="cards-col-{{ col.id }}-unclassified-completed" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }}, null)" data-column-id="{{ col.id }}" data-subsection-id="null" style="min-height: 50px; display: flex; flex-direction: column; gap: 0.5rem; border: 1px dashed rgba(0,0,0,0.1); border-radius: 6px; padding: 6px; background-color: rgba(0,0,0,0.01);">
                                     <div class="text-muted text-center" style="font-size: 0.65rem; font-weight: 600; pointer-events: none;">Geral / Sem Sub-sessão</div>
-                                    {% for card in col.cartoes_sem_subsecao %}
+                                    {% for card in col.cartoes_sem_subsecao_concluido %}
                                         {% include "boards/card_render.html" with card=card %}
                                     {% endfor %}
                                 </div>
                             {% else %}
                                 <!-- Listagem Simples -->
-                                {% for card in col.cartoes_list %}
+                                {% for card in col.cartoes_list_concluido %}
                                     {% include "boards/card_render.html" with card=card %}
                                 {% endfor %}
                             {% endif %}
                         </div>
-                        
-                        <!-- Adicionar Cartão -->
-                        {% if board.tipo != 'PLANOS_ACAO' %}
-                        <button class="btn-add-card" onclick="openAddCardModal({{ col.id }}, '{{ col.nome }}')">
-                            <i class="bi bi-plus-lg me-1"></i>Adicionar tarefa
-                        </button>
-                        {% endif %}
                     </div>
                     {% endfor %}
                 </div>
@@ -543,6 +513,130 @@
                         <p class="mt-2 mb-0">Nenhuma atividade registrada.</p>
                     </div>
                     {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- ABA 4: TABELA VIEW -->
+        <div class="tab-pane fade" id="table-view" role="tabpanel">
+            <div class="card border-0 shadow-sm p-4" style="border-radius: 12px;">
+                <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-4">
+                    <h5 class="fw-bold mb-0"><i class="bi bi-table text-primary me-2"></i>Lista Geral de Tarefas</h5>
+                    <!-- Campo de busca rápida na tabela -->
+                    <div class="input-group" style="max-width: 300px;">
+                        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                        <input type="text" id="tableSearchInput" class="form-control border-start-0" placeholder="Buscar na tabela..." onkeyup="filterTableView()" autocomplete="off">
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle" id="tasksTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Tarefa</th>
+                                <th>Coluna</th>
+                                <th>Sub-sessão</th>
+                                <th>Responsáveis</th>
+                                <th>Prazo</th>
+                                <th>Conclusão</th>
+                                <th>Execução</th>
+                                <th>Prioridade</th>
+                                <th>Etiquetas</th>
+                                <th class="text-end">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for col in colunas %}
+                                {% for card in col.cartoes_list %}
+                                    <tr class="task-table-row cursor-pointer" onclick="{% if board.tipo == 'PLANOS_ACAO' %}window.open('{% url 'acoes:plano_acao_detail' card.plano_acao_id %}', '_blank'){% else %}openCardModal({{ card.id }}){% endif %}">
+                                        <td>
+                                            <div class="fw-semibold text-dark">{{ card.titulo }}</div>
+                                            {% if card.descricao %}
+                                                <div class="text-muted small text-truncate" style="max-width: 280px;" title="{{ card.descricao }}">{{ card.descricao }}</div>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-light text-dark border">{{ col.nome }}</span>
+                                        </td>
+                                        <td>
+                                            {% if card.subsecao %}
+                                                <span class="text-muted small"><i class="bi bi-folder2-open me-1 text-primary"></i>{{ card.subsecao.nome }}</span>
+                                            {% elif card.subsecao_id %}
+                                                <span class="text-muted small"><i class="bi bi-folder2-open me-1 text-primary"></i>{{ card.subsecao_nome }}</span>
+                                            {% else %}
+                                                <span class="text-muted small italic" style="color: #bbb; font-size: 0.78rem;">Geral</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-1">
+                                                {% for resp in card.responsaveis.all %}
+                                                    <div class="avatar-circle" title="{{ resp.nome_completo }}" style="width: 22px; height: 22px; font-size: 0.6rem;">
+                                                        {{ resp.nome_completo|slice:":2" }}
+                                                    </div>
+                                                {% empty %}
+                                                    <span class="text-muted small italic" style="font-size: 0.75rem; color: #bbb;">Sem resp.</span>
+                                                {% endfor %}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if card.data_entrega %}
+                                                <span class="badge-date {% if card.data_entrega < hoje %}date-overdue{% else %}date-future{% endif %}" style="font-size: 0.75rem;">
+                                                    <i class="bi bi-calendar-event me-1"></i>{{ card.data_entrega|date:"d/m/Y" }}
+                                                </span>
+                                            {% else %}
+                                                <span class="text-muted small italic" style="color: #bbb;">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if card.data_conclusao %}
+                                                <span class="badge bg-success-subtle text-success border border-success" style="font-size: 0.75rem;">
+                                                    <i class="bi bi-check-circle-fill me-1"></i>{{ card.data_conclusao|date:"d/m/Y" }}
+                                                </span>
+                                            {% else %}
+                                                <span class="text-muted small italic" style="color: #bbb;">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if card.hora_inicio or card.hora_fim %}
+                                                <span class="text-dark small">
+                                                    <i class="bi bi-clock me-1 text-primary"></i>{{ card.hora_inicio|time:"H:i"|default:"--" }} às {{ card.hora_fim|time:"H:i"|default:"--" }}
+                                                </span>
+                                            {% else %}
+                                                <span class="text-muted small italic" style="color: #bbb;">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if card.prioridade == 'ALTA' %}
+                                                <span class="badge bg-danger">Alta</span>
+                                            {% elif card.prioridade == 'MEDIA' %}
+                                                <span class="badge bg-warning text-dark">Média</span>
+                                            {% else %}
+                                                <span class="badge bg-success">Baixa</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="d-flex flex-wrap gap-1">
+                                                {% for etiqueta in card.etiquetas.all %}
+                                                    <span class="badge rounded-pill" style="background-color: {{ etiqueta.cor }}; font-size: 0.65rem; color: #fff;" title="{{ etiqueta.nome }}">
+                                                        {{ etiqueta.nome }}
+                                                    </span>
+                                                {% empty %}
+                                                    <span class="text-muted small italic" style="color: #bbb;">-</span>
+                                                {% endfor %}
+                                            </div>
+                                        </td>
+                                        <td class="text-end" onclick="event.stopPropagation();">
+                                            {% if board.tipo == 'PLANOS_ACAO' %}
+                                                <a href="{% url 'acoes:plano_acao_detail' card.plano_acao_id %}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-box-arrow-up-right"></i> Ver</a>
+                                            {% else %}
+                                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="openCardModal({{ card.id }})"><i class="bi bi-eye"></i> Detalhes</button>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -733,6 +827,14 @@
                             </div>
                             {% endif %}
                             
+                            <div class="mb-3">
+                                <label class="form-label fw-bold text-muted small d-block">Coluna</label>
+                                <select id="cardDetailColumn" class="form-select form-select-sm">
+                                    {% for col in colunas %}
+                                        <option value="{{ col.id }}">{{ col.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
                             <div class="mb-3" id="detailCardSubsecaoContainer" style="display: none;">
                                 <label class="form-label fw-bold text-muted small d-block">Sub-sessão</label>
                                 <select id="cardDetailSubsecao" class="form-select form-select-sm">
@@ -750,6 +852,20 @@
                             <div class="mb-3">
                                 <label class="form-label fw-bold text-muted small d-block">Prazo de Entrega</label>
                                 <input type="text" id="cardDetailDueDate" class="form-control form-control-sm js-week-datepicker" placeholder="aaaa-mm-dd" autocomplete="off">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold text-muted small d-block">Data de Conclusão</label>
+                                <input type="text" id="cardDetailConcludedDate" class="form-control form-control-sm js-week-datepicker" placeholder="aaaa-mm-dd" autocomplete="off">
+                            </div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <label class="form-label fw-bold text-muted small d-block">Hora de Início</label>
+                                    <input type="time" id="cardDetailHoraInicio" class="form-control form-control-sm" autocomplete="off">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label fw-bold text-muted small d-block">Hora de Fim</label>
+                                    <input type="time" id="cardDetailHoraFim" class="form-control form-control-sm" autocomplete="off">
+                                </div>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label fw-bold text-muted small d-block">Periodicidade</label>
@@ -1168,28 +1284,16 @@
         }
         
         const cardEl = document.getElementById(cardIdStr);
-        
-        // Find target container
-        let targetContainer = null;
-        if (subsectionId) {
-            targetContainer = document.getElementById(`cards-col-${columnId}-sub-${subsectionId}`);
-        } else {
-            const unclassifiedContainer = document.getElementById(`cards-col-${columnId}-unclassified`);
-            if (unclassifiedContainer) {
-                targetContainer = unclassifiedContainer;
-            } else {
-                targetContainer = document.getElementById(`cards-col-${columnId}`);
-            }
-        }
+        const targetContainer = ev.currentTarget;
         
         if (cardEl && targetContainer) {
-            const mainContainer = document.getElementById(`cards-col-${columnId}`);
-            const isConcluida = mainContainer.getAttribute('data-is-concluida') === 'true';
+            const isConcluida = targetContainer.getAttribute('data-is-concluida') === 'true';
             const periodicidade = cardEl.getAttribute('data-periodicidade');
             const periodicidadeLabel = cardEl.getAttribute('data-periodicidade-label');
             
             let recreate = false;
-            if (isConcluida && periodicidade && periodicidade !== 'AVULSA') {
+            const wasCompleted = cardEl.closest('.card-container') ? cardEl.closest('.card-container').getAttribute('data-is-concluida') === 'true' : false;
+            if (isConcluida && !wasCompleted && periodicidade && periodicidade !== 'AVULSA') {
                 recreate = confirm(`Esta atividade possui periodicidade (${periodicidadeLabel}). Gostaria de reaplicar a atividade de acordo com o período e recriá-la?`);
             }
 
@@ -1215,6 +1319,7 @@
                     to_column_id: columnId,
                     to_subsection_id: subsectionId,
                     card_order_ids: cardOrderIds,
+                    concluido: isConcluida,
                     recreate: recreate
                 })
             })
@@ -1224,7 +1329,7 @@
                     console.error("Erro ao mover cartão:", data.error);
                     alert("Não foi possível salvar a movimentação da tarefa.");
                     location.reload();
-                } else if (recreate) {
+                } else {
                     location.reload();
                 }
             })
@@ -1340,7 +1445,14 @@
             
             document.getElementById('cardDetailPriority').value = card.prioridade;
             document.getElementById('cardDetailDueDate').value = card.data_entrega;
+            document.getElementById('cardDetailConcludedDate').value = card.data_conclusao || '';
+            document.getElementById('cardDetailHoraInicio').value = card.hora_inicio || '';
+            document.getElementById('cardDetailHoraFim').value = card.hora_fim || '';
             document.getElementById('cardDetailPeriodicidade').value = card.periodicidade || 'AVULSA';
+            const colSelect = document.getElementById('cardDetailColumn');
+            if (colSelect) {
+                colSelect.value = card.coluna_id;
+            }
             
             // Renderiza checklist
             renderChecklist(card.checklist);
@@ -1461,10 +1573,14 @@
             body: JSON.stringify({
                 titulo: document.getElementById('cardDetailTitle').textContent,
                 descricao: document.getElementById('cardDetailDesc').value,
+                coluna_id: document.getElementById('cardDetailColumn') ? document.getElementById('cardDetailColumn').value : null,
                 subsecao_id: document.getElementById('cardDetailSubsecao') ? document.getElementById('cardDetailSubsecao').value : null,
                 responsaveis_ids: Array.from(document.getElementById('cardDetailResp').options).filter(opt => opt.selected).map(opt => parseInt(opt.value)),
                 prioridade: document.getElementById('cardDetailPriority').value,
                 data_entrega: document.getElementById('cardDetailDueDate').value,
+                data_conclusao: document.getElementById('cardDetailConcludedDate').value,
+                hora_inicio: document.getElementById('cardDetailHoraInicio').value,
+                hora_fim: document.getElementById('cardDetailHoraFim').value,
                 periodicidade: document.getElementById('cardDetailPeriodicidade').value,
                 etiquetas_ids: etiquetasIds
             })
@@ -1731,11 +1847,30 @@
         const respIds = Array.from(respSelect.selectedOptions).map(opt => parseInt(opt.value)).filter(val => !isNaN(val));
         const priority = document.getElementById('cardDetailPriority').value;
         const dueDate = document.getElementById('cardDetailDueDate').value;
+        const concludedDate = document.getElementById('cardDetailConcludedDate').value;
+        const horaInicio = document.getElementById('cardDetailHoraInicio').value;
+        const horaFim = document.getElementById('cardDetailHoraFim').value;
         const periodicidade = document.getElementById('cardDetailPeriodicidade').value;
+        
+        const colSelect = document.getElementById('cardDetailColumn');
+        const toColumnId = parseInt(colSelect.value);
         
         // Subsection ID
         const subSelect = document.getElementById('cardDetailSubsecao');
         const subsecaoId = subSelect ? (subSelect.value || null) : null;
+        
+        let recreate = false;
+        const destOpt = colSelect.options[colSelect.selectedIndex];
+        const destName = destOpt ? destOpt.text.toLowerCase() : '';
+        const isCompletedDest = destName.includes("concluido") || destName.includes("concluído") || destName.includes("done") || destName.includes("terminado") || destName.includes("pronto");
+        
+        const cardEl = document.getElementById(`card-${activeCardId}`);
+        const wasCompleted = cardEl ? cardEl.closest('.card-container').getAttribute('data-is-concluida') === 'true' : false;
+        const periodicidadeLabel = document.getElementById('cardDetailPeriodicidade').options[document.getElementById('cardDetailPeriodicidade').selectedIndex].text;
+        
+        if (isCompletedDest && !wasCompleted && periodicidade && periodicidade !== 'AVULSA') {
+            recreate = confirm(`Esta atividade possui periodicidade (${periodicidadeLabel}). Gostaria de reaplicar a atividade de acordo com o período e recriá-la?`);
+        }
         
         fetch(`/boards/cartoes/${activeCardId}/detalhes/`, {
             method: 'POST',
@@ -1748,8 +1883,13 @@
                 responsaveis_ids: respIds,
                 prioridade: priority,
                 data_entrega: dueDate,
+                data_conclusao: concludedDate,
+                hora_inicio: horaInicio,
+                hora_fim: horaFim,
                 periodicidade: periodicidade,
-                subsecao_id: subsecaoId
+                subsecao_id: subsecaoId,
+                coluna_id: toColumnId,
+                recreate: recreate
             })
         })
         .then(res => res.json())
@@ -1765,13 +1905,8 @@
         const cardEl = document.getElementById(`card-${activeCardId}`);
         if (!cardEl) return;
         
-        const firstCompletedContainer = document.querySelector('#kanban-concluido-container .card-container');
-        if (!firstCompletedContainer) {
-            alert("Nenhuma coluna de conclusão encontrada neste quadro.");
-            return;
-        }
-        
-        const toColumnId = parseInt(firstCompletedContainer.id.replace('cards-col-', ''));
+        const colSelect = document.getElementById('cardDetailColumn');
+        const toColumnId = parseInt(colSelect.value);
         const periodicidade = cardEl.getAttribute('data-periodicidade');
         const periodicidadeLabel = cardEl.getAttribute('data-periodicidade-label');
         
@@ -1779,11 +1914,6 @@
         if (periodicidade && periodicidade !== 'AVULSA') {
             recreate = confirm(`Esta atividade possui periodicidade (${periodicidadeLabel}). Gostaria de reaplicar a atividade de acordo com o período e recriá-la?`);
         }
-        
-        const cardOrderIds = Array.from(firstCompletedContainer.querySelectorAll('.kanban-card')).map(card => {
-            return parseInt(card.id.replace('card-', ''));
-        });
-        cardOrderIds.push(activeCardId);
         
         fetch("{% url 'boards:api_move_card' %}", {
             method: 'POST',
@@ -1794,7 +1924,7 @@
             body: JSON.stringify({
                 card_id: activeCardId,
                 to_column_id: toColumnId,
-                card_order_ids: cardOrderIds,
+                concluido: true,
                 recreate: recreate
             })
         })
@@ -1814,18 +1944,8 @@
 
     // Reopen Card
     document.getElementById('btnReopenCard').addEventListener('click', () => {
-        const firstInProgressContainer = document.querySelector('#kanban-andamento-container .card-container');
-        if (!firstInProgressContainer) {
-            alert("Nenhuma coluna de andamento encontrada neste quadro.");
-            return;
-        }
-        
-        const toColumnId = parseInt(firstInProgressContainer.id.replace('cards-col-', ''));
-        
-        const cardOrderIds = Array.from(firstInProgressContainer.querySelectorAll('.kanban-card')).map(card => {
-            return parseInt(card.id.replace('card-', ''));
-        });
-        cardOrderIds.push(activeCardId);
+        const colSelect = document.getElementById('cardDetailColumn');
+        const toColumnId = parseInt(colSelect.value);
         
         fetch("{% url 'boards:api_move_card' %}", {
             method: 'POST',
@@ -1836,7 +1956,7 @@
             body: JSON.stringify({
                 card_id: activeCardId,
                 to_column_id: toColumnId,
-                card_order_ids: cardOrderIds,
+                concluido: false,
                 recreate: false
             })
         })
@@ -2077,6 +2197,31 @@
             }
             
             updateDetailCardDisplay();
+        }
+
+        // Event listener for detail modal column select to sync sub-sections
+        const detailColumnSelect = document.getElementById('cardDetailColumn');
+        if (detailColumnSelect) {
+            detailColumnSelect.addEventListener('change', function() {
+                const colId = this.value;
+                const subSelect = document.getElementById('cardDetailSubsecao');
+                const subContainer = document.getElementById('detailCardSubsecaoContainer');
+                if (subSelect) {
+                    subSelect.innerHTML = '<option value="">Nenhuma (Geral)</option>';
+                    const subsecoes = COLUMN_SUBSECTIONS[colId] || [];
+                    if (subsecoes.length > 0) {
+                        subsecoes.forEach(sub => {
+                            const opt = document.createElement('option');
+                            opt.value = sub.id;
+                            opt.textContent = sub.nome;
+                            subSelect.appendChild(opt);
+                        });
+                        if (subContainer) subContainer.style.display = 'block';
+                    } else {
+                        if (subContainer) subContainer.style.display = 'none';
+                    }
+                }
+            });
         }
 
         // ============================================

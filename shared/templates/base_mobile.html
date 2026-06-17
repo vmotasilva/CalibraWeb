@@ -577,7 +577,12 @@
                     dateFormat: dateFormat,
                     allowInput: true,
                     disableMobile: true,
-                    locale: { firstDayOfWeek: 1 }
+                    locale: { firstDayOfWeek: 1 },
+                    onOpen: function(selectedDates, dateStr, instance) {
+                        if (instance.element.offsetWidth === 0 || instance.element.offsetHeight === 0) {
+                            instance.close();
+                        }
+                    }
                 });
             });
         };

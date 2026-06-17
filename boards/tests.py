@@ -3,6 +3,8 @@ from django.urls import reverse
 from django.contrib.auth.models import User
 from boards.models import Board, BoardColumn, Card, ChecklistItem, CardComment, BoardActivity, BoardLabel
 from rh.models import Colaborador
+from django.utils import timezone
+import datetime
 import json
 
 class BoardsTestCase(TestCase):
@@ -185,8 +187,8 @@ class BoardsTestCase(TestCase):
         # O cartão original deixa de ser recorrente para evitar ciclos infinitos
         self.assertEqual(self.card.periodicidade, 'AVULSA')
         
-        # Deve ter nascido um novo cartão na mesma coluna de destino ("Concluído")
-        new_cards = Card.objects.filter(coluna=self.coluna_done, titulo=self.card.titulo).exclude(id=self.card.id)
+        # Deve ter nascido um novo cartão na coluna de origem ("A Fazer")
+        new_cards = Card.objects.filter(coluna=self.coluna_todo, titulo=self.card.titulo).exclude(id=self.card.id)
         self.assertEqual(new_cards.count(), 1)
         new_card = new_cards.first()
         
@@ -437,8 +439,8 @@ class BoardsTestCase(TestCase):
         self.assertEqual(self.card.periodicidade, 'AVULSA')
         
         # Uma nova tarefa sucessora deve ter sido gerada na primeira coluna (coluna_todo)
-        self.assertTrue(Card.objects.filter(coluna=self.coluna_done, antecessora=self.card).exists())
-        new_card = Card.objects.get(coluna=self.coluna_done, antecessora=self.card)
+        self.assertTrue(Card.objects.filter(coluna=self.coluna_todo, antecessora=self.card).exists())
+        new_card = Card.objects.get(coluna=self.coluna_todo, antecessora=self.card)
         self.assertEqual(new_card.titulo, self.card.titulo)
         self.assertIn(label, new_card.etiquetas.all())
         
@@ -460,6 +462,177 @@ class BoardsTestCase(TestCase):
         response = self.client.post(delete_label_url)
         self.assertEqual(response.status_code, 302)
         self.assertFalse(BoardLabel.objects.filter(id=label.id).exists())
+
+    def test_card_completion_date_and_execution_times(self):
+        # Login
+        self.client.force_login(self.user)
+        
+        detail_url = reverse('boards:api_card_detail', args=[self.card.id])
+        
+        # 1. Atualizar campos via API POST
+        post_json = {
+            'titulo': self.card.titulo,
+            'descricao': self.card.descricao,
+            'data_conclusao': '2026-06-17',
+            'hora_inicio': '08:30',
+            'hora_fim': '17:45',
+            'prioridade': 'MEDIA',
+            'periodicidade': 'AVULSA'
+        }
+        
+        response = self.client.post(
+            detail_url,
+            data=json.dumps(post_json),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        
+        # Verificar no banco de dados
+        self.card.refresh_from_db()
+        self.assertEqual(self.card.data_conclusao.strftime('%Y-%m-%d'), '2026-06-17')
+        self.assertEqual(self.card.hora_inicio.strftime('%H:%M'), '08:30')
+        self.assertEqual(self.card.hora_fim.strftime('%H:%M'), '17:45')
+        
+        # 2. Verificar retorno via API GET
+        response = self.client.get(detail_url)
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertEqual(data['data_conclusao'], '2026-06-17')
+        self.assertEqual(data['hora_inicio'], '08:30')
+        self.assertEqual(data['hora_fim'], '17:45')
+        
+        # 3. Mover para coluna concluída (deve atualizar data_conclusao automaticamente se não estivesse preenchida)
+        # Primeiro, vamos limpar os campos
+        self.card.data_conclusao = None
+        self.card.hora_inicio = None
+        self.card.hora_fim = None
+        self.card.save()
+        
+        move_url = reverse('boards:api_move_card')
+        move_json = {
+            'card_id': self.card.id,
+            'to_column_id': self.coluna_done.id,
+            'card_order_ids': [self.card.id],
+            'recreate': False
+        }
+        response = self.client.post(
+            move_url,
+            data=json.dumps(move_json),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        
+        self.card.refresh_from_db()
+        self.assertIsNotNone(self.card.data_conclusao)
+        self.assertEqual(self.card.data_conclusao, timezone.now().date())
+        
+        # 4. Mover de volta para coluna não concluída (deve limpar os campos)
+        # Vamos definir horários também para testar se limpa
+        self.card.hora_inicio = datetime.time(9, 0)
+        self.card.hora_fim = datetime.time(10, 0)
+        self.card.save()
+        
+        reopen_json = {
+            'card_id': self.card.id,
+            'to_column_id': self.coluna_todo.id,
+            'card_order_ids': [self.card.id],
+            'recreate': False
+        }
+        response = self.client.post(
+            move_url,
+            data=json.dumps(reopen_json),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        
+        self.card.refresh_from_db()
+        self.assertIsNone(self.card.data_conclusao)
+        self.assertIsNone(self.card.hora_inicio)
+        self.assertIsNone(self.card.hora_fim)
+
+    def test_completed_tasks_column_mirroring_and_modal_column_movement(self):
+        # Login
+        self.client.force_login(self.user)
+        
+        move_url = reverse('boards:api_move_card')
+        detail_url = reverse('boards:api_card_detail', args=[self.card.id])
+        
+        # 1. Concluir tarefa na mesma coluna (coluna_todo) usando drag & drop concluido: True
+        move_json = {
+            'card_id': self.card.id,
+            'to_column_id': self.coluna_todo.id,
+            'concluido': True,
+            'recreate': False
+        }
+        response = self.client.post(
+            move_url,
+            data=json.dumps(move_json),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        
+        self.card.refresh_from_db()
+        self.assertEqual(self.card.coluna, self.coluna_todo)
+        self.assertIsNotNone(self.card.data_conclusao)
+        
+        # 2. Reabrir tarefa na mesma coluna usando concluido: False
+        reopen_json = {
+            'card_id': self.card.id,
+            'to_column_id': self.coluna_todo.id,
+            'concluido': False,
+            'recreate': False
+        }
+        response = self.client.post(
+            move_url,
+            data=json.dumps(reopen_json),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        
+        self.card.refresh_from_db()
+        self.assertEqual(self.card.coluna, self.coluna_todo)
+        self.assertIsNone(self.card.data_conclusao)
+        
+        # 3. Mudar de coluna pelo modal de detalhes via API POST
+        detail_post_json = {
+            'titulo': self.card.titulo,
+            'descricao': self.card.descricao,
+            'coluna_id': self.coluna_done.id,
+            'prioridade': 'ALTA',
+            'periodicidade': 'AVULSA'
+        }
+        response = self.client.post(
+            detail_url,
+            data=json.dumps(detail_post_json),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        
+        self.card.refresh_from_db()
+        self.assertEqual(self.card.coluna, self.coluna_done)
+        # Como coluna_done é concluída, deve ter completado automaticamente
+        self.assertIsNotNone(self.card.data_conclusao)
+        
+        # 4. Reabrir alterando a coluna de volta pelo modal para coluna_todo
+        detail_reopen_json = {
+            'titulo': self.card.titulo,
+            'descricao': self.card.descricao,
+            'coluna_id': self.coluna_todo.id,
+            'prioridade': 'ALTA',
+            'periodicidade': 'AVULSA'
+        }
+        response = self.client.post(
+            detail_url,
+            data=json.dumps(detail_reopen_json),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        
+        self.card.refresh_from_db()
+        self.assertEqual(self.card.coluna, self.coluna_todo)
+        self.assertIsNone(self.card.data_conclusao)
+
+
 
 
 

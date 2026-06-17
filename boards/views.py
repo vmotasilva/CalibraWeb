@@ -182,6 +182,9 @@ def board_detail_view(request, board_id):
                     'descricao': l.descricao,
                     'prioridade': 'ALTA' if l.prioridade else 'BAIXA',
                     'data_entrega': l.data_deadline,
+                    'data_conclusao': l.data_conclusao,
+                    'hora_inicio': None,
+                    'hora_fim': None,
                     'responsaveis': {
                         'all': resps
                     },
@@ -196,6 +199,17 @@ def board_detail_view(request, board_id):
                     'antecessora': None,
                     'historia': []
                 })
+            
+            if col.status_linha_acao in ['completa', 'cancelada']:
+                col.cartoes_list_andamento = []
+                col.cartoes_list_concluido = col.cartoes_list
+            else:
+                col.cartoes_list_andamento = col.cartoes_list
+                col.cartoes_list_concluido = []
+            
+            col.subsecoes_list = []
+            col.cartoes_sem_subsecao_andamento = col.cartoes_list_andamento
+            col.cartoes_sem_subsecao_concluido = col.cartoes_list_concluido
     else:
         # Calcular Métricas de Carga de Trabalho da Equipe (Quadro Padrão)
         total_cartoes = Card.objects.filter(coluna__quadro=board).count()
@@ -248,10 +262,13 @@ def board_detail_view(request, board_id):
             # Cartões normais e agrupamento por sub-sessões
             col.subsecoes_list = list(col.subsecoes.all())
             for sub in col.subsecoes_list:
-                sub.cartoes_list = [c for c in col.cartoes.all() if c.subsecao_id == sub.id]
+                sub.cartoes_list_andamento = [c for c in col.cartoes.all() if c.subsecao_id == sub.id and c.data_conclusao is None]
+                sub.cartoes_list_concluido = [c for c in col.cartoes.all() if c.subsecao_id == sub.id and c.data_conclusao is not None]
                 
-            col.cartoes_sem_subsecao = [c for c in col.cartoes.all() if c.subsecao_id is None]
-            col.cartoes_list = col.cartoes.all()
+            col.cartoes_sem_subsecao_andamento = [c for c in col.cartoes.all() if c.subsecao_id is None and c.data_conclusao is None]
+            col.cartoes_sem_subsecao_concluido = [c for c in col.cartoes.all() if c.subsecao_id is None and c.data_conclusao is not None]
+            col.cartoes_list_andamento = [c for c in col.cartoes.all() if c.data_conclusao is None]
+            col.cartoes_list_concluido = [c for c in col.cartoes.all() if c.data_conclusao is not None]
         
     # Atividades recentes do quadro (limita a 20)
     atividades = board.atividades.select_related('colaborador')[:20]
@@ -269,7 +286,7 @@ def board_detail_view(request, board_id):
         todos_colaboradores = Colaborador.objects.filter(id__in=membros_ids, is_active=True).distinct().order_by('nome_completo')
         
     colunas_andamento = [col for col in colunas if col.id not in concluido_colunas_ids]
-    colunas_concluidas = [col for col in colunas if col.id in concluido_colunas_ids]
+    colunas_concluidas = colunas
 
     context = {
         'board': board,
@@ -371,7 +388,7 @@ def create_card_view(request, column_id):
     return redirect('boards:board_detail', board_id=board.id)
 
 
-def spawn_recurring_card(card):
+def spawn_recurring_card(card, origin_column=None, origin_subsection=None):
     """Gera uma nova tarefa recorrente na primeira coluna do quadro com prazo atualizado"""
     base_date = card.data_entrega or timezone.now().date()
     
@@ -407,12 +424,15 @@ def spawn_recurring_card(card):
     else:
         return None
         
-    maior_ordem = card.coluna.cartoes.aggregate(Max('ordem'))['ordem__max']
+    coluna_destino = origin_column if origin_column else card.coluna
+    subsecao_destino = origin_subsection if origin_subsection else card.subsecao
+    
+    maior_ordem = coluna_destino.cartoes.aggregate(Max('ordem'))['ordem__max']
     new_ordem = (maior_ordem + 1) if maior_ordem is not None else 0
     
     new_card = Card.objects.create(
-        coluna=card.coluna,
-        subsecao=card.subsecao,
+        coluna=coluna_destino,
+        subsecao=subsecao_destino,
         titulo=card.titulo,
         descricao=card.descricao,
         data_entrega=next_date,
@@ -435,7 +455,7 @@ def spawn_recurring_card(card):
         )
         
     BoardActivity.objects.create(
-        quadro=card.coluna.quadro,
+        quadro=coluna_destino.quadro,
         colaborador=None,
         descricao=f"Criada tarefa recorrente automática '{new_card.titulo}' para {new_card.data_entrega.strftime('%d/%m/%Y')}."
     )
@@ -483,6 +503,8 @@ def api_move_card_view(request):
             
         card = get_object_or_404(Card, id=card_id)
         old_col_nome = card.coluna.nome
+        old_coluna = card.coluna
+        old_subsecao = card.subsecao
         
         # Obter a subsessão se fornecida
         to_subsection_id = data.get('to_subsection_id')
@@ -492,23 +514,35 @@ def api_move_card_view(request):
         else:
             card.subsecao = None
             
+        # Verificar se é coluna de conclusão
+        concluido = data.get('concluido')
+        if concluido is not None:
+            is_concluida = concluido
+        else:
+            nome_low = nova_coluna.nome.lower()
+            is_concluida = "concluido" in nome_low or "concluído" in nome_low or "done" in nome_low or "terminado" in nome_low or "pronto" in nome_low
+            if not is_concluida:
+                # Fallback: se for a última coluna do quadro
+                last_col = nova_coluna.quadro.colunas.order_by('ordem', 'criado_em').last()
+                if last_col and last_col.id == nova_coluna.id:
+                    is_concluida = True
+
+        # Atualizar a data de conclusão e horários baseado no destino
+        if is_concluida:
+            if not card.data_conclusao:
+                card.data_conclusao = timezone.now().date()
+        else:
+            card.data_conclusao = None
+            card.hora_inicio = None
+            card.hora_fim = None
+
         # Atualizar a coluna do cartão movido
         card.coluna = nova_coluna
         card.save()
 
-        
-        # Verificar se é coluna de conclusão para tarefas recorrentes
-        nome_low = nova_coluna.nome.lower()
-        is_concluida = "concluido" in nome_low or "concluído" in nome_low or "done" in nome_low or "terminado" in nome_low or "pronto" in nome_low
-        if not is_concluida:
-            # Fallback: se for a última coluna do quadro
-            last_col = nova_coluna.quadro.colunas.order_by('ordem', 'criado_em').last()
-            if last_col and last_col.id == nova_coluna.id:
-                is_concluida = True
-                
         recreate = data.get('recreate', False)
         if is_concluida and card.periodicidade != 'AVULSA' and recreate:
-            spawn_recurring_card(card)
+            spawn_recurring_card(card, origin_column=old_coluna, origin_subsection=old_subsecao)
 
             
         # Atualizar a ordem de todos os cartões na coluna destino
@@ -588,6 +622,9 @@ def api_card_detail_view(request, card_id):
             'periodicidade': card.periodicidade,
             'periodicidade_label': card.get_periodicidade_display(),
             'data_entrega': card.data_entrega.strftime('%Y-%m-%d') if card.data_entrega else '',
+            'data_conclusao': card.data_conclusao.strftime('%Y-%m-%d') if card.data_conclusao else '',
+            'hora_inicio': card.hora_inicio.strftime('%H:%M') if card.hora_inicio else '',
+            'hora_fim': card.hora_fim.strftime('%H:%M') if card.hora_fim else '',
             'checklist': checklist,
             'comentarios': comentarios,
             'etiquetas': etiquetas,
@@ -602,16 +639,70 @@ def api_card_detail_view(request, card_id):
             card.titulo = data.get('titulo', card.titulo).strip()
             card.descricao = data.get('descricao', card.descricao)
             
-            subsecao_id = data.get('subsecao_id')
-            if subsecao_id:
-                subsecao = get_object_or_404(BoardSubSection, id=subsecao_id, coluna=card.coluna)
-                card.subsecao = subsecao
-            else:
-                card.subsecao = None
+            coluna_id = data.get('coluna_id')
+            if coluna_id:
+                nova_coluna = get_object_or_404(BoardColumn, id=coluna_id, quadro=board)
+                if card.coluna != nova_coluna:
+                    old_col_nome = card.coluna.nome
+                    
+                    # Automático se mudou de coluna e a destino é de conclusão
+                    nome_low = nova_coluna.nome.lower()
+                    is_dest_concluida = "concluido" in nome_low or "concluído" in nome_low or "done" in nome_low or "terminado" in nome_low or "pronto" in nome_low
+                    if not is_dest_concluida:
+                        last_col = nova_coluna.quadro.colunas.order_by('ordem', 'criado_em').last()
+                        if last_col and last_col.id == nova_coluna.id:
+                            is_dest_concluida = True
+                            
+                    if is_dest_concluida:
+                        if not card.data_conclusao:
+                            card.data_conclusao = timezone.now().date()
+                    else:
+                        card.data_conclusao = None
+                        card.hora_inicio = None
+                        card.hora_fim = None
+                    
+                    old_coluna_temp = card.coluna
+                    old_subsecao_temp = card.subsecao
+                    card.coluna = nova_coluna
+                    
+                    recreate = data.get('recreate', False)
+                    if is_dest_concluida and card.periodicidade != 'AVULSA' and recreate:
+                        spawn_recurring_card(card, origin_column=old_coluna_temp, origin_subsection=old_subsecao_temp)
+                        
+                    BoardActivity.objects.create(
+                        quadro=board,
+                        colaborador=colab,
+                        descricao=f"moveu o cartão '{card.titulo}' de '{old_col_nome}' para '{nova_coluna.nome}'."
+                    )
             
-            resp_ids = data.get('responsaveis_ids', [])
-            val_ids = [int(i) for i in resp_ids if i]
-            card.responsaveis.set(Colaborador.objects.filter(id__in=val_ids))
+            if 'subsecao_id' in data:
+                subsecao_id = data.get('subsecao_id')
+                if subsecao_id:
+                    subsecao = BoardSubSection.objects.filter(id=subsecao_id, coluna=card.coluna).first()
+                    card.subsecao = subsecao
+                else:
+                    card.subsecao = None
+                
+            # Trata conclusão via parâmetro explícito 'concluido'
+            concluido = data.get('concluido')
+            if concluido is not None:
+                is_concluida = concluido
+                if is_concluida:
+                    if not card.data_conclusao:
+                        card.data_conclusao = timezone.now().date()
+                else:
+                    card.data_conclusao = None
+                    card.hora_inicio = None
+                    card.hora_fim = None
+                
+                recreate = data.get('recreate', False)
+                if is_concluida and card.periodicidade != 'AVULSA' and recreate:
+                    spawn_recurring_card(card, origin_column=card.coluna, origin_subsection=card.subsecao)
+            
+            if 'responsaveis_ids' in data:
+                resp_ids = data.get('responsaveis_ids', [])
+                val_ids = [int(i) for i in resp_ids if i]
+                card.responsaveis.set(Colaborador.objects.filter(id__in=val_ids))
                 
             prioridade = data.get('prioridade')
             if prioridade in dict(Card.PRIORIDADE_CHOICES):
@@ -621,22 +712,58 @@ def api_card_detail_view(request, card_id):
             if periodicidade in dict(Card.PERIODICIDADE_CHOICES):
                 card.periodicidade = periodicidade
                 
-            data_entrega_raw = data.get('data_entrega')
-            if data_entrega_raw:
-                parsed_date = None
-                for fmt in ('%d/%m/%Y', '%Y-%m-%d'):
-                    try:
-                        parsed_date = datetime.datetime.strptime(data_entrega_raw, fmt).date()
-                        break
-                    except ValueError:
-                        continue
-                card.data_entrega = parsed_date
-            else:
-                card.data_entrega = None
+            if 'data_entrega' in data:
+                data_entrega_raw = data.get('data_entrega')
+                if data_entrega_raw:
+                    parsed_date = None
+                    for fmt in ('%d/%m/%Y', '%Y-%m-%d'):
+                        try:
+                            parsed_date = datetime.datetime.strptime(data_entrega_raw, fmt).date()
+                            break
+                        except ValueError:
+                            continue
+                    card.data_entrega = parsed_date
+                else:
+                    card.data_entrega = None
                 
-            etiquetas_ids = data.get('etiquetas_ids', [])
-            val_et_ids = [int(i) for i in etiquetas_ids if i]
-            card.etiquetas.set(BoardLabel.objects.filter(id__in=val_et_ids, quadro=board))
+            if 'data_conclusao' in data:
+                data_conclusao_raw = data.get('data_conclusao')
+                if data_conclusao_raw:
+                    parsed_date = None
+                    for fmt in ('%d/%m/%Y', '%Y-%m-%d'):
+                        try:
+                            parsed_date = datetime.datetime.strptime(data_conclusao_raw, fmt).date()
+                            break
+                        except ValueError:
+                            continue
+                    card.data_conclusao = parsed_date
+                else:
+                    card.data_conclusao = None
+
+            if 'hora_inicio' in data:
+                hora_inicio_raw = data.get('hora_inicio')
+                if hora_inicio_raw:
+                    try:
+                        card.hora_inicio = datetime.datetime.strptime(hora_inicio_raw, '%H:%M').time()
+                    except ValueError:
+                        card.hora_inicio = None
+                else:
+                    card.hora_inicio = None
+
+            if 'hora_fim' in data:
+                hora_fim_raw = data.get('hora_fim')
+                if hora_fim_raw:
+                    try:
+                        card.hora_fim = datetime.datetime.strptime(hora_fim_raw, '%H:%M').time()
+                    except ValueError:
+                        card.hora_fim = None
+                else:
+                    card.hora_fim = None
+                
+            if 'etiquetas_ids' in data:
+                etiquetas_ids = data.get('etiquetas_ids', [])
+                val_et_ids = [int(i) for i in etiquetas_ids if i]
+                card.etiquetas.set(BoardLabel.objects.filter(id__in=val_et_ids, quadro=board))
             
             card.save()
             
