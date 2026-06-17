@@ -22,7 +22,7 @@ class CardForm(forms.ModelForm):
     data_entrega = forms.DateField(
         input_formats=['%d/%m/%Y', '%Y-%m-%d'],
         required=False,
-        widget=forms.DateInput(attrs={'class': 'form-control js-week-datepicker', 'type': 'text'}),
+        widget=forms.DateInput(attrs={'class': 'form-control js-week-datepicker', 'type': 'text', 'autocomplete': 'off'}),
         label="Data de Entrega"
     )
 
