@@ -412,6 +412,10 @@ LOGIN_URL = "two_factor:login"  # Redireciona para login com 2FA
 LOGIN_REDIRECT_URL = "/"  # Redireciona para dashboard após login bem-sucedido
 LOGOUT_REDIRECT_URL = "two_factor:login"  # Para onde vai depois de sair
 
+# Isolar cookies de sessão e CSRF para evitar conflitos locais
+SESSION_COOKIE_NAME = "calibraweb_sessionid"
+CSRF_COOKIE_NAME = "calibraweb_csrftoken"
+
 # Configurações do Two-Factor Authentication (2FA)
 TWO_FACTOR_PATCH_ADMIN = True  # Adiciona 2FA ao admin
 TWO_FACTOR_CALL_GATEWAY = None  # Desabilita chamadas telefônicas (usar apenas TOTP/SMS)

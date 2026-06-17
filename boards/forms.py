@@ -19,6 +19,13 @@ class BoardForm(forms.ModelForm):
 
 
 class CardForm(forms.ModelForm):
+    data_entrega = forms.DateField(
+        input_formats=['%d/%m/%Y', '%Y-%m-%d'],
+        required=False,
+        widget=forms.DateInput(attrs={'class': 'form-control js-week-datepicker', 'type': 'text'}),
+        label="Data de Entrega"
+    )
+
     class Meta:
         model = Card
         fields = ['titulo', 'descricao', 'responsaveis', 'prioridade', 'data_entrega', 'periodicidade']
@@ -27,7 +34,6 @@ class CardForm(forms.ModelForm):
             'descricao': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Descrição detalhada...'}),
             'responsaveis': forms.SelectMultiple(attrs={'class': 'form-select', 'size': 4}),
             'prioridade': forms.Select(attrs={'class': 'form-select'}),
-            'data_entrega': forms.DateInput(attrs={'class': 'form-control js-week-datepicker', 'type': 'text'}),
             'periodicidade': forms.Select(attrs={'class': 'form-select'}),
         }
 

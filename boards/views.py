@@ -567,7 +567,14 @@ def api_card_detail_view(request, card_id):
                 
             data_entrega_raw = data.get('data_entrega')
             if data_entrega_raw:
-                card.data_entrega = data_entrega_raw
+                parsed_date = None
+                for fmt in ('%d/%m/%Y', '%Y-%m-%d'):
+                    try:
+                        parsed_date = datetime.datetime.strptime(data_entrega_raw, fmt).date()
+                        break
+                    except ValueError:
+                        continue
+                card.data_entrega = parsed_date
             else:
                 card.data_entrega = None
                 
