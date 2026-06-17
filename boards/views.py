@@ -112,8 +112,29 @@ def board_detail_view(request, board_id):
         )
         
     # Colunas, sub-sessões e cartões pré-carregados
-    colunas = board.colunas.prefetch_related('subsecoes', 'cartoes__responsaveis', 'cartoes__checklist_itens').all()
+    colunas = list(board.colunas.prefetch_related('subsecoes', 'cartoes__responsaveis', 'cartoes__checklist_itens').all())
     
+    # Pegar o filtro de período
+    periodo = request.GET.get('periodo', 'tudo')
+    
+    start_date = None
+    end_date = None
+    today = timezone.now().date()
+    
+    if periodo == 'hoje':
+        start_date = today
+        end_date = today
+    elif periodo == 'semana':
+        start_date = today - datetime.timedelta(days=today.weekday())
+        end_date = start_date + datetime.timedelta(days=6)
+    elif periodo == 'mes':
+        start_date = today.replace(day=1)
+        last_day = calendar.monthrange(today.year, today.month)[1]
+        end_date = today.replace(day=last_day)
+    elif periodo == 'ano':
+        start_date = datetime.date(today.year, 1, 1)
+        end_date = datetime.date(today.year, 12, 31)
+
     if board.tipo == 'PLANOS_ACAO':
         from acoes.models import LinhaAcao
         
@@ -122,6 +143,19 @@ def board_detail_view(request, board_id):
             classificacao__in=['corretiva', 'preventiva']
         ).select_related('plano_acao__solucao', 'responsavel_acao').prefetch_related('responsaveis_multiplos').all()
         
+        # Filtrar por período se aplicável
+        if start_date:
+            linhas_filtradas = []
+            for l in linhas:
+                is_completed = l.status in ['completa', 'cancelada']
+                if is_completed:
+                    if l.data_conclusao and start_date <= l.data_conclusao <= end_date:
+                        linhas_filtradas.append(l)
+                else:
+                    if l.data_deadline and start_date <= l.data_deadline <= end_date:
+                        linhas_filtradas.append(l)
+            linhas = linhas_filtradas
+
         total_cartoes = len(linhas)
         
         # Identificar colunas concluídas
@@ -133,8 +167,7 @@ def board_detail_view(request, board_id):
         if total_cartoes > 0:
             porcentagem_concluida = int((cartoes_concluidos / total_cartoes) * 100)
             
-        hoje = timezone.now().date()
-        cartoes_atrasados = sum(1 for l in linhas if l.data_deadline and l.data_deadline < hoje and l.status not in ['completa', 'cancelada'])
+        cartoes_atrasados = sum(1 for l in linhas if l.data_deadline and l.data_deadline < today and l.status not in ['completa', 'cancelada'])
         
         # Carga de trabalho por colaborador (linhas de ação pendentes)
         carga_membros_dict = {}
@@ -212,7 +245,6 @@ def board_detail_view(request, board_id):
             col.cartoes_sem_subsecao_concluido = col.cartoes_list_concluido
     else:
         # Calcular Métricas de Carga de Trabalho da Equipe (Quadro Padrão)
-        total_cartoes = Card.objects.filter(coluna__quadro=board).count()
         
         # Identificar coluna de conclusão (última coluna por ordem ou contendo "concluido/concluído/done" no nome)
         concluido_colunas_ids = []
@@ -222,53 +254,75 @@ def board_detail_view(request, board_id):
                 concluido_colunas_ids.append(col.id)
                 
         # Se não achar nenhuma pelo nome, assume a última
-        if not concluido_colunas_ids and colunas.exists():
-            concluido_colunas_ids.append(colunas.last().id)
+        if not concluido_colunas_ids and colunas:
+            concluido_colunas_ids.append(colunas[-1].id)
             
-        cartoes_concluidos = Card.objects.filter(coluna_id__in=concluido_colunas_ids).count()
+        # Migração automática de cartões orfãos na coluna concluído para a primeira coluna ativa
+        colunas_ativas = [col for col in colunas if col.id not in concluido_colunas_ids]
+        if colunas_ativas and concluido_colunas_ids:
+            primeira_coluna = colunas_ativas[0]
+            cartoes_orfaos = Card.objects.filter(coluna_id__in=concluido_colunas_ids)
+            if cartoes_orfaos.exists():
+                with transaction.atomic():
+                    for card in cartoes_orfaos:
+                        card.coluna = primeira_coluna
+                        if not card.data_conclusao:
+                            card.data_conclusao = card.criado_em.date() if card.criado_em else timezone.now().date()
+                        card.save()
+
+        # Definir funções auxiliares de filtro de período para tarefas normais
+        def matches_period_andamento(c):
+            if not start_date:
+                return True
+            return c.data_entrega is not None and start_date <= c.data_entrega <= end_date
+
+        def matches_period_concluido(c):
+            if not start_date:
+                return True
+            return c.data_conclusao is not None and start_date <= c.data_conclusao <= end_date
+
+        # Distribuição por colunas e agrupamento por sub-sessões
+        distribuicao_colunas = []
+        for col in colunas:
+            col.subsecoes_list = list(col.subsecoes.all())
+            for sub in col.subsecoes_list:
+                sub.cartoes_list_andamento = [c for c in col.cartoes.all() if c.subsecao_id == sub.id and c.data_conclusao is None and matches_period_andamento(c)]
+                sub.cartoes_list_concluido = [c for c in col.cartoes.all() if c.subsecao_id == sub.id and c.data_conclusao is not None and matches_period_concluido(c)]
+                
+            col.cartoes_sem_subsecao_andamento = [c for c in col.cartoes.all() if c.subsecao_id is None and c.data_conclusao is None and matches_period_andamento(c)]
+            col.cartoes_sem_subsecao_concluido = [c for c in col.cartoes.all() if c.subsecao_id is None and c.data_conclusao is not None and matches_period_concluido(c)]
+            col.cartoes_list_andamento = [c for c in col.cartoes.all() if c.data_conclusao is None and matches_period_andamento(c)]
+            col.cartoes_list_concluido = [c for c in col.cartoes.all() if c.data_conclusao is not None and matches_period_concluido(c)]
+            col.cartoes_list = [c for c in col.cartoes.all() if (c.data_conclusao is None and matches_period_andamento(c)) or (c.data_conclusao is not None and matches_period_concluido(c))]
+            
+            distribuicao_colunas.append({
+                'nome': col.nome,
+                'quantidade': len(col.cartoes_list)
+            })
+
+        total_cartoes = sum(len(col.cartoes_list) for col in colunas)
+        cartoes_concluidos = sum(len(col.cartoes_list_concluido) for col in colunas)
         
         porcentagem_concluida = 0
         if total_cartoes > 0:
             porcentagem_concluida = int((cartoes_concluidos / total_cartoes) * 100)
             
-        hoje = timezone.now().date()
-        cartoes_atrasados = Card.objects.filter(
-            coluna__quadro=board,
-            data_entrega__lt=hoje
-        ).exclude(coluna_id__in=concluido_colunas_ids).count()
-        
-        # Carga de trabalho por colaborador (exclui concluídos para focar no trabalho pendente)
-        carga_membros = Colaborador.objects.filter(
-            Q(quadros_participa=board) | Q(quadros_criados=board)
-        ).annotate(
-            tarefas_ativas=Count(
-                'cartoes_atribuidos',
-                filter=Q(cartoes_atribuidos__coluna__quadro=board) & ~Q(cartoes_atribuidos__coluna_id__in=concluido_colunas_ids)
-            )
-        ).filter(tarefas_ativas__gt=0).order_by('-tarefas_ativas')
-        
-        # Preparar dados para o Chart.js
-        chart_membros_nomes = [m.nome_completo for m in carga_membros]
-        chart_membros_valores = [m.tarefas_ativas for m in carga_membros]
-        
-        # Distribuição por colunas
-        distribuicao_colunas = []
+        cartoes_atrasados = 0
         for col in colunas:
-            distribuicao_colunas.append({
-                'nome': col.nome,
-                'quantidade': col.cartoes.count()
-            })
-            
-            # Cartões normais e agrupamento por sub-sessões
-            col.subsecoes_list = list(col.subsecoes.all())
-            for sub in col.subsecoes_list:
-                sub.cartoes_list_andamento = [c for c in col.cartoes.all() if c.subsecao_id == sub.id and c.data_conclusao is None]
-                sub.cartoes_list_concluido = [c for c in col.cartoes.all() if c.subsecao_id == sub.id and c.data_conclusao is not None]
-                
-            col.cartoes_sem_subsecao_andamento = [c for c in col.cartoes.all() if c.subsecao_id is None and c.data_conclusao is None]
-            col.cartoes_sem_subsecao_concluido = [c for c in col.cartoes.all() if c.subsecao_id is None and c.data_conclusao is not None]
-            col.cartoes_list_andamento = [c for c in col.cartoes.all() if c.data_conclusao is None]
-            col.cartoes_list_concluido = [c for c in col.cartoes.all() if c.data_conclusao is not None]
+            for c in col.cartoes_list_andamento:
+                if c.data_entrega and c.data_entrega < today:
+                    cartoes_atrasados += 1
+
+        # Carga de trabalho por colaborador (exclui concluídos para focar no trabalho pendente)
+        carga_membros_dict = {}
+        for col in colunas:
+            for c in col.cartoes_list_andamento:
+                for resp in c.responsaveis.all():
+                    carga_membros_dict[resp] = carga_membros_dict.get(resp, 0) + 1
+                    
+        carga_membros_sorted = sorted(carga_membros_dict.items(), key=lambda x: x[1], reverse=True)
+        chart_membros_nomes = [m.nome_completo for m, _ in carga_membros_sorted]
+        chart_membros_valores = [v for _, v in carga_membros_sorted]
         
     # Atividades recentes do quadro (limita a 20)
     atividades = board.atividades.select_related('colaborador')[:20]
@@ -286,7 +340,10 @@ def board_detail_view(request, board_id):
         todos_colaboradores = Colaborador.objects.filter(id__in=membros_ids, is_active=True).distinct().order_by('nome_completo')
         
     colunas_andamento = [col for col in colunas if col.id not in concluido_colunas_ids]
-    colunas_concluidas = colunas
+    if board.tipo == 'PLANOS_ACAO':
+        colunas_concluidas = colunas
+    else:
+        colunas_concluidas = colunas_andamento
 
     context = {
         'board': board,
@@ -303,7 +360,9 @@ def board_detail_view(request, board_id):
         'chart_membros_nomes': json.dumps(chart_membros_nomes),
         'chart_membros_valores': json.dumps(chart_membros_valores),
         'distribuicao_colunas': json.dumps(distribuicao_colunas),
-        'titulo': f"Quadro - {board.nome}"
+        'titulo': f"Quadro - {board.nome}",
+        'periodo': periodo,
+        'hoje': today
     }
     return render(request, 'boards/board_detail.html', context)
 
@@ -527,13 +586,31 @@ def api_move_card_view(request):
                 if last_col and last_col.id == nova_coluna.id:
                     is_concluida = True
 
+        # Verificar se é a primeira coluna (backlog / a fazer)
+        first_col = nova_coluna.quadro.colunas.order_by('ordem', 'criado_em').first()
+        is_first_col = (first_col and first_col.id == nova_coluna.id)
+
         # Atualizar a data de conclusão e horários baseado no destino
         if is_concluida:
             if not card.data_conclusao:
                 card.data_conclusao = timezone.now().date()
-        else:
-            card.data_conclusao = None
+            if not card.hora_fim:
+                card.hora_fim = timezone.now().time()
+            if not card.data_inicio:
+                card.data_inicio = card.data_conclusao
+            if not card.hora_inicio:
+                card.hora_inicio = card.hora_fim
+        elif is_first_col:
+            card.data_inicio = None
             card.hora_inicio = None
+            card.data_conclusao = None
+            card.hora_fim = None
+        else:
+            if not card.data_inicio:
+                card.data_inicio = timezone.now().date()
+            if not card.hora_inicio:
+                card.hora_inicio = timezone.now().time()
+            card.data_conclusao = None
             card.hora_fim = None
 
         # Atualizar a coluna do cartão movido
@@ -622,6 +699,7 @@ def api_card_detail_view(request, card_id):
             'periodicidade': card.periodicidade,
             'periodicidade_label': card.get_periodicidade_display(),
             'data_entrega': card.data_entrega.strftime('%Y-%m-%d') if card.data_entrega else '',
+            'data_inicio': card.data_inicio.strftime('%Y-%m-%d') if card.data_inicio else '',
             'data_conclusao': card.data_conclusao.strftime('%Y-%m-%d') if card.data_conclusao else '',
             'hora_inicio': card.hora_inicio.strftime('%H:%M') if card.hora_inicio else '',
             'hora_fim': card.hora_fim.strftime('%H:%M') if card.hora_fim else '',
@@ -653,12 +731,29 @@ def api_card_detail_view(request, card_id):
                         if last_col and last_col.id == nova_coluna.id:
                             is_dest_concluida = True
                             
+                    first_col = nova_coluna.quadro.colunas.order_by('ordem', 'criado_em').first()
+                    is_first_col = (first_col and first_col.id == nova_coluna.id)
+
                     if is_dest_concluida:
                         if not card.data_conclusao:
                             card.data_conclusao = timezone.now().date()
-                    else:
-                        card.data_conclusao = None
+                        if not card.hora_fim:
+                            card.hora_fim = timezone.now().time()
+                        if not card.data_inicio:
+                            card.data_inicio = card.data_conclusao
+                        if not card.hora_inicio:
+                            card.hora_inicio = card.hora_fim
+                    elif is_first_col:
+                        card.data_inicio = None
                         card.hora_inicio = None
+                        card.data_conclusao = None
+                        card.hora_fim = None
+                    else:
+                        if not card.data_inicio:
+                            card.data_inicio = timezone.now().date()
+                        if not card.hora_inicio:
+                            card.hora_inicio = timezone.now().time()
+                        card.data_conclusao = None
                         card.hora_fim = None
                     
                     old_coluna_temp = card.coluna
@@ -690,9 +785,14 @@ def api_card_detail_view(request, card_id):
                 if is_concluida:
                     if not card.data_conclusao:
                         card.data_conclusao = timezone.now().date()
+                    if not card.hora_fim:
+                        card.hora_fim = timezone.now().time()
+                    if not card.data_inicio:
+                        card.data_inicio = card.data_concluido if hasattr(card, 'data_concluido') else card.data_conclusao
+                    if not card.hora_inicio:
+                        card.hora_inicio = card.hora_fim
                 else:
                     card.data_conclusao = None
-                    card.hora_inicio = None
                     card.hora_fim = None
                 
                 recreate = data.get('recreate', False)
@@ -726,6 +826,20 @@ def api_card_detail_view(request, card_id):
                 else:
                     card.data_entrega = None
                 
+            if 'data_inicio' in data:
+                data_inicio_raw = data.get('data_inicio')
+                if data_inicio_raw:
+                    parsed_date = None
+                    for fmt in ('%d/%m/%Y', '%Y-%m-%d'):
+                        try:
+                            parsed_date = datetime.datetime.strptime(data_inicio_raw, fmt).date()
+                            break
+                        except ValueError:
+                            continue
+                    card.data_inicio = parsed_date
+                else:
+                    card.data_inicio = None
+
             if 'data_conclusao' in data:
                 data_conclusao_raw = data.get('data_conclusao')
                 if data_conclusao_raw:
@@ -765,6 +879,18 @@ def api_card_detail_view(request, card_id):
                 val_et_ids = [int(i) for i in etiquetas_ids if i]
                 card.etiquetas.set(BoardLabel.objects.filter(id__in=val_et_ids, quadro=board))
             
+            # Validação da relação de data e hora para início e fim
+            d_ini = card.data_inicio
+            h_ini = card.hora_inicio
+            d_fim = card.data_conclusao
+            h_fim = card.hora_fim
+
+            if d_ini and d_fim:
+                dt_ini = datetime.datetime.combine(d_ini, h_ini if h_ini else datetime.time.min)
+                dt_fim = datetime.datetime.combine(d_fim, h_fim if h_fim else datetime.time.max)
+                if dt_fim < dt_ini:
+                    return JsonResponse({'success': False, 'error': 'A data/hora de fim deve ser posterior à data/hora de início.'}, status=400)
+
             card.save()
             
             BoardActivity.objects.create(

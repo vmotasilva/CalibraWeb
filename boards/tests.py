@@ -632,6 +632,66 @@ class BoardsTestCase(TestCase):
         self.assertEqual(self.card.coluna, self.coluna_todo)
         self.assertIsNone(self.card.data_conclusao)
 
+    def test_card_date_time_validation(self):
+        """Testa a validação cronológica de data e hora de início e fim"""
+        self.client.force_login(self.user)
+        detail_url = reverse('boards:api_card_detail', args=[self.card.id])
+        
+        # 1. Caso Válido: Fim após início
+        valid_json = {
+            'titulo': self.card.titulo,
+            'data_inicio': '2026-06-17',
+            'hora_inicio': '08:00',
+            'data_conclusao': '2026-06-17',
+            'hora_fim': '10:00',
+            'prioridade': 'MEDIA',
+            'periodicidade': 'AVULSA'
+        }
+        response = self.client.post(
+            detail_url,
+            data=json.dumps(valid_json),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        
+        # 2. Caso Inválido: Fim antes de início (mesmo dia, hora anterior)
+        invalid_json_1 = {
+            'titulo': self.card.titulo,
+            'data_inicio': '2026-06-17',
+            'hora_inicio': '10:00',
+            'data_conclusao': '2026-06-17',
+            'hora_fim': '08:00',
+            'prioridade': 'MEDIA',
+            'periodicidade': 'AVULSA'
+        }
+        response = self.client.post(
+            detail_url,
+            data=json.dumps(invalid_json_1),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 400)
+        data = json.loads(response.content)
+        self.assertFalse(data['success'])
+        self.assertIn('A data/hora de fim deve ser posterior à data/hora de início', data['error'])
+        
+        # 3. Caso Inválido: Fim antes de início (dia anterior)
+        invalid_json_2 = {
+            'titulo': self.card.titulo,
+            'data_inicio': '2026-06-17',
+            'hora_inicio': '08:00',
+            'data_conclusao': '2026-06-16',
+            'hora_fim': '08:00',
+            'prioridade': 'MEDIA',
+            'periodicidade': 'AVULSA'
+        }
+        response = self.client.post(
+            detail_url,
+            data=json.dumps(invalid_json_2),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 400)
+
+
 
 
 

@@ -140,6 +140,7 @@ class Card(models.Model):
         verbose_name="Responsáveis"
     )
     data_entrega = models.DateField(blank=True, null=True, verbose_name="Data de Entrega")
+    data_inicio = models.DateField(blank=True, null=True, verbose_name="Data de Início")
     data_conclusao = models.DateField(blank=True, null=True, verbose_name="Data de Conclusão")
     hora_inicio = models.TimeField(blank=True, null=True, verbose_name="Hora de Início")
     hora_fim = models.TimeField(blank=True, null=True, verbose_name="Hora de Fim")

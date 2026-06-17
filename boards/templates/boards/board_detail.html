@@ -240,6 +240,18 @@
                     </li>
                 </ul>
                 
+                <!-- Filtro de Período -->
+                <div class="input-group input-group-sm ms-2" style="max-width: 170px;">
+                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-filter"></i></span>
+                    <select class="form-select border-start-0" id="periodFilter" onchange="filterByPeriod(this.value)">
+                        <option value="tudo" {% if periodo == 'tudo' or not periodo %}selected{% endif %}>Tudo</option>
+                        <option value="hoje" {% if periodo == 'hoje' %}selected{% endif %}>Hoje</option>
+                        <option value="semana" {% if periodo == 'semana' %}selected{% endif %}>Esta Semana</option>
+                        <option value="mes" {% if periodo == 'mes' %}selected{% endif %}>Este Mês</option>
+                        <option value="ano" {% if periodo == 'ano' %}selected{% endif %}>Este Ano</option>
+                    </select>
+                </div>
+                
                 <div class="vr mx-2"></div>
                 
                 <!-- Botões de Ações do Quadro -->
@@ -413,7 +425,6 @@
                     {% endfor %}
                 </div>
             </div>
-        </div>
         </div>
         
         <!-- ABA 2: TEAM METRICS & WORKLOAD -->
@@ -597,9 +608,11 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            {% if card.hora_inicio or card.hora_fim %}
+                                            {% if card.data_inicio or card.hora_inicio or card.data_conclusao or card.hora_fim %}
                                                 <span class="text-dark small">
-                                                    <i class="bi bi-clock me-1 text-primary"></i>{{ card.hora_inicio|time:"H:i"|default:"--" }} às {{ card.hora_fim|time:"H:i"|default:"--" }}
+                                                    <i class="bi bi-clock me-1 text-primary"></i>
+                                                    {% if card.data_inicio %}{{ card.data_inicio|date:"d/m/Y" }} {% endif %}{{ card.hora_inicio|time:"H:i"|default:"--" }} às 
+                                                    {% if card.data_conclusao %}{{ card.data_conclusao|date:"d/m/Y" }} {% endif %}{{ card.hora_fim|time:"H:i"|default:"--" }}
                                                 </span>
                                             {% else %}
                                                 <span class="text-muted small italic" style="color: #bbb;">-</span>
@@ -853,14 +866,20 @@
                                 <label class="form-label fw-bold text-muted small d-block">Prazo de Entrega</label>
                                 <input type="text" id="cardDetailDueDate" class="form-control form-control-sm js-week-datepicker" placeholder="aaaa-mm-dd" autocomplete="off">
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label fw-bold text-muted small d-block">Data de Conclusão</label>
-                                <input type="text" id="cardDetailConcludedDate" class="form-control form-control-sm js-week-datepicker" placeholder="aaaa-mm-dd" autocomplete="off">
-                            </div>
                             <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <label class="form-label fw-bold text-muted small d-block">Data de Início</label>
+                                    <input type="text" id="cardDetailStartDate" class="form-control form-control-sm js-week-datepicker" placeholder="aaaa-mm-dd" autocomplete="off">
+                                </div>
                                 <div class="col-6">
                                     <label class="form-label fw-bold text-muted small d-block">Hora de Início</label>
                                     <input type="time" id="cardDetailHoraInicio" class="form-control form-control-sm" autocomplete="off">
+                                </div>
+                            </div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <label class="form-label fw-bold text-muted small d-block">Data de Conclusão</label>
+                                    <input type="text" id="cardDetailConcludedDate" class="form-control form-control-sm js-week-datepicker" placeholder="aaaa-mm-dd" autocomplete="off">
                                 </div>
                                 <div class="col-6">
                                     <label class="form-label fw-bold text-muted small d-block">Hora de Fim</label>
@@ -1084,6 +1103,33 @@
         const modal = new bootstrap.Modal(document.getElementById('addSubSectionModal'));
         modal.show();
     }
+
+    function filterByPeriod(val) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('periodo', val);
+        window.location.href = url.toString();
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Restaurar aba ativa do localStorage se existir
+        var activeTabId = localStorage.getItem('activeBoardTab');
+        if (activeTabId) {
+            var tabTrigger = document.querySelector('button[data-bs-target="' + activeTabId + '"]');
+            if (tabTrigger) {
+                var tab = new bootstrap.Tab(tabTrigger);
+                tab.show();
+            }
+        }
+
+        // Salvar aba ativa no localStorage ao mudar
+        var tabButtons = document.querySelectorAll('#boardTab button[data-bs-toggle="tab"]');
+        tabButtons.forEach(function(btn) {
+            btn.addEventListener('shown.bs.tab', function(e) {
+                var target = e.target.getAttribute('data-bs-target');
+                localStorage.setItem('activeBoardTab', target);
+            });
+        });
+    });
 
     // ============================================
     // KANBAN DRAG AND DROP
@@ -1445,6 +1491,7 @@
             
             document.getElementById('cardDetailPriority').value = card.prioridade;
             document.getElementById('cardDetailDueDate').value = card.data_entrega;
+            document.getElementById('cardDetailStartDate').value = card.data_inicio || '';
             document.getElementById('cardDetailConcludedDate').value = card.data_conclusao || '';
             document.getElementById('cardDetailHoraInicio').value = card.hora_inicio || '';
             document.getElementById('cardDetailHoraFim').value = card.hora_fim || '';
@@ -1578,6 +1625,7 @@
                 responsaveis_ids: Array.from(document.getElementById('cardDetailResp').options).filter(opt => opt.selected).map(opt => parseInt(opt.value)),
                 prioridade: document.getElementById('cardDetailPriority').value,
                 data_entrega: document.getElementById('cardDetailDueDate').value,
+                data_inicio: document.getElementById('cardDetailStartDate').value,
                 data_conclusao: document.getElementById('cardDetailConcludedDate').value,
                 hora_inicio: document.getElementById('cardDetailHoraInicio').value,
                 hora_fim: document.getElementById('cardDetailHoraFim').value,
@@ -1847,6 +1895,7 @@
         const respIds = Array.from(respSelect.selectedOptions).map(opt => parseInt(opt.value)).filter(val => !isNaN(val));
         const priority = document.getElementById('cardDetailPriority').value;
         const dueDate = document.getElementById('cardDetailDueDate').value;
+        const startDate = document.getElementById('cardDetailStartDate').value;
         const concludedDate = document.getElementById('cardDetailConcludedDate').value;
         const horaInicio = document.getElementById('cardDetailHoraInicio').value;
         const horaFim = document.getElementById('cardDetailHoraFim').value;
@@ -1883,6 +1932,7 @@
                 responsaveis_ids: respIds,
                 prioridade: priority,
                 data_entrega: dueDate,
+                data_inicio: startDate,
                 data_conclusao: concludedDate,
                 hora_inicio: horaInicio,
                 hora_fim: horaFim,
@@ -2351,5 +2401,30 @@
             updateConfigDisplay();
         }
     });
+
+    function filterTableView() {
+        const input = document.getElementById('tableSearchInput');
+        if (!input) return;
+        const filter = input.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const rows = document.querySelectorAll('#tasksTable tbody tr');
+        
+        rows.forEach(row => {
+            const cells = row.getElementsByTagName('td');
+            let match = false;
+            for (let i = 0; i < cells.length - 1; i++) {
+                const text = cells[i].textContent || cells[i].innerText;
+                const normalized = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                if (normalized.includes(filter)) {
+                    match = true;
+                    break;
+                }
+            }
+            if (match) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
 </script>
 {% endblock %}
