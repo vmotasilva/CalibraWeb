@@ -88,11 +88,76 @@ def dashboard_view(request):
     else:
         form = BoardForm()
         
+    # Coletar todas as tarefas/ações de todos os quadros acessíveis
+    from boards.models import Card
+    cartoes_qs = Card.objects.filter(coluna__quadro__in=quadros).select_related('coluna__quadro', 'subsecao', 'criado_por').prefetch_related('responsaveis', 'etiquetas')
+    
+    todas_acoes = []
+    
+    # 1. Obter ações corretivas/preventivas virtuais se houver quadro PLANOS_ACAO
+    board_planos = quadros.filter(tipo='PLANOS_ACAO').first()
+    if board_planos:
+        from acoes.models import LinhaAcao
+        linhas = LinhaAcao.objects.filter(
+            classificacao__in=['corretiva', 'preventiva']
+        ).select_related('plano_acao__solucao', 'responsavel_acao').prefetch_related('responsaveis_multiplos').all()
+        
+        for l in linhas:
+            resps = []
+            if l.responsavel_acao:
+                resps.append(l.responsavel_acao)
+            for r in l.responsaveis_multiplos.all():
+                if r not in resps:
+                    resps.append(r)
+            
+            plan_ref = l.plano_acao.numero_registro or l.plano_acao.solucao.titulo or "Plano de Ação"
+            card_title = f"Ação #{l.numero_acao} - {plan_ref}"
+            
+            todas_acoes.append({
+                'id': l.id,
+                'titulo': card_title,
+                'descricao': l.descricao,
+                'prioridade': 'ALTA' if l.prioridade else 'BAIXA',
+                'data_entrega': l.data_deadline,
+                'data_conclusao': l.data_conclusao,
+                'status_exibicao': l.get_status_display() if hasattr(l, 'get_status_display') else l.status.capitalize(),
+                'quadro_nome': board_planos.nome,
+                'quadro_id': board_planos.id,
+                'responsaveis': resps,
+                'plano_acao_id': l.plano_acao.id,
+                'is_virtual': True
+            })
+            
+    # 2. Obter tarefas dos quadros normais
+    for c in cartoes_qs:
+        todas_acoes.append({
+            'id': c.id,
+            'titulo': c.titulo,
+            'descricao': c.descricao,
+            'prioridade': c.prioridade,
+            'data_entrega': c.data_entrega,
+            'data_conclusao': c.data_conclusao,
+            'status_exibicao': c.coluna.nome,
+            'quadro_nome': c.coluna.quadro.nome,
+            'quadro_id': c.coluna.quadro.id,
+            'responsaveis': list(c.responsaveis.all()),
+            'is_virtual': False
+        })
+        
+    # Ordenar as ações: as que têm prazo mais próximo primeiro, e as sem prazo por último
+    todas_acoes.sort(key=lambda x: x['data_entrega'] or datetime.date.max)
+    
+    # Mapear cada quadro
+    quadros_list = list(quadros)
+    
     context = {
         'quadros': quadros,
+        'quadros_list': quadros_list,
         'quadros_arquivados': quadros_arquivados,
+        'todas_acoes': todas_acoes,
         'form': form,
-        'titulo': 'Quadros de Atividades'
+        'titulo': 'Quadros de Atividades',
+        'hoje': timezone.now().date()
     }
     return render(request, 'boards/dashboard.html', context)
 

@@ -76,72 +76,237 @@
         </button>
     </div>
 
-    <!-- Lista de Quadros -->
-    <div class="row g-4">
-        <!-- Card de Criação Rápida -->
-        <div class="col-12 col-sm-6 col-md-4 col-xl-3">
-            <button class="btn btn-create-board w-100 d-flex flex-column align-items-center justify-content-center" data-bs-toggle="modal" data-bs-target="#newBoardModal">
-                <i class="bi bi-plus-circle-dotted fs-1 mb-2"></i>
-                <span class="fw-bold">Criar Novo Quadro</span>
-            </button>
-        </div>
+    <!-- Navegação de Abas -->
+    <ul class="nav nav-pills mb-4" id="dashboardTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active px-3" id="cards-tab" data-bs-toggle="tab" data-bs-target="#cards-view" type="button" role="tab"><i class="bi bi-grid-3x3-gap me-2"></i>Quadros (Cards)</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link px-3" id="boards-table-tab" data-bs-toggle="tab" data-bs-target="#boards-table-view" type="button" role="tab"><i class="bi bi-list-columns-reverse me-2"></i>Quadros (Tabela)</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link px-3" id="actions-table-tab" data-bs-toggle="tab" data-bs-target="#actions-table-view" type="button" role="tab"><i class="bi bi-table me-2"></i>Geral de Ações (Tabela)</button>
+        </li>
+    </ul>
 
-        {% for board in quadros %}
-        <div class="col-12 col-sm-6 col-md-4 col-xl-3" onclick="location.href='{% url 'boards:board_detail' board.id %}'">
-            <div class="card board-card h-100 shadow-sm">
-                <!-- Topo Colorido -->
-                <div class="board-gradient-header"></div>
-                <div class="card-body d-flex flex-column justify-content-between p-3">
-                    <div>
-                        <h5 class="card-title fw-bold text-dark mb-2">{{ board.nome }}</h5>
-                        <p class="card-text text-muted small mb-3">
-                            {{ board.descricao|default:"Sem descrição adicional."|truncatewords:20 }}
-                        </p>
-                    </div>
-                    
-                    <div class="pt-3 border-top d-flex justify-content-between align-items-center mt-3">
-                        <!-- Participantes -->
-                        <div class="avatar-stack">
-                            {% if board.criado_por %}
-                            <div class="board-avatar bg-primary text-white" title="Criador: {{ board.criado_por.nome_completo }}">
-                                {{ board.criado_por.nome_completo|slice:":2" }}
+    <div class="tab-content" id="dashboardTabContent">
+        <!-- ABA 1: CARDS VIEW -->
+        <div class="tab-pane fade show active" id="cards-view" role="tabpanel">
+            <div class="row g-4">
+                <!-- Card de Criação Rápida -->
+                <div class="col-12 col-sm-6 col-md-4 col-xl-3">
+                    <button class="btn btn-create-board w-100 d-flex flex-column align-items-center justify-content-center" data-bs-toggle="modal" data-bs-target="#newBoardModal">
+                        <i class="bi bi-plus-circle-dotted fs-1 mb-2"></i>
+                        <span class="fw-bold">Criar Novo Quadro</span>
+                    </button>
+                </div>
+
+                {% for board in quadros %}
+                <div class="col-12 col-sm-6 col-md-4 col-xl-3" onclick="location.href='{% url 'boards:board_detail' board.id %}'">
+                    <div class="card board-card h-100 shadow-sm">
+                        <!-- Topo Colorido -->
+                        <div class="board-gradient-header"></div>
+                        <div class="card-body d-flex flex-column justify-content-between p-3">
+                            <div>
+                                <h5 class="card-title fw-bold text-dark mb-2">{{ board.nome }}</h5>
+                                <p class="card-text text-muted small mb-3">
+                                    {{ board.descricao|default:"Sem descrição adicional."|truncatewords:20 }}
+                                </p>
                             </div>
-                            {% endif %}
                             
-                            {% for membro in board.membros.all|slice:":4" %}
-                            {% if membro != board.criado_por %}
-                            <div class="board-avatar" title="Membro: {{ membro.nome_completo }}">
-                                {{ membro.nome_completo|slice:":2" }}
+                            <div class="pt-3 border-top d-flex justify-content-between align-items-center mt-3">
+                                <!-- Participantes -->
+                                <div class="avatar-stack">
+                                    {% if board.criado_por %}
+                                    <div class="board-avatar bg-primary text-white" title="Criador: {{ board.criado_por.nome_completo }}">
+                                        {{ board.criado_por.nome_completo|slice:":2" }}
+                                    </div>
+                                    {% endif %}
+                                    
+                                    {% for membro in board.membros.all|slice:":4" %}
+                                    {% if membro != board.criado_por %}
+                                    <div class="board-avatar" title="Membro: {{ membro.nome_completo }}">
+                                        {{ membro.nome_completo|slice:":2" }}
+                                    </div>
+                                    {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if board.membros.count > 4 %}
+                                    <div class="board-avatar bg-secondary text-white" style="font-size:0.7rem;" title="+{{ board.membros.count|add:"-3" }} membros">
+                                        +{{ board.membros.count|add:"-3" }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Contagem Rápida -->
+                                <div class="text-muted small">
+                                    <span class="me-2" title="Colunas"><i class="bi bi-columns-gap me-1"></i>{{ board.colunas.count }}</span>
+                                    <span title="Total de Tarefas"><i class="bi bi-card-checklist me-1"></i>{{ board.total_tasks }}</span>
+                                </div>
                             </div>
-                            {% endif %}
-                            {% endfor %}
-                            
-                            {% if board.membros.count > 4 %}
-                            <div class="board-avatar bg-secondary text-white" style="font-size:0.7rem;" title="+{{ board.membros.count|add:"-3" }} membros">
-                                +{{ board.membros.count|add:"-3" }}
-                            </div>
-                            {% endif %}
-                        </div>
-                        
-                        <!-- Contagem Rápida -->
-                        <div class="text-muted small">
-                            <span class="me-2" title="Colunas"><i class="bi bi-columns-gap me-1"></i>{{ board.colunas.count }}</span>
-                            <span title="Total de Tarefas"><i class="bi bi-card-checklist me-1"></i>{{ board.total_tasks }}</span>
                         </div>
                     </div>
                 </div>
+                {% empty %}
+                <!-- Caso não haja quadros -->
+                <div class="col-12 text-center py-5">
+                    <div class="mb-3">
+                        <i class="bi bi-kanban text-muted" style="font-size: 5rem;"></i>
+                    </div>
+                    <h4 class="text-secondary fw-bold">Nenhum Quadro Encontrado</h4>
+                    <p class="text-muted">Você ainda não criou e nem faz parte de nenhum quadro de atividades.</p>
+                </div>
+                {% endfor %}
             </div>
         </div>
-        {% empty %}
-        <!-- Caso não haja quadros -->
-        <div class="col-12 text-center py-5">
-            <div class="mb-3">
-                <i class="bi bi-kanban text-muted" style="font-size: 5rem;"></i>
+        
+        <!-- ABA 2: BOARDS TABLE VIEW -->
+        <div class="tab-pane fade" id="boards-table-view" role="tabpanel">
+            <div class="card border-0 shadow-sm p-4" style="border-radius: 12px;">
+                <h5 class="fw-bold mb-3"><i class="bi bi-list-columns-reverse text-primary me-2"></i>Listagem de Quadros</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Nome do Quadro</th>
+                                <th>Descrição</th>
+                                <th>Membros</th>
+                                <th class="text-center">Colunas</th>
+                                <th class="text-center">Total de Tarefas</th>
+                                <th class="text-end">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for board in quadros_list %}
+                            <tr class="cursor-pointer" onclick="location.href='{% url 'boards:board_detail' board.id %}'">
+                                <td class="fw-bold text-dark">{{ board.nome }}</td>
+                                <td class="text-muted small">{{ board.descricao|default:"Sem descrição." }}</td>
+                                <td>
+                                    <div class="avatar-stack">
+                                        {% if board.criado_por %}
+                                        <div class="board-avatar bg-primary text-white" title="Criador: {{ board.criado_por.nome_completo }}" style="width:26px; height:26px; font-size:0.7rem; margin-right: -8px;">
+                                            {{ board.criado_por.nome_completo|slice:":2" }}
+                                        </div>
+                                        {% endif %}
+                                        {% for membro in board.membros.all|slice:":4" %}
+                                            {% if membro != board.criado_por %}
+                                            <div class="board-avatar" title="Membro: {{ membro.nome_completo }}" style="width:26px; height:26px; font-size:0.7rem; margin-right: -8px;">
+                                                {{ membro.nome_completo|slice:":2" }}
+                                            </div>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                </td>
+                                <td class="text-center">{{ board.colunas.count }}</td>
+                                <td class="text-center"><span class="badge bg-secondary">{{ board.total_tasks }}</span></td>
+                                <td class="text-end">
+                                    <a href="{% url 'boards:board_detail' board.id %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-box-arrow-in-right me-1"></i>Abrir</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
-            <h4 class="text-secondary fw-bold">Nenhum Quadro Encontrado</h4>
-            <p class="text-muted">Você ainda não criou e nem faz parte de nenhum quadro de atividades.</p>
         </div>
-        {% endfor %}
+
+        <!-- ABA 3: ACTIONS TABLE VIEW -->
+        <div class="tab-pane fade" id="actions-table-view" role="tabpanel">
+            <div class="card border-0 shadow-sm p-4" style="border-radius: 12px;">
+                <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-4">
+                    <h5 class="fw-bold mb-0"><i class="bi bi-table text-primary me-2"></i>Geral de Ações e Atividades</h5>
+                    <!-- Campo de busca rápida na tabela de ações gerais -->
+                    <div class="input-group" style="max-width: 300px;">
+                        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                        <input type="search" id="actionsSearchInput" class="form-control border-start-0" placeholder="Buscar ações/tarefas..." oninput="filterActionsTableView()" autocomplete="new-password">
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle" id="globalActionsTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Tarefa / Ação</th>
+                                <th>Quadro</th>
+                                <th>Status / Coluna</th>
+                                <th>Responsáveis</th>
+                                <th>Prazo de Entrega</th>
+                                <th>Conclusão</th>
+                                <th>Prioridade</th>
+                                <th class="text-end">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for acao in todas_acoes %}
+                            <tr class="cursor-pointer" onclick="{% if acao.is_virtual %}window.open('{% url 'acoes:plano_acao_detail' acao.plano_acao_id %}', '_blank'){% else %}location.href='{% url 'boards:board_detail' acao.quadro_id %}?card={{ acao.id }}'{% endif %}">
+                                <td>
+                                    <div class="fw-bold text-dark">{{ acao.titulo }}</div>
+                                    {% if acao.descricao %}
+                                        <div class="text-muted small text-truncate" style="max-width: 300px;">{{ acao.descricao }}</div>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-info-subtle text-info border border-info-subtle">{{ acao.quadro_nome }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark border">{{ acao.status_exibicao }}</span>
+                                </td>
+                                <td>
+                                    <div class="avatar-stack">
+                                        {% for resp in acao.responsaveis %}
+                                            <div class="board-avatar bg-primary text-white" title="{{ resp.nome_completo }}" style="width:24px; height:24px; font-size:0.65rem; margin-right: -8px;">
+                                                {{ resp.nome_completo|slice:":2" }}
+                                            </div>
+                                        {% empty %}
+                                            <span class="text-muted small italic" style="font-size: 0.75rem;">Sem resp.</span>
+                                        {% endfor %}
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if acao.data_entrega %}
+                                        <span class="badge bg-light text-dark border {% if acao.data_entrega < hoje and not acao.data_conclusao %}text-danger border-danger-subtle bg-danger-subtle{% endif %}">
+                                            <i class="bi bi-calendar-event me-1"></i>{{ acao.data_entrega|date:"d/m/Y" }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted small">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if acao.data_conclusao %}
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                            <i class="bi bi-check-circle-fill me-1"></i>{{ acao.data_conclusao|date:"d/m/Y" }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted small italic">Pendente</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if acao.prioridade == 'ALTA' %}
+                                        <span class="badge bg-danger">Alta</span>
+                                    {% elif acao.prioridade == 'MEDIA' %}
+                                        <span class="badge bg-warning text-dark">Média</span>
+                                    {% else %}
+                                        <span class="badge bg-success">Baixa</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end" onclick="event.stopPropagation();">
+                                    {% if acao.is_virtual %}
+                                        <a href="{% url 'acoes:plano_acao_detail' acao.plano_acao_id %}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-box-arrow-up-right me-1"></i>Ver Plano</a>
+                                    {% else %}
+                                        <a href="{% url 'boards:board_detail' acao.quadro_id %}?card={{ acao.id }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye me-1"></i>Ver Quadro</a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center text-muted py-4">Nenhuma ação ou tarefa encontrada.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -330,6 +495,51 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     updateDisplay();
+
+    // ============================================
+    // TAB PRESERVATION FOR DASHBOARD
+    // ============================================
+    const activeTabId = localStorage.getItem('activeDashboardTab');
+    if (activeTabId) {
+        const tabTrigger = document.querySelector('#dashboardTab button[data-bs-target="' + activeTabId + '"]');
+        if (tabTrigger) {
+            const tab = new bootstrap.Tab(tabTrigger);
+            tab.show();
+        }
+    }
+
+    const tabButtons = document.querySelectorAll('#dashboardTab button[data-bs-toggle="tab"]');
+    tabButtons.forEach(btn => {
+        btn.addEventListener('shown.bs.tab', function(e) {
+            const target = e.target.getAttribute('data-bs-target');
+            localStorage.setItem('activeDashboardTab', target);
+        });
+    });
 });
+
+function filterActionsTableView() {
+    const input = document.getElementById('actionsSearchInput');
+    if (!input) return;
+    const filter = input.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const rows = document.querySelectorAll('#globalActionsTable tbody tr');
+    
+    rows.forEach(row => {
+        if (row.cells.length <= 1) return;
+        let match = false;
+        for (let i = 0; i < row.cells.length - 1; i++) {
+            const text = row.cells[i].textContent || row.cells[i].innerText;
+            const normalized = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            if (normalized.includes(filter)) {
+                match = true;
+                break;
+            }
+        }
+        if (match) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
 </script>
 {% endblock %}
