@@ -1,5 +1,5 @@
 from django import forms
-from boards.models import Board, Card
+from boards.models import Board, Card, BoardSubSection
 from rh.models import Colaborador
 
 class BoardForm(forms.ModelForm):
@@ -28,18 +28,31 @@ class CardForm(forms.ModelForm):
 
     class Meta:
         model = Card
-        fields = ['titulo', 'descricao', 'responsaveis', 'prioridade', 'data_entrega', 'periodicidade']
+        fields = ['titulo', 'descricao', 'responsaveis', 'subsecao', 'prioridade', 'data_entrega', 'periodicidade']
         widgets = {
             'titulo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Título da tarefa'}),
             'descricao': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Descrição detalhada...'}),
             'responsaveis': forms.SelectMultiple(attrs={'class': 'form-select', 'size': 4}),
+            'subsecao': forms.Select(attrs={'class': 'form-select'}),
             'prioridade': forms.Select(attrs={'class': 'form-select'}),
             'periodicidade': forms.Select(attrs={'class': 'form-select'}),
         }
 
     def __init__(self, *args, **kwargs):
         board = kwargs.pop('board', None)
+        column = kwargs.pop('column', None)
         super().__init__(*args, **kwargs)
+        
+        if column:
+            self.fields['subsecao'].queryset = column.subsecoes.all().order_by('nome')
+        elif board:
+            self.fields['subsecao'].queryset = BoardSubSection.objects.filter(coluna__quadro=board).order_by('coluna__nome', 'nome')
+        else:
+            self.fields['subsecao'].queryset = BoardSubSection.objects.all().order_by('nome')
+            
+        self.fields['subsecao'].required = False
+        self.fields['subsecao'].label = "Sub-sessão"
+        
         if board:
             # Filtra os responsáveis apenas para os membros desse quadro + o criador
             membros_ids = list(board.membros.values_list('id', flat=True))

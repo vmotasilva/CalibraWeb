@@ -185,8 +185,8 @@ class BoardsTestCase(TestCase):
         # O cartão original deixa de ser recorrente para evitar ciclos infinitos
         self.assertEqual(self.card.periodicidade, 'AVULSA')
         
-        # Deve ter nascido um novo cartão na coluna de origem ("A Fazer")
-        new_cards = Card.objects.filter(coluna=self.coluna_todo, titulo=self.card.titulo)
+        # Deve ter nascido um novo cartão na mesma coluna de destino ("Concluído")
+        new_cards = Card.objects.filter(coluna=self.coluna_done, titulo=self.card.titulo).exclude(id=self.card.id)
         self.assertEqual(new_cards.count(), 1)
         new_card = new_cards.first()
         
@@ -308,5 +308,74 @@ class BoardsTestCase(TestCase):
         # Verifica se o status da linha de ação mudou no banco
         linha.refresh_from_db()
         self.assertEqual(linha.status, 'em_curso')
+
+    def test_subsection_crud_and_card_association(self):
+        """Testa a criação, exclusão de sub-sessões e movimentação/criação de cartões associados"""
+        from boards.models import BoardSubSection
+        
+        # 1. Criar sub-sessão
+        create_url = reverse('boards:create_subsection', args=[self.coluna_todo.id])
+        response = self.client.post(create_url, {'nome': 'Subsection 1'})
+        self.assertEqual(response.status_code, 302)
+        
+        sub = BoardSubSection.objects.get(coluna=self.coluna_todo, nome='Subsection 1')
+        self.assertEqual(sub.nome, 'Subsection 1')
+        
+        # 2. Criar cartão associado a sub-sessão
+        card_create_url = reverse('boards:create_card', args=[self.coluna_todo.id])
+        response = self.client.post(card_create_url, {
+            'titulo': 'Task in subsection',
+            'descricao': 'Desc',
+            'subsecao': sub.id,
+            'prioridade': 'BAIXA',
+            'periodicidade': 'AVULSA'
+        })
+        self.assertEqual(response.status_code, 302)
+        
+        new_card = Card.objects.get(titulo='Task in subsection')
+        self.assertEqual(new_card.subsecao, sub)
+        
+        # 3. Mover cartão para outra sub-sessão ou coluna (API)
+        move_url = reverse('boards:api_move_card')
+        post_json = {
+            'card_id': new_card.id,
+            'to_column_id': self.coluna_done.id,
+            'to_subsection_id': None,
+            'card_order_ids': [new_card.id]
+        }
+        response = self.client.post(
+            move_url,
+            data=json.dumps(post_json),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        
+        new_card.refresh_from_db()
+        self.assertEqual(new_card.coluna, self.coluna_done)
+        self.assertIsNone(new_card.subsecao)
+
+        # 4. Excluir sub-sessão
+        delete_url = reverse('boards:delete_subsection', args=[sub.id])
+        response = self.client.post(delete_url)
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(BoardSubSection.objects.filter(id=sub.id).exists())
+
+    def test_column_reordering_api(self):
+        """Testa o endpoint de reordenar colunas do quadro"""
+        url = reverse('boards:api_move_column')
+        post_json = {
+            'column_order_ids': [self.coluna_done.id, self.coluna_todo.id]
+        }
+        response = self.client.post(
+            url,
+            data=json.dumps(post_json),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        
+        self.coluna_done.refresh_from_db()
+        self.coluna_todo.refresh_from_db()
+        self.assertEqual(self.coluna_done.ordem, 0)
+        self.assertEqual(self.coluna_todo.ordem, 1)
 
 

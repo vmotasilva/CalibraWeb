@@ -10,7 +10,7 @@ import json
 import datetime
 import calendar
 
-from boards.models import Board, BoardColumn, Card, ChecklistItem, CardComment, BoardActivity
+from boards.models import Board, BoardColumn, Card, ChecklistItem, CardComment, BoardActivity, BoardSubSection
 from boards.forms import BoardForm, CardForm
 from rh.models import Colaborador
 
@@ -111,8 +111,8 @@ def board_detail_view(request, board_id):
             id=board_id
         )
         
-    # Colunas e cartões pré-carregados
-    colunas = board.colunas.prefetch_related('cartoes__responsaveis', 'cartoes__checklist_itens').all()
+    # Colunas, sub-sessões e cartões pré-carregados
+    colunas = board.colunas.prefetch_related('subsecoes', 'cartoes__responsaveis', 'cartoes__checklist_itens').all()
     
     if board.tipo == 'PLANOS_ACAO':
         from acoes.models import LinhaAcao
@@ -240,7 +240,12 @@ def board_detail_view(request, board_id):
                 'quantidade': col.cartoes.count()
             })
             
-            # Cartões normais
+            # Cartões normais e agrupamento por sub-sessões
+            col.subsecoes_list = list(col.subsecoes.all())
+            for sub in col.subsecoes_list:
+                sub.cartoes_list = [c for c in col.cartoes.all() if c.subsecao_id == sub.id]
+                
+            col.cartoes_sem_subsecao = [c for c in col.cartoes.all() if c.subsecao_id is None]
             col.cartoes_list = col.cartoes.all()
         
     # Atividades recentes do quadro (limita a 20)
@@ -337,7 +342,7 @@ def create_card_view(request, column_id):
     coluna = get_object_or_404(BoardColumn, id=column_id)
     board = coluna.quadro
     
-    form = CardForm(request.POST, board=board)
+    form = CardForm(request.POST, board=board, column=coluna)
     if form.is_valid():
         card = form.save(commit=False)
         card.coluna = coluna
@@ -397,15 +402,12 @@ def spawn_recurring_card(card):
     else:
         return None
         
-    first_column = card.coluna.quadro.colunas.order_by('ordem', 'criado_em').first()
-    if not first_column:
-        first_column = card.coluna
-        
-    maior_ordem = first_column.cartoes.aggregate(Max('ordem'))['ordem__max']
+    maior_ordem = card.coluna.cartoes.aggregate(Max('ordem'))['ordem__max']
     new_ordem = (maior_ordem + 1) if maior_ordem is not None else 0
     
     new_card = Card.objects.create(
-        coluna=first_column,
+        coluna=card.coluna,
+        subsecao=card.subsecao,
         titulo=card.titulo,
         descricao=card.descricao,
         data_entrega=next_date,
@@ -475,6 +477,14 @@ def api_move_card_view(request):
         card = get_object_or_404(Card, id=card_id)
         old_col_nome = card.coluna.nome
         
+        # Obter a subsessão se fornecida
+        to_subsection_id = data.get('to_subsection_id')
+        if to_subsection_id and to_subsection_id != 'null':
+            subsecao = get_object_or_404(BoardSubSection, id=to_subsection_id, coluna=nova_coluna)
+            card.subsecao = subsecao
+        else:
+            card.subsecao = None
+            
         # Atualizar a coluna do cartão movido
         card.coluna = nova_coluna
         card.save()
@@ -532,6 +542,8 @@ def api_card_detail_view(request, card_id):
             
         data = {
             'id': card.id,
+            'coluna_id': card.coluna_id,
+            'subsecao_id': card.subsecao_id,
             'titulo': card.titulo,
             'descricao': card.descricao or '',
             'responsaveis_ids': list(card.responsaveis.values_list('id', flat=True)),
@@ -552,6 +564,13 @@ def api_card_detail_view(request, card_id):
             # Atualizar os dados do cartão
             card.titulo = data.get('titulo', card.titulo).strip()
             card.descricao = data.get('descricao', card.descricao)
+            
+            subsecao_id = data.get('subsecao_id')
+            if subsecao_id:
+                subsecao = get_object_or_404(BoardSubSection, id=subsecao_id, coluna=card.coluna)
+                card.subsecao = subsecao
+            else:
+                card.subsecao = None
             
             resp_ids = data.get('responsaveis_ids', [])
             val_ids = [int(i) for i in resp_ids if i]
@@ -819,3 +838,34 @@ def api_move_column_view(request):
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+@login_required
+@require_POST
+def create_subsection_view(request, column_id):
+    column = get_object_or_404(BoardColumn, id=column_id)
+    nome = request.POST.get('nome', '').strip()
+    if nome:
+        maior_ordem = column.subsecoes.aggregate(Max('ordem'))['ordem__max']
+        ordem = (maior_ordem + 1) if maior_ordem is not None else 0
+        
+        BoardSubSection.objects.create(
+            coluna=column,
+            nome=nome,
+            ordem=ordem
+        )
+        messages.success(request, f"Sub-sessão '{nome}' criada com sucesso!")
+    else:
+        messages.error(request, "O nome da sub-sessão não pode ser vazio.")
+    return redirect('boards:board_detail', board_id=column.quadro.id)
+
+
+@login_required
+@require_POST
+def delete_subsection_view(request, subsection_id):
+    subsecao = get_object_or_404(BoardSubSection, id=subsection_id)
+    board_id = subsecao.coluna.quadro.id
+    nome = subsecao.nome
+    subsecao.delete()
+    messages.success(request, f"Sub-sessão '{nome}' excluída com sucesso!")
+    return redirect('boards:board_detail', board_id=board_id)

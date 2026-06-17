@@ -21,4 +21,6 @@ urlpatterns = [
     path('<int:board_id>/arquivar/', views.archive_board_view, name='archive_board'),
     path('<int:board_id>/desarquivar/', views.unarchive_board_view, name='unarchive_board'),
     path('colunas/mover/', views.api_move_column_view, name='api_move_column'),
+    path('colunas/<int:column_id>/subsecoes/nova/', views.create_subsection_view, name='create_subsection'),
+    path('subsecoes/<int:subsection_id>/excluir/', views.delete_subsection_view, name='delete_subsection'),
 ]

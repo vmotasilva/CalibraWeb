@@ -1,0 +1,49 @@
+{% load boards_tags %}
+<div class="kanban-card priority-{{ card.prioridade|lower }}" id="card-{{ card.id }}" draggable="true" ondragstart="drag(event)" onclick="{% if board.tipo == 'PLANOS_ACAO' %}window.open('{% url 'acoes:plano_acao_detail' card.plano_acao_id %}', '_blank'){% else %}openCardModal({{ card.id }}){% endif %}" data-periodicidade="{{ card.periodicidade }}" data-periodicidade-label="{{ card.get_periodicidade_display }}" data-titulo="{{ card.titulo }}">
+    <div class="fw-semibold text-dark">{{ card.titulo }}</div>
+    {% if card.descricao %}
+        <div class="text-muted small text-truncate mt-1">{{ card.descricao }}</div>
+    {% endif %}
+    
+    <!-- Subtarefas progresso -->
+    {% if card.checklist_itens.exists %}
+        {% with completed=card.checklist_itens.all|filter_concluido|length total=card.checklist_itens.count %}
+            <div class="d-flex align-items-center justify-content-between mt-2" style="font-size: 0.7rem; color: #5e6c84;">
+                <span><i class="bi bi-check2-square me-1"></i>{{ completed }}/{{ total }}</span>
+                {% with pct=completed|percent:total %}
+                    <div class="progress progress-mini flex-grow-1 ms-2" style="max-width: 80px;">
+                        <div class="progress-bar bg-success" style="width: {{ pct }}%;"></div>
+                    </div>
+                {% endwith %}
+            </div>
+        {% endwith %}
+    {% endif %}
+    
+    <!-- Metadados -->
+    <div class="card-meta">
+        <div class="d-flex align-items-center gap-1">
+            {% if card.data_entrega %}
+                <span class="badge-date {% if card.data_entrega < hoje %}date-overdue{% else %}date-future{% endif %}" title="Data de Entrega">
+                    <i class="bi bi-calendar-event me-1"></i>{{ card.data_entrega|date:"d M" }}
+                </span>
+            {% endif %}
+            {% if card.periodicidade != 'AVULSA' %}
+                <span class="badge bg-light text-secondary border rounded-pill" style="font-size: 0.65rem;" title="Tarefa Recorrente: {{ card.get_periodicidade_display }}">
+                    <i class="bi bi-repeat me-1 text-primary"></i>{{ card.get_periodicidade_display }}
+                </span>
+            {% endif %}
+        </div>
+        
+        <div class="d-flex align-items-center gap-1">
+            {% for resp in card.responsaveis.all %}
+                <div class="avatar-circle" title="Responsável: {{ resp.nome_completo }}">
+                    {{ resp.nome_completo|slice:":2" }}
+                </div>
+            {% empty %}
+                <div class="avatar-circle bg-light text-muted" title="Sem responsável">
+                    <i class="bi bi-person"></i>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>

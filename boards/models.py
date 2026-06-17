@@ -67,6 +67,21 @@ class BoardColumn(models.Model):
         return f"{self.quadro.nome} - {self.nome}"
 
 
+class BoardSubSection(models.Model):
+    coluna = models.ForeignKey(BoardColumn, on_delete=models.CASCADE, related_name="subsecoes")
+    nome = models.CharField(max_length=100, verbose_name="Nome da Sub-sessão")
+    ordem = models.IntegerField(default=0)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['ordem', 'criado_em']
+        verbose_name = "Sub-sessão da Coluna"
+        verbose_name_plural = "Sub-sessões da Coluna"
+
+    def __str__(self):
+        return f"{self.coluna.nome} - {self.nome}"
+
+
 class Card(models.Model):
     PRIORIDADE_CHOICES = [
         ('BAIXA', 'Baixa'),
@@ -85,6 +100,14 @@ class Card(models.Model):
         ('ANUAL', 'Anual'),
     ]
     coluna = models.ForeignKey(BoardColumn, on_delete=models.CASCADE, related_name="cartoes")
+    subsecao = models.ForeignKey(
+        BoardSubSection,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="cartoes",
+        verbose_name="Sub-sessão"
+    )
     titulo = models.CharField(max_length=200, verbose_name="Título da Tarefa")
     descricao = models.TextField(blank=True, null=True, verbose_name="Descrição")
     responsaveis = models.ManyToManyField(

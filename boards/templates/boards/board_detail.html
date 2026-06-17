@@ -232,6 +232,11 @@
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end shadow">
                                     <li>
+                                        <button class="dropdown-item" type="button" onclick="openCreateSubSectionModal({{ col.id }})">
+                                            <i class="bi bi-folder-plus me-2"></i>Nova Sub-sessão
+                                        </button>
+                                    </li>
+                                    <li>
                                         <form action="{% url 'boards:delete_column' col.id %}" method="POST" onsubmit="return confirm('Excluir esta coluna e TODAS as tarefas nela contidas?');">
                                             {% csrf_token %}
                                             <button type="submit" class="dropdown-item text-danger"><i class="bi bi-trash me-2"></i>Excluir Coluna</button>
@@ -243,57 +248,41 @@
                         </div>
                         
                         <!-- Container dos Cartões -->
-                        <div class="card-container" id="cards-col-{{ col.id }}" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }})" data-is-concluida="false">
-                            {% for card in col.cartoes_list %}
-                            <div class="kanban-card priority-{{ card.prioridade|lower }}" id="card-{{ card.id }}" draggable="true" ondragstart="drag(event)" onclick="{% if board.tipo == 'PLANOS_ACAO' %}window.open('{% url 'acoes:plano_acao_detail' card.plano_acao_id %}', '_blank'){% else %}openCardModal({{ card.id }}){% endif %}" data-periodicidade="{{ card.periodicidade }}" data-periodicidade-label="{{ card.get_periodicidade_display }}" data-titulo="{{ card.titulo }}">
-                                <div class="fw-semibold text-dark">{{ card.titulo }}</div>
-                                {% if card.descricao %}
-                                    <div class="text-muted small text-truncate mt-1">{{ card.descricao }}</div>
-                                {% endif %}
-                                
-                                <!-- Subtarefas progresso -->
-                                {% if card.checklist_itens.exists %}
-                                    {% with completed=card.checklist_itens.all|filter_concluido|length total=card.checklist_itens.count %}
-                                        <div class="d-flex align-items-center justify-content-between mt-2" style="font-size: 0.7rem; color: #5e6c84;">
-                                            <span><i class="bi bi-check2-square me-1"></i>{{ completed }}/{{ total }}</span>
-                                            {% with pct=completed|percent:total %}
-                                                <div class="progress progress-mini flex-grow-1 ms-2" style="max-width: 80px;">
-                                                    <div class="progress-bar bg-success" style="width: {{ pct }}%;"></div>
-                                                </div>
-                                            {% endwith %}
-                                        </div>
-                                    {% endwith %}
-                                {% endif %}
-                                
-                                <!-- Metadados -->
-                                <div class="card-meta">
-                                    <div class="d-flex align-items-center gap-1">
-                                        {% if card.data_entrega %}
-                                            <span class="badge-date {% if card.data_entrega < hoje %}date-overdue{% else %}date-future{% endif %}" title="Data de Entrega">
-                                                <i class="bi bi-calendar-event me-1"></i>{{ card.data_entrega|date:"d M" }}
-                                            </span>
-                                        {% endif %}
-                                        {% if card.periodicidade != 'AVULSA' %}
-                                            <span class="badge bg-light text-secondary border rounded-pill" style="font-size: 0.65rem;" title="Tarefa Recorrente: {{ card.get_periodicidade_display }}">
-                                                <i class="bi bi-repeat me-1 text-primary"></i>{{ card.get_periodicidade_display }}
-                                            </span>
+                        <div class="card-container" id="cards-col-{{ col.id }}" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }}, null)" data-is-concluida="false">
+                            {% if col.subsecoes_list %}
+                                <!-- Sub-sessões -->
+                                {% for sub in col.subsecoes_list %}
+                                <div class="subsection-group mb-2 border rounded p-1 bg-white shadow-xs" style="background-color: #fcfcfc !important;">
+                                    <div class="subsection-header d-flex justify-content-between align-items-center px-2 py-1 mb-1 border-bottom bg-light rounded-top" style="font-size: 0.75rem; font-weight: 600; color: #495057;">
+                                        <span><i class="bi bi-folder2-open text-primary me-1"></i>{{ sub.nome }}</span>
+                                        {% if board.tipo != 'PLANOS_ACAO' %}
+                                        <form action="{% url 'boards:delete_subsection' sub.id %}" method="POST" class="d-inline" onsubmit="return confirm('Deseja excluir esta sub-sessão? As tarefas nela contidas serão mantidas na coluna.');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-link text-danger p-0 border-0" style="line-height: 1;"><i class="bi bi-trash"></i></button>
+                                        </form>
                                         {% endif %}
                                     </div>
-                                    
-                                    <div class="d-flex align-items-center gap-1">
-                                        {% for resp in card.responsaveis.all %}
-                                            <div class="avatar-circle" title="Responsável: {{ resp.nome_completo }}">
-                                                {{ resp.nome_completo|slice:":2" }}
-                                            </div>
-                                        {% empty %}
-                                            <div class="avatar-circle bg-light text-muted" title="Sem responsável">
-                                                <i class="bi bi-person"></i>
-                                            </div>
+                                    <div class="card-container-subsection" id="cards-col-{{ col.id }}-sub-{{ sub.id }}" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }}, {{ sub.id }})" data-column-id="{{ col.id }}" data-subsection-id="{{ sub.id }}" style="min-height: 40px; display: flex; flex-direction: column; gap: 0.5rem; padding: 4px;">
+                                        {% for card in sub.cartoes_list %}
+                                            {% include "boards/card_render.html" with card=card %}
                                         {% endfor %}
                                     </div>
                                 </div>
-                            </div>
-                            {% endfor %}
+                                {% endfor %}
+                                
+                                <!-- Geral / Sem Sub-sessão -->
+                                <div class="card-container-subsection mt-2" id="cards-col-{{ col.id }}-unclassified" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }}, null)" data-column-id="{{ col.id }}" data-subsection-id="null" style="min-height: 50px; display: flex; flex-direction: column; gap: 0.5rem; border: 1px dashed rgba(0,0,0,0.1); border-radius: 6px; padding: 6px; background-color: rgba(0,0,0,0.01);">
+                                    <div class="text-muted text-center" style="font-size: 0.65rem; font-weight: 600; pointer-events: none;">Geral / Sem Sub-sessão</div>
+                                    {% for card in col.cartoes_sem_subsecao %}
+                                        {% include "boards/card_render.html" with card=card %}
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <!-- Listagem Simples -->
+                                {% for card in col.cartoes_list %}
+                                    {% include "boards/card_render.html" with card=card %}
+                                {% endfor %}
+                            {% endif %}
                         </div>
                         
                         <!-- Adicionar Cartão -->
@@ -342,6 +331,11 @@
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end shadow">
                                     <li>
+                                        <button class="dropdown-item" type="button" onclick="openCreateSubSectionModal({{ col.id }})">
+                                            <i class="bi bi-folder-plus me-2"></i>Nova Sub-sessão
+                                        </button>
+                                    </li>
+                                    <li>
                                         <form action="{% url 'boards:delete_column' col.id %}" method="POST" onsubmit="return confirm('Excluir esta coluna e TODAS as tarefas nela contidas?');">
                                             {% csrf_token %}
                                             <button type="submit" class="dropdown-item text-danger"><i class="bi bi-trash me-2"></i>Excluir Coluna</button>
@@ -353,57 +347,41 @@
                         </div>
                         
                         <!-- Container dos Cartões -->
-                        <div class="card-container" id="cards-col-{{ col.id }}" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }})" data-is-concluida="true">
-                            {% for card in col.cartoes_list %}
-                            <div class="kanban-card priority-{{ card.prioridade|lower }}" id="card-{{ card.id }}" draggable="true" ondragstart="drag(event)" onclick="{% if board.tipo == 'PLANOS_ACAO' %}window.open('{% url 'acoes:plano_acao_detail' card.plano_acao_id %}', '_blank'){% else %}openCardModal({{ card.id }}){% endif %}" data-periodicidade="{{ card.periodicidade }}" data-periodicidade-label="{{ card.get_periodicidade_display }}" data-titulo="{{ card.titulo }}">
-                                <div class="fw-semibold text-dark">{{ card.titulo }}</div>
-                                {% if card.descricao %}
-                                    <div class="text-muted small text-truncate mt-1">{{ card.descricao }}</div>
-                                {% endif %}
-                                
-                                <!-- Subtarefas progresso -->
-                                {% if card.checklist_itens.exists %}
-                                    {% with completed=card.checklist_itens.all|filter_concluido|length total=card.checklist_itens.count %}
-                                        <div class="d-flex align-items-center justify-content-between mt-2" style="font-size: 0.7rem; color: #5e6c84;">
-                                            <span><i class="bi bi-check2-square me-1"></i>{{ completed }}/{{ total }}</span>
-                                            {% with pct=completed|percent:total %}
-                                                <div class="progress progress-mini flex-grow-1 ms-2" style="max-width: 80px;">
-                                                    <div class="progress-bar bg-success" style="width: {{ pct }}%;"></div>
-                                                </div>
-                                            {% endwith %}
-                                        </div>
-                                    {% endwith %}
-                                {% endif %}
-                                
-                                <!-- Metadados -->
-                                <div class="card-meta">
-                                    <div class="d-flex align-items-center gap-1">
-                                        {% if card.data_entrega %}
-                                            <span class="badge-date date-future" title="Data de Entrega">
-                                                <i class="bi bi-calendar-event me-1"></i>{{ card.data_entrega|date:"d M" }}
-                                            </span>
-                                        {% endif %}
-                                        {% if card.periodicidade != 'AVULSA' %}
-                                            <span class="badge bg-light text-secondary border rounded-pill" style="font-size: 0.65rem;" title="Tarefa Recorrente: {{ card.get_periodicidade_display }}">
-                                                <i class="bi bi-repeat me-1 text-primary"></i>{{ card.get_periodicidade_display }}
-                                            </span>
+                        <div class="card-container" id="cards-col-{{ col.id }}" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }}, null)" data-is-concluida="true">
+                            {% if col.subsecoes_list %}
+                                <!-- Sub-sessões -->
+                                {% for sub in col.subsecoes_list %}
+                                <div class="subsection-group mb-2 border rounded p-1 bg-white shadow-xs" style="background-color: #fcfcfc !important;">
+                                    <div class="subsection-header d-flex justify-content-between align-items-center px-2 py-1 mb-1 border-bottom bg-light rounded-top" style="font-size: 0.75rem; font-weight: 600; color: #495057;">
+                                        <span><i class="bi bi-folder2-open text-primary me-1"></i>{{ sub.nome }}</span>
+                                        {% if board.tipo != 'PLANOS_ACAO' %}
+                                        <form action="{% url 'boards:delete_subsection' sub.id %}" method="POST" class="d-inline" onsubmit="return confirm('Deseja excluir esta sub-sessão? As tarefas nela contidas serão mantidas na coluna.');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-link text-danger p-0 border-0" style="line-height: 1;"><i class="bi bi-trash"></i></button>
+                                        </form>
                                         {% endif %}
                                     </div>
-                                    
-                                    <div class="d-flex align-items-center gap-1">
-                                        {% for resp in card.responsaveis.all %}
-                                            <div class="avatar-circle" title="Responsável: {{ resp.nome_completo }}">
-                                                {{ resp.nome_completo|slice:":2" }}
-                                            </div>
-                                        {% empty %}
-                                            <div class="avatar-circle bg-light text-muted" title="Sem responsável">
-                                                <i class="bi bi-person"></i>
-                                            </div>
+                                    <div class="card-container-subsection" id="cards-col-{{ col.id }}-sub-{{ sub.id }}" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }}, {{ sub.id }})" data-column-id="{{ col.id }}" data-subsection-id="{{ sub.id }}" style="min-height: 40px; display: flex; flex-direction: column; gap: 0.5rem; padding: 4px;">
+                                        {% for card in sub.cartoes_list %}
+                                            {% include "boards/card_render.html" with card=card %}
                                         {% endfor %}
                                     </div>
                                 </div>
-                            </div>
-                            {% endfor %}
+                                {% endfor %}
+                                
+                                <!-- Geral / Sem Sub-sessão -->
+                                <div class="card-container-subsection mt-2" id="cards-col-{{ col.id }}-unclassified" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }}, null)" data-column-id="{{ col.id }}" data-subsection-id="null" style="min-height: 50px; display: flex; flex-direction: column; gap: 0.5rem; border: 1px dashed rgba(0,0,0,0.1); border-radius: 6px; padding: 6px; background-color: rgba(0,0,0,0.01);">
+                                    <div class="text-muted text-center" style="font-size: 0.65rem; font-weight: 600; pointer-events: none;">Geral / Sem Sub-sessão</div>
+                                    {% for card in col.cartoes_sem_subsecao %}
+                                        {% include "boards/card_render.html" with card=card %}
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <!-- Listagem Simples -->
+                                {% for card in col.cartoes_list %}
+                                    {% include "boards/card_render.html" with card=card %}
+                                {% endfor %}
+                            {% endif %}
                         </div>
                         
                         <!-- Adicionar Cartão -->
@@ -544,7 +522,19 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold">Responsáveis</label>
-                            {{ card_form.responsaveis }}
+                            <div class="position-relative mb-2">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                                    <input type="text" id="addCardMemberSearchInput" class="form-control" placeholder="Buscar responsável..." autocomplete="off">
+                                </div>
+                                <div id="addCardSearchSuggestions" class="list-group position-absolute w-100 shadow-lg mt-1 overflow-auto" style="max-height: 150px; z-index: 1050; display: none;"></div>
+                            </div>
+                            <div id="addCardSelectedMembersContainer" class="d-flex flex-wrap gap-1 p-2 border rounded bg-light" style="min-height: 50px; max-height: 120px; overflow-y: auto; border-radius: 8px !important;">
+                                <span id="addCardNoMembersText" class="text-muted small align-self-center w-100 text-center" style="font-size: 0.75rem;">Nenhum selecionado</span>
+                            </div>
+                            <div class="d-none">
+                                {{ card_form.responsaveis }}
+                            </div>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold">Prioridade</label>
@@ -559,6 +549,12 @@
                         <div class="col-md-6 mb-0">
                             <label class="form-label fw-bold">Periodicidade</label>
                             {{ card_form.periodicidade }}
+                        </div>
+                    </div>
+                    <div class="row mt-3" id="addCardSubsecaoRow" style="display: none;">
+                        <div class="col-md-12 mb-0">
+                            <label class="form-label fw-bold">Sub-sessão</label>
+                            {{ card_form.subsecao }}
                         </div>
                     </div>
                 </div>
@@ -619,10 +615,28 @@
                         <div class="card bg-light border-0 p-3" style="border-radius: 8px;">
                             <div class="mb-3">
                                 <label class="form-label fw-bold text-muted small d-block">Responsáveis</label>
-                                <select id="cardDetailResp" class="form-select form-select-sm" multiple size="4">
-                                    {% for c in todos_colaboradores %}
-                                        <option value="{{ c.id }}">{{ c.nome_completo }}</option>
-                                    {% endfor %}
+                                <div class="position-relative mb-2">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                                        <input type="text" id="detailCardMemberSearchInput" class="form-control form-control-sm" placeholder="Buscar responsável..." autocomplete="off">
+                                    </div>
+                                    <div id="detailCardSearchSuggestions" class="list-group position-absolute w-100 shadow-lg mt-1 overflow-auto" style="max-height: 150px; z-index: 1050; display: none;"></div>
+                                </div>
+                                <div id="detailCardSelectedMembersContainer" class="d-flex flex-wrap gap-1 p-2 border rounded bg-light" style="min-height: 50px; max-height: 120px; overflow-y: auto; border-radius: 8px !important;">
+                                    <span id="detailCardNoMembersText" class="text-muted small align-self-center w-100 text-center" style="font-size: 0.75rem;">Nenhum selecionado</span>
+                                </div>
+                                <div class="d-none">
+                                    <select id="cardDetailResp" class="form-select form-select-sm" multiple>
+                                        {% for c in todos_colaboradores %}
+                                            <option value="{{ c.id }}">{{ c.nome_completo }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="mb-3" id="detailCardSubsecaoContainer" style="display: none;">
+                                <label class="form-label fw-bold text-muted small d-block">Sub-sessão</label>
+                                <select id="cardDetailSubsecao" class="form-select form-select-sm">
+                                    <option value="">Nenhuma (Geral)</option>
                                 </select>
                             </div>
                             <div class="mb-3">
@@ -725,6 +739,31 @@
         </div>
     </div>
 </div>
+
+<!-- Modal Criação de Sub-sessão -->
+<div class="modal fade" id="addSubSectionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg" style="border-radius: 14px;">
+            <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                <h5 class="modal-title fw-bold"><i class="bi bi-folder-plus me-2"></i>Nova Sub-sessão</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="addSubSectionForm" method="POST" action="">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nome da Sub-sessão</label>
+                        <input type="text" name="nome" class="form-control" placeholder="Digite o nome..." required autocomplete="off">
+                    </div>
+                </div>
+                <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary px-4">Criar Sub-sessão</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -733,8 +772,207 @@
 
 <script>
     // ============================================
+    // COLUMN SUB-SECTIONS CONFIGURATION
+    // ============================================
+    const COLUMN_SUBSECTIONS = {
+        {% for col in board.colunas.all %}
+            "{{ col.id }}": [
+                {% for sub in col.subsecoes.all %}
+                    { "id": "{{ sub.id }}", "nome": "{{ sub.nome|escapejs }}" },
+                {% endfor %}
+            ],
+        {% endfor %}
+    };
+
+    function openCreateSubSectionModal(columnId) {
+        const form = document.getElementById('addSubSectionForm');
+        form.action = `/boards/colunas/${columnId}/subsecoes/nova/`;
+        const modal = new bootstrap.Modal(document.getElementById('addSubSectionModal'));
+        modal.show();
+    }
+
+    // ============================================
     // KANBAN DRAG AND DROP
     // ============================================
+    
+    // Global helper for name initials badge
+    function getConfigInitials(name) {
+        const cleanName = name.replace(/\(\d+\)/g, '').trim();
+        const parts = cleanName.split(' ');
+        if (parts.length >= 2) {
+            return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        }
+        return cleanName.slice(0, 2).toUpperCase();
+    }
+
+    // Column Drag & Drop Reordering
+    function dragColumn(ev) {
+        const columnEl = ev.target.closest('.kanban-column');
+        if (columnEl) {
+            ev.dataTransfer.setData("column_id", columnEl.id);
+        }
+    }
+
+    function allowDropColumn(ev) {
+        ev.preventDefault();
+    }
+
+    function dropColumn(ev, targetColumnId) {
+        ev.preventDefault();
+        const sourceColIdStr = ev.dataTransfer.getData("column_id");
+        if (!sourceColIdStr) return; // Not dragging a column
+        
+        const sourceColEl = document.getElementById(sourceColIdStr);
+        const targetColEl = document.getElementById(`col-${targetColumnId}`);
+        
+        if (sourceColEl && targetColEl && sourceColEl !== targetColEl) {
+            const container = sourceColEl.parentElement;
+            const children = Array.from(container.children);
+            const sourceIndex = children.indexOf(sourceColEl);
+            const targetIndex = children.indexOf(targetColEl);
+            
+            if (sourceIndex < targetIndex) {
+                container.insertBefore(sourceColEl, targetColEl.nextSibling);
+            } else {
+                container.insertBefore(sourceColEl, targetColEl);
+            }
+            
+            const columnOrderIds = Array.from(container.querySelectorAll('.kanban-column'))
+                .map(col => parseInt(col.id.replace('col-', '')))
+                .filter(id => !isNaN(id));
+                
+            fetch("{% url 'boards:api_move_column' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    column_order_ids: columnOrderIds
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) {
+                    console.error("Erro ao mover coluna:", data.error);
+                    alert("Não foi possível salvar a ordenação das colunas.");
+                    location.reload();
+                }
+            })
+            .catch(err => {
+                console.error("Erro de conexão ao reordenar colunas:", err);
+                location.reload();
+            });
+        }
+    }
+
+    // Global variables for Add Task Modal members selection
+    let addCardSelect = null;
+    let addCardCollaborators = [];
+    
+    function updateAddCardDisplay() {
+        if (!addCardSelect) return;
+        const selectedContainer = document.getElementById('addCardSelectedMembersContainer');
+        const noMembersText = document.getElementById('addCardNoMembersText');
+        if (!selectedContainer || !noMembersText) return;
+        
+        // Remove previous tags
+        const selectedTags = selectedContainer.querySelectorAll('.selected-member-tag');
+        selectedTags.forEach(el => el.remove());
+
+        let hasSelected = false;
+        
+        addCardCollaborators.forEach(colab => {
+            const option = Array.from(addCardSelect.options).find(opt => parseInt(opt.value) === colab.id);
+            if (option) {
+                option.selected = colab.selected;
+            }
+
+            if (colab.selected) {
+                hasSelected = true;
+                const initials = getConfigInitials(colab.name);
+                
+                const tag = document.createElement('div');
+                tag.className = 'badge bg-white text-dark border p-2 d-inline-flex align-items-center gap-2 shadow-sm rounded-pill selected-member-tag';
+                tag.style.fontWeight = '500';
+                tag.style.fontSize = '0.85rem';
+                tag.innerHTML = `
+                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 24px; height: 24px; font-size: 0.7rem; font-weight: 600;">
+                        ${initials}
+                    </div>
+                    <span>${colab.name.replace(/\(\d+\)/g, '').trim()}</span>
+                    <button type="button" class="btn-close ms-1" style="font-size: 0.65rem;"></button>
+                `;
+                
+                tag.querySelector('.btn-close').addEventListener('click', function() {
+                    colab.selected = false;
+                    updateAddCardDisplay();
+                });
+                
+                selectedContainer.appendChild(tag);
+            }
+        });
+
+        if (hasSelected) {
+            noMembersText.style.display = 'none';
+        } else {
+            noMembersText.style.display = 'block';
+        }
+    }
+
+    // Global variables for Detail/Edit Task Modal members selection
+    let detailCardSelect = null;
+    let detailCardCollaborators = [];
+    
+    function updateDetailCardDisplay() {
+        if (!detailCardSelect) return;
+        const selectedContainer = document.getElementById('detailCardSelectedMembersContainer');
+        const noMembersText = document.getElementById('detailCardNoMembersText');
+        if (!selectedContainer || !noMembersText) return;
+        
+        // Remove previous tags
+        const selectedTags = selectedContainer.querySelectorAll('.selected-member-tag');
+        selectedTags.forEach(el => el.remove());
+
+        let hasSelected = false;
+        
+        detailCardCollaborators.forEach(colab => {
+            const option = Array.from(detailCardSelect.options).find(opt => parseInt(opt.value) === colab.id);
+            if (option) {
+                option.selected = colab.selected;
+            }
+
+            if (colab.selected) {
+                hasSelected = true;
+                const initials = getConfigInitials(colab.name);
+                
+                const tag = document.createElement('div');
+                tag.className = 'badge bg-white text-dark border p-2 d-inline-flex align-items-center gap-2 shadow-sm rounded-pill selected-member-tag';
+                tag.style.fontWeight = '500';
+                tag.style.fontSize = '0.85rem';
+                tag.innerHTML = `
+                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 24px; height: 24px; font-size: 0.7rem; font-weight: 600;">
+                        ${initials}
+                    </div>
+                    <span>${colab.name.replace(/\(\d+\)/g, '').trim()}</span>
+                    <button type="button" class="btn-close ms-1" style="font-size: 0.65rem;"></button>
+                `;
+                
+                tag.querySelector('.btn-close').addEventListener('click', function() {
+                    colab.selected = false;
+                    updateDetailCardDisplay();
+                });
+                
+                selectedContainer.appendChild(tag);
+            }
+        });
+
+        if (hasSelected) {
+            noMembersText.style.display = 'none';
+        } else {
+            noMembersText.style.display = 'block';
+        }
+    }
     function drag(ev) {
         ev.dataTransfer.setData("text", ev.target.id);
     }
@@ -743,14 +981,32 @@
         ev.preventDefault();
     }
 
-    function drop(ev, columnId) {
+    function drop(ev, columnId, subsectionId = null) {
         ev.preventDefault();
         const cardIdStr = ev.dataTransfer.getData("text");
+        // Check if dragging column or card
+        if (cardIdStr && cardIdStr.startsWith('col-')) {
+            return;
+        }
+        
         const cardEl = document.getElementById(cardIdStr);
-        const targetContainer = document.getElementById(`cards-col-${columnId}`);
+        
+        // Find target container
+        let targetContainer = null;
+        if (subsectionId) {
+            targetContainer = document.getElementById(`cards-col-${columnId}-sub-${subsectionId}`);
+        } else {
+            const unclassifiedContainer = document.getElementById(`cards-col-${columnId}-unclassified`);
+            if (unclassifiedContainer) {
+                targetContainer = unclassifiedContainer;
+            } else {
+                targetContainer = document.getElementById(`cards-col-${columnId}`);
+            }
+        }
         
         if (cardEl && targetContainer) {
-            const isConcluida = targetContainer.getAttribute('data-is-concluida') === 'true';
+            const mainContainer = document.getElementById(`cards-col-${columnId}`);
+            const isConcluida = mainContainer.getAttribute('data-is-concluida') === 'true';
             const periodicidade = cardEl.getAttribute('data-periodicidade');
             const periodicidadeLabel = cardEl.getAttribute('data-periodicidade-label');
             
@@ -759,10 +1015,10 @@
                 recreate = confirm(`Esta atividade possui periodicidade (${periodicidadeLabel}). Gostaria de reaplicar a atividade de acordo com o período e recriá-la?`);
             }
 
-            // Adiciona o cartão ao container da coluna destino
+            // Adiciona o cartão ao container da coluna/subsection destino
             targetContainer.appendChild(cardEl);
             
-            // Pega a lista ordenada de cartões na coluna destino
+            // Pega a lista ordenada de cartões no container destino
             const cardOrderIds = Array.from(targetContainer.querySelectorAll('.kanban-card')).map(card => {
                 return parseInt(card.id.replace('card-', ''));
             });
@@ -779,6 +1035,7 @@
                 body: JSON.stringify({
                     card_id: cardId,
                     to_column_id: columnId,
+                    to_subsection_id: subsectionId,
                     card_order_ids: cardOrderIds,
                     recreate: recreate
                 })
@@ -809,6 +1066,39 @@
         form.action = `/boards/colunas/${columnId}/cartoes/novo/`;
         document.getElementById('addCardModalTitle').textContent = `Adicionar Tarefa em: ${columnName}`;
         
+        // Reset form inputs
+        form.reset();
+        
+        // Populate sub-sections select
+        const subSelect = form.querySelector('select[name="subsecao"]');
+        if (subSelect) {
+            subSelect.innerHTML = '<option value="">Nenhuma (Geral)</option>';
+            const subsecoes = COLUMN_SUBSECTIONS[columnId] || [];
+            const subRow = document.getElementById('addCardSubsecaoRow');
+            
+            if (subsecoes.length > 0) {
+                subsecoes.forEach(sub => {
+                    const opt = document.createElement('option');
+                    opt.value = sub.id;
+                    opt.textContent = sub.nome;
+                    subSelect.appendChild(opt);
+                });
+                if (subRow) subRow.style.display = 'flex';
+            } else {
+                if (subRow) subRow.style.display = 'none';
+            }
+        }
+        
+        // Clear search input and search suggestions
+        const addCardSearchInput = document.getElementById('addCardMemberSearchInput');
+        if (addCardSearchInput) addCardSearchInput.value = '';
+        const addCardSuggestions = document.getElementById('addCardSearchSuggestions');
+        if (addCardSuggestions) addCardSuggestions.style.display = 'none';
+        
+        // Reset our selected state for collaborators
+        addCardCollaborators.forEach(colab => colab.selected = false);
+        updateAddCardDisplay();
+        
         const modal = new bootstrap.Modal(document.getElementById('addCardModal'));
         modal.show();
     }
@@ -832,6 +1122,43 @@
             Array.from(respSelect.options).forEach(option => {
                 option.selected = card.responsaveis_ids.includes(parseInt(option.value));
             });
+            
+            // Sync custom autocomplete selection UI
+            if (typeof detailCardCollaborators !== 'undefined' && detailCardCollaborators.length > 0) {
+                detailCardCollaborators.forEach(colab => {
+                    colab.selected = card.responsaveis_ids.includes(colab.id);
+                });
+                updateDetailCardDisplay();
+            }
+            
+            // Populate and select sub-section dropdown
+            const subSelect = document.getElementById('cardDetailSubsecao');
+            if (subSelect) {
+                subSelect.innerHTML = '<option value="">Nenhuma (Geral)</option>';
+                const subsecoes = COLUMN_SUBSECTIONS[card.coluna_id] || [];
+                const subContainer = document.getElementById('detailCardSubsecaoContainer');
+                
+                if (subsecoes.length > 0) {
+                    subsecoes.forEach(sub => {
+                        const opt = document.createElement('option');
+                        opt.value = sub.id;
+                        opt.textContent = sub.nome;
+                        if (parseInt(sub.id) === card.subsecao_id) {
+                            opt.selected = true;
+                        }
+                        subSelect.appendChild(opt);
+                    });
+                    if (subContainer) subContainer.style.display = 'block';
+                } else {
+                    if (subContainer) subContainer.style.display = 'none';
+                }
+            }
+            
+            // Clear search input and suggestions
+            const detailCardSearchInput = document.getElementById('detailCardMemberSearchInput');
+            if (detailCardSearchInput) detailCardSearchInput.value = '';
+            const detailCardSuggestions = document.getElementById('detailCardSearchSuggestions');
+            if (detailCardSuggestions) detailCardSuggestions.style.display = 'none';
             
             document.getElementById('cardDetailPriority').value = card.prioridade;
             document.getElementById('cardDetailDueDate').value = card.data_entrega;
@@ -1031,6 +1358,10 @@
         const dueDate = document.getElementById('cardDetailDueDate').value;
         const periodicidade = document.getElementById('cardDetailPeriodicidade').value;
         
+        // Subsection ID
+        const subSelect = document.getElementById('cardDetailSubsecao');
+        const subsecaoId = subSelect ? (subSelect.value || null) : null;
+        
         fetch(`/boards/cartoes/${activeCardId}/detalhes/`, {
             method: 'POST',
             headers: {
@@ -1042,7 +1373,8 @@
                 responsaveis_ids: respIds,
                 prioridade: priority,
                 data_entrega: dueDate,
-                periodicidade: periodicidade
+                periodicidade: periodicidade,
+                subsecao_id: subsecaoId
             })
         })
         .then(res => res.json())
@@ -1211,6 +1543,168 @@
         }
         
         // ============================================
+        // ADD CARD MEMBERS SELECT
+        // ============================================
+        addCardSelect = document.querySelector('#addCardForm select[name="responsaveis"]');
+        if (addCardSelect) {
+            addCardCollaborators = [];
+            Array.from(addCardSelect.options).forEach(opt => {
+                addCardCollaborators.push({
+                    id: parseInt(opt.value),
+                    name: opt.text.trim(),
+                    selected: opt.selected
+                });
+            });
+            
+            const addCardSearchInput = document.getElementById('addCardMemberSearchInput');
+            const addCardSuggestionsContainer = document.getElementById('addCardSearchSuggestions');
+            
+            if (addCardSearchInput && addCardSuggestionsContainer) {
+                addCardSearchInput.addEventListener('input', function() {
+                    const query = addCardSearchInput.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                    addCardSuggestionsContainer.innerHTML = '';
+                    
+                    if (!query) {
+                        addCardSuggestionsContainer.style.display = 'none';
+                        return;
+                    }
+
+                    const filtered = addCardCollaborators.filter(colab => {
+                        const normalizedName = colab.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                        return !colab.selected && normalizedName.includes(query);
+                    });
+
+                    if (filtered.length === 0) {
+                        addCardSuggestionsContainer.innerHTML = '<div class="list-group-item text-muted small">Nenhum colaborador encontrado</div>';
+                        addCardSuggestionsContainer.style.display = 'block';
+                        return;
+                    }
+
+                    filtered.forEach(colab => {
+                        const cleanName = colab.name.replace(/\(\d+\)/g, '').trim();
+                        const initials = getConfigInitials(colab.name);
+                        const item = document.createElement('a');
+                        item.href = '#';
+                        item.className = 'list-group-item list-group-item-action d-flex align-items-center justify-content-between p-2 py-2';
+                        item.innerHTML = `
+                            <div class="d-flex align-items-center">
+                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2" style="width: 30px; height: 30px; font-size: 0.8rem; font-weight: 600;">
+                                    ${initials}
+                                </div>
+                                <div>
+                                    <span class="fw-semibold small text-dark">${cleanName}</span>
+                                </div>
+                            </div>
+                            <span class="badge bg-light text-primary border border-primary-subtle rounded-pill">Adicionar</span>
+                        `;
+                        
+                        item.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            colab.selected = true;
+                            addCardSearchInput.value = '';
+                            addCardSuggestionsContainer.style.display = 'none';
+                            updateAddCardDisplay();
+                            addCardSearchInput.focus();
+                        });
+                        
+                        addCardSuggestionsContainer.appendChild(item);
+                    });
+
+                    addCardSuggestionsContainer.style.display = 'block';
+                });
+
+                document.addEventListener('click', function(e) {
+                    if (!addCardSearchInput.contains(e.target) && !addCardSuggestionsContainer.contains(e.target)) {
+                        addCardSuggestionsContainer.style.display = 'none';
+                    }
+                });
+            }
+            
+            updateAddCardDisplay();
+        }
+
+        // ============================================
+        // DETAIL CARD MEMBERS SELECT
+        // ============================================
+        detailCardSelect = document.getElementById('cardDetailResp');
+        if (detailCardSelect) {
+            detailCardCollaborators = [];
+            Array.from(detailCardSelect.options).forEach(opt => {
+                detailCardCollaborators.push({
+                    id: parseInt(opt.value),
+                    name: opt.text.trim(),
+                    selected: opt.selected
+                });
+            });
+            
+            const detailCardSearchInput = document.getElementById('detailCardMemberSearchInput');
+            const detailCardSuggestionsContainer = document.getElementById('detailCardSearchSuggestions');
+            
+            if (detailCardSearchInput && detailCardSuggestionsContainer) {
+                detailCardSearchInput.addEventListener('input', function() {
+                    const query = detailCardSearchInput.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                    detailCardSuggestionsContainer.innerHTML = '';
+                    
+                    if (!query) {
+                        detailCardSuggestionsContainer.style.display = 'none';
+                        return;
+                    }
+
+                    const filtered = detailCardCollaborators.filter(colab => {
+                        const normalizedName = colab.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                        return !colab.selected && normalizedName.includes(query);
+                    });
+
+                    if (filtered.length === 0) {
+                        detailCardSuggestionsContainer.innerHTML = '<div class="list-group-item text-muted small">Nenhum colaborador encontrado</div>';
+                        detailCardSuggestionsContainer.style.display = 'block';
+                        return;
+                    }
+
+                    filtered.forEach(colab => {
+                        const cleanName = colab.name.replace(/\(\d+\)/g, '').trim();
+                        const initials = getConfigInitials(colab.name);
+                        const item = document.createElement('a');
+                        item.href = '#';
+                        item.className = 'list-group-item list-group-item-action d-flex align-items-center justify-content-between p-2 py-2';
+                        item.innerHTML = `
+                            <div class="d-flex align-items-center">
+                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2" style="width: 30px; height: 30px; font-size: 0.8rem; font-weight: 600;">
+                                    ${initials}
+                                </div>
+                                <div>
+                                    <span class="fw-semibold small text-dark">${cleanName}</span>
+                                </div>
+                            </div>
+                            <span class="badge bg-light text-primary border border-primary-subtle rounded-pill">Adicionar</span>
+                        `;
+                        
+                        item.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            colab.selected = true;
+                            detailCardSearchInput.value = '';
+                            detailCardSuggestionsContainer.style.display = 'none';
+                            updateDetailCardDisplay();
+                            detailCardSearchInput.focus();
+                        });
+                        
+                        detailCardSuggestionsContainer.appendChild(item);
+                    });
+
+                    detailCardSuggestionsContainer.style.display = 'block';
+                });
+
+                document.addEventListener('click', function(e) {
+                    if (!detailCardSearchInput.contains(e.target) && !detailCardSuggestionsContainer.contains(e.target)) {
+                        detailCardSuggestionsContainer.style.display = 'none';
+                    }
+                });
+            }
+            
+            updateDetailCardDisplay();
+        }
+
+        // ============================================
         // BOARD CONFIGURATION MEMBERS SELECT
         // ============================================
         const configSelect = document.querySelector('#boardConfigModal select[name="membros"]');
@@ -1273,14 +1767,7 @@
                 }
             }
 
-            function getConfigInitials(name) {
-                const cleanName = name.replace(/\(\d+\)/g, '').trim();
-                const parts = cleanName.split(' ');
-                if (parts.length >= 2) {
-                    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-                }
-                return cleanName.slice(0, 2).toUpperCase();
-            }
+
 
             configSearchInput.addEventListener('input', function() {
                 const query = configSearchInput.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
