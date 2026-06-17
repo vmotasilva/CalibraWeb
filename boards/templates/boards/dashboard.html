@@ -213,12 +213,26 @@
         <!-- ABA 3: ACTIONS TABLE VIEW -->
         <div class="tab-pane fade" id="actions-table-view" role="tabpanel">
             <div class="card border-0 shadow-sm p-4" style="border-radius: 12px;">
-                <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-4">
+                <div class="d-flex flex-column flex-xl-row justify-content-between align-items-xl-center gap-3 mb-4">
                     <h5 class="fw-bold mb-0"><i class="bi bi-table text-primary me-2"></i>Geral de Ações e Atividades</h5>
-                    <!-- Campo de busca rápida na tabela de ações gerais -->
-                    <div class="input-group" style="max-width: 300px;">
-                        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                        <input type="search" id="actionsSearchInput" class="form-control border-start-0" placeholder="Buscar ações/tarefas..." oninput="filterActionsTableView()" autocomplete="new-password">
+                    <!-- Filtros na Tabela -->
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <select id="actionsFilterBoard" class="form-select form-select-sm" style="width: 170px;" onchange="filterActionsTableView()">
+                            <option value="">Quadros: Todos</option>
+                            {% for b in quadros_list %}
+                            <option value="{{ b.nome }}">{{ b.nome }}</option>
+                            {% endfor %}
+                        </select>
+                        <select id="actionsFilterPrior" class="form-select form-select-sm" style="width: 140px;" onchange="filterActionsTableView()">
+                            <option value="">Prioridade: Todas</option>
+                            <option value="Alta">Alta</option>
+                            <option value="Média">Média</option>
+                            <option value="Baixa">Baixa</option>
+                        </select>
+                        <div class="input-group input-group-sm" style="max-width: 250px;">
+                            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                            <input type="search" id="actionsSearchInput" class="form-control border-start-0" placeholder="Buscar ações/tarefas..." oninput="filterActionsTableView()" readonly onfocus="this.removeAttribute('readonly');" autocomplete="new-password">
+                        </div>
                     </div>
                 </div>
                 
@@ -333,7 +347,7 @@
                         <label class="form-label fw-bold text-dark"><i class="bi bi-search me-1"></i>Buscar Colaboradores</label>
                         <div class="input-group shadow-sm" style="border-radius: 8px; overflow: hidden;">
                             <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                            <input type="text" id="memberSearchInput" class="form-control border-start-0" placeholder="Digite o nome para buscar..." autocomplete="off">
+                            <input type="search" id="memberSearchInput" class="form-control border-start-0" placeholder="Digite o nome para buscar..." readonly onfocus="this.removeAttribute('readonly');" autocomplete="new-password">
                         </div>
                         <div id="searchSuggestions" class="list-group position-absolute w-100 shadow-lg mt-1 overflow-auto" style="max-height: 200px; z-index: 1050; display: none;">
                             <!-- Sugestões carregadas via JS -->
@@ -519,22 +533,36 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function filterActionsTableView() {
     const input = document.getElementById('actionsSearchInput');
-    if (!input) return;
-    const filter = input.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const filterText = input ? input.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
+    
+    const filterBoard = document.getElementById('actionsFilterBoard') ? document.getElementById('actionsFilterBoard').value : "";
+    const filterPrior = document.getElementById('actionsFilterPrior') ? document.getElementById('actionsFilterPrior').value : "";
+    
     const rows = document.querySelectorAll('#globalActionsTable tbody tr');
     
     rows.forEach(row => {
         if (row.cells.length <= 1) return;
-        let match = false;
+        
+        // 1. Text Search Match
+        let textMatch = false;
         for (let i = 0; i < row.cells.length - 1; i++) {
             const text = row.cells[i].textContent || row.cells[i].innerText;
             const normalized = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            if (normalized.includes(filter)) {
-                match = true;
+            if (normalized.includes(filterText)) {
+                textMatch = true;
                 break;
             }
         }
-        if (match) {
+        
+        // 2. Board Match (index 1)
+        const boardText = row.cells[1].textContent.trim();
+        const boardMatch = !filterBoard || boardText === filterBoard;
+        
+        // 3. Priority Match (index 6)
+        const priorText = row.cells[6].textContent.trim();
+        const priorMatch = !filterPrior || priorText === filterPrior;
+        
+        if (textMatch && boardMatch && priorMatch) {
             row.style.display = '';
         } else {
             row.style.display = 'none';
