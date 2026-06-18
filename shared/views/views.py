@@ -368,6 +368,13 @@ def hub_view(request):
                     "view_name": "rh:gestao_ferias",
                 },
                 {
+                    "id": "rh-horas-extras",
+                    "label": "Planejamento de Horas Extras",
+                    "description": "Programar e acompanhar as horas extras convocadas.",
+                    "icon": "bi-clock-history",
+                    "view_name": "rh:planejamento_hora_extra_list",
+                },
+                {
                     "id": "rh-usuarios",
                     "label": "Usuários do sistema",
                     "description": "Administrar acessos e permissões.",

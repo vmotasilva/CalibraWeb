@@ -342,6 +342,16 @@
                             {% endif %}
                         {% endif %}
 
+                        {% can_nav_block user 'rh' 'horas_extras' as nav_pe_horas_extras %}
+                        {% if nav_pe_horas_extras %}
+                            {% can_nav_view user 'rh:planejamento_hora_extra_list' 'rh' as nav_pe_he_list %}
+                            {% if nav_pe_he_list %}
+                                <li><h6 class="dropdown-header text-muted">HORAS EXTRAS</h6></li>
+                                <li><a class="dropdown-item" href="{% url 'rh:planejamento_hora_extra_list' %}"><i class="bi bi-clock-history"></i> Planejamento de Horas Extras</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                            {% endif %}
+                        {% endif %}
+
                         {% can_nav_block user 'rh' 'importacao' as nav_pe_import %}
                         {% if nav_pe_import %}
                             {% can_nav_view user 'qms:importar_colaboradores' 'rh' as nav_pe_imp_p %}

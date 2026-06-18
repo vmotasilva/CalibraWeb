@@ -44,6 +44,10 @@ MODULES_PERMISSIONS = {
             'change_ocorrencia',
             'delete_ocorrencia',
             'view_ocorrencia',
+            'add_planejamentohoraextra',
+            'change_planejamentohoraextra',
+            'delete_planejamentohoraextra',
+            'view_planejamentohoraextra',
         ]
     },
     'procurements': {
@@ -583,6 +587,23 @@ NAV_STRUCTURE = [
                 ],
             },
             {
+                "key": "horas_extras",
+                "nome": "HORAS EXTRAS",
+                "perm": "core.nav_pessoas_horas_extras",
+                "funcoes": [
+                    {
+                        "nome": "Planejamento de Horas Extras",
+                        "view_name": [
+                            "rh:planejamento_hora_extra_list",
+                            "rh:planejamento_hora_extra_create",
+                            "rh:planejamento_hora_extra_edit",
+                            "rh:planejamento_hora_extra_delete"
+                        ],
+                        "perm": "core.nav_pessoas_horas_extras_list"
+                    }
+                ]
+            },
+            {
                 "key": "importacao",
                 "nome": "IMPORTAÇÃO",
                 "perm": "core.nav_pessoas_importacao",
@@ -1071,7 +1092,7 @@ def setup_module_groups():
         # Ex.: o módulo legado `procurements` pode não existir após a unificação em `procedures`.
         if not apps.is_installed(module_key):
             print(
-                f"⚠️  Módulo não instalado: {module_key}. "
+                f"[Aviso] Módulo não instalado: {module_key}. "
                 f"Pulando criação/atualização do grupo '{module_info['name']}'."
             )
             continue
@@ -1091,9 +1112,9 @@ def setup_module_groups():
                 )
                 group.permissions.add(perm)
             except (Permission.DoesNotExist, ValueError):
-                print(f"⚠️  Permissão não encontrada: {module_key}.{perm_codename}")
+                print(f"[Aviso] Permissão não encontrada: {module_key}.{perm_codename}")
         
-        status = "✓ Criado" if created else "✓ Atualizado"
+        status = "[Criado]" if created else "[Atualizado]"
         print(f"{status}: Grupo '{group.name}' com {group.permissions.count()} permissões")
 
 def get_module_key(view_module):

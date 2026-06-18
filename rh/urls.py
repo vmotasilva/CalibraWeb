@@ -33,7 +33,12 @@ from rh.views.views import (
     api_listar_usuarios_permissoes,
     api_copiar_permissoes,
     atualizar_liderancas_em_massa,
+    planejamento_hora_extra_list_view,
+    planejamento_hora_extra_create_view,
+    planejamento_hora_extra_update_view,
+    planejamento_hora_extra_delete_view,
 )
+
 
 app_name = 'rh'
 
@@ -83,4 +88,9 @@ urlpatterns = [
     path('api/usuarios/vincular-colaborador/', api_vincular_colaborador, name='api_vincular_colaborador'),
     path('api/colaboradores-sem-vinculo/', api_colaboradores_sem_vinculo, name='api_colaboradores_sem_vinculo'),
     path('api/usuarios/criar/', api_criar_usuario, name='api_criar_usuario'),
+    # Planejamento de Horas Extras
+    path('horas-extras/', planejamento_hora_extra_list_view, name='planejamento_hora_extra_list'),
+    path('horas-extras/criar/', planejamento_hora_extra_create_view, name='planejamento_hora_extra_create'),
+    path('horas-extras/<int:plan_id>/editar/', planejamento_hora_extra_update_view, name='planejamento_hora_extra_edit'),
+    path('horas-extras/<int:plan_id>/excluir/', planejamento_hora_extra_delete_view, name='planejamento_hora_extra_delete'),
 ]

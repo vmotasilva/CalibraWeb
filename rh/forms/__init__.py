@@ -11,6 +11,7 @@ from .forms import (
     ImportacaoHierarquiaForm,
     ImportacaoFeriasForm,
     FeriasForm,
+    PlanejamentoHoraExtraForm,
 )
 
 __all__ = [
@@ -20,4 +21,6 @@ __all__ = [
     'ImportacaoHierarquiaForm',
     'ImportacaoFeriasForm',
     'FeriasForm',
+    'PlanejamentoHoraExtraForm',
 ]
+

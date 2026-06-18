@@ -223,6 +223,7 @@ class NavigationPermission(models.Model):
             # --- PESSOAS: blocos ---
             ("nav_pessoas_equipe", "NAV: Pessoas / Bloco Equipe"),
             ("nav_pessoas_importacao", "NAV: Pessoas / Bloco Importação"),
+            ("nav_pessoas_horas_extras", "NAV: Pessoas / Bloco Horas Extras"),
 
             # --- PESSOAS: funções ---
             ("nav_pessoas_colaboradores", "NAV: Pessoas / Colaboradores"),
@@ -243,6 +244,7 @@ class NavigationPermission(models.Model):
             ("nav_pessoas_api_delete_colaboradores_multiple", "NAV: Pessoas / Deletar Colaboradores em Massa (API)"),
             ("nav_pessoas_importar_pessoas", "NAV: Pessoas / Importar Pessoas"),
             ("nav_pessoas_importar_hierarquia", "NAV: Pessoas / Importar Hierarquia"),
+            ("nav_pessoas_horas_extras_list", "NAV: Pessoas / Planejamento de Horas Extras"),
 
             # --- AÇÕES CORRETIVAS: blocos ---
             ("nav_acoes_registro", "NAV: Ações Corretivas / Bloco Registro e Solução"),

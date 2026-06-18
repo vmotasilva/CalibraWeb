@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-md-10">
+            <!-- Breadcrumbs / Back button -->
+            <div class="mb-3">
+                <a href="{% url 'rh:planejamento_hora_extra_list' %}" class="text-decoration-none text-secondary small fw-semibold">
+                    <i class="bi bi-arrow-left"></i> Voltar para a listagem
+                </a>
+            </div>
+
+            <!-- Form Card -->
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-primary text-white py-3 px-4">
+                    <h4 class="mb-0 fw-bold"><i class="bi bi-clock-history"></i> {{ titulo }}</h4>
+                </div>
+                <div class="card-body p-4 bg-light bg-opacity-25">
+                    <form method="POST" id="planejamentoForm" novalidate>
+                        {% csrf_token %}
+
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger shadow-sm mb-3">
+                                {% for error in form.non_field_errors %}
+                                    <div class="small">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+
+                        <!-- Data & Duração -->
+                        <div class="row mb-3">
+                            <div class="col-md-6 mb-3 mb-md-0">
+                                <label for="{{ form.data.id_for_label }}" class="form-label fw-semibold text-secondary">
+                                    <i class="bi bi-calendar-event me-1"></i>Data do Planejamento
+                                </label>
+                                {{ form.data }}
+                                {% if form.data.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {{ form.data.errors }}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text text-muted small">Dia em que as horas extras serão realizadas.</div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.horas_extras_str.id_for_label }}" class="form-label fw-semibold text-secondary">
+                                    <i class="bi bi-stopwatch me-1"></i>Duração de Horas Extras
+                                </label>
+                                {{ form.horas_extras_str }}
+                                {% if form.horas_extras_str.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {{ form.horas_extras_str.errors }}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text text-muted small">Digite o tempo no formato <strong>hh:mm:ss</strong> ou <strong>hh:mm</strong> (Ex: 02:30:00).</div>
+                            </div>
+                        </div>
+
+                        <!-- Motivo -->
+                        <div class="mb-4">
+                            <label for="{{ form.motivo.id_for_label }}" class="form-label fw-semibold text-secondary">
+                                <i class="bi bi-chat-left-text me-1"></i>Motivo / Justificativa
+                            </label>
+                            {{ form.motivo }}
+                            {% if form.motivo.errors %}
+                                <div class="text-danger small mt-1">
+                                    {{ form.motivo.errors }}
+                                </div>
+                            {% endif %}
+                            <div class="form-text text-muted small">Explique brevemente a necessidade da convocação (Ex: Fechamento de Balanço).</div>
+                        </div>
+
+                        <!-- Colaboradores Convocados (Custom Checklist UI) -->
+                        <div class="mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label fw-semibold text-secondary mb-0">
+                                    <i class="bi bi-people me-1"></i>Colaboradores Convocados
+                                </label>
+                                <div class="small">
+                                    <button type="button" class="btn btn-link btn-sm text-decoration-none p-0 me-2 fw-semibold" onclick="selectAllColaboradores(true)">
+                                        Selecionar todos
+                                    </button>
+                                    <span class="text-muted">|</span>
+                                    <button type="button" class="btn btn-link btn-sm text-decoration-none p-0 ms-2 fw-semibold text-secondary" onclick="selectAllColaboradores(false)">
+                                        Limpar
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Search Filter Input -->
+                            <div class="input-group mb-2">
+                                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                                <input type="text" id="colabSearch" class="form-control border-start-0" placeholder="Buscar colaborador pelo nome ou cargo..." onkeyup="filterColaboradores()">
+                            </div>
+
+                            <!-- Checkbox List Wrapper -->
+                            <div class="border rounded shadow-sm bg-white" style="max-height: 280px; overflow-y: auto; box-sizing: border-box;">
+                                <div class="p-2" id="colaboradoresList">
+                                    {% for colab in form.fields.colaboradores.queryset %}
+                                        <div class="form-check py-1 px-3 border-bottom colab-item" style="transition: background-color 0.2s;">
+                                            <input class="form-check-input colab-checkbox" type="checkbox" name="colaboradores" value="{{ colab.id }}" id="colab_chk_{{ colab.id }}" 
+                                                {% if colab.id in selected_ids %}checked{% endif %}>
+                                            <label class="form-check-label w-100 ps-1" style="cursor: pointer;" for="colab_chk_{{ colab.id }}">
+                                                <span class="fw-semibold text-dark">{{ colab.nome_completo }}</span>
+                                                {% if colab.cargo %}
+                                                    <span class="text-muted small ms-1">({{ colab.cargo }})</span>
+                                                {% endif %}
+                                                {% if colab.setor %}
+                                                    <span class="badge bg-light text-secondary border small ms-1" style="font-size:0.75rem;">{{ colab.setor.nome }}</span>
+                                                {% endif %}
+                                            </label>
+                                        </div>
+                                    {% empty %}
+                                        <div class="text-center py-4 text-muted">
+                                            <i class="bi bi-people display-6 mb-2 d-block"></i>
+                                            <small>Nenhum colaborador disponível para seleção.</small>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% if form.colaboradores.errors %}
+                                <div class="text-danger small mt-1">
+                                    {{ form.colaboradores.errors }}
+                                </div>
+                            {% endif %}
+                            <div class="form-text text-muted small mt-1">Selecione os colaboradores que participarão do período de hora extra planejado. Use o campo de busca para filtrar rapidamente.</div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex justify-content-end gap-2 border-top pt-3 mt-4">
+                            <a href="{% url 'rh:planejamento_hora_extra_list' %}" class="btn btn-outline-secondary px-4">
+                                Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary px-4 shadow-sm">
+                                <i class="bi bi-check-circle me-1"></i>Salvar Planejamento
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function filterColaboradores() {
+        const query = document.getElementById('colabSearch').value.toLowerCase().trim();
+        const items = document.getElementsByClassName('colab-item');
+        
+        for (let i = 0; i < items.length; i++) {
+            const label = items[i].getElementsByTagName('label')[0].textContent.toLowerCase();
+            if (label.includes(query)) {
+                items[i].style.setProperty('display', 'block', 'important');
+            } else {
+                items[i].style.setProperty('display', 'none', 'important');
+            }
+        }
+    }
+
+    function selectAllColaboradores(value) {
+        // Obter apenas os checkboxes que estão visíveis no momento
+        const items = document.getElementsByClassName('colab-item');
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].style.display !== 'none') {
+                const chk = items[i].getElementsByClassName('colab-checkbox')[0];
+                if (chk) {
+                    chk.checked = value;
+                }
+            }
+        }
+    }
+
+    // Adiciona efeito visual hover na linha
+    document.addEventListener('DOMContentLoaded', function() {
+        const items = document.getElementsByClassName('colab-item');
+        for (let i = 0; i < items.length; i++) {
+            items[i].addEventListener('mouseenter', function() {
+                this.style.backgroundColor = '#f8f9fa';
+            });
+            items[i].addEventListener('mouseleave', function() {
+                this.style.backgroundColor = 'transparent';
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -500,3 +500,31 @@ class HistoricoColaborador(models.Model):
         verbose_name = "Histórico de Colaborador"
         verbose_name_plural = "Histórico Geral de Colaboradores"
         ordering = ["-data_mudanca"]
+
+
+class PlanejamentoHoraExtra(models.Model):
+    data = models.DateField(verbose_name="Data do Planejamento")
+    motivo = models.CharField(max_length=255, verbose_name="Motivo")
+    horas_extras = models.DurationField(verbose_name="Horas Extras")
+    colaboradores = models.ManyToManyField(
+        Colaborador,
+        related_name="planejamentos_hora_extra",
+        verbose_name="Colaboradores convocados"
+    )
+    criado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Criado por"
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Planejamento de Hora Extra"
+        verbose_name_plural = "Planejamentos de Horas Extras"
+        ordering = ["-data", "-id"]
+
+    def __str__(self):
+        return f"Planejamento #{self.id} - {self.data.strftime('%d/%m/%Y')} ({self.motivo})"
+

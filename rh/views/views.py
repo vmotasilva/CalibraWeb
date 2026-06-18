@@ -21,12 +21,12 @@ import secrets
 logger = logging.getLogger(__name__)
 
 # Imports dos models
-from rh.models import Colaborador, Ocorrencia, Ferias
+from rh.models import Colaborador, Ocorrencia, Ferias, PlanejamentoHoraExtra
 from organization.models import Setor, CentroCusto, HierarquiaSetor
 from procedures.models import ColaboradorPerfil, PerfilTreinamento, RegistroTreinamento
 
 # Imports dos forms
-from rh.forms import ColaboradorForm, OcorrenciaForm, FeriasForm
+from rh.forms import ColaboradorForm, OcorrenciaForm, FeriasForm, PlanejamentoHoraExtraForm
 
 # Imports dos helpers
 from qms.views_helpers import get_all_subordinates, get_colaborador_for_user
@@ -3333,4 +3333,140 @@ def atualizar_liderancas_em_massa(request):
     }
     
     return render(request, 'rh/atualizar_liderancas_em_massa.html', context)
+
+
+@login_required
+def planejamento_hora_extra_list_view(request):
+    colaboradores_acessiveis = get_colaboradores_acessiveis(request.user)
+    
+    # Restringe a visualização aos planejamentos que contêm pelo menos um colaborador acessível
+    queryset = PlanejamentoHoraExtra.objects.filter(colaboradores__in=colaboradores_acessiveis).distinct()
+    
+    # Filtros
+    busca = request.GET.get('busca', '').strip()
+    if busca:
+        queryset = queryset.filter(motivo__icontains=busca)
+        
+    data_inicio = request.GET.get('data_inicio')
+    if data_inicio:
+        queryset = queryset.filter(data__gte=data_inicio)
+        
+    data_fim = request.GET.get('data_fim')
+    if data_fim:
+        queryset = queryset.filter(data__lte=data_fim)
+        
+    colaborador_id = request.GET.get('colaborador_id')
+    if colaborador_id:
+        queryset = queryset.filter(colaboradores__id=colaborador_id)
+        
+    # Ordenação
+    queryset = queryset.order_by('-data', '-id')
+    
+    # Paginação
+    paginator = Paginator(queryset, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    # Calcular totais de horas de forma robusta
+    total_planejamentos_duration = timedelta()
+    total_horas_homem_duration = timedelta()
+    
+    for plan in queryset.prefetch_related('colaboradores'):
+        dura = plan.horas_extras or timedelta()
+        total_planejamentos_duration += dura
+        total_horas_homem_duration += dura * plan.colaboradores.count()
+        
+    def format_td(td):
+        total_seconds = int(td.total_seconds())
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        seconds = total_seconds % 60
+        return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+        
+    total_horas_planejadas = format_td(total_planejamentos_duration)
+    total_horas_homem = format_td(total_horas_homem_duration)
+    
+    # Se houver querystring com filtros, mantemos na paginação
+    params = request.GET.copy()
+    if 'page' in params:
+        del params['page']
+    querystring = params.urlencode()
+    
+    context = {
+        'page_obj': page_obj,
+        'colaboradores': colaboradores_acessiveis.order_by('nome_completo'),
+        'total_horas_planejadas': total_horas_planejadas,
+        'total_horas_homem': total_horas_homem,
+        'total_planejamentos': queryset.count(),
+        'busca': busca,
+        'data_inicio': data_inicio,
+        'data_fim': data_fim,
+        'colaborador_id': colaborador_id,
+        'querystring': querystring,
+    }
+    return render(request, 'rh/planejamento_hora_extra_list.html', context)
+
+
+@login_required
+def planejamento_hora_extra_create_view(request):
+    selected_ids = []
+    if request.method == 'POST':
+        form = PlanejamentoHoraExtraForm(request.POST, usuario_logado=request.user)
+        if form.is_valid():
+            planejamento = form.save(commit=False)
+            planejamento.criado_por = request.user
+            planejamento.save()
+            form.save_m2m()
+            messages.success(request, "Planejamento de hora extra registrado com sucesso!")
+            return redirect('rh:planejamento_hora_extra_list')
+        selected_ids = [int(x) for x in request.POST.getlist('colaboradores') if x.isdigit()]
+    else:
+        form = PlanejamentoHoraExtraForm(usuario_logado=request.user)
+        
+    return render(request, 'rh/planejamento_hora_extra_form.html', {
+        'form': form,
+        'titulo': 'Novo Planejamento de Hora Extra',
+        'selected_ids': selected_ids,
+    })
+
+
+@login_required
+def planejamento_hora_extra_update_view(request, plan_id):
+    colaboradores_acessiveis = get_colaboradores_acessiveis(request.user)
+    planejamento = get_object_or_404(
+        PlanejamentoHoraExtra.objects.filter(colaboradores__in=colaboradores_acessiveis).distinct(),
+        id=plan_id
+    )
+    
+    selected_ids = list(planejamento.colaboradores.values_list('id', flat=True))
+    if request.method == 'POST':
+        form = PlanejamentoHoraExtraForm(request.POST, instance=planejamento, usuario_logado=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Planejamento de hora extra atualizado com sucesso!")
+            return redirect('rh:planejamento_hora_extra_list')
+        selected_ids = [int(x) for x in request.POST.getlist('colaboradores') if x.isdigit()]
+    else:
+        form = PlanejamentoHoraExtraForm(instance=planejamento, usuario_logado=request.user)
+        
+    return render(request, 'rh/planejamento_hora_extra_form.html', {
+        'form': form,
+        'titulo': f'Editar Planejamento #{planejamento.id}',
+        'planejamento': planejamento,
+        'selected_ids': selected_ids,
+    })
+
+
+@require_POST
+@login_required
+def planejamento_hora_extra_delete_view(request, plan_id):
+    colaboradores_acessiveis = get_colaboradores_acessiveis(request.user)
+    planejamento = get_object_or_404(
+        PlanejamentoHoraExtra.objects.filter(colaboradores__in=colaboradores_acessiveis).distinct(),
+        id=plan_id
+    )
+    planejamento.delete()
+    messages.success(request, "Planejamento excluído com sucesso!")
+    return redirect('rh:planejamento_hora_extra_list')
+
 

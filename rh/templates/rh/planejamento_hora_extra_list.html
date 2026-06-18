@@ -1,0 +1,233 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Planejamentos de Horas Extras{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-8">
+            <h1 class="mb-1">
+                <i class="bi bi-clock-history text-primary"></i> Planejamentos de Horas Extras
+            </h1>
+            <p class="text-muted">Gestão e convocação para regime de horas extras</p>
+        </div>
+        <div class="col-md-4">
+            <div class="d-flex flex-wrap gap-2 justify-content-start justify-content-md-end">
+                <a href="{% url 'rh:planejamento_hora_extra_create' %}" class="btn btn-primary shadow-sm">
+                    <i class="bi bi-plus-circle"></i> Novo Planejamento
+                </a>
+                <a href="{% url 'modulo_rh' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Painel de RH
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="row g-3 mb-4">
+        <!-- Total Planejamentos -->
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100 border-start border-primary border-4">
+                <div class="card-body py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="text-muted small uppercase fw-semibold">Total de Registros</div>
+                            <div class="fs-2 fw-bold text-dark mt-1">{{ total_planejamentos }}</div>
+                        </div>
+                        <div class="bg-primary bg-opacity-10 p-3 rounded-circle">
+                            <i class="bi bi-clipboard-check text-primary fs-3"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Total Horas Planejadas -->
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100 border-start border-warning border-4">
+                <div class="card-body py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="text-muted small uppercase fw-semibold">Total Horas Planejadas</div>
+                            <div class="fs-2 fw-bold text-warning mt-1">{{ total_horas_planejadas }}</div>
+                            <div class="text-muted small mt-1">Soma das durações registradas</div>
+                        </div>
+                        <div class="bg-warning bg-opacity-10 p-3 rounded-circle">
+                            <i class="bi bi-hourglass-split text-warning fs-3"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Total Horas-Homem -->
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100 border-start border-success border-4">
+                <div class="card-body py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="text-muted small uppercase fw-semibold">Total Horas-Homem</div>
+                            <div class="fs-2 fw-bold text-success mt-1">{{ total_horas_homem }}</div>
+                            <div class="text-muted small mt-1">Acumulado dos colaboradores</div>
+                        </div>
+                        <div class="bg-success bg-opacity-10 p-3 rounded-circle">
+                            <i class="bi bi-people-fill text-success fs-3"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-4 shadow-sm border-0">
+        <div class="card-body bg-light rounded shadow-inner">
+            <form method="GET" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label for="id_busca" class="form-label small fw-semibold">Termo de Busca (Motivo)</label>
+                    <input type="text" name="busca" id="id_busca" class="form-control" placeholder="Motivo do planejamento..." value="{{ busca }}">
+                </div>
+
+                <div class="col-md-2">
+                    <label for="id_data_inicio" class="form-label small fw-semibold">Data Inicial</label>
+                    <input type="date" name="data_inicio" id="id_data_inicio" class="form-control" value="{{ data_inicio }}">
+                </div>
+
+                <div class="col-md-2">
+                    <label for="id_data_fim" class="form-label small fw-semibold">Data Final</label>
+                    <input type="date" name="data_fim" id="id_data_fim" class="form-control" value="{{ data_fim }}">
+                </div>
+
+                <div class="col-md-3">
+                    <label for="id_colaborador" class="form-label small fw-semibold">Colaborador Convocado</label>
+                    <select name="colaborador_id" id="id_colaborador" class="form-select">
+                        <option value="">Todos os colaboradores</option>
+                        {% for colab in colaboradores %}
+                            <option value="{{ colab.id }}" {% if colaborador_id|add:"0" == colab.id %}selected{% endif %}>
+                                {{ colab.nome_completo }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-2 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary flex-grow-1">
+                        <i class="bi bi-funnel"></i> Filtrar
+                    </button>
+                    <a href="{% url 'rh:planejamento_hora_extra_list' %}" class="btn btn-outline-secondary" title="Limpar Filtros">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabela -->
+    {% if page_obj %}
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light text-secondary">
+                            <tr>
+                                <th style="width: 80px;" class="ps-4">Reg.</th>
+                                <th style="width: 140px;">Data</th>
+                                <th>Motivo</th>
+                                <th style="width: 150px;">Duração</th>
+                                <th>Colaboradores Convocados</th>
+                                <th style="width: 140px;" class="pe-4 text-end">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for plan in page_obj %}
+                            <tr>
+                                <td class="ps-4 fw-semibold text-muted">#{{ plan.id }}</td>
+                                <td class="fw-semibold">{{ plan.data|date:"d/m/Y" }}</td>
+                                <td>
+                                    <div class="fw-semibold text-dark">{{ plan.motivo }}</div>
+                                    {% if plan.criado_por %}
+                                        <small class="text-muted" style="font-size:0.75rem;">Registrado por: {{ plan.criado_por.get_full_name|default:plan.criado_por.username }}</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary px-2.5 py-1.5 fs-7 fw-bold">
+                                        <i class="bi bi-clock me-1"></i>{{ plan.horas_extras }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        {% for colab in plan.colaboradores.all %}
+                                            <span class="badge bg-light text-dark border small" title="{{ colab.cargo|default:'Colaborador' }}">
+                                                {{ colab.nome_completo|truncatechars:20 }}
+                                            </span>
+                                        {% empty %}
+                                            <span class="text-muted small"><em>Nenhum colaborador convocado</em></span>
+                                        {% endfor %}
+                                    </div>
+                                </td>
+                                <td class="pe-4 text-end">
+                                    <div class="d-inline-flex gap-1.5">
+                                        <a href="{% url 'rh:planejamento_hora_extra_edit' plan.id %}" class="btn btn-sm btn-outline-primary" title="Editar">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <form method="POST" action="{% url 'rh:planejamento_hora_extra_delete' plan.id %}" class="d-inline m-0" onsubmit="return confirm('Tem certeza de que deseja excluir este planejamento de horas extras?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Paginação -->
+        {% if page_obj.has_other_pages %}
+        <nav aria-label="Navegação de página" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if querystring %}&{{ querystring }}{% endif %}">Primeira</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if querystring %}&{{ querystring }}{% endif %}">Anterior</a>
+                </li>
+                {% endif %}
+
+                <li class="page-item disabled">
+                    <span class="page-link text-dark fw-semibold">
+                        Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                    </span>
+                </li>
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if querystring %}&{{ querystring }}{% endif %}">Próxima</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if querystring %}&{{ querystring }}{% endif %}">Última</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+    {% else %}
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-clock-history text-muted display-4 mb-3 d-block"></i>
+                <h5 class="fw-semibold text-secondary">Nenhum planejamento encontrado</h5>
+                <p class="text-muted mb-4">Não há registros de planejamentos de horas extras cadastrados com os filtros atuais.</p>
+                <a href="{% url 'rh:planejamento_hora_extra_create' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Cadastrar Primeiro Registro
+                </a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
