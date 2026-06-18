@@ -219,3 +219,19 @@ class BoardActivity(models.Model):
 
     def __str__(self):
         return f"{self.quadro.nome} - {self.descricao}"
+
+
+class CardPlanningDate(models.Model):
+    cartao = models.ForeignKey(Card, on_delete=models.CASCADE, related_name="planejamentos")
+    data = models.DateField(verbose_name="Data")
+    hora_inicio = models.TimeField(blank=True, null=True, verbose_name="Hora de Início")
+    hora_fim = models.TimeField(blank=True, null=True, verbose_name="Hora de Fim")
+
+    class Meta:
+        ordering = ['data', 'hora_inicio']
+        verbose_name = "Planejamento de Data/Hora"
+        verbose_name_plural = "Planejamentos de Data/Hora"
+
+    def __str__(self):
+        return f"{self.cartao.titulo} - {self.data.strftime('%d/%m/%Y')}"
+

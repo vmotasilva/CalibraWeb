@@ -123,7 +123,6 @@ INSTALLED_APPS = [
     "fornecedores.apps.FornecedoresConfig",
     "acoes.apps.AcoesConfig",  # Ações Corretivas/Preventivas
     "auditoria.apps.AuditoriaConfig",
-    "insumos.apps.InsumosConfig",
     "laboratorio.apps.LaboratorioConfig",
     "maquinas",
     "boards.apps.BoardsConfig",

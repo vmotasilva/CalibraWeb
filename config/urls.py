@@ -227,9 +227,6 @@ urlpatterns = [
     # 8b. Auditoria app URLs
     path("auditoria/", include("auditoria.urls")),
 
-    # 8c. Insumos app URLs
-    path("insumos/", include("insumos.urls")),
-
     # 8d. Laboratorio app URLs
     path("laboratorio/maquinas/", include(("maquinas.urls", "maquinas"), namespace="maquinas")),
     path("laboratorio/", include("laboratorio.urls")),

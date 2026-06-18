@@ -224,25 +224,6 @@
                             {% endif %}
                         {% endif %}
 
-                        {% can_nav_view user 'insumos:selecionar_modelo_preenchimento' 'insumos' as nav_ins_novo %}
-                        {% can_nav_view user 'insumos:modelos_list' 'insumos' as nav_ins_modelos %}
-                        {% can_nav_view user 'insumos:perguntas_list' 'insumos' as nav_ins_perg %}
-                        {% can_nav_view user 'insumos:registros_list' 'insumos' as nav_ins_registros %}
-                        {% can_nav_block user 'insumos' 'analise' as nav_ins_an %}
-                        {% if nav_ins_an %}
-                            {% can_nav_view user 'insumos:dashboard' 'insumos' as nav_ins_dash %}
-                        {% endif %}
-                        {% if nav_ins_novo or nav_ins_modelos or nav_ins_perg or nav_ins_registros or nav_ins_dash %}
-                            <li><h6 class="dropdown-header text-muted">INSUMOS</h6></li>
-                            {% if nav_ins_novo %}<li><a class="dropdown-item fw-bold text-success" href="{% url 'insumos:selecionar_modelo_preenchimento' %}"><i class="bi bi-plus-circle me-1"></i>NOVO ACOMPANHAMENTO DE INSUMO</a></li>{% endif %}
-                            {% if nav_ins_modelos %}<li><a class="dropdown-item" href="{% url 'insumos:modelos_list' %}">Cadastros de Insumos</a></li>{% endif %}
-                            {% if nav_ins_modelos %}<li><a class="dropdown-item" href="{% url 'insumos:categorias_list' %}">Categorias de Insumos</a></li>{% endif %}
-                            {% if nav_ins_perg %}<li><a class="dropdown-item" href="{% url 'insumos:perguntas_list' %}">Critérios de Acompanhamento</a></li>{% endif %}
-                            {% if nav_ins_registros %}<li><a class="dropdown-item" href="{% url 'insumos:registros_list' %}">Acompanhamentos Lançados</a></li>{% endif %}
-                            {% if nav_ins_dash %}<li><a class="dropdown-item" href="{% url 'insumos:dashboard' %}">Dashboard de Controle</a></li>{% endif %}
-                            <li><hr class="dropdown-divider"></li>
-                        {% endif %}
-
                         {% can_nav_block user 'laboratorio' 'maquinas' as nav_lab_maquinas %}
                         {% if nav_lab_maquinas %}
                             {% can_nav_view user 'maquinas:maquinas_list' 'laboratorio' as nav_maq_lista %}
@@ -321,7 +302,7 @@
                 {% endif %}
 
                 {% if nav_pessoas %}
-                {% if nav_acoes or nav_auditoria or nav_forn or nav_insumos or nav_metrologia %}<li class="nav-divider"></li>{% endif %}
+                {% if nav_acoes or nav_auditoria or nav_forn or nav_metrologia %}<li class="nav-divider"></li>{% endif %}
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                         <i class="bi bi-people nav-icon"></i><span class="nav-text">Pessoas</span>
@@ -360,7 +341,7 @@
                 {% endif %}
 
                 {% if nav_treinamentos %}
-                {% if nav_acoes or nav_auditoria or nav_forn or nav_insumos or nav_metrologia or nav_pessoas %}<li class="nav-divider"></li>{% endif %}
+                {% if nav_acoes or nav_auditoria or nav_forn or nav_metrologia or nav_pessoas %}<li class="nav-divider"></li>{% endif %}
 
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">

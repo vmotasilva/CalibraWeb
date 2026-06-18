@@ -189,46 +189,6 @@ def get_user_cobrancas_counts(user: Any) -> dict[str, int]:
     except Exception:
         counts["auditoria"] = 0
 
-    # Insumos: modelos atribuídos ao usuário que estão "em atraso" pela periodicidade
-    try:
-        from insumos.models import ModeloAuditoria as ModeloInsumos, RegistroAuditoria as RegistroInsumos
-        from django.db.models import Exists, OuterRef, Q
-
-        month_start = _first_day_of_month(hoje)
-        next_month = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
-
-        modelos = ModeloInsumos.objects.filter(ativo=True)
-        if not is_global_viewer:
-            modelos = modelos.filter(Q(responsavel=user) | Q(responsaveis=user)).distinct()
-
-        registro_mes_qs = RegistroInsumos.objects.filter(
-            modelo_id=OuterRef("pk"),
-            data_auditoria__gte=month_start,
-            data_auditoria__lt=next_month,
-        )
-        registro_algum_qs = RegistroInsumos.objects.filter(modelo_id=OuterRef("pk"))
-
-        modelos = modelos.annotate(
-            _tem_registro_mes=Exists(registro_mes_qs),
-            _tem_registro_algum=Exists(registro_algum_qs),
-        )
-
-        counts["insumos"] = modelos.filter(
-            Q(periodicidade="UNICA", _tem_registro_algum=False)
-            | (Q(periodicidade__in=[
-                "DIARIA",
-                "SEMANAL",
-                "QUINZENAL",
-                "MENSAL",
-                "TRIMESTRAL",
-                "SEMESTRAL",
-                "ANUAL",
-            ])
-            & Q(_tem_registro_mes=False))
-        ).count()
-    except Exception:
-        counts["insumos"] = 0
-
     # Treinamentos: Matriz de Habilidade, Demanda de Treinamento, Planejamentos (prazos)
     try:
         from django.db.models import F, Q
@@ -414,17 +374,6 @@ def get_user_cobrancas_items(user: Any) -> list[CobrancaItem]:
                 count=int(counts.get("auditoria", 0) or 0),
                 url=with_qs(_safe_reverse("auditoria:selecionar_modelo_preenchimento"), "pendentes=mes"),
                 section="Auditoria",
-            )
-        )
-
-    if can_show("insumos", "insumos:selecionar_modelo_preenchimento"):
-        items.append(
-            CobrancaItem(
-                key="insumos",
-                label="Insumos (a realizar)",
-                count=int(counts.get("insumos", 0) or 0),
-                url=with_qs(_safe_reverse("insumos:selecionar_modelo_preenchimento"), "pendentes=mes"),
-                section="Insumos",
             )
         )
 

@@ -10,7 +10,7 @@ import json
 import datetime
 import calendar
 
-from boards.models import Board, BoardColumn, Card, ChecklistItem, CardComment, BoardActivity, BoardSubSection, BoardLabel
+from boards.models import Board, BoardColumn, Card, ChecklistItem, CardComment, BoardActivity, BoardSubSection, BoardLabel, CardPlanningDate
 from boards.forms import BoardForm, CardForm
 from rh.models import Colaborador
 
@@ -179,7 +179,7 @@ def board_detail_view(request, board_id):
         )
         
     # Colunas, sub-sessões e cartões pré-carregados
-    colunas = list(board.colunas.prefetch_related('subsecoes', 'cartoes__responsaveis', 'cartoes__checklist_itens').all())
+    colunas = list(board.colunas.prefetch_related('subsecoes', 'cartoes__responsaveis', 'cartoes__checklist_itens', 'cartoes__planejamentos').all())
     
     # Pegar o filtro de período
     periodo = request.GET.get('periodo', 'tudo')
@@ -755,6 +755,16 @@ def api_card_detail_view(request, card_id):
             })
             curr = curr.sucessoras.first()
             
+        planejamentos = [
+            {
+                'id': p.id,
+                'data': p.data.strftime('%Y-%m-%d'),
+                'hora_inicio': p.hora_inicio.strftime('%H:%M') if p.hora_inicio else '',
+                'hora_fim': p.hora_fim.strftime('%H:%M') if p.hora_fim else ''
+            }
+            for p in card.planejamentos.all()
+        ]
+        
         data = {
             'id': card.id,
             'coluna_id': card.coluna_id,
@@ -775,7 +785,8 @@ def api_card_detail_view(request, card_id):
             'checklist': checklist,
             'comentarios': comentarios,
             'etiquetas': etiquetas,
-            'historia': historia if len(historia) > 1 else []
+            'historia': historia if len(historia) > 1 else [],
+            'planejamentos': planejamentos
         }
         return JsonResponse(data)
         
@@ -895,20 +906,107 @@ def api_card_detail_view(request, card_id):
                 else:
                     card.data_entrega = None
                 
-            if 'data_inicio' in data:
-                data_inicio_raw = data.get('data_inicio')
-                if data_inicio_raw:
-                    parsed_date = None
-                    for fmt in ('%d/%m/%Y', '%Y-%m-%d'):
-                        try:
-                            parsed_date = datetime.datetime.strptime(data_inicio_raw, fmt).date()
-                            break
-                        except ValueError:
-                            continue
-                    card.data_inicio = parsed_date
+            if 'planejamentos' in data:
+                planejamentos_data = data.get('planejamentos', [])
+                parsed_items = []
+                for idx, p_item in enumerate(planejamentos_data, 1):
+                    p_date_raw = p_item.get('data')
+                    if p_date_raw:
+                        p_date = None
+                        for fmt in ('%d/%m/%Y', '%Y-%m-%d'):
+                            try:
+                                p_date = datetime.datetime.strptime(p_date_raw, fmt).date()
+                                break
+                            except ValueError:
+                                continue
+                        if not p_date:
+                            return JsonResponse({'success': False, 'error': f'Data inválida na linha {idx}.'}, status=400)
+                        
+                        h_ini_raw = p_item.get('hora_inicio')
+                        h_fim_raw = p_item.get('hora_fim')
+                        h_ini = None
+                        h_fim = None
+                        if h_ini_raw:
+                            try:
+                                h_ini = datetime.datetime.strptime(h_ini_raw, '%H:%M').time()
+                            except ValueError:
+                                return JsonResponse({'success': False, 'error': f'Hora de início inválida na linha {idx}.'}, status=400)
+                        if h_fim_raw:
+                            try:
+                                h_fim = datetime.datetime.strptime(h_fim_raw, '%H:%M').time()
+                            except ValueError:
+                                return JsonResponse({'success': False, 'error': f'Hora de fim inválida na linha {idx}.'}, status=400)
+                        
+                        if h_ini and h_fim and h_fim < h_ini:
+                            return JsonResponse({'success': False, 'error': f'A hora de fim deve ser posterior à hora de início na linha {idx} ({p_date.strftime("%d/%m/%Y")}).'}, status=400)
+                        
+                        parsed_items.append((p_date, h_ini, h_fim))
+                
+                card.planejamentos.all().delete()
+                for p_date, h_ini, h_fim in parsed_items:
+                    CardPlanningDate.objects.create(
+                        cartao=card,
+                        data=p_date,
+                        hora_inicio=h_ini,
+                        hora_fim=h_fim
+                    )
+                
+                # Sincroniza com os campos legados para retrocompatibilidade
+                primeiro_p = card.planejamentos.order_by('data', 'hora_inicio').first()
+                if primeiro_p:
+                    card.data_inicio = primeiro_p.data
+                    card.hora_inicio = primeiro_p.hora_inicio
+                    card.hora_fim = primeiro_p.hora_fim
                 else:
                     card.data_inicio = None
+                    card.hora_inicio = None
+                    card.hora_fim = None
+            else:
+                if 'data_inicio' in data:
+                    data_inicio_raw = data.get('data_inicio')
+                    if data_inicio_raw:
+                        parsed_date = None
+                        for fmt in ('%d/%m/%Y', '%Y-%m-%d'):
+                            try:
+                                parsed_date = datetime.datetime.strptime(data_inicio_raw, fmt).date()
+                                break
+                            except ValueError:
+                                continue
+                        card.data_inicio = parsed_date
+                    else:
+                        card.data_inicio = None
 
+                if 'hora_inicio' in data:
+                    hora_inicio_raw = data.get('hora_inicio')
+                    if hora_inicio_raw:
+                        try:
+                            card.hora_inicio = datetime.datetime.strptime(hora_inicio_raw, '%H:%M').time()
+                        except ValueError:
+                            card.hora_inicio = None
+                    else:
+                        card.hora_inicio = None
+
+                if 'hora_fim' in data:
+                    hora_fim_raw = data.get('hora_fim')
+                    if hora_fim_raw:
+                        try:
+                            card.hora_fim = datetime.datetime.strptime(hora_fim_raw, '%H:%M').time()
+                        except ValueError:
+                            card.hora_fim = None
+                    else:
+                        card.hora_fim = None
+
+                # Sincronizar de volta para a tabela CardPlanningDate
+                if 'data_inicio' in data or 'hora_inicio' in data or 'hora_fim' in data:
+                    card.planejamentos.all().delete()
+                    if card.data_inicio:
+                        CardPlanningDate.objects.create(
+                            cartao=card,
+                            data=card.data_inicio,
+                            hora_inicio=card.hora_inicio,
+                            hora_fim=card.hora_fim
+                        )
+                
             if 'data_conclusao' in data:
                 data_conclusao_raw = data.get('data_conclusao')
                 if data_conclusao_raw:
@@ -923,26 +1021,6 @@ def api_card_detail_view(request, card_id):
                 else:
                     card.data_conclusao = None
 
-            if 'hora_inicio' in data:
-                hora_inicio_raw = data.get('hora_inicio')
-                if hora_inicio_raw:
-                    try:
-                        card.hora_inicio = datetime.datetime.strptime(hora_inicio_raw, '%H:%M').time()
-                    except ValueError:
-                        card.hora_inicio = None
-                else:
-                    card.hora_inicio = None
-
-            if 'hora_fim' in data:
-                hora_fim_raw = data.get('hora_fim')
-                if hora_fim_raw:
-                    try:
-                        card.hora_fim = datetime.datetime.strptime(hora_fim_raw, '%H:%M').time()
-                    except ValueError:
-                        card.hora_fim = None
-                else:
-                    card.hora_fim = None
-                
             if 'etiquetas_ids' in data:
                 etiquetas_ids = data.get('etiquetas_ids', [])
                 val_et_ids = [int(i) for i in etiquetas_ids if i]

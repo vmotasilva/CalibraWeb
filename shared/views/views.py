@@ -343,33 +343,6 @@ def hub_view(request):
             ],
         },
         {
-            "id": "insumos",
-            "title": "Insumos",
-            "module_key": "insumos",
-            "description": "Rotinas de checklist, controle de modelos e pendências de inspeção.",
-            "icon": "bi-box-seam",
-            "color": "#d9485f",
-            "hub_view_name": "insumos:dashboard",
-            "pending_keys": ["insumos"],
-            "pending_label": "rotinas pendentes",
-            "quick_actions": [
-                {
-                    "id": "insumos-dashboard",
-                    "label": "Dashboard de insumos",
-                    "description": "Acompanhar o panorama do módulo de insumos.",
-                    "icon": "bi-grid-3x3-gap",
-                    "view_name": "insumos:dashboard",
-                },
-                {
-                    "id": "insumos-preencher",
-                    "label": "Preencher checklist",
-                    "description": "Selecionar um modelo e lançar um novo registro.",
-                    "icon": "bi-clipboard2-pulse",
-                    "view_name": "insumos:selecionar_modelo_preenchimento",
-                },
-            ],
-        },
-        {
             "id": "rh",
             "title": "Pessoas",
             "module_key": "rh",

@@ -1,7 +1,7 @@
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.contrib.auth.models import User
-from boards.models import Board, BoardColumn, Card, ChecklistItem, CardComment, BoardActivity, BoardLabel
+from boards.models import Board, BoardColumn, Card, ChecklistItem, CardComment, BoardActivity, BoardLabel, CardPlanningDate
 from rh.models import Colaborador
 from django.utils import timezone
 import datetime
@@ -690,6 +690,78 @@ class BoardsTestCase(TestCase):
             content_type='application/json'
         )
         self.assertEqual(response.status_code, 400)
+
+    def test_multiple_planning_dates(self):
+        """Testa o salvamento e a sincronização de múltiplos planejamentos de data/hora"""
+        self.client.force_login(self.user)
+        detail_url = reverse('boards:api_card_detail', args=[self.card.id])
+        
+        # 1. Enviar múltiplos planejamentos válidos
+        planning_json = {
+            'titulo': self.card.titulo,
+            'prioridade': 'MEDIA',
+            'periodicidade': 'AVULSA',
+            'planejamentos': [
+                {'data': '2026-06-20', 'hora_inicio': '09:00', 'hora_fim': '10:00'},
+                {'data': '2026-06-21', 'hora_inicio': '14:00', 'hora_fim': '16:00'},
+                {'data': '2026-06-19', 'hora_inicio': '08:00', 'hora_fim': '12:00'} # Enviado fora de ordem para testar ordenação e sinc
+            ]
+        }
+        response = self.client.post(
+            detail_url,
+            data=json.dumps(planning_json),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        
+        # Verifica se os objetos CardPlanningDate foram criados
+        self.assertEqual(self.card.planejamentos.count(), 3)
+        
+        # Verifica a sincronização com os campos legados baseando-se no planejamento mais antigo (2026-06-19 08:00)
+        self.card.refresh_from_db()
+        self.assertEqual(self.card.data_inicio, datetime.date(2026, 6, 19))
+        self.assertEqual(self.card.hora_inicio, datetime.time(8, 0))
+        self.assertEqual(self.card.hora_fim, datetime.time(12, 0))
+        
+        # 2. Caso inválido: Hora fim antes da hora início em um dos planejamentos
+        invalid_planning_json = {
+            'titulo': self.card.titulo,
+            'prioridade': 'MEDIA',
+            'periodicidade': 'AVULSA',
+            'planejamentos': [
+                {'data': '2026-06-20', 'hora_inicio': '10:00', 'hora_fim': '09:00'}
+            ]
+        }
+        response = self.client.post(
+            detail_url,
+            data=json.dumps(invalid_planning_json),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 400)
+        data = json.loads(response.content)
+        self.assertFalse(data['success'])
+        self.assertIn('A hora de fim deve ser posterior à hora de início', data['error'])
+        
+        # 3. Remover todos os planejamentos enviando array vazio
+        clear_planning_json = {
+            'titulo': self.card.titulo,
+            'prioridade': 'MEDIA',
+            'periodicidade': 'AVULSA',
+            'planejamentos': []
+        }
+        response = self.client.post(
+            detail_url,
+            data=json.dumps(clear_planning_json),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.card.planejamentos.count(), 0)
+        
+        # Verifica se os campos legados foram limpos
+        self.card.refresh_from_db()
+        self.assertIsNone(self.card.data_inicio)
+        self.assertIsNone(self.card.hora_inicio)
+        self.assertIsNone(self.card.hora_fim)
 
 
 

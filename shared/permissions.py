@@ -85,27 +85,6 @@ MODULES_PERMISSIONS = {
             'view_respostaauditoria',
         ]
     },
-    'insumos': {
-        'name': 'Insumos',
-        'permissions': [
-            'add_modeloauditoria',
-            'change_modeloauditoria',
-            'delete_modeloauditoria',
-            'view_modeloauditoria',
-            'add_perguntaauditoria',
-            'change_perguntaauditoria',
-            'delete_perguntaauditoria',
-            'view_perguntaauditoria',
-            'add_registroauditoria',
-            'change_registroauditoria',
-            'delete_registroauditoria',
-            'view_registroauditoria',
-            'add_respostaauditoria',
-            'change_respostaauditoria',
-            'delete_respostaauditoria',
-            'view_respostaauditoria',
-        ]
-    },
     'laboratorio': {
         'name': 'Laboratorio',
         'permissions': [
@@ -857,63 +836,6 @@ NAV_STRUCTURE = [
                     {"nome": "Nova Categoria de Maquina", "view_name": "maquinas:categoria_create", "perm": "core.nav_laboratorio_categoria_maquina_create"},
                     {"nome": "Editar Categoria de Maquina", "view_name": "maquinas:categoria_update", "perm": "core.nav_laboratorio_categoria_maquina_update"},
                     {"nome": "Excluir Categoria de Maquina", "view_name": "maquinas:categoria_delete", "perm": "core.nav_laboratorio_categoria_maquina_delete"},
-                ],
-            },
-        ],
-    },
-    {
-        "key": "insumos",
-        "nome": "Insumos",
-        "cor": "info",
-        "icone": "bi bi-box-seam",
-        "module_perm": "core.nav_mod_insumos",
-        "blocos": [
-            {
-                "key": "cadastro",
-                "nome": "CADASTRO",
-                "perm": "core.nav_insumos_cadastro",
-                "funcoes": [
-                    {"nome": "Modelos de Insumos", "view_name": "insumos:modelos_list", "perm": "core.nav_insumos_modelos"},
-                    {"nome": "Novo Modelo", "view_name": "insumos:modelo_create", "perm": "core.nav_insumos_novo_modelo"},
-                    {"nome": "Editar Modelo", "view_name": "insumos:modelo_edit", "perm": "core.nav_insumos_editar_modelo"},
-                    {"nome": "Remover Modelo", "view_name": "insumos:modelo_delete", "perm": "core.nav_insumos_remover_modelo"},
-                    {"nome": "Perguntas por Modelo", "view_name": "insumos:perguntas_list", "perm": "core.nav_insumos_perguntas"},
-                    {"nome": "Nova Pergunta", "view_name": "insumos:pergunta_create", "perm": "core.nav_insumos_nova_pergunta"},
-                    {"nome": "Editar Pergunta", "view_name": "insumos:pergunta_edit", "perm": "core.nav_insumos_editar_pergunta"},
-                    {"nome": "Remover Pergunta", "view_name": "insumos:pergunta_delete", "perm": "core.nav_insumos_remover_pergunta"},
-                ],
-            },
-            {
-                "key": "operacao",
-                "nome": "OPERAÇÃO",
-                "perm": "core.nav_insumos_operacao",
-                "funcoes": [
-                    {"nome": "Modelos Cadastrados / Período", "view_name": "insumos:registros_list", "perm": "core.nav_insumos_registros"},
-                    {"nome": "Avaliação de Dados", "view_name": "insumos:registro_create", "perm": "core.nav_insumos_avaliacao"},
-                    {"nome": "Avaliação de Dados (com Modelo)", "view_name": "insumos:registro_create_modelo", "perm": "core.nav_insumos_avaliacao"},
-                    {"nome": "Editar Registro", "view_name": "insumos:registro_edit", "perm": "core.nav_insumos_editar_registro"},
-                    {"nome": "Excluir Registro", "view_name": "insumos:registro_delete", "perm": "core.nav_insumos_excluir_registro"},
-                    {"nome": "Detalhe do Registro", "view_name": "insumos:registro_detail", "perm": "core.nav_insumos_detalhe_registro"},
-                    {"nome": "Registros por Modelo", "view_name": "insumos:registros_por_modelo", "perm": "core.nav_insumos_registros_por_modelo"},
-                    {"nome": "Exportar Respostas (Excel)", "view_name": "insumos:exportar_respostas_excel", "perm": "core.nav_insumos_exportar_excel"},
-                    {"nome": "Editar Comentário", "view_name": "insumos:comentario_edit", "perm": "core.nav_insumos_comentario_edit"},
-                    {"nome": "Remover Comentário", "view_name": "insumos:comentario_delete", "perm": "core.nav_insumos_comentario_delete"},
-                ],
-            },
-            {
-                "key": "analise",
-                "nome": "ANÁLISE",
-                "perm": "core.nav_insumos_analise",
-                "funcoes": [
-                    {"nome": "Dashboard Insumos", "view_name": "insumos:dashboard", "perm": "core.nav_insumos_dashboard"},
-                ],
-            },
-            {
-                "key": "acoes",
-                "nome": "AÇÕES",
-                "perm": "core.nav_insumos_operacao",
-                "funcoes": [
-                    {"nome": "Novo Registro", "view_name": "insumos:selecionar_modelo_preenchimento", "perm": "core.nav_insumos_novo"},
                 ],
             },
         ],

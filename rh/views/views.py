@@ -2311,7 +2311,6 @@ def api_atualizar_permissoes_lote(request):
             'procedures',
             'fornecedores',
             'auditoria',
-            'insumos',
             'acoes',
         }
 
