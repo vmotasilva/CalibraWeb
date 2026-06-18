@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Planejamentos de Horas Extras{% endblock %}
+{% block title %}Planejamentos de Horas Extras e Absenteísmo{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
@@ -9,14 +9,14 @@
     <div class="row mb-4 align-items-center">
         <div class="col-md-8">
             <h1 class="mb-1">
-                <i class="bi bi-clock-history text-primary"></i> Planejamentos de Horas Extras
+                <i class="bi bi-clock-history text-primary"></i> Planejamentos de Horas Extras e Absenteísmo
             </h1>
-            <p class="text-muted">Gestão e convocação para regime de horas extras</p>
+            <p class="text-muted">Gestão de convocações para regime de horas extras e folgas planejadas</p>
         </div>
         <div class="col-md-4">
             <div class="d-flex flex-wrap gap-2 justify-content-start justify-content-md-end">
                 <a href="{% url 'rh:planejamento_hora_extra_create' %}" class="btn btn-primary shadow-sm">
-                    <i class="bi bi-plus-circle"></i> Novo Planejamento
+                    <i class="bi bi-plus-circle"></i> Novo Registro
                 </a>
                 <a href="{% url 'modulo_rh' %}" class="btn btn-outline-secondary">
                     <i class="bi bi-arrow-left"></i> Painel de RH
@@ -27,7 +27,7 @@
 
     <!-- KPIs -->
     <div class="row g-3 mb-4">
-        <!-- Total Planejamentos -->
+        <!-- Total Registros -->
         <div class="col-md-4">
             <div class="card shadow-sm h-100 border-start border-primary border-4">
                 <div class="card-body py-3">
@@ -43,15 +43,15 @@
                 </div>
             </div>
         </div>
-        <!-- Total Horas Planejadas -->
+        <!-- Total Horas Extras -->
         <div class="col-md-4">
             <div class="card shadow-sm h-100 border-start border-warning border-4">
                 <div class="card-body py-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <div class="text-muted small uppercase fw-semibold">Total Horas Planejadas</div>
-                            <div class="fs-2 fw-bold text-warning mt-1">{{ total_horas_planejadas }}</div>
-                            <div class="text-muted small mt-1">Soma das durações registradas</div>
+                            <div class="text-muted small uppercase fw-semibold">Horas Extras</div>
+                            <div class="fs-4 fw-bold text-warning mt-1">{{ total_he_planejadas }}</div>
+                            <div class="text-muted small mt-1">Acumulado HH: <strong>{{ total_he_hh }}</strong></div>
                         </div>
                         <div class="bg-warning bg-opacity-10 p-3 rounded-circle">
                             <i class="bi bi-hourglass-split text-warning fs-3"></i>
@@ -60,18 +60,18 @@
                 </div>
             </div>
         </div>
-        <!-- Total Horas-Homem -->
+        <!-- Total Folgas -->
         <div class="col-md-4">
-            <div class="card shadow-sm h-100 border-start border-success border-4">
+            <div class="card shadow-sm h-100 border-start border-info border-4" style="border-left-color: #6f42c1 !important;">
                 <div class="card-body py-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <div class="text-muted small uppercase fw-semibold">Total Horas-Homem</div>
-                            <div class="fs-2 fw-bold text-success mt-1">{{ total_horas_homem }}</div>
-                            <div class="text-muted small mt-1">Acumulado dos colaboradores</div>
+                            <div class="text-muted small uppercase fw-semibold">Folgas Planejadas</div>
+                            <div class="fs-4 fw-bold mt-1" style="color: #6f42c1;">{{ total_folgas_planejadas }}</div>
+                            <div class="text-muted small mt-1">Acumulado HH: <strong>{{ total_folgas_hh }}</strong></div>
                         </div>
-                        <div class="bg-success bg-opacity-10 p-3 rounded-circle">
-                            <i class="bi bi-people-fill text-success fs-3"></i>
+                        <div class="p-3 rounded-circle" style="background-color: rgba(111, 66, 193, 0.1);">
+                            <i class="bi bi-calendar-x fs-3" style="color: #6f42c1;"></i>
                         </div>
                     </div>
                 </div>
@@ -83,9 +83,18 @@
     <div class="card mb-4 shadow-sm border-0">
         <div class="card-body bg-light rounded shadow-inner">
             <form method="GET" class="row g-3 align-items-end">
-                <div class="col-md-3">
-                    <label for="id_busca" class="form-label small fw-semibold">Termo de Busca (Motivo)</label>
-                    <input type="text" name="busca" id="id_busca" class="form-control" placeholder="Motivo do planejamento..." value="{{ busca }}">
+                <div class="col-md-2">
+                    <label for="id_busca" class="form-label small fw-semibold">Motivo</label>
+                    <input type="text" name="busca" id="id_busca" class="form-control" placeholder="Buscar motivo..." value="{{ busca }}">
+                </div>
+
+                <div class="col-md-2">
+                    <label for="id_tipo" class="form-label small fw-semibold">Tipo</label>
+                    <select name="tipo" id="id_tipo" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="HORA_EXTRA" {% if tipo == 'HORA_EXTRA' %}selected{% endif %}>Hora Extra</option>
+                        <option value="FOLGA" {% if tipo == 'FOLGA' %}selected{% endif %}>Folga Planejada</option>
+                    </select>
                 </div>
 
                 <div class="col-md-2">
@@ -98,10 +107,10 @@
                     <input type="date" name="data_fim" id="id_data_fim" class="form-control" value="{{ data_fim }}">
                 </div>
 
-                <div class="col-md-3">
-                    <label for="id_colaborador" class="form-label small fw-semibold">Colaborador Convocado</label>
+                <div class="col-md-2">
+                    <label for="id_colaborador" class="form-label small fw-semibold">Colaborador</label>
                     <select name="colaborador_id" id="id_colaborador" class="form-select">
-                        <option value="">Todos os colaboradores</option>
+                        <option value="">Todos</option>
                         {% for colab in colaboradores %}
                             <option value="{{ colab.id }}" {% if colaborador_id|add:"0" == colab.id %}selected{% endif %}>
                                 {{ colab.nome_completo }}
@@ -131,9 +140,10 @@
                         <thead class="table-light text-secondary">
                             <tr>
                                 <th style="width: 80px;" class="ps-4">Reg.</th>
-                                <th style="width: 140px;">Data</th>
+                                <th style="width: 140px;">Tipo</th>
+                                <th style="width: 180px;">Período</th>
                                 <th>Motivo</th>
-                                <th style="width: 150px;">Duração</th>
+                                <th style="width: 120px;">Duração</th>
                                 <th>Colaboradores Convocados</th>
                                 <th style="width: 140px;" class="pe-4 text-end">Ações</th>
                             </tr>
@@ -142,7 +152,17 @@
                             {% for plan in page_obj %}
                             <tr>
                                 <td class="ps-4 fw-semibold text-muted">#{{ plan.id }}</td>
-                                <td class="fw-semibold">{{ plan.data|date:"d/m/Y" }}</td>
+                                <td>
+                                    {% if plan.tipo == 'HORA_EXTRA' %}
+                                        <span class="badge border" style="background-color: rgba(13, 110, 253, 0.1); color: #0d6efd; border-color: rgba(13, 110, 253, 0.2);">Hora Extra</span>
+                                    {% else %}
+                                        <span class="badge border" style="background-color: rgba(111, 66, 193, 0.1); color: #6f42c1; border-color: rgba(111, 66, 193, 0.2);">Folga Planejada</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="fw-semibold text-dark">{{ plan.data_hora_inicio|date:"d/m/Y H:i" }}</div>
+                                    <div class="text-muted small">a {{ plan.data_hora_fim|date:"d/m/Y H:i" }}</div>
+                                </td>
                                 <td>
                                     <div class="fw-semibold text-dark">{{ plan.motivo }}</div>
                                     {% if plan.criado_por %}
@@ -170,7 +190,7 @@
                                         <a href="{% url 'rh:planejamento_hora_extra_edit' plan.id %}" class="btn btn-sm btn-outline-primary" title="Editar">
                                             <i class="bi bi-pencil"></i>
                                         </a>
-                                        <form method="POST" action="{% url 'rh:planejamento_hora_extra_delete' plan.id %}" class="d-inline m-0" onsubmit="return confirm('Tem certeza de que deseja excluir este planejamento de horas extras?');">
+                                        <form method="POST" action="{% url 'rh:planejamento_hora_extra_delete' plan.id %}" class="d-inline m-0" onsubmit="return confirm('Tem certeza de que deseja excluir este planejamento?');">
                                             {% csrf_token %}
                                             <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir">
                                                 <i class="bi bi-trash"></i>
@@ -222,7 +242,7 @@
             <div class="card-body text-center py-5">
                 <i class="bi bi-clock-history text-muted display-4 mb-3 d-block"></i>
                 <h5 class="fw-semibold text-secondary">Nenhum planejamento encontrado</h5>
-                <p class="text-muted mb-4">Não há registros de planejamentos de horas extras cadastrados com os filtros atuais.</p>
+                <p class="text-muted mb-4">Não há registros de planejamentos cadastrados com os filtros atuais.</p>
                 <a href="{% url 'rh:planejamento_hora_extra_create' %}" class="btn btn-primary">
                     <i class="bi bi-plus-circle"></i> Cadastrar Primeiro Registro
                 </a>

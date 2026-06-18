@@ -588,11 +588,11 @@ NAV_STRUCTURE = [
             },
             {
                 "key": "horas_extras",
-                "nome": "HORAS EXTRAS",
+                "nome": "HORAS EXTRAS E ABSENTEÍSMO",
                 "perm": "core.nav_pessoas_horas_extras",
                 "funcoes": [
                     {
-                        "nome": "Planejamento de Horas Extras",
+                        "nome": "Planejamento de Horas Extras e Absenteísmo",
                         "view_name": [
                             "rh:planejamento_hora_extra_list",
                             "rh:planejamento_hora_extra_create",

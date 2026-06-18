@@ -3358,6 +3358,10 @@ def planejamento_hora_extra_list_view(request):
     colaborador_id = request.GET.get('colaborador_id')
     if colaborador_id:
         queryset = queryset.filter(colaboradores__id=colaborador_id)
+
+    tipo = request.GET.get('tipo', '').strip()
+    if tipo:
+        queryset = queryset.filter(tipo=tipo)
         
     # Ordenação
     queryset = queryset.order_by('-data', '-id')
@@ -3368,13 +3372,20 @@ def planejamento_hora_extra_list_view(request):
     page_obj = paginator.get_page(page_number)
     
     # Calcular totais de horas de forma robusta
-    total_planejamentos_duration = timedelta()
-    total_horas_homem_duration = timedelta()
+    total_horas_extras_plan = timedelta()
+    total_horas_extras_hh = timedelta()
+    total_folgas_plan = timedelta()
+    total_folgas_hh = timedelta()
     
     for plan in queryset.prefetch_related('colaboradores'):
         dura = plan.horas_extras or timedelta()
-        total_planejamentos_duration += dura
-        total_horas_homem_duration += dura * plan.colaboradores.count()
+        count = plan.colaboradores.count()
+        if plan.tipo == 'HORA_EXTRA':
+            total_horas_extras_plan += dura
+            total_horas_extras_hh += dura * count
+        elif plan.tipo == 'FOLGA':
+            total_folgas_plan += dura
+            total_folgas_hh += dura * count
         
     def format_td(td):
         total_seconds = int(td.total_seconds())
@@ -3383,8 +3394,10 @@ def planejamento_hora_extra_list_view(request):
         seconds = total_seconds % 60
         return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
         
-    total_horas_planejadas = format_td(total_planejamentos_duration)
-    total_horas_homem = format_td(total_horas_homem_duration)
+    total_he_planejadas = format_td(total_horas_extras_plan)
+    total_he_hh = format_td(total_horas_extras_hh)
+    total_folgas_planejadas = format_td(total_folgas_plan)
+    total_folgas_hh = format_td(total_folgas_hh)
     
     # Se houver querystring com filtros, mantemos na paginação
     params = request.GET.copy()
@@ -3395,13 +3408,16 @@ def planejamento_hora_extra_list_view(request):
     context = {
         'page_obj': page_obj,
         'colaboradores': colaboradores_acessiveis.order_by('nome_completo'),
-        'total_horas_planejadas': total_horas_planejadas,
-        'total_horas_homem': total_horas_homem,
+        'total_he_planejadas': total_he_planejadas,
+        'total_he_hh': total_he_hh,
+        'total_folgas_planejadas': total_folgas_planejadas,
+        'total_folgas_hh': total_folgas_hh,
         'total_planejamentos': queryset.count(),
         'busca': busca,
         'data_inicio': data_inicio,
         'data_fim': data_fim,
         'colaborador_id': colaborador_id,
+        'tipo': tipo,
         'querystring': querystring,
     }
     return render(request, 'rh/planejamento_hora_extra_list.html', context)
@@ -3409,6 +3425,7 @@ def planejamento_hora_extra_list_view(request):
 
 @login_required
 def planejamento_hora_extra_create_view(request):
+    colabs_queryset = get_colaboradores_acessiveis(request.user)
     selected_ids = []
     if request.method == 'POST':
         form = PlanejamentoHoraExtraForm(request.POST, usuario_logado=request.user)
@@ -3417,16 +3434,25 @@ def planejamento_hora_extra_create_view(request):
             planejamento.criado_por = request.user
             planejamento.save()
             form.save_m2m()
-            messages.success(request, "Planejamento de hora extra registrado com sucesso!")
+            messages.success(request, "Planejamento registrado com sucesso!")
             return redirect('rh:planejamento_hora_extra_list')
         selected_ids = [int(x) for x in request.POST.getlist('colaboradores') if x.isdigit()]
     else:
         form = PlanejamentoHoraExtraForm(usuario_logado=request.user)
         
+    setores_ids = colabs_queryset.values_list('setor_id', flat=True).distinct()
+    setores = Setor.objects.filter(id__in=setores_ids).order_by('nome')
+    lideres_ids = colabs_queryset.values_list('lider_id', flat=True).distinct()
+    lideres = Colaborador.objects.filter(id__in=lideres_ids).order_by('nome_completo')
+    turnos = list(filter(None, set(colabs_queryset.values_list('turno', flat=True))))
+        
     return render(request, 'rh/planejamento_hora_extra_form.html', {
         'form': form,
-        'titulo': 'Novo Planejamento de Hora Extra',
+        'titulo': 'Novo Planejamento',
         'selected_ids': selected_ids,
+        'setores': setores,
+        'lideres': lideres,
+        'turnos': turnos,
     })
 
 
@@ -3443,17 +3469,26 @@ def planejamento_hora_extra_update_view(request, plan_id):
         form = PlanejamentoHoraExtraForm(request.POST, instance=planejamento, usuario_logado=request.user)
         if form.is_valid():
             form.save()
-            messages.success(request, "Planejamento de hora extra atualizado com sucesso!")
+            messages.success(request, "Planejamento atualizado com sucesso!")
             return redirect('rh:planejamento_hora_extra_list')
         selected_ids = [int(x) for x in request.POST.getlist('colaboradores') if x.isdigit()]
     else:
         form = PlanejamentoHoraExtraForm(instance=planejamento, usuario_logado=request.user)
+        
+    setores_ids = colaboradores_acessiveis.values_list('setor_id', flat=True).distinct()
+    setores = Setor.objects.filter(id__in=setores_ids).order_by('nome')
+    lideres_ids = colaboradores_acessiveis.values_list('lider_id', flat=True).distinct()
+    lideres = Colaborador.objects.filter(id__in=lideres_ids).order_by('nome_completo')
+    turnos = list(filter(None, set(colaboradores_acessiveis.values_list('turno', flat=True))))
         
     return render(request, 'rh/planejamento_hora_extra_form.html', {
         'form': form,
         'titulo': f'Editar Planejamento #{planejamento.id}',
         'planejamento': planejamento,
         'selected_ids': selected_ids,
+        'setores': setores,
+        'lideres': lideres,
+        'turnos': turnos,
     })
 
 

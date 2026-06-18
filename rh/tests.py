@@ -320,41 +320,43 @@ class PlanejamentoHoraExtraTests(TestCase):
         # Superuser
         self.superuser = User.objects.create_superuser(username='super_user', password='password123')
         
-    def test_form_validation_valid_formats(self):
-        """Test form clean validation with valid time formats"""
+    def test_form_validation_valid_datetimes(self):
+        """Test form clean validation with valid datetime-local strings and tipo"""
         from datetime import timedelta
         from rh.forms import PlanejamentoHoraExtraForm
-        # Formato hh:mm:ss
         form = PlanejamentoHoraExtraForm(data={
-            'data': '2026-06-18',
+            'tipo': 'HORA_EXTRA',
+            'data_hora_inicio': '2026-06-18T08:00',
+            'data_hora_fim': '2026-06-18T10:30',
             'motivo': 'Inventário',
-            'horas_extras_str': '02:30:00',
             'colaboradores': [self.colab_subordinado.id]
         })
         self.assertTrue(form.is_valid(), form.errors)
-        self.assertEqual(form.cleaned_data['horas_extras_str'], timedelta(hours=2, minutes=30))
         
-        # Formato hh:mm
+        # Test default choices validation and custom planned off type
         form2 = PlanejamentoHoraExtraForm(data={
-            'data': '2026-06-18',
-            'motivo': 'Inventário',
-            'horas_extras_str': '01:45',
+            'tipo': 'FOLGA',
+            'data_hora_inicio': '2026-06-18T08:00',
+            'data_hora_fim': '2026-06-18T17:00',
+            'motivo': 'Folga Compensatória',
             'colaboradores': [self.colab_subordinado.id]
         })
         self.assertTrue(form2.is_valid(), form2.errors)
-        self.assertEqual(form2.cleaned_data['horas_extras_str'], timedelta(hours=1, minutes=45))
 
-    def test_form_validation_invalid_formats(self):
-        """Test form clean validation with invalid time formats"""
+    def test_form_validation_invalid_chronology(self):
+        """Test form clean validation fails if end is before or equal to start"""
         from rh.forms import PlanejamentoHoraExtraForm
+        # End datetime before start datetime
         form = PlanejamentoHoraExtraForm(data={
-            'data': '2026-06-18',
+            'tipo': 'HORA_EXTRA',
+            'data_hora_inicio': '2026-06-18T10:00',
+            'data_hora_fim': '2026-06-18T08:00',
             'motivo': 'Inventário',
-            'horas_extras_str': 'invalid-time',
             'colaboradores': [self.colab_subordinado.id]
         })
         self.assertFalse(form.is_valid())
-        self.assertIn('horas_extras_str', form.errors)
+        self.assertIn('__all__', form.errors)
+        self.assertEqual(form.errors['__all__'][0], "A data/hora de fim deve ser posterior à data/hora de início.")
 
     def test_form_colaboradores_queryset_filtering(self):
         """Test that form filters accessible collaborators depending on user"""
@@ -374,24 +376,27 @@ class PlanejamentoHoraExtraTests(TestCase):
 
     def test_crud_views(self):
         """Test listing, creating, updating and deleting planning via views"""
-        from datetime import timedelta
+        from datetime import timedelta, date
         from rh.models import PlanejamentoHoraExtra
         self.client.login(username='super_user', password='password123')
         
         # 1. Create planning
         create_url = reverse('rh:planejamento_hora_extra_create')
         post_data = {
-            'data': '2026-06-18',
+            'tipo': 'HORA_EXTRA',
+            'data_hora_inicio': '2026-06-18T08:00',
+            'data_hora_fim': '2026-06-18T10:00',
             'motivo': 'Fechamento Mensal',
-            'horas_extras_str': '02:00:00',
             'colaboradores': [self.colab_subordinado.id, self.colab_independente.id]
         }
         response = self.client.post(create_url, post_data)
-        self.assertEqual(response.status_code, 302) # Redireciona para listagem
+        self.assertEqual(response.status_code, 302) # Redirects to listing
         
         # Verify created model in DB
         planning = PlanejamentoHoraExtra.objects.get(motivo='Fechamento Mensal')
+        self.assertEqual(planning.tipo, 'HORA_EXTRA')
         self.assertEqual(planning.horas_extras, timedelta(hours=2))
+        self.assertEqual(planning.data, date(2026, 6, 18))
         self.assertEqual(planning.colaboradores.count(), 2)
         
         # 2. List planning
@@ -404,15 +409,17 @@ class PlanejamentoHoraExtraTests(TestCase):
         # 3. Update planning
         edit_url = reverse('rh:planejamento_hora_extra_edit', args=[planning.id])
         update_data = {
-            'data': '2026-06-19',
+            'tipo': 'FOLGA',
+            'data_hora_inicio': '2026-06-19T08:00',
+            'data_hora_fim': '2026-06-19T11:15',
             'motivo': 'Fechamento Mensal Ajustado',
-            'horas_extras_str': '03:15:00',
             'colaboradores': [self.colab_subordinado.id]
         }
         response = self.client.post(edit_url, update_data)
         self.assertEqual(response.status_code, 302)
         
         planning.refresh_from_db()
+        self.assertEqual(planning.tipo, 'FOLGA')
         self.assertEqual(planning.motivo, 'Fechamento Mensal Ajustado')
         self.assertEqual(planning.data, date(2026, 6, 19))
         self.assertEqual(planning.horas_extras, timedelta(hours=3, minutes=15))

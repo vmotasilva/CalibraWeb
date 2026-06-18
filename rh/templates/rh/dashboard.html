@@ -186,8 +186,8 @@
             {% load nav_access %}
             {% can_nav_block user 'rh' 'horas_extras' as can_he %}
             {% if can_he %}
-            <a href="{% url 'rh:planejamento_hora_extra_list' %}" class="btn btn-warning text-white btn-sm shadow-sm" title="Gerenciar planejamento de horas extras">
-                <i class="bi bi-clock-history"></i> Horas Extras
+            <a href="{% url 'rh:planejamento_hora_extra_list' %}" class="btn btn-warning text-white btn-sm shadow-sm" title="Gerenciar planejamento de horas extras e absenteísmo">
+                <i class="bi bi-clock-history"></i> Horas Extras e Absenteísmo
             </a>
             {% endif %}
             <a href="{% url 'rh:gestao_ferias' %}" class="btn btn-info text-white btn-sm shadow-sm" title="Gerenciar férias de todos os colaboradores">

@@ -31,32 +31,42 @@
                             </div>
                         {% endif %}
 
-                        <!-- Data & Duração -->
+                        <!-- Tipo & Datas -->
                         <div class="row mb-3">
-                            <div class="col-md-6 mb-3 mb-md-0">
-                                <label for="{{ form.data.id_for_label }}" class="form-label fw-semibold text-secondary">
-                                    <i class="bi bi-calendar-event me-1"></i>Data do Planejamento
+                            <div class="col-md-4 mb-3 mb-md-0">
+                                <label for="{{ form.tipo.id_for_label }}" class="form-label fw-semibold text-secondary">
+                                    <i class="bi bi-tag me-1"></i>Tipo de Registro
                                 </label>
-                                {{ form.data }}
-                                {% if form.data.errors %}
+                                {{ form.tipo }}
+                                {% if form.tipo.errors %}
                                     <div class="text-danger small mt-1">
-                                        {{ form.data.errors }}
+                                        {{ form.tipo.errors }}
                                     </div>
                                 {% endif %}
-                                <div class="form-text text-muted small">Dia em que as horas extras serão realizadas.</div>
                             </div>
                             
-                            <div class="col-md-6">
-                                <label for="{{ form.horas_extras_str.id_for_label }}" class="form-label fw-semibold text-secondary">
-                                    <i class="bi bi-stopwatch me-1"></i>Duração de Horas Extras
+                            <div class="col-md-4 mb-3 mb-md-0">
+                                <label for="{{ form.data_hora_inicio.id_for_label }}" class="form-label fw-semibold text-secondary">
+                                    <i class="bi bi-calendar-event me-1"></i>Data/Hora Início
                                 </label>
-                                {{ form.horas_extras_str }}
-                                {% if form.horas_extras_str.errors %}
+                                {{ form.data_hora_inicio }}
+                                {% if form.data_hora_inicio.errors %}
                                     <div class="text-danger small mt-1">
-                                        {{ form.horas_extras_str.errors }}
+                                        {{ form.data_hora_inicio.errors }}
                                     </div>
                                 {% endif %}
-                                <div class="form-text text-muted small">Digite o tempo no formato <strong>hh:mm:ss</strong> ou <strong>hh:mm</strong> (Ex: 02:30:00).</div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label for="{{ form.data_hora_fim.id_for_label }}" class="form-label fw-semibold text-secondary">
+                                    <i class="bi bi-calendar-check me-1"></i>Data/Hora Fim
+                                </label>
+                                {{ form.data_hora_fim }}
+                                {% if form.data_hora_fim.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {{ form.data_hora_fim.errors }}
+                                    </div>
+                                {% endif %}
                             </div>
                         </div>
 
@@ -71,63 +81,42 @@
                                     {{ form.motivo.errors }}
                                 </div>
                             {% endif %}
-                            <div class="form-text text-muted small">Explique brevemente a necessidade da convocação (Ex: Fechamento de Balanço).</div>
+                            <div class="form-text text-muted small">Explique brevemente a necessidade deste registro (Ex: Inventário ou Folga Compensatória).</div>
                         </div>
 
-                        <!-- Colaboradores Convocados (Custom Checklist UI) -->
+                        <!-- Colaboradores Convocados (Badges & Modal trigger) -->
                         <div class="mb-4">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <label class="form-label fw-semibold text-secondary mb-0">
-                                    <i class="bi bi-people me-1"></i>Colaboradores Convocados
+                                    <i class="bi bi-people me-1"></i>Colaboradores Associados
                                 </label>
-                                <div class="small">
-                                    <button type="button" class="btn btn-link btn-sm text-decoration-none p-0 me-2 fw-semibold" onclick="selectAllColaboradores(true)">
-                                        Selecionar todos
-                                    </button>
-                                    <span class="text-muted">|</span>
-                                    <button type="button" class="btn btn-link btn-sm text-decoration-none p-0 ms-2 fw-semibold text-secondary" onclick="selectAllColaboradores(false)">
-                                        Limpar
+                                <div>
+                                    <button type="button" class="btn btn-outline-primary btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#colabSelectionModal">
+                                        <i class="bi bi-person-plus-fill me-1"></i> Selecionar Colaboradores
                                     </button>
                                 </div>
                             </div>
 
-                            <!-- Search Filter Input -->
-                            <div class="input-group mb-2">
-                                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                                <input type="text" id="colabSearch" class="form-control border-start-0" placeholder="Buscar colaborador pelo nome ou cargo..." onkeyup="filterColaboradores()">
+                            <!-- Badges area -->
+                            <div id="selectedColabsBadges" class="d-flex flex-wrap gap-2 p-3 border rounded bg-white" style="min-height: 58px;">
+                                <!-- Rendered dynamically by JS -->
+                                <span class="text-muted small" id="noColabsMessage">Nenhum colaborador selecionado. Clique no botão acima para adicionar.</span>
                             </div>
 
-                            <!-- Checkbox List Wrapper -->
-                            <div class="border rounded shadow-sm bg-white" style="max-height: 280px; overflow-y: auto; box-sizing: border-box;">
-                                <div class="p-2" id="colaboradoresList">
-                                    {% for colab in form.fields.colaboradores.queryset %}
-                                        <div class="form-check py-1 px-3 border-bottom colab-item" style="transition: background-color 0.2s;">
-                                            <input class="form-check-input colab-checkbox" type="checkbox" name="colaboradores" value="{{ colab.id }}" id="colab_chk_{{ colab.id }}" 
-                                                {% if colab.id in selected_ids %}checked{% endif %}>
-                                            <label class="form-check-label w-100 ps-1" style="cursor: pointer;" for="colab_chk_{{ colab.id }}">
-                                                <span class="fw-semibold text-dark">{{ colab.nome_completo }}</span>
-                                                {% if colab.cargo %}
-                                                    <span class="text-muted small ms-1">({{ colab.cargo }})</span>
-                                                {% endif %}
-                                                {% if colab.setor %}
-                                                    <span class="badge bg-light text-secondary border small ms-1" style="font-size:0.75rem;">{{ colab.setor.nome }}</span>
-                                                {% endif %}
-                                            </label>
-                                        </div>
-                                    {% empty %}
-                                        <div class="text-center py-4 text-muted">
-                                            <i class="bi bi-people display-6 mb-2 d-block"></i>
-                                            <small>Nenhum colaborador disponível para seleção.</small>
-                                        </div>
-                                    {% endfor %}
-                                </div>
-                            </div>
+                            <!-- Hidden select for django form submission -->
+                            <select name="colaboradores" id="id_colaboradores" class="d-none" multiple>
+                                {% for colab in form.fields.colaboradores.queryset %}
+                                    <option value="{{ colab.id }}" {% if colab.id in selected_ids %}selected{% endif %}>
+                                        {{ colab.nome_completo }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+
                             {% if form.colaboradores.errors %}
                                 <div class="text-danger small mt-1">
                                     {{ form.colaboradores.errors }}
                                 </div>
                             {% endif %}
-                            <div class="form-text text-muted small mt-1">Selecione os colaboradores que participarão do período de hora extra planejado. Use o campo de busca para filtrar rapidamente.</div>
                         </div>
 
                         <!-- Action Buttons -->
@@ -146,45 +135,266 @@
     </div>
 </div>
 
+<!-- Modal de Seleção de Colaboradores -->
+<div class="modal fade" id="colabSelectionModal" tabindex="-1" aria-labelledby="colabSelectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="colabSelectionModalLabel">
+                    <i class="bi bi-people-fill me-2"></i>Selecionar Colaboradores
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <div class="modal-body p-3">
+                <!-- Filters Grid -->
+                <div class="row g-2 mb-3 bg-light p-2.5 rounded border">
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold text-secondary mb-1">Busca rápida</label>
+                        <input type="text" id="modalSearch" class="form-control form-control-sm" placeholder="Nome ou cargo..." oninput="filterModalColabs()">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold text-secondary mb-1">Turno</label>
+                        <select id="modalFilterTurno" class="form-select form-select-sm" onchange="filterModalColabs()">
+                            <option value="">Todos os turnos</option>
+                            {% for turno in turnos %}
+                                <option value="{{ turno }}">{{ turno }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold text-secondary mb-1">Setor</label>
+                        <select id="modalFilterSetor" class="form-select form-select-sm" onchange="filterModalColabs()">
+                            <option value="">Todos os setores</option>
+                            {% for setor in setores %}
+                                <option value="{{ setor.id }}">{{ setor.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold text-secondary mb-1">Líder</label>
+                        <select id="modalFilterLider" class="form-select form-select-sm" onchange="filterModalColabs()">
+                            <option value="">Todos os líderes</option>
+                            {% for lider in lideres %}
+                                <option value="{{ lider.id }}">{{ lider.nome_completo }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Helpers buttons -->
+                <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+                    <span class="text-muted small">
+                        Mostrando <strong id="visibleCount">0</strong> de {{ form.fields.colaboradores.queryset|length }} colaboradores
+                    </span>
+                    <div>
+                        <button type="button" class="btn btn-link btn-sm text-decoration-none p-0 me-3 fw-semibold" onclick="selectFiltered(true)">
+                            Selecionar Filtrados
+                        </button>
+                        <button type="button" class="btn btn-link btn-sm text-decoration-none p-0 fw-semibold text-secondary" onclick="selectFiltered(false)">
+                            Limpar Filtrados
+                        </button>
+                    </div>
+                </div>
+
+                <!-- List Wrapper -->
+                <div class="border rounded bg-white" style="max-height: 320px; overflow-y: auto;">
+                    <div id="modalColabsList">
+                        {% for colab in form.fields.colaboradores.queryset %}
+                            <div class="colab-modal-row border-bottom py-2.5 px-3 d-flex align-items-center justify-content-between"
+                                 data-id="{{ colab.id }}"
+                                 data-nome="{{ colab.nome_completo|lower }}"
+                                 data-cargo="{{ colab.cargo|default:''|lower }}"
+                                 data-setor="{{ colab.setor.id|default:'' }}"
+                                 data-turno="{{ colab.turno|default:'' }}"
+                                 data-lider="{{ colab.lider.id|default:'' }}">
+                                <div class="form-check m-0">
+                                    <input type="checkbox" class="form-check-input colab-modal-cb" id="modal_cb_{{ colab.id }}" value="{{ colab.id }}"
+                                           {% if colab.id in selected_ids %}checked{% endif %}
+                                           onchange="syncSelection({{ colab.id }}, '{{ colab.nome_completo|escapejs }}', this.checked)">
+                                    <label class="form-check-label ms-2" style="cursor: pointer;" for="modal_cb_{{ colab.id }}">
+                                        <div class="fw-semibold text-dark">{{ colab.nome_completo }}</div>
+                                        <div class="text-muted small" style="font-size: 0.8rem;">
+                                            {{ colab.cargo|default:"Cargo não informado" }} | 
+                                            Turno: {{ colab.get_turno_display }} | 
+                                            Setor: {{ colab.setor.nome|default:"-" }}
+                                            {% if colab.lider %} | Líder: {{ colab.lider.nome_completo }} {% endif %}
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        {% empty %}
+                            <div class="text-center py-5 text-muted">
+                                <i class="bi bi-people display-4 mb-2 d-block"></i>
+                                <p>Nenhum colaborador acessível.</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-primary px-4" data-bs-dismiss="modal">Concluir</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
-    function filterColaboradores() {
-        const query = document.getElementById('colabSearch').value.toLowerCase().trim();
-        const items = document.getElementsByClassName('colab-item');
-        
-        for (let i = 0; i < items.length; i++) {
-            const label = items[i].getElementsByTagName('label')[0].textContent.toLowerCase();
-            if (label.includes(query)) {
-                items[i].style.setProperty('display', 'block', 'important');
-            } else {
-                items[i].style.setProperty('display', 'none', 'important');
-            }
-        }
-    }
+    // Armazena os colaboradores selecionados na inicialização
+    const selectedColabs = new Map();
 
-    function selectAllColaboradores(value) {
-        // Obter apenas os checkboxes que estão visíveis no momento
-        const items = document.getElementsByClassName('colab-item');
-        for (let i = 0; i < items.length; i++) {
-            if (items[i].style.display !== 'none') {
-                const chk = items[i].getElementsByClassName('colab-checkbox')[0];
-                if (chk) {
-                    chk.checked = value;
-                }
-            }
-        }
-    }
-
-    // Adiciona efeito visual hover na linha
+    // Carrega a seleção inicial na carga da página
     document.addEventListener('DOMContentLoaded', function() {
-        const items = document.getElementsByClassName('colab-item');
-        for (let i = 0; i < items.length; i++) {
-            items[i].addEventListener('mouseenter', function() {
+        const hiddenSelect = document.getElementById('id_colaboradores');
+        
+        // Populamos o mapa com as opções que já vieram selecionadas do Django
+        Array.from(hiddenSelect.options).forEach(opt => {
+            if (opt.selected) {
+                selectedColabs.set(parseInt(opt.value), opt.text);
+            }
+        });
+        
+        // Renderiza os badges
+        renderBadges();
+        updateVisibleCount();
+
+        // Estilização hover na lista do modal
+        const rows = document.querySelectorAll('.colab-modal-row');
+        rows.forEach(row => {
+            row.addEventListener('mouseenter', function() {
                 this.style.backgroundColor = '#f8f9fa';
             });
-            items[i].addEventListener('mouseleave', function() {
+            row.addEventListener('mouseleave', function() {
                 this.style.backgroundColor = 'transparent';
             });
-        }
+        });
     });
+
+    // Filtra a lista de colaboradores no Modal
+    function filterModalColabs() {
+        const q = document.getElementById('modalSearch').value.toLowerCase().trim();
+        const turno = document.getElementById('modalFilterTurno').value;
+        const setor = document.getElementById('modalFilterSetor').value;
+        const lider = document.getElementById('modalFilterLider').value;
+
+        const rows = document.querySelectorAll('.colab-modal-row');
+        rows.forEach(row => {
+            const rowNome = row.getAttribute('data-nome');
+            const rowCargo = row.getAttribute('data-cargo');
+            const rowTurno = row.getAttribute('data-turno');
+            const rowSetor = row.getAttribute('data-setor');
+            const rowLider = row.getAttribute('data-lider');
+
+            const matchSearch = !q || rowNome.includes(q) || rowCargo.includes(q);
+            const matchTurno = !turno || rowTurno === turno;
+            const matchSetor = !setor || rowSetor === setor;
+            const matchLider = !lider || rowLider === lider;
+
+            if (matchSearch && matchTurno && matchSetor && matchLider) {
+                row.style.setProperty('display', 'flex', 'important');
+            } else {
+                row.style.setProperty('display', 'none', 'important');
+            }
+        });
+
+        updateVisibleCount();
+    }
+
+    // Conta quantos itens estão visíveis na lista filtrada do modal
+    function updateVisibleCount() {
+        const rows = document.querySelectorAll('.colab-modal-row');
+        let visible = 0;
+        rows.forEach(row => {
+            if (row.style.display !== 'none') {
+                visible++;
+            }
+        });
+        document.getElementById('visibleCount').innerText = visible;
+    }
+
+    // Sincroniza a seleção do checkbox com o mapa e o select oculto
+    function syncSelection(id, nome, isChecked) {
+        const select = document.getElementById('id_colaboradores');
+        
+        if (isChecked) {
+            selectedColabs.set(id, nome);
+        } else {
+            selectedColabs.delete(id);
+        }
+
+        // Sincroniza com o HTML select nativo
+        Array.from(select.options).forEach(opt => {
+            if (parseInt(opt.value) === id) {
+                opt.selected = isChecked;
+            }
+        });
+
+        // Re-renderiza badges na tela principal
+        renderBadges();
+    }
+
+    // Renderiza os badges dos colaboradores selecionados na tela principal
+    function renderBadges() {
+        const container = document.getElementById('selectedColabsBadges');
+        const noColabsMsg = document.getElementById('noColabsMessage');
+        
+        // Limpar badges antigos (preservando a mensagem de vazio)
+        container.innerHTML = '';
+        
+        if (selectedColabs.size === 0) {
+            container.appendChild(noColabsMsg);
+            return;
+        }
+
+        selectedColabs.forEach((nome, id) => {
+            const badge = document.createElement('span');
+            badge.className = "badge bg-light text-dark border d-flex align-items-center gap-1.5 py-2 px-3 rounded-pill shadow-sm transition-all";
+            badge.style.fontSize = "0.85rem";
+            badge.innerHTML = `
+                <i class="bi bi-person text-secondary"></i>
+                <span class="fw-semibold">${nome}</span>
+                <button type="button" class="btn-close ms-1" style="font-size: 0.65rem;" aria-label="Remover" onclick="removeColab(${id})"></button>
+            `;
+            container.appendChild(badge);
+        });
+    }
+
+    // Remove um colaborador a partir do badge
+    function removeColab(id) {
+        selectedColabs.delete(id);
+
+        // Desmarcar no select oculto
+        const select = document.getElementById('id_colaboradores');
+        Array.from(select.options).forEach(opt => {
+            if (parseInt(opt.value) === id) {
+                opt.selected = false;
+            }
+        });
+
+        // Desmarcar checkbox correspondente no modal
+        const cb = document.getElementById(`modal_cb_${id}`);
+        if (cb) {
+            cb.checked = false;
+        }
+
+        renderBadges();
+    }
+
+    // Selecionar ou desmarcar todos os colaboradores visíveis (filtrados)
+    function selectFiltered(value) {
+        const rows = document.querySelectorAll('.colab-modal-row');
+        rows.forEach(row => {
+            if (row.style.display !== 'none') {
+                const cb = row.querySelector('.colab-modal-cb');
+                if (cb && cb.checked !== value) {
+                    cb.checked = value;
+                    const id = parseInt(row.getAttribute('data-id'));
+                    const nome = row.querySelector('label .fw-semibold').innerText;
+                    syncSelection(id, nome, value);
+                }
+            }
+        });
+    }
 </script>
 {% endblock %}

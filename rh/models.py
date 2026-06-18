@@ -503,9 +503,21 @@ class HistoricoColaborador(models.Model):
 
 
 class PlanejamentoHoraExtra(models.Model):
-    data = models.DateField(verbose_name="Data do Planejamento")
+    TIPO_CHOICES = [
+        ('HORA_EXTRA', 'Hora Extra'),
+        ('FOLGA', 'Folga Planejada'),
+    ]
+    tipo = models.CharField(
+        max_length=20,
+        choices=TIPO_CHOICES,
+        default='HORA_EXTRA',
+        verbose_name="Tipo de Registro"
+    )
+    data = models.DateField(verbose_name="Data do Planejamento", null=True, blank=True)
     motivo = models.CharField(max_length=255, verbose_name="Motivo")
-    horas_extras = models.DurationField(verbose_name="Horas Extras")
+    horas_extras = models.DurationField(verbose_name="Horas Extras", null=True, blank=True)
+    data_hora_inicio = models.DateTimeField(verbose_name="Início", null=True, blank=True)
+    data_hora_fim = models.DateTimeField(verbose_name="Fim", null=True, blank=True)
     colaboradores = models.ManyToManyField(
         Colaborador,
         related_name="planejamentos_hora_extra",
@@ -521,10 +533,19 @@ class PlanejamentoHoraExtra(models.Model):
     criado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        verbose_name = "Planejamento de Hora Extra"
-        verbose_name_plural = "Planejamentos de Horas Extras"
+        verbose_name = "Planejamento (Hora Extra / Folga)"
+        verbose_name_plural = "Planejamentos (Horas Extras e Absenteísmo)"
         ordering = ["-data", "-id"]
 
+    def save(self, *args, **kwargs):
+        if self.data_hora_inicio and self.data_hora_fim:
+            self.horas_extras = self.data_hora_fim - self.data_hora_inicio
+            self.data = self.data_hora_inicio.date()
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f"Planejamento #{self.id} - {self.data.strftime('%d/%m/%Y')} ({self.motivo})"
+        data_str = self.data.strftime('%d/%m/%Y') if self.data else 'Sem Data'
+        tipo_str = dict(self.TIPO_CHOICES).get(self.tipo, self.tipo)
+        return f"Planejamento #{self.id} [{tipo_str}] - {data_str} ({self.motivo})"
+
 

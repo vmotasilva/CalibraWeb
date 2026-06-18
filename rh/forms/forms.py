@@ -127,27 +127,32 @@ class ImportacaoFeriasForm(forms.Form):
 
 
 class PlanejamentoHoraExtraForm(forms.ModelForm):
-    horas_extras_str = forms.CharField(
-        label="Duração de Horas Extras (hh:mm:ss)",
+    data_hora_inicio = forms.DateTimeField(
+        label="Data/Hora Início",
         required=True,
-        widget=forms.TextInput(attrs={
+        widget=forms.DateTimeInput(attrs={
             "class": "form-control",
-            "placeholder": "Ex: 02:00:00"
+            "type": "datetime-local"
+        })
+    )
+    data_hora_fim = forms.DateTimeField(
+        label="Data/Hora Fim",
+        required=True,
+        widget=forms.DateTimeInput(attrs={
+            "class": "form-control",
+            "type": "datetime-local"
         })
     )
 
     class Meta:
         from rh.models import PlanejamentoHoraExtra
         model = PlanejamentoHoraExtra
-        fields = ["data", "motivo", "colaboradores"]
+        fields = ["tipo", "data_hora_inicio", "data_hora_fim", "motivo", "colaboradores"]
         widgets = {
-            "data": forms.DateInput(attrs={
-                "class": "form-control",
-                "type": "date"
-            }),
+            "tipo": forms.Select(attrs={"class": "form-select"}),
             "motivo": forms.TextInput(attrs={
                 "class": "form-control",
-                "placeholder": "Ex: Inventário Anual"
+                "placeholder": "Ex: Inventário Anual / Manutenção"
             }),
             "colaboradores": forms.SelectMultiple(attrs={
                 "class": "form-select",
@@ -159,13 +164,12 @@ class PlanejamentoHoraExtraForm(forms.ModelForm):
         usuario_logado = kwargs.pop('usuario_logado', None)
         super().__init__(*args, **kwargs)
         
-        # Preencher o valor inicial de horas_extras_str a partir do DurationField
-        if self.instance and self.instance.pk and self.instance.horas_extras:
-            total_seconds = int(self.instance.horas_extras.total_seconds())
-            hours = total_seconds // 3600
-            minutes = (total_seconds % 3600) // 60
-            seconds = total_seconds % 60
-            self.initial['horas_extras_str'] = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+        # Preencher o valor inicial formatado para datetime-local
+        if self.instance and self.instance.pk:
+            if self.instance.data_hora_inicio:
+                self.initial['data_hora_inicio'] = self.instance.data_hora_inicio.strftime('%Y-%m-%dT%H:%M')
+            if self.instance.data_hora_fim:
+                self.initial['data_hora_fim'] = self.instance.data_hora_fim.strftime('%Y-%m-%dT%H:%M')
             
         # Filtrar colaboradores com base nas permissões de acesso
         if usuario_logado:
@@ -175,31 +179,12 @@ class PlanejamentoHoraExtraForm(forms.ModelForm):
             from rh.models import Colaborador
             self.fields['colaboradores'].queryset = Colaborador.objects.all().order_by('nome_completo')
 
-    def clean_horas_extras_str(self):
-        val = self.cleaned_data.get('horas_extras_str', '').strip()
-        if not val:
-            raise forms.ValidationError("Duração é obrigatória.")
+    def clean(self):
+        cleaned_data = super().clean()
+        inicio = cleaned_data.get('data_hora_inicio')
+        fim = cleaned_data.get('data_hora_fim')
         
-        import re
-        from datetime import timedelta
-        
-        match_hms = re.match(r'^(\d+):([0-5]\d):([0-5]\d)$', val)
-        if match_hms:
-            hours, minutes, seconds = map(int, match_hms.groups())
-            return timedelta(hours=hours, minutes=minutes, seconds=seconds)
-        
-        match_hm = re.match(r'^(\d+):([0-5]\d)$', val)
-        if match_hm:
-            hours, minutes = map(int, match_hm.groups())
-            return timedelta(hours=hours, minutes=minutes)
-            
-        raise forms.ValidationError("Formato inválido. Use hh:mm:ss ou hh:mm.")
-
-    def save(self, commit=True):
-        instance = super().save(commit=False)
-        instance.horas_extras = self.cleaned_data['horas_extras_str']
-        if commit:
-            instance.save()
-            self.save_m2m()
-        return instance
+        if inicio and fim and fim <= inicio:
+            raise forms.ValidationError("A data/hora de fim deve ser posterior à data/hora de início.")
+        return cleaned_data
 

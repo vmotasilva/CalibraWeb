@@ -330,8 +330,8 @@
                         {% if nav_pe_horas_extras %}
                             {% can_nav_view user 'rh:planejamento_hora_extra_list' 'rh' as nav_pe_he_list %}
                             {% if nav_pe_he_list %}
-                                <li><h6 class="dropdown-header text-muted">HORAS EXTRAS</h6></li>
-                                <li><a class="dropdown-item" href="{% url 'rh:planejamento_hora_extra_list' %}"><i class="bi bi-clock-history"></i> Planejamento de Horas Extras</a></li>
+                                <li><h6 class="dropdown-header text-muted">HORAS EXTRAS E ABSENTEÍSMO</h6></li>
+                                <li><a class="dropdown-item" href="{% url 'rh:planejamento_hora_extra_list' %}"><i class="bi bi-clock-history"></i> Planejamento de Horas Extras e Absenteísmo</a></li>
                                 <li><hr class="dropdown-divider"></li>
                             {% endif %}
                         {% endif %}
