@@ -524,7 +524,6 @@ class MotivoPlanejamento(models.Model):
         verbose_name_plural = "Motivos de Planejamento"
         ordering = ["nome"]
 
-
 class PlanejamentoHoraExtra(models.Model):
     TIPO_CHOICES = [
         ('HORA_EXTRA', 'Hora Extra'),
@@ -576,5 +575,19 @@ class PlanejamentoHoraExtra(models.Model):
         data_str = self.data.strftime('%d/%m/%Y') if self.data else 'Sem Data'
         tipo_str = dict(self.TIPO_CHOICES).get(self.tipo, self.tipo)
         return f"Planejamento #{self.id} [{tipo_str}] - {data_str} ({self.motivo})"
+
+    @property
+    def duracao(self):
+        """Return the duration of the extra hours (horas_extras)."""
+        return self.horas_extras
+
+    @property
+    def total_hh(self):
+        """Return total HH considering duration multiplied by number of collaborators."""
+        if not self.horas_extras:
+            return None
+        return self.horas_extras * self.colaboradores.count()
+
+
 
 
