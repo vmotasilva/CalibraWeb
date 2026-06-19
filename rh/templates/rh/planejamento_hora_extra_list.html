@@ -216,7 +216,7 @@
                                         <a href="{% url 'rh:planejamento_hora_extra_edit' plan.id %}" class="btn btn-sm btn-outline-primary" title="Editar">
                                             <i class="bi bi-pencil"></i>
                                         </a>
-                                        <form method="POST" action="{% url 'rh:planejamento_hora_extra_delete' plan.id %}" class="d-inline m-0" onsubmit="return confirm('Tem certeza de que deseja excluir este planejamento?');">
+                                        <form method="POST" action="{% url 'rh:planejamento_hora_extra_delete' plan.id %}" class="d-inline m-0" onsubmit="if (confirm('Tem certeza de que deseja excluir este planejamento?')) { this.querySelector('button[type=submit]').disabled = true; return true; } return false;">
                                             {% csrf_token %}
                                             <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir">
                                                 <i class="bi bi-trash"></i>

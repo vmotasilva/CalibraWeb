@@ -67,7 +67,7 @@
                                         <a href="{% url 'rh:motivo_planejamento_edit' motivo.id %}" class="btn btn-outline-secondary btn-sm" title="Editar">
                                             <i class="bi bi-pencil"></i>
                                         </a>
-                                        <form method="POST" action="{% url 'rh:motivo_planejamento_delete' motivo.id %}" onsubmit="return confirm('Tem certeza de que deseja excluir este motivo? Esta ação não pode ser desfeita.');" class="d-inline">
+                                        <form method="POST" action="{% url 'rh:motivo_planejamento_delete' motivo.id %}" onsubmit="if (confirm('Tem certeza de que deseja excluir este motivo? Esta ação não pode ser desfeita.')) { this.querySelector('button[type=submit]').disabled = true; return true; } return false;" class="d-inline">
                                             {% csrf_token %}
                                             <button type="submit" class="btn btn-outline-danger btn-sm" title="Excluir">
                                                 <i class="bi bi-trash"></i>

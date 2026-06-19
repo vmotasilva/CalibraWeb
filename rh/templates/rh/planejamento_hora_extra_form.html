@@ -70,37 +70,42 @@
                             </div>
                         </div>
 
-                        <!-- Motivos Categorizados -->
+                        <!-- Motivos Categorizados (Badges & Modal trigger) -->
                         <div class="mb-4">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <label class="form-label fw-semibold text-secondary mb-0">
                                     <i class="bi bi-tags me-1"></i>Motivos Categorizados
                                 </label>
-                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 fw-semibold" style="font-size: 0.75rem;" data-bs-toggle="modal" data-bs-target="#modalNovoMotivo">
-                                    <i class="bi bi-plus-circle"></i> Novo Motivo
-                                </button>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-outline-primary btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#motivosSelectionModal">
+                                        <i class="bi bi-tags me-1"></i> Selecionar Motivos
+                                    </button>
+                                    <button type="button" class="btn btn-outline-success btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNovoMotivo">
+                                        <i class="bi bi-plus-circle me-1"></i> Novo Motivo
+                                    </button>
+                                </div>
                             </div>
-                            <div class="row row-cols-1 row-cols-sm-2 g-2 p-3 border rounded bg-white" id="motivosContainer">
+
+                            <!-- Badges area -->
+                            <div id="selectedMotivosBadges" class="d-flex flex-wrap gap-2 p-3 border rounded bg-white mb-2" style="min-height: 58px;">
+                                <!-- Rendered dynamically by JS -->
+                                <span class="text-muted small" id="noMotivosMessage">Nenhum motivo selecionado. Clique no botão acima para adicionar.</span>
+                            </div>
+
+                            <!-- Hidden select for django form submission -->
+                            <select name="motivos" id="id_motivos" class="d-none" multiple>
                                 {% for motivo in form.fields.motivos.queryset %}
-                                    <div class="col motivo-item" data-tipo="{{ motivo.tipo }}">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="motivos" value="{{ motivo.id }}" id="motivo_cb_{{ motivo.id }}"
-                                                {% if motivo.id in selected_motivos_ids %}checked{% endif %}>
-                                            <label class="form-check-label small fw-semibold text-dark" style="cursor: pointer;" for="motivo_cb_{{ motivo.id }}">
-                                                {{ motivo.nome }}
-                                            </label>
-                                        </div>
-                                    </div>
-                                {% empty %}
-                                    <div class="col-12 text-muted small">Nenhum motivo cadastrado.</div>
+                                    <option value="{{ motivo.id }}" {% if motivo.id in selected_motivos_ids %}selected{% endif %} data-tipo="{{ motivo.tipo }}">
+                                        {{ motivo.nome }}
+                                    </option>
                                 {% endfor %}
-                            </div>
+                            </select>
+
                             {% if form.motivos.errors %}
                                 <div class="text-danger small mt-1">
                                     {{ form.motivos.errors }}
                                 </div>
                             {% endif %}
-                            <div class="form-text text-muted small mt-1">Selecione um ou mais motivos aplicáveis a este registro.</div>
                         </div>
 
                         <!-- Motivo / Descrição Livre -->
@@ -200,6 +205,70 @@
                 <button type="button" class="btn btn-sm btn-primary px-4 fw-semibold" id="btnSalvarMotivoModal" onclick="salvarMotivoViaAJAX()">
                     <i class="bi bi-check-circle me-1"></i>Salvar
                 </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Seleção de Motivos -->
+<div class="modal fade" id="motivosSelectionModal" tabindex="-1" aria-labelledby="motivosSelectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="motivosSelectionModalLabel">
+                    <i class="bi bi-tags-fill me-2"></i>Selecionar Motivos
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <div class="modal-body p-3">
+                <!-- Search input -->
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold text-secondary mb-1">Busca rápida</label>
+                    <input type="text" id="modalMotivoSearch" class="form-control form-control-sm" placeholder="Nome do motivo..." oninput="filterModalMotivos()" autocomplete="off">
+                </div>
+
+                <!-- Helpers buttons -->
+                <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+                    <span class="text-muted small">
+                        Mostrando <strong id="visibleMotivosCount">0</strong> motivos aplicáveis
+                    </span>
+                </div>
+
+                <!-- List Wrapper -->
+                <div class="border rounded bg-white" style="max-height: 280px; overflow-y: auto;">
+                    <div id="modalMotivosList">
+                        {% for motivo in form.fields.motivos.queryset %}
+                            <div class="motivo-modal-row border-bottom py-2 px-3 d-flex align-items-center justify-content-between"
+                                 data-id="{{ motivo.id }}"
+                                 data-nome="{{ motivo.nome|lower }}"
+                                 data-tipo="{{ motivo.tipo }}">
+                                <div class="form-check m-0">
+                                    <input type="checkbox" class="form-check-input motivo-modal-cb" id="modal_motivo_cb_{{ motivo.id }}" value="{{ motivo.id }}"
+                                           {% if motivo.id in selected_motivos_ids %}checked{% endif %}
+                                           onchange="syncMotivoSelection({{ motivo.id }}, '{{ motivo.nome|escapejs }}', this.checked)">
+                                    <label class="form-check-label ms-2 fw-semibold text-dark mb-0" style="cursor: pointer;" for="modal_motivo_cb_{{ motivo.id }}">
+                                        {{ motivo.nome }}
+                                    </label>
+                                </div>
+                                <span class="badge bg-light text-secondary border small">
+                                    {% if motivo.tipo == 'HORA_EXTRA' %}Hora Extra
+                                    {% elif motivo.tipo == 'FOLGA' %}Folga
+                                    {% else %}Ambos{% endif %}
+                                </span>
+                            </div>
+                        {% empty %}
+                            <div class="text-center py-5 text-muted">
+                                <i class="bi bi-tags display-4 mb-2 d-block"></i>
+                                <p>Nenhum motivo cadastrado.</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer bg-light py-2">
+                <button type="button" class="btn btn-sm btn-primary px-4" data-bs-dismiss="modal">Concluir</button>
             </div>
         </div>
     </div>
@@ -317,24 +386,38 @@
 <script>
     // Armazena os colaboradores selecionados na inicialização
     const selectedColabs = new Map();
+    // Armazena os motivos selecionados na inicialização
+    const selectedMotivos = new Map();
 
-    // Filtra motivos por tipo (Hora Extra vs Folga)
+    // Filtra motivos por tipo (Hora Extra vs Folga) no modal e remove os selecionados que ficaram inválidos
     function filterMotivosByTipo() {
         const idTipo = document.getElementById('id_tipo');
         if (!idTipo) return;
         const currentTipo = idTipo.value;
         
-        const items = document.querySelectorAll('.motivo-item');
-        items.forEach(item => {
-            const itemTipo = item.getAttribute('data-tipo');
-            if (itemTipo === 'AMBOS' || itemTipo === currentTipo) {
-                item.style.setProperty('display', 'block', 'important');
-            } else {
-                item.style.setProperty('display', 'none', 'important');
-                const cb = item.querySelector('input[type="checkbox"]');
-                if (cb) cb.checked = false;
+        const rows = document.querySelectorAll('.motivo-modal-row');
+        rows.forEach(row => {
+            const itemTipo = row.getAttribute('data-tipo');
+            const id = parseInt(row.getAttribute('data-id'));
+            const matchesTipo = (itemTipo === 'AMBOS' || itemTipo === currentTipo);
+            
+            if (!matchesTipo) {
+                if (selectedMotivos.has(id)) {
+                    selectedMotivos.delete(id);
+                    const cb = row.querySelector('.motivo-modal-cb');
+                    if (cb) cb.checked = false;
+                    const select = document.getElementById('id_motivos');
+                    if (select) {
+                        Array.from(select.options).forEach(opt => {
+                            if (parseInt(opt.value) === id) opt.selected = false;
+                        });
+                    }
+                }
             }
         });
+        
+        filterModalMotivos();
+        renderMotivosBadges();
     }
 
     // Carrega a seleção inicial na carga da página
@@ -348,8 +431,18 @@
             }
         });
         
+        const hiddenMotivosSelect = document.getElementById('id_motivos');
+        if (hiddenMotivosSelect) {
+            Array.from(hiddenMotivosSelect.options).forEach(opt => {
+                if (opt.selected) {
+                    selectedMotivos.set(parseInt(opt.value), opt.text);
+                }
+            });
+        }
+        
         // Renderiza os badges
         renderBadges();
+        renderMotivosBadges();
         updateVisibleCount();
 
         // Inicializar e escutar filtro de motivos
@@ -383,7 +476,7 @@
             });
         }
 
-        // Estilização hover na lista do modal
+        // Estilização hover na lista do modal de colaboradores
         const rows = document.querySelectorAll('.colab-modal-row');
         rows.forEach(row => {
             row.addEventListener('mouseenter', function() {
@@ -393,6 +486,39 @@
                 this.style.backgroundColor = 'transparent';
             });
         });
+
+        // Estilização hover na lista do modal de motivos
+        const motivoRows = document.querySelectorAll('.motivo-modal-row');
+        motivoRows.forEach(row => {
+            row.addEventListener('mouseenter', function() {
+                this.style.backgroundColor = '#f8f9fa';
+            });
+            row.addEventListener('mouseleave', function() {
+                this.style.backgroundColor = 'transparent';
+            });
+        });
+
+        // Evento ao abrir o modal de seleção de motivos para limpar a busca e filtrar
+        const motivosModalEl = document.getElementById('motivosSelectionModal');
+        if (motivosModalEl) {
+            motivosModalEl.addEventListener('show.bs.modal', function() {
+                const searchInput = document.getElementById('modalMotivoSearch');
+                if (searchInput) searchInput.value = '';
+                filterModalMotivos();
+            });
+        }
+
+        // Impedir duplo clique ao salvar o planejamento
+        const mainForm = document.getElementById('planejamentoForm');
+        if (mainForm) {
+            mainForm.addEventListener('submit', function() {
+                const submitBtn = mainForm.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Salvando...';
+                }
+            });
+        }
     });
 
     // Filtra a lista de colaboradores no Modal
@@ -521,7 +647,113 @@
         });
     }
 
-    // Salva o motivo via AJAX (JSON API) e o adiciona dinamicamente na lista de checkboxes
+    // Filtra a lista de motivos no Modal por busca e tipo
+    function filterModalMotivos() {
+        const q = document.getElementById('modalMotivoSearch').value.toLowerCase().trim();
+        const idTipo = document.getElementById('id_tipo');
+        const currentTipo = idTipo ? idTipo.value : '';
+        
+        const rows = document.querySelectorAll('.motivo-modal-row');
+        let visibleCount = 0;
+        
+        rows.forEach(row => {
+            const rowNome = row.getAttribute('data-nome');
+            const rowTipo = row.getAttribute('data-tipo');
+            
+            const matchesSearch = !q || rowNome.includes(q);
+            const matchesTipo = (rowTipo === 'AMBOS' || rowTipo === currentTipo);
+            
+            if (matchesSearch && matchesTipo) {
+                row.style.setProperty('display', 'flex', 'important');
+                visibleCount++;
+            } else {
+                row.style.setProperty('display', 'none', 'important');
+            }
+        });
+        
+        const countSpan = document.getElementById('visibleMotivosCount');
+        if (countSpan) {
+            countSpan.innerText = visibleCount;
+        }
+    }
+
+    // Sincroniza a seleção do motivo com o mapa e o select oculto
+    function syncMotivoSelection(id, nome, isChecked) {
+        const select = document.getElementById('id_motivos');
+        
+        if (isChecked) {
+            selectedMotivos.set(id, nome);
+        } else {
+            selectedMotivos.delete(id);
+        }
+
+        // Sincroniza com o HTML select nativo
+        if (select) {
+            Array.from(select.options).forEach(opt => {
+                if (parseInt(opt.value) === id) {
+                    opt.selected = isChecked;
+                }
+            });
+        }
+
+        // Re-renderiza badges na tela principal
+        renderMotivosBadges();
+    }
+
+    // Renderiza os badges dos motivos selecionados na tela principal
+    function renderMotivosBadges() {
+        const container = document.getElementById('selectedMotivosBadges');
+        const noMotivosMsg = document.getElementById('noMotivosMessage');
+        if (!container) return;
+        
+        container.innerHTML = '';
+        
+        if (selectedMotivos.size === 0) {
+            if (noMotivosMsg) {
+                container.appendChild(noMotivosMsg);
+            } else {
+                container.innerHTML = `<span class="text-muted small" id="noMotivosMessage">Nenhum motivo selecionado. Clique no botão acima para adicionar.</span>`;
+            }
+            return;
+        }
+
+        selectedMotivos.forEach((nome, id) => {
+            const badge = document.createElement('span');
+            badge.className = "badge bg-light text-dark border d-flex align-items-center gap-1.5 py-2 px-3 rounded-pill shadow-sm transition-all";
+            badge.style.fontSize = "0.85rem";
+            badge.innerHTML = `
+                <i class="bi bi-tag text-secondary"></i>
+                <span class="fw-semibold">${nome}</span>
+                <button type="button" class="btn-close ms-1" style="font-size: 0.65rem;" aria-label="Remover" onclick="removeMotivo(${id})"></button>
+            `;
+            container.appendChild(badge);
+        });
+    }
+
+    // Remove um motivo a partir do badge
+    function removeMotivo(id) {
+        selectedMotivos.delete(id);
+
+        // Desmarcar no select oculto
+        const select = document.getElementById('id_motivos');
+        if (select) {
+            Array.from(select.options).forEach(opt => {
+                if (parseInt(opt.value) === id) {
+                    opt.selected = false;
+                }
+            });
+        }
+
+        // Desmarcar checkbox correspondente no modal
+        const cb = document.getElementById(`modal_motivo_cb_${id}`);
+        if (cb) {
+            cb.checked = false;
+        }
+
+        renderMotivosBadges();
+    }
+
+    // Salva o motivo via AJAX (JSON API) e o adiciona dinamicamente
     function salvarMotivoViaAJAX() {
         const nome = document.getElementById('modalMotivoNome').value.trim();
         const tipo = document.getElementById('modalMotivoTipo').value;
@@ -547,29 +779,51 @@
         .then(res => {
             if (res.status === 200 && res.body.success) {
                 const data = res.body;
-                const container = document.getElementById('motivosContainer');
                 
-                // Remove a mensagem de vazio se houver
-                const noMotivosMsg = container.querySelector('.text-muted');
-                if (noMotivosMsg) {
-                    noMotivosMsg.remove();
+                // 1. Adiciona a opção ao select oculto
+                const select = document.getElementById('id_motivos');
+                if (select) {
+                    const opt = document.createElement('option');
+                    opt.value = data.id;
+                    opt.text = data.nome;
+                    opt.selected = true;
+                    opt.setAttribute('data-tipo', data.tipo);
+                    select.appendChild(opt);
                 }
+
+                // 2. Adiciona o item à lista do modal de seleção de motivos
+                const listContainer = document.getElementById('modalMotivosList');
+                if (listContainer) {
+                    const noMotivosMsg = listContainer.querySelector('.text-muted');
+                    if (noMotivosMsg) noMotivosMsg.remove();
+                    
+                    const div = document.createElement('div');
+                    div.className = 'motivo-modal-row border-bottom py-2 px-3 d-flex align-items-center justify-content-between';
+                    div.setAttribute('data-id', data.id);
+                    div.setAttribute('data-nome', data.nome.toLowerCase());
+                    div.setAttribute('data-tipo', data.tipo);
+                    
+                    const tipoLabel = data.tipo === 'HORA_EXTRA' ? 'Hora Extra' : (data.tipo === 'FOLGA' ? 'Folga' : 'Ambos');
+                    
+                    div.innerHTML = `
+                        <div class="form-check m-0">
+                            <input type="checkbox" class="form-check-input motivo-modal-cb" id="modal_motivo_cb_${data.id}" value="${data.id}" checked
+                                   onchange="syncMotivoSelection(${data.id}, '${data.nome.replace(/'/g, "\\'")}', this.checked)">
+                            <label class="form-check-label ms-2 fw-semibold text-dark mb-0" style="cursor: pointer;" for="modal_motivo_cb_${data.id}">
+                                ${data.nome}
+                            </label>
+                        </div>
+                        <span class="badge bg-light text-secondary border small">
+                            ${tipoLabel}
+                        </span>
+                    `;
+                    listContainer.appendChild(div);
+                }
+
+                // 3. Atualiza o mapa local
+                selectedMotivos.set(data.id, data.nome);
                 
-                // Cria o elemento do novo motivo
-                const div = document.createElement('div');
-                div.className = 'col motivo-item';
-                div.setAttribute('data-tipo', data.tipo);
-                div.innerHTML = `
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="motivos" value="${data.id}" id="motivo_cb_${data.id}" checked>
-                        <label class="form-check-label small fw-semibold text-dark" style="cursor: pointer;" for="motivo_cb_${data.id}">
-                            ${data.nome}
-                        </label>
-                    </div>
-                `;
-                container.appendChild(div);
-                
-                // Filtra os motivos por tipo
+                // 4. Filtra e re-renderiza badges
                 filterMotivosByTipo();
                 
                 // Fecha o modal
