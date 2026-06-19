@@ -84,8 +84,8 @@
         <div class="card-body bg-light rounded shadow-inner">
             <form method="GET" class="row g-3 align-items-end">
                 <div class="col-md-2">
-                    <label for="id_busca" class="form-label small fw-semibold">Motivo</label>
-                    <input type="text" name="busca" id="id_busca" class="form-control" placeholder="Buscar motivo..." value="{{ busca }}">
+                    <label for="id_busca" class="form-label small fw-semibold">Motivo (Texto livre)</label>
+                    <input type="text" name="busca" id="id_busca" class="form-control" placeholder="Buscar detalhe..." value="{{ busca }}">
                 </div>
 
                 <div class="col-md-2">
@@ -94,6 +94,16 @@
                         <option value="">Todos</option>
                         <option value="HORA_EXTRA" {% if tipo == 'HORA_EXTRA' %}selected{% endif %}>Hora Extra</option>
                         <option value="FOLGA" {% if tipo == 'FOLGA' %}selected{% endif %}>Folga Planejada</option>
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label for="id_semana" class="form-label small fw-semibold">Acompanhamento Semanal</label>
+                    <select name="semana" id="id_semana" class="form-select">
+                        <option value="">Todo o período</option>
+                        <option value="passada" {% if semana == 'passada' %}selected{% endif %}>Semana Passada</option>
+                        <option value="atual" {% if semana == 'atual' %}selected{% endif %}>Esta Semana</option>
+                        <option value="proxima" {% if semana == 'proxima' %}selected{% endif %}>Próxima Semana</option>
                     </select>
                 </div>
 
@@ -119,12 +129,12 @@
                     </select>
                 </div>
 
-                <div class="col-md-2 d-flex gap-2">
-                    <button type="submit" class="btn btn-primary flex-grow-1">
+                <div class="col-12 d-flex justify-content-end gap-2 mt-2">
+                    <button type="submit" class="btn btn-primary px-4">
                         <i class="bi bi-funnel"></i> Filtrar
                     </button>
-                    <a href="{% url 'rh:planejamento_hora_extra_list' %}" class="btn btn-outline-secondary" title="Limpar Filtros">
-                        <i class="bi bi-arrow-clockwise"></i>
+                    <a href="{% url 'rh:planejamento_hora_extra_list' %}" class="btn btn-outline-secondary px-3" title="Limpar Filtros">
+                        <i class="bi bi-arrow-clockwise"></i> Limpar Filtros
                     </a>
                 </div>
             </form>
@@ -164,6 +174,19 @@
                                     <div class="text-muted small">a {{ plan.data_hora_fim|date:"d/m/Y H:i" }}</div>
                                 </td>
                                 <td>
+                                    <!-- Motivos Categorizados -->
+                                    <div class="d-flex flex-wrap gap-1 mb-1">
+                                        {% for m in plan.motivos.all %}
+                                            <span class="badge bg-secondary bg-opacity-10 text-secondary border small" style="font-size: 0.72rem; padding: 2px 5px;">
+                                                <i class="bi bi-tag-fill me-0.5"></i>{{ m.nome }}
+                                            </span>
+                                        {% empty %}
+                                            <span class="badge bg-light text-muted border small" style="font-size: 0.72rem; padding: 2px 5px;">
+                                                Sem categoria
+                                            </span>
+                                        {% endfor %}
+                                    </div>
+                                    <!-- Descrição Livre -->
                                     <div class="fw-semibold text-dark">{{ plan.motivo }}</div>
                                     {% if plan.criado_por %}
                                         <small class="text-muted" style="font-size:0.75rem;">Registrado por: {{ plan.criado_por.get_full_name|default:plan.criado_por.username }}</small>

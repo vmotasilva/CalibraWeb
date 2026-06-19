@@ -3363,6 +3363,21 @@ def planejamento_hora_extra_list_view(request):
     if tipo:
         queryset = queryset.filter(tipo=tipo)
         
+    semana = request.GET.get('semana', '').strip()
+    if semana:
+        today = date.today()
+        start_of_current_week = today - timedelta(days=today.weekday())
+        if semana == 'passada':
+            start_date = start_of_current_week - timedelta(weeks=1)
+            end_date = start_date + timedelta(days=6)
+        elif semana == 'atual':
+            start_date = start_of_current_week
+            end_date = start_date + timedelta(days=6)
+        elif semana == 'proxima':
+            start_date = start_of_current_week + timedelta(weeks=1)
+            end_date = start_date + timedelta(days=6)
+        queryset = queryset.filter(data__range=[start_date, end_date])
+
     # Ordenação
     queryset = queryset.order_by('-data', '-id')
     
@@ -3418,6 +3433,7 @@ def planejamento_hora_extra_list_view(request):
         'data_fim': data_fim,
         'colaborador_id': colaborador_id,
         'tipo': tipo,
+        'semana': semana,
         'querystring': querystring,
     }
     return render(request, 'rh/planejamento_hora_extra_list.html', context)
@@ -3427,6 +3443,7 @@ def planejamento_hora_extra_list_view(request):
 def planejamento_hora_extra_create_view(request):
     colabs_queryset = get_colaboradores_acessiveis(request.user)
     selected_ids = []
+    selected_motivos_ids = []
     if request.method == 'POST':
         form = PlanejamentoHoraExtraForm(request.POST, usuario_logado=request.user)
         if form.is_valid():
@@ -3437,6 +3454,7 @@ def planejamento_hora_extra_create_view(request):
             messages.success(request, "Planejamento registrado com sucesso!")
             return redirect('rh:planejamento_hora_extra_list')
         selected_ids = [int(x) for x in request.POST.getlist('colaboradores') if x.isdigit()]
+        selected_motivos_ids = [int(x) for x in request.POST.getlist('motivos') if x.isdigit()]
     else:
         form = PlanejamentoHoraExtraForm(usuario_logado=request.user)
         
@@ -3450,6 +3468,7 @@ def planejamento_hora_extra_create_view(request):
         'form': form,
         'titulo': 'Novo Planejamento',
         'selected_ids': selected_ids,
+        'selected_motivos_ids': selected_motivos_ids,
         'setores': setores,
         'lideres': lideres,
         'turnos': turnos,
@@ -3465,6 +3484,7 @@ def planejamento_hora_extra_update_view(request, plan_id):
     )
     
     selected_ids = list(planejamento.colaboradores.values_list('id', flat=True))
+    selected_motivos_ids = list(planejamento.motivos.values_list('id', flat=True))
     if request.method == 'POST':
         form = PlanejamentoHoraExtraForm(request.POST, instance=planejamento, usuario_logado=request.user)
         if form.is_valid():
@@ -3472,6 +3492,7 @@ def planejamento_hora_extra_update_view(request, plan_id):
             messages.success(request, "Planejamento atualizado com sucesso!")
             return redirect('rh:planejamento_hora_extra_list')
         selected_ids = [int(x) for x in request.POST.getlist('colaboradores') if x.isdigit()]
+        selected_motivos_ids = [int(x) for x in request.POST.getlist('motivos') if x.isdigit()]
     else:
         form = PlanejamentoHoraExtraForm(instance=planejamento, usuario_logado=request.user)
         
@@ -3486,6 +3507,7 @@ def planejamento_hora_extra_update_view(request, plan_id):
         'titulo': f'Editar Planejamento #{planejamento.id}',
         'planejamento': planejamento,
         'selected_ids': selected_ids,
+        'selected_motivos_ids': selected_motivos_ids,
         'setores': setores,
         'lideres': lideres,
         'turnos': turnos,

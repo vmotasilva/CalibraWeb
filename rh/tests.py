@@ -395,11 +395,100 @@ class PlanejamentoHoraExtraTests(TestCase):
         self.assertNotIn(colab_inativo, colabs_super_queryset)
         self.assertNotIn(colab_afastado, colabs_super_queryset)
 
+    def test_form_validation_multiple_motivos(self):
+        """Test form clean validation with multiple motives selected"""
+        from rh.forms import PlanejamentoHoraExtraForm
+        from rh.models import MotivoPlanejamento
+        m1 = MotivoPlanejamento.objects.create(nome="Temp1", tipo="HORA_EXTRA")
+        m2 = MotivoPlanejamento.objects.create(nome="Temp2", tipo="AMBOS")
+        form = PlanejamentoHoraExtraForm(data={
+            'tipo': 'HORA_EXTRA',
+            'data_hora_inicio': '2026-06-18T08:00',
+            'data_hora_fim': '2026-06-18T10:30',
+            'motivos': [m1.id, m2.id],
+            'motivo': 'Descrição livre de justificativa',
+            'colaboradores': [self.colab_subordinado.id]
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(len(form.cleaned_data['motivos']), 2)
+
+    def test_weekly_filtering_view(self):
+        """Test the list view week filters correctly filter by week"""
+        from datetime import date, timedelta, datetime, time
+        from django.utils import timezone
+        from django.utils.timezone import is_aware, make_aware
+        from rh.models import PlanejamentoHoraExtra
+        self.client.login(username='super_user', password='password123')
+        
+        today = date.today()
+        # Segunda-feira da semana atual
+        monday = today - timedelta(days=today.weekday())
+        
+        def make_dt(d, h, m):
+            dt = datetime.combine(d, time(h, m))
+            return make_aware(dt) if is_aware(timezone.now()) else dt
+
+        # Planejamento na semana passada
+        p_passada = PlanejamentoHoraExtra.objects.create(
+            tipo='HORA_EXTRA',
+            data_hora_inicio=make_dt(monday - timedelta(days=3), 8, 0),
+            data_hora_fim=make_dt(monday - timedelta(days=3), 10, 0),
+            motivo='Semana Passada Reg',
+        )
+        p_passada.colaboradores.add(self.colab_subordinado)
+        p_passada.save()
+        
+        # Planejamento na semana atual
+        p_atual = PlanejamentoHoraExtra.objects.create(
+            tipo='HORA_EXTRA',
+            data_hora_inicio=make_dt(monday + timedelta(days=1), 8, 0),
+            data_hora_fim=make_dt(monday + timedelta(days=1), 10, 0),
+            motivo='Esta Semana Reg',
+        )
+        p_atual.colaboradores.add(self.colab_subordinado)
+        p_atual.save()
+
+        # Planejamento na próxima semana
+        p_proxima = PlanejamentoHoraExtra.objects.create(
+            tipo='FOLGA',
+            data_hora_inicio=make_dt(monday + timedelta(days=8), 8, 0),
+            data_hora_fim=make_dt(monday + timedelta(days=8), 10, 0),
+            motivo='Proxima Semana Reg',
+        )
+        p_proxima.colaboradores.add(self.colab_subordinado)
+        p_proxima.save()
+        
+        list_url = reverse('rh:planejamento_hora_extra_list')
+        
+        # Test semana passada
+        response = self.client.get(f"{list_url}?semana=passada")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Semana Passada Reg')
+        self.assertNotContains(response, 'Esta Semana Reg')
+        self.assertNotContains(response, 'Proxima Semana Reg')
+        
+        # Test esta semana
+        response = self.client.get(f"{list_url}?semana=atual")
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'Semana Passada Reg')
+        self.assertContains(response, 'Esta Semana Reg')
+        self.assertNotContains(response, 'Proxima Semana Reg')
+        
+        # Test proxima semana
+        response = self.client.get(f"{list_url}?semana=proxima")
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'Semana Passada Reg')
+        self.assertNotContains(response, 'Esta Semana Reg')
+        self.assertContains(response, 'Proxima Semana Reg')
+
     def test_crud_views(self):
         """Test listing, creating, updating and deleting planning via views"""
         from datetime import timedelta, date
-        from rh.models import PlanejamentoHoraExtra
+        from rh.models import PlanejamentoHoraExtra, MotivoPlanejamento
         self.client.login(username='super_user', password='password123')
+        
+        # Create a categorized reason
+        m_extra = MotivoPlanejamento.objects.create(nome="Manutenção", tipo="HORA_EXTRA")
         
         # 1. Create planning
         create_url = reverse('rh:planejamento_hora_extra_create')
@@ -407,6 +496,7 @@ class PlanejamentoHoraExtraTests(TestCase):
             'tipo': 'HORA_EXTRA',
             'data_hora_inicio': '2026-06-18T08:00',
             'data_hora_fim': '2026-06-18T10:00',
+            'motivos': [m_extra.id],
             'motivo': 'Fechamento Mensal',
             'colaboradores': [self.colab_subordinado.id, self.colab_independente.id]
         }
@@ -419,6 +509,7 @@ class PlanejamentoHoraExtraTests(TestCase):
         self.assertEqual(planning.horas_extras, timedelta(hours=2))
         self.assertEqual(planning.data, date(2026, 6, 18))
         self.assertEqual(planning.colaboradores.count(), 2)
+        self.assertEqual(planning.motivos.first(), m_extra)
         
         # 2. List planning
         list_url = reverse('rh:planejamento_hora_extra_list')
@@ -426,13 +517,16 @@ class PlanejamentoHoraExtraTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Fechamento Mensal')
         self.assertContains(response, '02:00:00')
+        self.assertContains(response, 'Manutenção')
         
         # 3. Update planning
+        m_folga = MotivoPlanejamento.objects.create(nome="Compensação", tipo="FOLGA")
         edit_url = reverse('rh:planejamento_hora_extra_edit', args=[planning.id])
         update_data = {
             'tipo': 'FOLGA',
             'data_hora_inicio': '2026-06-19T08:00',
             'data_hora_fim': '2026-06-19T11:15',
+            'motivos': [m_folga.id],
             'motivo': 'Fechamento Mensal Ajustado',
             'colaboradores': [self.colab_subordinado.id]
         }
@@ -445,6 +539,7 @@ class PlanejamentoHoraExtraTests(TestCase):
         self.assertEqual(planning.data, date(2026, 6, 19))
         self.assertEqual(planning.horas_extras, timedelta(hours=3, minutes=15))
         self.assertEqual(planning.colaboradores.count(), 1)
+        self.assertEqual(planning.motivos.first(), m_folga)
         
         # 4. Delete planning
         delete_url = reverse('rh:planejamento_hora_extra_delete', args=[planning.id])

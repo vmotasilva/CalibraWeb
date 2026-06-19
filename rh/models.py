@@ -502,6 +502,29 @@ class HistoricoColaborador(models.Model):
         ordering = ["-data_mudanca"]
 
 
+class MotivoPlanejamento(models.Model):
+    TIPO_CHOICES = [
+        ('HORA_EXTRA', 'Hora Extra'),
+        ('FOLGA', 'Folga Planejada'),
+        ('AMBOS', 'Ambos'),
+    ]
+    nome = models.CharField(max_length=100, unique=True, verbose_name="Nome do Motivo")
+    tipo = models.CharField(
+        max_length=20,
+        choices=TIPO_CHOICES,
+        default='AMBOS',
+        verbose_name="Categoria/Tipo"
+    )
+
+    def __str__(self):
+        return f"{self.nome} ({self.get_tipo_display()})"
+
+    class Meta:
+        verbose_name = "Motivo de Planejamento"
+        verbose_name_plural = "Motivos de Planejamento"
+        ordering = ["nome"]
+
+
 class PlanejamentoHoraExtra(models.Model):
     TIPO_CHOICES = [
         ('HORA_EXTRA', 'Hora Extra'),
@@ -514,6 +537,12 @@ class PlanejamentoHoraExtra(models.Model):
         verbose_name="Tipo de Registro"
     )
     data = models.DateField(verbose_name="Data do Planejamento", null=True, blank=True)
+    motivos = models.ManyToManyField(
+        MotivoPlanejamento,
+        blank=True,
+        related_name="planejamentos",
+        verbose_name="Motivos Categorizados"
+    )
     motivo = models.CharField(max_length=255, verbose_name="Motivo")
     horas_extras = models.DurationField(verbose_name="Horas Extras", null=True, blank=True)
     data_hora_inicio = models.DateTimeField(verbose_name="Início", null=True, blank=True)

@@ -1,7 +1,8 @@
 from django.contrib import admin
 from .models import (
     Colaborador, Ferias, Ocorrencia, DocumentoPessoal,
-    HistoricoSetor, HistoricoPosto, HistoricoSalario, HistoricoColaborador
+    HistoricoSetor, HistoricoPosto, HistoricoSalario, HistoricoColaborador,
+    MotivoPlanejamento, PlanejamentoHoraExtra
 )
 from qms.admin import admin_site
 
@@ -91,6 +92,18 @@ class HistoricoColaboradorAdmin(admin.ModelAdmin):
     ordering = ['-data_mudanca']
 
 
+class MotivoPlanejamentoAdmin(admin.ModelAdmin):
+    list_display = ['nome', 'tipo']
+    list_filter = ['tipo']
+    search_fields = ['nome']
+
+
+class PlanejamentoHoraExtraAdmin(admin.ModelAdmin):
+    list_display = ['id', 'tipo', 'data_hora_inicio', 'data_hora_fim', 'motivo', 'horas_extras']
+    list_filter = ['tipo', 'data']
+    search_fields = ['motivo']
+
+
 admin_site.register(Colaborador, ColaboradorAdmin)
 admin_site.register(Ferias, FeriasAdmin)
 admin_site.register(Ocorrencia, OcorrenciaAdmin)
@@ -99,3 +112,5 @@ admin_site.register(HistoricoSetor, HistoricoSetorAdmin)
 admin_site.register(HistoricoPosto, HistoricoPostoAdmin)
 admin_site.register(HistoricoSalario, HistoricoSalarioAdmin)
 admin_site.register(HistoricoColaborador, HistoricoColaboradorAdmin)
+admin_site.register(MotivoPlanejamento, MotivoPlanejamentoAdmin)
+admin_site.register(PlanejamentoHoraExtra, PlanejamentoHoraExtraAdmin)

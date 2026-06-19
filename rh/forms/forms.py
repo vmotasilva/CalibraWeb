@@ -143,16 +143,22 @@ class PlanejamentoHoraExtraForm(forms.ModelForm):
             "type": "datetime-local"
         })
     )
+    motivos = forms.ModelMultipleChoiceField(
+        queryset=None,
+        widget=forms.CheckboxSelectMultiple(),
+        required=False,
+        label="Motivos Categorizados"
+    )
 
     class Meta:
         from rh.models import PlanejamentoHoraExtra
         model = PlanejamentoHoraExtra
-        fields = ["tipo", "data_hora_inicio", "data_hora_fim", "motivo", "colaboradores"]
+        fields = ["tipo", "data_hora_inicio", "data_hora_fim", "motivos", "motivo", "colaboradores"]
         widgets = {
             "tipo": forms.Select(attrs={"class": "form-select"}),
             "motivo": forms.TextInput(attrs={
                 "class": "form-control",
-                "placeholder": "Ex: Inventário Anual / Manutenção"
+                "placeholder": "Detalhamento adicional / descrição livre..."
             }),
             "colaboradores": forms.SelectMultiple(attrs={
                 "class": "form-select",
@@ -163,6 +169,10 @@ class PlanejamentoHoraExtraForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         usuario_logado = kwargs.pop('usuario_logado', None)
         super().__init__(*args, **kwargs)
+        
+        # Carregar queryset de motivos
+        from rh.models import MotivoPlanejamento
+        self.fields['motivos'].queryset = MotivoPlanejamento.objects.all()
         
         # Preencher o valor inicial formatado para datetime-local
         if self.instance and self.instance.pk:
