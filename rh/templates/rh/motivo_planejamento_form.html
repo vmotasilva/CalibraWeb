@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ titulo }} - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Breadcrumbs -->
+    <div class="mb-3">
+        <a href="{% url 'rh:motivo_planejamento_list' %}" class="text-decoration-none text-secondary small fw-semibold">
+            <i class="bi bi-arrow-left"></i> Voltar para a Listagem
+        </a>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3 border-bottom border-light">
+                    <h4 class="card-title mb-0 text-dark">
+                        <i class="bi bi-gear text-primary me-2"></i> {{ titulo }}
+                    </h4>
+                </div>
+                <div class="card-body py-4">
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        
+                        <!-- Nome field -->
+                        <div class="mb-3">
+                            <label for="id_nome" class="form-label fw-semibold">Nome do Motivo <span class="text-danger">*</span></label>
+                            {{ form.nome }}
+                            {% if form.nome.errors %}
+                                <div class="invalid-feedback d-block">{{ form.nome.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Tipo/Categoria field -->
+                        <div class="mb-4">
+                            <label for="id_tipo" class="form-label fw-semibold">Categoria / Tipo <span class="text-danger">*</span></label>
+                            {{ form.tipo }}
+                            {% if form.tipo.errors %}
+                                <div class="invalid-feedback d-block">{{ form.tipo.errors.0 }}</div>
+                            {% endif %}
+                            <div class="form-text text-muted small mt-1">
+                                Define em qual tipo de registro (Hora Extra ou Folga Planejada) este motivo estará disponível.
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> Salvar Motivo
+                            </button>
+                            <a href="{% url 'rh:motivo_planejamento_list' %}" class="btn btn-outline-secondary">
+                                Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

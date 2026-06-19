@@ -15,6 +15,11 @@ from .views import (
     planejamento_hora_extra_create_view,
     planejamento_hora_extra_update_view,
     planejamento_hora_extra_delete_view,
+    motivo_planejamento_list_view,
+    motivo_planejamento_create_view,
+    motivo_planejamento_update_view,
+    motivo_planejamento_delete_view,
+    api_create_motivo,
     # API endpoints
     api_colaboradores,
     api_setores,
@@ -39,6 +44,11 @@ __all__ = [
     'planejamento_hora_extra_create_view',
     'planejamento_hora_extra_update_view',
     'planejamento_hora_extra_delete_view',
+    'motivo_planejamento_list_view',
+    'motivo_planejamento_create_view',
+    'motivo_planejamento_update_view',
+    'motivo_planejamento_delete_view',
+    'api_create_motivo',
     # API endpoints
     'api_colaboradores',
     'api_setores',

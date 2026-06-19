@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Gerenciar Motivos de Planejamento - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Breadcrumbs -->
+    <div class="mb-3">
+        <a href="{% url 'rh:planejamento_hora_extra_list' %}" class="text-decoration-none text-secondary small fw-semibold">
+            <i class="bi bi-arrow-left"></i> Voltar para Planejamento
+        </a>
+    </div>
+
+    <!-- Header -->
+    <div class="row mb-4 align-items-center">
+        <div class="col-sm-8">
+            <h1 class="h3 mb-1">
+                <i class="bi bi-gear text-primary"></i> Gerenciar Motivos de Planejamento
+            </h1>
+            <p class="text-muted mb-0">Cadastre e configure os motivos categorizados para Horas Extras e Folgas Planejadas</p>
+        </div>
+        <div class="col-sm-4 text-sm-end mt-3 mt-sm-0">
+            <a href="{% url 'rh:motivo_planejamento_create' %}" class="btn btn-primary shadow-sm">
+                <i class="bi bi-plus-circle"></i> Novo Motivo
+            </a>
+        </div>
+    </div>
+
+    <!-- Alerts -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm mb-4" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Table Card -->
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4" style="width: 60%;">Nome do Motivo</th>
+                            <th style="width: 25%;">Categoria / Tipo</th>
+                            <th class="text-end pe-4" style="width: 15%;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for motivo in motivos %}
+                            <tr>
+                                <td class="fw-semibold text-dark ps-4">{{ motivo.nome }}</td>
+                                <td>
+                                    {% if motivo.tipo == 'HORA_EXTRA' %}
+                                        <span class="badge bg-primary bg-opacity-10 text-primary">Hora Extra</span>
+                                    {% elif motivo.tipo == 'FOLGA' %}
+                                        <span class="badge bg-purple bg-opacity-10 text-purple" style="color: #6f42c1 !important; background-color: rgba(111, 66, 193, 0.1) !important;">Folga Planejada</span>
+                                    {% else %}
+                                        <span class="badge bg-success bg-opacity-10 text-success">Ambos</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end pe-4">
+                                    <div class="d-flex justify-content-end gap-2">
+                                        <a href="{% url 'rh:motivo_planejamento_edit' motivo.id %}" class="btn btn-outline-secondary btn-sm" title="Editar">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <form method="POST" action="{% url 'rh:motivo_planejamento_delete' motivo.id %}" onsubmit="return confirm('Tem certeza de que deseja excluir este motivo? Esta ação não pode ser desfeita.');" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-outline-danger btn-sm" title="Excluir">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center py-5 text-muted">
+                                    <i class="bi bi-folder2-open display-4 mb-3 d-block text-secondary opacity-50"></i>
+                                    Nenhum motivo cadastrado ainda. Clique em "Novo Motivo" para começar.
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

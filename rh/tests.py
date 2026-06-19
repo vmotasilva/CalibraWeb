@@ -547,3 +547,91 @@ class PlanejamentoHoraExtraTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertFalse(PlanejamentoHoraExtra.objects.filter(id=planning.id).exists())
 
+
+class MotivoPlanejamentoCRUDTests(TestCase):
+    def setUp(self):
+        from django.contrib.auth.models import User
+        from rh.models import Colaborador
+        from organization.models import Setor
+        self.client = Client()
+        self.setor = Setor.objects.create(nome="Produção", responsavel="Admin")
+        self.superuser = User.objects.create_superuser(username='super_user', password='password123')
+        
+    def test_motivo_crud_views(self):
+        """Test listing, creating, updating and deleting motives via views"""
+        self.client.login(username='super_user', password='password123')
+        from rh.models import MotivoPlanejamento
+        
+        # 1. Create Motive
+        create_url = reverse('rh:motivo_planejamento_create')
+        response = self.client.post(create_url, {
+            'nome': 'Treinamento Especial',
+            'tipo': 'HORA_EXTRA'
+        })
+        self.assertEqual(response.status_code, 302)
+        
+        motivo = MotivoPlanejamento.objects.get(nome='Treinamento Especial')
+        self.assertEqual(motivo.tipo, 'HORA_EXTRA')
+        
+        # 2. List Motives
+        list_url = reverse('rh:motivo_planejamento_list')
+        response = self.client.get(list_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Treinamento Especial')
+        
+        # 3. Update Motive
+        edit_url = reverse('rh:motivo_planejamento_edit', args=[motivo.id])
+        response = self.client.post(edit_url, {
+            'nome': 'Treinamento Especial Atualizado',
+            'tipo': 'AMBOS'
+        })
+        self.assertEqual(response.status_code, 302)
+        motivo.refresh_from_db()
+        self.assertEqual(motivo.nome, 'Treinamento Especial Atualizado')
+        self.assertEqual(motivo.tipo, 'AMBOS')
+        
+        # 4. Delete Motive
+        delete_url = reverse('rh:motivo_planejamento_delete', args=[motivo.id])
+        response = self.client.post(delete_url)
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(MotivoPlanejamento.objects.filter(id=motivo.id).exists())
+
+    def test_api_create_motivo_ajax(self):
+        """Test dynamic inline creation of motives via AJAX JSON endpoint"""
+        import json
+        self.client.login(username='super_user', password='password123')
+        from rh.models import MotivoPlanejamento
+        
+        api_url = reverse('rh:api_create_motivo')
+        
+        # 1. Successful AJAX creation
+        post_data = {
+            'nome': 'Hora de Ouro',
+            'tipo': 'HORA_EXTRA'
+        }
+        response = self.client.post(
+            api_url, 
+            data=json.dumps(post_data), 
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        res_json = response.json()
+        self.assertTrue(res_json['success'])
+        self.assertEqual(res_json['nome'], 'Hora de Ouro')
+        self.assertEqual(res_json['tipo'], 'HORA_EXTRA')
+        
+        # Verify db record
+        self.assertTrue(MotivoPlanejamento.objects.filter(nome='Hora de Ouro').exists())
+        
+        # 2. Duplicate error case
+        response_dup = self.client.post(
+            api_url, 
+            data=json.dumps(post_data), 
+            content_type='application/json'
+        )
+        self.assertEqual(response_dup.status_code, 400)
+        res_dup_json = response_dup.json()
+        self.assertFalse(res_dup_json['success'])
+        self.assertIn('Já existe um motivo cadastrado com este nome', res_dup_json['error'])
+
+

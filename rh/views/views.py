@@ -3527,3 +3527,88 @@ def planejamento_hora_extra_delete_view(request, plan_id):
     return redirect('rh:planejamento_hora_extra_list')
 
 
+@login_required
+def motivo_planejamento_list_view(request):
+    from rh.models import MotivoPlanejamento
+    motivos = MotivoPlanejamento.objects.all().order_by('nome')
+    return render(request, 'rh/motivo_planejamento_list.html', {'motivos': motivos})
+
+
+@login_required
+def motivo_planejamento_create_view(request):
+    from rh.forms.forms import MotivoPlanejamentoForm
+    if request.method == 'POST':
+        form = MotivoPlanejamentoForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Motivo cadastrado com sucesso!")
+            return redirect('rh:motivo_planejamento_list')
+    else:
+        form = MotivoPlanejamentoForm()
+    return render(request, 'rh/motivo_planejamento_form.html', {
+        'form': form,
+        'titulo': 'Novo Motivo'
+    })
+
+
+@login_required
+def motivo_planejamento_update_view(request, pk):
+    from rh.models import MotivoPlanejamento
+    from rh.forms.forms import MotivoPlanejamentoForm
+    motivo = get_object_or_404(MotivoPlanejamento, pk=pk)
+    if request.method == 'POST':
+        form = MotivoPlanejamentoForm(request.POST, instance=motivo)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Motivo atualizado com sucesso!")
+            return redirect('rh:motivo_planejamento_list')
+    else:
+        form = MotivoPlanejamentoForm(instance=motivo)
+    return render(request, 'rh/motivo_planejamento_form.html', {
+        'form': form,
+        'titulo': 'Editar Motivo'
+    })
+
+
+@require_POST
+@login_required
+def motivo_planejamento_delete_view(request, pk):
+    from rh.models import MotivoPlanejamento
+    motivo = get_object_or_404(MotivoPlanejamento, pk=pk)
+    motivo.delete()
+    messages.success(request, "Motivo excluído com sucesso!")
+    return redirect('rh:motivo_planejamento_list')
+
+
+@require_POST
+@login_required
+def api_create_motivo(request):
+    import json
+    from django.http import JsonResponse
+    from rh.models import MotivoPlanejamento
+    try:
+        data = json.loads(request.body)
+        nome = data.get('nome', '').strip()
+        tipo = data.get('tipo', 'AMBOS').strip()
+        
+        if not nome:
+            return JsonResponse({'success': False, 'error': 'Nome do motivo é obrigatório.'}, status=400)
+            
+        if MotivoPlanejamento.objects.filter(nome__iexact=nome).exists():
+            return JsonResponse({'success': False, 'error': 'Já existe um motivo cadastrado com este nome.'}, status=400)
+            
+        motivo = MotivoPlanejamento.objects.create(nome=nome, tipo=tipo)
+        return JsonResponse({
+            'success': True,
+            'id': motivo.id,
+            'nome': motivo.nome,
+            'tipo': motivo.tipo,
+            'tipo_display': motivo.get_tipo_display()
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'JSON inválido.'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+

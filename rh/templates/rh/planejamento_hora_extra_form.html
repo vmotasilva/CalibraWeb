@@ -72,9 +72,14 @@
 
                         <!-- Motivos Categorizados -->
                         <div class="mb-4">
-                            <label class="form-label fw-semibold text-secondary d-block">
-                                <i class="bi bi-tags me-1"></i>Motivos Categorizados
-                            </label>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label fw-semibold text-secondary mb-0">
+                                    <i class="bi bi-tags me-1"></i>Motivos Categorizados
+                                </label>
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 fw-semibold" style="font-size: 0.75rem;" data-bs-toggle="modal" data-bs-target="#modalNovoMotivo">
+                                    <i class="bi bi-plus-circle"></i> Novo Motivo
+                                </button>
+                            </div>
                             <div class="row row-cols-1 row-cols-sm-2 g-2 p-3 border rounded bg-white" id="motivosContainer">
                                 {% for motivo in form.fields.motivos.queryset %}
                                     <div class="col motivo-item" data-tipo="{{ motivo.tipo }}">
@@ -158,6 +163,43 @@
                         </div>
                     </form>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Novo Motivo -->
+<div class="modal fade" id="modalNovoMotivo" tabindex="-1" aria-labelledby="modalNovoMotivoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white py-2.5">
+                <h5 class="modal-title" id="modalNovoMotivoLabel">
+                    <i class="bi bi-plus-circle me-1"></i>Cadastrar Novo Motivo
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" id="btnFecharModalMotivo"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger d-none shadow-sm mb-3" id="modalMotivoErro"></div>
+                <form id="formNovoMotivoModal">
+                    <div class="mb-3">
+                        <label for="modalMotivoNome" class="form-label fw-semibold text-secondary small">Nome do Motivo <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-sm" id="modalMotivoNome" required placeholder="Ex: Treinamento, Demanda Extra...">
+                    </div>
+                    <div class="mb-3">
+                        <label for="modalMotivoTipo" class="form-label fw-semibold text-secondary small">Categoria / Tipo <span class="text-danger">*</span></label>
+                        <select class="form-select form-select-sm" id="modalMotivoTipo" required>
+                            <option value="AMBOS">Ambos</option>
+                            <option value="HORA_EXTRA">Hora Extra</option>
+                            <option value="FOLGA">Folga Planejada</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-light py-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary px-3" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-sm btn-primary px-4 fw-semibold" id="btnSalvarMotivoModal" onclick="salvarMotivoViaAJAX()">
+                    <i class="bi bi-check-circle me-1"></i>Salvar
+                </button>
             </div>
         </div>
     </div>
@@ -317,6 +359,30 @@
             filterMotivosByTipo();
         }
 
+        // Evento ao exibir o modal de motivos para pré-selecionar o tipo correspondente
+        const modalElement = document.getElementById('modalNovoMotivo');
+        if (modalElement) {
+            modalElement.addEventListener('show.bs.modal', function () {
+                const modalTipo = document.getElementById('modalMotivoTipo');
+                const modalNome = document.getElementById('modalMotivoNome');
+                const errorDiv = document.getElementById('modalMotivoErro');
+                
+                // Limpar campos e erros
+                modalNome.value = '';
+                errorDiv.classList.add('d-none');
+                errorDiv.innerText = '';
+                
+                if (idTipo && modalTipo) {
+                    const currentTipo = idTipo.value;
+                    if (currentTipo === 'HORA_EXTRA' || currentTipo === 'FOLGA') {
+                        modalTipo.value = currentTipo;
+                    } else {
+                        modalTipo.value = 'AMBOS';
+                    }
+                }
+            });
+        }
+
         // Estilização hover na lista do modal
         const rows = document.querySelectorAll('.colab-modal-row');
         rows.forEach(row => {
@@ -452,6 +518,71 @@
                     syncSelection(id, nome, value);
                 }
             }
+        });
+    }
+
+    // Salva o motivo via AJAX (JSON API) e o adiciona dinamicamente na lista de checkboxes
+    function salvarMotivoViaAJAX() {
+        const nome = document.getElementById('modalMotivoNome').value.trim();
+        const tipo = document.getElementById('modalMotivoTipo').value;
+        const errorDiv = document.getElementById('modalMotivoErro');
+        
+        if (!nome) {
+            errorDiv.innerText = "O nome do motivo é obrigatório.";
+            errorDiv.classList.remove('d-none');
+            return;
+        }
+        
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        fetch("{% url 'rh:api_create_motivo' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ nome: nome, tipo: tipo })
+        })
+        .then(response => response.json().then(data => ({ status: response.status, body: data })))
+        .then(res => {
+            if (res.status === 200 && res.body.success) {
+                const data = res.body;
+                const container = document.getElementById('motivosContainer');
+                
+                // Remove a mensagem de vazio se houver
+                const noMotivosMsg = container.querySelector('.text-muted');
+                if (noMotivosMsg) {
+                    noMotivosMsg.remove();
+                }
+                
+                // Cria o elemento do novo motivo
+                const div = document.createElement('div');
+                div.className = 'col motivo-item';
+                div.setAttribute('data-tipo', data.tipo);
+                div.innerHTML = `
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="motivos" value="${data.id}" id="motivo_cb_${data.id}" checked>
+                        <label class="form-check-label small fw-semibold text-dark" style="cursor: pointer;" for="motivo_cb_${data.id}">
+                            ${data.nome}
+                        </label>
+                    </div>
+                `;
+                container.appendChild(div);
+                
+                // Filtra os motivos por tipo
+                filterMotivosByTipo();
+                
+                // Fecha o modal
+                document.getElementById('btnFecharModalMotivo').click();
+            } else {
+                errorDiv.innerText = res.body.error || "Ocorreu um erro ao salvar o motivo.";
+                errorDiv.classList.remove('d-none');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            errorDiv.innerText = "Erro de conexão com o servidor.";
+            errorDiv.classList.remove('d-none');
         });
     }
 </script>

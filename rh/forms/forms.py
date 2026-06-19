@@ -205,3 +205,20 @@ class PlanejamentoHoraExtraForm(forms.ModelForm):
             raise forms.ValidationError("A data/hora de fim deve ser posterior à data/hora de início.")
         return cleaned_data
 
+
+class MotivoPlanejamentoForm(forms.ModelForm):
+    class Meta:
+        from rh.models import MotivoPlanejamento
+        model = MotivoPlanejamento
+        fields = ["nome", "tipo"]
+        widgets = {
+            "nome": forms.TextInput(attrs={
+                "class": "form-control", 
+                "placeholder": "Ex: Inventário, Treinamento, etc."
+            }),
+            "tipo": forms.Select(attrs={
+                "class": "form-select"
+            }),
+        }
+
+

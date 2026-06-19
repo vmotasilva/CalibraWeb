@@ -37,6 +37,11 @@ from rh.views.views import (
     planejamento_hora_extra_create_view,
     planejamento_hora_extra_update_view,
     planejamento_hora_extra_delete_view,
+    motivo_planejamento_list_view,
+    motivo_planejamento_create_view,
+    motivo_planejamento_update_view,
+    motivo_planejamento_delete_view,
+    api_create_motivo,
 )
 
 
@@ -93,4 +98,9 @@ urlpatterns = [
     path('horas-extras/criar/', planejamento_hora_extra_create_view, name='planejamento_hora_extra_create'),
     path('horas-extras/<int:plan_id>/editar/', planejamento_hora_extra_update_view, name='planejamento_hora_extra_edit'),
     path('horas-extras/<int:plan_id>/excluir/', planejamento_hora_extra_delete_view, name='planejamento_hora_extra_delete'),
+    path('horas-extras/motivos/', motivo_planejamento_list_view, name='motivo_planejamento_list'),
+    path('horas-extras/motivos/criar/', motivo_planejamento_create_view, name='motivo_planejamento_create'),
+    path('horas-extras/motivos/<int:pk>/editar/', motivo_planejamento_update_view, name='motivo_planejamento_edit'),
+    path('horas-extras/motivos/<int:pk>/excluir/', motivo_planejamento_delete_view, name='motivo_planejamento_delete'),
+    path('api/horas-extras/motivos/criar/', api_create_motivo, name='api_create_motivo'),
 ]
