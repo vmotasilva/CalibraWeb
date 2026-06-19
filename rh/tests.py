@@ -359,20 +359,41 @@ class PlanejamentoHoraExtraTests(TestCase):
         self.assertEqual(form.errors['__all__'][0], "A data/hora de fim deve ser posterior à data/hora de início.")
 
     def test_form_colaboradores_queryset_filtering(self):
-        """Test that form filters accessible collaborators depending on user"""
+        """Test that form filters accessible collaborators depending on user and active/away status"""
         from rh.forms import PlanejamentoHoraExtraForm
+        from rh.models import Colaborador
+        
+        # Create inactive and away collaborators
+        colab_inativo = Colaborador.objects.create(
+            matricula="MAT-INA",
+            nome_completo="Inativo Teste",
+            setor=self.setor,
+            is_active=False
+        )
+        colab_afastado = Colaborador.objects.create(
+            matricula="MAT-AFA",
+            nome_completo="Afastado Teste",
+            setor=self.setor,
+            is_active=True,
+            afastado=True
+        )
+
         # User lider can only see self and subordinado
         form_lider = PlanejamentoHoraExtraForm(usuario_logado=self.user_lider)
         colabs_queryset = form_lider.fields['colaboradores'].queryset
         self.assertIn(self.colab_subordinado, colabs_queryset)
         self.assertIn(self.lider, colabs_queryset)
         self.assertNotIn(self.colab_independente, colabs_queryset)
+        self.assertNotIn(colab_inativo, colabs_queryset)
+        self.assertNotIn(colab_afastado, colabs_queryset)
         
-        # Superuser can see all
+        # Superuser can see all active and non-away
         form_super = PlanejamentoHoraExtraForm(usuario_logado=self.superuser)
         colabs_super_queryset = form_super.fields['colaboradores'].queryset
         self.assertIn(self.colab_subordinado, colabs_super_queryset)
         self.assertIn(self.colab_independente, colabs_super_queryset)
+        self.assertNotIn(colab_inativo, colabs_super_queryset)
+        self.assertNotIn(colab_afastado, colabs_super_queryset)
 
     def test_crud_views(self):
         """Test listing, creating, updating and deleting planning via views"""

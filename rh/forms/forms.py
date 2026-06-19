@@ -171,13 +171,20 @@ class PlanejamentoHoraExtraForm(forms.ModelForm):
             if self.instance.data_hora_fim:
                 self.initial['data_hora_fim'] = self.instance.data_hora_fim.strftime('%Y-%m-%dT%H:%M')
             
-        # Filtrar colaboradores com base nas permissões de acesso
+        # Filtrar colaboradores com base nas permissões de acesso e status ativo
         if usuario_logado:
             from rh.views.views import get_colaboradores_acessiveis
-            self.fields['colaboradores'].queryset = get_colaboradores_acessiveis(usuario_logado).order_by('nome_completo')
+            qs = get_colaboradores_acessiveis(usuario_logado)
         else:
             from rh.models import Colaborador
-            self.fields['colaboradores'].queryset = Colaborador.objects.all().order_by('nome_completo')
+            qs = Colaborador.objects.all()
+
+        from django.db.models import Q
+        q_filter = Q(is_active=True, afastado=False)
+        if self.instance and self.instance.pk:
+            q_filter |= Q(id__in=self.instance.colaboradores.values_list('id', flat=True))
+            
+        self.fields['colaboradores'].queryset = qs.filter(q_filter).order_by('nome_completo')
 
     def clean(self):
         cleaned_data = super().clean()

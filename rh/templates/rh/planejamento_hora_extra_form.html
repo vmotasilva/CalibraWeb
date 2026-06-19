@@ -147,11 +147,15 @@
             </div>
             
             <div class="modal-body p-3">
+                <!-- Dummy inputs to intercept Chrome autofill -->
+                <input type="text" name="chrome_autofill_dummy_user" style="display:none;" aria-hidden="true" autocomplete="off" />
+                <input type="password" name="chrome_autofill_dummy_pass" style="display:none;" aria-hidden="true" autocomplete="off" />
+
                 <!-- Filters Grid -->
                 <div class="row g-2 mb-3 bg-light p-2.5 rounded border">
                     <div class="col-md-3">
                         <label class="form-label small fw-semibold text-secondary mb-1">Busca rápida</label>
-                        <input type="text" id="modalSearch" class="form-control form-control-sm" placeholder="Nome ou cargo..." oninput="filterModalColabs()">
+                        <input type="text" id="modalSearch" class="form-control form-control-sm" placeholder="Nome ou cargo..." oninput="filterModalColabs()" autocomplete="one-time-code">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label small fw-semibold text-secondary mb-1">Turno</label>
