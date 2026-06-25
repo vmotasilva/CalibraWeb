@@ -466,13 +466,21 @@ def criar_registros_planejamento_view(request, planejamento_id):
     )
     
     if request.method == 'POST':
-        data_treinamento_raw = (request.POST.get('data_treinamento') or '').strip()
-        horario_realizado_raw = (request.POST.get('horario_realizado') or '').strip()
+        # Previously separate date and time inputs; now using combined datetime field.
+        # These variables are retained for compatibility but will be unused.
+        data_treinamento_raw = ''
+        horario_realizado_raw = ''
         duracao_minutos_raw = (request.POST.get('duracao_minutos') or '').strip()
 
-        data_treinamento = parse_date(data_treinamento_raw) if data_treinamento_raw else None
-        # Expect datetime-local input (ISO format)
-        horario_realizado = datetime.fromisoformat(horario_realizado_raw) if horario_realizado_raw else None
+        combined_raw = request.POST.get('data_horario_realizado','').strip()
+        if combined_raw:
+            combined_dt = datetime.fromisoformat(combined_raw)
+            data_treinamento = combined_dt.date()
+            horario_realizado = combined_dt.time()
+        else:
+            data_treinamento = None
+            horario_realizado = None
+            combined_dt = None
 
         try:
             duracao_minutos = int(duracao_minutos_raw)
@@ -519,8 +527,9 @@ def criar_registros_planejamento_view(request, planejamento_id):
 
             with transaction.atomic():
                 carga_horaria_horas = round(duracao_minutos / 60, 2)
+                # Calculate end time using the combined datetime.
                 hora_fim = (
-                    datetime.combine(data_treinamento, horario_realizado.time()) + timedelta(minutes=duracao_minutos)
+                    datetime.combine(data_treinamento, horario_realizado) + timedelta(minutes=duracao_minutos)
                 ).time()
 
                 observacao_lista_auto = f'Gerada automaticamente a partir do planejamento #{planejamento.id}.'
@@ -536,7 +545,7 @@ def criar_registros_planejamento_view(request, planejamento_id):
                         instrutor=planejamento.instrutor,
                         instrutor_nome=planejamento.instrutor.nome_completo if planejamento.instrutor else '',
                         data_sessao=data_treinamento,
-                        hora_inicio=horario_realizado.time(),
+                        hora_inicio=horario_realizado,
                         hora_fim=hora_fim,
                         carga_horaria=carga_horaria_horas,
                         local=planejamento.local,
@@ -573,7 +582,7 @@ def criar_registros_planejamento_view(request, planejamento_id):
 
                 planejamento.status = 'REALIZADO'
                 planejamento.data_realizada = data_treinamento
-                planejamento.horario_previsto = horario_realizado
+                planejamento.horario_previsto = combined_dt if combined_dt else None
                 planejamento.carga_horaria = duracao_minutos
                 planejamento.save(update_fields=['status', 'data_realizada', 'horario_previsto', 'carga_horaria', 'atualizado_em'])
 

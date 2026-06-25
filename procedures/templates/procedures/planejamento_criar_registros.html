@@ -37,14 +37,8 @@
                         
                         <div class="row g-3">
                             <div class="col-md-4">
-                            <label class="form-label"><strong>Data da Realização *</strong></label>
-                            <input type="date" name="data_treinamento" class="form-control" 
-                                   value="{{ planejamento.data_prevista|date:'Y-m-d' }}" required>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label"><strong>Data e Horário *</strong></label>
-                                <input type="datetime-local" name="horario_realizado" class="form-control"
-                                       value="{{ planejamento.data_prevista|date:'Y-m-d' }}T{{ planejamento.horario_previsto|time:'H:i' }}" required>
+                                <label class="form-label"><strong>Data de Conclusão *</strong></label>
+                                <input type="datetime-local" name="data_horario_realizado" class="form-control" required>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label"><strong>Duração (minutos) *</strong></label>
