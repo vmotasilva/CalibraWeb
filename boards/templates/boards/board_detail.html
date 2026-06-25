@@ -2651,17 +2651,22 @@
         };
 
         row.innerHTML = `
-            <div class="col-5">
-                <input type="datetime-local" class="form-control form-control-sm planning-datetime-inicio" value="${formatForInput(datetimeInicioVal)}" autocomplete="off">
+            <div class="col-12 mb-2">
+                <label class="form-label text-muted small mb-1">Início</label>
+                <div class="d-flex">
+                    <input type="datetime-local" class="form-control form-control-sm planning-datetime-inicio me-2" value="${formatForInput(datetimeInicioVal)}" autocomplete="off">
+                </div>
             </div>
-            <div class="col-6">
-                <input type="datetime-local" class="form-control form-control-sm planning-datetime-fim" value="${formatForInput(datetimeFimVal)}" autocomplete="off">
+            <div class="col-12">
+                <label class="form-label text-muted small mb-1">Fim</label>
+                <div class="d-flex">
+                    <input type="datetime-local" class="form-control form-control-sm planning-datetime-fim me-2" value="${formatForInput(datetimeFimVal)}" autocomplete="off">
+                    <button type="button" class="btn btn-sm btn-outline-danger btn-remove-planning px-3">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
             </div>
-            <div class="col-1 text-end">
-                <button type="button" class="btn btn-sm btn-outline-danger btn-remove-planning" style="height: 31px; padding: 0.2rem 0.4rem;">
-                    <i class="bi bi-trash"></i>
-                </button>
-            </div>
+            <div class="col-12"><hr class="my-2"></div>
         `;
         list.appendChild(row);
 
@@ -2723,9 +2728,9 @@
                         {
                             id: "{{ card.id }}_{{ p.id }}",
                             title: "{{ card.titulo|escapejs }}",
-                            start: "{{ p.data|date:'Y-m-d' }}{% if p.hora_inicio %}T{{ p.hora_inicio|time:'H:i:s' }}{% endif %}",
-                            end: "{{ p.data|date:'Y-m-d' }}{% if p.hora_fim %}T{{ p.hora_fim|time:'H:i:s' }}{% endif %}",
-                            allDay: {% if p.hora_inicio or p.hora_fim %}false{% else %}true{% endif %},
+                            start: "{{ p.datetime_inicio|date:'Y-m-d' }}T{{ p.datetime_inicio|time:'H:i:s' }}",
+                            end: "{{ p.datetime_fim|date:'Y-m-d' }}T{{ p.datetime_fim|time:'H:i:s' }}",
+                            allDay: false,
                             {% if card.prioridade == 'ALTA' %}
                                 backgroundColor: '#dc3545',
                                 borderColor: '#dc3545',
@@ -2753,21 +2758,23 @@
                     {
                         id: "{{ card.id }}",
                         title: "{{ card.titulo|escapejs }}",
-                        {% if card.data_inicio %}
-                            start: "{{ card.data_inicio|date:'Y-m-d' }}{% if card.hora_inicio %}T{{ card.hora_inicio|time:'H:i:s' }}{% endif %}",
+                        {% if card.datetime_inicio %}
+                            start: "{{ card.datetime_inicio|date:'Y-m-d' }}T{{ card.datetime_inicio|time:'H:i:s' }}",
                         {% elif card.data_entrega %}
                             start: "{{ card.data_entrega|date:'Y-m-d' }}",
                         {% else %}
                             start: "{{ card.criado_em|date:'Y-m-d' }}",
                         {% endif %}
                         
-                        {% if card.data_entrega %}
-                            end: "{{ card.data_entrega|date:'Y-m-d' }}{% if card.hora_fim %}T{{ card.hora_fim|time:'H:i:s' }}{% endif %}",
+                        {% if card.datetime_fim %}
+                            end: "{{ card.datetime_fim|date:'Y-m-d' }}T{{ card.datetime_fim|time:'H:i:s' }}",
+                        {% elif card.data_entrega %}
+                            end: "{{ card.data_entrega|date:'Y-m-d' }}",
                         {% else %}
                             end: null,
                         {% endif %}
                         
-                        allDay: {% if card.hora_inicio or card.hora_fim %}false{% else %}true{% endif %},
+                        allDay: {% if card.datetime_inicio or card.datetime_fim %}false{% else %}true{% endif %},
                         
                         {% if card.prioridade == 'ALTA' %}
                             backgroundColor: '#dc3545',
