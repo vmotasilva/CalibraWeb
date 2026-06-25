@@ -2060,7 +2060,13 @@
         .then(data => {
             if (data.success) {
                 location.reload();
+            } else {
+                alert("Erro ao salvar: " + data.error);
             }
+        })
+        .catch(err => {
+            console.error("Erro na requisição:", err);
+            alert("Erro de conexão ao salvar.");
         });
     });
 

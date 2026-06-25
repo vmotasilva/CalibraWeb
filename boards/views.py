@@ -769,11 +769,12 @@ def api_card_detail_view(request, card_id):
             })
             curr = curr.sucessoras.first()
             
+        from django.utils import timezone
         planejamentos = [
             {
                 'id': p.id,
-                'datetime_inicio': p.datetime_inicio.strftime('%Y-%m-%dT%H:%M') if p.datetime_inicio else '',
-                'datetime_fim': p.datetime_fim.strftime('%Y-%m-%dT%H:%M') if p.datetime_fim else ''
+                'datetime_inicio': timezone.localtime(p.datetime_inicio).strftime('%Y-%m-%dT%H:%M') if p.datetime_inicio else '',
+                'datetime_fim': timezone.localtime(p.datetime_fim).strftime('%Y-%m-%dT%H:%M') if p.datetime_fim else ''
             }
             for p in card.planejamentos.all()
         ]
@@ -792,8 +793,8 @@ def api_card_detail_view(request, card_id):
             'periodicidade_label': card.get_periodicidade_display(),
             'data_entrega': card.data_entrega.strftime('%Y-%m-%d') if card.data_entrega else '',
             'data_conclusao': card.data_conclusao.strftime('%Y-%m-%d') if card.data_conclusao else '',
-            'datetime_inicio': card.datetime_inicio.strftime('%Y-%m-%dT%H:%M') if card.datetime_inicio else '',
-            'datetime_fim': card.datetime_fim.strftime('%Y-%m-%dT%H:%M') if card.datetime_fim else '',
+            'datetime_inicio': timezone.localtime(card.datetime_inicio).strftime('%Y-%m-%dT%H:%M') if card.datetime_inicio else '',
+            'datetime_fim': timezone.localtime(card.datetime_fim).strftime('%Y-%m-%dT%H:%M') if card.datetime_fim else '',
             'checklist': checklist,
             'comentarios': comentarios,
             'etiquetas': etiquetas,
@@ -954,6 +955,8 @@ def api_card_detail_view(request, card_id):
                         try:
                             # Tenta parsear formato ISO (YYYY-MM-DDTHH:MM)
                             dt_ini = datetime.datetime.fromisoformat(dt_ini_raw.replace('Z', ''))
+                            if timezone.is_naive(dt_ini):
+                                dt_ini = timezone.make_aware(dt_ini)
                         except ValueError:
                             return JsonResponse({'success': False, 'error': f'Data/Hora de início inválida na linha {idx}.'}, status=400)
                     else:
@@ -962,6 +965,8 @@ def api_card_detail_view(request, card_id):
                     if dt_fim_raw:
                         try:
                             dt_fim = datetime.datetime.fromisoformat(dt_fim_raw.replace('Z', ''))
+                            if timezone.is_naive(dt_fim):
+                                dt_fim = timezone.make_aware(dt_fim)
                         except ValueError:
                             return JsonResponse({'success': False, 'error': f'Data/Hora de fim inválida na linha {idx}.'}, status=400)
                             
@@ -991,7 +996,10 @@ def api_card_detail_view(request, card_id):
                     dt_ini_raw = data.get('datetime_inicio')
                     if dt_ini_raw:
                         try:
-                            card.datetime_inicio = datetime.datetime.fromisoformat(dt_ini_raw.replace('Z', ''))
+                            parsed_ini = datetime.datetime.fromisoformat(dt_ini_raw.replace('Z', ''))
+                            if timezone.is_naive(parsed_ini):
+                                parsed_ini = timezone.make_aware(parsed_ini)
+                            card.datetime_inicio = parsed_ini
                         except ValueError:
                             card.datetime_inicio = None
                     else:
@@ -1001,7 +1009,10 @@ def api_card_detail_view(request, card_id):
                     dt_fim_raw = data.get('datetime_fim')
                     if dt_fim_raw:
                         try:
-                            card.datetime_fim = datetime.datetime.fromisoformat(dt_fim_raw.replace('Z', ''))
+                            parsed_fim = datetime.datetime.fromisoformat(dt_fim_raw.replace('Z', ''))
+                            if timezone.is_naive(parsed_fim):
+                                parsed_fim = timezone.make_aware(parsed_fim)
+                            card.datetime_fim = parsed_fim
                         except ValueError:
                             card.datetime_fim = None
                     else:
