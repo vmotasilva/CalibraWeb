@@ -742,17 +742,17 @@ class PlanejamentoTreinamentoForm(forms.ModelForm):
                 'class': 'form-select select2-search',
                 'data-placeholder': 'Selecione um instrutor...'
             }),
-            'data_prevista': forms.DateInput(attrs={
+            'data_prevista': forms.DateTimeInput(attrs={
                 'class': 'form-control',
-                'type': 'date'
+                'type': 'datetime-local'
             }),
             'horario_previsto': forms.DateTimeInput(attrs={
                 'class': 'form-control',
                 'type': 'datetime-local'
             }),
-            'data_realizada': forms.DateInput(attrs={
+            'data_realizada': forms.DateTimeInput(attrs={
                 'class': 'form-control',
-                'type': 'date'
+                'type': 'datetime-local'
             }),
             'carga_horaria': forms.NumberInput(attrs={
                 'class': 'form-control',
