@@ -122,7 +122,7 @@ class PlanejamentoExcelExporter:
             ("Status", self._get_status_display(planejamento.status)),
             ("Origem", self._get_origem_display(planejamento.origem)),
             ("Data Prevista", planejamento.data_prevista.strftime("%d/%m/%Y") if planejamento.data_prevista else ""),
-            ("Hora Prevista", planejamento.horario_previsto.strftime("%H:%M") if planejamento.horario_previsto else ""),
+            ("Hora Prevista", planejamento.horario_previsto.strftime("%d/%m/%Y %H:%M") if planejamento.horario_previsto else ""),
             ("Data Realizada", planejamento.data_realizada.strftime("%d/%m/%Y") if planejamento.data_realizada else ""),
             ("Instrutor", planejamento.instrutor.nome_completo if planejamento.instrutor else "Não definido"),
             ("Local", planejamento.local or ""),

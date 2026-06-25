@@ -149,7 +149,7 @@
                     {% if planejamento.horario_previsto %}
                     <div class="mb-3">
                         <span class="info-label">Horário Previsto:</span>
-                        <div class="info-value">{{ planejamento.horario_previsto|time:"H:i" }}</div>
+                        <div class="info-value">{{ planejamento.horario_previsto|date:"d/m/Y H:i" }}</div>
                     </div>
                     {% endif %}
                     {% if planejamento.data_realizada %}

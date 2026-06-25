@@ -471,7 +471,8 @@ def criar_registros_planejamento_view(request, planejamento_id):
         duracao_minutos_raw = (request.POST.get('duracao_minutos') or '').strip()
 
         data_treinamento = parse_date(data_treinamento_raw) if data_treinamento_raw else None
-        horario_realizado = parse_time(horario_realizado_raw) if horario_realizado_raw else None
+        # Expect datetime-local input (ISO format)
+        horario_realizado = datetime.fromisoformat(horario_realizado_raw) if horario_realizado_raw else None
 
         try:
             duracao_minutos = int(duracao_minutos_raw)
@@ -519,7 +520,7 @@ def criar_registros_planejamento_view(request, planejamento_id):
             with transaction.atomic():
                 carga_horaria_horas = round(duracao_minutos / 60, 2)
                 hora_fim = (
-                    datetime.combine(data_treinamento, horario_realizado) + timedelta(minutes=duracao_minutos)
+                    datetime.combine(data_treinamento, horario_realizado.time()) + timedelta(minutes=duracao_minutos)
                 ).time()
 
                 observacao_lista_auto = f'Gerada automaticamente a partir do planejamento #{planejamento.id}.'
@@ -535,7 +536,7 @@ def criar_registros_planejamento_view(request, planejamento_id):
                         instrutor=planejamento.instrutor,
                         instrutor_nome=planejamento.instrutor.nome_completo if planejamento.instrutor else '',
                         data_sessao=data_treinamento,
-                        hora_inicio=horario_realizado,
+                        hora_inicio=horario_realizado.time(),
                         hora_fim=hora_fim,
                         carga_horaria=carga_horaria_horas,
                         local=planejamento.local,

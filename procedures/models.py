@@ -1008,7 +1008,7 @@ class PlanejamentoTreinamento(models.Model):
     
     # Datas e execução
     data_prevista = models.DateField(verbose_name="Data Prevista")
-    horario_previsto = models.TimeField(null=True, blank=True, verbose_name="Horário Previsto para Começar")
+    horario_previsto = models.DateTimeField(null=True, blank=True, verbose_name="Horário Previsto para Começar")
     data_realizada = models.DateField(null=True, blank=True, verbose_name="Data Realizada")
     carga_horaria = models.IntegerField(null=True, blank=True, verbose_name="Carga Horária (minutos)")
     local = models.CharField(max_length=200, null=True, blank=True, verbose_name="Local")

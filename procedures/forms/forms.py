@@ -746,9 +746,9 @@ class PlanejamentoTreinamentoForm(forms.ModelForm):
                 'class': 'form-control',
                 'type': 'date'
             }),
-            'horario_previsto': forms.TimeInput(attrs={
+            'horario_previsto': forms.DateTimeInput(attrs={
                 'class': 'form-control',
-                'type': 'time'
+                'type': 'datetime-local'
             }),
             'data_realizada': forms.DateInput(attrs={
                 'class': 'form-control',
