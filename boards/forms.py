@@ -25,32 +25,26 @@ class CardForm(forms.ModelForm):
         widget=forms.DateInput(attrs={'class': 'form-control js-week-datepicker', 'type': 'text', 'autocomplete': 'off'}),
         label="Data de Entrega"
     )
+    datetime_inicio = forms.DateTimeField(
+        required=False,
+        widget=forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
+        label="Data/Hora de Início"
+    )
+    datetime_fim = forms.DateTimeField(
+        required=False,
+        widget=forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
+        label="Data/Hora de Fim"
+    )
     data_conclusao = forms.DateField(
         input_formats=['%d/%m/%Y', '%Y-%m-%d'],
         required=False,
         widget=forms.DateInput(attrs={'class': 'form-control js-week-datepicker', 'type': 'text', 'autocomplete': 'off'}),
         label="Data de Conclusão"
     )
-    data_inicio = forms.DateField(
-        input_formats=['%d/%m/%Y', '%Y-%m-%d'],
-        required=False,
-        widget=forms.DateInput(attrs={'class': 'form-control js-week-datepicker', 'type': 'text', 'autocomplete': 'off'}),
-        label="Data de Início"
-    )
-    hora_inicio = forms.TimeField(
-        required=False,
-        widget=forms.TimeInput(attrs={'class': 'form-control', 'type': 'time'}),
-        label="Hora de Início"
-    )
-    hora_fim = forms.TimeField(
-        required=False,
-        widget=forms.TimeInput(attrs={'class': 'form-control', 'type': 'time'}),
-        label="Hora de Fim"
-    )
 
     class Meta:
         model = Card
-        fields = ['titulo', 'descricao', 'responsaveis', 'subsecao', 'prioridade', 'data_entrega', 'periodicidade', 'etiquetas', 'data_conclusao', 'hora_inicio', 'hora_fim', 'data_inicio']
+        fields = ['titulo', 'descricao', 'responsaveis', 'subsecao', 'prioridade', 'data_entrega', 'periodicidade', 'etiquetas', 'datetime_inicio', 'datetime_fim', 'data_conclusao']
         widgets = {
             'titulo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Título da tarefa'}),
             'descricao': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Descrição detalhada...'}),
@@ -96,6 +90,5 @@ class CardForm(forms.ModelForm):
         self.fields['data_entrega'].required = False
         self.fields['periodicidade'].required = False
         self.fields['data_conclusao'].required = False
-        self.fields['hora_inicio'].required = False
-        self.fields['hora_fim'].required = False
-
+        self.fields['datetime_inicio'].required = False
+        self.fields['datetime_fim'].required = False

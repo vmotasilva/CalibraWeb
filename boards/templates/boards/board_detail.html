@@ -768,17 +768,13 @@
                     </div>
                     <!-- Campos de Planejamento (Início/Fim) -->
                     <div class="row mt-3" id="addCardPlanningFields" style="display: none;">
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label fw-bold">Data de Início</label>
-                            {{ card_form.data_inicio }}
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Data/Hora de Início</label>
+                            {{ card_form.datetime_inicio }}
                         </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label fw-bold">Hora de Início</label>
-                            {{ card_form.hora_inicio }}
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label fw-bold">Hora de Fim</label>
-                            {{ card_form.hora_fim }}
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Data/Hora de Fim</label>
+                            {{ card_form.datetime_fim }}
                         </div>
                     </div>
                     <div class="row mt-3" id="addCardSubsecaoRow" style="display: none;">
@@ -1599,17 +1595,13 @@
             
             if (card.planejamentos && card.planejamentos.length > 0) {
                 card.planejamentos.forEach(p => {
-                    addPlanningRow(p.data, p.hora_inicio, p.hora_fim);
+                    addPlanningRow(p.datetime_inicio, p.datetime_fim);
                 });
-            } else if (card.data_inicio || card.hora_inicio || card.hora_fim) {
-                addPlanningRow(card.data_inicio || '', card.hora_inicio || '', card.hora_fim || '');
+            } else if (card.datetime_inicio || card.datetime_fim) {
+                addPlanningRow(card.datetime_inicio || '', card.datetime_fim || '');
             }
             
-            document.getElementById('cardDetailStartDate').value = card.data_inicio || '';
-            document.getElementById('cardDetailHoraInicio').value = card.hora_inicio || '';
-            document.getElementById('cardDetailHoraFim').value = card.hora_fim || '';
-            
-            const isPlanned = !!(card.planejamentos && card.planejamentos.length > 0) || !!(card.data_inicio || card.hora_inicio || card.hora_fim);
+            const isPlanned = !!(card.planejamentos && card.planejamentos.length > 0) || !!(card.datetime_inicio || card.datetime_fim);
             const checkPlanejar = document.getElementById('cardDetailCheckPlanejar');
             if (checkPlanejar) {
                 checkPlanejar.checked = isPlanned;
@@ -1748,11 +1740,7 @@
                 subsecao_id: document.getElementById('cardDetailSubsecao') ? document.getElementById('cardDetailSubsecao').value : null,
                 responsaveis_ids: Array.from(document.getElementById('cardDetailResp').options).filter(opt => opt.selected).map(opt => parseInt(opt.value)),
                 prioridade: document.getElementById('cardDetailPriority').value,
-                data_entrega: document.getElementById('cardDetailDueDate').value,
-                data_inicio: document.getElementById('cardDetailStartDate').value,
                 data_conclusao: document.getElementById('cardDetailConcludedDate').value,
-                hora_inicio: document.getElementById('cardDetailHoraInicio').value,
-                hora_fim: document.getElementById('cardDetailHoraFim').value,
                 periodicidade: document.getElementById('cardDetailPeriodicidade').value,
                 etiquetas_ids: etiquetasIds,
                 planejamentos: getCardDetailPlanningData()
@@ -2645,21 +2633,29 @@
         }
     }
 
-    function addPlanningRow(dateVal = '', startTimeVal = '', endTimeVal = '') {
+    function addPlanningRow(datetimeInicioVal = '', datetimeFimVal = '') {
         const list = document.getElementById('cardDetailPlanningList');
         if (!list) return;
 
         const row = document.createElement('div');
         row.className = 'planning-row row g-2 align-items-end mb-2';
+        
+        // Formatar para exibição no input datetime-local (YYYY-MM-DDThh:mm)
+        const formatForInput = (val) => {
+            if (!val) return '';
+            // Se já tiver T e for no formato ISO curto, retorna direto
+            if (val.includes('T') && val.length === 16) return val;
+            // Se vier do banco de dados DRF com Z
+            if (val.includes('Z')) return val.substring(0, 16);
+            return val;
+        };
+
         row.innerHTML = `
             <div class="col-5">
-                <input type="text" class="form-control form-control-sm planning-date js-week-datepicker" placeholder="aaaa-mm-dd" value="${dateVal}" autocomplete="off">
+                <input type="datetime-local" class="form-control form-control-sm planning-datetime-inicio" value="${formatForInput(datetimeInicioVal)}" autocomplete="off">
             </div>
-            <div class="col-3">
-                <input type="time" class="form-control form-control-sm planning-start-time" value="${startTimeVal}" autocomplete="off">
-            </div>
-            <div class="col-3">
-                <input type="time" class="form-control form-control-sm planning-end-time" value="${endTimeVal}" autocomplete="off">
+            <div class="col-6">
+                <input type="datetime-local" class="form-control form-control-sm planning-datetime-fim" value="${formatForInput(datetimeFimVal)}" autocomplete="off">
             </div>
             <div class="col-1 text-end">
                 <button type="button" class="btn btn-sm btn-outline-danger btn-remove-planning" style="height: 31px; padding: 0.2rem 0.4rem;">
@@ -2672,15 +2668,6 @@
         row.querySelector('.btn-remove-planning').addEventListener('click', () => {
             row.remove();
         });
-
-        if (typeof flatpickr !== 'undefined') {
-            const dateInput = row.querySelector('.planning-date');
-            flatpickr(dateInput, {
-                dateFormat: 'Y-m-d',
-                allowInput: true,
-                disableMobile: true,
-                locale: { firstDayOfWeek: 1 }
-            });
         }
     }
 
@@ -2689,14 +2676,12 @@
         const list = [];
         if (checkPlanejar && checkPlanejar.checked) {
             document.querySelectorAll('.planning-row').forEach(row => {
-                const dateInput = row.querySelector('.planning-date');
-                const startInput = row.querySelector('.planning-start-time');
-                const endInput = row.querySelector('.planning-end-time');
-                if (dateInput && dateInput.value) {
+                const startInput = row.querySelector('.planning-datetime-inicio');
+                const endInput = row.querySelector('.planning-datetime-fim');
+                if (startInput && startInput.value) {
                     list.push({
-                        data: dateInput.value,
-                        hora_inicio: startInput ? startInput.value : '',
-                        hora_fim: endInput ? endInput.value : ''
+                        datetime_inicio: startInput.value,
+                        datetime_fim: endInput ? endInput.value : ''
                     });
                 }
             });
@@ -2706,7 +2691,7 @@
 
     // Bind Add button
     document.getElementById('btnAddPlanningRow').addEventListener('click', () => {
-        addPlanningRow('', '', '');
+        addPlanningRow('', '');
     });
 
     function toggleDetailCardPlanning(checked) {
@@ -2720,9 +2705,6 @@
                 }
             } else {
                 fields.style.display = 'none';
-                document.getElementById('cardDetailStartDate').value = '';
-                document.getElementById('cardDetailHoraInicio').value = '';
-                document.getElementById('cardDetailHoraFim').value = '';
                 const list = document.getElementById('cardDetailPlanningList');
                 if (list) {
                     list.innerHTML = '';

@@ -144,6 +144,8 @@ class Card(models.Model):
     data_conclusao = models.DateField(blank=True, null=True, verbose_name="Data de Conclusão")
     hora_inicio = models.TimeField(blank=True, null=True, verbose_name="Hora de Início")
     hora_fim = models.TimeField(blank=True, null=True, verbose_name="Hora de Fim")
+    datetime_inicio = models.DateTimeField(blank=True, null=True, verbose_name="Data/Hora de Início")
+    datetime_fim = models.DateTimeField(blank=True, null=True, verbose_name="Data/Hora de Fim")
     prioridade = models.CharField(
         max_length=10, 
         choices=PRIORIDADE_CHOICES, 
@@ -223,15 +225,14 @@ class BoardActivity(models.Model):
 
 class CardPlanningDate(models.Model):
     cartao = models.ForeignKey(Card, on_delete=models.CASCADE, related_name="planejamentos")
-    data = models.DateField(verbose_name="Data")
-    hora_inicio = models.TimeField(blank=True, null=True, verbose_name="Hora de Início")
-    hora_fim = models.TimeField(blank=True, null=True, verbose_name="Hora de Fim")
+    datetime_inicio = models.DateTimeField(verbose_name="Data/Hora de Início", null=True, blank=True)
+    datetime_fim = models.DateTimeField(blank=True, null=True, verbose_name="Data/Hora de Fim")
 
     class Meta:
-        ordering = ['data', 'hora_inicio']
+        ordering = ['datetime_inicio']
         verbose_name = "Planejamento de Data/Hora"
         verbose_name_plural = "Planejamentos de Data/Hora"
 
     def __str__(self):
-        return f"{self.cartao.titulo} - {self.data.strftime('%d/%m/%Y')}"
+        return f"{self.cartao.titulo} - {self.datetime_inicio.strftime('%d/%m/%Y %H:%M') if self.datetime_inicio else ''}"
 

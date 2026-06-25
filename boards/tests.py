@@ -474,8 +474,8 @@ class BoardsTestCase(TestCase):
             'titulo': self.card.titulo,
             'descricao': self.card.descricao,
             'data_conclusao': '2026-06-17',
-            'hora_inicio': '08:30',
-            'hora_fim': '17:45',
+            'datetime_inicio': '2026-06-17T08:30',
+            'datetime_fim': '2026-06-17T17:45',
             'prioridade': 'MEDIA',
             'periodicidade': 'AVULSA'
         }
@@ -490,16 +490,16 @@ class BoardsTestCase(TestCase):
         # Verificar no banco de dados
         self.card.refresh_from_db()
         self.assertEqual(self.card.data_conclusao.strftime('%Y-%m-%d'), '2026-06-17')
-        self.assertEqual(self.card.hora_inicio.strftime('%H:%M'), '08:30')
-        self.assertEqual(self.card.hora_fim.strftime('%H:%M'), '17:45')
+        self.assertEqual(self.card.datetime_inicio.strftime('%Y-%m-%dT%H:%M'), '2026-06-17T08:30')
+        self.assertEqual(self.card.datetime_fim.strftime('%Y-%m-%dT%H:%M'), '2026-06-17T17:45')
         
         # 2. Verificar retorno via API GET
         response = self.client.get(detail_url)
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.content)
         self.assertEqual(data['data_conclusao'], '2026-06-17')
-        self.assertEqual(data['hora_inicio'], '08:30')
-        self.assertEqual(data['hora_fim'], '17:45')
+        self.assertEqual(data['datetime_inicio'], '2026-06-17T08:30')
+        self.assertEqual(data['datetime_fim'], '2026-06-17T17:45')
         
         # 3. Mover para coluna concluída (deve atualizar data_conclusao automaticamente se não estivesse preenchida)
         # Primeiro, vamos limpar os campos
@@ -528,8 +528,8 @@ class BoardsTestCase(TestCase):
         
         # 4. Mover de volta para coluna não concluída (deve limpar os campos)
         # Vamos definir horários também para testar se limpa
-        self.card.hora_inicio = datetime.time(9, 0)
-        self.card.hora_fim = datetime.time(10, 0)
+        self.card.datetime_inicio = timezone.make_aware(datetime.datetime(2026, 6, 17, 9, 0))
+        self.card.datetime_fim = timezone.make_aware(datetime.datetime(2026, 6, 17, 10, 0))
         self.card.save()
         
         reopen_json = {
@@ -547,8 +547,8 @@ class BoardsTestCase(TestCase):
         
         self.card.refresh_from_db()
         self.assertIsNone(self.card.data_conclusao)
-        self.assertIsNone(self.card.hora_inicio)
-        self.assertIsNone(self.card.hora_fim)
+        self.assertIsNone(self.card.datetime_inicio)
+        self.assertIsNone(self.card.datetime_fim)
 
     def test_completed_tasks_column_mirroring_and_modal_column_movement(self):
         # Login
@@ -640,10 +640,9 @@ class BoardsTestCase(TestCase):
         # 1. Caso Válido: Fim após início
         valid_json = {
             'titulo': self.card.titulo,
-            'data_inicio': '2026-06-17',
-            'hora_inicio': '08:00',
+            'datetime_inicio': '2026-06-17T08:00',
             'data_conclusao': '2026-06-17',
-            'hora_fim': '10:00',
+            'datetime_fim': '2026-06-17T10:00',
             'prioridade': 'MEDIA',
             'periodicidade': 'AVULSA'
         }
@@ -657,10 +656,9 @@ class BoardsTestCase(TestCase):
         # 2. Caso Inválido: Fim antes de início (mesmo dia, hora anterior)
         invalid_json_1 = {
             'titulo': self.card.titulo,
-            'data_inicio': '2026-06-17',
-            'hora_inicio': '10:00',
+            'datetime_inicio': '2026-06-17T10:00',
             'data_conclusao': '2026-06-17',
-            'hora_fim': '08:00',
+            'datetime_fim': '2026-06-17T08:00',
             'prioridade': 'MEDIA',
             'periodicidade': 'AVULSA'
         }
@@ -677,10 +675,9 @@ class BoardsTestCase(TestCase):
         # 3. Caso Inválido: Fim antes de início (dia anterior)
         invalid_json_2 = {
             'titulo': self.card.titulo,
-            'data_inicio': '2026-06-17',
-            'hora_inicio': '08:00',
+            'datetime_inicio': '2026-06-17T08:00',
             'data_conclusao': '2026-06-16',
-            'hora_fim': '08:00',
+            'datetime_fim': '2026-06-16T08:00',
             'prioridade': 'MEDIA',
             'periodicidade': 'AVULSA'
         }
@@ -702,9 +699,9 @@ class BoardsTestCase(TestCase):
             'prioridade': 'MEDIA',
             'periodicidade': 'AVULSA',
             'planejamentos': [
-                {'data': '2026-06-20', 'hora_inicio': '09:00', 'hora_fim': '10:00'},
-                {'data': '2026-06-21', 'hora_inicio': '14:00', 'hora_fim': '16:00'},
-                {'data': '2026-06-19', 'hora_inicio': '08:00', 'hora_fim': '12:00'} # Enviado fora de ordem para testar ordenação e sinc
+                {'datetime_inicio': '2026-06-20T09:00', 'datetime_fim': '2026-06-20T10:00'},
+                {'datetime_inicio': '2026-06-21T14:00', 'datetime_fim': '2026-06-21T16:00'},
+                {'datetime_inicio': '2026-06-19T08:00', 'datetime_fim': '2026-06-19T12:00'} # Enviado fora de ordem para testar ordenação e sinc
             ]
         }
         response = self.client.post(
@@ -719,9 +716,8 @@ class BoardsTestCase(TestCase):
         
         # Verifica a sincronização com os campos legados baseando-se no planejamento mais antigo (2026-06-19 08:00)
         self.card.refresh_from_db()
-        self.assertEqual(self.card.data_inicio, datetime.date(2026, 6, 19))
-        self.assertEqual(self.card.hora_inicio, datetime.time(8, 0))
-        self.assertEqual(self.card.hora_fim, datetime.time(12, 0))
+        self.assertEqual(self.card.datetime_inicio.strftime('%Y-%m-%dT%H:%M'), '2026-06-19T08:00')
+        self.assertEqual(self.card.datetime_fim.strftime('%Y-%m-%dT%H:%M'), '2026-06-19T12:00')
         
         # 2. Caso inválido: Hora fim antes da hora início em um dos planejamentos
         invalid_planning_json = {
@@ -729,7 +725,7 @@ class BoardsTestCase(TestCase):
             'prioridade': 'MEDIA',
             'periodicidade': 'AVULSA',
             'planejamentos': [
-                {'data': '2026-06-20', 'hora_inicio': '10:00', 'hora_fim': '09:00'}
+                {'datetime_inicio': '2026-06-20T10:00', 'datetime_fim': '2026-06-20T09:00'}
             ]
         }
         response = self.client.post(
@@ -740,7 +736,7 @@ class BoardsTestCase(TestCase):
         self.assertEqual(response.status_code, 400)
         data = json.loads(response.content)
         self.assertFalse(data['success'])
-        self.assertIn('A hora de fim deve ser posterior à hora de início', data['error'])
+        self.assertIn('Data/Hora de fim deve ser posterior', data['error'])
         
         # 3. Remover todos os planejamentos enviando array vazio
         clear_planning_json = {
@@ -759,9 +755,8 @@ class BoardsTestCase(TestCase):
         
         # Verifica se os campos legados foram limpos
         self.card.refresh_from_db()
-        self.assertIsNone(self.card.data_inicio)
-        self.assertIsNone(self.card.hora_inicio)
-        self.assertIsNone(self.card.hora_fim)
+        self.assertIsNone(self.card.datetime_inicio)
+        self.assertIsNone(self.card.datetime_fim)
 
 
 
