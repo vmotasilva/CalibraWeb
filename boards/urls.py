@@ -18,6 +18,7 @@ urlpatterns = [
     path('checklist/<int:item_id>/toggle/', views.api_toggle_checklist_item_view, name='api_toggle_checklist_item'),
     path('checklist/<int:item_id>/excluir/', views.api_delete_checklist_item_view, name='api_delete_checklist_item'),
     path('cartoes/<int:card_id>/comentarios/novo/', views.api_add_comment_view, name='api_add_comment'),
+    path('comentarios/<int:comment_id>/excluir/', views.api_delete_comment_view, name='api_delete_comment'),
     path('<int:board_id>/arquivar/', views.archive_board_view, name='archive_board'),
     path('<int:board_id>/desarquivar/', views.unarchive_board_view, name='unarchive_board'),
     path('colunas/mover/', views.api_move_column_view, name='api_move_column'),

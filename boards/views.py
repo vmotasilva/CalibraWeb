@@ -530,7 +530,8 @@ def spawn_recurring_card(card, origin_column=None, origin_subsection=None):
     elif card.periodicidade == 'SEMANAL':
         next_date = base_date + datetime.timedelta(weeks=1)
     elif card.periodicidade == 'QUINZENAL':
-        next_date = base_date + datetime.timedelta(days=15)
+        # 14 dias mantém o mesmo dia da semana (equivalente a 10 dias úteis)
+        next_date = base_date + datetime.timedelta(days=14)
     elif card.periodicidade in ('MENSAL', 'BIMESTRAL', 'TRIMESTRAL', 'SEMESTRAL'):
         months_to_add = {
             'MENSAL': 1,
@@ -539,6 +540,17 @@ def spawn_recurring_card(card, origin_column=None, origin_subsection=None):
             'SEMESTRAL': 6
         }[card.periodicidade]
         
+        # Recuperar o dia original da primeira tarefa da série para evitar 
+        # perda do dia final do mês (ex: 31 -> 28 -> 28 em vez de 31 -> 28 -> 31)
+        original_day = base_date.day
+        current_ancestor = card
+        loop_guard = 0
+        while current_ancestor.antecessora_id and loop_guard < 100:
+            current_ancestor = current_ancestor.antecessora
+            if current_ancestor.data_entrega:
+                original_day = current_ancestor.data_entrega.day
+            loop_guard += 1
+            
         month = base_date.month + months_to_add
         year = base_date.year
         while month > 12:
@@ -546,14 +558,28 @@ def spawn_recurring_card(card, origin_column=None, origin_subsection=None):
             year += 1
             
         last_day = calendar.monthrange(year, month)[1]
-        day = min(base_date.day, last_day)
+        day = min(original_day, last_day)
         next_date = datetime.date(year, month, day)
     elif card.periodicidade == 'ANUAL':
+        # Para anual também buscamos o dia/mês original para tratar anos bissextos (29 Fev)
+        original_day = base_date.day
+        original_month = base_date.month
+        current_ancestor = card
+        loop_guard = 0
+        while current_ancestor.antecessora_id and loop_guard < 100:
+            current_ancestor = current_ancestor.antecessora
+            if current_ancestor.data_entrega:
+                original_day = current_ancestor.data_entrega.day
+                original_month = current_ancestor.data_entrega.month
+            loop_guard += 1
+            
         year = base_date.year + 1
-        if base_date.month == 2 and base_date.day == 29 and not calendar.isleap(year):
+        if original_month == 2 and original_day == 29 and not calendar.isleap(year):
             next_date = datetime.date(year, 2, 28)
         else:
-            next_date = datetime.date(year, base_date.month, base_date.day)
+            last_day = calendar.monthrange(year, original_month)[1]
+            day = min(original_day, last_day)
+            next_date = datetime.date(year, original_month, day)
     else:
         return None
         
