@@ -327,6 +327,12 @@
                     <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearAllFilters()" title="Limpar todos os filtros">
                         <i class="bi bi-x-circle me-1"></i>Limpar
                     </button>
+
+                    <!-- Flag Ocultar Colunas Vazias -->
+                    <div class="form-check form-switch ms-2 mt-1" title="Ocultar colunas que ficarem sem cartões visíveis">
+                        <input class="form-check-input" type="checkbox" id="hideEmptyColumnsFlag" onchange="applyGlobalFilters()">
+                        <label class="form-check-label text-muted small" style="user-select: none; cursor: pointer;" for="hideEmptyColumnsFlag">Ocultar colunas vazias</label>
+                    </div>
                 </div>
 
                 <!-- Campo de Busca Global -->
@@ -1246,6 +1252,9 @@
         if (document.getElementById('globalFilterCol')) document.getElementById('globalFilterCol').value = "";
         if (document.getElementById('globalFilterPrior')) document.getElementById('globalFilterPrior').value = "";
         if (document.getElementById('globalFilterResp')) document.getElementById('globalFilterResp').value = "";
+        if (document.getElementById('hideEmptyColumnsFlag')) document.getElementById('hideEmptyColumnsFlag').checked = false;
+        
+        sessionStorage.removeItem('boardHideEmpty_' + boardIdStr);
         if (document.getElementById('globalSearchInput')) document.getElementById('globalSearchInput').value = "";
 
         applyGlobalFilters();
@@ -2641,6 +2650,21 @@
             }
         });
         
+        const hideEmpty = document.getElementById('hideEmptyColumnsFlag') ? document.getElementById('hideEmptyColumnsFlag').checked : false;
+        sessionStorage.setItem('boardHideEmpty_' + '{{ board.id }}', hideEmpty ? 'true' : 'false');
+        
+        columns.forEach(col => {
+            // Se já foi ocultada pelo filtro de coluna específica, mantém
+            if (col.style.display === 'none') return;
+            
+            if (hideEmpty) {
+                const visibleCards = Array.from(col.querySelectorAll('.kanban-card')).filter(card => card.style.display !== 'none');
+                if (visibleCards.length === 0) {
+                    col.style.display = 'none';
+                }
+            }
+        });
+        
         // ============================================
         // 2. FILTER TABLE VIEW
         // ============================================
@@ -2943,6 +2967,10 @@
         }
         if(document.getElementById('globalFilterResp') && sessionStorage.getItem('boardFilterResp_' + boardIdStr) !== null) {
             document.getElementById('globalFilterResp').value = sessionStorage.getItem('boardFilterResp_' + boardIdStr);
+        }
+        
+        if(document.getElementById('hideEmptyColumnsFlag') && sessionStorage.getItem('boardHideEmpty_' + boardIdStr) !== null) {
+            document.getElementById('hideEmptyColumnsFlag').checked = sessionStorage.getItem('boardHideEmpty_' + boardIdStr) === 'true';
         }
 
         // Apply global filters initially (in case input fields have preserved values or were restored)
