@@ -3051,6 +3051,7 @@
     }
     
     // Restore global filters from sessionStorage if available
+    document.addEventListener('DOMContentLoaded', function() {
         const boardIdStr = '{{ board.id }}';
         if(document.getElementById('globalFilterCol') && sessionStorage.getItem('boardFilterCol_' + boardIdStr) !== null) {
             document.getElementById('globalFilterCol').value = sessionStorage.getItem('boardFilterCol_' + boardIdStr);
