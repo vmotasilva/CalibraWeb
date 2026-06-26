@@ -800,7 +800,6 @@ def api_card_detail_view(request, card_id):
             })
             curr = curr.sucessoras.first()
             
-        from django.utils import timezone
         planejamentos = [
             {
                 'id': p.id,
