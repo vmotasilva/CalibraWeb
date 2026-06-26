@@ -2317,6 +2317,14 @@
             });
         }
         
+        // Forçar redimensionamento dos gráficos quando a aba "Métricas da Equipe" for exibida
+        const metricsTabTrigger = document.getElementById('metrics-tab');
+        if (metricsTabTrigger) {
+            metricsTabTrigger.addEventListener('shown.bs.tab', function () {
+                window.dispatchEvent(new Event('resize'));
+            });
+        }
+        
         // ============================================
         // ADD CARD MEMBERS SELECT
         // ============================================
