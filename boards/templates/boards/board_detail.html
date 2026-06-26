@@ -2974,7 +2974,7 @@
                 },
                 dayCellContent: function(arg) {
                     if (arg.view.type !== 'dayGridMonth') {
-                        return null; // Usa o padrão para outras visões (timeGrid, list)
+                        return; // Usa o padrão para outras visões (timeGrid, list)
                     }
 
                     const defaultColId = "{% if colunas %}{{ colunas.first.id }}{% endif %}";
