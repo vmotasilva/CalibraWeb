@@ -1230,16 +1230,9 @@ def delete_board_view(request, board_id):
     colab = get_user_colaborador(request.user)
     board = get_object_or_404(Board, id=board_id)
     
-    # Apenas o criador ou superuser pode excluir
-    if board.criado_por != colab and not request.user.is_superuser:
-        messages.error(request, "Apenas o criador do quadro pode excluí-lo.")
-        return redirect('boards:board_detail', board_id=board.id)
-        
-    nome_board = board.nome
-    board.delete()
-    
-    messages.success(request, f"Quadro '{nome_board}' excluído permanentemente.")
-    return redirect('boards:dashboard')
+    # Quadros não podem mais ser excluídos, apenas arquivados
+    messages.error(request, "Quadros não podem ser excluídos, apenas arquivados.")
+    return redirect('boards:board_detail', board_id=board.id)
 
 
 @login_required

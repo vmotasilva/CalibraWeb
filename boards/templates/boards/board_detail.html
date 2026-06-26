@@ -279,13 +279,6 @@
                             </button>
                         </form>
                         {% endif %}
-                    
-                    <form action="{% url 'boards:delete_board' board.id %}" method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir este quadro permanentemente? Todos os cartões e colunas serão perdidos.');">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-outline-danger btn-sm" title="Excluir Quadro">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </form>
                     {% endif %}
                     {% endif %}
                 </div>
