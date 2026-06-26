@@ -256,6 +256,11 @@
                     
                     <!-- Botões de Ações do Quadro -->
                     {% if board.tipo != 'PLANOS_ACAO' %}
+                    {% if colunas %}
+                    <button type="button" class="btn btn-primary btn-sm me-1" onclick="openAddCardModal('{{ colunas.first.id }}', '{{ colunas.first.nome|escapejs }}')" title="Adicionar Nova Tarefa">
+                        <i class="bi bi-plus-lg me-1"></i>Nova Tarefa
+                    </button>
+                    {% endif %}
                     <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#boardLabelsModal" title="Gerenciar Etiquetas do Quadro">
                         <i class="bi bi-tags"></i>
                     </button>
@@ -720,9 +725,20 @@
         <!-- ABA 5: CALENDÁRIO VIEW -->
         <div class="tab-pane fade" id="calendar-view" role="tabpanel">
             <div class="card border-0 shadow-sm p-4" style="border-radius: 12px;">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h5 class="fw-bold mb-0"><i class="bi bi-calendar3 text-primary me-2"></i>Calendário de Atividades</h5>
-                    <span class="text-muted small">Clique em uma atividade para ver detalhes.</span>
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+                    <div>
+                        <h5 class="fw-bold mb-0"><i class="bi bi-calendar3 text-primary me-2"></i>Calendário de Atividades</h5>
+                        <span class="text-muted small">Clique em uma atividade para ver detalhes.</span>
+                    </div>
+                    
+                    <!-- Filtro de Janela de Tempo do Calendário -->
+                    <div class="d-flex align-items-center gap-2 bg-light p-2 rounded border">
+                        <i class="bi bi-clock-history text-muted"></i>
+                        <label class="text-muted small fw-bold mb-0" style="white-space: nowrap;">Janela de Tempo:</label>
+                        <input type="time" id="calMinTime" class="form-control form-control-sm" style="width: 90px;" value="06:00" onchange="updateCalendarTimeWindow()">
+                        <span class="text-muted small">até</span>
+                        <input type="time" id="calMaxTime" class="form-control form-control-sm" style="width: 90px;" value="20:00" onchange="updateCalendarTimeWindow()">
+                    </div>
                 </div>
                 <div id="calendar" style="min-height: 600px; background-color: #fff;"></div>
             </div>
@@ -2916,19 +2932,28 @@
     document.addEventListener('DOMContentLoaded', function() {
         const calendarEl = document.getElementById('calendar');
         if (calendarEl) {
+            let savedMinTime = sessionStorage.getItem('boardCalMinTime_' + '{{ board.id }}') || '06:00';
+            let savedMaxTime = sessionStorage.getItem('boardCalMaxTime_' + '{{ board.id }}') || '20:00';
+            
+            if (document.getElementById('calMinTime')) document.getElementById('calMinTime').value = savedMinTime;
+            if (document.getElementById('calMaxTime')) document.getElementById('calMaxTime').value = savedMaxTime;
+
             fcCalendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
+                slotMinTime: savedMinTime + ':00',
+                slotMaxTime: savedMaxTime + ':00',
                 locale: 'pt-br',
                 headerToolbar: {
                     left: 'prev,next today',
                     center: 'title',
-                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
                 },
                 buttonText: {
                     today: 'Hoje',
                     month: 'Mês',
                     week: 'Semana',
-                    day: 'Dia'
+                    day: 'Dia',
+                    listWeek: 'Agenda'
                 },
                 events: CALENDAR_EVENTS,
                 eventClick: function(info) {
@@ -2957,7 +2982,21 @@
             }
         }
         
-        // Restore global filters from sessionStorage if available
+    });
+
+    function updateCalendarTimeWindow() {
+        if (!fcCalendar) return;
+        const minTime = document.getElementById('calMinTime').value;
+        const maxTime = document.getElementById('calMaxTime').value;
+        
+        sessionStorage.setItem('boardCalMinTime_' + '{{ board.id }}', minTime);
+        sessionStorage.setItem('boardCalMaxTime_' + '{{ board.id }}', maxTime);
+        
+        fcCalendar.setOption('slotMinTime', minTime ? (minTime + ':00') : '00:00:00');
+        fcCalendar.setOption('slotMaxTime', maxTime ? (maxTime + ':00') : '24:00:00');
+    }
+    
+    // Restore global filters from sessionStorage if available
         const boardIdStr = '{{ board.id }}';
         if(document.getElementById('globalFilterCol') && sessionStorage.getItem('boardFilterCol_' + boardIdStr) !== null) {
             document.getElementById('globalFilterCol').value = sessionStorage.getItem('boardFilterCol_' + boardIdStr);
