@@ -221,6 +221,11 @@
                     </nav>
                     <div class="d-flex align-items-center gap-2">
                         <h4 class="fw-bold text-dark mb-0">{{ board.nome }}</h4>
+                        {% if board.arquivado %}
+                        <span class="badge bg-warning text-dark" style="font-size:0.75rem;">
+                            <i class="bi bi-archive-fill me-1"></i>Encerrado / Arquivado
+                        </span>
+                        {% endif %}
                         <span class="badge bg-secondary text-white" style="font-size:0.75rem;">
                             {{ total_cartoes }} Tarefa{{ total_cartoes|pluralize }}
                         </span>
@@ -258,6 +263,23 @@
                         <i class="bi bi-gear"></i>
                     </button>
                     {% if board.criado_por == user.colaborador or user.is_superuser %}
+                    
+                        {% if board.arquivado %}
+                        <form action="{% url 'boards:unarchive_board' board.id %}" method="POST" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-success btn-sm" title="Reabrir Quadro">
+                                <i class="bi bi-box-arrow-up"></i> Reabrir
+                            </button>
+                        </form>
+                        {% else %}
+                        <form action="{% url 'boards:archive_board' board.id %}" method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja encerrar e arquivar este quadro? Ele não aparecerá mais na visão principal do painel.');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-warning btn-sm" title="Encerrar/Arquivar Quadro">
+                                <i class="bi bi-archive"></i> Encerrar
+                            </button>
+                        </form>
+                        {% endif %}
+                    
                     <form action="{% url 'boards:delete_board' board.id %}" method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir este quadro permanentemente? Todos os cartões e colunas serão perdidos.');">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-outline-danger btn-sm" title="Excluir Quadro">
@@ -307,6 +329,11 @@
                         <option value="{{ c.nome_completo }}">{{ c.nome_completo }}</option>
                         {% endfor %}
                     </select>
+
+                    <!-- Botão Limpar Filtros -->
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearAllFilters()" title="Limpar todos os filtros">
+                        <i class="bi bi-x-circle me-1"></i>Limpar
+                    </button>
                 </div>
 
                 <!-- Campo de Busca Global -->
@@ -723,6 +750,11 @@
                         <label class="form-label fw-bold">Descrição</label>
                         {{ card_form.descricao }}
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold"><i class="bi bi-link-45deg me-1"></i>Link / Anexo Externo</label>
+                        {{ card_form.link_anexo }}
+                        <div class="form-text">Opcional. Cole aqui uma URL ou caminho para arquivo relacionado à tarefa.</div>
+                    </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold">Responsáveis</label>
@@ -823,8 +855,18 @@
                     <!-- Detalhes do Cartão (Lado Esquerdo) -->
                     <div class="col-md-8">
                         <div class="mb-3">
-                            <label class="form-label fw-bold text-muted small uppercase">Descrição</label>
+                            <label class="form-label fw-bold text-muted small text-uppercase">Descrição</label>
                             <textarea id="cardDetailDesc" class="form-control" rows="3" placeholder="Insira uma descrição..."></textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-muted small text-uppercase"><i class="bi bi-link-45deg me-1"></i>Link / Anexo Externo</label>
+                            <div class="input-group input-group-sm">
+                                <input type="text" id="cardDetailLink" class="form-control" placeholder="Cole aqui um link ou caminho de rede...">
+                                <a id="btnAcessarLink" href="#" target="_blank" class="btn btn-outline-primary" style="display: none;" title="Acessar link em nova aba">
+                                    <i class="bi bi-box-arrow-up-right"></i> Acessar
+                                </a>
+                            </div>
                         </div>
                         
                         <!-- Checklist -->
@@ -1193,6 +1235,29 @@
         window.location.href = url.toString();
     }
 
+    function clearAllFilters() {
+        const periodFilter = document.getElementById('periodFilter');
+        if (periodFilter && periodFilter.value !== 'tudo') {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('periodo');
+            
+            const boardIdStr = '{{ board.id }}';
+            sessionStorage.removeItem('boardFilterCol_' + boardIdStr);
+            sessionStorage.removeItem('boardFilterPrior_' + boardIdStr);
+            sessionStorage.removeItem('boardFilterResp_' + boardIdStr);
+            
+            window.location.href = url.toString();
+            return;
+        }
+
+        if (document.getElementById('globalFilterCol')) document.getElementById('globalFilterCol').value = "";
+        if (document.getElementById('globalFilterPrior')) document.getElementById('globalFilterPrior').value = "";
+        if (document.getElementById('globalFilterResp')) document.getElementById('globalFilterResp').value = "";
+        if (document.getElementById('globalSearchInput')) document.getElementById('globalSearchInput').value = "";
+
+        applyGlobalFilters();
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         // Restaurar aba ativa do localStorage se existir
         var activeTabId = localStorage.getItem('activeBoardTab');
@@ -1536,6 +1601,22 @@
             document.getElementById('cardDetailTitle').textContent = card.titulo;
             document.getElementById('cardDetailDesc').value = card.descricao;
             
+            const detailLinkInput = document.getElementById('cardDetailLink');
+            const btnAcessarLink = document.getElementById('btnAcessarLink');
+            if (detailLinkInput) detailLinkInput.value = card.link_anexo || '';
+            if (btnAcessarLink) {
+                if (card.link_anexo) {
+                    let href = card.link_anexo.trim();
+                    if (!href.startsWith('http://') && !href.startsWith('https://') && !href.startsWith('\\\\') && !href.startsWith('file://')) {
+                        href = 'http://' + href;
+                    }
+                    btnAcessarLink.href = href;
+                    btnAcessarLink.style.display = 'inline-block';
+                } else {
+                    btnAcessarLink.style.display = 'none';
+                }
+            }
+            
             const respSelect = document.getElementById('cardDetailResp');
             Array.from(respSelect.options).forEach(option => {
                 option.selected = card.responsaveis_ids.includes(parseInt(option.value));
@@ -1736,6 +1817,7 @@
             body: JSON.stringify({
                 titulo: document.getElementById('cardDetailTitle').textContent,
                 descricao: document.getElementById('cardDetailDesc').value,
+                link_anexo: document.getElementById('cardDetailLink') ? document.getElementById('cardDetailLink').value : '',
                 coluna_id: document.getElementById('cardDetailColumn') ? document.getElementById('cardDetailColumn').value : null,
                 subsecao_id: document.getElementById('cardDetailSubsecao') ? document.getElementById('cardDetailSubsecao').value : null,
                 responsaveis_ids: Array.from(document.getElementById('cardDetailResp').options).filter(opt => opt.selected).map(opt => parseInt(opt.value)),

@@ -133,6 +133,7 @@ class Card(models.Model):
 
     titulo = models.CharField(max_length=200, verbose_name="Título da Tarefa")
     descricao = models.TextField(blank=True, null=True, verbose_name="Descrição")
+    link_anexo = models.CharField(max_length=500, blank=True, null=True, verbose_name="Link de Acesso")
     responsaveis = models.ManyToManyField(
         Colaborador, 
         blank=True, 

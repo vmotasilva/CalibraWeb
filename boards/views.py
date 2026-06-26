@@ -790,6 +790,7 @@ def api_card_detail_view(request, card_id):
             'subsecao_id': card.subsecao_id,
             'titulo': card.titulo,
             'descricao': card.descricao or '',
+            'link_anexo': card.link_anexo or '',
             'responsaveis_ids': list(card.responsaveis.values_list('id', flat=True)),
             'responsaveis_nomes': ", ".join([r.nome_completo for r in card.responsaveis.all()]) or 'Não atribuído',
             'prioridade': card.prioridade,
@@ -814,6 +815,10 @@ def api_card_detail_view(request, card_id):
             # Atualizar os dados do cartão
             card.titulo = data.get('titulo', card.titulo).strip()
             card.descricao = data.get('descricao', card.descricao)
+            
+            if 'link_anexo' in data:
+                link_val = data.get('link_anexo')
+                card.link_anexo = link_val.strip() if link_val else None
             
             coluna_id = data.get('coluna_id')
             if coluna_id:

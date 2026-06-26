@@ -44,10 +44,11 @@ class CardForm(forms.ModelForm):
 
     class Meta:
         model = Card
-        fields = ['titulo', 'descricao', 'responsaveis', 'subsecao', 'prioridade', 'data_entrega', 'periodicidade', 'etiquetas', 'datetime_inicio', 'datetime_fim', 'data_conclusao']
+        fields = ['titulo', 'descricao', 'link_anexo', 'responsaveis', 'subsecao', 'prioridade', 'data_entrega', 'periodicidade', 'etiquetas', 'datetime_inicio', 'datetime_fim', 'data_conclusao']
         widgets = {
             'titulo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Título da tarefa'}),
             'descricao': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Descrição detalhada...'}),
+            'link_anexo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: https://...'}),
             'responsaveis': forms.SelectMultiple(attrs={'class': 'form-select', 'size': 4}),
             'subsecao': forms.Select(attrs={'class': 'form-select'}),
             'prioridade': forms.Select(attrs={'class': 'form-select'}),
