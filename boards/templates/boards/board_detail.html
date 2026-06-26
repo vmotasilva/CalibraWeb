@@ -733,8 +733,10 @@
                     
                     <!-- Filtro de Janela de Tempo do Calendário -->
                     <div class="d-flex align-items-center gap-2 bg-light p-2 rounded border">
-                        <i class="bi bi-clock-history text-muted"></i>
-                        <label class="text-muted small fw-bold mb-0" style="white-space: nowrap;">Janela de Tempo:</label>
+                        <div class="form-check form-switch mb-0" title="Ativar/Desativar Janela de Tempo">
+                            <input class="form-check-input" type="checkbox" id="calTimeWindowToggle" onchange="updateCalendarTimeWindow()" checked>
+                            <label class="form-check-label text-muted small fw-bold" for="calTimeWindowToggle" style="user-select: none; cursor: pointer;">Janela de Tempo:</label>
+                        </div>
                         <input type="time" id="calMinTime" class="form-control form-control-sm" style="width: 90px;" value="06:00" onchange="updateCalendarTimeWindow()">
                         <span class="text-muted small">até</span>
                         <input type="time" id="calMaxTime" class="form-control form-control-sm" style="width: 90px;" value="20:00" onchange="updateCalendarTimeWindow()">
@@ -2940,16 +2942,23 @@
     document.addEventListener('DOMContentLoaded', function() {
         const calendarEl = document.getElementById('calendar');
         if (calendarEl) {
+            let savedToggle = sessionStorage.getItem('boardCalTimeToggle_' + '{{ board.id }}');
+            let isEnabled = savedToggle === null ? true : (savedToggle === 'true');
             let savedMinTime = sessionStorage.getItem('boardCalMinTime_' + '{{ board.id }}') || '06:00';
             let savedMaxTime = sessionStorage.getItem('boardCalMaxTime_' + '{{ board.id }}') || '20:00';
             
-            if (document.getElementById('calMinTime')) document.getElementById('calMinTime').value = savedMinTime;
-            if (document.getElementById('calMaxTime')) document.getElementById('calMaxTime').value = savedMaxTime;
+            const toggleEl = document.getElementById('calTimeWindowToggle');
+            const minTimeEl = document.getElementById('calMinTime');
+            const maxTimeEl = document.getElementById('calMaxTime');
+            
+            if (toggleEl) toggleEl.checked = isEnabled;
+            if (minTimeEl) { minTimeEl.value = savedMinTime; minTimeEl.disabled = !isEnabled; }
+            if (maxTimeEl) { maxTimeEl.value = savedMaxTime; maxTimeEl.disabled = !isEnabled; }
 
             fcCalendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
-                slotMinTime: savedMinTime + ':00',
-                slotMaxTime: savedMaxTime + ':00',
+                slotMinTime: isEnabled ? savedMinTime + ':00' : '00:00:00',
+                slotMaxTime: isEnabled ? savedMaxTime + ':00' : '24:00:00',
                 locale: 'pt-br',
                 headerToolbar: {
                     left: 'prev,next today',
@@ -2964,8 +2973,12 @@
                     listWeek: 'Agenda'
                 },
                 dayCellContent: function(arg) {
-                    const defaultColId = "{% if colunas %}{{ colunas.first.id }}{% else %}''{% endif %}";
-                    const defaultColName = "{% if colunas %}{{ colunas.first.nome|escapejs }}{% else %}''{% endif %}";
+                    if (arg.view.type !== 'dayGridMonth') {
+                        return null; // Usa o padrão para outras visões (timeGrid, list)
+                    }
+
+                    const defaultColId = "{% if colunas %}{{ colunas.first.id }}{% endif %}";
+                    const defaultColName = "{% if colunas %}{{ colunas.first.nome|escapejs }}{% endif %}";
                     
                     let html = `<div class="d-flex justify-content-between align-items-center w-100 px-1">`;
                     if (defaultColId) {
@@ -2975,7 +2988,7 @@
                                     <i class="bi bi-plus-circle"></i>
                                  </span>`;
                     }
-                    html += `<span>${arg.dayNumberText}</span></div>`;
+                    html += `<span>${arg.dayNumberText || ''}</span></div>`;
                     
                     return { html: html };
                 },
@@ -3010,14 +3023,23 @@
 
     function updateCalendarTimeWindow() {
         if (!fcCalendar) return;
-        const minTime = document.getElementById('calMinTime').value;
-        const maxTime = document.getElementById('calMaxTime').value;
+        const toggle = document.getElementById('calTimeWindowToggle');
+        const minTimeInput = document.getElementById('calMinTime');
+        const maxTimeInput = document.getElementById('calMaxTime');
         
+        const isEnabled = toggle ? toggle.checked : true;
+        const minTime = minTimeInput ? minTimeInput.value : '';
+        const maxTime = maxTimeInput ? maxTimeInput.value : '';
+        
+        if (minTimeInput) minTimeInput.disabled = !isEnabled;
+        if (maxTimeInput) maxTimeInput.disabled = !isEnabled;
+        
+        sessionStorage.setItem('boardCalTimeToggle_' + '{{ board.id }}', isEnabled);
         sessionStorage.setItem('boardCalMinTime_' + '{{ board.id }}', minTime);
         sessionStorage.setItem('boardCalMaxTime_' + '{{ board.id }}', maxTime);
         
-        fcCalendar.setOption('slotMinTime', minTime ? (minTime + ':00') : '00:00:00');
-        fcCalendar.setOption('slotMaxTime', maxTime ? (maxTime + ':00') : '24:00:00');
+        fcCalendar.setOption('slotMinTime', isEnabled && minTime ? (minTime + ':00') : '00:00:00');
+        fcCalendar.setOption('slotMaxTime', isEnabled && maxTime ? (maxTime + ':00') : '24:00:00');
     }
     
     // Restore global filters from sessionStorage if available
