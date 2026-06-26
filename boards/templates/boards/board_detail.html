@@ -742,7 +742,7 @@
                         <input type="time" id="calMaxTime" class="form-control form-control-sm" style="width: 90px;" value="20:00" onchange="updateCalendarTimeWindow()">
                     </div>
                 </div>
-                <div id="calendar" style="min-height: 600px; background-color: #fff;"></div>
+                <div id="calendar" style="background-color: #fff;"></div>
             </div>
         </div>
     </div>
@@ -2965,6 +2965,7 @@
 
             fcCalendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
+                height: 'auto',
                 slotMinTime: isEnabled ? savedMinTime + ':00' : '00:00:00',
                 slotMaxTime: isEnabled ? savedMaxTime + ':00' : '24:00:00',
                 locale: 'pt-br',
