@@ -257,7 +257,7 @@
                     <!-- Botões de Ações do Quadro -->
                     {% if board.tipo != 'PLANOS_ACAO' %}
                     {% if colunas %}
-                    <button type="button" class="btn btn-primary btn-sm me-1" onclick="openAddCardModal('{{ colunas.first.id }}', '{{ colunas.first.nome|escapejs }}')" title="Adicionar Nova Tarefa">
+                    <button type="button" class="btn btn-primary btn-sm me-1" onclick="openAddCardModal('{{ colunas.first.id }}', '{{ colunas.first.nome|escapejs }}')" data-bs-toggle="modal" data-bs-target="#addCardModal" title="Adicionar Nova Tarefa">
                         <i class="bi bi-plus-lg me-1"></i>Nova Tarefa
                     </button>
                     {% endif %}
@@ -1556,13 +1556,21 @@
     // ============================================
     // MODAL DE CRIAÇÃO E DETALHE DO CARTÃO
     // ============================================
-    function openAddCardModal(columnId, columnName) {
+    function openAddCardModal(columnId, columnName, defaultDate = null) {
         const form = document.getElementById('addCardForm');
         form.action = `/boards/colunas/${columnId}/cartoes/novo/` + window.location.search;
         document.getElementById('addCardModalTitle').textContent = `Adicionar Tarefa em: ${columnName}`;
         
         // Reset form inputs
         form.reset();
+        
+        // Set default date if provided
+        if (defaultDate) {
+            const dateInput = form.querySelector('[name="data_entrega"]');
+            if (dateInput) {
+                dateInput.value = defaultDate;
+            }
+        }
         
         // Populate sub-sections select
         const subSelect = form.querySelector('select[name="subsecao"]');
@@ -2954,6 +2962,22 @@
                     week: 'Semana',
                     day: 'Dia',
                     listWeek: 'Agenda'
+                },
+                dayCellContent: function(arg) {
+                    const defaultColId = "{% if colunas %}{{ colunas.first.id }}{% else %}''{% endif %}";
+                    const defaultColName = "{% if colunas %}{{ colunas.first.nome|escapejs }}{% else %}''{% endif %}";
+                    
+                    let html = `<div class="d-flex justify-content-between align-items-center w-100 px-1">`;
+                    if (defaultColId) {
+                        html += `<span style="cursor:pointer; z-index: 99;" class="text-primary add-task-btn" 
+                                    onclick="openAddCardModal('${defaultColId}', '${defaultColName}', '${arg.dateStr}')" 
+                                    data-bs-toggle="modal" data-bs-target="#addCardModal" title="Nova Tarefa neste dia">
+                                    <i class="bi bi-plus-circle"></i>
+                                 </span>`;
+                    }
+                    html += `<span>${arg.dayNumberText}</span></div>`;
+                    
+                    return { html: html };
                 },
                 events: CALENDAR_EVENTS,
                 eventClick: function(info) {
