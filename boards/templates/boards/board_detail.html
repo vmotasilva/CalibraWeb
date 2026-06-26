@@ -712,7 +712,7 @@
                 <h5 class="modal-title fw-bold" id="addCardModalTitle"><i class="bi bi-plus-circle me-2"></i>Adicionar Tarefa</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form id="addCardForm" method="POST" action="">
+            <form id="addCardForm" method="POST" action="" onsubmit="const btn = this.querySelector('button[type=submit]'); if(btn) { btn.disabled = true; btn.innerHTML = '<span class=\'spinner-border spinner-border-sm me-2\' aria-hidden=\'true\'></span>Adicionando...'; } return true;">
                 {% csrf_token %}
                 <div class="modal-body p-4">
                     <div class="mb-3">
@@ -1475,7 +1475,7 @@
     // ============================================
     function openAddCardModal(columnId, columnName) {
         const form = document.getElementById('addCardForm');
-        form.action = `/boards/colunas/${columnId}/cartoes/novo/`;
+        form.action = `/boards/colunas/${columnId}/cartoes/novo/` + window.location.search;
         document.getElementById('addCardModalTitle').textContent = `Adicionar Tarefa em: ${columnName}`;
         
         // Reset form inputs
@@ -2528,6 +2528,10 @@
         const filterPrior = document.getElementById('globalFilterPrior') ? document.getElementById('globalFilterPrior').value : "";
         const filterResp = document.getElementById('globalFilterResp') ? document.getElementById('globalFilterResp').value.trim() : "";
         
+        sessionStorage.setItem('boardFilterCol_' + '{{ board.id }}', filterCol);
+        sessionStorage.setItem('boardFilterPrior_' + '{{ board.id }}', filterPrior);
+        sessionStorage.setItem('boardFilterResp_' + '{{ board.id }}', filterResp);
+        
         // ============================================
         // 1. FILTER KANBAN VIEW (COLUMNS & CARDS)
         // ============================================
@@ -2854,7 +2858,19 @@
             }
         }
         
-        // Apply global filters initially (in case input fields have preserved values)
+        // Restore global filters from sessionStorage if available
+        const boardIdStr = '{{ board.id }}';
+        if(document.getElementById('globalFilterCol') && sessionStorage.getItem('boardFilterCol_' + boardIdStr) !== null) {
+            document.getElementById('globalFilterCol').value = sessionStorage.getItem('boardFilterCol_' + boardIdStr);
+        }
+        if(document.getElementById('globalFilterPrior') && sessionStorage.getItem('boardFilterPrior_' + boardIdStr) !== null) {
+            document.getElementById('globalFilterPrior').value = sessionStorage.getItem('boardFilterPrior_' + boardIdStr);
+        }
+        if(document.getElementById('globalFilterResp') && sessionStorage.getItem('boardFilterResp_' + boardIdStr) !== null) {
+            document.getElementById('globalFilterResp').value = sessionStorage.getItem('boardFilterResp_' + boardIdStr);
+        }
+
+        // Apply global filters initially (in case input fields have preserved values or were restored)
         applyGlobalFilters();
     });
 </script>

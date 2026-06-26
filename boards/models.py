@@ -195,7 +195,7 @@ class ChecklistItem(models.Model):
 
 class CardComment(models.Model):
     cartao = models.ForeignKey(Card, on_delete=models.CASCADE, related_name="comentarios")
-    autor = models.ForeignKey(Colaborador, on_delete=models.CASCADE)
+    autor = models.ForeignKey(Colaborador, on_delete=models.SET_NULL, null=True, blank=True)
     texto = models.TextField(verbose_name="Comentário")
     criado_em = models.DateTimeField(auto_now_add=True)
 

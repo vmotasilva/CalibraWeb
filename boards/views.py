@@ -484,6 +484,8 @@ def delete_column_view(request, column_id):
     return redirect('boards:board_detail', board_id=board.id)
 
 
+from django.urls import reverse
+
 @login_required
 @require_POST
 def create_card_view(request, column_id):
@@ -513,7 +515,10 @@ def create_card_view(request, column_id):
     else:
         messages.error(request, "Erro ao criar a tarefa. Verifique os dados inseridos.")
         
-    return redirect('boards:board_detail', board_id=board.id)
+    url = reverse('boards:board_detail', kwargs={'board_id': board.id})
+    if request.GET:
+        url += '?' + request.GET.urlencode()
+    return redirect(url)
 
 
 def spawn_recurring_card(card, origin_column=None, origin_subsection=None):
@@ -736,7 +741,7 @@ def api_card_detail_view(request, card_id):
         for c in card.comentarios.select_related('autor').all():
             comentarios.append({
                 'id': c.id,
-                'autor': c.autor.nome_completo,
+                'autor': c.autor.nome_completo if c.autor else 'Sistema / Admin',
                 'texto': c.texto,
                 'data': c.criado_em.strftime('%d/%m/%Y %H:%M')
             })
@@ -1148,7 +1153,7 @@ def api_add_comment_view(request, card_id):
             'success': True, 
             'comentario': {
                 'id': comment.id,
-                'autor': comment.autor.nome_completo,
+                'autor': comment.autor.nome_completo if comment.autor else 'Sistema / Admin',
                 'texto': comment.texto,
                 'data': comment.criado_em.strftime('%d/%m/%Y %H:%M')
             }
