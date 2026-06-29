@@ -696,7 +696,12 @@ def api_move_card_view(request):
         now_dt = timezone.now()
         
         if is_concluida:
-            if not card.data_conclusao:
+            # Aceitar data_conclusao do frontend se fornecida
+            custom_data_conclusao = data.get('data_conclusao')
+            if custom_data_conclusao:
+                from datetime import datetime as dt_class
+                card.data_conclusao = dt_class.strptime(custom_data_conclusao, '%Y-%m-%d').date()
+            elif not card.data_conclusao:
                 card.data_conclusao = now_date
             if not card.hora_fim:
                 card.hora_fim = now_time

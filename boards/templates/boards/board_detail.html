@@ -688,9 +688,7 @@
                                         </td>
                                         <td>
                                             {% if card.prioridade == 'ALTA' %}
-                                                <span class="badge bg-danger">Alta</span>
-                                            {% elif card.prioridade == 'MEDIA' %}
-                                                <span class="badge bg-warning text-dark">Média</span>
+                                                <span class="badge bg-danger">⚠ Alta</span>
                                             {% else %}
                                                 <span class="badge bg-success">Baixa</span>
                                             {% endif %}
@@ -987,8 +985,7 @@
                                 <label class="form-label fw-bold text-muted small d-block">Prioridade</label>
                                 <select id="cardDetailPriority" class="form-select form-select-sm">
                                     <option value="BAIXA">Baixa</option>
-                                    <option value="MEDIA">Média</option>
-                                    <option value="ALTA">Alta</option>
+                                    <option value="ALTA">Alta ⚠</option>
                                 </select>
                             </div>
                             <div class="mb-3">
@@ -1207,6 +1204,29 @@
         </div>
     </div>
 </div>
+
+<!-- Modal de Confirmação de Data de Conclusão -->
+<div class="modal fade" id="confirmConclusionDateModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white py-2">
+                <h6 class="modal-title"><i class="bi bi-check-circle-fill me-2"></i>Concluir Atividade</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2 text-muted small">Confirme a data de conclusão desta atividade:</p>
+                <input type="date" id="confirmConclusionDateInput" class="form-control">
+            </div>
+            <div class="modal-footer py-1">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success btn-sm" id="confirmConclusionDateBtn">
+                    <i class="bi bi-check-lg me-1"></i>Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -1521,36 +1541,67 @@
             
             const cardId = parseInt(cardIdStr.replace('card-', ''));
             
-            // Envia requisição AJAX para salvar no banco
-            fetch("{% url 'boards:api_move_card' %}", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
-                },
-                body: JSON.stringify({
+            // Função para enviar a requisição de mover
+            function sendMoveRequest(dataConclusao) {
+                const payload = {
                     card_id: cardId,
                     to_column_id: columnId,
                     to_subsection_id: subsectionId,
                     card_order_ids: cardOrderIds,
                     concluido: isConcluida,
                     recreate: recreate
-                })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (!data.success) {
-                    console.error("Erro ao mover cartão:", data.error);
-                    alert("Não foi possível salvar a movimentação da tarefa.");
-                    location.reload();
-                } else {
-                    location.reload();
+                };
+                if (dataConclusao) {
+                    payload.data_conclusao = dataConclusao;
                 }
-            })
-            .catch(err => {
-                console.error("Erro de conexão AJAX:", err);
-                location.reload();
-            });
+                
+                fetch("{% url 'boards:api_move_card' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify(payload)
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (!data.success) {
+                        console.error("Erro ao mover cartão:", data.error);
+                        alert("Não foi possível salvar a movimentação da tarefa.");
+                    }
+                    location.reload();
+                })
+                .catch(err => {
+                    console.error("Erro de conexão AJAX:", err);
+                    location.reload();
+                });
+            }
+            
+            // Se está concluindo (movendo para coluna concluída pela primeira vez), pedir data
+            if (isConcluida && !wasCompleted) {
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('confirmConclusionDateInput').value = today;
+                const modal = new bootstrap.Modal(document.getElementById('confirmConclusionDateModal'));
+                modal.show();
+                
+                // Configurar o botão confirmar
+                const confirmBtn = document.getElementById('confirmConclusionDateBtn');
+                const newConfirmBtn = confirmBtn.cloneNode(true);
+                confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+                newConfirmBtn.addEventListener('click', function() {
+                    const selectedDate = document.getElementById('confirmConclusionDateInput').value;
+                    modal.hide();
+                    sendMoveRequest(selectedDate);
+                });
+                
+                // Se fechar o modal sem confirmar, desfazer o drag
+                document.getElementById('confirmConclusionDateModal').addEventListener('hidden.bs.modal', function handler() {
+                    document.getElementById('confirmConclusionDateModal').removeEventListener('hidden.bs.modal', handler);
+                    // Se não clicou em confirmar, recarrega para desfazer
+                }, { once: true });
+            } else {
+                sendMoveRequest(null);
+            }
         }
     }
 
@@ -2195,31 +2246,52 @@
             recreate = confirm(`Esta atividade possui periodicidade (${periodicidadeLabel}). Gostaria de reaplicar a atividade de acordo com o período e recriá-la?`);
         }
         
-        fetch("{% url 'boards:api_move_card' %}", {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: JSON.stringify({
-                card_id: activeCardId,
-                to_column_id: toColumnId,
-                concluido: true,
-                recreate: recreate
-            })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert("Erro ao concluir atividade: " + data.error);
-            }
-        })
-        .catch(err => {
-            console.error("Erro ao concluir atividade:", err);
-            alert("Erro de conexão.");
-        });
+        // Fechar o modal de detalhes primeiro
+        const detailModal = bootstrap.Modal.getInstance(document.getElementById('cardDetailModal'));
+        if (detailModal) detailModal.hide();
+        
+        // Mostrar popup de confirmação de data de conclusão
+        setTimeout(() => {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('confirmConclusionDateInput').value = today;
+            const conclusionModal = new bootstrap.Modal(document.getElementById('confirmConclusionDateModal'));
+            conclusionModal.show();
+            
+            const confirmBtn = document.getElementById('confirmConclusionDateBtn');
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+            newConfirmBtn.addEventListener('click', function() {
+                const selectedDate = document.getElementById('confirmConclusionDateInput').value;
+                conclusionModal.hide();
+                
+                fetch("{% url 'boards:api_move_card' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        card_id: activeCardId,
+                        to_column_id: toColumnId,
+                        concluido: true,
+                        recreate: recreate,
+                        data_conclusao: selectedDate
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert("Erro ao concluir atividade: " + data.error);
+                    }
+                })
+                .catch(err => {
+                    console.error("Erro ao concluir atividade:", err);
+                    alert("Erro de conexão.");
+                });
+            });
+        }, 300);
     });
 
     // Reopen Card
@@ -2870,27 +2942,27 @@
                     {% for p in card.planejamentos.all %}
                         {
                             id: "{{ card.id }}_{{ p.id }}",
-                            title: "{{ card.titulo|escapejs }}",
+                            title: "{% if card.prioridade == 'ALTA' %}⚠ {% endif %}{{ card.titulo|escapejs }}",
                             start: "{{ p.datetime_inicio|date:'Y-m-d' }}T{{ p.datetime_inicio|time:'H:i:s' }}",
                             end: "{{ p.datetime_fim|date:'Y-m-d' }}T{{ p.datetime_fim|time:'H:i:s' }}",
                             allDay: false,
-                            {% if card.prioridade == 'ALTA' %}
-                                backgroundColor: '#dc3545',
-                                borderColor: '#dc3545',
+                            {% if card.data_conclusao %}
+                                backgroundColor: '#6c757d',
+                                borderColor: '#5a6268',
                                 textColor: '#ffffff',
-                            {% elif card.prioridade == 'MEDIA' %}
-                                backgroundColor: '#ffc107',
-                                borderColor: '#ffc107',
-                                textColor: '#212529',
+                            {% elif card.data_entrega and card.data_entrega < hoje %}
+                                backgroundColor: '#dc3545',
+                                borderColor: '#c82333',
+                                textColor: '#ffffff',
                             {% else %}
                                 backgroundColor: '#198754',
-                                borderColor: '#198754',
+                                borderColor: '#157347',
                                 textColor: '#ffffff',
                             {% endif %}
                             extendedProps: {
                                 real_card_id: "{{ card.id }}",
                                 coluna: "{{ col.nome|escapejs }}",
-                                prioridade: "{% if card.prioridade == 'ALTA' %}Alta{% elif card.prioridade == 'MEDIA' %}Média{% else %}Baixa{% endif %}",
+                                prioridade: "{% if card.prioridade == 'ALTA' %}Alta{% else %}Baixa{% endif %}",
                                 is_virtual: {% if card.is_virtual %}true{% else %}false{% endif %},
                                 plano_acao_id: {% if card.plano_acao_id %}{{ card.plano_acao_id }}{% else %}null{% endif %},
                                 responsaveis: "{% for r in card.responsaveis.all %}{{ r.nome_completo|escapejs }};{% empty %}{% if card.responsaveis %}{% for r in card.responsaveis.all %}{{ r.nome_completo|escapejs }};{% endfor %}{% endif %}{% endfor %}"
@@ -2900,7 +2972,7 @@
                 {% else %}
                     {
                         id: "{{ card.id }}",
-                        title: "{{ card.titulo|escapejs }}",
+                        title: "{% if card.prioridade == 'ALTA' %}⚠ {% endif %}{{ card.titulo|escapejs }}",
                         {% if card.datetime_inicio %}
                             start: "{{ card.datetime_inicio|date:'Y-m-d' }}T{{ card.datetime_inicio|time:'H:i:s' }}",
                         {% elif card.data_entrega %}
@@ -2919,23 +2991,23 @@
                         
                         allDay: {% if card.datetime_inicio or card.datetime_fim %}false{% else %}true{% endif %},
                         
-                        {% if card.prioridade == 'ALTA' %}
-                            backgroundColor: '#dc3545',
-                            borderColor: '#dc3545',
+                        {% if card.data_conclusao %}
+                            backgroundColor: '#6c757d',
+                            borderColor: '#5a6268',
                             textColor: '#ffffff',
-                        {% elif card.prioridade == 'MEDIA' %}
-                            backgroundColor: '#ffc107',
-                            borderColor: '#ffc107',
-                            textColor: '#212529',
+                        {% elif card.data_entrega and card.data_entrega < hoje %}
+                            backgroundColor: '#dc3545',
+                            borderColor: '#c82333',
+                            textColor: '#ffffff',
                         {% else %}
                             backgroundColor: '#198754',
-                            borderColor: '#198754',
+                            borderColor: '#157347',
                             textColor: '#ffffff',
                         {% endif %}
                         extendedProps: {
                             real_card_id: "{{ card.id }}",
                             coluna: "{{ col.nome|escapejs }}",
-                            prioridade: "{% if card.prioridade == 'ALTA' %}Alta{% elif card.prioridade == 'MEDIA' %}Média{% else %}Baixa{% endif %}",
+                            prioridade: "{% if card.prioridade == 'ALTA' %}Alta{% else %}Baixa{% endif %}",
                             is_virtual: {% if card.is_virtual %}true{% else %}false{% endif %},
                             plano_acao_id: {% if card.plano_acao_id %}{{ card.plano_acao_id }}{% else %}null{% endif %},
                             responsaveis: "{% for r in card.responsaveis.all %}{{ r.nome_completo|escapejs }};{% empty %}{% if card.responsaveis %}{% for r in card.responsaveis.all %}{{ r.nome_completo|escapejs }};{% endfor %}{% endif %}{% endfor %}"

@@ -98,7 +98,6 @@ class BoardLabel(models.Model):
 class Card(models.Model):
     PRIORIDADE_CHOICES = [
         ('BAIXA', 'Baixa'),
-        ('MEDIA', 'Média'),
         ('ALTA', 'Alta'),
     ]
     PERIODICIDADE_CHOICES = [
