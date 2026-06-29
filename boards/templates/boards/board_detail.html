@@ -1273,16 +1273,18 @@
     }
 
     function clearAllFilters() {
+        const boardIdStr = '{{ board.id }}';
         const periodFilter = document.getElementById('periodFilter');
+        
+        // Limpar sessionStorage de todos os filtros
+        sessionStorage.removeItem('boardFilterCol_' + boardIdStr);
+        sessionStorage.removeItem('boardFilterPrior_' + boardIdStr);
+        sessionStorage.removeItem('boardFilterResp_' + boardIdStr);
+        sessionStorage.removeItem('boardHideEmpty_' + boardIdStr);
+        
         if (periodFilter && periodFilter.value !== 'tudo') {
             const url = new URL(window.location.href);
             url.searchParams.delete('periodo');
-            
-            const boardIdStr = '{{ board.id }}';
-            sessionStorage.removeItem('boardFilterCol_' + boardIdStr);
-            sessionStorage.removeItem('boardFilterPrior_' + boardIdStr);
-            sessionStorage.removeItem('boardFilterResp_' + boardIdStr);
-            
             window.location.href = url.toString();
             return;
         }
@@ -1291,8 +1293,6 @@
         if (document.getElementById('globalFilterPrior')) document.getElementById('globalFilterPrior').value = "";
         if (document.getElementById('globalFilterResp')) document.getElementById('globalFilterResp').value = "";
         if (document.getElementById('hideEmptyColumnsFlag')) document.getElementById('hideEmptyColumnsFlag').checked = false;
-        
-        sessionStorage.removeItem('boardHideEmpty_' + boardIdStr);
         if (document.getElementById('globalSearchInput')) document.getElementById('globalSearchInput').value = "";
 
         applyGlobalFilters();
