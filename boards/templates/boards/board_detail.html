@@ -758,6 +758,14 @@
                 {% csrf_token %}
                 <div class="modal-body p-4">
                     <div class="mb-3">
+                        <label class="form-label fw-bold"><i class="bi bi-columns-gap me-1"></i>Coluna</label>
+                        <select id="addCardColumnSelect" name="_coluna_select" class="form-select" onchange="onAddCardColumnChange(this.value)">
+                            {% for col in board.colunas.all %}
+                                <option value="{{ col.id }}">{{ col.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
                         <label class="form-label fw-bold">Título da Tarefa</label>
                         {{ card_form.titulo }}
                     </div>
@@ -1249,6 +1257,12 @@
         {% endfor %}
     };
 
+    const BOARD_COLUMNS = [
+        {% for col in board.colunas.all %}
+            { "id": "{{ col.id }}", "nome": "{{ col.nome|escapejs }}" },
+        {% endfor %}
+    ];
+
     const BOARD_LABELS = [
         {% for label in board.etiquetas.all %}
             { "id": {{ label.id }}, "nome": "{{ label.nome|escapejs }}", "cor": "{{ label.cor|escapejs }}" },
@@ -1609,23 +1623,8 @@
     // ============================================
     // MODAL DE CRIAÇÃO E DETALHE DO CARTÃO
     // ============================================
-    function openAddCardModal(columnId, columnName, defaultDate = null) {
+    function updateAddCardSubsections(columnId) {
         const form = document.getElementById('addCardForm');
-        form.action = `/boards/colunas/${columnId}/cartoes/novo/` + window.location.search;
-        document.getElementById('addCardModalTitle').textContent = `Adicionar Tarefa em: ${columnName}`;
-        
-        // Reset form inputs
-        form.reset();
-        
-        // Set default date if provided
-        if (defaultDate) {
-            const dateInput = form.querySelector('[name="data_entrega"]');
-            if (dateInput) {
-                dateInput.value = defaultDate;
-            }
-        }
-        
-        // Populate sub-sections select
         const subSelect = form.querySelector('select[name="subsecao"]');
         if (subSelect) {
             subSelect.innerHTML = '<option value="">Nenhuma (Geral)</option>';
@@ -1644,6 +1643,39 @@
                 if (subRow) subRow.style.display = 'none';
             }
         }
+    }
+
+    function onAddCardColumnChange(columnId) {
+        const form = document.getElementById('addCardForm');
+        form.action = `/boards/colunas/${columnId}/cartoes/novo/` + window.location.search;
+        // Update subsections for the new column
+        updateAddCardSubsections(columnId);
+    }
+
+    function openAddCardModal(columnId, columnName, defaultDate = null) {
+        const form = document.getElementById('addCardForm');
+        form.action = `/boards/colunas/${columnId}/cartoes/novo/` + window.location.search;
+        document.getElementById('addCardModalTitle').textContent = 'Adicionar Tarefa em:';
+        
+        // Reset form inputs
+        form.reset();
+        
+        // Pre-select the column in the dropdown
+        const columnSelect = document.getElementById('addCardColumnSelect');
+        if (columnSelect) {
+            columnSelect.value = columnId;
+        }
+        
+        // Set default date if provided
+        if (defaultDate) {
+            const dateInput = form.querySelector('[name="data_entrega"]');
+            if (dateInput) {
+                dateInput.value = defaultDate;
+            }
+        }
+        
+        // Populate sub-sections select for the selected column
+        updateAddCardSubsections(columnId);
         
         // Clear search input and search suggestions
         const addCardSearchInput = document.getElementById('addCardMemberSearchInput');
