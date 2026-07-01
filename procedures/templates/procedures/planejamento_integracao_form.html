@@ -337,6 +337,12 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('count_colaboradores_integracao').textContent = data.total_colaboradores;
             document.getElementById('count_procedimentos_integracao').textContent = data.total_procedimentos;
             
+            // Auto-preencher título do treinamento
+            const inputTitulo = document.querySelector('input[name="titulo"]');
+            if (inputTitulo) {
+                inputTitulo.value = `Integração de Novo Colaborador (Treinamento - ${data.perfil_nome})`;
+            }
+            
             // Preencher lista de colaboradores (todos inicialmente)
             preencherColaboradores(data.colaboradores);
             
@@ -416,7 +422,7 @@ document.addEventListener('DOMContentLoaded', function() {
             checkbox.id = `colab_${colab.id}`;
             checkbox.value = colab.id;
             checkbox.className = 'form-check-input';
-            checkbox.checked = true;
+            checkbox.checked = false;
             checkbox.dataset.type = 'colaborador';
             
             const label = document.createElement('label');
