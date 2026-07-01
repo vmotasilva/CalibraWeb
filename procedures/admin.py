@@ -9,7 +9,7 @@ from django import forms
 from django.forms.models import BaseInlineFormSet
 from .models import (
     Area, Procedimento, ProcedimentoRevisao, PacoteTreinamento, RegistroTreinamento,
-    MatrizProcedimento, SubAreaProcedimento,
+    MatrizProcedimento, SubAreaProcedimento, PacoteIntegracao,
     Disciplina, DisciplinaProcedimento, PlanejamentoTreinamento, ListaPresenca,
     TemplateListaPresenca, MapeamentoCampoListaPresenca,
     Fornecedor, AvaliacaoFornecedor, ProcessoCotacao, Orcamento
@@ -278,8 +278,15 @@ admin_site.register(PlanejamentoTreinamento, PlanejamentoTreinamentoAdmin)
 admin_site.register(ListaPresenca, ListaPresencaAdmin)
 admin_site.register(TemplateListaPresenca, TemplateListaPresencaAdmin)
 
+class PacoteIntegracaoAdmin(admin.ModelAdmin):
+    list_display = ('perfil', 'ativo', 'criado_em')
+    list_filter = ('ativo', 'criado_em')
+    search_fields = ('perfil__nome',)
+    filter_horizontal = ('procedimentos',)
+
 # Fornecedores e Cotações
 admin_site.register(Fornecedor, FornecedorAdmin)
 admin_site.register(AvaliacaoFornecedor, AvaliacaoFornecedorAdmin)
 admin_site.register(ProcessoCotacao, ProcessoCotacaoAdmin)
 admin_site.register(Orcamento, OrcamentoAdmin)
+admin_site.register(PacoteIntegracao, PacoteIntegracaoAdmin)

@@ -161,6 +161,7 @@ urlpatterns = [
     path('perfis/<int:perfil_id>/colaboradores/adicionar/', perfis_views.adicionar_colaborador_perfil_view, name='adicionar_colaborador_perfil'),
     path('perfis/<int:perfil_id>/colaboradores/editar/', perfis_views.editar_colaborador_perfil_view, name='editar_colaborador_perfil'),
     path('perfis/<int:perfil_id>/colaboradores/remover-massa/', perfis_views.remover_colaboradores_massa_view, name='remover_colaboradores_massa'),
+    path('perfis/<int:perfil_id>/integracao/salvar/', perfis_views.salvar_pacote_integracao_view, name='salvar_pacote_integracao'),
     path('colaborador-perfil/<int:cp_id>/remover/', perfis_views.remover_colaborador_perfil_view, name='remover_colaborador_perfil'),
     path('colaboradores/<int:colaborador_id>/associar-perfil/', perfis_views.associar_perfil_colaborador_view, name='associar_perfil_colaborador'),
     path('colaborador-perfil/remover/<int:colaborador_id>/<int:perfil_id>/', perfis_views.remover_associacao_perfil_colaborador_view, name='remover_associacao_perfil_colaborador'),
@@ -234,6 +235,7 @@ urlpatterns = [
     path('api/colaboradores-por-matriz/', api_colaboradores_por_matriz_view, name='api_colaboradores_por_matriz'),
     path('api/colaboradores-por-disciplina/', planejamento_views.api_colaboradores_por_disciplina_view, name='api_colaboradores_por_disciplina'),
     path('api/demandas-por-perfil/', planejamento_views.api_demandas_por_perfil_view, name='api_demandas_por_perfil'),
+    path('api/integracao-por-perfil/', planejamento_views.api_integracao_por_perfil_view, name='api_integracao_por_perfil'),
     path('api/debug-disciplina/', planejamento_views.api_debug_disciplina_view, name='api_debug_disciplina'),
     
     # ==========================

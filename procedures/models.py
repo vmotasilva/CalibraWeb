@@ -905,6 +905,22 @@ class ColaboradorPerfil(models.Model):
         ordering = ["colaborador", "perfil"]
 
 
+class PacoteIntegracao(models.Model):
+    """Pacote de integração com os procedimentos padrão para um perfil de colaborador."""
+    perfil = models.OneToOneField(PerfilTreinamento, on_delete=models.CASCADE, related_name="pacote_integracao", verbose_name="Perfil de Treinamento")
+    procedimentos = models.ManyToManyField(Procedimento, verbose_name="Procedimentos de Integração", related_name="pacotes_integracao")
+    ativo = models.BooleanField(default=True, verbose_name="Ativo")
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Pacote de Integração - {self.perfil.nome}"
+
+    class Meta:
+        verbose_name = "Pacote de Integração"
+        verbose_name_plural = "Pacotes de Integração"
+
+
 # ==============================================================================
 # PLANEJAMENTO DE TREINAMENTOS
 # ==============================================================================
@@ -954,6 +970,7 @@ class PlanejamentoTreinamento(models.Model):
         ("DEMANDA", "Demanda Existente"),
         ("MATRIZ", "Matriz de Habilidades"),
         ("LIVRE", "Planejamento Livre"),
+        ("INTEGRACAO", "Integração"),
     ]
     
     STATUS_CHOICES = [

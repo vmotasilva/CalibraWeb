@@ -250,6 +250,19 @@ def detalhe_perfil_view(request, perfil_id):
     # Buscar todos os setores para o filtro
     setores = Setor.objects.all().order_by('nome')
     
+    from procedures.models import PacoteIntegracao, Procedimento
+    
+    # Buscar pacote de integração
+    try:
+        pacote_integracao = PacoteIntegracao.objects.get(perfil=perfil)
+        procedimentos_integracao = pacote_integracao.procedimentos.all()
+    except PacoteIntegracao.DoesNotExist:
+        pacote_integracao = None
+        procedimentos_integracao = []
+        
+    # Todos os procedimentos ativos para seleção
+    todos_procedimentos = Procedimento.objects.filter(status='ATIVO').order_by('codigo')
+
     context = {
         'perfil': perfil,
         'grupos': grupos,
@@ -257,8 +270,39 @@ def detalhe_perfil_view(request, perfil_id):
         'todos_colaboradores': todos_colaboradores,
         'setores': setores,
         'today': date.today(),
+        'pacote_integracao': pacote_integracao,
+        'todos_procedimentos': todos_procedimentos,
     }
     return render(request, 'procedures/perfil_detalhe.html', context)
+
+
+@login_required
+def salvar_pacote_integracao_view(request, perfil_id):
+    """Salva os procedimentos do pacote de integração para um perfil"""
+    if request.method == 'POST':
+        from procedures.models import PacoteIntegracao
+        perfil = get_object_or_404(PerfilTreinamento, id=perfil_id)
+        
+        # Obter IDs dos procedimentos selecionados
+        procedimentos_ids = request.POST.getlist('procedimentos')
+        ativo = request.POST.get('ativo') == 'on'
+        
+        # Obter ou criar o pacote
+        pacote, created = PacoteIntegracao.objects.get_or_create(
+            perfil=perfil,
+            defaults={'ativo': ativo}
+        )
+        
+        if not created:
+            pacote.ativo = ativo
+            pacote.save()
+            
+        # Atualizar procedimentos
+        pacote.procedimentos.set(procedimentos_ids)
+        
+        messages.success(request, 'Pacote de Integração atualizado com sucesso!')
+        
+    return redirect('procedures:detalhe_perfil', perfil_id=perfil_id)
 
 
 # ==================== GRUPOS DE TREINAMENTO ====================

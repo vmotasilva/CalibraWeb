@@ -22,6 +22,7 @@ from procedures.models import (
 )
 from procedures.forms.forms import PlanejamentoTreinamentoForm
 from procedures.views.planejamento_api_demandas import api_demandas_por_perfil_view
+from procedures.views.planejamento_api_integracao import api_integracao_por_perfil_view
 from rh.models import Colaborador
 
 
@@ -140,13 +141,19 @@ def selecionar_tipo_planejamento_view(request):
     """Permite ao usuário escolher o tipo de planejamento"""
     if request.method == 'POST':
         tipo = request.POST.get('tipo')
-        if tipo in ['DEMANDA', 'MATRIZ', 'LIVRE']:
+        if tipo in ['DEMANDA', 'MATRIZ', 'LIVRE', 'INTEGRACAO']:
             return redirect('procedures:novo_planejamento_com_tipo', tipo=tipo)
         else:
             messages.error(request, 'Tipo de planejamento inválido.')
     
     context = {
         'tipos_planejamento': [
+            {
+                'valor': 'INTEGRACAO',
+                'titulo': 'Integração de Colaborador',
+                'descricao': 'Selecione o perfil de um colaborador recém-chegado para carregar automaticamente o pacote de procedimentos de integração.',
+                'icone': 'bi-person-plus'
+            },
             {
                 'valor': 'DEMANDA',
                 'titulo': 'Demanda Existente',
@@ -175,7 +182,7 @@ def selecionar_tipo_planejamento_view(request):
 def novo_planejamento_view(request, tipo='LIVRE'):
     """Cria um novo planejamento de treinamento baseado no tipo selecionado"""
     # Se tipo for inválido, redirecionar para seletor
-    if tipo not in ['DEMANDA', 'MATRIZ', 'LIVRE']:
+    if tipo not in ['DEMANDA', 'MATRIZ', 'LIVRE', 'INTEGRACAO']:
         return redirect('procedures:selecionar_tipo_planejamento')
     
     if request.method == 'POST':
@@ -193,7 +200,7 @@ def novo_planejamento_view(request, tipo='LIVRE'):
                 'titulo': f'Novo Planejamento de Treinamento',
                 'tipo': tipo,
             }
-            if tipo == 'DEMANDA':
+            if tipo == 'DEMANDA' or tipo == 'INTEGRACAO':
                 context['perfis'] = PerfilTreinamento.objects.all().order_by('nome')
             elif tipo == 'MATRIZ':
                 context['matrizes'] = MatrizHabilidade.objects.all().order_by('nome')
@@ -203,6 +210,7 @@ def novo_planejamento_view(request, tipo='LIVRE'):
                 'DEMANDA': 'procedures/planejamento_demanda_form.html',
                 'MATRIZ': 'procedures/planejamento_matriz_form.html',
                 'LIVRE': 'procedures/planejamento_livre_form.html',
+                'INTEGRACAO': 'procedures/planejamento_integracao_form.html',
             }
             return render(request, template_map.get(tipo, 'procedures/planejamento_livre_form.html'), context)
         
@@ -235,6 +243,7 @@ def novo_planejamento_view(request, tipo='LIVRE'):
         'DEMANDA': 'procedures/planejamento_demanda_form.html',
         'MATRIZ': 'procedures/planejamento_matriz_form.html',
         'LIVRE': 'procedures/planejamento_livre_form.html',
+        'INTEGRACAO': 'procedures/planejamento_integracao_form.html',
     }
     
     context = {
@@ -245,7 +254,7 @@ def novo_planejamento_view(request, tipo='LIVRE'):
     }
     
     # Adicionar dados específicos do tipo de planejamento
-    if tipo == 'DEMANDA':
+    if tipo == 'DEMANDA' or tipo == 'INTEGRACAO':
         context['perfis'] = PerfilTreinamento.objects.all().order_by('nome')
     elif tipo == 'MATRIZ':
         context['matrizes'] = MatrizHabilidade.objects.all().order_by('nome')
