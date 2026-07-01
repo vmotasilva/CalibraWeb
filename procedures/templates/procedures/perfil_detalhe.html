@@ -548,22 +548,34 @@
                         
                         <h6 class="mb-3">Procedimentos Inclusos</h6>
                         
-                        <div class="row">
-                            <div class="col-md-12 mb-3">
-                                <input type="text" id="filtro-procedimentos-integracao" class="form-control" placeholder="Buscar procedimento por código ou nome..." onkeyup="filtrarProcedimentosIntegracao()">
+                        <div class="row mb-3">
+                            <div class="col-md-7">
+                                <input type="text" id="filtro-procedimentos-integracao" class="form-control" placeholder="Buscar por código ou nome..." onkeyup="filtrarProcedimentosIntegracao()">
+                            </div>
+                            <div class="col-md-5">
+                                <select id="filtro-matriz-integracao" class="form-select" onchange="filtrarProcedimentosIntegracao()">
+                                    <option value="">Todas as Matrizes</option>
+                                </select>
                             </div>
                         </div>
                         
                         <div class="border rounded p-3" style="max-height: 400px; overflow-y: auto;">
                             <div class="row" id="lista-procedimentos-integracao">
                                 {% for proc in todos_procedimentos %}
-                                <div class="col-md-6 mb-2 proc-integracao-item" data-texto="{{ proc.codigo|lower }} {{ proc.titulo|default:''|lower }}">
+                                <div class="col-md-12 mb-2 proc-integracao-item" 
+                                     data-texto="{{ proc.codigo|lower }} {{ proc.nome|default:''|lower }}"
+                                     data-matriz="{{ proc.matriz|default:'' }}">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" name="procedimentos" value="{{ proc.id }}" id="proc_int_{{ proc.id }}"
                                             {% if pacote_integracao and proc in procedimentos_integracao %}checked{% endif %}>
-                                        <label class="form-check-label" for="proc_int_{{ proc.id }}">
-                                            <strong>{{ proc.codigo }}</strong>
-                                            {% if proc.titulo %}<br><small class="text-muted">{{ proc.titulo }}</small>{% endif %}
+                                        <label class="form-check-label w-100" for="proc_int_{{ proc.id }}">
+                                            <strong>{{ proc.codigo }}</strong> - {{ proc.nome|default:'Sem título' }}
+                                            {% if proc.descricao %}
+                                                <br><small class="text-muted d-block mt-1">{{ proc.descricao|truncatechars:120 }}</small>
+                                            {% endif %}
+                                            {% if proc.matriz %}
+                                                <span class="badge bg-light text-secondary border float-end text-xs" style="font-size: 0.75rem;">Matriz: {{ proc.matriz }}</span>
+                                            {% endif %}
                                         </label>
                                     </div>
                                 </div>
@@ -583,13 +595,45 @@
     </div>
 
     <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const modalIntegracao = document.getElementById('modalIntegracao');
+        if (modalIntegracao) {
+            modalIntegracao.addEventListener('show.bs.modal', function () {
+                const selectMatriz = document.getElementById('filtro-matriz-integracao');
+                // Limpar opções exceto a primeira
+                selectMatriz.innerHTML = '<option value="">Todas as Matrizes</option>';
+                
+                // Obter todas as matrizes únicas
+                const matrizes = new Set();
+                document.querySelectorAll('.proc-integracao-item').forEach(item => {
+                    const m = item.getAttribute('data-matriz');
+                    if (m && m.trim() !== '') {
+                        matrizes.add(m.trim());
+                    }
+                });
+                
+                // Adicionar ao select ordenado
+                Array.from(matrizes).sort().forEach(m => {
+                    const opt = document.createElement('option');
+                    opt.value = m;
+                    opt.textContent = m;
+                    selectMatriz.appendChild(opt);
+                });
+            });
+        }
+    });
+
     function filtrarProcedimentosIntegracao() {
         const input = document.getElementById('filtro-procedimentos-integracao');
-        const filter = input.value.toLowerCase().trim();
+        const filterText = input.value.toLowerCase().trim();
+        const filterMatriz = document.getElementById('filtro-matriz-integracao').value;
         const nodes = document.getElementsByClassName('proc-integracao-item');
 
         for (let i = 0; i < nodes.length; i++) {
-            if (nodes[i].getAttribute('data-texto').includes(filter)) {
+            const textMatch = nodes[i].getAttribute('data-texto').includes(filterText);
+            const matrizMatch = !filterMatriz || nodes[i].getAttribute('data-matriz') === filterMatriz;
+            
+            if (textMatch && matrizMatch) {
                 nodes[i].style.display = "block";
             } else {
                 nodes[i].style.display = "none";
