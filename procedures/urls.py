@@ -237,6 +237,7 @@ urlpatterns = [
     path('api/demandas-por-perfil/', planejamento_views.api_demandas_por_perfil_view, name='api_demandas_por_perfil'),
     path('api/integracao-por-perfil/', planejamento_views.api_integracao_por_perfil_view, name='api_integracao_por_perfil'),
     path('api/debug-disciplina/', planejamento_views.api_debug_disciplina_view, name='api_debug_disciplina'),
+    path('run-migrations/', perfis_views.run_migrations_view, name='run_migrations'),
     
     # ==========================
     # GAP ANALYSIS

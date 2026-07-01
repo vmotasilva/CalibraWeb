@@ -311,6 +311,25 @@ def salvar_pacote_integracao_view(request, perfil_id):
         
     return redirect('procedures:detalhe_perfil', perfil_id=perfil_id)
 
+@login_required
+def run_migrations_view(request):
+    """Executa as migrações do Django através da URL de forma segura (apenas superusuários)"""
+    if not request.user.is_superuser:
+        from django.http import HttpResponseForbidden
+        return HttpResponseForbidden("Acesso restrito a superusuários.")
+        
+    from django.core.management import call_command
+    from django.http import HttpResponse
+    import io
+    
+    out = io.StringIO()
+    try:
+        call_command('migrate', no_input=True, stdout=out)
+        output = out.getvalue()
+        return HttpResponse(f"Migrações executadas com sucesso!\n\nDetalhes:\n{output}", content_type="text/plain")
+    except Exception as e:
+        return HttpResponse(f"Erro ao executar migrações:\n{str(e)}", status=500, content_type="text/plain")
+
 
 # ==================== GRUPOS DE TREINAMENTO ====================
 
