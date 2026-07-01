@@ -320,15 +320,35 @@ def run_migrations_view(request):
         
     from django.core.management import call_command
     from django.http import HttpResponse
+    from django.db import connection
     import io
     
     out = io.StringIO()
+    show_out = io.StringIO()
     try:
+        # 1. Run migrations
         call_command('migrate', no_input=True, stdout=out)
-        output = out.getvalue()
-        return HttpResponse(f"Migrações executadas com sucesso!\n\nDetalhes:\n{output}", content_type="text/plain")
+        migrate_output = out.getvalue()
+        
+        # 2. Show migrations
+        call_command('showmigrations', stdout=show_out)
+        showmigrations_output = show_out.getvalue()
+        
+        # 3. Check existing tables
+        tables = connection.introspection.table_names()
+        pacote_table_exists = 'procedures_pacoteintegracao' in tables
+        
+        response_text = (
+            f"=== MIGRATIONS RUN ===\n{migrate_output}\n"
+            f"=== SHOW MIGRATIONS ===\n{showmigrations_output}\n"
+            f"=== DATABASE TABLES ===\n"
+            f"Total tables: {len(tables)}\n"
+            f"procedures_pacoteintegracao exists: {pacote_table_exists}\n"
+            f"Tables list: {', '.join(sorted(tables))}"
+        )
+        return HttpResponse(response_text, content_type="text/plain")
     except Exception as e:
-        return HttpResponse(f"Erro ao executar migrações:\n{str(e)}", status=500, content_type="text/plain")
+        return HttpResponse(f"Erro ao executar/depurar migrações:\n{str(e)}", status=500, content_type="text/plain")
 
 
 # ==================== GRUPOS DE TREINAMENTO ====================
