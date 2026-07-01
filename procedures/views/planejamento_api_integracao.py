@@ -33,7 +33,7 @@ def api_integracao_por_perfil_view(request):
             
         # Obter colaboradores ativos que possuem este perfil
         colaboradores_perfis = ColaboradorPerfil.objects.filter(perfil=perfil, ativo=True).select_related('colaborador')
-        colaboradores = [cp.colaborador for cp in colaboradores_perfis if cp.colaborador.ativo]
+        colaboradores = [cp.colaborador for cp in colaboradores_perfis if cp.colaborador.is_active]
         
         colaboradores_data = [
             {
