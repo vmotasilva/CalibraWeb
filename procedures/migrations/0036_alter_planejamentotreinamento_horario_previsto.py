@@ -3,6 +3,25 @@
 from django.db import migrations, models
 
 
+def migrate_time_to_datetime(apps, schema_editor):
+    if schema_editor.connection.vendor == 'postgresql':
+        with schema_editor.connection.cursor() as cursor:
+            cursor.execute(
+                'ALTER TABLE procedures_planejamentotreinamento '
+                'ALTER COLUMN horario_previsto TYPE timestamp with time zone '
+                'USING (data_prevista + horario_previsto);'
+            )
+
+def reverse_time_to_datetime(apps, schema_editor):
+    if schema_editor.connection.vendor == 'postgresql':
+        with schema_editor.connection.cursor() as cursor:
+            cursor.execute(
+                'ALTER TABLE procedures_planejamentotreinamento '
+                'ALTER COLUMN horario_previsto TYPE time without time zone '
+                'USING horario_previsto::time;'
+            )
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -10,6 +29,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunPython(migrate_time_to_datetime, reverse_code=reverse_time_to_datetime),
         migrations.AlterField(
             model_name='planejamentotreinamento',
             name='horario_previsto',
