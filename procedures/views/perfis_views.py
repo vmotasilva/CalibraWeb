@@ -259,6 +259,10 @@ def detalhe_perfil_view(request, perfil_id):
     except PacoteIntegracao.DoesNotExist:
         pacote_integracao = None
         procedimentos_integracao = []
+    except Exception:
+        # Tabela pode não existir ainda (migração pendente)
+        pacote_integracao = None
+        procedimentos_integracao = []
         
     # Todos os procedimentos ativos para seleção
     todos_procedimentos = Procedimento.objects.filter(status='ATIVO').order_by('codigo')
