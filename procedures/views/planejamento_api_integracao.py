@@ -1,7 +1,7 @@
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from procedures.models import PerfilTreinamento, PacoteIntegracao, ColaboradorPerfil
-from accounts.models import Colaborador
+from rh.models import Colaborador
 
 @login_required
 def api_integracao_por_perfil_view(request):
