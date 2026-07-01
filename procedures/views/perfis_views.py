@@ -252,17 +252,15 @@ def detalhe_perfil_view(request, perfil_id):
     
     from procedures.models import PacoteIntegracao, Procedimento
     
-    # Buscar pacote de integração
+    # Buscar todos os perfis (exceto o atual) para fins de cópia
+    todos_perfis = PerfilTreinamento.objects.exclude(id=perfil.id).order_by('nome')
+    
+    # Buscar pacotes de integração
     try:
-        pacote_integracao = PacoteIntegracao.objects.get(perfil=perfil)
-        procedimentos_integracao = pacote_integracao.procedimentos.all()
-    except PacoteIntegracao.DoesNotExist:
-        pacote_integracao = None
-        procedimentos_integracao = []
+        pacotes_integracao = PacoteIntegracao.objects.filter(perfil=perfil).prefetch_related('procedimentos')
     except Exception:
         # Tabela pode não existir ainda (migração pendente)
-        pacote_integracao = None
-        procedimentos_integracao = []
+        pacotes_integracao = []
         
     # Todos os procedimentos ativos para seleção
     todos_procedimentos = Procedimento.objects.all().order_by('codigo')
@@ -274,42 +272,127 @@ def detalhe_perfil_view(request, perfil_id):
         'todos_colaboradores': todos_colaboradores,
         'setores': setores,
         'today': date.today(),
-        'pacote_integracao': pacote_integracao,
-        'procedimentos_integracao': procedimentos_integracao,
+        'pacotes_integracao': pacotes_integracao,
+        'todos_perfis': todos_perfis,
         'todos_procedimentos': todos_procedimentos,
     }
     return render(request, 'procedures/perfil_detalhe.html', context)
 
 
 @login_required
-def salvar_pacote_integracao_view(request, perfil_id):
-    """Salva os procedimentos do pacote de integração para um perfil"""
+def salvar_pacote_integracao_view(request, perfil_id, pacote_id=None):
+    """Salva os procedimentos de um pacote de integração para um perfil (criar ou editar)"""
     if request.method == 'POST':
         from procedures.models import PacoteIntegracao
         perfil = get_object_or_404(PerfilTreinamento, id=perfil_id)
         
         try:
-            # Obter IDs dos procedimentos selecionados
+            # Obter campos enviados pelo POST
+            nome = request.POST.get('nome', 'Integração Geral').strip()
             procedimentos_ids = request.POST.getlist('procedimentos')
             ativo = request.POST.get('ativo') == 'on'
             
-            # Obter ou criar o pacote
-            pacote, created = PacoteIntegracao.objects.get_or_create(
-                perfil=perfil,
-                defaults={'ativo': ativo}
-            )
-            
-            if not created:
+            if pacote_id:
+                # Editar pacote existente
+                pacote = get_object_or_404(PacoteIntegracao, id=pacote_id, perfil=perfil)
+                pacote.nome = nome
                 pacote.ativo = ativo
                 pacote.save()
+                messages.success(request, f'Pacote de Integração "{nome}" atualizado com sucesso!')
+            else:
+                # Criar novo pacote
+                pacote = PacoteIntegracao.objects.create(
+                    perfil=perfil,
+                    nome=nome,
+                    ativo=ativo
+                )
+                messages.success(request, f'Pacote de Integração "{nome}" criado com sucesso!')
                 
-            # Atualizar procedimentos
+            # Atualizar procedimentos associados
             pacote.procedimentos.set(procedimentos_ids)
-            
-            messages.success(request, 'Pacote de Integração atualizado com sucesso!')
-        except Exception:
-            messages.error(request, 'Recurso de integração indisponível. A migração do banco de dados ainda não foi aplicada.')
+        except Exception as e:
+            messages.error(request, f'Erro ao salvar pacote de integração: {str(e)}')
         
+    return redirect('procedures:detalhe_perfil', perfil_id=perfil_id)
+
+
+@login_required
+def deletar_pacote_integracao_view(request, perfil_id, pacote_id):
+    """Exclui um pacote de integração de um perfil"""
+    from procedures.models import PacoteIntegracao
+    perfil = get_object_or_404(PerfilTreinamento, id=perfil_id)
+    pacote = get_object_or_404(PacoteIntegracao, id=pacote_id, perfil=perfil)
+    nome_pacote = pacote.nome
+    pacote.delete()
+    messages.success(request, f'Pacote "{nome_pacote}" removido com sucesso!')
+    return redirect('procedures:detalhe_perfil', perfil_id=perfil_id)
+
+
+@login_required
+def copiar_grupo_para_pacote_view(request, perfil_id):
+    """Copia um grupo de treinamento com seus procedimentos como um pacote de integração"""
+    if request.method == 'POST':
+        from procedures.models import PacoteIntegracao, GrupoTreinamento, Procedimento
+        perfil = get_object_or_404(PerfilTreinamento, id=perfil_id)
+        
+        grupo_id = request.POST.get('grupo_id')
+        nome_pacote = request.POST.get('nome_pacote', '').strip()
+        ativo = request.POST.get('ativo') == 'on'
+        
+        if not grupo_id or not nome_pacote:
+            messages.error(request, 'Grupo e nome do pacote são obrigatórios.')
+            return redirect('procedures:detalhe_perfil', perfil_id=perfil_id)
+            
+        grupo = get_object_or_404(GrupoTreinamento, id=grupo_id, perfil=perfil)
+        
+        try:
+            # Buscar todos os procedimentos nos subgrupos deste grupo
+            procedimentos = Procedimento.objects.filter(subgrupos_treinamento__grupo=grupo).distinct()
+            
+            # Criar o novo pacote de integração
+            pacote = PacoteIntegracao.objects.create(
+                perfil=perfil,
+                nome=nome_pacote,
+                ativo=ativo
+            )
+            pacote.procedimentos.set(procedimentos)
+            
+            messages.success(request, f'Grupo "{grupo.nome}" copiado com sucesso como o pacote "{nome_pacote}"!')
+        except Exception as e:
+            messages.error(request, f'Erro ao copiar grupo: {str(e)}')
+            
+    return redirect('procedures:detalhe_perfil', perfil_id=perfil_id)
+
+
+@login_required
+def copiar_pacote_entre_perfis_view(request, perfil_id, pacote_id):
+    """Copia/Clona um pacote de integração para outro perfil de destino"""
+    if request.method == 'POST':
+        from procedures.models import PacoteIntegracao
+        perfil = get_object_or_404(PerfilTreinamento, id=perfil_id)
+        pacote = get_object_or_404(PacoteIntegracao, id=pacote_id, perfil=perfil)
+        
+        destino_perfil_id = request.POST.get('destino_perfil_id')
+        if not destino_perfil_id:
+            messages.error(request, 'Perfil de destino não informado.')
+            return redirect('procedures:detalhe_perfil', perfil_id=perfil_id)
+            
+        destino_perfil = get_object_or_404(PerfilTreinamento, id=destino_perfil_id)
+        
+        try:
+            # Clonar o pacote de integração no perfil de destino
+            novo_pacote = PacoteIntegracao.objects.create(
+                perfil=destino_perfil,
+                nome=pacote.nome,
+                ativo=pacote.ativo
+            )
+            # Associar os mesmos procedimentos
+            novo_pacote.procedimentos.set(pacote.procedimentos.all())
+            
+            messages.success(request, f'Pacote "{pacote.nome}" copiado com sucesso para o perfil "{destino_perfil.nome}"!')
+        except Exception as e:
+            messages.error(request, f'Erro ao copiar pacote: {str(e)}')
+            
     return redirect('procedures:detalhe_perfil', perfil_id=perfil_id)
 
 @login_required

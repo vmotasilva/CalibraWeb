@@ -6,7 +6,7 @@ from rh.models import Colaborador
 @login_required
 def api_integracao_por_perfil_view(request):
     """
-    API para buscar os procedimentos do pacote de integração e os colaboradores
+    API para buscar os procedimentos dos pacotes de integração e os colaboradores
     associados a um perfil específico.
     """
     perfil_id = request.GET.get('perfil_id')
@@ -17,19 +17,34 @@ def api_integracao_por_perfil_view(request):
     try:
         perfil = PerfilTreinamento.objects.get(id=perfil_id)
         
-        # Obter o pacote de integração (se existir)
-        try:
-            pacote = PacoteIntegracao.objects.get(perfil=perfil, ativo=True)
-            procedimentos = pacote.procedimentos.all()
-            procedimentos_data = [
-                {
+        # Obter todos os pacotes de integração ativos para o perfil
+        pacotes = PacoteIntegracao.objects.filter(perfil=perfil, ativo=True).prefetch_related('procedimentos')
+        
+        pacotes_data = []
+        procedimentos_consolidados = set()
+        procedimentos_list = []
+        
+        for pacote in pacotes:
+            procs_data = []
+            for proc in pacote.procedimentos.all():
+                proc_info = {
                     'id': proc.id,
                     'codigo': proc.codigo,
                     'nome': proc.nome or 'Sem título',
-                } for proc in procedimentos
-            ]
-        except PacoteIntegracao.DoesNotExist:
-            procedimentos_data = []
+                    'matriz': proc.matriz or ''
+                }
+                procs_data.append(proc_info)
+                
+                # Consolidar em lista única de procedimentos
+                if proc.id not in procedimentos_consolidados:
+                    procedimentos_consolidados.add(proc.id)
+                    procedimentos_list.append(proc_info)
+                    
+            pacotes_data.append({
+                'id': pacote.id,
+                'nome': pacote.nome,
+                'procedimentos': procs_data
+            })
             
         # Obter colaboradores ativos que possuem este perfil
         colaboradores_perfis = ColaboradorPerfil.objects.filter(perfil=perfil, ativo=True).select_related('colaborador')
@@ -49,9 +64,9 @@ def api_integracao_por_perfil_view(request):
         
         return JsonResponse({
             'perfil_nome': perfil.nome,
-            'total_procedimentos': len(procedimentos_data),
             'total_colaboradores': len(colaboradores_data),
-            'procedimentos': procedimentos_data,
+            'pacotes': pacotes_data,
+            'procedimentos_consolidados': procedimentos_list,
             'colaboradores': colaboradores_data
         })
         

@@ -907,14 +907,15 @@ class ColaboradorPerfil(models.Model):
 
 class PacoteIntegracao(models.Model):
     """Pacote de integração com os procedimentos padrão para um perfil de colaborador."""
-    perfil = models.OneToOneField(PerfilTreinamento, on_delete=models.CASCADE, related_name="pacote_integracao", verbose_name="Perfil de Treinamento")
+    perfil = models.ForeignKey(PerfilTreinamento, on_delete=models.CASCADE, related_name="pacotes_integracao", verbose_name="Perfil de Treinamento")
+    nome = models.CharField(max_length=100, verbose_name="Nome do Pacote", default="Integração Geral")
     procedimentos = models.ManyToManyField(Procedimento, verbose_name="Procedimentos de Integração", related_name="pacotes_integracao")
     ativo = models.BooleanField(default=True, verbose_name="Ativo")
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Pacote de Integração - {self.perfil.nome}"
+        return f"{self.nome} ({self.perfil.nome})"
 
     class Meta:
         verbose_name = "Pacote de Integração"

@@ -43,32 +43,60 @@
     <!-- Pacote de Integração -->
     <div class="card mb-4 border-info">
         <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
-            <h6 class="mb-0"><i class="bi bi-box-seam"></i> Pacote de Integração</h6>
-            <button type="button" class="btn btn-sm btn-light text-info fw-bold" data-bs-toggle="modal" data-bs-target="#modalIntegracao">
-                <i class="bi bi-gear"></i> Configurar Integração
-            </button>
+            <h6 class="mb-0"><i class="bi bi-box-seam"></i> Pacotes de Integração</h6>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-sm btn-light text-info fw-bold" onclick="abrirCriarPacote()">
+                    <i class="bi bi-plus-circle"></i> Novo Pacote
+                </button>
+                <button type="button" class="btn btn-sm btn-light text-info fw-bold" data-bs-toggle="modal" data-bs-target="#modalCopiarGrupo">
+                    <i class="bi bi-files"></i> Copiar de Grupo
+                </button>
+            </div>
         </div>
         <div class="card-body">
-            {% if pacote_integracao %}
-                <div class="d-flex align-items-center mb-3">
-                    <span class="badge {% if pacote_integracao.ativo %}bg-success{% else %}bg-secondary{% endif %} me-2">
-                        {% if pacote_integracao.ativo %}Ativo{% else %}Inativo{% endif %}
-                    </span>
-                    <span class="text-muted"><i class="bi bi-clock-history"></i> Atualizado em {{ pacote_integracao.atualizado_em|date:"d/m/Y H:i" }}</span>
+            {% if pacotes_integracao %}
+                <div class="list-group">
+                    {% for pacote in pacotes_integracao %}
+                        <div class="list-group-item list-group-item-action flex-column align-items-start mb-3 border rounded shadow-sm">
+                            <div class="d-flex w-100 justify-content-between align-items-center mb-2">
+                                <h5 class="mb-1 text-info fw-bold">
+                                    <i class="bi bi-box-seam me-2"></i>{{ pacote.nome }}
+                                </h5>
+                                <div class="d-flex gap-2 align-items-center">
+                                    <span class="badge {% if pacote.ativo %}bg-success{% else %}bg-secondary{% endif %}">
+                                        {% if pacote.ativo %}Ativo{% else %}Inativo{% endif %}
+                                    </span>
+                                    <button type="button" class="btn btn-xs btn-outline-warning py-1" onclick="abrirEditarPacote({{ pacote.id }}, '{{ pacote.nome|escapejs }}', {% if pacote.ativo %}true{% else %}false{% endif %}, [{% for proc in pacote.procedimentos.all %}{{ proc.id }}, {% endfor %}])" title="Editar Pacote">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-xs btn-outline-dark py-1" onclick="abrirCopiarPerfil({{ pacote.id }}, '{{ pacote.nome|escapejs }}')" title="Copiar para outro Perfil">
+                                        <i class="bi bi-reply-all"></i>
+                                    </button>
+                                    <a href="{% url 'procedures:deletar_pacote_integracao' perfil.id pacote.id %}" class="btn btn-xs btn-outline-danger py-1" title="Excluir Pacote" onclick="return confirm('Deseja realmente remover o pacote de integração &quot;{{ pacote.nome }}&quot;?')">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            <p class="mb-1 text-muted small"><i class="bi bi-clock-history"></i> Atualizado em {{ pacote.atualizado_em|date:"d/m/Y H:i" }}</p>
+                            
+                            {% if pacote.procedimentos.exists %}
+                                <div class="mt-2">
+                                    <span class="fw-bold small d-block mb-1 text-secondary">{{ pacote.procedimentos.count }} procedimento(s) associado(s):</span>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        {% for proc in pacote.procedimentos.all %}
+                                            <span class="badge bg-light text-dark border" title="{{ proc.nome }}"><i class="bi bi-file-earmark-text text-secondary"></i> {{ proc.codigo }}</span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% else %}
+                                <p class="text-danger small mb-0 mt-2"><i class="bi bi-exclamation-triangle"></i> Nenhum procedimento associado a este pacote de integração.</p>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
                 </div>
-                
-                {% if procedimentos_integracao %}
-                    <p class="mb-2 fw-bold">{{ procedimentos_integracao.count }} procedimento(s) configurado(s):</p>
-                    <div class="d-flex flex-wrap gap-2">
-                        {% for proc in procedimentos_integracao %}
-                            <span class="badge bg-light text-dark border"><i class="bi bi-file-earmark-text"></i> {{ proc.codigo }}</span>
-                        {% endfor %}
-                    </div>
-                {% else %}
-                    <p class="text-muted mb-0">Nenhum procedimento configurado neste pacote de integração.</p>
-                {% endif %}
             {% else %}
-                <p class="text-muted mb-0">Nenhum pacote de integração configurado para este perfil. Clique em "Configurar Integração" para criar um.</p>
+                <p class="text-muted mb-0">Nenhum pacote de integração configurado para este perfil. Clique em <strong>"Novo Pacote"</strong> ou em <strong>"Copiar de Grupo"</strong> para criar um.</p>
             {% endif %}
         </div>
     </div>
@@ -529,19 +557,20 @@
     <div class="modal fade" id="modalIntegracao" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <form method="POST" action="{% url 'procedures:salvar_pacote_integracao' perfil.id %}">
+                <form method="POST" id="formPacoteIntegracao" action="{% url 'procedures:salvar_pacote_integracao' perfil.id %}">
                     {% csrf_token %}
                     <div class="modal-header bg-info text-white">
-                        <h5 class="modal-title"><i class="bi bi-box-seam"></i> Configurar Pacote de Integração</h5>
+                        <h5 class="modal-title" id="tituloModalIntegracao"><i class="bi bi-box-seam"></i> Configurar Pacote de Integração</h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
-                        <div class="alert alert-light border">
-                            <p class="mb-0">Selecione abaixo os procedimentos obrigatórios para novos colaboradores neste perfil.</p>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Nome do Pacote de Integração <span class="text-danger">*</span></label>
+                            <input type="text" id="nomeIntegracao" name="nome" class="form-control" placeholder="Ex: Qualidade, EHS, RH/DP, Geral" required>
                         </div>
                         
                         <div class="form-check form-switch mb-4">
-                            <input class="form-check-input" type="checkbox" role="switch" id="ativoIntegracao" name="ativo" {% if not pacote_integracao or pacote_integracao.ativo %}checked{% endif %}>
+                            <input class="form-check-input" type="checkbox" role="switch" id="ativoIntegracao" name="ativo" checked>
                             <label class="form-check-label fw-bold" for="ativoIntegracao">Pacote Ativo</label>
                             <div class="form-text">Se inativo, este pacote não aparecerá na tela de Novo Planejamento de Integração.</div>
                         </div>
@@ -566,8 +595,7 @@
                                      data-texto="{{ proc.codigo|lower }} {{ proc.nome|default:''|lower }}"
                                      data-matriz="{{ proc.matriz|default:'' }}">
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="procedimentos" value="{{ proc.id }}" id="proc_int_{{ proc.id }}"
-                                            {% if pacote_integracao and proc in procedimentos_integracao %}checked{% endif %}>
+                                        <input class="form-check-input" type="checkbox" name="procedimentos" value="{{ proc.id }}" id="proc_int_{{ proc.id }}">
                                         <label class="form-check-label w-100" for="proc_int_{{ proc.id }}">
                                             <strong>{{ proc.codigo }}</strong> - {{ proc.nome|default:'Sem título' }}
                                             {% if proc.descricao %}
@@ -594,7 +622,124 @@
         </div>
     </div>
 
+    <!-- Modal Copiar Grupo para Pacote -->
+    <div class="modal fade" id="modalCopiarGrupo" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST" action="{% url 'procedures:copiar_grupo_para_pacote' perfil.id %}">
+                    {% csrf_token %}
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title"><i class="bi bi-files"></i> Copiar Grupo de Treinamento</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Selecione o Grupo de Origem</label>
+                            <select name="grupo_id" class="form-select" onchange="document.getElementById('nomeCopiaGrupo').value = this.options[this.selectedIndex].text.split('(')[0].trim()" required>
+                                <option value="">-- Selecione um Grupo --</option>
+                                {% for g in grupos %}
+                                    <option value="{{ g.id }}">{{ g.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Nome do Novo Pacote de Integração</label>
+                            <input type="text" id="nomeCopiaGrupo" name="nome_pacote" class="form-control" placeholder="Ex: Qualidade, EHS, Integração Geral" required>
+                        </div>
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" role="switch" id="ativoCopiaGrupo" name="ativo" checked>
+                            <label class="form-check-label fw-bold" for="ativoCopiaGrupo">Pacote Ativo</label>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Copiar e Criar Pacote</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Copiar Pacote para Perfil -->
+    <div class="modal fade" id="modalCopiarPerfil" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST" id="formCopiarPerfil" action="">
+                    {% csrf_token %}
+                    <div class="modal-header bg-dark text-white">
+                        <h5 class="modal-title"><i class="bi bi-reply-all"></i> Copiar Pacote para outro Perfil</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-3">Você está clonando o pacote <strong id="nome_pacote_clonar" class="text-info"></strong> para outro perfil.</p>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Selecione o Perfil de Destino</label>
+                            <select name="destino_perfil_id" class="form-select" required>
+                                <option value="">-- Selecione o Perfil --</option>
+                                {% for p in todos_perfis %}
+                                    <option value="{{ p.id }}">{{ p.codigo }} - {{ p.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-dark">Copiar Pacote</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script>
+    const baseUrlSalvar = "{% url 'procedures:salvar_pacote_integracao' perfil.id %}";
+
+    function abrirCriarPacote() {
+        document.getElementById('tituloModalIntegracao').innerHTML = '<i class="bi bi-box-seam"></i> Criar Novo Pacote de Integração';
+        document.getElementById('formPacoteIntegracao').action = baseUrlSalvar;
+        document.getElementById('nomeIntegracao').value = '';
+        document.getElementById('ativoIntegracao').checked = true;
+        
+        // Desmarcar todos os procedimentos
+        document.querySelectorAll('#lista-procedimentos-integracao input[type="checkbox"]').forEach(cb => {
+            cb.checked = false;
+        });
+        
+        // Resetar busca e matriz
+        document.getElementById('filtro-procedimentos-integracao').value = '';
+        document.getElementById('filtro-matriz-integracao').value = '';
+        filtrarProcedimentosIntegracao();
+        
+        // Abrir modal
+        new bootstrap.Modal(document.getElementById('modalIntegracao')).show();
+    }
+
+    function abrirEditarPacote(id, nome, ativo, procIds) {
+        document.getElementById('tituloModalIntegracao').innerHTML = '<i class="bi bi-box-seam"></i> Editar Pacote de Integração';
+        document.getElementById('formPacoteIntegracao').action = `/procedures/perfis/{{ perfil.id }}/integracao/${id}/editar/`;
+        document.getElementById('nomeIntegracao').value = nome;
+        document.getElementById('ativoIntegracao').checked = ativo;
+        
+        // Marcar apenas os procedimentos associados
+        document.querySelectorAll('#lista-procedimentos-integracao input[type="checkbox"]').forEach(cb => {
+            cb.checked = procIds.includes(parseInt(cb.value));
+        });
+        
+        // Resetar busca e matriz
+        document.getElementById('filtro-procedimentos-integracao').value = '';
+        document.getElementById('filtro-matriz-integracao').value = '';
+        filtrarProcedimentosIntegracao();
+        
+        // Abrir modal
+        new bootstrap.Modal(document.getElementById('modalIntegracao')).show();
+    }
+
+    function abrirCopiarPerfil(id, nome) {
+        document.getElementById('nome_pacote_clonar').textContent = nome;
+        document.getElementById('formCopiarPerfil').action = `/procedures/perfis/{{ perfil.id }}/integracao/${id}/copiar-perfil/`;
+        new bootstrap.Modal(document.getElementById('modalCopiarPerfil')).show();
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         const modalIntegracao = document.getElementById('modalIntegracao');
         if (modalIntegracao) {

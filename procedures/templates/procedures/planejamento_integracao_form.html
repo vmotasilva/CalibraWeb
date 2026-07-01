@@ -85,8 +85,16 @@
                 <!-- Informações do pacote de integração -->
                 <div id="integracao_info" class="alert alert-primary mt-3" style="display: none;">
                     <strong>Perfil selecionado:</strong> <span id="perfil_nome">-</span><br>
-                    <strong>Colaboradores encontrados:</strong> <span id="count_colaboradores_integracao">0</span><br>
-                    <strong>Procedimentos no pacote:</strong> <span id="count_procedimentos_integracao">0</span>
+                    <strong>Colaboradores encontrados:</strong> <span id="count_colaboradores_integracao">0</span>
+                </div>
+
+                <!-- SEÇÃO PARA ESCOLHA DOS PACOTES -->
+                <div id="pacotes_selection_container" class="form-section mb-4" style="display: none;">
+                    <h6 class="section-title mb-3">Pacotes de Integração Disponíveis</h6>
+                    <p class="text-muted small mb-3">Selecione quais pacotes de integração deste perfil deseja aplicar ao planejamento:</p>
+                    <div id="pacotes_checkboxes_list" class="border rounded p-3 bg-white">
+                        <!-- Preenchido via Javascript -->
+                    </div>
                 </div>
 
                 <!-- SEÇÃO 3: DATAS E INSTRUTOR -->
@@ -309,13 +317,17 @@ document.addEventListener('DOMContentLoaded', function() {
         form.appendChild(origemInput);
     }
     
+    let perfilPacotes = [];
+    
     // Carregar integração quando perfil é selecionado
     selectPerfil.addEventListener('change', async function() {
         const perfilId = this.value;
         const integracaoInfo = document.getElementById('integracao_info');
+        const pacotesContainer = document.getElementById('pacotes_selection_container');
         
         if (!perfilId) {
             integracaoInfo.style.display = 'none';
+            pacotesContainer.style.display = 'none';
             document.getElementById('procedimento_container').style.display = 'none';
             document.getElementById('colaboradores_container').style.display = 'none';
             document.getElementById('procedimento_empty').style.display = 'block';
@@ -335,7 +347,6 @@ document.addEventListener('DOMContentLoaded', function() {
             // Atualizar informações
             document.getElementById('perfil_nome').textContent = data.perfil_nome;
             document.getElementById('count_colaboradores_integracao').textContent = data.total_colaboradores;
-            document.getElementById('count_procedimentos_integracao').textContent = data.total_procedimentos;
             
             // Auto-preencher título do treinamento
             const inputTitulo = document.querySelector('input[name="titulo"]');
@@ -343,14 +354,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 inputTitulo.value = `Integração de Novo Colaborador (Treinamento - ${data.perfil_nome})`;
             }
             
-            // Preencher lista de colaboradores (todos inicialmente)
+            // Salvar pacotes globalmente para manipulação
+            perfilPacotes = data.pacotes || [];
+            
+            // Preencher lista de pacotes para seleção
+            preencherPacotesCheckboxes(perfilPacotes);
+            
+            // Preencher lista de colaboradores (todos inicialmente desmarcados)
             preencherColaboradores(data.colaboradores);
             
-            // Preencher lista de procedimentos
-            preencherProcedimentos(data.procedimentos);
+            // Consolidar e preencher procedimentos com base nos pacotes selecionados
+            consolidarEPreencherProcedimentos();
             
-            // Mostrar info
+            // Mostrar informações
             integracaoInfo.style.display = 'block';
+            if (perfilPacotes.length > 0) {
+                pacotesContainer.style.display = 'block';
+            } else {
+                pacotesContainer.style.display = 'none';
+            }
             
             console.log('[INFO] Integração carregada com sucesso:', data);
         } catch (error) {
@@ -358,6 +380,63 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Erro ao carregar pacote de integração: ' + error);
         }
     });
+    
+    // Função para preencher a listagem de checkboxes de pacotes
+    function preencherPacotesCheckboxes(pacotes) {
+        const container = document.getElementById('pacotes_checkboxes_list');
+        container.innerHTML = '';
+        
+        if (pacotes.length === 0) {
+            container.innerHTML = '<span class="text-danger small"><i class="bi bi-exclamation-triangle"></i> Nenhum pacote de integração ativo encontrado para este perfil.</span>';
+            return;
+        }
+        
+        pacotes.forEach(pacote => {
+            const div = document.createElement('div');
+            div.className = 'form-check mb-2';
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'form-check-input pacote-selector-checkbox';
+            checkbox.id = `pacote_chk_${pacote.id}`;
+            checkbox.value = pacote.id;
+            checkbox.checked = true; // Selecionado por padrão
+            
+            const label = document.createElement('label');
+            label.className = 'form-check-label fw-bold text-info';
+            label.htmlFor = `pacote_chk_${pacote.id}`;
+            label.innerHTML = `${pacote.nome} <span class="badge bg-light text-secondary border ms-2">${pacote.procedimentos.length} procedimento(s)</span>`;
+            
+            div.appendChild(checkbox);
+            div.appendChild(label);
+            container.appendChild(div);
+            
+            // Adicionar evento para atualizar procedimentos dinamicamente
+            checkbox.addEventListener('change', consolidarEPreencherProcedimentos);
+        });
+    }
+    
+    // Função para consolidar os procedimentos dos pacotes selecionados e renderizar
+    function consolidarEPreencherProcedimentos() {
+        const checkboxesMarcados = document.querySelectorAll('.pacote-selector-checkbox:checked');
+        const pacotesMarcadosIds = Array.from(checkboxesMarcados).map(cb => parseInt(cb.value));
+        
+        const procedimentosConsolidados = [];
+        const procIdsSet = new Set();
+        
+        perfilPacotes.forEach(pacote => {
+            if (pacotesMarcadosIds.includes(pacote.id)) {
+                pacote.procedimentos.forEach(proc => {
+                    if (!procIdsSet.has(proc.id)) {
+                        procIdsSet.add(proc.id);
+                        procedimentosConsolidados.push(proc);
+                    }
+                });
+            }
+        });
+        
+        preencherProcedimentos(procedimentosConsolidados);
+    }
     
     // Preencher lista de procedimentos com checkboxes
     function preencherProcedimentos(procedimentos) {
