@@ -25,7 +25,7 @@ def api_integracao_por_perfil_view(request):
                 {
                     'id': proc.id,
                     'codigo': proc.codigo,
-                    'nome': proc.titulo or 'Sem título',
+                    'nome': proc.nome or 'Sem título',
                 } for proc in procedimentos
             ]
         except PacoteIntegracao.DoesNotExist:
