@@ -287,24 +287,27 @@ def salvar_pacote_integracao_view(request, perfil_id):
         from procedures.models import PacoteIntegracao
         perfil = get_object_or_404(PerfilTreinamento, id=perfil_id)
         
-        # Obter IDs dos procedimentos selecionados
-        procedimentos_ids = request.POST.getlist('procedimentos')
-        ativo = request.POST.get('ativo') == 'on'
-        
-        # Obter ou criar o pacote
-        pacote, created = PacoteIntegracao.objects.get_or_create(
-            perfil=perfil,
-            defaults={'ativo': ativo}
-        )
-        
-        if not created:
-            pacote.ativo = ativo
-            pacote.save()
+        try:
+            # Obter IDs dos procedimentos selecionados
+            procedimentos_ids = request.POST.getlist('procedimentos')
+            ativo = request.POST.get('ativo') == 'on'
             
-        # Atualizar procedimentos
-        pacote.procedimentos.set(procedimentos_ids)
-        
-        messages.success(request, 'Pacote de Integração atualizado com sucesso!')
+            # Obter ou criar o pacote
+            pacote, created = PacoteIntegracao.objects.get_or_create(
+                perfil=perfil,
+                defaults={'ativo': ativo}
+            )
+            
+            if not created:
+                pacote.ativo = ativo
+                pacote.save()
+                
+            # Atualizar procedimentos
+            pacote.procedimentos.set(procedimentos_ids)
+            
+            messages.success(request, 'Pacote de Integração atualizado com sucesso!')
+        except Exception:
+            messages.error(request, 'Recurso de integração indisponível. A migração do banco de dados ainda não foi aplicada.')
         
     return redirect('procedures:detalhe_perfil', perfil_id=perfil_id)
 
