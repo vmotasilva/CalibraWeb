@@ -192,8 +192,8 @@ def novo_planejamento_view(request, tipo='LIVRE'):
         
         form = PlanejamentoTreinamentoForm(request.POST)
         
-        # Validar se há colaboradores selecionados
-        if not colaboradores_ids:
+        # Validar se há colaboradores selecionados (opcional para integração)
+        if not colaboradores_ids and tipo != 'INTEGRACAO':
             messages.error(request, 'Erro ao criar planejamento: Selecione pelo menos um colaborador.')
             context = {
                 'form': form,

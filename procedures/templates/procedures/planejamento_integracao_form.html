@@ -572,7 +572,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Validar formulário antes de submeter
+    // Validar formulário antes de submeter (permitido vazio para integração)
     const form = document.querySelector('form');
     if (form) {
         form.addEventListener('submit', function(e) {
@@ -581,11 +581,6 @@ document.addEventListener('DOMContentLoaded', function() {
             
             console.log('[DEBUG] Colaboradores selecionados:', colaboradores.length);
             console.log('[DEBUG] Procedimentos selecionados:', procedimentos.length);
-            
-            if (colaboradores.length === 0) {
-                e.preventDefault();
-                alert('Por favor, selecione pelo menos um colaborador antes de submeter o formulário.');
-            }
         });
     }
 });
