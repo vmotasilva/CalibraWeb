@@ -265,7 +265,7 @@ def detalhe_perfil_view(request, perfil_id):
         procedimentos_integracao = []
         
     # Todos os procedimentos ativos para seleção
-    todos_procedimentos = Procedimento.objects.filter(status='ATIVO').order_by('codigo')
+    todos_procedimentos = Procedimento.objects.all().order_by('codigo')
 
     context = {
         'perfil': perfil,
