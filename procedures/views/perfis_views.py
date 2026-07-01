@@ -275,6 +275,7 @@ def detalhe_perfil_view(request, perfil_id):
         'setores': setores,
         'today': date.today(),
         'pacote_integracao': pacote_integracao,
+        'procedimentos_integracao': procedimentos_integracao,
         'todos_procedimentos': todos_procedimentos,
     }
     return render(request, 'procedures/perfil_detalhe.html', context)
