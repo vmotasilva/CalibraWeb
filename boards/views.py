@@ -506,6 +506,14 @@ def create_card_view(request, column_id):
         card.save()
         form.save_m2m()
         
+        # Criar planejamento se datetime_inicio foi preenchido
+        if card.datetime_inicio:
+            CardPlanningDate.objects.create(
+                cartao=card,
+                datetime_inicio=card.datetime_inicio,
+                datetime_fim=card.datetime_fim
+            )
+        
         BoardActivity.objects.create(
             quadro=board,
             colaborador=colab,
