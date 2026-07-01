@@ -577,14 +577,20 @@
                         
                         <h6 class="mb-3">Procedimentos Inclusos</h6>
                         
-                        <div class="row mb-3">
-                            <div class="col-md-7">
+                        <div class="row mb-3 align-items-center">
+                            <div class="col-md-5">
                                 <input type="text" id="filtro-procedimentos-integracao" class="form-control" placeholder="Buscar por código ou nome..." onkeyup="filtrarProcedimentosIntegracao()">
                             </div>
-                            <div class="col-md-5">
+                            <div class="col-md-4">
                                 <select id="filtro-matriz-integracao" class="form-select" onchange="filtrarProcedimentosIntegracao()">
                                     <option value="">Todas as Matrizes</option>
                                 </select>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-check form-switch m-0">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="filtro-apenas-selecionados" onchange="filtrarProcedimentosIntegracao()">
+                                    <label class="form-check-label small fw-bold text-muted" for="filtro-apenas-selecionados">Selecionados</label>
+                                </div>
                             </div>
                         </div>
                         
@@ -705,9 +711,10 @@
             cb.checked = false;
         });
         
-        // Resetar busca e matriz
+        // Resetar busca, matriz e switch
         document.getElementById('filtro-procedimentos-integracao').value = '';
         document.getElementById('filtro-matriz-integracao').value = '';
+        document.getElementById('filtro-apenas-selecionados').checked = false;
         filtrarProcedimentosIntegracao();
         
         // Abrir modal
@@ -725,9 +732,10 @@
             cb.checked = procIds.includes(parseInt(cb.value));
         });
         
-        // Resetar busca e matriz
+        // Resetar busca, matriz e switch
         document.getElementById('filtro-procedimentos-integracao').value = '';
         document.getElementById('filtro-matriz-integracao').value = '';
+        document.getElementById('filtro-apenas-selecionados').checked = false;
         filtrarProcedimentosIntegracao();
         
         // Abrir modal
@@ -772,13 +780,16 @@
         const input = document.getElementById('filtro-procedimentos-integracao');
         const filterText = input.value.toLowerCase().trim();
         const filterMatriz = document.getElementById('filtro-matriz-integracao').value;
+        const verApenasSelecionados = document.getElementById('filtro-apenas-selecionados').checked;
         const nodes = document.getElementsByClassName('proc-integracao-item');
 
         for (let i = 0; i < nodes.length; i++) {
+            const checkbox = nodes[i].querySelector('input[type="checkbox"]');
             const textMatch = nodes[i].getAttribute('data-texto').includes(filterText);
             const matrizMatch = !filterMatriz || nodes[i].getAttribute('data-matriz') === filterMatriz;
+            const selecionadoMatch = !verApenasSelecionados || (checkbox && checkbox.checked);
             
-            if (textMatch && matrizMatch) {
+            if (textMatch && matrizMatch && selecionadoMatch) {
                 nodes[i].style.display = "block";
             } else {
                 nodes[i].style.display = "none";
