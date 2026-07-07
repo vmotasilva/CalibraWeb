@@ -715,17 +715,22 @@ def dashboard_treinamentos_view(request):
     # REGISTROS ÚNICOS: Apenas o registro mais recente por colaborador+procedimento
     # Usado para indicadores de demanda (total, vigentes, pendentes)
     # =========================================================================
-    from django.db.models import Max
+    from django.db.models import Subquery, OuterRef, Case, When, Value, IntegerField
     
     # IDs dos registros mais recentes para cada combinação colaborador+procedimento
-    ultimos_registros_ids = valid_registros.values(
-        'colaborador_id', 'procedimento_id'
+    latest_id_subquery = RegistroTreinamento.objects.filter(
+        colaborador_id=OuterRef('colaborador_id'),
+        procedimento_id=OuterRef('procedimento_id')
     ).annotate(
-        ultimo_id=Max('id')
-    ).values_list('ultimo_id', flat=True)
+        has_valid_date=Case(
+            When(data_treinamento__isnull=False, data_treinamento__gt=date(1970, 1, 1), then=Value(1)),
+            default=Value(0),
+            output_field=IntegerField()
+        )
+    ).order_by('-has_valid_date', '-data_treinamento', '-id').values('id')[:1]
     
     # Queryset filtrado apenas com registros únicos
-    registros_unicos = valid_registros.filter(id__in=ultimos_registros_ids)
+    registros_unicos = valid_registros.filter(id=Subquery(latest_id_subquery))
     
     # Definição unificada de status vigente e pendente (referência: data de aprovação do documento)
     vigentes_q = Q(data_treinamento__isnull=False) & (
@@ -1371,17 +1376,22 @@ def dashboard_treinamentos_filtered_view(request):
     # REGISTROS ÚNICOS: Apenas o registro mais recente por colaborador+procedimento
     # Usado para indicadores de demanda (total, vigentes, pendentes)
     # =========================================================================
-    from django.db.models import Max
+    from django.db.models import Subquery, OuterRef, Case, When, Value, IntegerField
     
     # IDs dos registros mais recentes para cada combinação colaborador+procedimento
-    ultimos_registros_ids = todos_registros.values(
-        'colaborador_id', 'procedimento_id'
+    latest_id_subquery = RegistroTreinamento.objects.filter(
+        colaborador_id=OuterRef('colaborador_id'),
+        procedimento_id=OuterRef('procedimento_id')
     ).annotate(
-        ultimo_id=Max('id')
-    ).values_list('ultimo_id', flat=True)
+        has_valid_date=Case(
+            When(data_treinamento__isnull=False, data_treinamento__gt=date(1970, 1, 1), then=Value(1)),
+            default=Value(0),
+            output_field=IntegerField()
+        )
+    ).order_by('-has_valid_date', '-data_treinamento', '-id').values('id')[:1]
     
     # Queryset filtrado apenas com registros únicos
-    treinamentos = todos_registros.filter(id__in=ultimos_registros_ids)
+    treinamentos = todos_registros.filter(id=Subquery(latest_id_subquery))
     
     # Contagens usando REGISTROS ÚNICOS (sem duplicatas por colaborador+procedimento)
     total_treinamentos = treinamentos.count()
@@ -1782,13 +1792,20 @@ def dashboard_treinamentos_exportar_csv_view(request):
         registros = registros.annotate(_associado_perfil=Exists(perfil_exists_qs)).filter(_associado_perfil=True)
 
         # Obter o registro mais recente por colaborador + procedimento
-        ultimos_registros_ids = registros.values(
-            'colaborador_id', 'procedimento_id'
-        ).annotate(
-            ultimo_id=Max('id')
-        ).values_list('ultimo_id', flat=True)
+        from django.db.models import Subquery, OuterRef, Case, When, Value, IntegerField
         
-        registros = RegistroTreinamento.objects.filter(id__in=ultimos_registros_ids).select_related(
+        latest_id_subquery = RegistroTreinamento.objects.filter(
+            colaborador_id=OuterRef('colaborador_id'),
+            procedimento_id=OuterRef('procedimento_id')
+        ).annotate(
+            has_valid_date=Case(
+                When(data_treinamento__isnull=False, data_treinamento__gt=date(1970, 1, 1), then=Value(1)),
+                default=Value(0),
+                output_field=IntegerField()
+            )
+        ).order_by('-has_valid_date', '-data_treinamento', '-id').values('id')[:1]
+        
+        registros = registros.filter(id=Subquery(latest_id_subquery)).select_related(
             'colaborador', 'procedimento'
         )
 

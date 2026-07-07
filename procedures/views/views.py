@@ -1044,10 +1044,20 @@ def treinamentos_list_view(request):
     # Reduzir para o registro mais recente por colaborador+procedimento APÓS aplicar filtros,
     # para bater com o Dashboard.
     if (not qs_is_list) and (not modo_ocorridos):
-        ultimos_registros_ids = qs.values('colaborador_id', 'procedimento_id').annotate(
-            ultimo_id=Max('id')
-        ).values_list('ultimo_id', flat=True)
-        qs = qs.filter(id__in=ultimos_registros_ids)
+        from django.db.models import Subquery, OuterRef, Case, When, Value, IntegerField
+        
+        latest_id_subquery = RegistroTreinamento.objects.filter(
+            colaborador_id=OuterRef('colaborador_id'),
+            procedimento_id=OuterRef('procedimento_id')
+        ).annotate(
+            has_valid_date=Case(
+                When(data_treinamento__isnull=False, data_treinamento__gt=date(1970, 1, 1), then=Value(1)),
+                default=Value(0),
+                output_field=IntegerField()
+            )
+        ).order_by('-has_valid_date', '-data_treinamento', '-id').values('id')[:1]
+        
+        qs = qs.filter(id=Subquery(latest_id_subquery))
     
     # Ordenar
     if not qs_is_list:
@@ -1343,11 +1353,20 @@ def treinamentos_exportar_excel_view(request):
 
     # Reduzir para o registro mais recente por colaborador+procedimento APÓS aplicar filtros
     if (not qs_is_list) and (not modo_ocorridos):
-        from django.db.models import Max
-        ultimos_registros_ids = qs.values('colaborador_id', 'procedimento_id').annotate(
-            ultimo_id=Max('id')
-        ).values_list('ultimo_id', flat=True)
-        qs = qs.filter(id__in=ultimos_registros_ids)
+        from django.db.models import Subquery, OuterRef, Case, When, Value, IntegerField
+        
+        latest_id_subquery = RegistroTreinamento.objects.filter(
+            colaborador_id=OuterRef('colaborador_id'),
+            procedimento_id=OuterRef('procedimento_id')
+        ).annotate(
+            has_valid_date=Case(
+                When(data_treinamento__isnull=False, data_treinamento__gt=date(1970, 1, 1), then=Value(1)),
+                default=Value(0),
+                output_field=IntegerField()
+            )
+        ).order_by('-has_valid_date', '-data_treinamento', '-id').values('id')[:1]
+        
+        qs = qs.filter(id=Subquery(latest_id_subquery))
 
     # Ordenar
     if not qs_is_list:
