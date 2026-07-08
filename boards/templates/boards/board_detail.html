@@ -642,7 +642,7 @@
                         <tbody>
                             {% for col in colunas %}
                                 {% for card in col.cartoes_list %}
-                                    <tr class="task-table-row cursor-pointer" onclick="{% if board.tipo == 'PLANOS_ACAO' %}window.open('{% url 'acoes:plano_acao_detail' card.plano_acao_id %}', '_blank'){% else %}openCardModal({{ card.id }}){% endif %}" data-is-concluida="{% if card.data_conclusao %}true{% else %}false{% endif %}">
+                                    <tr class="task-table-row cursor-pointer" onclick="{% if board.tipo == 'PLANOS_ACAO' %}window.open('{% url 'acoes:plano_acao_detail' card.plano_acao_id %}', '_blank'){% else %}openCardModal({{ card.id }}){% endif %}" data-is-concluida="{% if card.data_conclusao %}true{% else %}false{% endif %}" data-row-card-id="{{ card.id }}">
                                         <td>
                                             <div class="fw-semibold text-dark">{{ card.titulo }}</div>
                                             {% if card.descricao %}
@@ -945,7 +945,10 @@
                     <div class="col-md-4">
                         <div class="card bg-light border-0 p-3" style="border-radius: 8px;">
                             <div class="mb-3">
-                                <label class="form-label fw-bold text-muted small d-block">Responsáveis</label>
+                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                    <label class="form-label fw-bold text-muted small mb-0">Responsáveis</label>
+                                    <span id="responsiblesSaveStatus" class="text-success small fw-semibold" style="font-size: 0.72rem; display: none;"><i class="bi bi-check2-circle me-1"></i>Salvo automaticamente</span>
+                                </div>
                                 <div class="position-relative mb-2">
                                     <div class="input-group input-group-sm">
                                         <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
@@ -1522,8 +1525,7 @@
                 tag.querySelector('.btn-close').addEventListener('click', function() {
                     colab.selected = false;
                     updateDetailCardDisplay();
-                    const saveBtn = document.getElementById('btnSaveCardDetails');
-                    if (saveBtn) saveBtn.click();
+                    saveCardResponsiblesSilently();
                 });
                 
                 selectedContainer.appendChild(tag);
@@ -2626,8 +2628,7 @@
                             detailCardSuggestionsContainer.style.display = 'none';
                             updateDetailCardDisplay();
                             detailCardSearchInput.focus();
-                            const saveBtn = document.getElementById('btnSaveCardDetails');
-                            if (saveBtn) saveBtn.click();
+                            saveCardResponsiblesSilently();
                         });
                         
                         detailCardSuggestionsContainer.appendChild(item);
@@ -2885,6 +2886,151 @@
             distributionChartInstance.data.datasets[0].data = distData;
             distributionChartInstance.update();
         }
+    }
+
+    function saveCardResponsiblesSilently() {
+        const respSelect = document.getElementById('cardDetailResp');
+        const respIds = Array.from(respSelect.selectedOptions).map(opt => parseInt(opt.value)).filter(val => !isNaN(val));
+
+        const desc = document.getElementById('cardDetailDesc').value;
+        const priority = document.getElementById('cardDetailPriority').value;
+        const dueDate = document.getElementById('cardDetailDueDate').value;
+        const startDate = document.getElementById('cardDetailStartDate').value;
+        const concludedDate = document.getElementById('cardDetailConcludedDate').value;
+        const horaInicio = document.getElementById('cardDetailHoraInicio').value;
+        const horaFim = document.getElementById('cardDetailHoraFim').value;
+        const periodicidade = document.getElementById('cardDetailPeriodicidade').value;
+        
+        const colSelect = document.getElementById('cardDetailColumn');
+        const toColumnId = parseInt(colSelect.value);
+        
+        const subSelect = document.getElementById('cardDetailSubsecao');
+        const subsecaoId = subSelect ? (subSelect.value || null) : null;
+
+        const payload = {
+            descricao: desc,
+            responsaveis_ids: respIds,
+            prioridade: priority,
+            data_entrega: dueDate,
+            data_inicio: startDate,
+            data_conclusao: concludedDate,
+            hora_inicio: horaInicio,
+            hora_fim: horaFim,
+            periodicidade: periodicidade,
+            subsecao_id: subsecaoId,
+            coluna_id: toColumnId,
+            recreate: false,
+            planejamentos: getCardDetailPlanningData()
+        };
+
+        fetch(`/boards/cartoes/${activeCardId}/detalhes/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const selectedColabs = detailCardCollaborators.filter(c => c.selected);
+                
+                // 1. Update Kanban card
+                const cardEl = document.getElementById(`card-${activeCardId}`);
+                if (cardEl) {
+                    const responsaveisStr = selectedColabs.map(c => c.name).join(';') + (selectedColabs.length > 0 ? ';' : '');
+                    cardEl.setAttribute('data-responsaveis', responsaveisStr);
+
+                    const avatarContainer = cardEl.querySelector('.js-card-responsaveis-container');
+                    if (avatarContainer) {
+                        avatarContainer.innerHTML = '';
+                        if (selectedColabs.length > 0) {
+                            selectedColabs.forEach(c => {
+                                const initials = getConfigInitials(c.name);
+                                const avatarDiv = document.createElement('div');
+                                avatarDiv.className = 'avatar-circle';
+                                avatarDiv.title = `Responsável: ${c.name}`;
+                                avatarDiv.textContent = initials;
+                                avatarContainer.appendChild(avatarDiv);
+                            });
+                        } else {
+                            const emptyAvatar = document.createElement('div');
+                            emptyAvatar.className = 'avatar-circle bg-light text-muted';
+                            emptyAvatar.title = 'Sem responsável';
+                            emptyAvatar.innerHTML = '<i class="bi bi-person"></i>';
+                            avatarContainer.appendChild(emptyAvatar);
+                        }
+                    }
+                }
+
+                // 2. Update Table row
+                const tableRow = document.querySelector(`[data-row-card-id="${activeCardId}"]`);
+                if (tableRow) {
+                    const cells = tableRow.getElementsByTagName('td');
+                    if (cells && cells[3]) {
+                        const cellContainer = cells[3].querySelector('.d-flex') || cells[3];
+                        cellContainer.innerHTML = '';
+                        if (selectedColabs.length > 0) {
+                            selectedColabs.forEach(c => {
+                                const initials = getConfigInitials(c.name);
+                                const avatarDiv = document.createElement('div');
+                                avatarDiv.className = 'avatar-circle';
+                                avatarDiv.title = c.name;
+                                avatarDiv.style.width = '22px';
+                                avatarDiv.style.height = '22px';
+                                avatarDiv.style.fontSize = '0.6rem';
+                                avatarDiv.textContent = initials;
+                                cellContainer.appendChild(avatarDiv);
+                            });
+                        } else {
+                            const emptySpan = document.createElement('span');
+                            emptySpan.className = 'text-muted small italic';
+                            emptySpan.style.fontSize = '0.75rem';
+                            emptySpan.style.color = '#bbb';
+                            emptySpan.textContent = 'Sem resp.';
+                            cellContainer.appendChild(emptySpan);
+                        }
+                    }
+                }
+
+                // 3. Update Calendar event
+                if (typeof CALENDAR_EVENTS !== 'undefined') {
+                    const responsaveisStr = selectedColabs.map(c => c.name).join(';') + (selectedColabs.length > 0 ? ';' : '');
+                    CALENDAR_EVENTS.forEach(ev => {
+                        if (ev.id == activeCardId || (ev.extendedProps && ev.extendedProps.real_card_id == activeCardId)) {
+                            if (ev.extendedProps) {
+                                ev.extendedProps.responsaveis = responsaveisStr;
+                            }
+                        }
+                    });
+                }
+
+                // 4. Update filters and metrics
+                applyGlobalFilters();
+
+                // 5. Show subtle save indicator
+                const statusEl = document.getElementById('responsiblesSaveStatus');
+                if (statusEl) {
+                    statusEl.style.display = 'inline-block';
+                    statusEl.style.opacity = '1';
+                    statusEl.style.transition = 'none';
+                    setTimeout(() => {
+                        statusEl.style.transition = 'opacity 0.5s ease';
+                        statusEl.style.opacity = '0';
+                        setTimeout(() => {
+                            statusEl.style.display = 'none';
+                        }, 500);
+                    }, 1500);
+                }
+            } else {
+                alert("Erro ao salvar: " + data.error);
+            }
+        })
+        .catch(err => {
+            console.error("Erro na requisição:", err);
+            alert("Erro de conexão ao salvar.");
+        });
     }
 
     function applyGlobalFilters() {

@@ -48,7 +48,7 @@
             {% endif %}
         </div>
         
-        <div class="d-flex align-items-center gap-1">
+        <div class="d-flex align-items-center gap-1 js-card-responsaveis-container">
             {% for resp in card.responsaveis.all %}
                 <div class="avatar-circle" title="Responsável: {{ resp.nome_completo }}">
                     {{ resp.nome_completo|slice:":2" }}
