@@ -226,7 +226,7 @@
                             <i class="bi bi-archive-fill me-1"></i>Encerrado / Arquivado
                         </span>
                         {% endif %}
-                        <span class="badge bg-secondary text-white" style="font-size:0.75rem;">
+                        <span id="tasksCounterBadge" class="badge bg-secondary text-white" style="font-size:0.75rem;">
                             {{ total_cartoes }} Tarefa{{ total_cartoes|pluralize }}
                         </span>
                     </div>
@@ -336,6 +336,13 @@
                         {% endfor %}
                     </select>
 
+                    <!-- Filtro por Status -->
+                    <select id="globalFilterStatus" class="form-select form-select-sm" style="width: 165px;" onchange="applyGlobalFilters()">
+                        <option value="">Status: Todos</option>
+                        <option value="andamento">Status: Em Andamento</option>
+                        <option value="concluido">Status: Concluídas</option>
+                    </select>
+
                     <!-- Botão Limpar Filtros -->
                     <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearAllFilters()" title="Limpar todos os filtros">
                         <i class="bi bi-x-circle me-1"></i>Limpar
@@ -362,7 +369,7 @@
         <!-- ABA 1: KANBAN BOARD -->
         <div class="tab-pane fade show active" id="kanban" role="tabpanel">
             <!-- Seção 1: Atividades em Andamento -->
-            <div class="mb-5">
+            <div class="mb-5" id="kanbanAndamentoSection">
                 <h5 class="fw-bold text-dark mb-3"><i class="bi bi-play-circle text-primary me-2"></i>Atividades em Andamento</h5>
                 <div class="kanban-container" id="kanban-andamento-container">
                     {% for col in colunas_andamento %}
@@ -461,7 +468,7 @@
             </div>
 
             <!-- Seção 2: Atividades Concluídas -->
-            <div>
+            <div id="kanbanConcluidoSection">
                 <h5 class="fw-bold text-dark mb-3"><i class="bi bi-check-circle text-success me-2"></i>Atividades Concluídas</h5>
                 <div class="kanban-container" id="kanban-concluido-container">
                     {% for col in colunas_concluidas %}
@@ -517,11 +524,11 @@
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <h6 class="text-white-50 mb-1 fw-bold">TAXA DE CONCLUSÃO</h6>
-                                <h2 class="fw-bold mb-0">{{ porcentagem_concluida }}%</h2>
+                                <h2 id="kpiCompletionRate" class="fw-bold mb-0">{{ porcentagem_concluida }}%</h2>
                             </div>
                             <i class="bi bi-check2-circle fs-1 text-white-50"></i>
                         </div>
-                        <div class="mt-3 text-white-50 small">
+                        <div id="kpiCompletionText" class="mt-3 text-white-50 small">
                             {{ cartoes_concluidos }} de {{ total_cartoes }} tarefas concluídas.
                         </div>
                     </div>
@@ -532,7 +539,7 @@
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <h6 class="text-white-50 mb-1 fw-bold">TAREFAS ATRASADAS</h6>
-                                <h2 class="fw-bold mb-0">{{ cartoes_atrasados }}</h2>
+                                <h2 id="kpiOverdueCount" class="fw-bold mb-0">{{ cartoes_atrasados }}</h2>
                             </div>
                             <i class="bi bi-exclamation-triangle fs-1 text-white-50"></i>
                         </div>
@@ -547,12 +554,12 @@
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <h6 class="text-white-50 mb-1 fw-bold">TOTAL DO PROJETO</h6>
-                                <h2 class="fw-bold mb-0">{{ total_cartoes }}</h2>
+                                <h2 id="kpiTotalTasks" class="fw-bold mb-0">{{ total_cartoes }}</h2>
                             </div>
                             <i class="bi bi-stack fs-1 text-white-50"></i>
                         </div>
                         <div class="mt-3 text-white-50 small">
-                            Total de tarefas cadastradas neste quadro.
+                            Total de tarefas cadazas neste quadro.
                         </div>
                     </div>
                 </div>
@@ -635,7 +642,7 @@
                         <tbody>
                             {% for col in colunas %}
                                 {% for card in col.cartoes_list %}
-                                    <tr class="task-table-row cursor-pointer" onclick="{% if board.tipo == 'PLANOS_ACAO' %}window.open('{% url 'acoes:plano_acao_detail' card.plano_acao_id %}', '_blank'){% else %}openCardModal({{ card.id }}){% endif %}">
+                                    <tr class="task-table-row cursor-pointer" onclick="{% if board.tipo == 'PLANOS_ACAO' %}window.open('{% url 'acoes:plano_acao_detail' card.plano_acao_id %}', '_blank'){% else %}openCardModal({{ card.id }}){% endif %}" data-is-concluida="{% if card.data_conclusao %}true{% else %}false{% endif %}">
                                         <td>
                                             <div class="fw-semibold text-dark">{{ card.titulo }}</div>
                                             {% if card.descricao %}
@@ -1303,6 +1310,7 @@
         sessionStorage.removeItem('boardFilterPrior_' + boardIdStr);
         sessionStorage.removeItem('boardFilterResp_' + boardIdStr);
         sessionStorage.removeItem('boardFilterLabel_' + boardIdStr);
+        sessionStorage.removeItem('boardFilterStatus_' + boardIdStr);
         sessionStorage.removeItem('boardHideEmpty_' + boardIdStr);
         
         if (periodFilter && periodFilter.value !== 'tudo') {
@@ -1316,6 +1324,7 @@
         if (document.getElementById('globalFilterPrior')) document.getElementById('globalFilterPrior').value = "";
         if (document.getElementById('globalFilterResp')) document.getElementById('globalFilterResp').value = "";
         if (document.getElementById('globalFilterLabel')) document.getElementById('globalFilterLabel').value = "";
+        if (document.getElementById('globalFilterStatus')) document.getElementById('globalFilterStatus').value = "";
         if (document.getElementById('hideEmptyColumnsFlag')) document.getElementById('hideEmptyColumnsFlag').checked = false;
         if (document.getElementById('globalSearchInput')) document.getElementById('globalSearchInput').value = "";
 
@@ -2397,6 +2406,9 @@
         });
     });
 
+    let workloadChartInstance = null;
+    let distributionChartInstance = null;
+
     // ============================================
     // CHARTS RENDERING (CHART.JS)
     // ============================================
@@ -2404,7 +2416,7 @@
         // Grafico de carga de trabalho (Membros da equipe)
         const ctxWorkload = document.getElementById('workloadChart');
         if (ctxWorkload) {
-            new Chart(ctxWorkload, {
+            workloadChartInstance = new Chart(ctxWorkload, {
                 type: 'bar',
                 data: {
                     labels: {{ chart_membros_nomes|safe }},
@@ -2435,7 +2447,7 @@
             const labels = rawData.map(d => d.nome);
             const data = rawData.map(d => d.quantidade);
             
-            new Chart(ctxDistribution, {
+            distributionChartInstance = new Chart(ctxDistribution, {
                 type: 'doughnut',
                 data: {
                     labels: labels,
@@ -2783,17 +2795,117 @@
         }
     });
 
+    function updateMetricsAndCharts() {
+        const cards = document.querySelectorAll('.kanban-card');
+        let total = 0;
+        let completed = 0;
+        let overdue = 0;
+
+        cards.forEach(card => {
+            if (card.style.display !== 'none') {
+                total++;
+                const isConcluded = card.getAttribute('data-is-concluida') === 'true';
+                if (isConcluded) {
+                    completed++;
+                } else {
+                    const isOverdue = card.querySelector('.date-overdue') !== null;
+                    if (isOverdue) overdue++;
+                }
+            }
+        });
+
+        const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+        // Update KPI Widgets
+        const kpiCompletionRate = document.getElementById('kpiCompletionRate');
+        if (kpiCompletionRate) kpiCompletionRate.textContent = pct + '%';
+
+        const kpiCompletionText = document.getElementById('kpiCompletionText');
+        if (kpiCompletionText) kpiCompletionText.textContent = `${completed} de ${total} tarefas concluídas.`;
+
+        const kpiOverdueCount = document.getElementById('kpiOverdueCount');
+        if (kpiOverdueCount) kpiOverdueCount.textContent = overdue;
+
+        const kpiTotalTasks = document.getElementById('kpiTotalTasks');
+        if (kpiTotalTasks) kpiTotalTasks.textContent = total;
+
+        // Update workloadChartInstance
+        const workloadMap = {};
+        cards.forEach(card => {
+            if (card.style.display !== 'none') {
+                const isConcluded = card.getAttribute('data-is-concluida') === 'true';
+                if (!isConcluded) {
+                    const respsAttr = card.getAttribute('data-responsaveis') || '';
+                    const resps = respsAttr.split(';').map(r => r.trim()).filter(r => r);
+                    resps.forEach(r => {
+                        workloadMap[r] = (workloadMap[r] || 0) + 1;
+                    });
+                }
+            }
+        });
+        const workloadSorted = Object.entries(workloadMap).sort((a, b) => b[1] - a[1]);
+        const workloadLabels = workloadSorted.map(x => x[0]);
+        const workloadData = workloadSorted.map(x => x[1]);
+
+        if (workloadChartInstance) {
+            workloadChartInstance.data.labels = workloadLabels;
+            workloadChartInstance.data.datasets[0].data = workloadData;
+            workloadChartInstance.update();
+        }
+
+        // Update distributionChartInstance
+        const colMap = {};
+        const columns = document.querySelectorAll('.kanban-column');
+        columns.forEach(col => {
+            const colName = col.getAttribute('data-column-name');
+            if (colName) colMap[colName] = 0;
+        });
+
+        cards.forEach(card => {
+            if (card.style.display !== 'none') {
+                const colEl = card.closest('.kanban-column');
+                if (colEl) {
+                    const colName = colEl.getAttribute('data-column-name');
+                    if (colName && colMap[colName] !== undefined) {
+                        colMap[colName]++;
+                    }
+                }
+            }
+        });
+
+        const distLabels = Object.keys(colMap);
+        const distData = Object.values(colMap);
+
+        if (distributionChartInstance) {
+            distributionChartInstance.data.labels = distLabels;
+            distributionChartInstance.data.datasets[0].data = distData;
+            distributionChartInstance.update();
+        }
+    }
+
     function applyGlobalFilters() {
         const searchText = document.getElementById('globalSearchInput') ? document.getElementById('globalSearchInput').value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
         const filterCol = document.getElementById('globalFilterCol') ? document.getElementById('globalFilterCol').value : "";
         const filterPrior = document.getElementById('globalFilterPrior') ? document.getElementById('globalFilterPrior').value : "";
         const filterResp = document.getElementById('globalFilterResp') ? document.getElementById('globalFilterResp').value.trim() : "";
         const filterLabel = document.getElementById('globalFilterLabel') ? document.getElementById('globalFilterLabel').value.trim() : "";
+        const filterStatus = document.getElementById('globalFilterStatus') ? document.getElementById('globalFilterStatus').value : "";
         
         sessionStorage.setItem('boardFilterCol_' + '{{ board.id }}', filterCol);
         sessionStorage.setItem('boardFilterPrior_' + '{{ board.id }}', filterPrior);
         sessionStorage.setItem('boardFilterResp_' + '{{ board.id }}', filterResp);
         sessionStorage.setItem('boardFilterLabel_' + '{{ board.id }}', filterLabel);
+        sessionStorage.setItem('boardFilterStatus_' + '{{ board.id }}', filterStatus);
+        
+        // Kanban Board Section Visibility
+        const andamentoSec = document.getElementById('kanbanAndamentoSection');
+        const concluidoSec = document.getElementById('kanbanConcluidoSection');
+        if (andamentoSec) {
+            andamentoSec.style.display = (filterStatus === 'concluido') ? 'none' : '';
+        }
+        if (concluidoSec) {
+            concluidoSec.style.display = (filterStatus === 'andamento') ? 'none' : '';
+        }
         
         // ============================================
         // 1. FILTER KANBAN VIEW (COLUMNS & CARDS)
@@ -2825,12 +2937,29 @@
             const etiquetas = card.getAttribute('data-etiquetas') || '';
             const labelMatch = !filterLabel || etiquetas.includes(filterLabel + ';');
             
-            if (textMatch && priorMatch && respMatch && labelMatch) {
+            const isConcluded = card.getAttribute('data-is-concluida') === 'true';
+            let statusMatch = true;
+            if (filterStatus === 'andamento') statusMatch = !isConcluded;
+            if (filterStatus === 'concluido') statusMatch = isConcluded;
+            
+            if (textMatch && priorMatch && respMatch && labelMatch && statusMatch) {
                 card.style.display = '';
             } else {
                 card.style.display = 'none';
             }
         });
+
+        // Atualizar o contador de tarefas com a quantidade filtrada
+        const totalCardsCount = cards.length;
+        const visibleCardsCount = Array.from(cards).filter(card => card.style.display !== 'none').length;
+        const tasksBadge = document.getElementById('tasksCounterBadge');
+        if (tasksBadge) {
+            if (visibleCardsCount === totalCardsCount) {
+                tasksBadge.textContent = `${totalCardsCount} Tarefa${totalCardsCount !== 1 ? 's' : ''}`;
+            } else {
+                tasksBadge.textContent = `${visibleCardsCount} de ${totalCardsCount} Tarefa${totalCardsCount !== 1 ? 's' : ''}`;
+            }
+        }
         
         const hideEmpty = document.getElementById('hideEmptyColumnsFlag') ? document.getElementById('hideEmptyColumnsFlag').checked : false;
         sessionStorage.setItem('boardHideEmpty_' + '{{ board.id }}', hideEmpty ? 'true' : 'false');
@@ -2893,7 +3022,12 @@
                 });
             }
             
-            if (textMatch && colMatch && priorMatch && respMatch && labelMatch) {
+            const isRowConcluded = row.getAttribute('data-is-concluida') === 'true';
+            let statusMatch = true;
+            if (filterStatus === 'andamento') statusMatch = !isRowConcluded;
+            if (filterStatus === 'concluido') statusMatch = isRowConcluded;
+            
+            if (textMatch && colMatch && priorMatch && respMatch && labelMatch && statusMatch) {
                 row.style.display = '';
             } else {
                 row.style.display = 'none';
@@ -2913,12 +3047,20 @@
                 const etiquetas = event.extendedProps.etiquetas || '';
                 const labelMatch = !filterLabel || etiquetas.includes(filterLabel + ';');
                 
-                return titleMatch && colMatch && priorMatch && respMatch && labelMatch;
+                const isConcluded = event.extendedProps.is_concluida === true;
+                let statusMatch = true;
+                if (filterStatus === 'andamento') statusMatch = !isConcluded;
+                if (filterStatus === 'concluido') statusMatch = isConcluded;
+                
+                return titleMatch && colMatch && priorMatch && respMatch && labelMatch && statusMatch;
             });
             
             fcCalendar.removeAllEventSources();
             fcCalendar.addEventSource(filteredEvents);
         }
+
+        // Atualizar as métricas e gráficos da aba "Métricas da Equipe"
+        updateMetricsAndCharts();
     }
 
     // ============================================
@@ -3055,7 +3197,8 @@
                                 is_virtual: {% if card.is_virtual %}true{% else %}false{% endif %},
                                 plano_acao_id: {% if card.plano_acao_id %}{{ card.plano_acao_id }}{% else %}null{% endif %},
                                 responsaveis: "{% for r in card.responsaveis.all %}{{ r.nome_completo|escapejs }};{% empty %}{% if card.responsaveis %}{% for r in card.responsaveis.all %}{{ r.nome_completo|escapejs }};{% endfor %}{% endif %}{% endfor %}",
-                                etiquetas: "{% for e in card.etiquetas.all %}{{ e.nome|escapejs }};{% endfor %}"
+                                etiquetas: "{% for e in card.etiquetas.all %}{{ e.nome|escapejs }};{% endfor %}",
+                                is_concluida: {% if card.data_conclusao %}true{% else %}false{% endif %}
                             }
                         },
                     {% endfor %}
@@ -3101,7 +3244,8 @@
                             is_virtual: {% if card.is_virtual %}true{% else %}false{% endif %},
                             plano_acao_id: {% if card.plano_acao_id %}{{ card.plano_acao_id }}{% else %}null{% endif %},
                             responsaveis: "{% for r in card.responsaveis.all %}{{ r.nome_completo|escapejs }};{% empty %}{% if card.responsaveis %}{% for r in card.responsaveis.all %}{{ r.nome_completo|escapejs }};{% endfor %}{% endif %}{% endfor %}",
-                            etiquetas: "{% for e in card.etiquetas.all %}{{ e.nome|escapejs }};{% endfor %}"
+                            etiquetas: "{% for e in card.etiquetas.all %}{{ e.nome|escapejs }};{% endfor %}",
+                            is_concluida: {% if card.data_conclusao %}true{% else %}false{% endif %}
                         }
                     },
                 {% endif %}
@@ -3228,6 +3372,9 @@
         }
         if(document.getElementById('globalFilterLabel') && sessionStorage.getItem('boardFilterLabel_' + boardIdStr) !== null) {
             document.getElementById('globalFilterLabel').value = sessionStorage.getItem('boardFilterLabel_' + boardIdStr);
+        }
+        if(document.getElementById('globalFilterStatus') && sessionStorage.getItem('boardFilterStatus_' + boardIdStr) !== null) {
+            document.getElementById('globalFilterStatus').value = sessionStorage.getItem('boardFilterStatus_' + boardIdStr);
         }
         
         if(document.getElementById('hideEmptyColumnsFlag') && sessionStorage.getItem('boardHideEmpty_' + boardIdStr) !== null) {
