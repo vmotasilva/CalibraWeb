@@ -905,12 +905,8 @@
                         
                         <div class="mb-3">
                             <label class="form-label fw-bold text-muted small text-uppercase"><i class="bi bi-link-45deg me-1"></i>Link / Anexo Externo</label>
-                            <div class="input-group input-group-sm">
-                                <input type="text" id="cardDetailLink" class="form-control" placeholder="Cole aqui um link ou caminho de rede...">
-                                <a id="btnAcessarLink" href="#" target="_blank" class="btn btn-outline-primary" style="display: none;" title="Acessar link em nova aba">
-                                    <i class="bi bi-box-arrow-up-right"></i> Acessar
-                                </a>
-                            </div>
+                            <textarea id="cardDetailLink" class="form-control form-control-sm mb-2" placeholder="Cole aqui seus links (um por linha)..." rows="2" style="font-size: 0.85rem; resize: vertical;"></textarea>
+                            <div id="cardDetailLinksList" class="d-flex flex-column gap-1"></div>
                         </div>
                         
                         <!-- Checklist -->
@@ -1447,6 +1443,36 @@
                 hideMentionsDropdown();
             }
         });
+
+        // Event listener for links textarea input
+        const detailLinkInput = document.getElementById('cardDetailLink');
+        const linksListContainer = document.getElementById('cardDetailLinksList');
+        if (detailLinkInput && linksListContainer) {
+            detailLinkInput.addEventListener('input', function() {
+                linksListContainer.innerHTML = '';
+                const rawLinks = detailLinkInput.value || '';
+                const urls = rawLinks.split(/[\n;\s]+/).map(u => u.trim()).filter(u => u);
+                urls.forEach(url => {
+                    let href = url;
+                    if (!href.startsWith('http://') && !href.startsWith('https://') && !href.startsWith('\\\\') && !href.startsWith('file://')) {
+                        href = 'http://' + href;
+                    }
+                    const item = document.createElement('a');
+                    item.href = href;
+                    item.target = '_blank';
+                    item.className = 'd-flex align-items-center justify-content-between p-2 border rounded text-decoration-none bg-white hover-shadow-sm link-item mb-1';
+                    item.style.transition = 'all 0.2s';
+                    item.innerHTML = `
+                        <div class="d-flex align-items-center text-truncate" style="max-width: 90%;">
+                            <i class="bi bi-link-45deg text-primary me-2"></i>
+                            <span class="text-dark small text-truncate fw-semibold text-break">${url}</span>
+                        </div>
+                        <i class="bi bi-box-arrow-up-right text-muted small ms-2"></i>
+                    `;
+                    linksListContainer.appendChild(item);
+                });
+            });
+        }
     });
 
     function selectQuickColor(color) {
@@ -1898,19 +1924,9 @@
             document.getElementById('cardDetailDesc').value = card.descricao;
             
             const detailLinkInput = document.getElementById('cardDetailLink');
-            const btnAcessarLink = document.getElementById('btnAcessarLink');
-            if (detailLinkInput) detailLinkInput.value = card.link_anexo || '';
-            if (btnAcessarLink) {
-                if (card.link_anexo) {
-                    let href = card.link_anexo.trim();
-                    if (!href.startsWith('http://') && !href.startsWith('https://') && !href.startsWith('\\\\') && !href.startsWith('file://')) {
-                        href = 'http://' + href;
-                    }
-                    btnAcessarLink.href = href;
-                    btnAcessarLink.style.display = 'inline-block';
-                } else {
-                    btnAcessarLink.style.display = 'none';
-                }
+            if (detailLinkInput) {
+                detailLinkInput.value = card.link_anexo || '';
+                detailLinkInput.dispatchEvent(new Event('input'));
             }
             
             const respSelect = document.getElementById('cardDetailResp');
