@@ -2311,6 +2311,49 @@
         });
     }
     
+    function formatCommentText(text) {
+        if (!text) return "";
+        
+        // 1. Escape HTML
+        let escaped = text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+            
+        // 2. Convert URLs to clickable links (target="_blank" rel="noopener noreferrer")
+        const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/g;
+        escaped = escaped.replace(urlRegex, function(url) {
+            let hyper = url;
+            if (!hyper.match(/^https?:\/\//i)) {
+                hyper = 'http://' + hyper;
+            }
+            return `<a href="${hyper}" target="_blank" rel="noopener noreferrer" class="text-break">${url}</a>`;
+        });
+        
+        // 3. Highlight @Mentions
+        if (typeof BOARD_MEMBERS !== 'undefined') {
+            const uniqueMembers = [];
+            const seenIds = new Set();
+            BOARD_MEMBERS.forEach(m => {
+                if (!seenIds.has(m.id)) {
+                    seenIds.add(m.id);
+                    uniqueMembers.push(m);
+                }
+            });
+            uniqueMembers.sort((a, b) => b.name.length - a.name.length);
+            uniqueMembers.forEach(m => {
+                const mentionStr = `@${m.name}`;
+                const escapedMention = mentionStr.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+                const regex = new RegExp(escapedMention, 'g');
+                escaped = escaped.replace(regex, `<span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill">@${m.name.replace(/\(\d+\)/g, '').trim()}</span>`);
+            });
+        }
+        
+        return escaped;
+    }
+
     // Comments render
     function renderComments(comentarios) {
         const container = document.getElementById('commentsContainer');
@@ -2324,7 +2367,7 @@
                     <span class="fw-bold text-primary">${c.autor}</span>
                     <span class="text-muted" style="font-size:0.65rem;">${c.data}</span>
                 </div>
-                <div style="white-space: pre-wrap;">${c.texto}</div>
+                <div style="white-space: pre-wrap;">${formatCommentText(c.texto)}</div>
                 <div class="text-end mt-1">
                     <button class="btn btn-sm btn-link text-danger p-0 small" onclick="deleteComment(${c.id})" style="font-size:0.7rem;"><i class="bi bi-trash me-1"></i>Excluir</button>
                 </div>
