@@ -904,8 +904,11 @@
                         </div>
                         
                         <div class="mb-3">
-                            <label class="form-label fw-bold text-muted small text-uppercase"><i class="bi bi-link-45deg me-1"></i>Link / Anexo Externo</label>
-                            <textarea id="cardDetailLink" class="form-control form-control-sm mb-2" placeholder="Cole aqui seus links (um por linha)..." rows="2" style="font-size: 0.85rem; resize: vertical;"></textarea>
+                            <label class="form-label fw-bold text-muted small text-uppercase"><i class="bi bi-link-45deg me-1"></i>Links / Anexos Externos</label>
+                            <div class="input-group input-group-sm mb-2">
+                                <input type="text" id="newCardLinkInput" class="form-control" placeholder="Adicionar novo link ou anexo...">
+                                <button class="btn btn-primary" type="button" id="btnAddNewCardLink"><i class="bi bi-plus-lg"></i></button>
+                            </div>
                             <div id="cardDetailLinksList" class="d-flex flex-column gap-1"></div>
                         </div>
                         
@@ -1444,33 +1447,16 @@
             }
         });
 
-        // Event listener for links textarea input
-        const detailLinkInput = document.getElementById('cardDetailLink');
-        const linksListContainer = document.getElementById('cardDetailLinksList');
-        if (detailLinkInput && linksListContainer) {
-            detailLinkInput.addEventListener('input', function() {
-                linksListContainer.innerHTML = '';
-                const rawLinks = detailLinkInput.value || '';
-                const urls = rawLinks.split(/[\n;\s]+/).map(u => u.trim()).filter(u => u);
-                urls.forEach(url => {
-                    let href = url;
-                    if (!href.startsWith('http://') && !href.startsWith('https://') && !href.startsWith('\\\\') && !href.startsWith('file://')) {
-                        href = 'http://' + href;
-                    }
-                    const item = document.createElement('a');
-                    item.href = href;
-                    item.target = '_blank';
-                    item.className = 'd-flex align-items-center justify-content-between p-2 border rounded text-decoration-none bg-white hover-shadow-sm link-item mb-1';
-                    item.style.transition = 'all 0.2s';
-                    item.innerHTML = `
-                        <div class="d-flex align-items-center text-truncate" style="max-width: 90%;">
-                            <i class="bi bi-link-45deg text-primary me-2"></i>
-                            <span class="text-dark small text-truncate fw-semibold text-break">${url}</span>
-                        </div>
-                        <i class="bi bi-box-arrow-up-right text-muted small ms-2"></i>
-                    `;
-                    linksListContainer.appendChild(item);
-                });
+        // Event listener for adding links like checklist
+        const btnAdd = document.getElementById('btnAddNewCardLink');
+        const input = document.getElementById('newCardLinkInput');
+        if (btnAdd && input) {
+            btnAdd.addEventListener('click', addNewCardLink);
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addNewCardLink();
+                }
             });
         }
     });
@@ -1909,6 +1895,71 @@
     }
     
     let activeCardId = null;
+    let activeCardLinks = [];
+
+    function renderCardLinks() {
+        const container = document.getElementById('cardDetailLinksList');
+        if (!container) return;
+        container.innerHTML = '';
+        
+        activeCardLinks.forEach((url, index) => {
+            let href = url;
+            if (!href.startsWith('http://') && !href.startsWith('https://') && !href.startsWith('\\\\') && !href.startsWith('file://')) {
+                href = 'http://' + href;
+            }
+            
+            const linkRow = document.createElement('div');
+            linkRow.className = 'd-flex align-items-center justify-content-between p-2 bg-light border rounded small mb-1';
+            linkRow.innerHTML = `
+                <a href="${href}" target="_blank" class="d-flex align-items-center text-decoration-none text-truncate" style="max-width: 85%;">
+                    <i class="bi bi-link-45deg text-primary me-2" style="font-size: 1rem;"></i>
+                    <span class="text-dark fw-semibold text-truncate text-break">${url}</span>
+                    <i class="bi bi-box-arrow-up-right text-muted ms-2" style="font-size: 0.75rem;"></i>
+                </a>
+                <button class="btn btn-sm btn-link text-danger p-0" onclick="deleteCardLink(${index})"><i class="bi bi-trash"></i></button>
+            `;
+            container.appendChild(linkRow);
+        });
+    }
+
+    function addNewCardLink() {
+        const input = document.getElementById('newCardLinkInput');
+        if (!input) return;
+        const val = input.value.trim();
+        if (!val) return;
+        
+        activeCardLinks.push(val);
+        input.value = '';
+        renderCardLinks();
+        saveCardLinksSilently();
+    }
+
+    function deleteCardLink(index) {
+        if (!confirm('Deseja remover este link?')) return;
+        activeCardLinks.splice(index, 1);
+        renderCardLinks();
+        saveCardLinksSilently();
+    }
+
+    function saveCardLinksSilently() {
+        const payload = {
+            link_anexo: activeCardLinks.join('\n')
+        };
+        fetch(`/boards/cartoes/${activeCardId}/detalhes/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success) {
+                console.error("Erro ao salvar link:", data.error);
+            }
+        });
+    }
     
     function openCardModal(cardId) {
         activeCardId = cardId;
@@ -1923,11 +1974,9 @@
             document.getElementById('cardDetailTitle').textContent = card.titulo;
             document.getElementById('cardDetailDesc').value = card.descricao;
             
-            const detailLinkInput = document.getElementById('cardDetailLink');
-            if (detailLinkInput) {
-                detailLinkInput.value = card.link_anexo || '';
-                detailLinkInput.dispatchEvent(new Event('input'));
-            }
+            // Populate links array and render
+            activeCardLinks = card.link_anexo ? card.link_anexo.split('\n').map(u => u.trim()).filter(u => u) : [];
+            renderCardLinks();
             
             const respSelect = document.getElementById('cardDetailResp');
             Array.from(respSelect.options).forEach(option => {
@@ -2519,6 +2568,7 @@
                 subsecao_id: subsecaoId,
                 coluna_id: toColumnId,
                 recreate: recreate,
+                link_anexo: activeCardLinks.join('\n'),
                 planejamentos: getCardDetailPlanningData()
             })
         })
