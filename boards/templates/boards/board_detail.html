@@ -1522,6 +1522,8 @@
                 tag.querySelector('.btn-close').addEventListener('click', function() {
                     colab.selected = false;
                     updateDetailCardDisplay();
+                    const saveBtn = document.getElementById('btnSaveCardDetails');
+                    if (saveBtn) saveBtn.click();
                 });
                 
                 selectedContainer.appendChild(tag);
@@ -2624,6 +2626,8 @@
                             detailCardSuggestionsContainer.style.display = 'none';
                             updateDetailCardDisplay();
                             detailCardSearchInput.focus();
+                            const saveBtn = document.getElementById('btnSaveCardDetails');
+                            if (saveBtn) saveBtn.click();
                         });
                         
                         detailCardSuggestionsContainer.appendChild(item);
