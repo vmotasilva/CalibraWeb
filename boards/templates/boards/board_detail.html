@@ -2889,20 +2889,22 @@
     }
 
     function saveCardResponsiblesSilently() {
-        const respSelect = document.getElementById('cardDetailResp');
-        const respIds = Array.from(respSelect.selectedOptions).map(opt => parseInt(opt.value)).filter(val => !isNaN(val));
+        if (typeof activeCardId === 'undefined' || !activeCardId) return;
 
-        const desc = document.getElementById('cardDetailDesc').value;
-        const priority = document.getElementById('cardDetailPriority').value;
-        const dueDate = document.getElementById('cardDetailDueDate').value;
-        const startDate = document.getElementById('cardDetailStartDate').value;
-        const concludedDate = document.getElementById('cardDetailConcludedDate').value;
-        const horaInicio = document.getElementById('cardDetailHoraInicio').value;
-        const horaFim = document.getElementById('cardDetailHoraFim').value;
-        const periodicidade = document.getElementById('cardDetailPeriodicidade').value;
+        const respSelect = document.getElementById('cardDetailResp');
+        const respIds = respSelect ? Array.from(respSelect.selectedOptions).map(opt => parseInt(opt.value)).filter(val => !isNaN(val)) : [];
+
+        const desc = document.getElementById('cardDetailDesc') ? document.getElementById('cardDetailDesc').value : '';
+        const priority = document.getElementById('cardDetailPriority') ? document.getElementById('cardDetailPriority').value : 'BAIXA';
+        const dueDate = document.getElementById('cardDetailDueDate') ? document.getElementById('cardDetailDueDate').value : '';
+        const startDate = document.getElementById('cardDetailStartDate') ? document.getElementById('cardDetailStartDate').value : '';
+        const concludedDate = document.getElementById('cardDetailConcludedDate') ? document.getElementById('cardDetailConcludedDate').value : '';
+        const horaInicio = document.getElementById('cardDetailHoraInicio') ? document.getElementById('cardDetailHoraInicio').value : '';
+        const horaFim = document.getElementById('cardDetailHoraFim') ? document.getElementById('cardDetailHoraFim').value : '';
+        const periodicidade = document.getElementById('cardDetailPeriodicidade') ? document.getElementById('cardDetailPeriodicidade').value : 'AVULSA';
         
         const colSelect = document.getElementById('cardDetailColumn');
-        const toColumnId = parseInt(colSelect.value);
+        const toColumnId = colSelect ? parseInt(colSelect.value) : null;
         
         const subSelect = document.getElementById('cardDetailSubsecao');
         const subsecaoId = subSelect ? (subSelect.value || null) : null;
@@ -2920,7 +2922,7 @@
             subsecao_id: subsecaoId,
             coluna_id: toColumnId,
             recreate: false,
-            planejamentos: getCardDetailPlanningData()
+            planejamentos: typeof getCardDetailPlanningData === 'function' ? getCardDetailPlanningData() : []
         };
 
         fetch(`/boards/cartoes/${activeCardId}/detalhes/`, {
