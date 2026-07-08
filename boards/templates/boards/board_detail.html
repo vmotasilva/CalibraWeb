@@ -323,6 +323,7 @@
                     <!-- Filtro por Responsável -->
                     <select id="globalFilterResp" class="form-select form-select-sm" style="width: 175px;" onchange="applyGlobalFilters()">
                         <option value="">Responsável: Todos</option>
+                        <option value="__sem_responsavel__">Sem Responsável</option>
                         {% for c in todos_colaboradores %}
                         <option value="{{ c.nome_completo }}">{{ c.nome_completo }}</option>
                         {% endfor %}
@@ -3084,7 +3085,14 @@
             const priorMatch = !filterPrior || priority === filterPrior;
             
             const resps = card.getAttribute('data-responsaveis') || '';
-            const respMatch = !filterResp || resps.includes(filterResp);
+            let respMatch = false;
+            if (!filterResp) {
+                respMatch = true;
+            } else if (filterResp === '__sem_responsavel__') {
+                respMatch = (resps.trim() === '');
+            } else {
+                respMatch = resps.includes(filterResp);
+            }
             
             const etiquetas = card.getAttribute('data-etiquetas') || '';
             const labelMatch = !filterLabel || etiquetas.includes(filterLabel + ';');
@@ -3152,8 +3160,17 @@
             const priorText = cells[7].textContent.trim();
             const priorMatch = !filterPrior || priorText === filterPrior;
             
-            let respMatch = !filterResp;
-            if (filterResp && cells[3]) {
+            let respMatch = false;
+            if (!filterResp) {
+                respMatch = true;
+            } else if (filterResp === '__sem_responsavel__') {
+                if (cells[3]) {
+                    const avatars = cells[3].querySelectorAll('.board-avatar, .avatar-circle');
+                    respMatch = (avatars.length === 0);
+                } else {
+                    respMatch = true;
+                }
+            } else if (cells[3]) {
                 const avatars = cells[3].querySelectorAll('.board-avatar, .avatar-circle');
                 avatars.forEach(avatar => {
                     const title = avatar.getAttribute('title');
@@ -3195,7 +3212,14 @@
                 const colMatch = !filterCol || event.extendedProps.coluna === filterCol;
                 const priorMatch = !filterPrior || event.extendedProps.prioridade === filterPrior;
                 const resps = event.extendedProps.responsaveis || '';
-                const respMatch = !filterResp || resps.includes(filterResp);
+                let respMatch = false;
+                if (!filterResp) {
+                    respMatch = true;
+                } else if (filterResp === '__sem_responsavel__') {
+                    respMatch = (resps.trim() === '');
+                } else {
+                    respMatch = resps.includes(filterResp);
+                }
                 const etiquetas = event.extendedProps.etiquetas || '';
                 const labelMatch = !filterLabel || etiquetas.includes(filterLabel + ';');
                 
