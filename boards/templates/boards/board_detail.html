@@ -328,6 +328,14 @@
                         {% endfor %}
                     </select>
 
+                    <!-- Filtro por Etiqueta -->
+                    <select id="globalFilterLabel" class="form-select form-select-sm" style="width: 155px;" onchange="applyGlobalFilters()">
+                        <option value="">Etiqueta: Todas</option>
+                        {% for label in board.etiquetas.all %}
+                        <option value="{{ label.nome }}">{{ label.nome }}</option>
+                        {% endfor %}
+                    </select>
+
                     <!-- Botão Limpar Filtros -->
                     <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearAllFilters()" title="Limpar todos os filtros">
                         <i class="bi bi-x-circle me-1"></i>Limpar
@@ -343,7 +351,7 @@
                 <!-- Campo de Busca Global -->
                 <div class="input-group input-group-sm" style="max-width: 250px;">
                     <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                    <input type="search" id="globalSearchInput" class="form-control border-start-0" placeholder="Buscar no quadro..." oninput="applyGlobalFilters()" readonly onfocus="this.removeAttribute('readonly');" autocomplete="new-password">
+                    <input type="search" id="globalSearchInput" class="form-control border-start-0" placeholder="Buscar no quadro..." oninput="applyGlobalFilters()" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off">
                 </div>
             </div>
         </div>
@@ -784,7 +792,7 @@
                             <div class="position-relative mb-2">
                                 <div class="input-group input-group-sm">
                                     <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                                    <input type="search" id="addCardMemberSearchInput" class="form-control" placeholder="Buscar responsável..." readonly onfocus="this.removeAttribute('readonly');" autocomplete="new-password">
+                                    <input type="search" id="addCardMemberSearchInput" class="form-control" placeholder="Buscar responsável..." readonly onfocus="this.removeAttribute('readonly');" autocomplete="off">
                                 </div>
                                 <div id="addCardSearchSuggestions" class="list-group position-absolute w-100 shadow-lg mt-1 overflow-auto" style="max-height: 150px; z-index: 1050; display: none;"></div>
                             </div>
@@ -910,9 +918,9 @@
                         <!-- Comentários -->
                         <div>
                             <label class="form-label fw-bold text-muted small">Comentários</label>
-                            <div class="input-group input-group-sm mb-3">
-                                <input type="text" id="newCommentInput" class="form-control" placeholder="Escreva um comentário...">
-                                <button class="btn btn-success" type="button" id="btnPostComment"><i class="bi bi-chat-left-text"></i> Enviar</button>
+                            <div class="input-group mb-3">
+                                <textarea id="newCommentInput" class="form-control" placeholder="Escreva um comentário... (Ctrl+Enter para enviar)" rows="2" style="resize: vertical; font-size: 0.875rem;"></textarea>
+                                <button class="btn btn-success d-flex align-items-center justify-content-center px-3" type="button" id="btnPostComment"><i class="bi bi-chat-left-text me-1"></i> Enviar</button>
                             </div>
                             <div id="commentsContainer" class="d-flex flex-column gap-2" style="max-height: 250px; overflow-y: auto;"></div>
                         </div>
@@ -934,7 +942,7 @@
                                 <div class="position-relative mb-2">
                                     <div class="input-group input-group-sm">
                                         <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                                        <input type="search" id="detailCardMemberSearchInput" class="form-control form-control-sm" placeholder="Buscar responsável..." readonly onfocus="this.removeAttribute('readonly');" autocomplete="new-password">
+                                        <input type="search" id="detailCardMemberSearchInput" class="form-control form-control-sm" placeholder="Buscar responsável..." readonly onfocus="this.removeAttribute('readonly');" autocomplete="off">
                                     </div>
                                     <div id="detailCardSearchSuggestions" class="list-group position-absolute w-100 shadow-lg mt-1 overflow-auto" style="max-height: 150px; z-index: 1050; display: none;"></div>
                                 </div>
@@ -1088,7 +1096,7 @@
                         <label class="form-label fw-bold text-dark"><i class="bi bi-search me-1"></i>Buscar Colaboradores</label>
                         <div class="input-group shadow-sm" style="border-radius: 8px; overflow: hidden;">
                             <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                            <input type="search" id="configMemberSearchInput" class="form-control border-start-0" placeholder="Digite o nome para buscar..." readonly onfocus="this.removeAttribute('readonly');" autocomplete="new-password">
+                            <input type="search" id="configMemberSearchInput" class="form-control border-start-0" placeholder="Digite o nome para buscar..." readonly onfocus="this.removeAttribute('readonly');" autocomplete="off">
                         </div>
                         <div id="configSearchSuggestions" class="list-group position-absolute w-100 shadow-lg mt-1 overflow-auto" style="max-height: 200px; z-index: 1050; display: none;">
                             <!-- Sugestões carregadas via JS -->
@@ -1294,6 +1302,7 @@
         sessionStorage.removeItem('boardFilterCol_' + boardIdStr);
         sessionStorage.removeItem('boardFilterPrior_' + boardIdStr);
         sessionStorage.removeItem('boardFilterResp_' + boardIdStr);
+        sessionStorage.removeItem('boardFilterLabel_' + boardIdStr);
         sessionStorage.removeItem('boardHideEmpty_' + boardIdStr);
         
         if (periodFilter && periodFilter.value !== 'tudo') {
@@ -1306,6 +1315,7 @@
         if (document.getElementById('globalFilterCol')) document.getElementById('globalFilterCol').value = "";
         if (document.getElementById('globalFilterPrior')) document.getElementById('globalFilterPrior').value = "";
         if (document.getElementById('globalFilterResp')) document.getElementById('globalFilterResp').value = "";
+        if (document.getElementById('globalFilterLabel')) document.getElementById('globalFilterLabel').value = "";
         if (document.getElementById('hideEmptyColumnsFlag')) document.getElementById('hideEmptyColumnsFlag').checked = false;
         if (document.getElementById('globalSearchInput')) document.getElementById('globalSearchInput').value = "";
 
@@ -2139,7 +2149,7 @@
                     <span class="fw-bold text-primary">${c.autor}</span>
                     <span class="text-muted" style="font-size:0.65rem;">${c.data}</span>
                 </div>
-                <div>${c.texto}</div>
+                <div style="white-space: pre-wrap;">${c.texto}</div>
                 <div class="text-end mt-1">
                     <button class="btn btn-sm btn-link text-danger p-0 small" onclick="deleteComment(${c.id})" style="font-size:0.7rem;"><i class="bi bi-trash me-1"></i>Excluir</button>
                 </div>
@@ -2172,6 +2182,35 @@
                 .then(card => renderComments(card.comentarios));
             }
         });
+    });
+
+    // Keydown handlers for Enter / Ctrl+Enter submissions
+    document.getElementById('newCommentInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.ctrlKey) {
+            e.preventDefault();
+            document.getElementById('btnPostComment').click();
+        }
+    });
+
+    document.getElementById('newChecklistItemInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            document.getElementById('btnAddChecklistItem').click();
+        }
+    });
+
+    document.getElementById('cardDetailDesc').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.ctrlKey) {
+            e.preventDefault();
+            document.getElementById('btnSaveCardDetails').click();
+        }
+    });
+
+    document.getElementById('cardDetailLink').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            document.getElementById('btnSaveCardDetails').click();
+        }
     });
     
     // Delete Comment
@@ -2749,10 +2788,12 @@
         const filterCol = document.getElementById('globalFilterCol') ? document.getElementById('globalFilterCol').value : "";
         const filterPrior = document.getElementById('globalFilterPrior') ? document.getElementById('globalFilterPrior').value : "";
         const filterResp = document.getElementById('globalFilterResp') ? document.getElementById('globalFilterResp').value.trim() : "";
+        const filterLabel = document.getElementById('globalFilterLabel') ? document.getElementById('globalFilterLabel').value.trim() : "";
         
         sessionStorage.setItem('boardFilterCol_' + '{{ board.id }}', filterCol);
         sessionStorage.setItem('boardFilterPrior_' + '{{ board.id }}', filterPrior);
         sessionStorage.setItem('boardFilterResp_' + '{{ board.id }}', filterResp);
+        sessionStorage.setItem('boardFilterLabel_' + '{{ board.id }}', filterLabel);
         
         // ============================================
         // 1. FILTER KANBAN VIEW (COLUMNS & CARDS)
@@ -2781,7 +2822,10 @@
             const resps = card.getAttribute('data-responsaveis') || '';
             const respMatch = !filterResp || resps.includes(filterResp);
             
-            if (textMatch && priorMatch && respMatch) {
+            const etiquetas = card.getAttribute('data-etiquetas') || '';
+            const labelMatch = !filterLabel || etiquetas.includes(filterLabel + ';');
+            
+            if (textMatch && priorMatch && respMatch && labelMatch) {
                 card.style.display = '';
             } else {
                 card.style.display = 'none';
@@ -2838,7 +2882,18 @@
                 });
             }
             
-            if (textMatch && colMatch && priorMatch && respMatch) {
+            let labelMatch = !filterLabel;
+            if (filterLabel && cells[8]) {
+                const badges = cells[8].querySelectorAll('.badge');
+                badges.forEach(badge => {
+                    const text = badge.textContent.trim();
+                    if (text === filterLabel) {
+                        labelMatch = true;
+                    }
+                });
+            }
+            
+            if (textMatch && colMatch && priorMatch && respMatch && labelMatch) {
                 row.style.display = '';
             } else {
                 row.style.display = 'none';
@@ -2855,8 +2910,10 @@
                 const priorMatch = !filterPrior || event.extendedProps.prioridade === filterPrior;
                 const resps = event.extendedProps.responsaveis || '';
                 const respMatch = !filterResp || resps.includes(filterResp);
+                const etiquetas = event.extendedProps.etiquetas || '';
+                const labelMatch = !filterLabel || etiquetas.includes(filterLabel + ';');
                 
-                return titleMatch && colMatch && priorMatch && respMatch;
+                return titleMatch && colMatch && priorMatch && respMatch && labelMatch;
             });
             
             fcCalendar.removeAllEventSources();
@@ -2997,7 +3054,8 @@
                                 prioridade: "{% if card.prioridade == 'ALTA' %}Alta{% else %}Baixa{% endif %}",
                                 is_virtual: {% if card.is_virtual %}true{% else %}false{% endif %},
                                 plano_acao_id: {% if card.plano_acao_id %}{{ card.plano_acao_id }}{% else %}null{% endif %},
-                                responsaveis: "{% for r in card.responsaveis.all %}{{ r.nome_completo|escapejs }};{% empty %}{% if card.responsaveis %}{% for r in card.responsaveis.all %}{{ r.nome_completo|escapejs }};{% endfor %}{% endif %}{% endfor %}"
+                                responsaveis: "{% for r in card.responsaveis.all %}{{ r.nome_completo|escapejs }};{% empty %}{% if card.responsaveis %}{% for r in card.responsaveis.all %}{{ r.nome_completo|escapejs }};{% endfor %}{% endif %}{% endfor %}",
+                                etiquetas: "{% for e in card.etiquetas.all %}{{ e.nome|escapejs }};{% endfor %}"
                             }
                         },
                     {% endfor %}
@@ -3042,7 +3100,8 @@
                             prioridade: "{% if card.prioridade == 'ALTA' %}Alta{% else %}Baixa{% endif %}",
                             is_virtual: {% if card.is_virtual %}true{% else %}false{% endif %},
                             plano_acao_id: {% if card.plano_acao_id %}{{ card.plano_acao_id }}{% else %}null{% endif %},
-                            responsaveis: "{% for r in card.responsaveis.all %}{{ r.nome_completo|escapejs }};{% empty %}{% if card.responsaveis %}{% for r in card.responsaveis.all %}{{ r.nome_completo|escapejs }};{% endfor %}{% endif %}{% endfor %}"
+                            responsaveis: "{% for r in card.responsaveis.all %}{{ r.nome_completo|escapejs }};{% empty %}{% if card.responsaveis %}{% for r in card.responsaveis.all %}{{ r.nome_completo|escapejs }};{% endfor %}{% endif %}{% endfor %}",
+                            etiquetas: "{% for e in card.etiquetas.all %}{{ e.nome|escapejs }};{% endfor %}"
                         }
                     },
                 {% endif %}
@@ -3166,6 +3225,9 @@
         }
         if(document.getElementById('globalFilterResp') && sessionStorage.getItem('boardFilterResp_' + boardIdStr) !== null) {
             document.getElementById('globalFilterResp').value = sessionStorage.getItem('boardFilterResp_' + boardIdStr);
+        }
+        if(document.getElementById('globalFilterLabel') && sessionStorage.getItem('boardFilterLabel_' + boardIdStr) !== null) {
+            document.getElementById('globalFilterLabel').value = sessionStorage.getItem('boardFilterLabel_' + boardIdStr);
         }
         
         if(document.getElementById('hideEmptyColumnsFlag') && sessionStorage.getItem('boardHideEmpty_' + boardIdStr) !== null) {
