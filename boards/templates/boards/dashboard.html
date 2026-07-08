@@ -76,6 +76,34 @@
         </button>
     </div>
 
+    <!-- Menções não lidas -->
+    {% if unread_mentions %}
+    <div class="alert alert-warning border-0 shadow-sm p-3 mb-4 d-flex flex-column gap-2" style="border-radius: 12px; background-color: #fff8eb; border-left: 4px solid #ffc107 !important;">
+        <div class="d-flex align-items-center justify-content-between">
+            <h6 class="fw-bold text-warning-emphasis mb-0 d-flex align-items-center">
+                <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+                Você foi mencionado em comentários
+            </h6>
+            <span class="badge bg-warning text-dark rounded-pill">{{ unread_mentions|length }} nova{{ unread_mentions|length|pluralize }}</span>
+        </div>
+        <div class="list-group list-group-flush bg-transparent">
+            {% for mention in unread_mentions %}
+            <a href="{% url 'boards:read_mention' mention.id %}" class="list-group-item list-group-item-action bg-transparent border-0 px-0 py-2 d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center text-dark">
+                    <span class="text-warning me-2">●</span>
+                    <div>
+                        <span class="fw-bold">{{ mention.criado_por.nome_completo|default:"Alguém" }}</span> 
+                        mencionou você no cartão <span class="fw-bold text-primary">"{{ mention.comentario.cartao.titulo }}"</span> 
+                        do quadro <span class="fw-semibold">"{{ mention.comentario.cartao.coluna.quadro.nome }}"</span>.
+                    </div>
+                </div>
+                <span class="text-muted small ms-2 d-none d-md-inline">{{ mention.criado_em|date:"d/m/Y H:i" }}</span>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Navegação de Abas -->
     <ul class="nav nav-pills mb-4" id="dashboardTab" role="tablist">
         <li class="nav-item" role="presentation">

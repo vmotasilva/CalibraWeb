@@ -151,6 +151,11 @@ def dashboard_view(request):
     quadros_list = list(quadros)
     todos_colaboradores = Colaborador.objects.filter(is_active=True).order_by('nome_completo')
     
+    unread_mentions = []
+    if colab:
+        from boards.models import BoardMention
+        unread_mentions = BoardMention.objects.filter(mencionado=colab, visualizada=False).select_related('comentario__cartao__coluna__quadro', 'criado_por')
+
     context = {
         'quadros': quadros,
         'quadros_list': quadros_list,
@@ -159,7 +164,8 @@ def dashboard_view(request):
         'todos_colaboradores': todos_colaboradores,
         'form': form,
         'titulo': 'Quadros de Atividades',
-        'hoje': timezone.now().date()
+        'hoje': timezone.now().date(),
+        'unread_mentions': unread_mentions
     }
     return render(request, 'boards/dashboard.html', context)
 
@@ -775,6 +781,10 @@ def api_card_detail_view(request, card_id):
     board = card.coluna.quadro
     
     if request.method == 'GET':
+        if colab:
+            from .models import BoardMention
+            BoardMention.objects.filter(comentario__cartao=card, mencionado=colab, visualizada=False).update(visualizada=True)
+            
         checklist = list(card.checklist_itens.values('id', 'descricao', 'concluido'))
         comentarios = []
         for c in card.comentarios.select_related('autor').all():
@@ -1187,6 +1197,27 @@ def api_add_comment_view(request, card_id):
     
     if texto:
         comment = CardComment.objects.create(cartao=card, autor=colab, texto=texto)
+        
+        # Parse and save mentions
+        try:
+            from .models import BoardMention
+            board = card.coluna.quadro
+            membros = list(board.membros.all())
+            if board.criado_por and board.criado_por not in membros:
+                membros.append(board.criado_por)
+            
+            membros.sort(key=lambda m: len(m.nome_completo), reverse=True)
+            for member in membros:
+                mention_str = f"@{member.nome_completo}"
+                if mention_str in comment.texto:
+                    BoardMention.objects.get_or_create(
+                        comentario=comment,
+                        mencionado=member,
+                        defaults={'criado_por': colab}
+                    )
+        except Exception as e:
+            print("Error parsing mentions:", e)
+
         BoardActivity.objects.create(
             quadro=card.coluna.quadro,
             colaborador=colab,
@@ -1405,3 +1436,17 @@ def delete_label_view(request, label_id):
     label.delete()
     messages.success(request, f"Etiqueta '{nome}' excluída.")
     return redirect('boards:board_detail', board_id=board.id)
+
+
+@login_required
+def read_mention_view(request, mention_id):
+    from .models import BoardMention
+    from django.urls import reverse
+    colab = get_user_colaborador(request.user)
+    mention = get_object_or_404(BoardMention, id=mention_id, mencionado=colab)
+    mention.visualizada = True
+    mention.save()
+    
+    board_id = mention.comentario.cartao.coluna.quadro.id
+    card_id = mention.comentario.cartao.id
+    return redirect(reverse('boards:board_detail', kwargs={'board_id': board_id}) + f"?card_id={card_id}")

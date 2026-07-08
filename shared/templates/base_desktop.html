@@ -424,8 +424,14 @@
 
                 <li class="nav-divider"></li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{% url 'boards:dashboard' %}">
-                        <i class="bi bi-kanban nav-icon"></i><span class="nav-text">Quadros</span>
+                    <a class="nav-link position-relative d-flex align-items-center" href="{% url 'boards:dashboard' %}">
+                        <i class="bi bi-kanban nav-icon"></i>
+                        <span class="nav-text">Quadros</span>
+                        {% if unread_board_mentions_count and unread_board_mentions_count > 0 %}
+                            <span class="badge rounded-pill bg-danger ms-1" style="font-size: 0.65rem; padding: 0.25em 0.5em;">
+                                {{ unread_board_mentions_count }}
+                            </span>
+                        {% endif %}
                     </a>
                 </li>
 

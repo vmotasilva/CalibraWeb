@@ -56,7 +56,7 @@ def template_variants(request: Any) -> dict[str, Any]:
     }
 
 
-def nav_notifications(request: Any) -> dict[str, int]:
+def nav_notifications(request: Any) -> dict[str, Any]:
     """Context processor para navbar.
 
     Exponibiliza um total de notificações de cobranças (itens que pedem mudança de status/atenção).
@@ -65,8 +65,21 @@ def nav_notifications(request: Any) -> dict[str, int]:
     user = getattr(request, "user", None)
     counts = get_user_cobrancas_counts(user)
     total = int(counts.get("total", 0) or 0)
+    
+    unread_board_mentions_count = 0
+    if user and user.is_authenticated:
+        try:
+            from boards.models import BoardMention
+            from rh.models import Colaborador
+            colab = Colaborador.objects.filter(usuario=user).first()
+            if colab:
+                unread_board_mentions_count = BoardMention.objects.filter(mencionado=colab, visualizada=False).count()
+        except Exception:
+            pass
+            
     return {
         "nav_notifications_total": total,
+        "unread_board_mentions_count": unread_board_mentions_count,
     }
 
 

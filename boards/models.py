@@ -236,3 +236,19 @@ class CardPlanningDate(models.Model):
     def __str__(self):
         return f"{self.cartao.titulo} - {self.datetime_inicio.strftime('%d/%m/%Y %H:%M') if self.datetime_inicio else ''}"
 
+
+class BoardMention(models.Model):
+    comentario = models.ForeignKey(CardComment, on_delete=models.CASCADE, related_name="mencoes")
+    mencionado = models.ForeignKey(Colaborador, on_delete=models.CASCADE, related_name="mencoes_recebidas")
+    criado_por = models.ForeignKey(Colaborador, on_delete=models.CASCADE, related_name="mencoes_feitas", null=True, blank=True)
+    visualizada = models.BooleanField(default=False)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-criado_em']
+        verbose_name = "Menção no Quadro"
+        verbose_name_plural = "Menções no Quadro"
+
+    def __str__(self):
+        return f"Menção a {self.mencionado.nome_completo} em {self.comentario.cartao.titulo}"
+

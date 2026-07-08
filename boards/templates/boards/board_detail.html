@@ -931,9 +931,12 @@
                         <!-- Comentários -->
                         <div>
                             <label class="form-label fw-bold text-muted small">Comentários</label>
-                            <div class="input-group mb-3">
-                                <textarea id="newCommentInput" class="form-control" placeholder="Escreva um comentário... (Ctrl+Enter para enviar)" rows="2" style="resize: vertical; font-size: 0.875rem;"></textarea>
-                                <button class="btn btn-success d-flex align-items-center justify-content-center px-3" type="button" id="btnPostComment"><i class="bi bi-chat-left-text me-1"></i> Enviar</button>
+                            <div class="position-relative w-100 mb-3">
+                                <div class="input-group">
+                                    <textarea id="newCommentInput" class="form-control" placeholder="Escreva um comentário... (Ctrl+Enter para enviar)" rows="2" style="resize: vertical; font-size: 0.875rem;"></textarea>
+                                    <button class="btn btn-success d-flex align-items-center justify-content-center px-3" type="button" id="btnPostComment"><i class="bi bi-chat-left-text me-1"></i> Enviar</button>
+                                </div>
+                                <div id="newCommentMentionsDropdown" class="list-group position-absolute w-100 shadow-lg mt-1 overflow-auto" style="max-height: 150px; z-index: 1060; display: none; bottom: 100%; margin-bottom: 5px;"></div>
                             </div>
                             <div id="commentsContainer" class="d-flex flex-column gap-2" style="max-height: 250px; overflow-y: auto;"></div>
                         </div>
@@ -1292,6 +1295,159 @@
             { "id": {{ label.id }}, "nome": "{{ label.nome|escapejs }}", "cor": "{{ label.cor|escapejs }}" },
         {% endfor %}
     ];
+
+    const BOARD_MEMBERS = [
+        {% if board.criado_por %}
+            { id: {{ board.criado_por.id }}, name: "{{ board.criado_por.nome_completo|escapejs }}" },
+        {% endif %}
+        {% for m in board.membros.all %}
+            { id: {{ m.id }}, name: "{{ m.nome_completo|escapejs }}" },
+        {% endfor %}
+    ];
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const commentInput = document.getElementById('newCommentInput');
+        const mentionsDropdown = document.getElementById('newCommentMentionsDropdown');
+        if (!commentInput || !mentionsDropdown) return;
+
+        let mentionQueryStart = -1;
+
+        // Unique board members
+        const seenIds = new Set();
+        const uniqueMembers = [];
+        BOARD_MEMBERS.forEach(m => {
+            if (!seenIds.has(m.id)) {
+                seenIds.add(m.id);
+                uniqueMembers.push(m);
+            }
+        });
+
+        commentInput.addEventListener('input', function() {
+            const val = commentInput.value;
+            const caretPos = commentInput.selectionStart;
+            
+            // Check if user typed '@' or is typing after '@'
+            const textBeforeCaret = val.slice(0, caretPos);
+            const lastAtIdx = textBeforeCaret.lastIndexOf('@');
+            
+            if (lastAtIdx !== -1) {
+                const textAfterAt = textBeforeCaret.slice(lastAtIdx + 1);
+                if (!textAfterAt.includes(' ') && !textAfterAt.includes('\n')) {
+                    mentionQueryStart = lastAtIdx;
+                    showMentionsDropdown(textAfterAt.toLowerCase());
+                    return;
+                }
+            }
+            
+            hideMentionsDropdown();
+        });
+
+        commentInput.addEventListener('keydown', function(e) {
+            if (mentionsDropdown.style.display === 'block') {
+                const items = mentionsDropdown.querySelectorAll('.list-group-item-action');
+                let activeIdx = -1;
+                for (let i = 0; i < items.length; i++) {
+                    if (items[i].classList.contains('active')) {
+                        activeIdx = i;
+                        break;
+                    }
+                }
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (items.length > 0) {
+                        if (activeIdx !== -1) items[activeIdx].classList.remove('active');
+                        const nextIdx = (activeIdx + 1) % items.length;
+                        items[nextIdx].classList.add('active');
+                        items[nextIdx].scrollIntoView({ block: 'nearest' });
+                    }
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (items.length > 0) {
+                        if (activeIdx !== -1) items[activeIdx].classList.remove('active');
+                        const prevIdx = (activeIdx - 1 + items.length) % items.length;
+                        items[prevIdx].classList.add('active');
+                        items[prevIdx].scrollIntoView({ block: 'nearest' });
+                    }
+                } else if (e.key === 'Enter') {
+                    if (activeIdx !== -1) {
+                        e.preventDefault();
+                        items[activeIdx].click();
+                    }
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    hideMentionsDropdown();
+                }
+            }
+        });
+
+        function showMentionsDropdown(query) {
+            mentionsDropdown.innerHTML = '';
+            
+            const filtered = uniqueMembers.filter(m => {
+                const norm = m.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                const normQuery = query.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                return norm.includes(normQuery);
+            });
+
+            if (filtered.length === 0) {
+                hideMentionsDropdown();
+                return;
+            }
+
+            filtered.forEach((m, idx) => {
+                const cleanName = m.name.replace(/\(\d+\)/g, '').trim();
+                const initials = getConfigInitials(m.name);
+                const btn = document.createElement('a');
+                btn.href = '#';
+                btn.className = 'list-group-item list-group-item-action d-flex align-items-center p-2 text-decoration-none';
+                if (idx === 0) btn.classList.add('active');
+                
+                btn.innerHTML = `
+                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2" style="width: 26px; height: 26px; font-size: 0.65rem; font-weight: 600;">
+                        ${initials}
+                    </div>
+                    <span class="small fw-semibold text-dark">${cleanName}</span>
+                `;
+                
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    insertMention(m.name);
+                });
+                
+                mentionsDropdown.appendChild(btn);
+            });
+
+            mentionsDropdown.style.display = 'block';
+        }
+
+        function hideMentionsDropdown() {
+            mentionsDropdown.style.display = 'none';
+            mentionQueryStart = -1;
+        }
+
+        function insertMention(name) {
+            const val = commentInput.value;
+            const caretPos = commentInput.selectionStart;
+            
+            const before = val.slice(0, mentionQueryStart);
+            const after = val.slice(caretPos);
+            
+            commentInput.value = before + '@' + name + ' ' + after;
+            
+            const newCaretPos = mentionQueryStart + name.length + 2;
+            commentInput.setSelectionRange(newCaretPos, newCaretPos);
+            
+            hideMentionsDropdown();
+            commentInput.focus();
+        }
+
+        document.addEventListener('click', function(e) {
+            if (!commentInput.contains(e.target) && !mentionsDropdown.contains(e.target)) {
+                hideMentionsDropdown();
+            }
+        });
+    });
 
     function selectQuickColor(color) {
         document.getElementById('labelColorPicker').value = color;
@@ -3564,6 +3720,18 @@
 
         // Apply global filters initially (in case input fields have preserved values or were restored)
         applyGlobalFilters();
+
+        // Check if a card needs to be opened from a notification redirect
+        const urlParams = new URLSearchParams(window.location.search);
+        const cardIdParam = urlParams.get('card_id');
+        if (cardIdParam) {
+            const cardIdInt = parseInt(cardIdParam);
+            if (!isNaN(cardIdInt)) {
+                openCardModal(cardIdInt);
+                // Clean url parameters to keep address bar clean
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }
     });
 </script>
 {% endblock %}

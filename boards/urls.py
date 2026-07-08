@@ -26,5 +26,6 @@ urlpatterns = [
     path('subsecoes/<int:subsection_id>/excluir/', views.delete_subsection_view, name='delete_subsection'),
     path('<int:board_id>/etiquetas/nova/', views.create_label_view, name='create_label'),
     path('etiquetas/<int:label_id>/excluir/', views.delete_label_view, name='delete_label'),
+    path('mencoes/<int:mention_id>/visualizar/', views.read_mention_view, name='read_mention'),
 ]
 
