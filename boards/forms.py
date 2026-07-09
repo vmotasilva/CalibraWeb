@@ -78,12 +78,14 @@ class CardForm(forms.ModelForm):
         self.fields['etiquetas'].required = False
         self.fields['etiquetas'].label = "Etiquetas"
         
+        from django.db.models import Q
         if board:
-            # Filtra os responsáveis apenas para os membros desse quadro + o criador
-            membros_ids = list(board.membros.values_list('id', flat=True))
-            if board.criado_por:
-                membros_ids.append(board.criado_por.id)
-            self.fields['responsaveis'].queryset = Colaborador.objects.filter(id__in=membros_ids, is_active=True).distinct().order_by('nome_completo')
+            # Todos os colaboradores ativos + os que já estão associados aos cartões deste quadro
+            responsaveis_atuais_ids = list(Card.objects.filter(coluna__quadro=board).values_list('responsaveis__id', flat=True))
+            responsaveis_atuais_ids = [r_id for r_id in responsaveis_atuais_ids if r_id is not None]
+            self.fields['responsaveis'].queryset = Colaborador.objects.filter(
+                Q(is_active=True) | Q(id__in=responsaveis_atuais_ids)
+            ).distinct().order_by('nome_completo')
         else:
             self.fields['responsaveis'].queryset = Colaborador.objects.filter(is_active=True).order_by('nome_completo')
         

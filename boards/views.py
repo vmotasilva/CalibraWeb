@@ -404,14 +404,12 @@ def board_detail_view(request, board_id):
     # Formulários para criação rápida
     card_form = CardForm(board=board)
     
-    # Lista de colaboradores para o dropdown de transferência de responsável (membros do quadro + criador)
-    if board.tipo == 'PLANOS_ACAO':
-        todos_colaboradores = Colaborador.objects.filter(is_active=True).order_by('nome_completo')
-    else:
-        membros_ids = list(board.membros.values_list('id', flat=True))
-        if board.criado_por:
-            membros_ids.append(board.criado_por.id)
-        todos_colaboradores = Colaborador.objects.filter(id__in=membros_ids, is_active=True).distinct().order_by('nome_completo')
+    # Lista de colaboradores para o dropdown de transferência de responsável (todos os ativos + os atuais responsáveis dos cartões no quadro)
+    responsaveis_atuais_ids = list(Card.objects.filter(coluna__quadro=board).values_list('responsaveis__id', flat=True))
+    responsaveis_atuais_ids = [r_id for r_id in responsaveis_atuais_ids if r_id is not None]
+    todos_colaboradores = Colaborador.objects.filter(
+        Q(is_active=True) | Q(id__in=responsaveis_atuais_ids)
+    ).distinct().order_by('nome_completo')
         
     colunas_andamento = [col for col in colunas if col.id not in concluido_colunas_ids]
     if board.tipo == 'PLANOS_ACAO':

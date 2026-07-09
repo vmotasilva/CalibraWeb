@@ -94,7 +94,7 @@ class BoardsTestCase(TestCase):
             'titulo': 'Nova Tarefa no Quadro',
             'descricao': 'Breve detalhe',
             'responsaveis': [self.colaborador.id],
-            'prioridade': 'MEDIA'
+            'prioridade': 'ALTA'
         }
         response = self.client.post(reverse('boards:create_card', args=[self.coluna_todo.id]), post_data)
         self.assertEqual(response.status_code, 302)
