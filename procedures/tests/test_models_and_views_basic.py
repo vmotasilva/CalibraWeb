@@ -370,8 +370,7 @@ class PlanejamentoConclusaoFlowTest(TestCase):
         resp = self.client.post(
             url,
             {
-                'data_treinamento': '2026-03-21',
-                'horario_realizado': '14:30',
+                'data_horario_realizado': '2026-03-21T14:30:00',
                 'duracao_minutos': '90',
                 'participantes_planejados': [str(self.colab1.id)],
                 'participantes_adicionais': [str(self.colab3.id)],

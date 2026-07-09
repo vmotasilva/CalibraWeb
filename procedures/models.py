@@ -441,6 +441,21 @@ class RegistroTreinamento(models.Model):
         null=True, blank=True,
         verbose_name="Resultado da Avaliação"
     )
+    avaliacao_eficacia_status = models.CharField(
+        max_length=20,
+        choices=[
+            ('PENDENTE', 'Pendente'),
+            ('EFICAZ', 'Eficaz'),
+            ('INEFICAZ', 'Ineficaz'),
+        ],
+        null=True, blank=True,
+        verbose_name="Status da Avaliação de Eficácia",
+        help_text="Status da avaliação de eficácia para procedimentos críticos"
+    )
+    avaliacao_eficacia_data = models.DateField(
+        null=True, blank=True,
+        verbose_name="Data da Avaliação de Eficácia"
+    )
     ativo = models.BooleanField(
         default=True,
         verbose_name="Ativo",
@@ -467,6 +482,13 @@ class RegistroTreinamento(models.Model):
     
     def save(self, *args, **kwargs):
         self.clean()
+        if self.procedimento and self.procedimento.criticidade == 'CRITICO':
+            self.necessita_avaliacao_eficacia = True
+            if self.data_treinamento:
+                import datetime
+                self.data_limite_avaliacao_eficacia = self.data_treinamento + datetime.timedelta(days=30)
+            if not self.avaliacao_eficacia_status:
+                self.avaliacao_eficacia_status = 'PENDENTE'
         super().save(*args, **kwargs)
     
     @property

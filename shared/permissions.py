@@ -425,6 +425,8 @@ NAV_STRUCTURE = [
                 "perm": "core.nav_treinamentos_gestao",
                 "funcoes": [
                     {"nome": "Registros de Treinamento", "view_name": "procedures:treinamentos_list", "perm": "core.nav_treinamentos_registros"},
+                    {"nome": "Avaliação de Eficácia", "view_name": "procedures:avaliacao_eficacia_list", "perm": "core.nav_treinamentos_registros"},
+                    {"nome": "Registrar Avaliação de Eficácia", "view_name": "procedures:avaliacao_eficacia_registrar", "perm": "core.nav_treinamentos_registros"},
                     {"nome": "Novo Treinamento", "view_name": "procedures:novo_treinamento", "perm": "core.nav_treinamentos_novo_treinamento"},
                     {"nome": "Detalhe do Treinamento", "view_name": "procedures:treinamentos_detalhe", "perm": "core.nav_treinamentos_detalhe_treinamento"},
                     {"nome": "Editar Treinamento", "view_name": "procedures:editar_treinamento", "perm": "core.nav_treinamentos_editar_treinamento"},

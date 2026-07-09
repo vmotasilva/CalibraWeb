@@ -409,11 +409,13 @@
                             {% can_nav_view user 'procedures:treinamentos_list' 'procedures' as nav_tr_reg %}
                             {% can_nav_view user 'procedures:lista_presenca_list' 'procedures' as nav_tr_lp %}
                             {% can_nav_view user 'procedures:planejamentos_list' 'procedures' as nav_tr_plan %}
-                            {% if nav_tr_reg or nav_tr_lp or nav_tr_plan %}
+                            {% can_nav_view user 'procedures:avaliacao_eficacia_list' 'procedures' as nav_tr_eficacia %}
+                            {% if nav_tr_reg or nav_tr_lp or nav_tr_plan or nav_tr_eficacia %}
                                 <li><h6 class="dropdown-header text-muted">GESTÃO DE TREINAMENTOS</h6></li>
                                 {% if nav_tr_reg %}<li><a class="dropdown-item" href="{% url 'procedures:treinamentos_list' %}"><i class="bi bi-list-check"></i> Registros de Treinamento</a></li>{% endif %}
                                 {% if nav_tr_lp %}<li><a class="dropdown-item" href="{% url 'procedures:lista_presenca_list' %}"><i class="bi bi-clipboard-check"></i> Listas de Presença</a></li>{% endif %}
                                 {% if nav_tr_plan %}<li><a class="dropdown-item" href="{% url 'procedures:planejamentos_list' %}"><i class="bi bi-calendar-event"></i> Planejamento</a></li>{% endif %}
+                                {% if nav_tr_eficacia %}<li><a class="dropdown-item" href="{% url 'procedures:avaliacao_eficacia_list' %}"><i class="bi bi-shield-check"></i> Avaliação de Eficácia</a></li>{% endif %}
                                 <li><hr class="dropdown-divider"></li>
                             {% endif %}
                         {% endif %}

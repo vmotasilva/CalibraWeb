@@ -101,3 +101,13 @@ __all__ = [
     'validacao_views',
     'template_mapeamento_views',
 ]
+
+from .avaliacao_eficacia_views import (
+    avaliacao_eficacia_list_view,
+    avaliacao_eficacia_registrar_view,
+)
+
+__all__ += [
+    'avaliacao_eficacia_list_view',
+    'avaliacao_eficacia_registrar_view',
+]
