@@ -181,3 +181,16 @@ class AvaliacaoEficaciaTestCase(TestCase):
         self.assertNotIn(self.t1.id, object_ids)
         self.assertIn(self.t2.id, object_ids)
         self.assertIn(self.t3.id, object_ids)
+
+    def test_pagination_exibir_todos(self):
+        url = reverse('procedures:avaliacao_eficacia_list')
+        
+        # Request with pagination size of 1
+        response = self.client.get(url, {'exibir': '1'})
+        self.assertTrue(response.context['page_obj'].has_other_pages())
+        self.assertEqual(len(response.context['page_obj'].object_list), 1)
+        
+        # Request with 'todos' -> should put all 3 objects in a single page
+        response = self.client.get(url, {'exibir': 'todos'})
+        self.assertFalse(response.context['page_obj'].has_other_pages())
+        self.assertEqual(len(response.context['page_obj'].object_list), 3)

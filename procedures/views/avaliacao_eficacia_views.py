@@ -48,6 +48,7 @@ def avaliacao_eficacia_list_view(request):
     vinculo_filtro = (request.GET.get('vinculo') or '').strip()
     posterior_filtro = (request.GET.get('posterior') or '').strip()
     matriz_filtro = (request.GET.get('matriz') or '').strip()
+    exibir = (request.GET.get('exibir') or '30').strip()
 
     # Filtro especial por dias decorridos (antes de filtrar status)
     today = date.today()
@@ -212,7 +213,15 @@ def avaliacao_eficacia_list_view(request):
     total_pendente = sum(1 for t in totals_list if (t.avaliacao_eficacia_status in ['PENDENTE', None, '']) and (today - t.data_treinamento).days >= 30)
 
     # Paginação
-    paginator = Paginator(registros_list, 30)
+    if exibir == 'todos':
+        per_page = max(1, len(registros_list))  # Evita zero para Paginator
+    else:
+        try:
+            per_page = int(exibir)
+        except ValueError:
+            per_page = 30
+
+    paginator = Paginator(registros_list, per_page)
     page_number = request.GET.get('page')
     try:
         page_obj = paginator.page(page_number)
@@ -265,6 +274,7 @@ def avaliacao_eficacia_list_view(request):
         'vinculo_filtro': vinculo_filtro,
         'posterior_filtro': posterior_filtro,
         'matriz_filtro': matriz_filtro,
+        'exibir': exibir,
         'query_string': query_string,
         # Totais
         'total_geral': total_geral,
