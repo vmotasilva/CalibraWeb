@@ -13,76 +13,91 @@
 {% block main_content %}
 <!-- Cards de Resumo de Indicadores -->
 <div class="row g-3 mb-4">
-    <div class="col-md-2-4 col-sm-6">
+    <div class="col-md-2 col-sm-4 col-6">
         <div class="card border-0 border-start border-primary border-4 shadow-sm h-100">
-            <div class="card-body py-3">
+            <div class="card-body py-2 px-3">
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
-                        <h6 class="text-muted small text-uppercase mb-1">Total Mapeado</h6>
-                        <h3 class="mb-0 fw-bold">{{ total_geral }}</h3>
+                        <h6 class="text-muted small text-uppercase mb-1" style="font-size: 0.75rem;">Total</h6>
+                        <h4 class="mb-0 fw-bold">{{ total_geral }}</h4>
                     </div>
-                    <div class="bg-primary-light text-primary rounded-circle p-2">
-                        <i class="bi bi-layers fs-4"></i>
+                    <div class="bg-primary-light text-primary rounded-circle p-1.5">
+                        <i class="bi bi-layers fs-5"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-md-2-4 col-sm-6">
+    <div class="col-md-2 col-sm-4 col-6">
         <div class="card border-0 border-start border-warning border-4 shadow-sm h-100">
-            <div class="card-body py-3">
+            <div class="card-body py-2 px-3">
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
-                        <h6 class="text-muted small text-uppercase mb-1">Pendentes (>=30d)</h6>
-                        <h3 class="mb-0 fw-bold text-warning">{{ total_pendente }}</h3>
+                        <h6 class="text-muted small text-uppercase mb-1" style="font-size: 0.75rem;">Pendentes</h6>
+                        <h4 class="mb-0 fw-bold text-warning">{{ total_pendente }}</h4>
                     </div>
-                    <div class="bg-warning-light text-warning rounded-circle p-2">
-                        <i class="bi bi-exclamation-triangle fs-4"></i>
+                    <div class="bg-warning-light text-warning rounded-circle p-1.5">
+                        <i class="bi bi-exclamation-triangle fs-5"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-md-2-4 col-sm-6">
+    <div class="col-md-2 col-sm-4 col-6">
         <div class="card border-0 border-start border-info border-4 shadow-sm h-100">
-            <div class="card-body py-3">
+            <div class="card-body py-2 px-3">
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
-                        <h6 class="text-muted small text-uppercase mb-1">Carência (<30d)</h6>
-                        <h3 class="mb-0 fw-bold text-info">{{ total_carencia }}</h3>
+                        <h6 class="text-muted small text-uppercase mb-1" style="font-size: 0.75rem;">Carência</h6>
+                        <h4 class="mb-0 fw-bold text-info">{{ total_carencia }}</h4>
                     </div>
-                    <div class="bg-info-light text-info rounded-circle p-2">
-                        <i class="bi bi-hourglass-split fs-4"></i>
+                    <div class="bg-info-light text-info rounded-circle p-1.5">
+                        <i class="bi bi-hourglass-split fs-5"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-md-2-4 col-sm-6">
+    <div class="col-md-2 col-sm-4 col-6">
         <div class="card border-0 border-start border-success border-4 shadow-sm h-100">
-            <div class="card-body py-3">
+            <div class="card-body py-2 px-3">
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
-                        <h6 class="text-muted small text-uppercase mb-1">Eficazes</h6>
-                        <h3 class="mb-0 fw-bold text-success">{{ total_eficaz }}</h3>
+                        <h6 class="text-muted small text-uppercase mb-1" style="font-size: 0.75rem;">Eficazes</h6>
+                        <h4 class="mb-0 fw-bold text-success">{{ total_eficaz }}</h4>
                     </div>
-                    <div class="bg-success-light text-success rounded-circle p-2">
-                        <i class="bi bi-check-circle fs-4"></i>
+                    <div class="bg-success-light text-success rounded-circle p-1.5">
+                        <i class="bi bi-check-circle fs-5"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-md-2-4 col-sm-6">
+    <div class="col-md-2 col-sm-4 col-6">
         <div class="card border-0 border-start border-danger border-4 shadow-sm h-100">
-            <div class="card-body py-3">
+            <div class="card-body py-2 px-3">
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
-                        <h6 class="text-muted small text-uppercase mb-1">Ineficazes</h6>
-                        <h3 class="mb-0 fw-bold text-danger">{{ total_ineficaz }}</h3>
+                        <h6 class="text-muted small text-uppercase mb-1" style="font-size: 0.75rem;">Ineficazes</h6>
+                        <h4 class="mb-0 fw-bold text-danger">{{ total_ineficaz }}</h4>
                     </div>
-                    <div class="bg-danger-light text-danger rounded-circle p-2">
-                        <i class="bi bi-x-circle fs-4"></i>
+                    <div class="bg-danger-light text-danger rounded-circle p-1.5">
+                        <i class="bi bi-x-circle fs-5"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2 col-sm-4 col-6">
+        <div class="card border-0 border-start border-secondary border-4 shadow-sm h-100">
+            <div class="card-body py-2 px-3">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <h6 class="text-muted small text-uppercase mb-1" style="font-size: 0.75rem;">N/A</h6>
+                        <h4 class="mb-0 fw-bold text-secondary">{{ total_nao_aplica }}</h4>
+                    </div>
+                    <div class="bg-secondary-light text-secondary rounded-circle p-1.5">
+                        <i class="bi bi-slash-circle fs-5"></i>
                     </div>
                 </div>
             </div>
@@ -97,9 +112,9 @@
     </div>
     <div class="card-body">
         <form method="GET" class="row g-3">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <label class="form-label small fw-semibold">Buscar por Colaborador ou Procedimento</label>
-                <input type="text" name="q" class="form-control form-control-sm" placeholder="Nome do colaborador, código ou título do procedimento" value="{{ busca }}">
+                <input type="text" name="q" class="form-control form-control-sm" placeholder="Nome, código ou título" value="{{ busca }}">
             </div>
             <div class="col-md-3">
                 <label class="form-label small fw-semibold">Líder</label>
@@ -119,7 +134,7 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-md-3">
                 <label class="form-label small fw-semibold">Status Eficácia</label>
                 <select name="status" class="form-select form-select-sm">
                     <option value="">-- Todos --</option>
@@ -127,13 +142,64 @@
                     <option value="CARENCIA" {% if status_filtro == 'CARENCIA' %}selected{% endif %}>Carência (< 30 dias)</option>
                     <option value="EFICAZ" {% if status_filtro == 'EFICAZ' %}selected{% endif %}>Eficaz</option>
                     <option value="INEFICAZ" {% if status_filtro == 'INEFICAZ' %}selected{% endif %}>Ineficaz</option>
+                    <option value="NAO_APLICA" {% if status_filtro == 'NAO_APLICA' %}selected{% endif %}>Não se Aplica</option>
                 </select>
             </div>
+            
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold">Matriz de Procedimento</label>
+                <select name="matriz" class="form-select form-select-sm">
+                    <option value="">-- Todas --</option>
+                    {% for m in matrizes_opcoes %}
+                        <option value="{{ m.nome }}" {% if matriz_filtro == m.nome %}selected{% endif %}>{{ m.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold">Dias Decorridos</label>
+                <select name="dias_decorridos" class="form-select form-select-sm">
+                    <option value="">-- Todos --</option>
+                    <option value="menos_30" {% if dias_decorridos_filtro == 'menos_30' %}selected{% endif %}>Carência (< 30 dias)</option>
+                    <option value="30_60" {% if dias_decorridos_filtro == '30_60' %}selected{% endif %}>30 a 60 dias</option>
+                    <option value="60_90" {% if dias_decorridos_filtro == '60_90' %}selected{% endif %}>60 a 90 dias</option>
+                    <option value="90_mais" {% if dias_decorridos_filtro == '90_mais' %}selected{% endif %}>Mais de 90 dias</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold">Vínculo ao Perfil</label>
+                <select name="vinculo" class="form-select form-select-sm">
+                    <option value="">-- Todos --</option>
+                    <option value="COM_VINCULO" {% if vinculo_filtro == 'COM_VINCULO' %}selected{% endif %}>Com Vínculo ao Perfil</option>
+                    <option value="SEM_VINCULO" {% if vinculo_filtro == 'SEM_VINCULO' %}selected{% endif %}>Sem Vínculo ao Perfil</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold">Treinamento Posterior</label>
+                <select name="posterior" class="form-select form-select-sm">
+                    <option value="">-- Todos --</option>
+                    <option value="COM_POSTERIOR" {% if posterior_filtro == 'COM_POSTERIOR' %}selected{% endif %}>Com novo treinamento em aberto</option>
+                    <option value="SEM_POSTERIOR" {% if posterior_filtro == 'SEM_POSTERIOR' %}selected{% endif %}>Sem novo treinamento em aberto</option>
+                </select>
+            </div>
+
             <div class="col-12 d-flex justify-content-end gap-2 mt-3">
                 <button type="submit" class="btn btn-primary btn-sm px-4"><i class="bi bi-search"></i> Filtrar</button>
                 <a href="{% url 'procedures:avaliacao_eficacia_list' %}" class="btn btn-outline-secondary btn-sm px-3">Limpar Filtros</a>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Painel de Ações em Massa -->
+<div id="bulk-action-bar" class="alert alert-primary py-2 px-3 mb-3 d-none align-items-center justify-content-between shadow-sm animate__animated animate__fadeIn">
+    <div class="small">
+        <i class="bi bi-info-circle-fill me-2"></i>
+        <span id="bulk-selected-count" class="fw-bold text-primary">0</span> colaborador(es) selecionado(es) para avaliação de eficácia em massa.
+    </div>
+    <div>
+        <button type="button" class="btn btn-primary btn-sm px-3" id="btn-avaliar-massa" data-bs-toggle="modal" data-bs-target="#avaliacaoMassaModal">
+            <i class="bi bi-clipboard-check"></i> Avaliar Selecionados
+        </button>
     </div>
 </div>
 
@@ -147,8 +213,11 @@
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light text-secondary small text-uppercase">
                 <tr>
-                    <th style="min-width: 200px;">Colaborador</th>
-                    <th style="min-width: 150px;">Líder</th>
+                    <th style="width: 40px;" class="text-center">
+                        <input type="checkbox" id="check-all-massa" class="form-check-input">
+                    </th>
+                    <th style="min-width: 180px;">Colaborador</th>
+                    <th style="min-width: 130px;">Líder</th>
                     <th>Setor</th>
                     <th style="min-width: 220px;">Procedimento Crítico</th>
                     <th class="text-center">Data Treinamento</th>
@@ -161,14 +230,33 @@
             <tbody>
                 {% for t in page_obj.object_list %}
                 <tr>
+                    <td class="text-center">
+                        {% if t.status_display != 'Carência' %}
+                            <input type="checkbox" name="treinamento_ids" value="{{ t.id }}" class="form-check-input check-treinamento-massa" data-colab="{{ t.colaborador.nome_completo }}" data-proc="{{ t.procedimento.codigo }}">
+                        {% else %}
+                            <input type="checkbox" class="form-check-input" disabled title="Elegível apenas após período de carência (30 dias)">
+                        {% endif %}
+                    </td>
                     <td>
                         <div class="fw-semibold text-dark">{{ t.colaborador.nome_completo }}</div>
-                        <span class="text-muted small">Matrícula: {{ t.colaborador.matricula|default:"-" }}</span>
+                        <div class="d-flex align-items-center gap-1 mt-0.5">
+                            <span class="text-muted small">Matrícula: {{ t.colaborador.matricula|default:"-" }}</span>
+                            {% if t.tem_vinculo_perfil %}
+                                <span class="badge bg-success-light text-success border border-success-subtle" style="font-size: 0.65rem;" title="Necessário para o perfil de cargo do colaborador"><i class="bi bi-link-45deg"></i> Perfil</span>
+                            {% else %}
+                                <span class="badge bg-secondary-light text-secondary border border-secondary-subtle" style="font-size: 0.65rem;" title="Não exigido no perfil de cargo atual"><i class="bi bi-link-45deg"></i> Fora Perfil</span>
+                            {% endif %}
+                        </div>
                     </td>
                     <td class="small">{{ t.colaborador.lider.nome_completo|default:"-" }}</td>
                     <td class="small">{{ t.colaborador.setor.nome|default:"-" }}</td>
                     <td>
-                        <div class="fw-semibold text-danger small"><i class="bi bi-exclamation-octagon-fill text-danger me-1"></i>{{ t.procedimento.codigo }}</div>
+                        <div class="fw-semibold text-danger small d-inline-flex align-items-center">
+                            <i class="bi bi-exclamation-octagon-fill text-danger me-1"></i>{{ t.procedimento.codigo }}
+                            {% if t.has_posterior_pending %}
+                                <span class="badge bg-warning text-dark ms-1 d-inline-flex align-items-center" style="font-size: 0.65rem;" title="Existe outro treinamento posterior a este com avaliação em aberto."><i class="bi bi-arrow-repeat me-1"></i> Nova Versão Pendente</span>
+                            {% endif %}
+                        </div>
                         <div class="text-muted small text-truncate" style="max-width: 250px;" title="{{ t.procedimento.nome }}">{{ t.procedimento.nome }}</div>
                     </td>
                     <td class="text-center small">{{ t.data_treinamento|date:"d/m/Y" }}</td>
@@ -203,7 +291,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="9" class="text-center py-4 text-muted">
+                    <td colspan="10" class="text-center py-4 text-muted">
                         <i class="bi bi-inbox fs-2 d-block mb-2"></i>
                         Nenhum registro de treinamento crítico encontrado para autoavaliação.
                     </td>
@@ -247,7 +335,7 @@
     {% endif %}
 </div>
 
-<!-- Modal para Registro da Avaliação -->
+<!-- Modal para Registro da Avaliação Individual -->
 <div class="modal fade" id="avaliacaoModal" tabindex="-1" aria-labelledby="avaliacaoModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -267,9 +355,10 @@
                     
                     <div class="mb-3">
                         <label class="form-label small fw-semibold">Resultado da Avaliação</label>
-                        <select name="status" id="modal-field-status" class="form-select" required>
+                        <select name="status" id="modal-field-status" class="form-select status-select-check" required>
                             <option value="EFICAZ">Eficaz (Colaborador apto e demonstrando eficácia)</option>
                             <option value="INEFICAZ">Ineficaz (Necessário reciclagem / novo treinamento)</option>
+                            <option value="NAO_APLICA">Não se Aplica (Exige justificativa obrigatória)</option>
                         </select>
                     </div>
 
@@ -279,8 +368,8 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label small fw-semibold">Observações / Evidências da Eficácia</label>
-                        <textarea name="resultado_avaliacao" id="modal-field-obs" class="form-control" rows="4" placeholder="Descreva os pontos avaliados, comportamentos observados, perguntas feitas pelo líder e evidências de que o colaborador absorveu o treinamento crítico..." required></textarea>
+                        <label class="form-label small fw-semibold" id="modal-label-obs">Observações / Evidências da Eficácia</label>
+                        <textarea name="resultado_avaliacao" id="modal-field-obs" class="form-control field-obs-check" rows="4" placeholder="Descreva os pontos avaliados, comportamentos observados e evidências..." required></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -292,29 +381,59 @@
     </div>
 </div>
 
-<!-- Custom CSS para os Cards de Indicadores -->
+<!-- Modal para Registro da Avaliação em Massa -->
+<div class="modal fade" id="avaliacaoMassaModal" tabindex="-1" aria-labelledby="avaliacaoMassaModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="form-avaliacao-massa" action="{% url 'procedures:avaliacao_eficacia_registrar_massa' %}">
+                {% csrf_token %}
+                <div id="hidden-inputs-container"></div>
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="avaliacaoMassaModalLabel"><i class="bi bi-clipboard-check-fill"></i> Registrar Avaliação em Massa</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3 bg-light p-3 rounded small border">
+                        <div class="fw-bold mb-2">Colaboradores Selecionados:</div>
+                        <ul class="mb-0 ps-3 text-secondary" id="massa-selected-list" style="max-height: 120px; overflow-y: auto;"></ul>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Resultado da Avaliação</label>
+                        <select name="status" id="massa-field-status" class="form-select status-select-check" required>
+                            <option value="EFICAZ">Eficaz (Todos aptos e demonstrando eficácia)</option>
+                            <option value="INEFICAZ">Ineficaz (Todos necessitando reciclagem)</option>
+                            <option value="NAO_APLICA">Não se Aplica (Exige justificativa obrigatória)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Data da Avaliação</label>
+                        <input type="date" name="data_avaliacao" id="massa-field-data-avaliacao" class="form-control" value="{{ today|date:'Y-m-d' }}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold" id="massa-label-obs">Observações / Justificativa</label>
+                        <textarea name="resultado_avaliacao" id="massa-field-obs" class="form-control field-obs-check" rows="4" placeholder="Descreva a justificativa para todos os colaboradores selecionados..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
+                    <button type="submit" class="btn btn-success btn-sm"><i class="bi bi-save"></i> Salvar Avaliação em Massa</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Custom CSS -->
 <style>
-    .col-md-2-4 {
-        flex: 0 0 20%;
-        max-width: 20%;
-    }
-    @media (max-width: 992px) {
-        .col-md-2-4 {
-            flex: 0 0 50%;
-            max-width: 50%;
-        }
-    }
-    @media (max-width: 576px) {
-        .col-md-2-4 {
-            flex: 0 0 100%;
-            max-width: 100%;
-        }
-    }
-    .bg-primary-light { background-color: rgba(13, 110, 253, 0.1); }
-    .bg-warning-light { background-color: rgba(255, 193, 7, 0.1); }
-    .bg-info-light { background-color: rgba(13, 202, 240, 0.1); }
-    .bg-success-light { background-color: rgba(25, 135, 84, 0.1); }
-    .bg-danger-light { background-color: rgba(220, 53, 69, 0.1); }
+    .bg-primary-light { background-color: rgba(13, 110, 253, 0.08); }
+    .bg-warning-light { background-color: rgba(255, 193, 7, 0.08); }
+    .bg-info-light { background-color: rgba(13, 202, 240, 0.08); }
+    .bg-success-light { background-color: rgba(25, 135, 84, 0.08); }
+    .bg-danger-light { background-color: rgba(220, 53, 69, 0.08); }
+    .bg-secondary-light { background-color: rgba(108, 117, 125, 0.08); }
     .btn-xs {
         padding: .25rem .4rem;
         font-size: .75rem;
@@ -322,17 +441,16 @@
     }
 </style>
 
-<!-- Script para carregar dados no Modal -->
+<!-- Script para gerenciamento e modais -->
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Individual modal data mapping
         const modal = document.getElementById('avaliacaoModal');
         const form = document.getElementById('form-avaliacao');
-        
         const modalColaborador = document.getElementById('modal-colaborador');
         const modalLider = document.getElementById('modal-lider');
         const modalProcedimento = document.getElementById('modal-procedimento');
         const modalDataTreinamento = document.getElementById('modal-data-treinamento');
-        
         const fieldStatus = document.getElementById('modal-field-status');
         const fieldData = document.getElementById('modal-field-data-avaliacao');
         const fieldObs = document.getElementById('modal-field-obs');
@@ -348,21 +466,117 @@
                 const dataAvaliacao = this.getAttribute('data-data-avaliacao');
                 const obs = this.getAttribute('data-obs');
 
-                // Atualizar action do form com o ID do treinamento
                 form.action = `/procedures/treinamentos/avaliacao-eficacia/${id}/registrar/`;
 
-                // Preencher informações de leitura
                 modalColaborador.textContent = colab;
                 modalLider.textContent = lider;
                 modalProcedimento.textContent = proc;
                 modalDataTreinamento.textContent = dateTreino;
 
-                // Preencher campos do form
                 fieldStatus.value = (status === 'PENDENTE' || !status) ? 'EFICAZ' : status;
                 fieldData.value = dataAvaliacao;
                 fieldObs.value = obs;
+                
+                triggerObsValidation(fieldStatus, fieldObs, 'modal-label-obs');
             });
         });
+
+        // Efficacy Status dynamic placeholder and label updating (obligatory justification if N/A)
+        function triggerObsValidation(selectEl, textEl, labelId) {
+            const labelEl = document.getElementById(labelId);
+            if (selectEl.value === 'NAO_APLICA') {
+                labelEl.innerHTML = 'Justificativa da Inaplicabilidade <span class="text-danger">*</span>';
+                textEl.placeholder = 'A justificativa é obrigatória para explicar o motivo pelo qual este treinamento não se aplica...';
+                textEl.setAttribute('required', 'required');
+            } else {
+                labelEl.innerHTML = 'Observações / Evidências da Eficácia';
+                textEl.placeholder = 'Descreva os pontos avaliados e evidências...';
+                textEl.removeAttribute('required');
+            }
+        }
+
+        document.querySelectorAll('.status-select-check').forEach(select => {
+            select.addEventListener('change', function() {
+                const textEl = this.closest('form').querySelector('.field-obs-check');
+                const labelId = this.id.includes('massa') ? 'massa-label-obs' : 'modal-label-obs';
+                triggerObsValidation(this, textEl, labelId);
+            });
+        });
+
+        // Bulk / Mass evaluation checkboxes logic
+        const checkAll = document.getElementById('check-all-massa');
+        const checkboxes = document.querySelectorAll('.check-treinamento-massa');
+        const bulkBar = document.getElementById('bulk-action-bar');
+        const bulkCount = document.getElementById('bulk-selected-count');
+        const hiddenContainer = document.getElementById('hidden-inputs-container');
+        const massaList = document.getElementById('massa-selected-list');
+
+        function updateBulkBar() {
+            const checked = document.querySelectorAll('.check-treinamento-massa:checked');
+            if (checked.length > 0) {
+                bulkBar.classList.remove('d-none');
+                bulkBar.classList.add('d-flex');
+                bulkCount.textContent = checked.length;
+            } else {
+                bulkBar.classList.add('d-none');
+                bulkBar.classList.remove('d-flex');
+            }
+        }
+
+        if (checkAll) {
+            checkAll.addEventListener('change', function() {
+                checkboxes.forEach(cb => {
+                    if (!cb.disabled) {
+                        cb.checked = this.checked;
+                    }
+                });
+                updateBulkBar();
+            });
+        }
+
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', function() {
+                updateBulkBar();
+                if (!this.checked && checkAll) {
+                    checkAll.checked = false;
+                }
+            });
+        });
+
+        // Prepare mass evaluation modal
+        const btnMassa = document.getElementById('btn-avaliar-massa');
+        if (btnMassa) {
+            btnMassa.addEventListener('click', function() {
+                hiddenContainer.innerHTML = '';
+                massaList.innerHTML = '';
+                
+                const checked = document.querySelectorAll('.check-treinamento-massa:checked');
+                checked.forEach(cb => {
+                    const id = cb.value;
+                    const colabName = cb.getAttribute('data-colab');
+                    const procCode = cb.getAttribute('data-proc');
+
+                    // Add hidden inputs to form
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'treinamento_ids';
+                    input.value = id;
+                    hiddenContainer.appendChild(input);
+
+                    // Add to visible review list
+                    const li = document.createElement('li');
+                    li.innerHTML = `<strong>${colabName}</strong> - ${procCode}`;
+                    massaList.appendChild(li);
+                });
+                
+                // Reset mass validation states
+                triggerObsValidation(
+                    document.getElementById('massa-field-status'),
+                    document.getElementById('massa-field-obs'),
+                    'massa-label-obs'
+                );
+            });
+        }
     });
 </script>
 {% endblock %}

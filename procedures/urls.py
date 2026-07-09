@@ -50,6 +50,7 @@ urlpatterns = [
     path('treinamentos/exportar-excel/', views.treinamentos_exportar_excel_view, name='treinamentos_exportar_excel'),
     path('treinamentos/avaliacao-eficacia/', views.avaliacao_eficacia_list_view, name='avaliacao_eficacia_list'),
     path('treinamentos/avaliacao-eficacia/<int:treinamento_id>/registrar/', views.avaliacao_eficacia_registrar_view, name='avaliacao_eficacia_registrar'),
+    path('treinamentos/avaliacao-eficacia/registrar-massa/', views.avaliacao_eficacia_registrar_massa_view, name='avaliacao_eficacia_registrar_massa'),
     path('treinamentos/<int:treinamento_id>/', views.treinamentos_detalhe_view, name='treinamentos_detalhe'),
     path('treinamentos/novo/', views.novo_treinamento_view, name='novo_treinamento'),
     path('treinamentos/<int:treinamento_id>/editar/', views.editar_treinamento_view, name='editar_treinamento'),

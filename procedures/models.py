@@ -447,6 +447,7 @@ class RegistroTreinamento(models.Model):
             ('PENDENTE', 'Pendente'),
             ('EFICAZ', 'Eficaz'),
             ('INEFICAZ', 'Ineficaz'),
+            ('NAO_APLICA', 'Não se Aplica'),
         ],
         null=True, blank=True,
         verbose_name="Status da Avaliação de Eficácia",
