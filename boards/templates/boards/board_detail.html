@@ -1979,16 +1979,69 @@
             renderCardLinks();
             
             const respSelect = document.getElementById('cardDetailResp');
-            Array.from(respSelect.options).forEach(option => {
-                option.selected = card.responsaveis_ids.includes(parseInt(option.value));
-            });
+            
+            // Lazy-init: se detailCardCollaborators não foi populado (ex: erro no DOMContentLoaded),
+            // inicializa agora a partir das opções do select oculto
+            if (!detailCardSelect) {
+                detailCardSelect = respSelect;
+            }
+            if (detailCardCollaborators.length === 0 && respSelect && respSelect.options.length > 0) {
+                Array.from(respSelect.options).forEach(opt => {
+                    detailCardCollaborators.push({
+                        id: parseInt(opt.value),
+                        name: opt.text.trim(),
+                        selected: false
+                    });
+                });
+            }
+            
+            // Se ainda vazio e a API retornou responsáveis, popula a partir dos dados da API
+            if (detailCardCollaborators.length === 0 && card.responsaveis && card.responsaveis.length > 0) {
+                card.responsaveis.forEach(r => {
+                    detailCardCollaborators.push({
+                        id: r.id,
+                        name: r.nome,
+                        selected: true
+                    });
+                });
+            }
+            
+            if (respSelect) {
+                Array.from(respSelect.options).forEach(option => {
+                    option.selected = card.responsaveis_ids.includes(parseInt(option.value));
+                });
+            }
             
             // Sync custom autocomplete selection UI
-            if (typeof detailCardCollaborators !== 'undefined' && detailCardCollaborators.length > 0) {
+            if (detailCardCollaborators.length > 0) {
                 detailCardCollaborators.forEach(colab => {
                     colab.selected = card.responsaveis_ids.includes(colab.id);
                 });
                 updateDetailCardDisplay();
+            } else if (card.responsaveis && card.responsaveis.length > 0) {
+                // Fallback final: renderiza diretamente a partir da resposta da API
+                const selectedContainer = document.getElementById('detailCardSelectedMembersContainer');
+                const noMembersText = document.getElementById('detailCardNoMembersText');
+                if (selectedContainer && noMembersText) {
+                    const existingTags = selectedContainer.querySelectorAll('.selected-member-tag');
+                    existingTags.forEach(el => el.remove());
+                    noMembersText.style.display = 'none';
+                    card.responsaveis.forEach(resp => {
+                        const initials = getConfigInitials(resp.nome);
+                        const cleanName = resp.nome.replace(/\(\d+\)/g, '').trim();
+                        const tag = document.createElement('div');
+                        tag.className = 'badge bg-white text-dark border p-2 d-inline-flex align-items-center gap-2 shadow-sm rounded-pill selected-member-tag';
+                        tag.style.fontWeight = '500';
+                        tag.style.fontSize = '0.85rem';
+                        tag.innerHTML = `
+                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 24px; height: 24px; font-size: 0.7rem; font-weight: 600;">
+                                ${initials}
+                            </div>
+                            <span>${cleanName}</span>
+                        `;
+                        selectedContainer.appendChild(tag);
+                    });
+                }
             }
             
             // Populate and select sub-section dropdown
@@ -2689,6 +2742,7 @@
     // ============================================
     document.addEventListener('DOMContentLoaded', () => {
         // Grafico de carga de trabalho (Membros da equipe)
+        try {
         const ctxWorkload = document.getElementById('workloadChart');
         if (ctxWorkload) {
             workloadChartInstance = new Chart(ctxWorkload, {
@@ -2745,6 +2799,9 @@
                     }
                 }
             });
+        }
+        } catch (chartError) {
+            console.warn('Erro ao inicializar gráficos (não impede o funcionamento):', chartError);
         }
         
         // Forçar redimensionamento dos gráficos quando a aba "Métricas da Equipe" for exibida

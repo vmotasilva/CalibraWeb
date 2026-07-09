@@ -839,6 +839,7 @@ def api_card_detail_view(request, card_id):
             'link_anexo': card.link_anexo or '',
             'responsaveis_ids': list(card.responsaveis.values_list('id', flat=True)),
             'responsaveis_nomes': ", ".join([r.nome_completo for r in card.responsaveis.all()]) or 'Não atribuído',
+            'responsaveis': [{'id': r.id, 'nome': r.nome_completo} for r in card.responsaveis.all()],
             'prioridade': card.prioridade,
             'prioridade_label': card.get_prioridade_display(),
             'periodicidade': card.periodicidade,
