@@ -1661,6 +1661,78 @@
     // Global variables for Detail/Edit Task Modal members selection
     let detailCardSelect = null;
     let detailCardCollaborators = [];
+    let detailCardSearchInitialized = false;
+    
+    // Função reutilizável para inicializar a busca de responsáveis no modal de detalhes.
+    // Pode ser chamada tanto do DOMContentLoaded quanto do openCardModal (lazy-init).
+    function initDetailCardSearch() {
+        if (detailCardSearchInitialized) return;
+        const searchInput = document.getElementById('detailCardMemberSearchInput');
+        const suggestionsContainer = document.getElementById('detailCardSearchSuggestions');
+        if (!searchInput || !suggestionsContainer) return;
+        
+        searchInput.addEventListener('input', function() {
+            const query = searchInput.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            suggestionsContainer.innerHTML = '';
+            
+            if (!query) {
+                suggestionsContainer.style.display = 'none';
+                return;
+            }
+
+            const filtered = detailCardCollaborators.filter(colab => {
+                const normalizedName = colab.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                return !colab.selected && normalizedName.includes(query);
+            });
+
+            if (filtered.length === 0) {
+                suggestionsContainer.innerHTML = '<div class="list-group-item text-muted small">Nenhum colaborador encontrado</div>';
+                suggestionsContainer.style.display = 'block';
+                return;
+            }
+
+            filtered.forEach(colab => {
+                const cleanName = colab.name.replace(/\(\d+\)/g, '').trim();
+                const initials = getConfigInitials(colab.name);
+                const item = document.createElement('a');
+                item.href = '#';
+                item.className = 'list-group-item list-group-item-action d-flex align-items-center justify-content-between p-2 py-2';
+                item.innerHTML = `
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2" style="width: 30px; height: 30px; font-size: 0.8rem; font-weight: 600;">
+                            ${initials}
+                        </div>
+                        <div>
+                            <span class="fw-semibold small text-dark">${cleanName}</span>
+                        </div>
+                    </div>
+                    <span class="badge bg-light text-primary border border-primary-subtle rounded-pill">Adicionar</span>
+                `;
+                
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    colab.selected = true;
+                    searchInput.value = '';
+                    suggestionsContainer.style.display = 'none';
+                    updateDetailCardDisplay();
+                    searchInput.focus();
+                    saveCardResponsiblesSilently();
+                });
+                
+                suggestionsContainer.appendChild(item);
+            });
+
+            suggestionsContainer.style.display = 'block';
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!searchInput.contains(e.target) && !suggestionsContainer.contains(e.target)) {
+                suggestionsContainer.style.display = 'none';
+            }
+        });
+        
+        detailCardSearchInitialized = true;
+    }
     
     function updateDetailCardDisplay() {
         if (!detailCardSelect) return;
@@ -2043,6 +2115,9 @@
                     });
                 }
             }
+            
+            // Garante que o listener de busca de responsáveis está ativo
+            initDetailCardSearch();
             
             // Populate and select sub-section dropdown
             const subSelect = document.getElementById('cardDetailSubsecao');
@@ -2815,6 +2890,7 @@
         // ============================================
         // ADD CARD MEMBERS SELECT
         // ============================================
+        try {
         addCardSelect = document.querySelector('#addCardForm select[name="responsaveis"]');
         if (addCardSelect) {
             addCardCollaborators = [];
@@ -2892,10 +2968,14 @@
             
             updateAddCardDisplay();
         }
+        } catch (addCardError) {
+            console.warn('Erro ao inicializar seleção de membros (adicionar cartão):', addCardError);
+        }
 
         // ============================================
         // DETAIL CARD MEMBERS SELECT
         // ============================================
+        try {
         detailCardSelect = document.getElementById('cardDetailResp');
         if (detailCardSelect) {
             detailCardCollaborators = [];
@@ -2907,72 +2987,12 @@
                 });
             });
             
-            const detailCardSearchInput = document.getElementById('detailCardMemberSearchInput');
-            const detailCardSuggestionsContainer = document.getElementById('detailCardSearchSuggestions');
-            
-            if (detailCardSearchInput && detailCardSuggestionsContainer) {
-                detailCardSearchInput.addEventListener('input', function() {
-                    const query = detailCardSearchInput.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                    detailCardSuggestionsContainer.innerHTML = '';
-                    
-                    if (!query) {
-                        detailCardSuggestionsContainer.style.display = 'none';
-                        return;
-                    }
-
-                    const filtered = detailCardCollaborators.filter(colab => {
-                        const normalizedName = colab.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                        return !colab.selected && normalizedName.includes(query);
-                    });
-
-                    if (filtered.length === 0) {
-                        detailCardSuggestionsContainer.innerHTML = '<div class="list-group-item text-muted small">Nenhum colaborador encontrado</div>';
-                        detailCardSuggestionsContainer.style.display = 'block';
-                        return;
-                    }
-
-                    filtered.forEach(colab => {
-                        const cleanName = colab.name.replace(/\(\d+\)/g, '').trim();
-                        const initials = getConfigInitials(colab.name);
-                        const item = document.createElement('a');
-                        item.href = '#';
-                        item.className = 'list-group-item list-group-item-action d-flex align-items-center justify-content-between p-2 py-2';
-                        item.innerHTML = `
-                            <div class="d-flex align-items-center">
-                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2" style="width: 30px; height: 30px; font-size: 0.8rem; font-weight: 600;">
-                                    ${initials}
-                                </div>
-                                <div>
-                                    <span class="fw-semibold small text-dark">${cleanName}</span>
-                                </div>
-                            </div>
-                            <span class="badge bg-light text-primary border border-primary-subtle rounded-pill">Adicionar</span>
-                        `;
-                        
-                        item.addEventListener('click', function(e) {
-                            e.preventDefault();
-                            colab.selected = true;
-                            detailCardSearchInput.value = '';
-                            detailCardSuggestionsContainer.style.display = 'none';
-                            updateDetailCardDisplay();
-                            detailCardSearchInput.focus();
-                            saveCardResponsiblesSilently();
-                        });
-                        
-                        detailCardSuggestionsContainer.appendChild(item);
-                    });
-
-                    detailCardSuggestionsContainer.style.display = 'block';
-                });
-
-                document.addEventListener('click', function(e) {
-                    if (!detailCardSearchInput.contains(e.target) && !detailCardSuggestionsContainer.contains(e.target)) {
-                        detailCardSuggestionsContainer.style.display = 'none';
-                    }
-                });
-            }
+            initDetailCardSearch();
             
             updateDetailCardDisplay();
+        }
+        } catch (detailCardError) {
+            console.warn('Erro ao inicializar seleção de membros (detalhes cartão):', detailCardError);
         }
 
         // Event listener for detail modal column select to sync sub-sections
