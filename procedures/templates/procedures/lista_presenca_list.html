@@ -170,12 +170,16 @@
 
                                 <!-- Título -->
                                 <td>
-                                    <strong>{{ lista.procedimento.titulo }}</strong>
-                                {% if lista.procedimento.revision %}
-                                    <br>
-                                    <small class="text-muted">Rev: {{ lista.procedimento.revision }}</small>
-                                {% endif %}
-                            </td>
+                                    <strong>{{ lista.titulo }}</strong>
+                                    {% if lista.procedimentos_lista %}
+                                        <br>
+                                        <span class="text-muted small">
+                                            {% for proc in lista.procedimentos_lista %}
+                                                <span class="badge bg-secondary" title="{{ proc.nome }}">{{ proc.codigo }}</span>{% if not forloop.last %} {% endif %}
+                                            {% endfor %}
+                                        </span>
+                                    {% endif %}
+                                </td>
 
                             <!-- Local -->
                             <td>

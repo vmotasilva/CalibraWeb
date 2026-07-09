@@ -75,6 +75,15 @@ def lista_presenca_list_view(request):
         # Contar procedimentos (pode haver registros sem procedimento)
         lista.total_procedimentos = registros.filter(procedimento__isnull=False).values('procedimento').distinct().count()
         lista.total_registros = registros.count()
+        
+        # Obter procedimentos únicos
+        procs_set = set()
+        procs = []
+        for reg in registros.select_related('procedimento'):
+            if reg.procedimento and reg.procedimento not in procs_set:
+                procs_set.add(reg.procedimento)
+                procs.append(reg.procedimento)
+        lista.procedimentos_lista = procs
     
     # Buscar instrutores para o filtro
     instrutores = Colaborador.objects.filter(
