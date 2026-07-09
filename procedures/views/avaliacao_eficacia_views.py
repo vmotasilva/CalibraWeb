@@ -142,6 +142,7 @@ def avaliacao_eficacia_list_view(request):
         procedimento__criticidade='CRITICO',
         data_treinamento__isnull=False,
         ativo=True,
+        colaborador__is_active=True,
     ))
 
     # Group by (colaborador_id, procedimento_id)
@@ -396,3 +397,240 @@ def avaliacao_eficacia_registrar_massa_view(request):
 
     messages.success(request, f"Avaliação em massa concluída! {count} treinamento(s) atualizado(s) com sucesso.")
     return redirect("procedures:avaliacao_eficacia_list")
+
+
+@login_required
+def avaliacao_eficacia_export_excel_view(request):
+    """
+    Exporta em Excel as avaliações de eficácia dos colaboradores ativos de acordo com os filtros aplicados.
+    """
+    # Mesma query base
+    qs = RegistroTreinamento.objects.select_related(
+        'colaborador', 'procedimento', 'colaborador__setor', 'colaborador__lider'
+    ).filter(
+        colaborador__isnull=False,
+        procedimento__isnull=False,
+        procedimento__criticidade='CRITICO',
+        data_treinamento__isnull=False,
+        ativo=True,
+        colaborador__is_active=True,
+        colaborador__afastado=False,
+        colaborador__em_ferias=False,
+    )
+
+    # Parâmetros de filtro
+    busca = (request.GET.get('q') or '').strip()
+    status_filtro = (request.GET.get('status') or '').strip()
+    lider_id = (request.GET.get('lider') or '').strip()
+    setor_id = (request.GET.get('setor') or '').strip()
+    dias_decorridos_filtro = (request.GET.get('dias_decorridos') or '').strip()
+    vinculo_filtro = (request.GET.get('vinculo') or '').strip()
+    posterior_filtro = (request.GET.get('posterior') or '').strip()
+    matriz_filtro = (request.GET.get('matriz') or '').strip()
+
+    today = date.today()
+    carencia_date = today - timedelta(days=30)
+
+    # Aplicar filtros
+    if busca:
+        qs = qs.filter(
+            Q(colaborador__nome_completo__icontains=busca) |
+            Q(procedimento__codigo__icontains=busca) |
+            Q(procedimento__nome__icontains=busca)
+        )
+    if lider_id:
+        qs = qs.filter(colaborador__lider_id=lider_id)
+    if setor_id:
+        qs = qs.filter(colaborador__setor_id=setor_id)
+    if matriz_filtro:
+        qs = qs.filter(procedimento__matriz__iexact=matriz_filtro)
+
+    if dias_decorridos_filtro:
+        if dias_decorridos_filtro == 'menos_30':
+            qs = qs.filter(data_treinamento__gt=carencia_date)
+        elif dias_decorridos_filtro == '30_60':
+            qs = qs.filter(data_treinamento__lte=carencia_date, data_treinamento__gte=today - timedelta(days=60))
+        elif dias_decorridos_filtro == '60_90':
+            qs = qs.filter(data_treinamento__lt=today - timedelta(days=60), data_treinamento__gte=today - timedelta(days=90))
+        elif dias_decorridos_filtro == '90_mais':
+            qs = qs.filter(data_treinamento__lt=today - timedelta(days=90))
+
+    if status_filtro:
+        if status_filtro == 'EFICAZ':
+            qs = qs.filter(avaliacao_eficacia_status='EFICAZ')
+        elif status_filtro == 'INEFICAZ':
+            qs = qs.filter(avaliacao_eficacia_status='INEFICAZ')
+        elif status_filtro == 'NAO_APLICA':
+            qs = qs.filter(avaliacao_eficacia_status='NAO_APLICA')
+        elif status_filtro == 'CARENCIA':
+            qs = qs.filter(
+                Q(avaliacao_eficacia_status='PENDENTE') | Q(avaliacao_eficacia_status__isnull=True),
+                data_treinamento__gt=carencia_date
+            )
+        elif status_filtro == 'PENDENTE':
+            qs = qs.filter(
+                Q(avaliacao_eficacia_status='PENDENTE') | Q(avaliacao_eficacia_status__isnull=True),
+                data_treinamento__lte=carencia_date
+            )
+
+    qs = qs.order_by('-data_treinamento', 'colaborador__nome_completo')
+    registros_list = list(qs)
+
+    # Vínculo ao perfil
+    if vinculo_filtro:
+        colab_ids = {t.colaborador_id for t in registros_list}
+        perfis_colabs = ColaboradorPerfil.objects.filter(
+            colaborador_id__in=colab_ids,
+            ativo=True
+        ).select_related('perfil').prefetch_related('perfil__grupos__subgrupos__procedimentos')
+        
+        colab_to_procs = defaultdict(set)
+        for cp in perfis_colabs:
+            for g in cp.perfil.grupos.all():
+                for sg in g.subgrupos.all():
+                    for proc in sg.procedimentos.all():
+                        colab_to_procs[cp.colaborador_id].add(proc.id)
+                        
+        for t in registros_list:
+            t.tem_vinculo_perfil = t.procedimento_id in colab_to_procs[t.colaborador_id]
+            
+        if vinculo_filtro == 'COM_VINCULO':
+            registros_list = [t for t in registros_list if t.tem_vinculo_perfil]
+        elif vinculo_filtro == 'SEM_VINCULO':
+            registros_list = [t for t in registros_list if not t.tem_vinculo_perfil]
+
+    # Treinamento Posterior
+    if posterior_filtro or True:  # Sempre calcula para o excel
+        all_critical = list(RegistroTreinamento.objects.filter(
+            colaborador__isnull=False,
+            procedimento__isnull=False,
+            procedimento__criticidade='CRITICO',
+            data_treinamento__isnull=False,
+            ativo=True,
+            colaborador__is_active=True,
+        ))
+        grouped = defaultdict(list)
+        for t in all_critical:
+            grouped[(t.colaborador_id, t.procedimento_id)].append(t)
+        for key in grouped:
+            grouped[key].sort(key=lambda x: x.data_treinamento)
+        posterior_pending_ids = set()
+        for key, group in grouped.items():
+            n = len(group)
+            for i in range(n):
+                t = group[i]
+                has_posterior = False
+                for j in range(i + 1, n):
+                    post = group[j]
+                    if post.avaliacao_eficacia_status in ['PENDENTE', None, '']:
+                        has_posterior = True
+                        break
+                if has_posterior:
+                    posterior_pending_ids.add(t.id)
+
+        for t in registros_list:
+            t.has_posterior_pending = t.id in posterior_pending_ids
+
+        if posterior_filtro == 'COM_POSTERIOR':
+            registros_list = [t for t in registros_list if t.has_posterior_pending]
+        elif posterior_filtro == 'SEM_POSTERIOR':
+            registros_list = [t for t in registros_list if not t.has_posterior_pending]
+
+    # Agora construímos o arquivo Excel
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from django.http import HttpResponse
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Avaliacoes"
+
+    # Estilos
+    header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF", name="Arial", size=10)
+    data_font = Font(name="Arial", size=10)
+    
+    border_side = Side(style='thin', color='D9D9D9')
+    border = Border(left=border_side, right=border_side, top=border_side, bottom=border_side)
+    
+    align_center = Alignment(horizontal='center', vertical='center')
+    align_left = Alignment(horizontal='left', vertical='center')
+
+    headers = [
+        "Colaborador",
+        "Matrícula",
+        "Cargo",
+        "Setor",
+        "Líder",
+        "Matriz",
+        "Código Procedimento",
+        "Nome Procedimento",
+        "Data Treinamento",
+        "Status Eficácia",
+        "Data Avaliação",
+        "Justificativa / Evidências / Observações"
+    ]
+
+    for col_idx, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_idx, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = align_center
+        cell.border = border
+    ws.row_dimensions[1].height = 25
+
+    status_mapping = {
+        'EFICAZ': 'Eficaz',
+        'INEFICAZ': 'Ineficaz',
+        'NAO_APLICA': 'Não se Aplica',
+        'PENDENTE': 'Pendente',
+    }
+
+    for row_idx, t in enumerate(registros_list, 2):
+        # Determinar status para exportação
+        status_val = t.avaliacao_eficacia_status
+        if status_val in [None, '', 'PENDENTE']:
+            days_diff = (today - t.data_treinamento).days
+            status_text = 'Carência' if days_diff < 30 else 'Pendente'
+        else:
+            status_text = status_mapping.get(status_val, status_val)
+
+        row_data = [
+            t.colaborador.nome_completo,
+            t.colaborador.matricula,
+            t.colaborador.cargo or '-',
+            t.colaborador.setor.nome if t.colaborador.setor else '-',
+            t.colaborador.lider.nome_completo if t.colaborador.lider else '-',
+            t.procedimento.matriz or '-',
+            t.procedimento.codigo,
+            t.procedimento.nome,
+            t.data_treinamento.strftime('%d/%m/%Y') if t.data_treinamento else '-',
+            status_text,
+            t.avaliacao_eficacia_data.strftime('%d/%m/%Y') if t.avaliacao_eficacia_data else '-',
+            t.resultado_avaliacao or ''
+        ]
+
+        for col_idx, value in enumerate(row_data, 1):
+            cell = ws.cell(row=row_idx, column=col_idx, value=value)
+            cell.font = data_font
+            cell.border = border
+            
+            # Alinhamentos específicos
+            if col_idx in [2, 9, 10, 11]:
+                cell.alignment = align_center
+            else:
+                cell.alignment = align_left
+
+        ws.row_dimensions[row_idx].height = 20
+
+    # Auto-ajustar colunas
+    for col in ws.columns:
+        max_len = max(len(str(cell.value or '')) for cell in col)
+        col_letter = openpyxl.utils.get_column_letter(col[0].column)
+        ws.column_dimensions[col_letter].width = min(max(max_len + 3, 12), 50)
+
+    # Preparar Response
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="avaliacao_eficacia_{today.strftime("%Y%m%d")}.xlsx"'
+    wb.save(response)
+    return response

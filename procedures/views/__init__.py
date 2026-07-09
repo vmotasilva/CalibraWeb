@@ -106,10 +106,12 @@ from .avaliacao_eficacia_views import (
     avaliacao_eficacia_list_view,
     avaliacao_eficacia_registrar_view,
     avaliacao_eficacia_registrar_massa_view,
+    avaliacao_eficacia_export_excel_view,
 )
 
 __all__ += [
     'avaliacao_eficacia_list_view',
     'avaliacao_eficacia_registrar_view',
     'avaliacao_eficacia_registrar_massa_view',
+    'avaliacao_eficacia_export_excel_view',
 ]

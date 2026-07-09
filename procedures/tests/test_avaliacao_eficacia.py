@@ -194,3 +194,16 @@ class AvaliacaoEficaciaTestCase(TestCase):
         response = self.client.get(url, {'exibir': 'todos'})
         self.assertFalse(response.context['page_obj'].has_other_pages())
         self.assertEqual(len(response.context['page_obj'].object_list), 3)
+
+    def test_export_excel_success(self):
+        url = reverse('procedures:avaliacao_eficacia_export_excel')
+        
+        # Test default export
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        
+        # Test export with query filter (e.g. Matriz Produção -> should find only t2 and t3)
+        response = self.client.get(url, {'matriz': 'Matriz Produção'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
