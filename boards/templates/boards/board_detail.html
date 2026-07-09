@@ -2700,17 +2700,25 @@
                 planejamentos: getCardDetailPlanningData()
             })
         })
-        .then(res => res.json())
+        .then(async res => {
+            const isJson = res.headers.get('content-type')?.includes('application/json');
+            const data = isJson ? await res.json() : null;
+            if (!res.ok) {
+                const errorText = data?.error || (data ? JSON.stringify(data) : null) || (await res.text()).substring(0, 200);
+                throw new Error(errorText || `Status ${res.status}`);
+            }
+            return data;
+        })
         .then(data => {
-            if (data.success) {
+            if (data && data.success) {
                 location.reload();
             } else {
-                alert("Erro ao salvar: " + data.error);
+                alert("Erro ao salvar: " + (data ? data.error : "Resposta inválida"));
             }
         })
         .catch(err => {
             console.error("Erro na requisição:", err);
-            alert("Erro de conexão ao salvar.");
+            alert("Erro ao salvar: " + err.message);
         });
     });
 
@@ -3281,9 +3289,17 @@
             },
             body: JSON.stringify(payload)
         })
-        .then(res => res.json())
+        .then(async res => {
+            const isJson = res.headers.get('content-type')?.includes('application/json');
+            const data = isJson ? await res.json() : null;
+            if (!res.ok) {
+                const errorText = data?.error || (data ? JSON.stringify(data) : null) || (await res.text()).substring(0, 200);
+                throw new Error(errorText || `Status ${res.status}`);
+            }
+            return data;
+        })
         .then(data => {
-            if (data.success) {
+            if (data && data.success) {
                 const selectedColabs = detailCardCollaborators.filter(c => c.selected);
                 
                 // 1. Update Kanban card
@@ -3374,12 +3390,12 @@
                     }, 1500);
                 }
             } else {
-                alert("Erro ao salvar: " + data.error);
+                alert("Erro ao salvar: " + (data ? data.error : "Resposta inválida"));
             }
         })
         .catch(err => {
             console.error("Erro na requisição:", err);
-            alert("Erro de conexão ao salvar.");
+            alert("Erro ao salvar: " + err.message);
         });
     }
 
