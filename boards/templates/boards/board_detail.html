@@ -3361,15 +3361,19 @@
                 }
 
                 // 3. Update Calendar event
-                if (typeof CALENDAR_EVENTS !== 'undefined') {
-                    const responsaveisStr = selectedColabs.map(c => c.name).join(';') + (selectedColabs.length > 0 ? ';' : '');
-                    CALENDAR_EVENTS.forEach(ev => {
-                        if (ev.id == activeCardId || (ev.extendedProps && ev.extendedProps.real_card_id == activeCardId)) {
-                            if (ev.extendedProps) {
-                                ev.extendedProps.responsaveis = responsaveisStr;
+                try {
+                    if (typeof CALENDAR_EVENTS !== 'undefined' && CALENDAR_EVENTS) {
+                        const responsaveisStr = selectedColabs.map(c => c.name).join(';') + (selectedColabs.length > 0 ? ';' : '');
+                        CALENDAR_EVENTS.forEach(ev => {
+                            if (ev.id == activeCardId || (ev.extendedProps && ev.extendedProps.real_card_id == activeCardId)) {
+                                if (ev.extendedProps) {
+                                    ev.extendedProps.responsaveis = responsaveisStr;
+                                }
                             }
-                        }
-                    });
+                        });
+                    }
+                } catch (calErr) {
+                    console.warn("Erro ao atualizar evento no calendário:", calErr);
                 }
 
                 // 4. Update filters and metrics
@@ -3705,7 +3709,7 @@
     // ============================================
     // FULLCALENDAR INITIALIZATION & EVENTS
     // ============================================
-    const CALENDAR_EVENTS = [
+    var CALENDAR_EVENTS = [
         {% for col in colunas %}
             {% for card in col.cartoes_list %}
                 {% if card.planejamentos.all %}
