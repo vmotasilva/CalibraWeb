@@ -5,8 +5,108 @@
 {% block header_title %}{{ board.nome }}{% endblock %}
 
 {% block extra_css %}
-<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
 <style>
+    /* Custom Calendar Grid Styles */
+    .custom-calendar-header {
+        background-color: #f8f9fa;
+        padding: 12px 16px;
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
+    }
+    .custom-calendar-grid-header {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        text-align: center;
+        font-weight: 700;
+        background-color: #e9ecef;
+        padding: 10px 0;
+        border-radius: 8px 8px 0 0;
+        border: 1px solid #dee2e6;
+        border-bottom: none;
+    }
+    .custom-calendar-grid-header div {
+        color: #495057;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .custom-calendar-grid-body {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        border-left: 1px solid #dee2e6;
+        border-bottom: 1px solid #dee2e6;
+        border-radius: 0 0 8px 8px;
+        overflow: hidden;
+    }
+    .custom-calendar-day {
+        min-height: 110px;
+        background-color: #fff;
+        border-right: 1px solid #dee2e6;
+        border-top: 1px solid #dee2e6;
+        padding: 6px;
+        position: relative;
+        transition: background-color 0.15s ease-in-out;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    .custom-calendar-day:hover {
+        background-color: #f8f9fa;
+    }
+    .custom-calendar-day.other-month {
+        background-color: #f1f3f5;
+        color: #adb5bd;
+    }
+    .custom-calendar-day.today {
+        background-color: #e8f4fd;
+    }
+    .custom-calendar-day-number-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 600;
+        font-size: 0.85rem;
+        margin-bottom: 6px;
+        color: #333;
+    }
+    .custom-calendar-day.other-month .custom-calendar-day-number-row {
+        color: #adb5bd;
+    }
+    .custom-calendar-events-list {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        flex-grow: 1;
+        overflow-y: auto;
+        max-height: 75px;
+        padding-right: 2px;
+    }
+    .custom-calendar-event-item {
+        font-size: 0.7rem;
+        padding: 3px 6px;
+        border-radius: 4px;
+        color: #fff;
+        cursor: pointer;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        overflow: hidden;
+        font-weight: 500;
+        transition: transform 0.1s ease-in-out, filter 0.1s ease-in-out;
+        line-height: 1.2;
+    }
+    .custom-calendar-event-item:hover {
+        transform: translateY(-0.5px);
+        filter: brightness(0.92);
+    }
+    /* Agenda view */
+    .custom-calendar-agenda-item {
+        border-left: 4px solid #0d6efd;
+        transition: background-color 0.15s ease-in-out;
+    }
+    .custom-calendar-agenda-item:hover {
+        background-color: #f8f9fa !important;
+    }
+
     .kanban-container {
         display: flex;
         flex-direction: row;
@@ -744,24 +844,35 @@
         <!-- ABA 5: CALENDÁRIO VIEW -->
         <div class="tab-pane fade" id="calendar-view" role="tabpanel">
             <div class="card border-0 shadow-sm p-4" style="border-radius: 12px;">
-                <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-                    <div>
-                        <h5 class="fw-bold mb-0"><i class="bi bi-calendar3 text-primary me-2"></i>Calendário de Atividades</h5>
-                        <span class="text-muted small">Clique em uma atividade para ver detalhes.</span>
+                <!-- Cabeçalho do Calendário Customizado -->
+                <div class="custom-calendar-header d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <button class="btn btn-outline-secondary btn-sm px-2" id="customCalPrevBtn" title="Mês Anterior"><i class="bi bi-chevron-left"></i></button>
+                        <h5 class="fw-bold mb-0 text-dark" id="customCalTitle" style="min-width: 155px; text-align: center;">Mês Ano</h5>
+                        <button class="btn btn-outline-secondary btn-sm px-2" id="customCalNextBtn" title="Próximo Mês"><i class="bi bi-chevron-right"></i></button>
+                        <button class="btn btn-primary btn-sm px-3 ms-2" id="customCalTodayBtn">Hoje</button>
                     </div>
                     
-                    <!-- Filtro de Janela de Tempo do Calendário -->
-                    <div class="d-flex align-items-center gap-2 bg-light p-2 rounded border">
-                        <div class="form-check form-switch mb-0" title="Ativar/Desativar Janela de Tempo">
-                            <input class="form-check-input" type="checkbox" id="calTimeWindowToggle" onchange="updateCalendarTimeWindow()" checked>
-                            <label class="form-check-label text-muted small fw-bold" for="calTimeWindowToggle" style="user-select: none; cursor: pointer;">Janela de Tempo:</label>
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button class="btn btn-outline-secondary active" id="customCalViewMonthBtn">Mês</button>
+                            <button class="btn btn-outline-secondary" id="customCalViewAgendaBtn">Agenda</button>
                         </div>
-                        <input type="time" id="calMinTime" class="form-control form-control-sm" style="width: 90px;" value="06:00" onchange="updateCalendarTimeWindow()">
-                        <span class="text-muted small">até</span>
-                        <input type="time" id="calMaxTime" class="form-control form-control-sm" style="width: 90px;" value="20:00" onchange="updateCalendarTimeWindow()">
                     </div>
                 </div>
-                <div id="calendar" style="background-color: #fff;"></div>
+
+                <!-- Visão Grid Mensal -->
+                <div id="customCalMonthView">
+                    <div class="custom-calendar-grid-header">
+                        <div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div>
+                    </div>
+                    <div class="custom-calendar-grid-body" id="customCalGridBody"></div>
+                </div>
+
+                <!-- Visão Agenda Lista -->
+                <div id="customCalAgendaView" style="display: none;">
+                    <div class="list-group shadow-sm" id="customCalAgendaList" style="border-radius: 8px; overflow: hidden;"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -1266,8 +1377,7 @@
 {% block extra_js %}
 <!-- Chart.js para gráficos -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
-<!-- FullCalendar JS -->
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+
 
 <script>
     // ============================================
@@ -3852,111 +3962,241 @@
         return !isNaN(parsed);
     });
 
-    let fcCalendar = null;
-    document.addEventListener('DOMContentLoaded', function() {
-        const calendarEl = document.getElementById('calendar');
-        if (calendarEl) {
-            let savedToggle = sessionStorage.getItem('boardCalTimeToggle_' + '{{ board.id }}');
-            let isEnabled = savedToggle === null ? true : (savedToggle === 'true');
-            let savedMinTime = sessionStorage.getItem('boardCalMinTime_' + '{{ board.id }}') || '06:00';
-            let savedMaxTime = sessionStorage.getItem('boardCalMaxTime_' + '{{ board.id }}') || '20:00';
+    class CustomCalendar {
+        constructor(events) {
+            this.events = events;
+            this.currentDate = new Date();
+            this.currentView = 'month'; // 'month' or 'agenda'
+            this.monthNames = [
+                "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+                "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+            ];
             
-            const toggleEl = document.getElementById('calTimeWindowToggle');
-            const minTimeEl = document.getElementById('calMinTime');
-            const maxTimeEl = document.getElementById('calMaxTime');
-            
-            if (toggleEl) toggleEl.checked = isEnabled;
-            if (minTimeEl) { minTimeEl.value = savedMinTime; minTimeEl.disabled = !isEnabled; }
-            if (maxTimeEl) { maxTimeEl.value = savedMaxTime; maxTimeEl.disabled = !isEnabled; }
-
-            fcCalendar = new FullCalendar.Calendar(calendarEl, {
-                initialView: 'dayGridMonth',
-                height: 'auto',
-                slotMinTime: (isEnabled && savedMinTime) ? savedMinTime + ':00' : '00:00:00',
-                slotMaxTime: (isEnabled && savedMaxTime) ? savedMaxTime + ':00' : '24:00:00',
-                locale: 'pt-br',
-                headerToolbar: {
-                    left: 'prev,next today',
-                    center: 'title',
-                    right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
-                },
-                buttonText: {
-                    today: 'Hoje',
-                    month: 'Mês',
-                    week: 'Semana',
-                    day: 'Dia',
-                    listWeek: 'Agenda'
-                },
-                views: {
-                    dayGridMonth: {
-                        dayCellContent: function(arg) {
-                            const defaultColId = "{% if colunas %}{{ colunas.first.id }}{% endif %}";
-                            const defaultColName = "{% if colunas %}{{ colunas.first.nome|escapejs }}{% endif %}";
-                            const defaultColNameEscaped = defaultColName.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-                            
-                            let html = `<div class="d-flex justify-content-between align-items-center w-100 px-1">`;
-                            if (defaultColId) {
-                                html += `<span style="cursor:pointer; z-index: 99;" class="text-primary add-task-btn" 
-                                            onclick="openAddCardModal('${defaultColId}', '${defaultColNameEscaped}', '${arg.dateStr}')" 
-                                            data-bs-toggle="modal" data-bs-target="#addCardModal" title="Nova Tarefa neste dia">
-                                            <i class="bi bi-plus-circle"></i>
-                                         </span>`;
-                            }
-                            html += `<span>${arg.dayNumberText || ''}</span></div>`;
-                            
-                            return { html: html };
-                        }
-                    }
-                },
-                events: CALENDAR_EVENTS,
-                eventClick: function(info) {
-                    const cardId = info.event.extendedProps.real_card_id || info.event.id;
-                    const isVirtual = info.event.extendedProps.is_virtual;
-                    if (isVirtual) {
-                        const planoAcaoId = info.event.extendedProps.plano_acao_id;
-                        if (planoAcaoId) {
-                            window.open(`/acoes/planos/${planoAcaoId}/`, '_blank');
-                        }
-                    } else {
-                        openCardModal(cardId);
-                    }
-                },
-                eventDidMount: function(info) {
-                    info.el.title = `${info.event.title} (${info.event.extendedProps.coluna})`;
-                }
+            this.initElements();
+            this.bindEvents();
+            this.render();
+        }
+        
+        initElements() {
+            this.prevBtn = document.getElementById('customCalPrevBtn');
+            this.nextBtn = document.getElementById('customCalNextBtn');
+            this.todayBtn = document.getElementById('customCalTodayBtn');
+            this.titleEl = document.getElementById('customCalTitle');
+            this.viewMonthBtn = document.getElementById('customCalViewMonthBtn');
+            this.viewAgendaBtn = document.getElementById('customCalViewAgendaBtn');
+            this.monthViewEl = document.getElementById('customCalMonthView');
+            this.agendaViewEl = document.getElementById('customCalAgendaView');
+            this.gridBodyEl = document.getElementById('customCalGridBody');
+            this.agendaListEl = document.getElementById('customCalAgendaList');
+        }
+        
+        bindEvents() {
+            if (this.prevBtn) this.prevBtn.addEventListener('click', () => this.navigate(-1));
+            if (this.nextBtn) this.nextBtn.addEventListener('click', () => this.navigate(1));
+            if (this.todayBtn) this.todayBtn.addEventListener('click', () => {
+                this.currentDate = new Date();
+                this.render();
             });
-            fcCalendar.render();
+            if (this.viewMonthBtn) this.viewMonthBtn.addEventListener('click', () => this.setView('month'));
+            if (this.viewAgendaBtn) this.viewAgendaBtn.addEventListener('click', () => this.setView('agenda'));
             
             const calendarTabTrigger = document.getElementById('calendar-view-tab');
             if (calendarTabTrigger) {
-                calendarTabTrigger.addEventListener('shown.bs.tab', function () {
-                    fcCalendar.updateSize();
-                });
+                calendarTabTrigger.addEventListener('shown.bs.tab', () => this.render());
             }
         }
         
-    });
-
-    function updateCalendarTimeWindow() {
-        if (!fcCalendar) return;
-        const toggle = document.getElementById('calTimeWindowToggle');
-        const minTimeInput = document.getElementById('calMinTime');
-        const maxTimeInput = document.getElementById('calMaxTime');
+        setView(view) {
+            this.currentView = view;
+            if (view === 'month') {
+                if (this.viewMonthBtn) this.viewMonthBtn.classList.add('active');
+                if (this.viewAgendaBtn) this.viewAgendaBtn.classList.remove('active');
+                if (this.monthViewEl) this.monthViewEl.style.display = 'block';
+                if (this.agendaViewEl) this.agendaViewEl.style.display = 'none';
+            } else {
+                if (this.viewMonthBtn) this.viewMonthBtn.classList.remove('active');
+                if (this.viewAgendaBtn) this.viewAgendaBtn.classList.add('active');
+                if (this.monthViewEl) this.monthViewEl.style.display = 'none';
+                if (this.agendaViewEl) this.agendaViewEl.style.display = 'block';
+            }
+            this.render();
+        }
         
-        const isEnabled = toggle ? toggle.checked : true;
-        const minTime = minTimeInput ? minTimeInput.value : '';
-        const maxTime = maxTimeInput ? maxTimeInput.value : '';
+        navigate(direction) {
+            this.currentDate.setMonth(this.currentDate.getMonth() + direction);
+            this.render();
+        }
         
-        if (minTimeInput) minTimeInput.disabled = !isEnabled;
-        if (maxTimeInput) maxTimeInput.disabled = !isEnabled;
+        render() {
+            const year = this.currentDate.getFullYear();
+            const month = this.currentDate.getMonth();
+            
+            if (this.titleEl) {
+                this.titleEl.textContent = `${this.monthNames[month]} de ${year}`;
+            }
+            
+            if (this.currentView === 'month') {
+                this.renderMonthView(year, month);
+            } else {
+                this.renderAgendaView(year, month);
+            }
+        }
         
-        sessionStorage.setItem('boardCalTimeToggle_' + '{{ board.id }}', isEnabled);
-        sessionStorage.setItem('boardCalMinTime_' + '{{ board.id }}', minTime);
-        sessionStorage.setItem('boardCalMaxTime_' + '{{ board.id }}', maxTime);
+        renderMonthView(year, month) {
+            if (!this.gridBodyEl) return;
+            this.gridBodyEl.innerHTML = '';
+            
+            const firstDayIndex = new Date(year, month, 1).getDay();
+            const lastDay = new Date(year, month + 1, 0).getDate();
+            const prevLastDay = new Date(year, month, 0).getDate();
+            const totalCells = 42;
+            
+            const defaultColId = "{% if colunas %}{{ colunas.first.id }}{% endif %}";
+            const defaultColName = "{% if colunas %}{{ colunas.first.nome|escapejs }}{% endif %}";
+            const defaultColNameEscaped = defaultColName.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            
+            const today = new Date();
+            
+            for (let i = 0; i < totalCells; i++) {
+                let dayNum;
+                let cellDate;
+                let isOtherMonth = false;
+                
+                if (i < firstDayIndex) {
+                    dayNum = prevLastDay - firstDayIndex + i + 1;
+                    cellDate = new Date(year, month - 1, dayNum);
+                    isOtherMonth = true;
+                } else if (i >= firstDayIndex && i < firstDayIndex + lastDay) {
+                    dayNum = i - firstDayIndex + 1;
+                    cellDate = new Date(year, month, dayNum);
+                } else {
+                    dayNum = i - firstDayIndex - lastDay + 1;
+                    cellDate = new Date(year, month + 1, dayNum);
+                    isOtherMonth = true;
+                }
+                
+                const cellDateString = this.formatDateISO(cellDate);
+                const isToday = cellDate.getDate() === today.getDate() && 
+                                cellDate.getMonth() === today.getMonth() && 
+                                cellDate.getFullYear() === today.getFullYear();
+                                
+                const dayCell = document.createElement('div');
+                dayCell.className = `custom-calendar-day${isOtherMonth ? ' other-month' : ''}${isToday ? ' today' : ''}`;
+                
+                let addBtnHtml = '';
+                if (defaultColId && !isOtherMonth) {
+                    addBtnHtml = `<span style="cursor:pointer;" class="text-primary add-task-btn" 
+                                        onclick="openAddCardModal('${defaultColId}', '${defaultColNameEscaped}', '${cellDateString}')" 
+                                        data-bs-toggle="modal" data-bs-target="#addCardModal" title="Nova Tarefa neste dia">
+                                        <i class="bi bi-plus-circle"></i>
+                                     </span>`;
+                }
+                
+                const numberRow = document.createElement('div');
+                numberRow.className = 'custom-calendar-day-number-row';
+                numberRow.innerHTML = `${addBtnHtml} <span>${dayNum}</span>`;
+                dayCell.appendChild(numberRow);
+                
+                const eventsListContainer = document.createElement('div');
+                eventsListContainer.className = 'custom-calendar-events-list';
+                
+                const dayEvents = this.events.filter(evt => {
+                    const evtDateStr = evt.start.split('T')[0];
+                    return evtDateStr === cellDateString;
+                });
+                
+                dayEvents.forEach(evt => {
+                    const evtItem = document.createElement('div');
+                    evtItem.className = 'custom-calendar-event-item';
+                    evtItem.style.backgroundColor = evt.backgroundColor || '#0d6efd';
+                    evtItem.style.borderColor = evt.borderColor || '#0d6efd';
+                    evtItem.textContent = evt.title;
+                    evtItem.title = `${evt.title} (${evt.extendedProps?.coluna || ''})`;
+                    
+                    evtItem.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.handleEventClick(evt);
+                    });
+                    
+                    eventsListContainer.appendChild(evtItem);
+                });
+                
+                dayCell.appendChild(eventsListContainer);
+                this.gridBodyEl.appendChild(dayCell);
+            }
+        }
         
-        fcCalendar.setOption('slotMinTime', isEnabled && minTime ? (minTime + ':00') : '00:00:00');
-        fcCalendar.setOption('slotMaxTime', isEnabled && maxTime ? (maxTime + ':00') : '24:00:00');
+        renderAgendaView(year, month) {
+            if (!this.agendaListEl) return;
+            this.agendaListEl.innerHTML = '';
+            
+            const monthEvents = this.events.filter(evt => {
+                const evtDate = new Date(evt.start);
+                return evtDate.getFullYear() === year && evtDate.getMonth() === month;
+            }).sort((a, b) => new Date(a.start) - new Date(b.start));
+            
+            if (monthEvents.length === 0) {
+                this.agendaListEl.innerHTML = `<div class="list-group-item text-center py-4 text-muted border-0">
+                                                    <i class="bi bi-calendar-x d-block fs-3 mb-2"></i>
+                                                    Nenhuma atividade programada para este mês.
+                                               </div>`;
+                return;
+            }
+            
+            monthEvents.forEach(evt => {
+                const evtDate = new Date(evt.start);
+                const dateStr = evtDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                const timeStr = !evt.allDay ? evtDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+                
+                const agendaItem = document.createElement('div');
+                agendaItem.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3 custom-calendar-agenda-item';
+                agendaItem.style.borderLeftColor = evt.backgroundColor || '#0d6efd';
+                agendaItem.style.cursor = 'pointer';
+                
+                agendaItem.innerHTML = `
+                    <div>
+                        <span class="badge bg-light text-dark border me-2">${dateStr}${timeStr ? ' às ' + timeStr : ''}</span>
+                        <strong class="text-dark">${evt.title}</strong>
+                        <div class="text-muted small mt-1">
+                            <i class="bi bi-columns-gap me-1"></i>Coluna: ${evt.extendedProps?.coluna || ''} 
+                            ${evt.extendedProps?.responsaveis ? ' | <i class="bi bi-people me-1"></i>' + evt.extendedProps.responsaveis : ''}
+                        </div>
+                    </div>
+                    <i class="bi bi-chevron-right text-muted"></i>
+                `;
+                
+                agendaItem.addEventListener('click', () => this.handleEventClick(evt));
+                this.agendaListEl.appendChild(agendaItem);
+            });
+        }
+        
+        handleEventClick(evt) {
+            const cardId = evt.extendedProps?.real_card_id || evt.id;
+            const isVirtual = evt.extendedProps?.is_virtual;
+            if (isVirtual) {
+                const planoAcaoId = evt.extendedProps?.plano_acao_id;
+                if (planoAcaoId) {
+                    window.open(`/acoes/planos/${planoAcaoId}/`, '_blank');
+                }
+            } else {
+                if (typeof openCardModal === 'function') {
+                    openCardModal(cardId);
+                }
+            }
+        }
+        
+        formatDateISO(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
     }
+
+    let customCalendar = null;
+    document.addEventListener('DOMContentLoaded', function() {
+        customCalendar = new CustomCalendar(CALENDAR_EVENTS);
+    });
     
     // Restore global filters from sessionStorage if available
     document.addEventListener('DOMContentLoaded', function() {
