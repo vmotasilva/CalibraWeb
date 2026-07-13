@@ -79,7 +79,7 @@
                                 <div class="input-group">
                                     <select name="lider_id" id="lider_id" class="form-select" title="Selecionar líder">
                                         <option value="">-- Não alterar --</option>
-                                        {% for pessoa in pessoas %}
+                                        {% for pessoa in lideres %}
                                         <option value="{{ pessoa.id }}" data-nome="{{ pessoa.nome_completo }}" data-matricula="{{ pessoa.matricula }}" {% if lider_id|stringformat:"s" == pessoa.id|stringformat:"s" %}selected{% endif %}>
                                             {{ pessoa.nome_completo }} ({{ pessoa.matricula }})
                                         </option>
@@ -101,7 +101,7 @@
                                 <div class="input-group">
                                     <select name="supervisor_id" id="supervisor_id" class="form-select" title="Selecionar supervisor">
                                         <option value="">-- Não alterar --</option>
-                                        {% for pessoa in pessoas %}
+                                        {% for pessoa in supervisores %}
                                         <option value="{{ pessoa.id }}" data-nome="{{ pessoa.nome_completo }}" data-matricula="{{ pessoa.matricula }}" {% if supervisor_id|stringformat:"s" == pessoa.id|stringformat:"s" %}selected{% endif %}>
                                             {{ pessoa.nome_completo }} ({{ pessoa.matricula }})
                                         </option>
@@ -123,7 +123,7 @@
                                 <div class="input-group">
                                     <select name="gerente_id" id="gerente_id" class="form-select" title="Selecionar gerente">
                                         <option value="">-- Não alterar --</option>
-                                        {% for pessoa in pessoas %}
+                                        {% for pessoa in gerentes %}
                                         <option value="{{ pessoa.id }}" data-nome="{{ pessoa.nome_completo }}" data-matricula="{{ pessoa.matricula }}" {% if gerente_id|stringformat:"s" == pessoa.id|stringformat:"s" %}selected{% endif %}>
                                             {{ pessoa.nome_completo }} ({{ pessoa.matricula }})
                                         </option>

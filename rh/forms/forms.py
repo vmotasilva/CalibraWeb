@@ -50,6 +50,7 @@ class ColaboradorForm(forms.ModelForm):
             "grupo": forms.TextInput(attrs={"class": "form-control"}),
             "setor": forms.Select(attrs={"class": "form-select"}),
             "turno": forms.Select(attrs={"class": "form-select"}),
+            "posto_lideranca": forms.Select(attrs={"class": "form-select"}),
             "lider": forms.Select(attrs={"class": "form-select"}),
             "supervisor": forms.Select(attrs={"class": "form-select"}),
             "gerente": forms.Select(attrs={"class": "form-select"}),
@@ -60,6 +61,27 @@ class ColaboradorForm(forms.ModelForm):
             "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "em_ferias": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # 1. Filtrar lider (Líder / Superior Direto) para mostrar apenas Colaboradores com posto_lideranca="LIDER"
+        lider_qs = Colaborador.objects.filter(posto_lideranca="LIDER", is_active=True)
+        if self.instance and self.instance.lider_id:
+            lider_qs = lider_qs | Colaborador.objects.filter(pk=self.instance.lider_id)
+        self.fields['lider'].queryset = lider_qs.distinct().order_by('nome_completo')
+        
+        # 2. Filtrar supervisor para mostrar apenas Colaboradores com posto_lideranca="SUPERVISOR"
+        supervisor_qs = Colaborador.objects.filter(posto_lideranca="SUPERVISOR", is_active=True)
+        if self.instance and self.instance.supervisor_id:
+            supervisor_qs = supervisor_qs | Colaborador.objects.filter(pk=self.instance.supervisor_id)
+        self.fields['supervisor'].queryset = supervisor_qs.distinct().order_by('nome_completo')
+        
+        # 3. Filtrar gerente (Coordenador / Gerente) para mostrar apenas Colaboradores com posto_lideranca="GERENTE"
+        gerente_qs = Colaborador.objects.filter(posto_lideranca="GERENTE", is_active=True)
+        if self.instance and self.instance.gerente_id:
+            gerente_qs = gerente_qs | Colaborador.objects.filter(pk=self.instance.gerente_id)
+        self.fields['gerente'].queryset = gerente_qs.distinct().order_by('nome_completo')
 
 
 class OcorrenciaForm(forms.ModelForm):

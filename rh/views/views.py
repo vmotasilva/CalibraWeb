@@ -3261,7 +3261,9 @@ def atualizar_liderancas_em_massa(request):
     turnos = TURNOS_CHOICES
     
     # Listar colaboradores que podem ser líderes, supervisores ou gerentes
-    pessoas = Colaborador.objects.filter(is_active=True, afastado=False).order_by('nome_completo')
+    lideres = Colaborador.objects.filter(posto_lideranca="LIDER", is_active=True).order_by('nome_completo')
+    supervisores = Colaborador.objects.filter(posto_lideranca="SUPERVISOR", is_active=True).order_by('nome_completo')
+    gerentes = Colaborador.objects.filter(posto_lideranca="GERENTE", is_active=True).order_by('nome_completo')
     
     # Colaboradores que serão atualizados (inclui ativos, em férias, afastados e desligados)
     colaboradores_afetados = Colaborador.objects.all()
@@ -3307,7 +3309,9 @@ def atualizar_liderancas_em_massa(request):
                 return render(request, 'rh/atualizar_liderancas_em_massa.html', {
                     'setores': setores,
                     'turnos': turnos,
-                    'pessoas': pessoas,
+                    'lideres': lideres,
+                    'supervisores': supervisores,
+                    'gerentes': gerentes,
                     'sucesso': True,
                     'atualizado_count': updated_count,
                     'setor_nome': Setor.objects.get(id=setor_id).nome if setor_id else '',
@@ -3322,13 +3326,16 @@ def atualizar_liderancas_em_massa(request):
     context = {
         'setores': setores,
         'turnos': turnos,
-        'pessoas': pessoas,
+        'lideres': lideres,
+        'supervisores': supervisores,
+        'gerentes': gerentes,
         'setor_id': setor_id,
         'turno': turno,
         'lider_id': lider_id,
         'supervisor_id': supervisor_id,
         'gerente_id': gerente_id,
         'preview_colaboradores': preview_colaboradores,
+        'total_total': total_atualizacoes,  # wait, total_atualizacoes count name in context
         'total_atualizacoes': total_atualizacoes,
     }
     

@@ -9,9 +9,13 @@ from datetime import date, timedelta
 from decimal import Decimal
 from core.models import TURNOS_CHOICES
 
-# ==============================================================================
-# RH - RECURSOS HUMANOS
-# ==============================================================================
+POSTO_LIDERANCA_CHOICES = [
+    ("NAO_APLICA", "Não se aplica"),
+    ("LIDER", "Líder"),
+    ("SUPERVISOR", "Supervisor"),
+    ("GERENTE", "Gerente"),
+]
+
 
 class Colaborador(models.Model):
     user_django = models.OneToOneField(
@@ -40,6 +44,12 @@ class Colaborador(models.Model):
     )
     turno = models.CharField(
         max_length=20, choices=TURNOS_CHOICES, default="ADM", verbose_name="Turno"
+    )
+    posto_lideranca = models.CharField(
+        max_length=20,
+        choices=POSTO_LIDERANCA_CHOICES,
+        default="NAO_APLICA",
+        verbose_name="Posto de Liderança",
     )
     salario = models.DecimalField(
         max_digits=10,

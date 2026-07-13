@@ -62,6 +62,13 @@
                                 <label class="form-label">Turno</label>
                                 {{ form.turno }}
                             </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Posto de Liderança</label>
+                                {{ form.posto_lideranca }}
+                                {% if form.posto_lideranca.errors %}
+                                    <div class="text-danger small mt-1">{{ form.posto_lideranca.errors.0 }}</div>
+                                {% endif %}
+                            </div>
 
                             <div class="col-md-12 mt-4"><h6 class="text-success border-bottom pb-2">Hierarquia</h6></div>
 

@@ -100,18 +100,25 @@
                             {% endif %}
                         </div>
                         
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label fw-bold text-dark">Setor</label>
                             {{ form.setor }}
                             {% if form.setor.errors %}
                                 <div class="invalid-feedback d-block">{{ form.setor.errors }}</div>
                             {% endif %}
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label fw-bold text-dark">Centro de Custo</label>
                             {{ form.centro_custo }}
                             {% if form.centro_custo.errors %}
                                 <div class="invalid-feedback d-block">{{ form.centro_custo.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-dark">Posto de Liderança</label>
+                            {{ form.posto_lideranca }}
+                            {% if form.posto_lideranca.errors %}
+                                <div class="invalid-feedback d-block">{{ form.posto_lideranca.errors }}</div>
                             {% endif %}
                         </div>
                     </div>
@@ -280,30 +287,7 @@
                 </div>
             </div>
 
-            <!-- SEÇÃO 6: PACOTES DE TREINAMENTO -->
-            <div class="card shadow-lg mb-4 border-0">
-                <div class="card-header bg-white border-bottom-0">
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="bg-secondary bg-opacity-10 rounded-circle p-3" style="width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
-                            <i class="bi bi-book-half text-secondary" style="font-size: 1.5rem;"></i>
-                        </div>
-                        <div>
-                            <h5 class="mb-0 text-dark fw-bold">Pacotes de Treinamento</h5>
-                            <small class="text-muted">Treinamentos vinculados ao colaborador</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-body p-4">
-                    <label class="form-label fw-bold text-dark mb-3">Selecionar Pacotes</label>
-                    <div style="max-height: 300px; overflow-y: auto;">
-                        {{ form.pacotes_treinamento }}
-                    </div>
-                    <small class="text-muted d-block mt-2"><i class="bi bi-info-circle"></i> Segure <kbd>Ctrl</kbd> (ou <kbd>Cmd</kbd> no Mac) para selecionar múltiplos pacotes</small>
-                    {% if form.pacotes_treinamento.errors %}
-                        <div class="invalid-feedback d-block">{{ form.pacotes_treinamento.errors }}</div>
-                    {% endif %}
-                </div>
-            </div>
+
 
             <!-- BOTÕES DE AÇÃO -->
             <div class="card shadow-lg border-0 mb-5">

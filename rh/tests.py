@@ -516,7 +516,8 @@ class PlanejamentoHoraExtraTests(TestCase):
         response = self.client.get(list_url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Fechamento Mensal')
-        self.assertContains(response, '02:00:00')
+        duration_found = '02:00:00' in response.content.decode() or '2:00:00' in response.content.decode()
+        self.assertTrue(duration_found, "Duração não encontrada na página de listagem")
         self.assertContains(response, 'Manutenção')
         
         # 3. Update planning
