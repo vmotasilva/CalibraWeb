@@ -3804,6 +3804,16 @@
         {% endfor %}
     ];
 
+    // Filter out invalid/unparseable dates and normalize empty end dates
+    CALENDAR_EVENTS = CALENDAR_EVENTS.filter(function(evt) {
+        if (!evt.start) return false;
+        if (evt.end && (evt.end === "" || evt.end.trim() === "")) {
+            evt.end = null;
+        }
+        var parsed = Date.parse(evt.start);
+        return !isNaN(parsed);
+    });
+
     let fcCalendar = null;
     document.addEventListener('DOMContentLoaded', function() {
         const calendarEl = document.getElementById('calendar');
@@ -3824,8 +3834,8 @@
             fcCalendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
                 height: 'auto',
-                slotMinTime: isEnabled ? savedMinTime + ':00' : '00:00:00',
-                slotMaxTime: isEnabled ? savedMaxTime + ':00' : '24:00:00',
+                slotMinTime: (isEnabled && savedMinTime) ? savedMinTime + ':00' : '00:00:00',
+                slotMaxTime: (isEnabled && savedMaxTime) ? savedMaxTime + ':00' : '24:00:00',
                 locale: 'pt-br',
                 headerToolbar: {
                     left: 'prev,next today',
@@ -3844,11 +3854,12 @@
                         dayCellContent: function(arg) {
                             const defaultColId = "{% if colunas %}{{ colunas.first.id }}{% endif %}";
                             const defaultColName = "{% if colunas %}{{ colunas.first.nome|escapejs }}{% endif %}";
+                            const defaultColNameEscaped = defaultColName.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
                             
                             let html = `<div class="d-flex justify-content-between align-items-center w-100 px-1">`;
                             if (defaultColId) {
                                 html += `<span style="cursor:pointer; z-index: 99;" class="text-primary add-task-btn" 
-                                            onclick="openAddCardModal('${defaultColId}', '${defaultColName}', '${arg.dateStr}')" 
+                                            onclick="openAddCardModal('${defaultColId}', '${defaultColNameEscaped}', '${arg.dateStr}')" 
                                             data-bs-toggle="modal" data-bs-target="#addCardModal" title="Nova Tarefa neste dia">
                                             <i class="bi bi-plus-circle"></i>
                                          </span>`;
