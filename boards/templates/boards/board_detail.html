@@ -1637,7 +1637,6 @@
                 localStorage.setItem('activeBoardTab', target);
             });
         });
-    }
     });
 
     // ============================================
@@ -2597,7 +2596,8 @@
                 .then(card => renderChecklist(card.checklist));
             }
         });
-    });
+        });
+    }
     
     // Delete Checklist Item
     function deleteChecklistItem(itemId) {
@@ -2860,7 +2860,8 @@
             console.error("Erro na requisição:", err);
             alert("Erro ao salvar: " + err.message);
         });
-    });
+        });
+    }
 
     // Complete Card
     const btnCompleteCard = document.getElementById('btnCompleteCard');
@@ -2925,8 +2926,8 @@
                 });
             });
         }, 300);
+        });
     }
-    });
 
     // Reopen Card
     const btnReopenCard = document.getElementById('btnReopenCard');
@@ -2958,9 +2959,9 @@
         })
         .catch(err => {
             console.error("Erro ao reabrir atividade:", err);
-            alert("Erro de conexão.");
         });
-    });
+        });
+    }
 
     let workloadChartInstance = null;
     let distributionChartInstance = null;
@@ -3715,36 +3716,33 @@
             }
         });
         
-        // ============================================
-        // 3. FILTER CALENDAR VIEW
-        // ============================================
-        if (fcCalendar) {
-            const filteredEvents = CALENDAR_EVENTS.filter(event => {
-                const titleMatch = event.title.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(searchText);
-                const colMatch = !filterCol || event.extendedProps.coluna === filterCol;
-                const priorMatch = !filterPrior || event.extendedProps.prioridade === filterPrior;
-                const resps = event.extendedProps.responsaveis || '';
-                let respMatch = false;
-                if (!filterResp) {
-                    respMatch = true;
-                } else if (filterResp === '__sem_responsavel__') {
-                    respMatch = (resps.trim() === '');
-                } else {
-                    respMatch = resps.includes(filterResp);
-                }
-                const etiquetas = event.extendedProps.etiquetas || '';
-                const labelMatch = !filterLabel || etiquetas.includes(filterLabel + ';');
-                
-                const isConcluded = event.extendedProps.is_concluida === true;
-                let statusMatch = true;
-                if (filterStatus === 'andamento') statusMatch = !isConcluded;
-                if (filterStatus === 'concluido') statusMatch = isConcluded;
-                
-                return titleMatch && colMatch && priorMatch && respMatch && labelMatch && statusMatch;
-            });
+        const filteredEvents = CALENDAR_EVENTS.filter(event => {
+            const titleMatch = event.title.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(searchText);
+            const colMatch = !filterCol || event.extendedProps.coluna === filterCol;
+            const priorMatch = !filterPrior || event.extendedProps.prioridade === filterPrior;
+            const resps = event.extendedProps.responsaveis || '';
+            let respMatch = false;
+            if (!filterResp) {
+                respMatch = true;
+            } else if (filterResp === '__sem_responsavel__') {
+                respMatch = (resps.trim() === '');
+            } else {
+                respMatch = resps.includes(filterResp);
+            }
+            const etiquetas = event.extendedProps.etiquetas || '';
+            const labelMatch = !filterLabel || etiquetas.includes(filterLabel + ';');
             
-            fcCalendar.removeAllEventSources();
-            fcCalendar.addEventSource(filteredEvents);
+            const isConcluded = event.extendedProps.is_concluida === true;
+            let statusMatch = true;
+            if (filterStatus === 'andamento') statusMatch = !isConcluded;
+            if (filterStatus === 'concluido') statusMatch = isConcluded;
+            
+            return titleMatch && colMatch && priorMatch && respMatch && labelMatch && statusMatch;
+        });
+
+        if (typeof customCalendar !== 'undefined' && customCalendar) {
+            customCalendar.events = filteredEvents;
+            customCalendar.render();
         }
 
         // Atualizar as métricas e gráficos da aba "Métricas da Equipe"
@@ -4194,12 +4192,13 @@
     }
 
     let customCalendar = null;
-    document.addEventListener('DOMContentLoaded', function() {
-        customCalendar = new CustomCalendar(CALENDAR_EVENTS);
-    });
+    function initCustomCalendar() {
+        if (!customCalendar) {
+            customCalendar = new CustomCalendar(CALENDAR_EVENTS);
+        }
+    }
     
-    // Restore global filters from sessionStorage if available
-    document.addEventListener('DOMContentLoaded', function() {
+    function initFiltersAndActions() {
         const boardIdStr = '{{ board.id }}';
         if(document.getElementById('globalFilterCol') && sessionStorage.getItem('boardFilterCol_' + boardIdStr) !== null) {
             document.getElementById('globalFilterCol').value = sessionStorage.getItem('boardFilterCol_' + boardIdStr);
@@ -4235,6 +4234,16 @@
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
         }
-    });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            initCustomCalendar();
+            initFiltersAndActions();
+        });
+    } else {
+        initCustomCalendar();
+        initFiltersAndActions();
+    }
 </script>
 {% endblock %}
