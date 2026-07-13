@@ -3714,11 +3714,16 @@
             {% for card in col.cartoes_list %}
                 {% if card.planejamentos.all %}
                     {% for p in card.planejamentos.all %}
+                        {% if p.datetime_inicio %}
                         {
                             id: "{{ card.id }}_{{ p.id }}",
                             title: "{% if card.prioridade == 'ALTA' %}⚠ {% endif %}{{ card.titulo|escapejs }}",
                             start: "{{ p.datetime_inicio|date:'Y-m-d' }}T{{ p.datetime_inicio|time:'H:i:s' }}",
-                            end: "{{ p.datetime_fim|date:'Y-m-d' }}T{{ p.datetime_fim|time:'H:i:s' }}",
+                            {% if p.datetime_fim %}
+                                end: "{{ p.datetime_fim|date:'Y-m-d' }}T{{ p.datetime_fim|time:'H:i:s' }}",
+                            {% else %}
+                                end: null,
+                            {% endif %}
                             allDay: false,
                             {% if card.data_conclusao %}
                                 backgroundColor: '#6c757d',
@@ -3744,8 +3749,10 @@
                                 is_concluida: {% if card.data_conclusao %}true{% else %}false{% endif %}
                             }
                         },
+                        {% endif %}
                     {% endfor %}
                 {% else %}
+                    {% if card.datetime_inicio or card.data_entrega or card.criado_em %}
                     {
                         id: "{{ card.id }}",
                         title: "{% if card.prioridade == 'ALTA' %}⚠ {% endif %}{{ card.titulo|escapejs }}",
@@ -3791,6 +3798,7 @@
                             is_concluida: {% if card.data_conclusao %}true{% else %}false{% endif %}
                         }
                     },
+                    {% endif %}
                 {% endif %}
             {% endfor %}
         {% endfor %}

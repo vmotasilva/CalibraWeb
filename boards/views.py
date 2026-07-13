@@ -304,7 +304,8 @@ def board_detail_view(request, board_id):
                         'all': []
                     },
                     'antecessora': None,
-                    'historia': []
+                    'historia': [],
+                    'criado_em': l.criado_em
                 })
             
             if col.status_linha_acao in ['completa', 'cancelada']:
