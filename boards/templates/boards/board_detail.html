@@ -1527,6 +1527,7 @@
                 localStorage.setItem('activeBoardTab', target);
             });
         });
+    }
     });
 
     // ============================================
@@ -2460,8 +2461,10 @@
     }
     
     // Add Checklist Item
-    document.getElementById('btnAddChecklistItem').addEventListener('click', () => {
-        const input = document.getElementById('newChecklistItemInput');
+    const btnAddChecklistItem = document.getElementById('btnAddChecklistItem');
+    if (btnAddChecklistItem) {
+        btnAddChecklistItem.addEventListener('click', () => {
+            const input = document.getElementById('newChecklistItemInput');
         const desc = input.value.trim();
         
         if (!desc) return;
@@ -2570,59 +2573,78 @@
     }
     
     // Post Comment
-    document.getElementById('btnPostComment').addEventListener('click', () => {
-        const input = document.getElementById('newCommentInput');
-        const text = input.value.trim();
-        
-        if (!text) return;
-        
-        fetch(`/boards/cartoes/${activeCardId}/comentarios/novo/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: JSON.stringify({texto: text})
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                input.value = '';
-                fetch(`/boards/cartoes/${activeCardId}/detalhes/`)
-                .then(res => res.json())
-                .then(card => renderComments(card.comentarios));
-            }
+    const btnPostComment = document.getElementById('btnPostComment');
+    if (btnPostComment) {
+        btnPostComment.addEventListener('click', () => {
+            const input = document.getElementById('newCommentInput');
+            const text = input ? input.value.trim() : '';
+            
+            if (!text) return;
+            
+            fetch(`/boards/cartoes/${activeCardId}/comentarios/novo/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({texto: text})
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    if (input) input.value = '';
+                    fetch(`/boards/cartoes/${activeCardId}/detalhes/`)
+                    .then(res => res.json())
+                    .then(card => renderComments(card.comentarios));
+                }
+            });
         });
-    });
+    }
 
     // Keydown handlers for Enter / Ctrl+Enter submissions
-    document.getElementById('newCommentInput').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && e.ctrlKey) {
-            e.preventDefault();
-            document.getElementById('btnPostComment').click();
-        }
-    });
+    const newCommentInput = document.getElementById('newCommentInput');
+    if (newCommentInput) {
+        newCommentInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                e.preventDefault();
+                const btnPost = document.getElementById('btnPostComment');
+                if (btnPost) btnPost.click();
+            }
+        });
+    }
 
-    document.getElementById('newChecklistItemInput').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            document.getElementById('btnAddChecklistItem').click();
-        }
-    });
+    const newChecklistItemInput = document.getElementById('newChecklistItemInput');
+    if (newChecklistItemInput) {
+        newChecklistItemInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const btnAdd = document.getElementById('btnAddChecklistItem');
+                if (btnAdd) btnAdd.click();
+            }
+        });
+    }
 
-    document.getElementById('cardDetailDesc').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && e.ctrlKey) {
-            e.preventDefault();
-            document.getElementById('btnSaveCardDetails').click();
-        }
-    });
+    const cardDetailDesc = document.getElementById('cardDetailDesc');
+    if (cardDetailDesc) {
+        cardDetailDesc.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                e.preventDefault();
+                const btnSave = document.getElementById('btnSaveCardDetails');
+                if (btnSave) btnSave.click();
+            }
+        });
+    }
 
-    document.getElementById('cardDetailLink').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            document.getElementById('btnSaveCardDetails').click();
-        }
-    });
+    const newCardLinkInput = document.getElementById('newCardLinkInput');
+    if (newCardLinkInput) {
+        newCardLinkInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const btnAddLink = document.getElementById('btnAddNewCardLink');
+                if (btnAddLink) btnAddLink.click();
+            }
+        });
+    }
     
     // Delete Comment
     function deleteComment(commentId) {
@@ -2645,8 +2667,10 @@
     }
     
     // Save Card Details
-    document.getElementById('btnSaveCardDetails').addEventListener('click', () => {
-        const desc = document.getElementById('cardDetailDesc').value;
+    const btnSaveCardDetails = document.getElementById('btnSaveCardDetails');
+    if (btnSaveCardDetails) {
+        btnSaveCardDetails.addEventListener('click', () => {
+            const desc = document.getElementById('cardDetailDesc').value;
         const respSelect = document.getElementById('cardDetailResp');
         const respIds = Array.from(respSelect.selectedOptions).map(opt => parseInt(opt.value)).filter(val => !isNaN(val));
         const priority = document.getElementById('cardDetailPriority').value;
@@ -2668,6 +2692,12 @@
         const destOpt = colSelect.options[colSelect.selectedIndex];
         const destName = destOpt ? destOpt.text.toLowerCase() : '';
         const isCompletedDest = destName.includes("concluido") || destName.includes("concluído") || destName.includes("done") || destName.includes("terminado") || destName.includes("pronto");
+        
+        const isVirtual = {% if board.tipo == 'PLANOS_ACAO' %}true{% else %}false{% endif %};
+        if (isVirtual) {
+            alert("Ações de Planos de Ação não podem ser editadas diretamente no quadro.");
+            return;
+        }
         
         const cardEl = document.getElementById(`card-${activeCardId}`);
         const wasCompleted = cardEl ? cardEl.closest('.card-container').getAttribute('data-is-concluida') === 'true' : false;
@@ -2723,8 +2753,10 @@
     });
 
     // Complete Card
-    document.getElementById('btnCompleteCard').addEventListener('click', () => {
-        const cardEl = document.getElementById(`card-${activeCardId}`);
+    const btnCompleteCard = document.getElementById('btnCompleteCard');
+    if (btnCompleteCard) {
+        btnCompleteCard.addEventListener('click', () => {
+            const cardEl = document.getElementById(`card-${activeCardId}`);
         if (!cardEl) return;
         
         const colSelect = document.getElementById('cardDetailColumn');
@@ -2783,11 +2815,14 @@
                 });
             });
         }, 300);
+    }
     });
 
     // Reopen Card
-    document.getElementById('btnReopenCard').addEventListener('click', () => {
-        const colSelect = document.getElementById('cardDetailColumn');
+    const btnReopenCard = document.getElementById('btnReopenCard');
+    if (btnReopenCard) {
+        btnReopenCard.addEventListener('click', () => {
+            const colSelect = document.getElementById('cardDetailColumn');
         const toColumnId = parseInt(colSelect.value);
         
         fetch("{% url 'boards:api_move_card' %}", {
@@ -3683,9 +3718,12 @@
     }
 
     // Bind Add button
-    document.getElementById('btnAddPlanningRow').addEventListener('click', () => {
-        addPlanningRow('', '');
-    });
+    const btnAddPlanningRow = document.getElementById('btnAddPlanningRow');
+    if (btnAddPlanningRow) {
+        btnAddPlanningRow.addEventListener('click', () => {
+            addPlanningRow('', '');
+        });
+    }
 
     function toggleDetailCardPlanning(checked) {
         const fields = document.getElementById('cardDetailPlanningFields');
