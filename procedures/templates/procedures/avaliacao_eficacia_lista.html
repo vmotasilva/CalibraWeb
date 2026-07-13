@@ -231,7 +231,7 @@
                         <input type="checkbox" id="check-all-massa" class="form-check-input">
                     </th>
                     <th style="min-width: 180px;">Colaborador</th>
-                    <th style="min-width: 130px;">Líder</th>
+                    <th style="min-width: 130px;">Responsável</th>
                     <th>Setor</th>
                     <th style="min-width: 220px;">Procedimento Crítico</th>
                     <th class="text-center">Data Treinamento</th>
@@ -264,7 +264,15 @@
                             {% endif %}
                         </div>
                     </td>
-                    <td class="small">{{ t.colaborador.lider.nome_completo|default:"-" }}</td>
+                    <td class="small">
+                        {% if t.colaborador.posto_lideranca == 'SUPERVISOR' %}
+                            {{ t.colaborador.gerente.nome_completo|default:"-" }}
+                        {% elif t.colaborador.posto_lideranca == 'LIDER' %}
+                            {{ t.colaborador.supervisor.nome_completo|default:"-" }}
+                        {% else %}
+                            {{ t.colaborador.lider.nome_completo|default:"-" }}
+                        {% endif %}
+                    </td>
                     <td class="small">{{ t.colaborador.setor.nome|default:"-" }}</td>
                     <td>
                         <div class="fw-semibold text-danger small d-inline-flex align-items-center">
@@ -294,7 +302,7 @@
                                     data-bs-target="#avaliacaoModal"
                                     data-id="{{ t.id }}"
                                     data-colaborador="{{ t.colaborador.nome_completo }}"
-                                    data-lider="{{ t.colaborador.lider.nome_completo|default:'-' }}"
+                                    data-lider="{% if t.colaborador.posto_lideranca == 'SUPERVISOR' %}{{ t.colaborador.gerente.nome_completo|default:'-' }}{% elif t.colaborador.posto_lideranca == 'LIDER' %}{{ t.colaborador.supervisor.nome_completo|default:'-' }}{% else %}{{ t.colaborador.lider.nome_completo|default:'-' }}{% endif %}"
                                     data-procedimento="{{ t.procedimento.codigo }} - {{ t.procedimento.nome }}"
                                     data-data-treinamento="{{ t.data_treinamento|date:'d/m/Y' }}"
                                     data-status="{{ t.avaliacao_eficacia_status|default:'PENDENTE' }}"
@@ -364,7 +372,7 @@
                 <div class="modal-body">
                     <div class="mb-3 bg-light p-3 rounded small border">
                         <div class="mb-1"><strong>Colaborador:</strong> <span id="modal-colaborador"></span></div>
-                        <div class="mb-1"><strong>Líder:</strong> <span id="modal-lider"></span></div>
+                        <div class="mb-1"><strong>Responsável:</strong> <span id="modal-lider"></span></div>
                         <div class="mb-1"><strong>Procedimento Crítico:</strong> <span id="modal-procedimento"></span></div>
                         <div><strong>Data do Treinamento:</strong> <span id="modal-data-treinamento"></span></div>
                     </div>

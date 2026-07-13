@@ -20,7 +20,9 @@ def avaliacao_eficacia_list_view(request):
     # Filtrar apenas registros que possuem colaborador e procedimento,
     # onde o procedimento é crítico, o treinamento já ocorreu (data_treinamento is not null),
     # o colaborador está ativo e o registro de treinamento está ativo.
-    qs = RegistroTreinamento.objects.select_related('colaborador', 'procedimento', 'colaborador__setor', 'colaborador__lider').filter(
+    qs = RegistroTreinamento.objects.select_related(
+        'colaborador', 'procedimento', 'colaborador__setor', 'colaborador__lider', 'colaborador__supervisor', 'colaborador__gerente'
+    ).filter(
         colaborador__isnull=False,
         procedimento__isnull=False,
         procedimento__criticidade='CRITICO',
@@ -406,7 +408,7 @@ def avaliacao_eficacia_export_excel_view(request):
     """
     # Mesma query base
     qs = RegistroTreinamento.objects.select_related(
-        'colaborador', 'procedimento', 'colaborador__setor', 'colaborador__lider'
+        'colaborador', 'procedimento', 'colaborador__setor', 'colaborador__lider', 'colaborador__supervisor', 'colaborador__gerente'
     ).filter(
         colaborador__isnull=False,
         procedimento__isnull=False,
@@ -561,7 +563,7 @@ def avaliacao_eficacia_export_excel_view(request):
         "Matrícula",
         "Cargo",
         "Setor",
-        "Líder",
+        "Responsável",
         "Matriz",
         "Código Procedimento",
         "Nome Procedimento",
@@ -595,12 +597,22 @@ def avaliacao_eficacia_export_excel_view(request):
         else:
             status_text = status_mapping.get(status_val, status_val)
 
+        colab = t.colaborador
+        responsavel_nome = '-'
+        if colab:
+            if colab.posto_lideranca == 'SUPERVISOR':
+                responsavel_nome = colab.gerente.nome_completo if colab.gerente else '-'
+            elif colab.posto_lideranca == 'LIDER':
+                responsavel_nome = colab.supervisor.nome_completo if colab.supervisor else '-'
+            else:
+                responsavel_nome = colab.lider.nome_completo if colab.lider else '-'
+
         row_data = [
             t.colaborador.nome_completo,
             t.colaborador.matricula,
             t.colaborador.cargo or '-',
             t.colaborador.setor.nome if t.colaborador.setor else '-',
-            t.colaborador.lider.nome_completo if t.colaborador.lider else '-',
+            responsavel_nome,
             t.procedimento.matriz or '-',
             t.procedimento.codigo,
             t.procedimento.nome,
