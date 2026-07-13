@@ -65,14 +65,14 @@ class ColaboradorForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
-        # 1. Filtrar lider (Líder / Superior Direto) para mostrar apenas Colaboradores com posto_lideranca="LIDER"
-        lider_qs = Colaborador.objects.filter(posto_lideranca="LIDER", is_active=True)
+        # 1. Filtrar lider (Líder / Superior Direto) para mostrar Colaboradores com posto_lideranca em ["LIDER", "SUPERVISOR", "GERENTE"]
+        lider_qs = Colaborador.objects.filter(posto_lideranca__in=["LIDER", "SUPERVISOR", "GERENTE"], is_active=True)
         if self.instance and self.instance.lider_id:
             lider_qs = lider_qs | Colaborador.objects.filter(pk=self.instance.lider_id)
         self.fields['lider'].queryset = lider_qs.distinct().order_by('nome_completo')
         
-        # 2. Filtrar supervisor para mostrar apenas Colaboradores com posto_lideranca="SUPERVISOR"
-        supervisor_qs = Colaborador.objects.filter(posto_lideranca="SUPERVISOR", is_active=True)
+        # 2. Filtrar supervisor para mostrar Colaboradores com posto_lideranca em ["SUPERVISOR", "GERENTE"]
+        supervisor_qs = Colaborador.objects.filter(posto_lideranca__in=["SUPERVISOR", "GERENTE"], is_active=True)
         if self.instance and self.instance.supervisor_id:
             supervisor_qs = supervisor_qs | Colaborador.objects.filter(pk=self.instance.supervisor_id)
         self.fields['supervisor'].queryset = supervisor_qs.distinct().order_by('nome_completo')
