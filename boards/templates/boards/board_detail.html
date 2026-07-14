@@ -84,6 +84,19 @@
         max-height: 82px;
         padding-right: 2px;
     }
+    .custom-calendar-events-list::-webkit-scrollbar {
+        width: 3px;
+    }
+    .custom-calendar-events-list::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .custom-calendar-events-list::-webkit-scrollbar-thumb {
+        background: #ced4da;
+        border-radius: 10px;
+    }
+    .custom-calendar-events-list::-webkit-scrollbar-thumb:hover {
+        background: #aab2ba;
+    }
     .custom-calendar-event-item {
         font-size: 0.7rem;
         padding: 3px 6px;
@@ -96,6 +109,7 @@
         font-weight: 500;
         transition: transform 0.15s ease-in-out, filter 0.15s ease-in-out;
         line-height: 1.2;
+        flex-shrink: 0;
     }
     .custom-calendar-event-item:hover {
         transform: scale(1.02);
@@ -458,7 +472,7 @@
                     <!-- Botões de Ações do Quadro -->
                     {% if board.tipo != 'PLANOS_ACAO' %}
                     {% if colunas %}
-                    <button type="button" class="btn btn-primary btn-sm me-1" onclick="openAddCardModal('{{ colunas.first.id }}', '{{ colunas.first.nome|escapejs }}')" data-bs-toggle="modal" data-bs-target="#addCardModal" title="Adicionar Nova Tarefa">
+                    <button type="button" class="btn btn-primary btn-sm me-1" onclick="openAddCardModal('{{ colunas.0.id }}', '{{ colunas.0.nome|escapejs }}')" data-bs-toggle="modal" data-bs-target="#addCardModal" title="Adicionar Nova Tarefa">
                         <i class="bi bi-plus-lg me-1"></i>Nova Tarefa
                     </button>
                     {% endif %}
@@ -4322,8 +4336,8 @@
             const prevLastDay = new Date(year, month, 0).getDate();
             const totalCells = 42;
             
-            const defaultColId = "{% if colunas %}{{ colunas.first.id }}{% endif %}";
-            const defaultColName = "{% if colunas %}{{ colunas.first.nome|escapejs }}{% endif %}";
+            const defaultColId = "{% if colunas %}{{ colunas.0.id }}{% endif %}";
+            const defaultColName = "{% if colunas %}{{ colunas.0.nome|escapejs }}{% endif %}";
             const defaultColNameEscaped = defaultColName.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
             
             const today = new Date();
@@ -4421,8 +4435,8 @@
                 titleEl.textContent = `Atividades de ${formattedDate}`;
             }
             
-            const defaultColId = "{% if colunas %}{{ colunas.first.id }}{% endif %}";
-            const defaultColName = "{% if colunas %}{{ colunas.first.nome|escapejs }}{% endif %}";
+            const defaultColId = "{% if colunas %}{{ colunas.0.id }}{% endif %}";
+            const defaultColName = "{% if colunas %}{{ colunas.0.nome|escapejs }}{% endif %}";
             const defaultColNameEscaped = defaultColName.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
             
             if (addBtnContainer) {
@@ -4521,8 +4535,8 @@
                 this.weekViewEl.appendChild(headerCell);
             }
             
-            const defaultColId = "{% if colunas %}{{ colunas.first.id }}{% endif %}";
-            const defaultColName = "{% if colunas %}{{ colunas.first.nome|escapejs }}{% endif %}";
+            const defaultColId = "{% if colunas %}{{ colunas.0.id }}{% endif %}";
+            const defaultColName = "{% if colunas %}{{ colunas.0.nome|escapejs }}{% endif %}";
             const defaultColNameEscaped = defaultColName.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
             
             // 2. Render All Day (Dia Inteiro) Row
@@ -4634,8 +4648,8 @@
             
             const cellDateString = this.formatDateISO(this.currentDate);
             
-            const defaultColId = "{% if colunas %}{{ colunas.first.id }}{% endif %}";
-            const defaultColName = "{% if colunas %}{{ colunas.first.nome|escapejs }}{% endif %}";
+            const defaultColId = "{% if colunas %}{{ colunas.0.id }}{% endif %}";
+            const defaultColName = "{% if colunas %}{{ colunas.0.nome|escapejs }}{% endif %}";
             const defaultColNameEscaped = defaultColName.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
             
             if (this.dayAddBtnContainer) {
