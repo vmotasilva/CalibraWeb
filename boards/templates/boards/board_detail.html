@@ -13,48 +13,50 @@
         border-radius: 8px;
         border: 1px solid #e9ecef;
     }
-    .custom-calendar-grid-header {
+    .custom-calendar-month-grid {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        overflow: hidden;
+        background-color: #fff;
+    }
+    .custom-calendar-header-cell {
         text-align: center;
         font-weight: 700;
         background-color: #e9ecef;
         padding: 10px 0;
-        border-radius: 8px 8px 0 0;
-        border: 1px solid #dee2e6;
-        border-bottom: none;
-    }
-    .custom-calendar-grid-header div {
         color: #495057;
         font-size: 0.78rem;
         text-transform: uppercase;
         letter-spacing: 0.5px;
+        border-bottom: 2px solid #dee2e6;
+        border-right: 1px solid #dee2e6;
     }
-    .custom-calendar-grid-body {
-        display: grid;
-        grid-template-columns: repeat(7, 1fr);
-        border-left: 1px solid #dee2e6;
-        border-bottom: 1px solid #dee2e6;
-        border-radius: 0 0 8px 8px;
-        overflow: hidden;
+    .custom-calendar-header-cell:nth-child(7n) {
+        border-right: none;
     }
     .custom-calendar-day {
-        min-height: 110px;
+        min-height: 120px;
         background-color: #fff;
         border-right: 1px solid #dee2e6;
-        border-top: 1px solid #dee2e6;
+        border-bottom: 1px solid #dee2e6;
         padding: 6px;
         position: relative;
         transition: background-color 0.15s ease-in-out;
         display: flex;
         flex-direction: column;
-        justify-content: space-between;
+        justify-content: start;
+        cursor: pointer;
+    }
+    .custom-calendar-day:nth-child(7n) {
+        border-right: none;
     }
     .custom-calendar-day:hover {
-        background-color: #f8f9fa;
+        background-color: #f1f3f5;
     }
     .custom-calendar-day.other-month {
-        background-color: #f1f3f5;
+        background-color: #f8f9fa;
         color: #adb5bd;
     }
     .custom-calendar-day.today {
@@ -66,8 +68,9 @@
         align-items: center;
         font-weight: 600;
         font-size: 0.85rem;
-        margin-bottom: 6px;
+        margin-bottom: 4px;
         color: #333;
+        width: 100%;
     }
     .custom-calendar-day.other-month .custom-calendar-day-number-row {
         color: #adb5bd;
@@ -76,9 +79,9 @@
         display: flex;
         flex-direction: column;
         gap: 3px;
-        flex-grow: 1;
+        width: 100%;
         overflow-y: auto;
-        max-height: 75px;
+        max-height: 82px;
         padding-right: 2px;
     }
     .custom-calendar-event-item {
@@ -91,12 +94,12 @@
         white-space: nowrap;
         overflow: hidden;
         font-weight: 500;
-        transition: transform 0.1s ease-in-out, filter 0.1s ease-in-out;
+        transition: transform 0.15s ease-in-out, filter 0.15s ease-in-out;
         line-height: 1.2;
     }
     .custom-calendar-event-item:hover {
-        transform: translateY(-0.5px);
-        filter: brightness(0.92);
+        transform: scale(1.02);
+        filter: brightness(0.9);
     }
     /* Agenda view */
     .custom-calendar-agenda-item {
@@ -110,34 +113,62 @@
     /* Week View Grid & Elements */
     .custom-calendar-week-grid {
         display: grid;
-        grid-template-columns: repeat(7, 1fr);
-        border-left: 1px solid #dee2e6;
-        border-bottom: 1px solid #dee2e6;
-        border-radius: 0 0 8px 8px;
+        grid-template-columns: 70px repeat(7, 1fr);
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
         overflow: hidden;
-    }
-    .custom-calendar-week-day {
-        min-height: 350px;
-        max-height: 500px;
         background-color: #fff;
+    }
+    .custom-calendar-week-header-cell {
+        text-align: center;
+        font-weight: 700;
+        background-color: #e9ecef;
+        padding: 10px 0;
+        color: #495057;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid #dee2e6;
         border-right: 1px solid #dee2e6;
-        border-top: 1px solid #dee2e6;
-        padding: 8px;
+    }
+    .custom-calendar-week-header-cell:last-child {
+        border-right: none;
+    }
+    .custom-calendar-week-time-cell {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        font-size: 0.75rem;
+        color: #6c757d;
+        text-align: center;
+        padding: 10px 5px;
+        border-bottom: 1px solid #dee2e6;
+        border-right: 1px solid #dee2e6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .custom-calendar-week-slot-cell {
+        background-color: #fff;
+        border-bottom: 1px solid #e9ecef;
+        border-right: 1px solid #dee2e6;
+        padding: 4px;
+        min-height: 52px;
+        position: relative;
+        cursor: pointer;
         display: flex;
         flex-direction: column;
+        gap: 3px;
         justify-content: start;
-        gap: 6px;
+        transition: background-color 0.15s ease-in-out;
     }
-    .custom-calendar-week-day.today {
+    .custom-calendar-week-slot-cell:nth-child(8n) {
+        border-right: none;
+    }
+    .custom-calendar-week-slot-cell.today {
         background-color: #e8f4fd;
     }
-    .custom-calendar-week-day-events {
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-        flex-grow: 1;
-        overflow-y: auto;
-        padding-right: 2px;
+    .custom-calendar-week-slot-cell:hover {
+        background-color: #f1f3f5;
     }
 
     /* Day View Layout & Elements */
@@ -924,6 +955,12 @@
                     </div>
                     
                     <div class="d-flex align-items-center gap-3">
+                        <div class="d-flex align-items-center gap-2 me-2" id="customCalHourRangeControls" style="display: none !important;">
+                            <span class="small text-muted fw-semibold">Horário:</span>
+                            <select id="customCalStartHour" class="form-select form-select-sm py-1" style="width: 75px; font-size: 0.75rem;"></select>
+                            <span class="small text-muted">às</span>
+                            <select id="customCalEndHour" class="form-select form-select-sm py-1" style="width: 75px; font-size: 0.75rem;"></select>
+                        </div>
                         <div class="btn-group btn-group-sm" role="group">
                             <button class="btn btn-outline-secondary active" id="customCalViewMonthBtn">Mês</button>
                             <button class="btn btn-outline-secondary" id="customCalViewWeekBtn">Semana</button>
@@ -934,20 +971,10 @@
                 </div>
 
                 <!-- Visão Grid Mensal -->
-                <div id="customCalMonthView">
-                    <div class="custom-calendar-grid-header">
-                        <div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div>
-                    </div>
-                    <div class="custom-calendar-grid-body" id="customCalGridBody"></div>
-                </div>
+                <div id="customCalMonthView" class="custom-calendar-month-grid"></div>
 
                 <!-- Visão Grid Semanal -->
-                <div id="customCalWeekView" style="display: none;">
-                    <div class="custom-calendar-grid-header" id="customCalWeekGridHeader">
-                        <!-- Populated dynamically -->
-                    </div>
-                    <div class="custom-calendar-week-grid" id="customCalWeekGridBody"></div>
-                </div>
+                <div id="customCalWeekView" class="custom-calendar-week-grid" style="display: none;"></div>
 
                 <!-- Visão Dia Detalhe -->
                 <div id="customCalDayView" style="display: none;">
@@ -966,6 +993,27 @@
                 <div id="customCalAgendaView" style="display: none;">
                     <div class="list-group shadow-sm" id="customCalAgendaList" style="border-radius: 8px; overflow: hidden;"></div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Zoom do Dia -->
+<div class="modal fade" id="customCalDayZoomModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 14px;">
+            <div class="modal-header bg-secondary text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                <h5 class="modal-title fw-bold" id="customCalDayZoomTitle">Atividades do Dia</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="custom-calendar-day-events-list animate__animated animate__fadeIn" id="customCalDayZoomEventsList" style="max-height: 400px; overflow-y: auto;">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+            <div class="modal-footer d-flex justify-content-between border-top-0 pt-0">
+                <div id="customCalDayZoomAddBtnContainer"></div>
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
             </div>
         </div>
     </div>
@@ -2124,7 +2172,7 @@
         updateAddCardSubsections(columnId);
     }
 
-    function openAddCardModal(columnId, columnName, defaultDate = null) {
+    function openAddCardModal(columnId, columnName, defaultDate = null, defaultTime = null) {
         const form = document.getElementById('addCardForm');
         form.action = `/boards/colunas/${columnId}/cartoes/novo/` + window.location.search;
         document.getElementById('addCardModalTitle').textContent = 'Adicionar Tarefa em:';
@@ -2161,8 +2209,24 @@
         
         const addCardCheckPlanejar = document.getElementById('addCardCheckPlanejar');
         if (addCardCheckPlanejar) {
-            addCardCheckPlanejar.checked = false;
-            toggleAddCardPlanning(false);
+            if (defaultTime) {
+                addCardCheckPlanejar.checked = true;
+                toggleAddCardPlanning(true);
+                
+                const startInput = form.querySelector('[name="datetime_inicio"]');
+                const endInput = form.querySelector('[name="datetime_fim"]');
+                if (startInput) {
+                    startInput.value = `${defaultDate}T${defaultTime}`;
+                }
+                if (endInput) {
+                    const hour = parseInt(defaultTime.split(':')[0]);
+                    const endHourStr = String((hour + 1) % 24).padStart(2, '0');
+                    endInput.value = `${defaultDate}T${endHourStr}:00`;
+                }
+            } else {
+                addCardCheckPlanejar.checked = false;
+                toggleAddCardPlanning(false);
+            }
         }
         
         const modal = new bootstrap.Modal(document.getElementById('addCardModal'));
@@ -4057,13 +4121,14 @@
         constructor(events) {
             this.events = events;
             this.currentDate = new Date();
-            this.currentView = 'month'; // 'month' or 'agenda'
+            this.currentView = 'month'; // 'month', 'week', 'day', 'agenda'
             this.monthNames = [
                 "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
                 "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
             ];
             
             this.initElements();
+            this.initHourDropdowns();
             this.bindEvents();
             this.render();
         }
@@ -4083,13 +4148,59 @@
             this.dayViewEl = document.getElementById('customCalDayView');
             this.agendaViewEl = document.getElementById('customCalAgendaView');
             
-            this.gridBodyEl = document.getElementById('customCalGridBody');
-            this.weekGridHeaderEl = document.getElementById('customCalWeekGridHeader');
-            this.weekGridBodyEl = document.getElementById('customCalWeekGridBody');
+            this.agendaListEl = document.getElementById('customCalAgendaList');
             this.dayTitleEl = document.getElementById('customCalDayTitle');
             this.dayAddBtnContainer = document.getElementById('customCalDayAddBtnContainer');
             this.dayEventsListEl = document.getElementById('customCalDayEventsList');
-            this.agendaListEl = document.getElementById('customCalAgendaList');
+        }
+        
+        initHourDropdowns() {
+            this.startHour = 8;
+            this.endHour = 18;
+            
+            const startSel = document.getElementById('customCalStartHour');
+            const endSel = document.getElementById('customCalEndHour');
+            
+            if (startSel && endSel) {
+                startSel.innerHTML = '';
+                endSel.innerHTML = '';
+                
+                for (let h = 0; h < 24; h++) {
+                    const hStr = String(h).padStart(2, '0') + ':00';
+                    const opt = document.createElement('option');
+                    opt.value = h;
+                    opt.textContent = hStr;
+                    if (h === this.startHour) opt.selected = true;
+                    startSel.appendChild(opt);
+                }
+                
+                for (let h = 1; h <= 24; h++) {
+                    const hStr = String(h === 24 ? 0 : h).padStart(2, '0') + ':00';
+                    const opt = document.createElement('option');
+                    opt.value = h;
+                    opt.textContent = hStr;
+                    if (h === this.endHour) opt.selected = true;
+                    endSel.appendChild(opt);
+                }
+                
+                startSel.addEventListener('change', (e) => {
+                    this.startHour = parseInt(e.target.value);
+                    if (this.endHour <= this.startHour) {
+                        this.endHour = Math.min(24, this.startHour + 1);
+                        endSel.value = this.endHour;
+                    }
+                    this.render();
+                });
+                
+                endSel.addEventListener('change', (e) => {
+                    this.endHour = parseInt(e.target.value);
+                    if (this.startHour >= this.endHour) {
+                        this.startHour = Math.max(0, this.endHour - 1);
+                        startSel.value = this.startHour;
+                    }
+                    this.render();
+                });
+            }
         }
         
         bindEvents() {
@@ -4125,10 +4236,15 @@
                 }
             });
             
-            if (this.monthViewEl) this.monthViewEl.style.display = view === 'month' ? 'block' : 'none';
-            if (this.weekViewEl) this.weekViewEl.style.display = view === 'week' ? 'block' : 'none';
+            if (this.monthViewEl) this.monthViewEl.style.display = view === 'month' ? 'grid' : 'none';
+            if (this.weekViewEl) this.weekViewEl.style.display = view === 'week' ? 'grid' : 'none';
             if (this.dayViewEl) this.dayViewEl.style.display = view === 'day' ? 'block' : 'none';
             if (this.agendaViewEl) this.agendaViewEl.style.display = view === 'agenda' ? 'block' : 'none';
+            
+            const hourControls = document.getElementById('customCalHourRangeControls');
+            if (hourControls) {
+                hourControls.style.setProperty('display', view === 'week' ? 'flex' : 'none', 'important');
+            }
             
             this.render();
         }
@@ -4153,8 +4269,9 @@
                     this.titleEl.textContent = `${this.monthNames[month]} de ${year}`;
                 } else if (this.currentView === 'week') {
                     const dayOfWeek = this.currentDate.getDay();
+                    const shift = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
                     const startOfWeek = new Date(this.currentDate);
-                    startOfWeek.setDate(this.currentDate.getDate() - dayOfWeek);
+                    startOfWeek.setDate(this.currentDate.getDate() - shift);
                     const endOfWeek = new Date(startOfWeek);
                     endOfWeek.setDate(startOfWeek.getDate() + 6);
                     
@@ -4187,10 +4304,20 @@
         }
         
         renderMonthView(year, month) {
-            if (!this.gridBodyEl) return;
-            this.gridBodyEl.innerHTML = '';
+            if (!this.monthViewEl) return;
+            this.monthViewEl.innerHTML = '';
             
-            const firstDayIndex = new Date(year, month, 1).getDay();
+            const weekDayNames = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+            weekDayNames.forEach(name => {
+                const headerCell = document.createElement('div');
+                headerCell.className = 'custom-calendar-header-cell';
+                headerCell.textContent = name;
+                this.monthViewEl.appendChild(headerCell);
+            });
+            
+            let firstDayIndex = new Date(year, month, 1).getDay();
+            firstDayIndex = firstDayIndex === 0 ? 6 : firstDayIndex - 1;
+            
             const lastDay = new Date(year, month + 1, 0).getDate();
             const prevLastDay = new Date(year, month, 0).getDate();
             const totalCells = 42;
@@ -4227,10 +4354,14 @@
                 const dayCell = document.createElement('div');
                 dayCell.className = `custom-calendar-day${isOtherMonth ? ' other-month' : ''}${isToday ? ' today' : ''}`;
                 
+                dayCell.addEventListener('click', () => {
+                    this.openDayZoomModal(cellDateString);
+                });
+                
                 let addBtnHtml = '';
                 if (defaultColId && !isOtherMonth) {
                     addBtnHtml = `<span style="cursor:pointer;" class="text-primary add-task-btn" 
-                                        onclick="openAddCardModal('${defaultColId}', '${defaultColNameEscaped}', '${cellDateString}')" 
+                                        onclick="event.stopPropagation(); openAddCardModal('${defaultColId}', '${defaultColNameEscaped}', '${cellDateString}')" 
                                         data-bs-toggle="modal" data-bs-target="#addCardModal" title="Nova Tarefa neste dia">
                                         <i class="bi bi-plus-circle"></i>
                                      </span>`;
@@ -4266,79 +4397,218 @@
                 });
                 
                 dayCell.appendChild(eventsListContainer);
-                this.gridBodyEl.appendChild(dayCell);
+                this.monthViewEl.appendChild(dayCell);
             }
         }
         
-        renderWeekView() {
-            const dayOfWeek = this.currentDate.getDay();
-            const Sunday = new Date(this.currentDate);
-            Sunday.setDate(this.currentDate.getDate() - dayOfWeek);
+        openDayZoomModal(dateString) {
+            const modalEl = document.getElementById('customCalDayZoomModal');
+            const titleEl = document.getElementById('customCalDayZoomTitle');
+            const listEl = document.getElementById('customCalDayZoomEventsList');
+            const addBtnContainer = document.getElementById('customCalDayZoomAddBtnContainer');
             
-            if (this.weekGridHeaderEl) {
-                this.weekGridHeaderEl.innerHTML = '';
-                const weekDayNames = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-                for (let i = 0; i < 7; i++) {
-                    const dayDate = new Date(Sunday);
-                    dayDate.setDate(Sunday.getDate() + i);
-                    const colHeader = document.createElement('div');
-                    colHeader.textContent = `${weekDayNames[i]} ${dayDate.getDate()}`;
-                    
-                    const today = new Date();
-                    const isToday = dayDate.getDate() === today.getDate() && 
-                                    dayDate.getMonth() === today.getMonth() && 
-                                    dayDate.getFullYear() === today.getFullYear();
-                    if (isToday) {
-                        colHeader.style.color = '#0d6efd';
-                        colHeader.style.fontWeight = 'bold';
-                    }
-                    this.weekGridHeaderEl.appendChild(colHeader);
+            if (!modalEl || !listEl) return;
+            
+            listEl.innerHTML = '';
+            
+            const parts = dateString.split('-');
+            const year = parseInt(parts[0]);
+            const month = parseInt(parts[1]) - 1;
+            const day = parseInt(parts[2]);
+            const formattedDate = `${day} de ${this.monthNames[month]} de ${year}`;
+            
+            if (titleEl) {
+                titleEl.textContent = `Atividades de ${formattedDate}`;
+            }
+            
+            const defaultColId = "{% if colunas %}{{ colunas.first.id }}{% endif %}";
+            const defaultColName = "{% if colunas %}{{ colunas.first.nome|escapejs }}{% endif %}";
+            const defaultColNameEscaped = defaultColName.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            
+            if (addBtnContainer) {
+                addBtnContainer.innerHTML = '';
+                if (defaultColId) {
+                    const addBtn = document.createElement('button');
+                    addBtn.className = 'btn btn-primary btn-sm';
+                    addBtn.innerHTML = '<i class="bi bi-plus-circle me-1"></i>Nova Tarefa';
+                    addBtn.addEventListener('click', () => {
+                        const zoomModalInstance = bootstrap.Modal.getInstance(modalEl);
+                        if (zoomModalInstance) zoomModalInstance.hide();
+                        
+                        setTimeout(() => {
+                            openAddCardModal(defaultColId, defaultColNameEscaped, dateString);
+                        }, 350);
+                    });
+                    addBtnContainer.appendChild(addBtn);
                 }
             }
             
-            if (this.weekGridBodyEl) {
-                this.weekGridBodyEl.innerHTML = '';
-                const today = new Date();
+            const dayEvents = this.events.filter(evt => {
+                const evtDateStr = evt.start.split('T')[0];
+                return evtDateStr === dateString;
+            });
+            
+            if (dayEvents.length === 0) {
+                listEl.innerHTML = `<div class="text-center py-4 text-muted bg-light rounded border border-dashed">
+                                        <i class="bi bi-calendar-check d-block fs-3 mb-2 text-secondary"></i>
+                                        Nenhuma atividade programada para este dia.
+                                     </div>`;
+            } else {
+                dayEvents.forEach(evt => {
+                    const evtDate = new Date(evt.start);
+                    const timeStr = !evt.allDay ? evtDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 'Dia Inteiro';
+                    
+                    const card = document.createElement('div');
+                    card.className = 'custom-calendar-day-event-card mb-2';
+                    card.style.borderLeftColor = evt.backgroundColor || '#0d6efd';
+                    
+                    card.innerHTML = `
+                        <div>
+                            <span class="badge bg-light text-dark border me-2">${timeStr}</span>
+                            <strong class="text-dark">${evt.title}</strong>
+                            <div class="text-muted small mt-1">
+                                <i class="bi bi-columns-gap me-1"></i>Coluna: ${evt.extendedProps?.coluna || ''}
+                                ${evt.extendedProps?.responsaveis ? ' | <i class="bi bi-people me-1"></i>' + evt.extendedProps.responsaveis : ''}
+                            </div>
+                        </div>
+                        <i class="bi bi-chevron-right text-muted"></i>
+                    `;
+                    
+                    card.addEventListener('click', () => {
+                        const zoomModalInstance = bootstrap.Modal.getInstance(modalEl);
+                        if (zoomModalInstance) zoomModalInstance.hide();
+                        
+                        setTimeout(() => {
+                            this.handleEventClick(evt);
+                        }, 350);
+                    });
+                    listEl.appendChild(card);
+                });
+            }
+            
+            const zoomModal = new bootstrap.Modal(modalEl);
+            zoomModal.show();
+        }
+        
+        renderWeekView() {
+            if (!this.weekViewEl) return;
+            this.weekViewEl.innerHTML = '';
+            
+            const dayOfWeek = this.currentDate.getDay();
+            const shift = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+            const Monday = new Date(this.currentDate);
+            Monday.setDate(this.currentDate.getDate() - shift);
+            
+            // 1. Render Header Row (Hora, Seg, Ter... Dom)
+            const hourHeader = document.createElement('div');
+            hourHeader.className = 'custom-calendar-week-header-cell';
+            hourHeader.textContent = 'Hora';
+            this.weekViewEl.appendChild(hourHeader);
+            
+            const weekDayNames = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+            const today = new Date();
+            for (let i = 0; i < 7; i++) {
+                const dayDate = new Date(Monday);
+                dayDate.setDate(Monday.getDate() + i);
                 
-                const defaultColId = "{% if colunas %}{{ colunas.first.id }}{% endif %}";
-                const defaultColName = "{% if colunas %}{{ colunas.first.nome|escapejs }}{% endif %}";
-                const defaultColNameEscaped = defaultColName.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                const isToday = dayDate.getDate() === today.getDate() && 
+                                dayDate.getMonth() === today.getMonth() && 
+                                dayDate.getFullYear() === today.getFullYear();
+                                
+                const headerCell = document.createElement('div');
+                headerCell.className = 'custom-calendar-week-header-cell' + (isToday ? ' text-primary fw-bold' : '');
+                headerCell.textContent = `${weekDayNames[i]} ${dayDate.getDate()}`;
+                this.weekViewEl.appendChild(headerCell);
+            }
+            
+            const defaultColId = "{% if colunas %}{{ colunas.first.id }}{% endif %}";
+            const defaultColName = "{% if colunas %}{{ colunas.first.nome|escapejs }}{% endif %}";
+            const defaultColNameEscaped = defaultColName.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            
+            // 2. Render All Day (Dia Inteiro) Row
+            const allDayTimeCell = document.createElement('div');
+            allDayTimeCell.className = 'custom-calendar-week-time-cell text-uppercase small';
+            allDayTimeCell.style.fontSize = '0.65rem';
+            allDayTimeCell.textContent = 'Dia Int.';
+            this.weekViewEl.appendChild(allDayTimeCell);
+            
+            for (let i = 0; i < 7; i++) {
+                const dayDate = new Date(Monday);
+                dayDate.setDate(Monday.getDate() + i);
+                const cellDateString = this.formatDateISO(dayDate);
+                const isToday = dayDate.getDate() === today.getDate() && 
+                                dayDate.getMonth() === today.getMonth() && 
+                                dayDate.getFullYear() === today.getFullYear();
+                                
+                const slotCell = document.createElement('div');
+                slotCell.className = 'custom-calendar-week-slot-cell' + (isToday ? ' today' : '');
+                slotCell.style.minHeight = '38px';
+                
+                slotCell.addEventListener('click', () => {
+                    if (defaultColId) {
+                        openAddCardModal(defaultColId, defaultColNameEscaped, cellDateString);
+                    }
+                });
+                
+                const allDayEvents = this.events.filter(evt => {
+                    const evtDateStr = evt.start.split('T')[0];
+                    if (evtDateStr !== cellDateString) return false;
+                    const hasTime = evt.start.includes('T') && evt.start.split('T')[1] !== '00:00:00';
+                    return evt.allDay || !hasTime;
+                });
+                
+                allDayEvents.forEach(evt => {
+                    const evtItem = document.createElement('div');
+                    evtItem.className = 'custom-calendar-event-item';
+                    evtItem.style.backgroundColor = evt.backgroundColor || '#0d6efd';
+                    evtItem.style.borderColor = evt.borderColor || '#0d6efd';
+                    evtItem.textContent = evt.title;
+                    evtItem.title = `${evt.title} (${evt.extendedProps?.coluna || ''})`;
+                    
+                    evtItem.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.handleEventClick(evt);
+                    });
+                    slotCell.appendChild(evtItem);
+                });
+                
+                this.weekViewEl.appendChild(slotCell);
+            }
+            
+            // 3. Render Hour Slots
+            for (let h = this.startHour; h < this.endHour; h++) {
+                const timeCell = document.createElement('div');
+                timeCell.className = 'custom-calendar-week-time-cell';
+                timeCell.textContent = String(h).padStart(2, '0') + ':00';
+                this.weekViewEl.appendChild(timeCell);
                 
                 for (let i = 0; i < 7; i++) {
-                    const dayDate = new Date(Sunday);
-                    dayDate.setDate(Sunday.getDate() + i);
-                    
+                    const dayDate = new Date(Monday);
+                    dayDate.setDate(Monday.getDate() + i);
                     const cellDateString = this.formatDateISO(dayDate);
                     const isToday = dayDate.getDate() === today.getDate() && 
                                     dayDate.getMonth() === today.getMonth() && 
                                     dayDate.getFullYear() === today.getFullYear();
                                     
-                    const weekDayCol = document.createElement('div');
-                    weekDayCol.className = `custom-calendar-week-day${isToday ? ' today' : ''}`;
+                    const slotCell = document.createElement('div');
+                    slotCell.className = 'custom-calendar-week-slot-cell' + (isToday ? ' today' : '');
                     
-                    let addBtnHtml = '';
-                    if (defaultColId) {
-                        addBtnHtml = `<span style="cursor:pointer;" class="text-primary add-task-btn" 
-                                            onclick="openAddCardModal('${defaultColId}', '${defaultColNameEscaped}', '${cellDateString}')" 
-                                            data-bs-toggle="modal" data-bs-target="#addCardModal" title="Nova Tarefa neste dia">
-                                            <i class="bi bi-plus-circle"></i>
-                                         </span>`;
-                    }
-                    
-                    const headerRow = document.createElement('div');
-                    headerRow.className = 'custom-calendar-day-number-row';
-                    headerRow.innerHTML = `<span>Dia ${dayDate.getDate()}</span> ${addBtnHtml}`;
-                    weekDayCol.appendChild(headerRow);
-                    
-                    const eventsListContainer = document.createElement('div');
-                    eventsListContainer.className = 'custom-calendar-week-day-events';
-                    
-                    const dayEvents = this.events.filter(evt => {
-                        const evtDateStr = evt.start.split('T')[0];
-                        return evtDateStr === cellDateString;
+                    slotCell.addEventListener('click', () => {
+                        if (defaultColId) {
+                            openAddCardModal(defaultColId, defaultColNameEscaped, cellDateString, String(h).padStart(2, '0') + ':00');
+                        }
                     });
                     
-                    dayEvents.forEach(evt => {
+                    const hourEvents = this.events.filter(evt => {
+                        const parts = evt.start.split('T');
+                        if (parts[0] !== cellDateString) return false;
+                        const timePart = parts[1];
+                        if (!timePart || timePart === '00:00:00') return false;
+                        const eventHour = parseInt(timePart.split(':')[0]);
+                        return eventHour === h;
+                    });
+                    
+                    hourEvents.forEach(evt => {
                         const evtItem = document.createElement('div');
                         evtItem.className = 'custom-calendar-event-item';
                         evtItem.style.backgroundColor = evt.backgroundColor || '#0d6efd';
@@ -4350,12 +4620,10 @@
                             e.stopPropagation();
                             this.handleEventClick(evt);
                         });
-                        
-                        eventsListContainer.appendChild(evtItem);
+                        slotCell.appendChild(evtItem);
                     });
                     
-                    weekDayCol.appendChild(eventsListContainer);
-                    this.weekGridBodyEl.appendChild(weekDayCol);
+                    this.weekViewEl.appendChild(slotCell);
                 }
             }
         }
