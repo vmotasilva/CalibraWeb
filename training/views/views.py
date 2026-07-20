@@ -1333,23 +1333,23 @@ def dashboard_treinamentos_filtered_view(request):
     if setor_id:
         try:
             base_query &= Q(colaborador__setor_id=int(setor_id))
-        except:
-            pass
+        except (ValueError, TypeError):
+            logger.debug("Ignorando filtro setor_id invalido: %r", setor_id)
     if lider_id:
         try:
             base_query &= Q(colaborador__lider_id=int(lider_id))
-        except:
-            pass
+        except (ValueError, TypeError):
+            logger.debug("Ignorando filtro lider_id invalido: %r", lider_id)
     if supervisor_id:
         try:
             base_query &= Q(colaborador__supervisor_id=int(supervisor_id))
-        except:
-            pass
+        except (ValueError, TypeError):
+            logger.debug("Ignorando filtro supervisor_id invalido: %r", supervisor_id)
     if gerente_id:
         try:
             base_query &= Q(colaborador__gerente_id=int(gerente_id))
-        except:
-            pass
+        except (ValueError, TypeError):
+            logger.debug("Ignorando filtro gerente_id invalido: %r", gerente_id)
 
     # Definição unificada de status vigente e pendente (referência: data de aprovação do documento)
     vigentes_q = Q(data_treinamento__isnull=False) & (
@@ -1522,8 +1522,12 @@ def dashboard_treinamentos_filtered_view(request):
                     'vigentes': vigentes_count,
                     'pendentes': pendentes_count
                 })
-        except:
-            pass
+        except Exception:
+            logger.warning(
+                "Falha ao computar treinamentos para setor_id=%r turno=%r",
+                setor_id, turno_val, exc_info=True,
+            )
+            continue
     
     treinamentos_por_setor_turno.sort(key=lambda x: x['vigentes'] + x['pendentes'], reverse=True)
     treinamentos_por_setor_turno = treinamentos_por_setor_turno[:10]
@@ -1606,16 +1610,16 @@ def dashboard_treinamentos_exportar_csv_view(request):
             setores_int = [int(s) for s in setores if s.strip()]
             if setores_int:
                 base_query &= Q(colaborador__setor_id__in=setores_int)
-        except:
-            pass
+        except (ValueError, TypeError):
+            logger.debug("Ignorando filtro de setores invalido: %r", setores)
     if lideres:
         lideres_int = []
         try:
             lideres_int = [int(l) for l in lideres if l.strip()]
             if lideres_int:
                 base_query &= Q(colaborador__lider_id__in=lideres_int)
-        except:
-            pass
+        except (ValueError, TypeError):
+            logger.debug("Ignorando filtro de lideres invalido: %r", lideres)
 
     if criticidades:
         criticidades_clean = [c for c in criticidades if str(c).strip()]

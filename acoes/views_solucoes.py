@@ -1,3 +1,5 @@
+import logging
+
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, FileResponse
@@ -17,6 +19,8 @@ from .models import (
     SolucaoGestaoDeMudanca,
     RevisaoGerencial
 )
+
+logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -175,7 +179,10 @@ def criar_plano_acao_modal(request):
         try:
             linha.responsaveis_multiplos.set(responsaveis_ids)
         except Exception:
-            pass
+            logger.warning(
+                "Falha ao definir responsaveis %r na linha de acao %s",
+                responsaveis_ids, getattr(linha, 'pk', None), exc_info=True,
+            )
 
     if is_ajax:
         return JsonResponse({'success': True, 'linha_id': linha.id})
@@ -270,7 +277,10 @@ def editar_linha_acao_modal(request, linha_id):
         try:
             linha.responsaveis_multiplos.set(responsaveis_ids)
         except Exception:
-            pass
+            logger.warning(
+                "Falha ao definir responsaveis %r na linha de acao %s",
+                responsaveis_ids, getattr(linha, 'pk', None), exc_info=True,
+            )
     else:
         linha.responsaveis_multiplos.clear()
 

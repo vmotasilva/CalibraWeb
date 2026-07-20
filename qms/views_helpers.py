@@ -52,7 +52,8 @@ def excel_date_to_datetime(serial):
             return pd.to_datetime(serial_str, dayfirst=True).date()
         serial_float = float(serial)
         return (datetime(1899, 12, 30) + timedelta(days=serial_float)).date()
-    except:
+    except (ValueError, TypeError, OverflowError):
+        logger.debug("Nao foi possivel converter data Excel: %r", serial)
         return None
 
 

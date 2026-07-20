@@ -14,7 +14,7 @@ from django.core.paginator import Paginator
 from django.utils import timezone
 from django.urls import reverse
 from datetime import date, datetime, timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 import logging
 
 # Import helper functions from views_helpers
@@ -2367,8 +2367,8 @@ def editar_instrumento_view(request, instrumento_id):
                     try:
                         from organization.models import Setor
                         instrumento.setor = Setor.objects.get(id=setor_id)
-                    except:
-                        pass
+                    except (Setor.DoesNotExist, ValueError, TypeError):
+                        logger.warning("Setor invalido ao editar instrumento %s: %r", instrumento_id, setor_id)
                 
                 # Atualizar responsável
                 responsavel_id = request.POST.get('responsavel')
@@ -2376,8 +2376,8 @@ def editar_instrumento_view(request, instrumento_id):
                     try:
                         from rh.models import Colaborador
                         instrumento.responsavel = Colaborador.objects.get(id=responsavel_id)
-                    except:
-                        pass
+                    except (Colaborador.DoesNotExist, ValueError, TypeError):
+                        logger.warning("Responsavel invalido ao editar instrumento %s: %r", instrumento_id, responsavel_id)
                 
                 instrumento.localizacao = request.POST.get('localizacao', instrumento.localizacao)
                 
@@ -2386,30 +2386,30 @@ def editar_instrumento_view(request, instrumento_id):
                 if data_ultima:
                     try:
                         instrumento.data_ultima_calibracao = datetime.strptime(data_ultima, '%Y-%m-%d').date()
-                    except:
-                        pass
+                    except (ValueError, TypeError):
+                        logger.warning("Data ultima calibracao invalida: %r", data_ultima)
                 
                 data_proxima = request.POST.get('data_proxima_calibracao')
                 if data_proxima:
                     try:
                         instrumento.data_proxima_calibracao = datetime.strptime(data_proxima, '%Y-%m-%d').date()
-                    except:
-                        pass
+                    except (ValueError, TypeError):
+                        logger.warning("Data proxima calibracao invalida: %r", data_proxima)
                 
                 frequencia = request.POST.get('frequencia_meses')
                 if frequencia:
                     try:
                         instrumento.frequencia_meses = int(frequencia)
-                    except:
-                        pass
+                    except (ValueError, TypeError):
+                        logger.warning("Frequencia invalida: %r", frequencia)
                 
                 # Atualizar tolerância
                 tolerancia = request.POST.get('tolerancia_processo')
                 if tolerancia:
                     try:
                         instrumento.tolerancia_processo = Decimal(tolerancia)
-                    except:
-                        pass
+                    except (InvalidOperation, ValueError, TypeError):
+                        logger.warning("Tolerancia invalida: %r", tolerancia)
                 
                 # Atualizar status
                 instrumento.ativo = request.POST.get('ativo') == 'on'

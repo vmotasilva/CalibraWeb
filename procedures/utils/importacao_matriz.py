@@ -292,7 +292,7 @@ class ImportadorMatrizHabilidade:
             try:
                 ultimo_num = int(ultimo.codigo.replace('DISC', ''))
                 return f'DISC{str(ultimo_num + 1).zfill(3)}'
-            except:
+            except (ValueError, TypeError, AttributeError):
                 return 'DISC001'
         return 'DISC001'
     

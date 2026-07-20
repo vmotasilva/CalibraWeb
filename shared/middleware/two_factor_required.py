@@ -71,14 +71,14 @@ class TwoFactorRequiredMiddleware:
         
         # Verificar nomes de URLs específicos
         try:
-            from django.urls import resolve
+            from django.urls import resolve, Resolver404
             resolved = resolve(request.path)
             url_name = f"{resolved.namespace}:{resolved.url_name}" if resolved.namespace else resolved.url_name
             
             for allowed in self.ALLOWED_URLS:
                 if url_name == allowed or resolved.url_name == allowed:
                     return True
-        except:
+        except Resolver404:
             pass
         
         return False

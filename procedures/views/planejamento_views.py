@@ -81,7 +81,7 @@ def planejamentos_list_view(request):
                 data_prevista__year=ano,
                 data_prevista__month=mes_num
             )
-        except:
+        except (ValueError, TypeError):
             pass
     
     planejamentos = planejamentos.order_by('-data_prevista', '-criado_em')
@@ -1234,7 +1234,7 @@ def exportar_lista_planejamentos_excel_view(request):
                 data_prevista__year=ano,
                 data_prevista__month=mes_num
             )
-        except:
+        except (ValueError, TypeError):
             pass
     
     planejamentos = planejamentos.order_by('-data_prevista', '-criado_em')

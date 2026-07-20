@@ -3,7 +3,8 @@ from django.conf import settings
 from django.db import models
 
 from datetime import date, timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+import logging
 
 from django.contrib.auth.models import User
 from django.db import models
@@ -11,6 +12,8 @@ from django.db.models.signals import m2m_changed, post_delete, post_save
 from django.dispatch import receiver
 from django.utils import timezone
 import uuid
+
+logger = logging.getLogger(__name__)
 
 # ==============================================================================
 # CONSTANTES E OPÇÕES GERAIS
@@ -681,8 +684,11 @@ class ArquivoPadrao(models.Model):
                     self.resultado = "APROVADO_COM_CORRECAO"
                 else:
                     self.resultado = "REPROVADO"
-            except:
-                pass
+            except (InvalidOperation, ValueError, TypeError, ArithmeticError):
+                logger.warning(
+                    "Falha ao calcular resultado da calibracao (erro=%r, incerteza=%r, tolerancia=%r)",
+                    self.erro_encontrado, self.incerteza, self.tolerancia_usada,
+                )
         super().save(*args, **kwargs)
 
 
