@@ -33,7 +33,7 @@ repos:
     rev: 1.7.5
     hooks:
       - id: bandit
-        args: ['-c', '.bandit']
+        args: ['--ini', '.bandit']
         exclude: ^tests/
 
   - repo: https://github.com/asottile/pyupgrade
@@ -51,7 +51,7 @@ repos:
 ci:
   autofix_commit_msg: |
     [pre-commit.ci] auto fixes from pre-commit.com hooks
-    
+
     for more information, see https://pre-commit.ci
   autofix_prs: true
   autoupdate_branch: ''
