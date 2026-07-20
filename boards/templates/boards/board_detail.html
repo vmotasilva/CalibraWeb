@@ -544,6 +544,21 @@
                         {% endfor %}
                     </select>
 
+                    {% if board.tipo == 'PLANOS_ACAO' %}
+                    {# Quadro de Planos de Ação: filtro por status da LinhaAcao como "etiqueta" #}
+                    <select id="globalFilterLabel" class="form-select form-select-sm" style="width: 165px;" onchange="applyGlobalFilters()">
+                        <option value="">Etiqueta: Todas</option>
+                        <option value="Planejada">Planejada</option>
+                        <option value="Em Curso/Andamento">Em Curso/Andamento</option>
+                        <option value="Retardo/Atrasada">Retardo/Atrasada</option>
+                        <option value="Concluída">Concluída</option>
+                        <option value="Cancelada">Cancelada</option>
+                    </select>
+                    {# O select globalFilterStatus não são usados para PLANOS_ACAO; ocultar #}
+                    <select id="globalFilterStatus" class="d-none" onchange="applyGlobalFilters()">
+                        <option value="">Status: Todos</option>
+                    </select>
+                    {% else %}
                     <!-- Filtro por Etiqueta -->
                     <select id="globalFilterLabel" class="form-select form-select-sm" style="width: 155px;" onchange="applyGlobalFilters()">
                         <option value="">Etiqueta: Todas</option>
@@ -558,6 +573,7 @@
                         <option value="andamento">Status: Em Andamento</option>
                         <option value="concluido">Status: Concluídas</option>
                     </select>
+                    {% endif %}
 
                     <!-- Botão Limpar Filtros -->
                     <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearAllFilters()" title="Limpar todos os filtros">
@@ -1501,6 +1517,120 @@
     </div>
 </div>
 
+<!-- Modal Detalhes da Linha de Ação (Quadro de Planos de Ação) -->
+<div class="modal fade" id="linhaAcaoDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content shadow-lg" style="border-radius: 14px;">
+            <!-- Cabeçalho -->
+            <div class="modal-header text-white" id="linhaAcaoModalHeader" style="border-top-left-radius: 12px; border-top-right-radius: 12px; background: #1e3a5f;">
+                <div>
+                    <h5 class="modal-title fw-bold mb-0" id="linhaAcaoModalTitle">
+                        <i class="bi bi-check2-square me-2"></i>Ação #<span id="linhaAcaoNumero">—</span>
+                    </h5>
+                    <small class="text-white-50" id="linhaAcaoPlanoRef"></small>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body p-4" id="linhaAcaoModalBody">
+                <!-- Skeleton loader -->
+                <div id="linhaAcaoSkeleton" class="d-flex flex-column gap-3">
+                    <div class="placeholder-glow"><span class="placeholder col-8 rounded" style="height:18px;"></span></div>
+                    <div class="placeholder-glow"><span class="placeholder col-12 rounded" style="height:12px;"></span></div>
+                    <div class="placeholder-glow"><span class="placeholder col-10 rounded" style="height:12px;"></span></div>
+                </div>
+
+                <!-- Conteúdo carregado -->
+                <div id="linhaAcaoContent" style="display:none;">
+                    <!-- Status badge -->
+                    <div class="mb-3">
+                        <span class="badge rounded-pill fs-6 px-3 py-2" id="linhaAcaoStatusBadge" style="font-size:0.85rem!important;">—</span>
+                    </div>
+
+                    <!-- Descrição -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-muted small text-uppercase letter-spacing-1">
+                            <i class="bi bi-card-text me-1"></i>Descrição / Ação
+                        </label>
+                        <p class="text-dark" id="linhaAcaoDesc" style="white-space: pre-wrap; line-height: 1.6;"></p>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <!-- Responsáveis -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-muted small text-uppercase">
+                                <i class="bi bi-people me-1"></i>Responsáveis
+                            </label>
+                            <div id="linhaAcaoResps" class="d-flex flex-wrap gap-2"></div>
+                        </div>
+                        <!-- Classificação + Prioridade -->
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold text-muted small text-uppercase">
+                                <i class="bi bi-tag me-1"></i>Classificação
+                            </label>
+                            <div id="linhaAcaoClassif" class="text-dark fw-semibold"></div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold text-muted small text-uppercase">
+                                <i class="bi bi-flag me-1"></i>Prioridade
+                            </label>
+                            <div id="linhaAcaoPrioridade" class="text-dark fw-semibold"></div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <!-- 1ª Deadline -->
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-muted small text-uppercase">
+                                <i class="bi bi-calendar-event me-1"></i>1ª Deadline
+                            </label>
+                            <div id="linhaAcaoPrimeiraDeadline" class="text-dark"></div>
+                        </div>
+                        <!-- Deadline Final -->
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-muted small text-uppercase">
+                                <i class="bi bi-calendar-check me-1"></i>Deadline Final
+                            </label>
+                            <div id="linhaAcaoDeadline" class="text-dark"></div>
+                        </div>
+                        <!-- Data Conclusão -->
+                        <div class="col-md-4" id="linhaAcaoConclusaoBlock">
+                            <label class="form-label fw-bold text-muted small text-uppercase">
+                                <i class="bi bi-check2-circle me-1"></i>Conclusão
+                            </label>
+                            <div id="linhaAcaoConclusao" class="text-success fw-semibold"></div>
+                        </div>
+                    </div>
+
+                    <!-- Problema -->
+                    <div class="mb-3" id="linhaAcaoProblemaBlock">
+                        <label class="form-label fw-bold text-muted small text-uppercase">
+                            <i class="bi bi-exclamation-diamond me-1"></i>Problema / Causa
+                        </label>
+                        <p class="text-dark" id="linhaAcaoProblema" style="white-space: pre-wrap;"></p>
+                    </div>
+
+                    <!-- Comentários -->
+                    <div class="mb-3" id="linhaAcaoComentariosBlock">
+                        <label class="form-label fw-bold text-muted small text-uppercase">
+                            <i class="bi bi-chat-left-text me-1"></i>Comentários / Observações
+                        </label>
+                        <p class="text-dark" id="linhaAcaoComentarios" style="white-space: pre-wrap;"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rodapé -->
+            <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
+                <a id="linhaAcaoPlanoLink" href="#" target="_blank" class="btn btn-outline-primary">
+                    <i class="bi bi-box-arrow-up-right me-1"></i>Abrir Plano de Ação
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Modal Gerenciar Etiquetas do Quadro -->
 <div class="modal fade" id="boardLabelsModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -2377,8 +2507,103 @@
             }
         });
     }
-    
+
+    // ============================================================
+    // Modal de detalhes da Linha de Ação (Quadro de Planos de Ação)
+    // ============================================================
+    function openLinhaAcaoModal(linhaId) {
+        const modal = new bootstrap.Modal(document.getElementById('linhaAcaoDetailModal'));
+
+        // Reset UI
+        document.getElementById('linhaAcaoSkeleton').style.display = '';
+        document.getElementById('linhaAcaoContent').style.display = 'none';
+        document.getElementById('linhaAcaoNumero').textContent = '…';
+        document.getElementById('linhaAcaoPlanoRef').textContent = '';
+
+        modal.show();
+
+        // Buscar dados via API
+        fetch(`/boards/linhas-acao/${linhaId}/detalhes/`)
+        .then(res => res.json())
+        .then(data => {
+            // Cabeçalho
+            document.getElementById('linhaAcaoNumero').textContent = data.numero_acao;
+            document.getElementById('linhaAcaoPlanoRef').textContent = 'Plano: ' + data.plano_ref;
+
+            // Badge de status
+            const badge = document.getElementById('linhaAcaoStatusBadge');
+            badge.textContent = data.status_label;
+            badge.style.backgroundColor = data.status_color;
+            badge.style.color = '#fff';
+
+            // Descrição
+            document.getElementById('linhaAcaoDesc').textContent = data.descricao || '—';
+
+            // Responsáveis
+            const respsEl = document.getElementById('linhaAcaoResps');
+            respsEl.innerHTML = '';
+            if (data.responsaveis && data.responsaveis.length > 0) {
+                data.responsaveis.forEach(r => {
+                    const initials = r.nome.trim().split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+                    respsEl.innerHTML += `
+                        <div class="d-flex align-items-center gap-2 bg-light border rounded-pill px-3 py-1">
+                            <div class="avatar-circle" style="width:28px;height:28px;font-size:0.65rem;" title="${r.nome}">${initials}</div>
+                            <span class="small fw-semibold">${r.nome}</span>
+                        </div>`;
+                });
+            } else {
+                respsEl.innerHTML = '<span class="text-muted small">Sem responsável atribuído</span>';
+            }
+
+            // Classificação e prioridade
+            document.getElementById('linhaAcaoClassif').textContent = data.classificacao || '—';
+            const priorEl = document.getElementById('linhaAcaoPrioridade');
+            priorEl.innerHTML = data.prioridade === 'Alta'
+                ? '<span class="badge bg-danger"><i class="bi bi-exclamation-triangle me-1"></i>Alta</span>'
+                : '<span class="badge bg-secondary">Normal</span>';
+
+            // Datas
+            document.getElementById('linhaAcaoPrimeiraDeadline').textContent = data.data_primeira_deadline || '—';
+            document.getElementById('linhaAcaoDeadline').textContent = data.data_deadline || '—';
+            document.getElementById('linhaAcaoConclusao').textContent = data.data_conclusao || '—';
+            document.getElementById('linhaAcaoConclusaoBlock').style.display = data.data_conclusao ? '' : 'none';
+
+            // Problema
+            const problemaBlock = document.getElementById('linhaAcaoProblemaBlock');
+            const problemaEl = document.getElementById('linhaAcaoProblema');
+            if (data.problema) {
+                problemaEl.textContent = data.problema;
+                problemaBlock.style.display = '';
+            } else {
+                problemaBlock.style.display = 'none';
+            }
+
+            // Comentários
+            const comentariosBlock = document.getElementById('linhaAcaoComentariosBlock');
+            const comentariosEl = document.getElementById('linhaAcaoComentarios');
+            if (data.comentarios_texto) {
+                comentariosEl.textContent = data.comentarios_texto;
+                comentariosBlock.style.display = '';
+            } else {
+                comentariosBlock.style.display = 'none';
+            }
+
+            // Link do plano
+            document.getElementById('linhaAcaoPlanoLink').href = data.plano_url;
+
+            // Mostrar conteúdo
+            document.getElementById('linhaAcaoSkeleton').style.display = 'none';
+            document.getElementById('linhaAcaoContent').style.display = '';
+        })
+        .catch(err => {
+            document.getElementById('linhaAcaoSkeleton').innerHTML =
+                '<div class="alert alert-danger"><i class="bi bi-exclamation-circle me-2"></i>Erro ao carregar os detalhes da ação.</div>';
+            console.error('Erro ao buscar LinhaAcao:', err);
+        });
+    }
+
     function openCardModal(cardId) {
+
         activeCardId = cardId;
         
         // Define a rota de exclusão no form do modal
@@ -3843,12 +4068,15 @@
             }
             
             const etiquetas = card.getAttribute('data-etiquetas') || '';
-            const labelMatch = !filterLabel || etiquetas.includes(filterLabel + ';');
+            const labelMatch = !filterLabel || etiquetas.includes(filterLabel);
             
             const isConcluded = card.getAttribute('data-is-concluida') === 'true';
+            // Para cartões virtuais (PLANOS_ACAO), o filtro de status usa data-status diretamente
+            const cardStatus = card.getAttribute('data-status') || '';
             let statusMatch = true;
             if (filterStatus === 'andamento') statusMatch = !isConcluded;
             if (filterStatus === 'concluido') statusMatch = isConcluded;
+            // Status específicos da LinhaAcao são filtrados via filterLabel (que usa data-etiquetas)
             
             if (textMatch && priorMatch && respMatch && labelMatch && statusMatch) {
                 card.style.display = '';

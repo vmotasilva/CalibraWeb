@@ -3,7 +3,7 @@
 <div class="kanban-card priority-{{ card.prioridade|lower }}"
      id="card-virtual-{{ card.id }}"
      draggable="false"
-     onclick="window.open('{% url 'acoes:plano_acao_detail' card.plano_acao_id %}', '_blank')"
+     onclick="openLinhaAcaoModal({{ card.id }})"
      data-titulo="{{ card.titulo }}"
      data-prioridade="{% if card.prioridade == 'ALTA' %}Alta{% else %}Baixa{% endif %}"
      data-responsaveis="{% for r in card.responsaveis.all %}{{ r.nome_completo }};{% endfor %}"

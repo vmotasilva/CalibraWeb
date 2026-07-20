@@ -796,8 +796,67 @@ def api_move_card_view(request):
 
 
 @login_required
+def api_linha_acao_detail_view(request, linha_id):
+    """Endpoint API para buscar detalhes de uma LinhaAcao (cartão virtual do quadro de Planos de Ação)"""
+    from acoes.models import LinhaAcao
+    linha = get_object_or_404(LinhaAcao, id=linha_id)
+    
+    STATUS_LABEL = {
+        'planejada': 'Planejada',
+        'em_curso':  'Em Curso/Andamento',
+        'retardo':   'Retardo/Atrasada',
+        'completa':  'Completa/Concluído',
+        'cancelada': 'Cancelada',
+    }
+    STATUS_COLOR = {
+        'planejada': '#6c757d',
+        'em_curso':  '#0d6efd',
+        'retardo':   '#dc3545',
+        'completa':  '#198754',
+        'cancelada': '#adb5bd',
+    }
+    
+    resps = []
+    if linha.responsavel_acao:
+        resps.append({'id': linha.responsavel_acao.id, 'nome': linha.responsavel_acao.nome_completo})
+    for r in linha.responsaveis_multiplos.all():
+        if r.id not in [x['id'] for x in resps]:
+            resps.append({'id': r.id, 'nome': r.nome_completo})
+    
+    plano = linha.plano_acao
+    plano_ref = plano.numero_registro or (plano.solucao.titulo if plano.solucao else '') or f'Plano #{plano.id}'
+    plano_url = f'/acoes/plano-acao/{plano.id}/'
+    
+    data = {
+        'id': linha.id,
+        'numero_acao': linha.numero_acao,
+        'titulo': f'Ação #{linha.numero_acao}',
+        'descricao': linha.descricao or '',
+        'classificacao': linha.get_classificacao_display() if linha.classificacao else 'N/A',
+        'status': linha.status,
+        'status_label': STATUS_LABEL.get(linha.status, linha.status),
+        'status_color': STATUS_COLOR.get(linha.status, '#6c757d'),
+        'prioridade': 'Alta' if linha.prioridade else 'Normal',
+        'data_deadline': linha.data_deadline.strftime('%d/%m/%Y') if linha.data_deadline else '',
+        'data_primeira_deadline': linha.data_primeira_deadline.strftime('%d/%m/%Y') if linha.data_primeira_deadline else '',
+        'data_conclusao': linha.data_conclusao.strftime('%d/%m/%Y') if linha.data_conclusao else '',
+        'comentarios_texto': linha.comentarios or '',
+        'acao_eficaz': linha.get_acao_eficaz_display() if linha.acao_eficaz else '',
+        'kpi': linha.kpi or '',
+        'problema': linha.problema or '',
+        'input_origem': linha.input_origem or '',
+        'responsaveis': resps,
+        'plano_ref': plano_ref,
+        'plano_url': plano_url,
+        'plano_id': plano.id,
+    }
+    return JsonResponse(data)
+
+
+@login_required
 def api_card_detail_view(request, card_id):
     """Endpoint API para buscar detalhes e atualizar informações de um cartão"""
+
     colab = get_user_colaborador(request.user)
     card = get_object_or_404(Card, id=card_id)
     board = card.coluna.quadro

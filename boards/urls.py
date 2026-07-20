@@ -14,6 +14,7 @@ urlpatterns = [
     path('cartoes/mover/', views.api_move_card_view, name='api_move_card'),
     path('cartoes/<int:card_id>/detalhes/', views.api_card_detail_view, name='api_card_detail'),
     path('cartoes/<int:card_id>/excluir/', views.delete_card_view, name='delete_card'),
+    path('linhas-acao/<int:linha_id>/detalhes/', views.api_linha_acao_detail_view, name='api_linha_acao_detail'),
     path('cartoes/<int:card_id>/checklist/novo/', views.api_add_checklist_item_view, name='api_add_checklist_item'),
     path('checklist/<int:item_id>/toggle/', views.api_toggle_checklist_item_view, name='api_toggle_checklist_item'),
     path('checklist/<int:item_id>/excluir/', views.api_delete_checklist_item_view, name='api_delete_checklist_item'),
