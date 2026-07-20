@@ -943,7 +943,7 @@
                         <tbody>
                             {% for col in colunas %}
                                 {% for card in col.cartoes_list %}
-                                    <tr class="task-table-row cursor-pointer" onclick="{% if board.tipo == 'PLANOS_ACAO' %}window.open('{% url 'acoes:plano_acao_detail' card.plano_acao_id %}', '_blank'){% else %}openCardModal({{ card.id }}){% endif %}" data-is-concluida="{% if card.data_conclusao %}true{% else %}false{% endif %}" data-row-card-id="{{ card.id }}">
+                                    <tr class="task-table-row cursor-pointer" onclick="{% if board.tipo == 'PLANOS_ACAO' %}openLinhaAcaoModal({{ card.id }}){% else %}openCardModal({{ card.id }}){% endif %}" data-is-concluida="{% if card.data_conclusao %}true{% else %}false{% endif %}" data-row-card-id="{{ card.id }}">
                                         <td>
                                             <div class="fw-semibold text-dark">{{ card.titulo }}</div>
                                             {% if card.descricao %}
@@ -1022,7 +1022,7 @@
                                         </td>
                                         <td class="text-end" onclick="event.stopPropagation();">
                                             {% if board.tipo == 'PLANOS_ACAO' %}
-                                                <a href="{% url 'acoes:plano_acao_detail' card.plano_acao_id %}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-box-arrow-up-right"></i> Ver</a>
+                                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="openLinhaAcaoModal({{ card.id }})"><i class="bi bi-eye"></i> Detalhes</button>
                                             {% else %}
                                                 <button type="button" class="btn btn-sm btn-outline-primary" onclick="openCardModal({{ card.id }})"><i class="bi bi-eye"></i> Detalhes</button>
                                             {% endif %}
