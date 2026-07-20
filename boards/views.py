@@ -275,7 +275,8 @@ def board_detail_view(request, board_id):
                 if r not in resps:
                     resps.append(r)
             status_info = STATUS_BADGE.get(l.status, {'label': l.status, 'color': '#6c757d'})
-            card_title = f"Ação #{l.numero_acao} - {(l.descricao or '')[:80]}"
+            descricao_texto = l.descricao or ''
+            card_title = f"Ação #{l.numero_acao} — {descricao_texto[:90]}" if descricao_texto else f"Ação #{l.numero_acao}"
             return {
                 'id': l.id,
                 'titulo': card_title,

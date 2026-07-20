@@ -1,20 +1,23 @@
 {% load boards_tags %}
-{# Card virtual para o quadro de Planos de Ação — agrupado por arquivo de plano #}
+{# Card virtual para o quadro de Planos de Ação — visual idêntico ao card padrão #}
 <div class="kanban-card priority-{{ card.prioridade|lower }}"
      id="card-virtual-{{ card.id }}"
-     style="cursor: pointer;"
+     draggable="false"
      onclick="window.open('{% url 'acoes:plano_acao_detail' card.plano_acao_id %}', '_blank')"
      data-titulo="{{ card.titulo }}"
      data-prioridade="{% if card.prioridade == 'ALTA' %}Alta{% else %}Baixa{% endif %}"
-     data-responsaveis=""
-     data-etiquetas=""
+     data-responsaveis="{% for r in card.responsaveis.all %}{{ r.nome_completo }};{% endfor %}"
+     data-etiquetas="{{ card.status_badge.label }}"
      data-is-concluida="{% if card.data_conclusao %}true{% else %}false{% endif %}"
-     data-status="{{ card.status_raw }}">
+     data-status="{{ card.status_raw }}"
+     style="cursor: pointer;">
 
-    {# Badge de Status #}
+    {# Etiqueta de Status — substitui as etiquetas normais para cartões virtuais #}
     {% if card.status_badge %}
-    <div class="mb-1">
-        <span class="badge rounded-pill" style="background-color: {{ card.status_badge.color }}; font-size: 0.62rem; color: #fff;">
+    <div class="d-flex flex-wrap gap-1 mb-1">
+        <span class="badge rounded-pill text-truncate"
+              style="background-color: {{ card.status_badge.color }}; font-size: 0.62rem; color: #fff; max-width: 130px;"
+              title="{{ card.status_badge.label }}">
             {% if card.status_raw == 'planejada' %}<i class="bi bi-hourglass-split me-1"></i>{% endif %}
             {% if card.status_raw == 'em_curso' %}<i class="bi bi-arrow-repeat me-1"></i>{% endif %}
             {% if card.status_raw == 'retardo' %}<i class="bi bi-exclamation-triangle me-1"></i>{% endif %}
@@ -25,28 +28,31 @@
     </div>
     {% endif %}
 
-    <div class="fw-semibold text-dark small">{{ card.titulo }}</div>
+    {# Título #}
+    <div class="fw-semibold text-dark">{{ card.titulo }}</div>
 
+    {# Descrição truncada #}
     {% if card.descricao %}
         <div class="text-muted small text-truncate mt-1">{{ card.descricao }}</div>
     {% endif %}
 
-    {# Metadados #}
-    <div class="card-meta mt-2">
+    {# Metadados: data + responsáveis #}
+    <div class="card-meta">
         <div class="d-flex align-items-center gap-1 flex-wrap">
             {% if card.data_entrega %}
-                <span class="badge-date {% if card.data_entrega < hoje %}date-overdue{% else %}date-future{% endif %}" title="Deadline">
+                <span class="badge-date {% if card.data_entrega < hoje %}date-overdue{% else %}date-future{% endif %}"
+                      title="Deadline Final">
                     <i class="bi bi-calendar-event me-1"></i>{{ card.data_entrega|date:"d M" }}
                 </span>
             {% endif %}
             {% if card.data_conclusao %}
-                <span class="badge bg-success-subtle text-success border rounded-pill" style="font-size: 0.62rem;" title="Concluída em {{ card.data_conclusao|date:'d/m/Y' }}">
+                <span class="badge-date date-future" title="Concluída em {{ card.data_conclusao|date:'d/m/Y' }}">
                     <i class="bi bi-check2 me-1"></i>{{ card.data_conclusao|date:"d M" }}
                 </span>
             {% endif %}
         </div>
 
-        <div class="d-flex align-items-center gap-1">
+        <div class="d-flex align-items-center gap-1 js-card-responsaveis-container">
             {% for resp in card.responsaveis.all %}
                 <div class="avatar-circle" title="Responsável: {{ resp.nome_completo }}">
                     {{ resp.nome_completo|slice:":2" }}
