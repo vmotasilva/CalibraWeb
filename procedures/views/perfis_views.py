@@ -949,7 +949,7 @@ def editar_colaborador_perfil_view(request, perfil_id):
         # Processar status de ativo/inativo dos subgrupos
         try:
             subgrupos_ativos = json.loads(subgrupos_ativos_json)
-        except:
+        except (json.JSONDecodeError, TypeError):
             subgrupos_ativos = {}
         
         # Sincronizar status ativo/inativo com registros de treinamento

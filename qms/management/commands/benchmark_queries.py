@@ -78,7 +78,7 @@ class Command(BaseCommand):
         # Obter um instrumento para teste
         try:
             instrumento_id = Instrumento.objects.filter(ativo=True).first().id
-        except:
+        except AttributeError:
             self.stdout.write(self.style.WARNING('⚠️  Sem instrumentos para testar'))
             return
         

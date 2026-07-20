@@ -284,7 +284,7 @@ class PlanejamentoExcelExporter:
                 try:
                     if cell.value:
                         max_length = max(max_length, len(str(cell.value)))
-                except:
+                except (TypeError, ValueError, AttributeError):
                     pass
             
             adjusted_width = min(max_length + 2, 50)

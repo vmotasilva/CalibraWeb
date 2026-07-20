@@ -108,7 +108,7 @@ def validar_matriz_view(request, solicitacao_id):
             if request.user.colaborador != solicitacao.validador:
                 messages.error(request, 'Você não tem permissão para validar esta matriz!')
                 return redirect('procedures:validacoes_pendentes')
-        except:
+        except Colaborador.DoesNotExist:
             messages.error(request, 'Usuário não tem perfil de colaborador!')
             return redirect('home')
     
@@ -189,7 +189,7 @@ def validacao_rapida_view(request, matriz_id):
     if not request.user.is_superuser:
         try:
             validador = request.user.colaborador
-        except:
+        except Colaborador.DoesNotExist:
             messages.error(request, 'Usuário não tem perfil de colaborador!')
             return redirect('home')
     else:

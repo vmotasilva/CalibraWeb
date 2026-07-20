@@ -60,8 +60,10 @@ if not SECRET_KEY:
             SECRET_KEY = get_random_secret_key()
             print(f"⚠️  Generated temporary SECRET_KEY: {SECRET_KEY}")
             print("⚠️  Set SECRET_KEY environment variable in production!")
-        except:
-            raise ImproperlyConfigured("SECRET_KEY is required. Set it in the environment (see .env.example)")
+        except Exception as e:
+            raise ImproperlyConfigured(
+                "SECRET_KEY is required. Set it in the environment (see .env.example)"
+            ) from e
 
 # Configure ALLOWED_HOSTS via environment variable (comma-separated), default to localhost for development.
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver,0.0.0.0").split(",")

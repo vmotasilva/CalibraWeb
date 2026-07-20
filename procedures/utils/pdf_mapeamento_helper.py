@@ -8,6 +8,7 @@ Funcionalidades:
 - Suporte a múltiplas páginas e layouts
 """
 
+import logging
 from io import BytesIO
 from django.http import HttpResponse
 from reportlab.lib.pagesizes import A4
@@ -24,6 +25,8 @@ try:
     OPENPYXL_AVAILABLE = True
 except ImportError:
     OPENPYXL_AVAILABLE = False
+
+logger = logging.getLogger(__name__)
 
 
 class GeradorPDFListaPresenca:
@@ -237,8 +240,11 @@ class GeradorPDFListaPresenca:
             try:
                 x, y = self._cel_para_coordenadas(localizacao)
                 canvas_obj.drawString(x, y, str(valor)[:50])  # Limitar tamanho
-            except:
-                pass  # Ignorar erros de conversão
+            except (ValueError, TypeError, KeyError):
+                logger.warning(
+                    "Falha ao posicionar campo %r (localizacao=%r) no PDF",
+                    tipo_campo, localizacao,
+                )
     
     def _adicionar_tabela_participantes_pdf(self, canvas_obj, width, height):
         """Adiciona tabela de participantes ao PDF"""

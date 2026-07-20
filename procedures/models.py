@@ -600,7 +600,7 @@ class Disciplina(models.Model):
                 try:
                     ultimo_num = int(ultimo.codigo.replace('DISC', ''))
                     self.codigo = f'DISC{str(ultimo_num + 1).zfill(3)}'
-                except:
+                except (ValueError, TypeError, AttributeError):
                     self.codigo = 'DISC001'
             else:
                 self.codigo = 'DISC001'

@@ -997,7 +997,7 @@ def baixar_template_importacao_view(request, formato='csv'):
                 try:
                     if len(str(cell.value or '')) > max_length:
                         max_length = len(str(cell.value or ''))
-                except:
+                except (TypeError, ValueError, AttributeError):
                     pass
             adjusted_width = min(max_length + 2, 50)
             ws.column_dimensions[column_letter].width = adjusted_width

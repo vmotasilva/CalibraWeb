@@ -22,7 +22,7 @@ def get_attr(obj, attr):
     """
     try:
         return getattr(obj, attr, None)
-    except:
+    except Exception:
         return None
 
 

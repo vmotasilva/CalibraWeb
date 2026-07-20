@@ -1,4 +1,8 @@
+import logging
+
 from celery import shared_task
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task
@@ -233,7 +237,10 @@ def import_instruments_task(job_id, filepath):
                             defaults={'valor_minimo': None, 'valor_maximo': None}
                         )
                 except Exception:
-                    pass
+                    logger.warning(
+                        "Falha ao criar faixa padrao para instrumento %s",
+                        getattr(obj, 'pk', None), exc_info=True,
+                    )
 
         job.status = 'SUCCESS'
         msg = f'Instruments: {count_new} new, {count_upd} updated, {count_faixas} ranges'
@@ -482,7 +489,10 @@ def import_historico_task(job_id, filepath):
                     else:
                         inst.save()
                 except Exception:
-                    pass
+                    logger.warning(
+                        "Falha ao atualizar datas de calibracao do instrumento %s",
+                        getattr(inst, 'pk', None), exc_info=True,
+                    )
 
                 if was_created:
                     created += 1

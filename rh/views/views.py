@@ -3272,7 +3272,7 @@ def atualizar_liderancas_em_massa(request):
     if setor_id:
         try:
             colaboradores_afetados = colaboradores_afetados.filter(setor_id=int(setor_id))
-        except:
+        except (ValueError, TypeError):
             pass
     
     if turno:
@@ -3290,17 +3290,17 @@ def atualizar_liderancas_em_massa(request):
             if lider_id:
                 try:
                     updates['lider_id'] = int(lider_id)
-                except:
+                except (ValueError, TypeError):
                     pass
             if supervisor_id:
                 try:
                     updates['supervisor_id'] = int(supervisor_id)
-                except:
+                except (ValueError, TypeError):
                     pass
             if gerente_id:
                 try:
                     updates['gerente_id'] = int(gerente_id)
-                except:
+                except (ValueError, TypeError):
                     pass
             
             if updates:

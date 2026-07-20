@@ -17,7 +17,7 @@ from django.db.models import Q, Prefetch
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST, require_GET, require_http_methods
 from datetime import datetime, timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from metrologia.models import (
     SolicitacaoCotacao, ItemSolicitacaoCotacao, CotacaoFornecedor,
@@ -466,7 +466,7 @@ def cotacao_fornecedor_update(request, pk):
                 if valor:
                     try:
                         item_cotacao.valor_unitario = Decimal(valor)
-                    except:
+                    except (InvalidOperation, ValueError, TypeError):
                         item_cotacao.valor_unitario = Decimal('0.00')
                 
                 # Atualizar tipo de atendimento

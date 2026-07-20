@@ -9,8 +9,12 @@ from django.utils import timezone
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from datetime import datetime, timedelta
+from decimal import Decimal, InvalidOperation
+import logging
 import pandas as pd
 import os
+
+logger = logging.getLogger(__name__)
 
 from django.http import FileResponse
 from django.conf import settings
@@ -1320,10 +1324,10 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario, criar_particip
                     # Se for string, tentar parsing com múltiplos formatos
                     try:
                         data_treinamento = pd.to_datetime(valor_data, format='%d/%m/%Y').date()
-                    except:
+                    except (ValueError, TypeError):
                         try:
                             data_treinamento = pd.to_datetime(valor_data, format='%Y-%m-%d').date()
-                        except:
+                        except (ValueError, TypeError):
                             data_treinamento = pd.to_datetime(valor_data).date()
                 else:
                     # Se for timestamp/datetime, converter diretamente
@@ -1346,14 +1350,14 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario, criar_particip
                     if isinstance(valor_data, str):
                         try:
                             data_final_treinamento = pd.to_datetime(valor_data, format='%d/%m/%Y').date()
-                        except:
+                        except (ValueError, TypeError):
                             try:
                                 data_final_treinamento = pd.to_datetime(valor_data, format='%Y-%m-%d').date()
-                            except:
+                            except (ValueError, TypeError):
                                 data_final_treinamento = pd.to_datetime(valor_data).date()
                     else:
                         data_final_treinamento = pd.to_datetime(valor_data).date()
-                except:
+                except (ValueError, TypeError):
                     pass  # Ignorar erros em data final (opcional)
             
             # Buscar facilitador/fornecedor (opcional)
@@ -1406,7 +1410,7 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario, criar_particip
                     try:
                         horas = int(float(carga_horaria))
                         carga_horaria = f"{horas:02d}:00"
-                    except:
+                    except (ValueError, TypeError):
                         carga_horaria = ''
             # Limitar a 10 caracteres
             carga_horaria = carga_horaria[:10]
@@ -1423,7 +1427,7 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario, criar_particip
                     # Tentar converter para TimeField
                     if ':' in valor:
                         hora_inicio_sessao = pd.to_datetime(valor, format='%H:%M').time()
-                except:
+                except (ValueError, TypeError):
                     pass
             
             # Extrair hora de fim da sessão (formato hh:mm)
@@ -1432,14 +1436,14 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario, criar_particip
                     valor = str(row['hora_fim']).strip()
                     if ':' in valor:
                         hora_fim_sessao = pd.to_datetime(valor, format='%H:%M').time()
-                except:
+                except (ValueError, TypeError):
                     pass
             
             # Extrair carga horária da sessão (em horas decimais)
             if 'carga_horaria_lista' in row and pd.notna(row['carga_horaria_lista']):
                 try:
                     carga_horaria_sessao = Decimal(str(row['carga_horaria_lista']).replace(',', '.'))
-                except:
+                except (InvalidOperation, ValueError, TypeError):
                     pass
             
             # Custo do treinamento
@@ -1447,7 +1451,7 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario, criar_particip
             if 'custo_treinamento' in row and pd.notna(row['custo_treinamento']):
                 try:
                     custo_treinamento = Decimal(str(row['custo_treinamento']).replace(',', '.'))
-                except:
+                except (InvalidOperation, ValueError, TypeError):
                     pass
             
             # Mês de referência
@@ -1471,14 +1475,14 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario, criar_particip
                     if isinstance(valor_data, str):
                         try:
                             data_limite_avaliacao = pd.to_datetime(valor_data, format='%d/%m/%Y').date()
-                        except:
+                        except (ValueError, TypeError):
                             try:
                                 data_limite_avaliacao = pd.to_datetime(valor_data, format='%Y-%m-%d').date()
-                            except:
+                            except (ValueError, TypeError):
                                 data_limite_avaliacao = pd.to_datetime(valor_data).date()
                     else:
                         data_limite_avaliacao = pd.to_datetime(valor_data).date()
-                except:
+                except (ValueError, TypeError):
                     pass  # Ignorar erros em data limite
             
             # Descrição/observações
@@ -1870,10 +1874,14 @@ def extract_placeholders_from_pdf(pdf_path):
                     # Procurar padrões {{palavra}} ou {{palavra_com_underscore}}
                     matches = re.findall(r'\{\{(\w+(?:_\w+)*)\}\}', text)
                     placeholders.update(matches)
-                except:
-                    pass
+                except Exception:
+                    logger.warning(
+                        "Falha ao extrair texto da pagina %s do PDF %s", page_num, pdf_path,
+                        exc_info=True,
+                    )
+                    continue
     except Exception as e:
-        print(f'Erro ao extrair placeholders do PDF: {e}')
+        logger.error("Erro ao extrair placeholders do PDF %s: %s", pdf_path, e, exc_info=True)
     
     return sorted(list(placeholders)) if placeholders else []
 
@@ -2071,8 +2079,11 @@ def upload_lista_presenca_assinada(request, pk):
                 try:
                     if os.path.exists(lista.arquivo_assinado.path):
                         os.remove(lista.arquivo_assinado.path)
-                except:
-                    pass
+                except OSError:
+                    logger.warning(
+                        "Falha ao remover arquivo assinado anterior da lista %s", lista.pk,
+                        exc_info=True,
+                    )
             
             # Salvar novo arquivo
             lista.arquivo_assinado = arquivo
@@ -2104,8 +2115,11 @@ def remover_lista_presenca_assinada(request, pk):
                 try:
                     if os.path.exists(lista.arquivo_assinado.path):
                         os.remove(lista.arquivo_assinado.path)
-                except:
-                    pass
+                except OSError:
+                    logger.warning(
+                        "Falha ao remover arquivo assinado da lista %s", lista.pk,
+                        exc_info=True,
+                    )
                 
                 lista.arquivo_assinado = None
                 lista.data_upload_assinado = None
