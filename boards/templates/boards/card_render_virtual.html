@@ -1,0 +1,61 @@
+{% load boards_tags %}
+{# Card virtual para o quadro de Planos de Ação — agrupado por arquivo de plano #}
+<div class="kanban-card priority-{{ card.prioridade|lower }}"
+     id="card-virtual-{{ card.id }}"
+     style="cursor: pointer;"
+     onclick="window.open('{% url 'acoes:plano_acao_detail' card.plano_acao_id %}', '_blank')"
+     data-titulo="{{ card.titulo }}"
+     data-prioridade="{% if card.prioridade == 'ALTA' %}Alta{% else %}Baixa{% endif %}"
+     data-responsaveis=""
+     data-etiquetas=""
+     data-is-concluida="{% if card.data_conclusao %}true{% else %}false{% endif %}"
+     data-status="{{ card.status_raw }}">
+
+    {# Badge de Status #}
+    {% if card.status_badge %}
+    <div class="mb-1">
+        <span class="badge rounded-pill" style="background-color: {{ card.status_badge.color }}; font-size: 0.62rem; color: #fff;">
+            {% if card.status_raw == 'planejada' %}<i class="bi bi-hourglass-split me-1"></i>{% endif %}
+            {% if card.status_raw == 'em_curso' %}<i class="bi bi-arrow-repeat me-1"></i>{% endif %}
+            {% if card.status_raw == 'retardo' %}<i class="bi bi-exclamation-triangle me-1"></i>{% endif %}
+            {% if card.status_raw == 'completa' %}<i class="bi bi-check-circle me-1"></i>{% endif %}
+            {% if card.status_raw == 'cancelada' %}<i class="bi bi-x-circle me-1"></i>{% endif %}
+            {{ card.status_badge.label }}
+        </span>
+    </div>
+    {% endif %}
+
+    <div class="fw-semibold text-dark small">{{ card.titulo }}</div>
+
+    {% if card.descricao %}
+        <div class="text-muted small text-truncate mt-1">{{ card.descricao }}</div>
+    {% endif %}
+
+    {# Metadados #}
+    <div class="card-meta mt-2">
+        <div class="d-flex align-items-center gap-1 flex-wrap">
+            {% if card.data_entrega %}
+                <span class="badge-date {% if card.data_entrega < hoje %}date-overdue{% else %}date-future{% endif %}" title="Deadline">
+                    <i class="bi bi-calendar-event me-1"></i>{{ card.data_entrega|date:"d M" }}
+                </span>
+            {% endif %}
+            {% if card.data_conclusao %}
+                <span class="badge bg-success-subtle text-success border rounded-pill" style="font-size: 0.62rem;" title="Concluída em {{ card.data_conclusao|date:'d/m/Y' }}">
+                    <i class="bi bi-check2 me-1"></i>{{ card.data_conclusao|date:"d M" }}
+                </span>
+            {% endif %}
+        </div>
+
+        <div class="d-flex align-items-center gap-1">
+            {% for resp in card.responsaveis.all %}
+                <div class="avatar-circle" title="Responsável: {{ resp.nome_completo }}">
+                    {{ resp.nome_completo|slice:":2" }}
+                </div>
+            {% empty %}
+                <div class="avatar-circle bg-light text-muted" title="Sem responsável">
+                    <i class="bi bi-person"></i>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>

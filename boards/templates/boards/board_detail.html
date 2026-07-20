@@ -589,6 +589,71 @@
     <div class="tab-content" id="boardTab">
         <!-- ABA 1: KANBAN BOARD -->
         <div class="tab-pane fade show active" id="kanban" role="tabpanel">
+            {% if board.tipo == 'PLANOS_ACAO' %}
+            <!-- QUADRO DE PLANOS DE AÇÃO: colunas = arquivos dos planos -->
+            <div class="mb-2" id="kanbanAndamentoSection">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h5 class="fw-bold text-dark mb-0">
+                        <i class="bi bi-folder2-open text-primary me-2"></i>Acompanhamento por Plano de Ação
+                    </h5>
+                    <span class="text-muted small">{{ colunas_andamento|length }} plano{{ colunas_andamento|length|pluralize }} &bull; {{ total_cartoes }} ação{{ total_cartoes|pluralize }} no total</span>
+                </div>
+                <div class="kanban-container" id="kanban-andamento-container">
+                    {% for col in colunas_andamento %}
+                    <div class="kanban-column" id="col-{{ col.id }}" data-column-name="{{ col.nome }}">
+                        <!-- Cabeçalho da Coluna: nome do arquivo do plano de ação -->
+                        <div class="column-header" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                            <div class="d-flex align-items-center gap-2 w-100">
+                                <i class="bi bi-file-earmark-text text-primary" style="font-size: 1rem; flex-shrink:0;"></i>
+                                <span class="fw-bold text-truncate" style="font-size: 0.85rem;" title="{{ col.nome }}">{{ col.nome }}</span>
+                            </div>
+                            <div class="d-flex gap-2 mt-1" style="font-size: 0.7rem;">
+                                {% if col.cartoes_list_andamento %}
+                                <span class="badge rounded-pill bg-primary bg-opacity-10 text-primary">
+                                    <i class="bi bi-activity me-1"></i>{{ col.cartoes_list_andamento|length }} ativas
+                                </span>
+                                {% endif %}
+                                {% if col.cartoes_list_concluido %}
+                                <span class="badge rounded-pill bg-success bg-opacity-10 text-success">
+                                    <i class="bi bi-check2 me-1"></i>{{ col.cartoes_list_concluido|length }} concluídas
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <!-- Container dos Cartões -->
+                        <div class="card-container" id="cards-col-{{ col.id }}-pending" data-is-concluida="false">
+                            {% if col.cartoes_list_andamento %}
+                                <div class="mb-1 px-1" style="font-size:0.68rem; font-weight:700; color:#0d6efd; text-transform:uppercase; letter-spacing:0.5px;">
+                                    <i class="bi bi-activity me-1"></i>Em Andamento
+                                </div>
+                                {% for card in col.cartoes_list_andamento %}
+                                    {% include "boards/card_render_virtual.html" with card=card %}
+                                {% endfor %}
+                            {% endif %}
+                            {% if col.cartoes_list_concluido %}
+                                <div class="{% if col.cartoes_list_andamento %}mt-3 {% endif %}mb-1 px-1" style="font-size:0.68rem; font-weight:700; color:#198754; text-transform:uppercase; letter-spacing:0.5px;">
+                                    <i class="bi bi-check2-all me-1"></i>Concluídas / Canceladas
+                                </div>
+                                {% for card in col.cartoes_list_concluido %}
+                                    {% include "boards/card_render_virtual.html" with card=card %}
+                                {% endfor %}
+                            {% endif %}
+                            {% if not col.cartoes_list %}
+                                <div class="text-center text-muted py-4" style="font-size: 0.75rem;">
+                                    <i class="bi bi-inbox fs-4 d-block mb-1 opacity-50"></i>Sem ações registradas
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center text-muted py-5">
+                        <i class="bi bi-folder2-open fs-1 d-block mb-2 opacity-25"></i>
+                        <p>Nenhum plano de ação com ações corretivas ou preventivas cadastrado.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% else %}
             <!-- Seção 1: Atividades em Andamento -->
             <div class="mb-5" id="kanbanAndamentoSection">
                 <h5 class="fw-bold text-dark mb-3"><i class="bi bi-play-circle text-primary me-2"></i>Atividades em Andamento</h5>
@@ -688,7 +753,7 @@
                 </div>
             </div>
 
-            <!-- Seção 2: Atividades Concluídas -->
+            <!-- Seção 2: Atividades Concluídas (apenas quadros normais) -->
             <div id="kanbanConcluidoSection">
                 <h5 class="fw-bold text-dark mb-3"><i class="bi bi-check-circle text-success me-2"></i>Atividades Concluídas</h5>
                 <div class="kanban-container" id="kanban-concluido-container">
@@ -698,7 +763,6 @@
                         <div class="column-header">
                             <span class="text-truncate fw-bold">{{ col.nome }}</span>
                         </div>
-                        
                         <!-- Container dos Cartões -->
                         <div class="card-container" id="cards-col-{{ col.id }}-completed" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }}, null)" data-is-concluida="true">
                             {% if col.subsecoes_list %}
@@ -715,7 +779,6 @@
                                     </div>
                                 </div>
                                 {% endfor %}
-                                
                                 <!-- Geral / Sem Sub-sessão -->
                                 <div class="card-container-subsection mt-2" id="cards-col-{{ col.id }}-unclassified-completed" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }}, null)" data-column-id="{{ col.id }}" data-subsection-id="null" style="min-height: 50px; display: flex; flex-direction: column; gap: 0.5rem; border: 1px dashed rgba(0,0,0,0.1); border-radius: 6px; padding: 6px; background-color: rgba(0,0,0,0.01);">
                                     <div class="text-muted text-center" style="font-size: 0.65rem; font-weight: 600; pointer-events: none;">Geral / Sem Sub-sessão</div>
@@ -734,6 +797,7 @@
                     {% endfor %}
                 </div>
             </div>
+            {% endif %}
         </div>
         
         <!-- ABA 2: TEAM METRICS & WORKLOAD -->

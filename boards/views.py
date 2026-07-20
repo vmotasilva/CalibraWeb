@@ -210,12 +210,12 @@ def board_detail_view(request, board_id):
 
     if board.tipo == 'PLANOS_ACAO':
         from acoes.models import LinhaAcao
-        
+
         # Obter todas as linhas de ação corretiva e preventiva
         linhas = LinhaAcao.objects.filter(
             classificacao__in=['corretiva', 'preventiva']
         ).select_related('plano_acao__solucao', 'responsavel_acao').prefetch_related('responsaveis_multiplos').all()
-        
+
         # Filtrar por período se aplicável
         if start_date:
             linhas_filtradas = []
@@ -230,94 +230,113 @@ def board_detail_view(request, board_id):
             linhas = linhas_filtradas
 
         total_cartoes = len(linhas)
-        
-        # Identificar colunas concluídas
-        concluido_colunas_ids = [col.id for col in colunas if col.status_linha_acao in ['completa', 'cancelada']]
-        
+
+        # Sem colunas de status fixas; usamos colunas virtuais por PlanoAcao
+        concluido_colunas_ids = []
+
         cartoes_concluidos = sum(1 for l in linhas if l.status in ['completa', 'cancelada'])
-        
+
         porcentagem_concluida = 0
         if total_cartoes > 0:
             porcentagem_concluida = int((cartoes_concluidos / total_cartoes) * 100)
-            
+
         cartoes_atrasados = sum(1 for l in linhas if l.data_deadline and l.data_deadline < today and l.status not in ['completa', 'cancelada'])
-        
+
         # Carga de trabalho por colaborador (linhas de ação pendentes)
         carga_membros_dict = {}
         for l in linhas:
             if l.status in ['completa', 'cancelada']:
                 continue
-            # responsavel principal
             if l.responsavel_acao:
                 carga_membros_dict[l.responsavel_acao] = carga_membros_dict.get(l.responsavel_acao, 0) + 1
-            # responsaveis multiplos
             for r in l.responsaveis_multiplos.all():
                 if r != l.responsavel_acao:
                     carga_membros_dict[r] = carga_membros_dict.get(r, 0) + 1
-                    
-        # Ordenar carga de trabalho por quantidade de tarefas decrescente
+
         carga_membros_sorted = sorted(carga_membros_dict.items(), key=lambda x: x[1], reverse=True)
         chart_membros_nomes = [m.nome_completo for m, _ in carga_membros_sorted]
         chart_membros_valores = [v for _, v in carga_membros_sorted]
-        
-        # Distribuição por colunas e associar cartões virtuais a colunas
-        distribuicao_colunas = []
-        for col in colunas:
-            col_linhas = [l for l in linhas if l.status == col.status_linha_acao]
-            distribuicao_colunas.append({
-                'nome': col.nome,
-                'quantidade': len(col_linhas)
-            })
-            
-            # Construir cartões virtuais
-            col.cartoes_list = []
-            for l in col_linhas:
-                resps = []
-                if l.responsavel_acao:
-                    resps.append(l.responsavel_acao)
-                for r in l.responsaveis_multiplos.all():
-                    if r not in resps:
-                        resps.append(r)
-                        
-                plan_ref = l.plano_acao.numero_registro or l.plano_acao.solucao.titulo or "Plano de Ação"
-                card_title = f"Ação #{l.numero_acao} - {plan_ref}"
-                
-                col.cartoes_list.append({
-                    'id': l.id,
-                    'titulo': card_title,
-                    'descricao': l.descricao,
-                    'prioridade': 'ALTA' if l.prioridade else 'BAIXA',
-                    'data_entrega': l.data_deadline,
-                    'data_conclusao': l.data_conclusao,
-                    'hora_inicio': None,
-                    'hora_fim': None,
-                    'responsaveis': {
-                        'all': resps
-                    },
-                    'periodicidade': 'AVULSA',
-                    'checklist_itens': {
-                        'exists': False
-                    },
-                    'plano_acao_id': l.plano_acao.id,
-                    'is_virtual': True,
-                    'etiquetas': {
-                        'all': []
-                    },
-                    'antecessora': None,
-                    'historia': [],
-                    'criado_em': l.criado_em
-                })
-            
-            if col.status_linha_acao in ['completa', 'cancelada']:
-                col.cartoes_list_andamento = []
-                col.cartoes_list_concluido = col.cartoes_list
-            else:
-                col.cartoes_list_andamento = col.cartoes_list
-                col.cartoes_list_concluido = []
-            
-            col.subsecoes_list = []
-            col.cartoes_sem_subsecao_andamento = col.cartoes_list_andamento
-            col.cartoes_sem_subsecao_concluido = col.cartoes_list_concluido
+
+        # Mapa de rótulo/cor por status para exibição no cartão
+        STATUS_BADGE = {
+            'planejada': {'label': 'Planejada',       'color': '#6c757d'},
+            'em_curso':  {'label': 'Em Curso',         'color': '#0d6efd'},
+            'retardo':   {'label': 'Retardo/Atrasada', 'color': '#dc3545'},
+            'completa':  {'label': 'Concluída',        'color': '#198754'},
+            'cancelada': {'label': 'Cancelada',        'color': '#adb5bd'},
+        }
+
+        def _build_virtual_card(l):
+            """Constrói dicionário de cartão virtual a partir de uma LinhaAcao."""
+            resps = []
+            if l.responsavel_acao:
+                resps.append(l.responsavel_acao)
+            for r in l.responsaveis_multiplos.all():
+                if r not in resps:
+                    resps.append(r)
+            status_info = STATUS_BADGE.get(l.status, {'label': l.status, 'color': '#6c757d'})
+            card_title = f"Ação #{l.numero_acao} - {(l.descricao or '')[:80]}"
+            return {
+                'id': l.id,
+                'titulo': card_title,
+                'descricao': l.descricao,
+                'prioridade': 'ALTA' if l.prioridade else 'BAIXA',
+                'data_entrega': l.data_deadline,
+                'data_conclusao': l.data_conclusao,
+                'hora_inicio': None,
+                'hora_fim': None,
+                'responsaveis': {'all': resps},
+                'periodicidade': 'AVULSA',
+                'checklist_itens': {'exists': False},
+                'plano_acao_id': l.plano_acao.id,
+                'is_virtual': True,
+                'etiquetas': {'all': []},
+                'antecessora': None,
+                'historia': [],
+                'criado_em': l.criado_em,
+                'status_badge': status_info,
+                'status_raw': l.status,
+            }
+
+        # Agrupar linhas por PlanoAcao
+        planos_dict = {}  # plano_id -> {'plano': obj, 'linhas': [...]}
+        for l in linhas:
+            pid = l.plano_acao.id
+            if pid not in planos_dict:
+                planos_dict[pid] = {'plano': l.plano_acao, 'linhas': []}
+            planos_dict[pid]['linhas'].append(l)
+
+        # Ordenar planos pelo numero_registro
+        planos_sorted = sorted(planos_dict.values(), key=lambda x: (x['plano'].numero_registro or ''))
+
+        # Classe de coluna virtual por plano de ação
+        class VirtualColumn:
+            """Representa uma coluna virtual agrupando as ações de um Plano de Ação."""
+            def __init__(self, plano, linhas_do_plano):
+                self.id = f"plano_{plano.id}"
+                self.nome = plano.numero_registro or plano.solucao.titulo or f"Plano #{plano.id}"
+                self.plano = plano
+                self.subsecoes_list = []
+                self.status_linha_acao = None  # não é coluna de status
+
+                linhas_andamento = [l for l in linhas_do_plano if l.status not in ['completa', 'cancelada']]
+                linhas_concluido = [l for l in linhas_do_plano if l.status in ['completa', 'cancelada']]
+
+                self.cartoes_list_andamento = [_build_virtual_card(l) for l in linhas_andamento]
+                self.cartoes_list_concluido = [_build_virtual_card(l) for l in linhas_concluido]
+                self.cartoes_list = self.cartoes_list_andamento + self.cartoes_list_concluido
+                self.cartoes_sem_subsecao_andamento = self.cartoes_list_andamento
+                self.cartoes_sem_subsecao_concluido = self.cartoes_list_concluido
+
+        # Substituir colunas reais pelas virtuais por plano
+        colunas = [VirtualColumn(p['plano'], p['linhas']) for p in planos_sorted]
+
+        # Distribuição para o gráfico
+        distribuicao_colunas = [
+            {'nome': col.nome, 'quantidade': len(col.cartoes_list)}
+            for col in colunas
+        ]
+
     else:
         # Calcular Métricas de Carga de Trabalho da Equipe (Quadro Padrão)
         
@@ -412,10 +431,13 @@ def board_detail_view(request, board_id):
         Q(is_active=True) | Q(id__in=responsaveis_atuais_ids)
     ).distinct().order_by('nome_completo')
         
-    colunas_andamento = [col for col in colunas if col.id not in concluido_colunas_ids]
+    # Para o quadro de planos de ação (virtual), todas as colunas aparecem em ambas as seções;
+    # a separação andamento/concluído é feita internamente em cada VirtualColumn.
     if board.tipo == 'PLANOS_ACAO':
+        colunas_andamento = colunas  # cada coluna virtual gerencia seus próprios sub-grupos
         colunas_concluidas = colunas
     else:
+        colunas_andamento = [col for col in colunas if col.id not in concluido_colunas_ids]
         colunas_concluidas = colunas_andamento
 
     context = {
