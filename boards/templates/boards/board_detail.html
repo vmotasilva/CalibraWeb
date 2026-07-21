@@ -499,7 +499,6 @@
                         </form>
                         {% endif %}
                     {% endif %}
-                    {% endif %}
                 </div>
             </div>
 
@@ -551,13 +550,21 @@
                         {% endfor %}
                     </select>
 
+                    <!-- Filtro por Sub-sessão -->
+                    <select id="globalFilterSub" class="form-select form-select-sm" style="width: 170px;" onchange="applyGlobalFilters()">
+                        <option value="">Sub-sessão: Todas</option>
+                        <option value="__sem_subsecao__">Sem Sub-sessão</option>
+                        {% for col in colunas %}{% for sub in col.subsecoes_list %}
+                        <option value="{{ sub.nome }}">{{ sub.nome }}</option>
+                        {% endfor %}{% endfor %}
+                    </select>
+
                     <!-- Filtro por Status -->
                     <select id="globalFilterStatus" class="form-select form-select-sm" style="width: 165px;" onchange="applyGlobalFilters()">
                         <option value="">Status: Todos</option>
                         <option value="andamento">Status: Em Andamento</option>
                         <option value="concluido">Status: Concluídas</option>
                     </select>
-                    {% endif %}
 
                     <!-- Botão Limpar Filtros -->
                     <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearAllFilters()" title="Limpar todos os filtros">
@@ -1990,6 +1997,7 @@
         sessionStorage.removeItem('boardFilterResp_' + boardIdStr);
         sessionStorage.removeItem('boardFilterLabel_' + boardIdStr);
         sessionStorage.removeItem('boardFilterStatus_' + boardIdStr);
+        sessionStorage.removeItem('boardFilterSub_' + boardIdStr);
         sessionStorage.removeItem('boardHideEmpty_' + boardIdStr);
         
         if (periodFilter && periodFilter.value !== 'tudo') {
@@ -2004,6 +2012,7 @@
         if (document.getElementById('globalFilterResp')) document.getElementById('globalFilterResp').value = "";
         if (document.getElementById('globalFilterLabel')) document.getElementById('globalFilterLabel').value = "";
         if (document.getElementById('globalFilterStatus')) document.getElementById('globalFilterStatus').value = "";
+        if (document.getElementById('globalFilterSub')) document.getElementById('globalFilterSub').value = "";
         if (document.getElementById('hideEmptyColumnsFlag')) document.getElementById('hideEmptyColumnsFlag').checked = false;
         if (document.getElementById('globalSearchInput')) document.getElementById('globalSearchInput').value = "";
 
@@ -4053,12 +4062,14 @@
         const filterResp = document.getElementById('globalFilterResp') ? document.getElementById('globalFilterResp').value.trim() : "";
         const filterLabel = document.getElementById('globalFilterLabel') ? document.getElementById('globalFilterLabel').value.trim() : "";
         const filterStatus = document.getElementById('globalFilterStatus') ? document.getElementById('globalFilterStatus').value : "";
+        const filterSub = document.getElementById('globalFilterSub') ? document.getElementById('globalFilterSub').value.trim() : "";
         
         sessionStorage.setItem('boardFilterCol_' + '{{ board.id }}', filterCol);
         sessionStorage.setItem('boardFilterPrior_' + '{{ board.id }}', filterPrior);
         sessionStorage.setItem('boardFilterResp_' + '{{ board.id }}', filterResp);
         sessionStorage.setItem('boardFilterLabel_' + '{{ board.id }}', filterLabel);
         sessionStorage.setItem('boardFilterStatus_' + '{{ board.id }}', filterStatus);
+        sessionStorage.setItem('boardFilterSub_' + '{{ board.id }}', filterSub);
         
         // Kanban Board Section Visibility
         const andamentoSec = document.getElementById('kanbanAndamentoSection');
@@ -4106,6 +4117,14 @@
             
             const etiquetas = card.getAttribute('data-etiquetas') || '';
             const labelMatch = !filterLabel || etiquetas.includes(filterLabel);
+
+            const subsecao = card.getAttribute('data-subsecao') || '';
+            let subMatch = true;
+            if (filterSub === '__sem_subsecao__') {
+                subMatch = subsecao.trim() === '';
+            } else if (filterSub) {
+                subMatch = subsecao === filterSub;
+            }
             
             const isConcluded = card.getAttribute('data-is-concluida') === 'true';
             const cardStatus = card.getAttribute('data-status') || '';
@@ -4113,7 +4132,7 @@
             if (filterStatus === 'andamento') statusMatch = !isConcluded;
             if (filterStatus === 'concluido') statusMatch = isConcluded;
             
-            if (textMatch && priorMatch && respMatch && labelMatch && statusMatch) {
+            if (textMatch && priorMatch && respMatch && labelMatch && subMatch && statusMatch) {
                 card.style.display = '';
             } else {
                 card.style.display = 'none';
@@ -4202,12 +4221,20 @@
                 });
             }
             
+            const subText = cells[2] ? cells[2].textContent.trim() : '';
+            let subMatch = true;
+            if (filterSub === '__sem_subsecao__') {
+                subMatch = (subText === '' || subText === 'Geral');
+            } else if (filterSub) {
+                subMatch = subText === filterSub;
+            }
+
             const isRowConcluded = row.getAttribute('data-is-concluida') === 'true';
             let statusMatch = true;
             if (filterStatus === 'andamento') statusMatch = !isRowConcluded;
             if (filterStatus === 'concluido') statusMatch = isRowConcluded;
             
-            if (textMatch && colMatch && priorMatch && respMatch && labelMatch && statusMatch) {
+            if (textMatch && colMatch && priorMatch && respMatch && labelMatch && subMatch && statusMatch) {
                 row.style.display = '';
             } else {
                 row.style.display = 'none';
@@ -5122,6 +5149,9 @@
         }
         if(document.getElementById('globalFilterStatus') && sessionStorage.getItem('boardFilterStatus_' + boardIdStr) !== null) {
             document.getElementById('globalFilterStatus').value = sessionStorage.getItem('boardFilterStatus_' + boardIdStr);
+        }
+        if(document.getElementById('globalFilterSub') && sessionStorage.getItem('boardFilterSub_' + boardIdStr) !== null) {
+            document.getElementById('globalFilterSub').value = sessionStorage.getItem('boardFilterSub_' + boardIdStr);
         }
         
         if(document.getElementById('hideEmptyColumnsFlag') && sessionStorage.getItem('boardHideEmpty_' + boardIdStr) !== null) {
