@@ -5,7 +5,6 @@ from rh.models import Colaborador
 class Board(models.Model):
     TIPO_CHOICES = [
         ('PADRAO', 'Padrão'),
-        ('PLANOS_ACAO', 'Planos de Ação'),
     ]
     nome = models.CharField(max_length=100, verbose_name="Nome do Quadro")
     descricao = models.TextField(blank=True, null=True, verbose_name="Descrição")
@@ -35,9 +34,6 @@ class Board(models.Model):
 
     @property
     def total_tasks(self):
-        if self.tipo == 'PLANOS_ACAO':
-            from acoes.models import LinhaAcao
-            return LinhaAcao.objects.filter(classificacao__in=['corretiva', 'preventiva']).count()
         return Card.objects.filter(coluna__quadro=self).count()
 
     class Meta:
@@ -51,12 +47,6 @@ class BoardColumn(models.Model):
     nome = models.CharField(max_length=100, verbose_name="Nome da Coluna")
     ordem = models.IntegerField(default=0)
     criado_em = models.DateTimeField(auto_now_add=True)
-    status_linha_acao = models.CharField(
-        max_length=20,
-        blank=True,
-        null=True,
-        verbose_name="Status da Linha de Ação"
-    )
 
     class Meta:
         ordering = ['ordem', 'criado_em']

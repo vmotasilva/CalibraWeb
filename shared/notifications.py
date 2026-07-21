@@ -112,25 +112,6 @@ def get_user_cobrancas_counts(user: Any) -> dict[str, int]:
     except Exception:
         counts["metrologia"] = 0
 
-    # Ações: ações vencidas para o responsável (não concluídas/canceladas)
-    try:
-        from acoes.models import AcaoCorretiva
-
-        if colaborador:
-            counts["acoes"] = (
-                AcaoCorretiva.objects.filter(
-                    ativo=True,
-                    responsavel=colaborador,
-                    data_vencimento__lt=hoje,
-                )
-                .exclude(status__in=["concluida", "cancelada"])
-                .count()
-            )
-        else:
-            counts["acoes"] = 0
-    except Exception:
-        counts["acoes"] = 0
-
     # Cotações (novo fluxo Metrologia): solicitações com prazo vencido
     try:
         from metrologia.models import SolicitacaoCotacao
@@ -339,30 +320,6 @@ def get_user_cobrancas_items(user: Any) -> list[CobrancaItem]:
                 count=int(counts.get("cotacoes", 0) or 0),
                 url=with_qs(_safe_reverse("metrologia:solicitacao_list"), "cobranca=prazo_vencido"),
                 section="Metrologia",
-            )
-        )
-
-    if can_show("acoes", "acoes:acoes_registradas"):
-        items.append(
-            CobrancaItem(
-                key="acoes",
-                label="Ações (vencidas)",
-                count=int(counts.get("acoes", 0) or 0),
-                url=with_qs(
-                    _safe_reverse("acoes:acoes_registradas"),
-                    "&".join(
-                        [
-                            p
-                            for p in [
-                                "status=pendentes",
-                                qs_param("responsavel", acoes_responsavel),
-                                "ordenar=deadline",
-                            ]
-                            if p
-                        ]
-                    ),
-                ),
-                section="Ações",
             )
         )
 

@@ -121,7 +121,6 @@ INSTALLED_APPS = [
     "documents.apps.DocumentsConfig",
     "shared.apps.SharedConfig",
     "fornecedores.apps.FornecedoresConfig",
-    "acoes.apps.AcoesConfig",  # Ações Corretivas/Preventivas
     "auditoria.apps.AuditoriaConfig",
     "laboratorio.apps.LaboratorioConfig",
     "maquinas",

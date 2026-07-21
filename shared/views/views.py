@@ -1142,14 +1142,7 @@ def run_cron_tasks(request):
         
     results = {}
     
-    # 1. Update status of delayed actions
-    try:
-        from acoes.tasks import atualizar_status_acoes_atrasadas
-        results['acoes_atrasadas'] = atualizar_status_acoes_atrasadas()
-    except Exception as e:
-        results['acoes_atrasadas'] = {'error': str(e)}
-        
-    # 2. Update status of vacations
+    # 1. Update status of vacations
     try:
         from rh.tasks.ferias_tasks import atualizar_status_ferias_logic, sincronizar_em_ferias
         results['ferias_status'] = atualizar_status_ferias_logic()

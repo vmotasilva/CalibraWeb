@@ -110,7 +110,6 @@
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
 
                 {# Pré-cálculo de acesso aos módulos (usado para ordenar) #}
-                {% can_nav_module user 'acoes' as nav_acoes %}
                 {% can_nav_module user 'auditoria' as nav_auditoria %}
                 {% can_nav_module user 'fornecedores' as nav_forn %}
                 {% can_nav_module user 'laboratorio' as nav_laboratorio %}
@@ -118,41 +117,7 @@
                 {% can_nav_module user 'rh' as nav_pessoas %}
                 {% can_nav_module user 'procedures' as nav_treinamentos %}
 
-                {# Ordem do menu superior: Ações, Auditoria, Fornecedores, Laboratorio, Metrologia, RH, Procedimentos, Treinamentos, Usuários #}
-
-                {% if nav_acoes %}
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                        <i class="bi bi-exclamation-triangle nav-icon"></i><span class="nav-text">Ações Corretivas</span>
-                    </a>
-                    <ul class="dropdown-menu">
-                        {% can_nav_block user 'acoes' 'registro' as nav_ac_reg %}
-                        {% if nav_ac_reg %}
-                            {% can_nav_view user 'acoes:acoes_registradas' 'acoes' as nav_ac_registradas %}
-                            {% can_nav_view user 'acoes:listar_solucoes' 'acoes' as nav_ac_controle %}
-                            {% if nav_ac_registradas or nav_ac_controle %}
-                                <li><h6 class="dropdown-header text-muted">REGISTRO E SOLUÇÃO</h6></li>
-                                {% if nav_ac_registradas %}<li><a class="dropdown-item" href="{% url 'acoes:acoes_registradas' %}">📊 Ações Registradas</a></li>{% endif %}
-                                {% if nav_ac_controle %}<li><a class="dropdown-item" href="{% url 'acoes:listar_solucoes' %}">📋 Controle de Registros</a></li>{% endif %}
-                                <li><hr class="dropdown-divider"></li>
-                            {% endif %}
-                        {% endif %}
-
-                        {% can_nav_block user 'acoes' 'referencia' as nav_ac_ref %}
-                        {% if nav_ac_ref %}
-                            {% can_nav_view user 'acoes:origem_problema_list' 'acoes' as nav_ac_origem %}
-                            {% can_nav_view user 'acoes:tipo_solucao_list' 'acoes' as nav_ac_tipo %}
-                            {% can_nav_view user 'acoes:kpi_opcao_list' 'acoes' as nav_ac_kpi %}
-                            {% if nav_ac_origem or nav_ac_tipo or nav_ac_kpi %}
-                                <li><h6 class="dropdown-header text-muted">REFERÊNCIA DE DADOS</h6></li>
-                                {% if nav_ac_origem %}<li><a class="dropdown-item" href="{% url 'acoes:origem_problema_list' %}"><i class="bi bi-diagram-3"></i> Origens de Problemas</a></li>{% endif %}
-                                {% if nav_ac_tipo %}<li><a class="dropdown-item" href="{% url 'acoes:tipo_solucao_list' %}"><i class="bi bi-journal-text"></i> Tipos de Solução</a></li>{% endif %}
-                                {% if nav_ac_kpi %}<li><a class="dropdown-item" href="{% url 'acoes:kpi_opcao_list' %}"><i class="bi bi-graph-up"></i> KPIs</a></li>{% endif %}
-                            {% endif %}
-                        {% endif %}
-                    </ul>
-                </li>
-                {% endif %}
+                {# Ordem do menu superior: Auditoria, Fornecedores, Laboratorio, Metrologia, RH, Procedimentos, Treinamentos, Usuários #}
 
                 {% if nav_auditoria %}
                 <li class="nav-item dropdown">

@@ -22,39 +22,13 @@ def get_user_colaborador(user):
 def dashboard_view(request):
     """Exibe todos os quadros que o usuário gerencia ou participa"""
     colab = get_user_colaborador(request.user)
-    # Garante que o quadro fixado de Planos de Ação existe
-
-    board_fixed, created = Board.objects.get_or_create(
-        tipo='PLANOS_ACAO',
-        defaults={
-            'nome': 'Ações Corretivas e Preventivas',
-            'descricao': 'Quadro fixado contendo as ações corretivas e preventivas dos Planos de Ações.',
-            'arquivado': False
-        }
-    )
-    if created:
-        # Criar as 5 colunas vinculadas aos status das ações
-        colunas_padrao = [
-            ("Planejada", "planejada"),
-            ("Em Curso/Andamento", "em_curso"),
-            ("Retardo/Atrasada", "retardo"),
-            ("Completa/Concluído", "completa"),
-            ("Cancelada", "cancelada"),
-        ]
-        for idx, (nome_col, status_val) in enumerate(colunas_padrao):
-            BoardColumn.objects.create(
-                quadro=board_fixed, 
-                nome=nome_col, 
-                ordem=idx,
-                status_linha_acao=status_val
-            )
-            
-    # Superusuários vêm todos os quadros, colaboradores comuns vêm apenas os seus, onde são membros, ou o quadro fixo
+    
+    # Superusuários vêm todos os quadros, colaboradores comuns vêm apenas os seus, onde são membros
     if request.user.is_superuser:
         quadros_base = Board.objects.all().distinct()
     else:
         quadros_base = Board.objects.filter(
-            Q(criado_por=colab) | Q(membros=colab) | Q(tipo='PLANOS_ACAO')
+            Q(criado_por=colab) | Q(membros=colab)
         ).distinct()
 
     quadros = quadros_base.filter(arquivado=False)
@@ -94,41 +68,7 @@ def dashboard_view(request):
     
     todas_acoes = []
     
-    # 1. Obter ações corretivas/preventivas virtuais se houver quadro PLANOS_ACAO
-    board_planos = quadros.filter(tipo='PLANOS_ACAO').first()
-    if board_planos:
-        from acoes.models import LinhaAcao
-        linhas = LinhaAcao.objects.filter(
-            classificacao__in=['corretiva', 'preventiva']
-        ).select_related('plano_acao__solucao', 'responsavel_acao').prefetch_related('responsaveis_multiplos').all()
-        
-        for l in linhas:
-            resps = []
-            if l.responsavel_acao:
-                resps.append(l.responsavel_acao)
-            for r in l.responsaveis_multiplos.all():
-                if r not in resps:
-                    resps.append(r)
-            
-            plan_ref = l.plano_acao.numero_registro or l.plano_acao.solucao.titulo or "Plano de Ação"
-            card_title = f"Ação #{l.numero_acao} - {plan_ref}"
-            
-            todas_acoes.append({
-                'id': l.id,
-                'titulo': card_title,
-                'descricao': l.descricao,
-                'prioridade': 'ALTA' if l.prioridade else 'BAIXA',
-                'data_entrega': l.data_deadline,
-                'data_conclusao': l.data_conclusao,
-                'status_exibicao': l.get_status_display() if hasattr(l, 'get_status_display') else l.status.capitalize(),
-                'quadro_nome': board_planos.nome,
-                'quadro_id': board_planos.id,
-                'responsaveis': resps,
-                'plano_acao_id': l.plano_acao.id,
-                'is_virtual': True
-            })
-            
-    # 2. Obter tarefas dos quadros normais
+    # Obter tarefas dos quadros normais
     for c in cartoes_qs:
         todas_acoes.append({
             'id': c.id,
@@ -180,7 +120,7 @@ def board_detail_view(request, board_id):
         board = get_object_or_404(Board, id=board_id)
     else:
         board = get_object_or_404(
-            Board.objects.filter(Q(criado_por=colab) | Q(membros=colab) | Q(tipo='PLANOS_ACAO')), 
+            Board.objects.filter(Q(criado_por=colab) | Q(membros=colab)), 
             id=board_id
         )
         
@@ -208,216 +148,85 @@ def board_detail_view(request, board_id):
         start_date = datetime.date(today.year, 1, 1)
         end_date = datetime.date(today.year, 12, 31)
 
-    if board.tipo == 'PLANOS_ACAO':
-        from acoes.models import LinhaAcao
-
-        # Obter todas as linhas de ação corretiva e preventiva
-        linhas = LinhaAcao.objects.filter(
-            classificacao__in=['corretiva', 'preventiva']
-        ).select_related('plano_acao__solucao', 'responsavel_acao').prefetch_related('responsaveis_multiplos').all()
-
-        # Filtrar por período se aplicável
-        if start_date:
-            linhas_filtradas = []
-            for l in linhas:
-                is_completed = l.status in ['completa', 'cancelada']
-                if is_completed:
-                    if l.data_conclusao and start_date <= l.data_conclusao <= end_date:
-                        linhas_filtradas.append(l)
-                else:
-                    if l.data_deadline and start_date <= l.data_deadline <= end_date:
-                        linhas_filtradas.append(l)
-            linhas = linhas_filtradas
-
-        total_cartoes = len(linhas)
-
-        # Sem colunas de status fixas; usamos colunas virtuais por PlanoAcao
-        concluido_colunas_ids = []
-
-        cartoes_concluidos = sum(1 for l in linhas if l.status in ['completa', 'cancelada'])
-
-        porcentagem_concluida = 0
-        if total_cartoes > 0:
-            porcentagem_concluida = int((cartoes_concluidos / total_cartoes) * 100)
-
-        cartoes_atrasados = sum(1 for l in linhas if l.data_deadline and l.data_deadline < today and l.status not in ['completa', 'cancelada'])
-
-        # Carga de trabalho por colaborador (linhas de ação pendentes)
-        carga_membros_dict = {}
-        for l in linhas:
-            if l.status in ['completa', 'cancelada']:
-                continue
-            if l.responsavel_acao:
-                carga_membros_dict[l.responsavel_acao] = carga_membros_dict.get(l.responsavel_acao, 0) + 1
-            for r in l.responsaveis_multiplos.all():
-                if r != l.responsavel_acao:
-                    carga_membros_dict[r] = carga_membros_dict.get(r, 0) + 1
-
-        carga_membros_sorted = sorted(carga_membros_dict.items(), key=lambda x: x[1], reverse=True)
-        chart_membros_nomes = [m.nome_completo for m, _ in carga_membros_sorted]
-        chart_membros_valores = [v for _, v in carga_membros_sorted]
-
-        # Mapa de rótulo/cor por status para exibição no cartão
-        STATUS_BADGE = {
-            'planejada': {'label': 'Planejada',       'color': '#6c757d'},
-            'em_curso':  {'label': 'Em Curso',         'color': '#0d6efd'},
-            'retardo':   {'label': 'Retardo/Atrasada', 'color': '#dc3545'},
-            'completa':  {'label': 'Concluída',        'color': '#198754'},
-            'cancelada': {'label': 'Cancelada',        'color': '#adb5bd'},
-        }
-
-        def _build_virtual_card(l):
-            """Constrói dicionário de cartão virtual a partir de uma LinhaAcao."""
-            resps = []
-            if l.responsavel_acao:
-                resps.append(l.responsavel_acao)
-            for r in l.responsaveis_multiplos.all():
-                if r not in resps:
-                    resps.append(r)
-            status_info = STATUS_BADGE.get(l.status, {'label': l.status, 'color': '#6c757d'})
-            descricao_texto = l.descricao or ''
-            card_title = f"Ação #{l.numero_acao} — {descricao_texto[:90]}" if descricao_texto else f"Ação #{l.numero_acao}"
-            return {
-                'id': l.id,
-                'titulo': card_title,
-                'descricao': l.descricao,
-                'prioridade': 'ALTA' if l.prioridade else 'BAIXA',
-                'data_entrega': l.data_deadline,
-                'data_conclusao': l.data_conclusao,
-                'hora_inicio': None,
-                'hora_fim': None,
-                'responsaveis': {'all': resps},
-                'periodicidade': 'AVULSA',
-                'checklist_itens': {'exists': False},
-                'plano_acao_id': l.plano_acao.id,
-                'is_virtual': True,
-                'etiquetas': {'all': []},
-                'antecessora': None,
-                'historia': [],
-                'criado_em': l.criado_em,
-                'status_badge': status_info,
-                'status_raw': l.status,
-            }
-
-        # Agrupar linhas por PlanoAcao
-        planos_dict = {}  # plano_id -> {'plano': obj, 'linhas': [...]}
-        for l in linhas:
-            pid = l.plano_acao.id
-            if pid not in planos_dict:
-                planos_dict[pid] = {'plano': l.plano_acao, 'linhas': []}
-            planos_dict[pid]['linhas'].append(l)
-
-        # Ordenar planos pelo numero_registro
-        planos_sorted = sorted(planos_dict.values(), key=lambda x: (x['plano'].numero_registro or ''))
-
-        # Classe de coluna virtual por plano de ação
-        class VirtualColumn:
-            """Representa uma coluna virtual agrupando as ações de um Plano de Ação."""
-            def __init__(self, plano, linhas_do_plano):
-                self.id = f"plano_{plano.id}"
-                self.nome = plano.numero_registro or plano.solucao.titulo or f"Plano #{plano.id}"
-                self.plano = plano
-                self.subsecoes_list = []
-                self.status_linha_acao = None  # não é coluna de status
-
-                linhas_andamento = [l for l in linhas_do_plano if l.status not in ['completa', 'cancelada']]
-                linhas_concluido = [l for l in linhas_do_plano if l.status in ['completa', 'cancelada']]
-
-                self.cartoes_list_andamento = [_build_virtual_card(l) for l in linhas_andamento]
-                self.cartoes_list_concluido = [_build_virtual_card(l) for l in linhas_concluido]
-                self.cartoes_list = self.cartoes_list_andamento + self.cartoes_list_concluido
-                self.cartoes_sem_subsecao_andamento = self.cartoes_list_andamento
-                self.cartoes_sem_subsecao_concluido = self.cartoes_list_concluido
-
-        # Substituir colunas reais pelas virtuais por plano
-        colunas = [VirtualColumn(p['plano'], p['linhas']) for p in planos_sorted]
-
-        # Distribuição para o gráfico
-        distribuicao_colunas = [
-            {'nome': col.nome, 'quantidade': len(col.cartoes_list)}
-            for col in colunas
-        ]
-
-    else:
-        # Calcular Métricas de Carga de Trabalho da Equipe (Quadro Padrão)
+    # Calcular Métricas de Carga de Trabalho da Equipe (Quadro Padrão)
+    
+    # Identificar coluna de conclusão (última coluna por ordem ou contendo "concluido/concluído/done" no nome)
+    concluido_colunas_ids = []
+    for col in colunas:
+        nome_low = col.nome.lower()
+        if "concluido" in nome_low or "concluído" in nome_low or "done" in nome_low or "terminado" in nome_low or "pronto" in nome_low:
+            concluido_colunas_ids.append(col.id)
+            
+    # Se não achar nenhuma pelo nome, assume a última
+    if not concluido_colunas_ids and colunas:
+        concluido_colunas_ids.append(colunas[-1].id)
         
-        # Identificar coluna de conclusão (última coluna por ordem ou contendo "concluido/concluído/done" no nome)
-        concluido_colunas_ids = []
-        for col in colunas:
-            nome_low = col.nome.lower()
-            if "concluido" in nome_low or "concluído" in nome_low or "done" in nome_low or "terminado" in nome_low or "pronto" in nome_low:
-                concluido_colunas_ids.append(col.id)
-                
-        # Se não achar nenhuma pelo nome, assume a última
-        if not concluido_colunas_ids and colunas:
-            concluido_colunas_ids.append(colunas[-1].id)
+    # Migração automática de cartões orfãos na coluna concluído para a primeira coluna ativa
+    colunas_ativas = [col for col in colunas if col.id not in concluido_colunas_ids]
+    if colunas_ativas and concluido_colunas_ids:
+        primeira_coluna = colunas_ativas[0]
+        cartoes_orfaos = Card.objects.filter(coluna_id__in=concluido_colunas_ids)
+        if cartoes_orfaos.exists():
+            with transaction.atomic():
+                for card in cartoes_orfaos:
+                    card.coluna = primeira_coluna
+                    if not card.data_conclusao:
+                        card.data_conclusao = card.criado_em.date() if card.criado_em else timezone.now().date()
+                    card.save()
+
+    # Definir funções auxiliares de filtro de período para tarefas normais
+    def matches_period_andamento(c):
+        if not start_date:
+            return True
+        return c.data_entrega is not None and start_date <= c.data_entrega <= end_date
+
+    def matches_period_concluido(c):
+        if not start_date:
+            return True
+        return c.data_conclusao is not None and start_date <= c.data_conclusao <= end_date
+
+    # Distribuição por colunas e agrupamento por sub-sessões
+    distribuicao_colunas = []
+    for col in colunas:
+        col.subsecoes_list = list(col.subsecoes.all())
+        for sub in col.subsecoes_list:
+            sub.cartoes_list_andamento = [c for c in col.cartoes.all() if c.subsecao_id == sub.id and c.data_conclusao is None and matches_period_andamento(c)]
+            sub.cartoes_list_concluido = [c for c in col.cartoes.all() if c.subsecao_id == sub.id and c.data_conclusao is not None and matches_period_concluido(c)]
             
-        # Migração automática de cartões orfãos na coluna concluído para a primeira coluna ativa
-        colunas_ativas = [col for col in colunas if col.id not in concluido_colunas_ids]
-        if colunas_ativas and concluido_colunas_ids:
-            primeira_coluna = colunas_ativas[0]
-            cartoes_orfaos = Card.objects.filter(coluna_id__in=concluido_colunas_ids)
-            if cartoes_orfaos.exists():
-                with transaction.atomic():
-                    for card in cartoes_orfaos:
-                        card.coluna = primeira_coluna
-                        if not card.data_conclusao:
-                            card.data_conclusao = card.criado_em.date() if card.criado_em else timezone.now().date()
-                        card.save()
-
-        # Definir funções auxiliares de filtro de período para tarefas normais
-        def matches_period_andamento(c):
-            if not start_date:
-                return True
-            return c.data_entrega is not None and start_date <= c.data_entrega <= end_date
-
-        def matches_period_concluido(c):
-            if not start_date:
-                return True
-            return c.data_conclusao is not None and start_date <= c.data_conclusao <= end_date
-
-        # Distribuição por colunas e agrupamento por sub-sessões
-        distribuicao_colunas = []
-        for col in colunas:
-            col.subsecoes_list = list(col.subsecoes.all())
-            for sub in col.subsecoes_list:
-                sub.cartoes_list_andamento = [c for c in col.cartoes.all() if c.subsecao_id == sub.id and c.data_conclusao is None and matches_period_andamento(c)]
-                sub.cartoes_list_concluido = [c for c in col.cartoes.all() if c.subsecao_id == sub.id and c.data_conclusao is not None and matches_period_concluido(c)]
-                
-            col.cartoes_sem_subsecao_andamento = [c for c in col.cartoes.all() if c.subsecao_id is None and c.data_conclusao is None and matches_period_andamento(c)]
-            col.cartoes_sem_subsecao_concluido = [c for c in col.cartoes.all() if c.subsecao_id is None and c.data_conclusao is not None and matches_period_concluido(c)]
-            col.cartoes_list_andamento = [c for c in col.cartoes.all() if c.data_conclusao is None and matches_period_andamento(c)]
-            col.cartoes_list_concluido = [c for c in col.cartoes.all() if c.data_conclusao is not None and matches_period_concluido(c)]
-            col.cartoes_list = [c for c in col.cartoes.all() if (c.data_conclusao is None and matches_period_andamento(c)) or (c.data_conclusao is not None and matches_period_concluido(c))]
-            
-            distribuicao_colunas.append({
-                'nome': col.nome,
-                'quantidade': len(col.cartoes_list)
-            })
-
-        total_cartoes = sum(len(col.cartoes_list) for col in colunas)
-        cartoes_concluidos = sum(len(col.cartoes_list_concluido) for col in colunas)
+        col.cartoes_sem_subsecao_andamento = [c for c in col.cartoes.all() if c.subsecao_id is None and c.data_conclusao is None and matches_period_andamento(c)]
+        col.cartoes_sem_subsecao_concluido = [c for c in col.cartoes.all() if c.subsecao_id is None and c.data_conclusao is not None and matches_period_concluido(c)]
+        col.cartoes_list_andamento = [c for c in col.cartoes.all() if c.data_conclusao is None and matches_period_andamento(c)]
+        col.cartoes_list_concluido = [c for c in col.cartoes.all() if c.data_conclusao is not None and matches_period_concluido(c)]
+        col.cartoes_list = [c for c in col.cartoes.all() if (c.data_conclusao is None and matches_period_andamento(c)) or (c.data_conclusao is not None and matches_period_concluido(c))]
         
-        porcentagem_concluida = 0
-        if total_cartoes > 0:
-            porcentagem_concluida = int((cartoes_concluidos / total_cartoes) * 100)
-            
-        cartoes_atrasados = 0
-        for col in colunas:
-            for c in col.cartoes_list_andamento:
-                if c.data_entrega and c.data_entrega < today:
-                    cartoes_atrasados += 1
+        distribuicao_colunas.append({
+            'nome': col.nome,
+            'quantidade': len(col.cartoes_list)
+        })
 
-        # Carga de trabalho por colaborador (exclui concluídos para focar no trabalho pendente)
-        carga_membros_dict = {}
-        for col in colunas:
-            for c in col.cartoes_list_andamento:
-                for resp in c.responsaveis.all():
-                    carga_membros_dict[resp] = carga_membros_dict.get(resp, 0) + 1
-                    
-        carga_membros_sorted = sorted(carga_membros_dict.items(), key=lambda x: x[1], reverse=True)
-        chart_membros_nomes = [m.nome_completo for m, _ in carga_membros_sorted]
-        chart_membros_valores = [v for _, v in carga_membros_sorted]
+    total_cartoes = sum(len(col.cartoes_list) for col in colunas)
+    cartoes_concluidos = sum(len(col.cartoes_list_concluido) for col in colunas)
+    
+    porcentagem_concluida = 0
+    if total_cartoes > 0:
+        porcentagem_concluida = int((cartoes_concluidos / total_cartoes) * 100)
+        
+    cartoes_atrasados = 0
+    for col in colunas:
+        for c in col.cartoes_list_andamento:
+            if c.data_entrega and c.data_entrega < today:
+                cartoes_atrasados += 1
+
+    # Carga de trabalho por colaborador (exclui concluídos para focar no trabalho pendente)
+    carga_membros_dict = {}
+    for col in colunas:
+        for c in col.cartoes_list_andamento:
+            for resp in c.responsaveis.all():
+                carga_membros_dict[resp] = carga_membros_dict.get(resp, 0) + 1
+                
+    carga_membros_sorted = sorted(carga_membros_dict.items(), key=lambda x: x[1], reverse=True)
+    chart_membros_nomes = [m.nome_completo for m, _ in carga_membros_sorted]
+    chart_membros_valores = [v for _, v in carga_membros_sorted]
         
     # Atividades recentes do quadro (limita a 20)
     atividades = board.atividades.select_related('colaborador')[:20]
@@ -432,14 +241,8 @@ def board_detail_view(request, board_id):
         Q(is_active=True) | Q(id__in=responsaveis_atuais_ids)
     ).distinct().order_by('nome_completo')
         
-    # Para o quadro de planos de ação (virtual), todas as colunas aparecem em ambas as seções;
-    # a separação andamento/concluído é feita internamente em cada VirtualColumn.
-    if board.tipo == 'PLANOS_ACAO':
-        colunas_andamento = colunas  # cada coluna virtual gerencia seus próprios sub-grupos
-        colunas_concluidas = colunas
-    else:
-        colunas_andamento = [col for col in colunas if col.id not in concluido_colunas_ids]
-        colunas_concluidas = colunas_andamento
+    colunas_andamento = [col for col in colunas if col.id not in concluido_colunas_ids]
+    colunas_concluidas = colunas_andamento
 
     context = {
         'board': board,
