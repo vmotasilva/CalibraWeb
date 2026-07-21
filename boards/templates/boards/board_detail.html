@@ -554,9 +554,9 @@
                     <select id="globalFilterSub" class="form-select form-select-sm" style="width: 170px;" onchange="applyGlobalFilters()">
                         <option value="">Sub-sessão: Todas</option>
                         <option value="__sem_subsecao__">Sem Sub-sessão</option>
-                        {% for col in colunas %}{% for sub in col.subsecoes_list %}
-                        <option value="{{ sub.nome }}">{{ sub.nome }}</option>
-                        {% endfor %}{% endfor %}
+                        {% for nome in subsecoes_unicas %}
+                        <option value="{{ nome }}">{{ nome }}</option>
+                        {% endfor %}
                     </select>
 
                     <!-- Filtro por Status -->

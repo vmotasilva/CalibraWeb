@@ -244,6 +244,16 @@ def board_detail_view(request, board_id):
     colunas_andamento = [col for col in colunas if col.id not in concluido_colunas_ids]
     colunas_concluidas = colunas_andamento
 
+    # Nomes de sub-sessões únicos (deduplicados) para o filtro
+    _seen_subs = set()
+    subsecoes_unicas = []
+    for col in colunas:
+        for sub in col.subsecoes_list:
+            if sub.nome not in _seen_subs:
+                _seen_subs.add(sub.nome)
+                subsecoes_unicas.append(sub.nome)
+    subsecoes_unicas.sort()
+
     context = {
         'board': board,
         'colunas': colunas,
@@ -262,7 +272,8 @@ def board_detail_view(request, board_id):
         'distribuicao_colunas': json.dumps(distribuicao_colunas),
         'titulo': f"Quadro - {board.nome}",
         'periodo': periodo,
-        'hoje': today
+        'hoje': today,
+        'subsecoes_unicas': subsecoes_unicas,
     }
     return render(request, 'boards/board_detail.html', context)
 
