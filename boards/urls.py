@@ -30,5 +30,8 @@ urlpatterns = [
     path('mencoes/<int:mention_id>/visualizar/', views.read_mention_view, name='read_mention'),
     path('colunas/<int:column_id>/copiar/', views.copy_column_view, name='copy_column'),
     path('colunas/<int:column_id>/descricao/', views.api_column_description_view, name='api_column_description'),
+    path('colunas/<int:column_id>/renomear/', views.api_rename_column_view, name='api_rename_column'),
+    path('colunas/<int:column_id>/arquivar/', views.archive_column_view, name='archive_column'),
+    path('colunas/<int:column_id>/desarquivar/', views.unarchive_column_view, name='unarchive_column'),
 ]
 

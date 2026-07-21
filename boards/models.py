@@ -46,6 +46,7 @@ class BoardColumn(models.Model):
     quadro = models.ForeignKey(Board, on_delete=models.CASCADE, related_name="colunas")
     nome = models.CharField(max_length=100, verbose_name="Nome da Coluna")
     descricao = models.TextField(blank=True, null=True, verbose_name="Descrição da Coluna")
+    arquivada = models.BooleanField(default=False, verbose_name="Arquivada")
     ordem = models.IntegerField(default=0)
     criado_em = models.DateTimeField(auto_now_add=True)
 

@@ -125,7 +125,9 @@ def board_detail_view(request, board_id):
         )
         
     # Colunas, sub-sessões e cartões pré-carregados
-    colunas = list(board.colunas.prefetch_related('subsecoes', 'cartoes__responsaveis', 'cartoes__checklist_itens', 'cartoes__planejamentos').all())
+    todas_colunas = list(board.colunas.prefetch_related('subsecoes', 'cartoes__responsaveis', 'cartoes__checklist_itens', 'cartoes__planejamentos').all())
+    colunas = [col for col in todas_colunas if not col.arquivada]
+    colunas_arquivadas = [col for col in todas_colunas if col.arquivada]
     
     # Pegar o filtro de período
     periodo = request.GET.get('periodo', 'tudo')
@@ -257,6 +259,7 @@ def board_detail_view(request, board_id):
     context = {
         'board': board,
         'colunas': colunas,
+        'colunas_arquivadas': colunas_arquivadas,
         'colunas_andamento': colunas_andamento,
         'colunas_concluidas': colunas_concluidas,
         'card_form': card_form,
@@ -303,6 +306,42 @@ def create_column_view(request, board_id):
     else:
         messages.error(request, "O nome da coluna é obrigatório!")
         
+    return redirect('boards:board_detail', board_id=board.id)
+
+
+@login_required
+@require_POST
+def archive_column_view(request, column_id):
+    """Arquiva uma coluna (oculta do quadro ativo, preserva cartões)"""
+    colab = get_user_colaborador(request.user)
+    coluna = get_object_or_404(BoardColumn, id=column_id)
+    board = coluna.quadro
+    coluna.arquivada = True
+    coluna.save(update_fields=['arquivada'])
+    BoardActivity.objects.create(
+        quadro=board,
+        colaborador=colab,
+        descricao=f"arquivou a coluna '{coluna.nome}'."
+    )
+    messages.success(request, f"Coluna '{coluna.nome}' arquivada.")
+    return redirect('boards:board_detail', board_id=board.id)
+
+
+@login_required
+@require_POST
+def unarchive_column_view(request, column_id):
+    """Desarquiva uma coluna, tornando-a ativa novamente"""
+    colab = get_user_colaborador(request.user)
+    coluna = get_object_or_404(BoardColumn, id=column_id)
+    board = coluna.quadro
+    coluna.arquivada = False
+    coluna.save(update_fields=['arquivada'])
+    BoardActivity.objects.create(
+        quadro=board,
+        colaborador=colab,
+        descricao=f"desarquivou a coluna '{coluna.nome}'."
+    )
+    messages.success(request, f"Coluna '{coluna.nome}' reativada.")
     return redirect('boards:board_detail', board_id=board.id)
 
 
@@ -379,6 +418,36 @@ def api_column_description_view(request, column_id):
             coluna.descricao = data.get('descricao', '').strip() or None
             coluna.save(update_fields=['descricao'])
             return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+    return JsonResponse({'error': 'Método não permitido.'}, status=405)
+
+
+@login_required
+def api_rename_column_view(request, column_id):
+    """POST: renomeia a coluna."""
+    coluna = get_object_or_404(BoardColumn, id=column_id)
+
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            novo_nome = data.get('nome', '').strip()
+            if not novo_nome:
+                return JsonResponse({'success': False, 'error': 'O nome da coluna não pode ficar vazio.'}, status=400)
+            
+            colab = get_user_colaborador(request.user)
+            nome_antigo = coluna.nome
+            coluna.nome = novo_nome
+            coluna.save(update_fields=['nome'])
+            
+            BoardActivity.objects.create(
+                quadro=coluna.quadro,
+                colaborador=colab,
+                descricao=f"renomeou a coluna '{nome_antigo}' para '{novo_nome}'."
+            )
+            
+            return JsonResponse({'success': True, 'nome': coluna.nome})
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=400)
 

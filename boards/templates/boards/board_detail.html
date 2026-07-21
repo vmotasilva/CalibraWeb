@@ -478,6 +478,9 @@
                     <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#boardLabelsModal" title="Gerenciar Etiquetas do Quadro">
                         <i class="bi bi-tags"></i>
                     </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm text-warning border-warning" data-bs-toggle="modal" data-bs-target="#archivedColumnsModal" title="Colunas Arquivadas">
+                        <i class="bi bi-archive-fill"></i> Colunas Arquivadas
+                    </button>
                     <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#boardConfigModal" title="Configurar Quadro">
                         <i class="bi bi-gear"></i>
                     </button>
@@ -624,6 +627,17 @@
                                         <button class="dropdown-item" type="button" onclick="openColumnDescriptionModal({{ col.id }}, '{{ col.nome|escapejs }}')">
                                             <i class="bi bi-card-text me-2"></i>Descrição da Coluna
                                         </button>
+                                    </li>
+                                    <li>
+                                        <button class="dropdown-item" type="button" onclick="renameColumn({{ col.id }}, '{{ col.nome|escapejs }}')">
+                                            <i class="bi bi-pencil me-2"></i>Renomear Coluna
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <form action="{% url 'boards:archive_column' col.id %}" method="POST" onsubmit="return confirm('Deseja arquivar esta coluna? Ela não aparecerá mais no quadro ativo, mas os cartões serão preservados.');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="dropdown-item text-warning"><i class="bi bi-archive me-2"></i>Arquivar Coluna</button>
+                                        </form>
                                     </li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li>
@@ -1702,6 +1716,43 @@
                 <button type="button" class="btn btn-success btn-sm" id="confirmConclusionDateBtn">
                     <i class="bi bi-check-lg me-1"></i>Confirmar
                 </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Colunas Arquivadas -->
+<div class="modal fade" id="archivedColumnsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-warning text-dark border-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-archive-fill me-2"></i>Colunas Arquivadas</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body bg-light p-3">
+                {% if colunas_arquivadas %}
+                <ul class="list-group rounded">
+                    {% for col in colunas_arquivadas %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center bg-white border mb-2 rounded shadow-sm">
+                        <div>
+                            <strong class="text-dark">{{ col.nome }}</strong>
+                            <small class="text-muted d-block">{{ col.cartoes.count }} tarefas</small>
+                        </div>
+                        <form action="{% url 'boards:unarchive_column' col.id %}" method="POST" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-success">
+                                <i class="bi bi-box-arrow-up me-1"></i> Restaurar
+                            </button>
+                        </form>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-archive d-block fs-1 mb-3 opacity-50"></i>
+                    <p class="mb-0">Não há colunas arquivadas neste quadro.</p>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -5170,6 +5221,29 @@
                 // Clean url parameters to keep address bar clean
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
+        }
+    }
+
+    function renameColumn(colId, currentName) {
+        const novoNome = prompt('Digite o novo nome para a coluna:', currentName);
+        if (novoNome !== null && novoNome.trim() !== '' && novoNome !== currentName) {
+            fetch(`/boards/colunas/${colId}/renomear/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ nome: novoNome.trim() })
+            }).then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Erro ao renomear: ' + data.error);
+                }
+            }).catch(error => {
+                alert('Erro de conexão ao renomear a coluna.');
+            });
         }
     }
 
