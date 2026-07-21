@@ -23,6 +23,18 @@
             <a href="{% url 'auditoria:modelos_list' %}" class="btn btn-outline-secondary">Limpar</a>
         </div>
     </form>
+    
+    <div class="mb-3 d-flex gap-2">
+        {% if mostrar_arquivados %}
+            <a href="{% url 'auditoria:modelos_list' %}" class="btn btn-sm btn-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar para Auditorias Ativas
+            </a>
+        {% else %}
+            <a href="{% url 'auditoria:modelos_list' %}?arquivados=1" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-archive"></i> Ver Auditorias Arquivadas
+            </a>
+        {% endif %}
+    </div>
 
     {% if inicio or fim %}
     <div class="alert alert-info py-2">
@@ -63,7 +75,15 @@
                                 -
                             {% endif %}
                         </td>
-                        <td>{% if modelo.ativo %}Sim{% else %}Não{% endif %}</td>
+                        <td>
+                            {% if modelo.ativo %}
+                                <span class="badge bg-success">Ativa</span>
+                            {% elif modelo.arquivado %}
+                                <span class="badge bg-secondary">Arquivada</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">Encerrada</span>
+                            {% endif %}
+                        </td>
                         <td>
                             <a href="{% url 'auditoria:registros_por_modelo' modelo.id %}" class="btn btn-sm btn-info" title="Ver resumo de registros" data-bs-toggle="tooltip" data-bs-placement="top" aria-label="Registros">
                                 <i class="bi bi-list-check"></i>
@@ -81,6 +101,21 @@
                             <a href="{% url 'auditoria:perguntas_list' %}?modelo={{ modelo.id }}" class="btn btn-sm btn-outline-primary" title="Gerenciar perguntas" data-bs-toggle="tooltip" data-bs-placement="top" aria-label="Perguntas">
                                 <i class="bi bi-question-circle"></i>
                             </a>
+                            {% if modelo.ativo %}
+                            <form method="post" action="{% url 'auditoria:modelo_encerrar' modelo.id %}" class="d-inline" onsubmit="return confirm('Deseja realmente encerrar esta auditoria? Ela não aceitará mais novos preenchimentos.');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-warning" title="Encerrar auditoria" data-bs-toggle="tooltip" data-bs-placement="top" aria-label="Encerrar">
+                                    <i class="bi bi-stop-circle"></i>
+                                </button>
+                            </form>
+                            {% elif not modelo.arquivado %}
+                            <form method="post" action="{% url 'auditoria:modelo_arquivar' modelo.id %}" class="d-inline" onsubmit="return confirm('Deseja arquivar esta auditoria encerrada? Ela será ocultada da lista principal.');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-secondary" title="Arquivar auditoria" data-bs-toggle="tooltip" data-bs-placement="top" aria-label="Arquivar">
+                                    <i class="bi bi-archive"></i>
+                                </button>
+                            </form>
+                            {% endif %}
                             <a href="{% url 'auditoria:modelo_delete' modelo.id %}" class="btn btn-sm btn-danger" title="Excluir modelo" data-bs-toggle="tooltip" data-bs-placement="top" aria-label="Excluir">
                                 <i class="bi bi-trash"></i>
                             </a>

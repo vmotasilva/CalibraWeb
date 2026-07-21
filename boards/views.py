@@ -10,7 +10,7 @@ import json
 import datetime
 import calendar
 
-from boards.models import Board, BoardColumn, Card, ChecklistItem, CardComment, BoardActivity, BoardSubSection, BoardLabel, CardPlanningDate
+from boards.models import Board, BoardColumn, Card, ChecklistItem, CardComment, BoardActivity, BoardSubSection, BoardLabel, CardPlanningDate, BoardLink
 from boards.forms import BoardForm, CardForm
 from rh.models import Colaborador
 
@@ -111,7 +111,7 @@ def dashboard_view(request):
 
 
 @login_required
-def board_detail_view(request, board_id):
+def board_detail_view(request, board_id, focus_column_id=None):
     """Visualização Kanban do quadro"""
     colab = get_user_colaborador(request.user)
     
@@ -256,10 +256,16 @@ def board_detail_view(request, board_id):
                 subsecoes_unicas.append(sub.nome)
     subsecoes_unicas.sort()
 
+    focus_column = None
+    if focus_column_id:
+        focus_column = get_object_or_404(BoardColumn, id=focus_column_id, quadro_id=board.id)
+
     context = {
         'board': board,
         'colunas': colunas,
+        'focus_column': focus_column,
         'colunas_arquivadas': colunas_arquivadas,
+        'board_links': board.links.all(),
         'colunas_andamento': colunas_andamento,
         'colunas_concluidas': colunas_concluidas,
         'card_form': card_form,
@@ -1441,13 +1447,51 @@ def delete_label_view(request, label_id):
 
 @login_required
 def read_mention_view(request, mention_id):
-    from .models import BoardMention
-    from django.urls import reverse
-    colab = get_user_colaborador(request.user)
-    mention = get_object_or_404(BoardMention, id=mention_id, mencionado=colab)
+    """Marca uma menção como lida e redireciona para o detalhe do cartão"""
+    mention = get_object_or_404(BoardMention, id=mention_id, mencionado=get_user_colaborador(request.user))
     mention.visualizada = True
-    mention.save()
+    mention.save(update_fields=['visualizada'])
     
-    board_id = mention.comentario.cartao.coluna.quadro.id
-    card_id = mention.comentario.cartao.id
-    return redirect(reverse('boards:board_detail', kwargs={'board_id': board_id}) + f"?card_id={card_id}")
+    url = f"{reverse('boards:board_detail', args=[mention.comentario.cartao.coluna.quadro.id])}?card_id={mention.comentario.cartao.id}"
+    return redirect(url)
+
+
+@login_required
+@require_POST
+def api_add_board_link_view(request, board_id):
+    board = get_object_or_404(Board, id=board_id)
+    try:
+        data = json.loads(request.body)
+        titulo = data.get('titulo', '').strip()
+        url = data.get('url', '').strip()
+        if not titulo or not url:
+            return JsonResponse({'success': False, 'error': 'Título e URL são obrigatórios.'})
+            
+        link = BoardLink.objects.create(
+            quadro=board,
+            titulo=titulo,
+            url=url,
+            criado_por=get_user_colaborador(request.user)
+        )
+        return JsonResponse({
+            'success': True,
+            'id': link.id,
+            'titulo': link.titulo,
+            'url': link.url
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@login_required
+@require_POST
+def api_delete_board_link_view(request, link_id):
+    link = get_object_or_404(BoardLink, id=link_id)
+    if not request.user.is_superuser and link.criado_por != get_user_colaborador(request.user) and link.quadro.criado_por != get_user_colaborador(request.user):
+        return JsonResponse({'success': False, 'error': 'Permissão negada.'})
+        
+    try:
+        link.delete()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})

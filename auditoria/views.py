@@ -607,15 +607,55 @@ def modulo_auditoria_view(request):
 def modelos_list(request):
     inicio = request.GET.get("inicio")
     fim = request.GET.get("fim")
+    mostrar_arquivados = request.GET.get("arquivados") == "1"
 
     modelos = ModeloAuditoria.objects.annotate(total_perguntas=Count("perguntas"))
+    
+    if mostrar_arquivados:
+        modelos = modelos.filter(arquivado=True)
+    else:
+        modelos = modelos.filter(arquivado=False)
+        
     if inicio:
         modelos = modelos.filter(criado_em__date__gte=inicio)
     if fim:
         modelos = modelos.filter(criado_em__date__lte=fim)
 
-    context = {"modelos": modelos.order_by("nome"), "inicio": inicio, "fim": fim}
+    context = {
+        "modelos": modelos.order_by("nome"), 
+        "inicio": inicio, 
+        "fim": fim,
+        "mostrar_arquivados": mostrar_arquivados
+    }
     return render(request, "auditoria/modelos_list.html", context)
+
+@login_required
+@require_POST
+def modelo_encerrar(request, pk):
+    modelo = get_object_or_404(ModeloAuditoria, pk=pk)
+    if not _auditoria_can_update_modelo(request.user, modelo):
+        messages.error(request, "Você não tem permissão para encerrar este modelo.")
+        return redirect("auditoria:modelos_list")
+        
+    modelo.ativo = False
+    modelo.arquivado = False
+    modelo.save()
+    messages.success(request, f"O modelo '{modelo.nome}' foi encerrado com sucesso.")
+    return redirect("auditoria:modelos_list")
+
+@login_required
+@require_POST
+def modelo_arquivar(request, pk):
+    modelo = get_object_or_404(ModeloAuditoria, pk=pk)
+    if not _auditoria_can_update_modelo(request.user, modelo):
+        messages.error(request, "Você não tem permissão para arquivar este modelo.")
+        return redirect("auditoria:modelos_list")
+        
+    modelo.ativo = False
+    modelo.arquivado = True
+    modelo.save()
+    messages.success(request, f"O modelo '{modelo.nome}' foi arquivado.")
+    return redirect("auditoria:modelos_list")
 
 
 @login_required
@@ -1934,7 +1974,7 @@ def dashboard_auditoria(request):
     # Lista de todos os modelos para o filtro
     todos_modelos = _filter_modelos_para_usuario(
         request.user,
-        ModeloAuditoria.objects.filter(ativo=True),
+        ModeloAuditoria.objects.filter(arquivado=False),
     ).order_by("nome")
     modelo_selecionado = None
     if modelo_id:

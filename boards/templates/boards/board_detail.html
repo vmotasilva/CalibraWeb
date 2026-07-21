@@ -448,6 +448,12 @@
                 </div>
                 
                 <div class="d-flex flex-wrap align-items-center gap-2">
+                    {% if focus_column %}
+                    <!-- Botão de Voltar do Modo Foco -->
+                    <a href="{% url 'boards:board_detail' board.id %}" class="btn btn-primary btn-sm me-2">
+                        <i class="bi bi-arrow-left me-1"></i>Voltar ao Quadro
+                    </a>
+                    {% else %}
                     <!-- Abas Customizadas (Navegação interna) -->
                     <ul class="nav nav-pills" id="boardTab" role="tablist">
                         <li class="nav-item" role="presentation">
@@ -466,6 +472,7 @@
                             <button class="nav-link px-3" id="calendar-view-tab" data-bs-toggle="tab" data-bs-target="#calendar-view" type="button" role="tab"><i class="bi bi-calendar3 me-2"></i>Calendário</button>
                         </li>
                     </ul>
+                    {% endif %}
                     
                     <div class="vr mx-2"></div>
                     
@@ -477,6 +484,9 @@
                     {% endif %}
                     <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#boardLabelsModal" title="Gerenciar Etiquetas do Quadro">
                         <i class="bi bi-tags"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#boardLinksModal" title="Links Úteis do Quadro">
+                        <i class="bi bi-link-45deg"></i> Links Úteis
                     </button>
                     <button type="button" class="btn btn-outline-secondary btn-sm text-warning border-warning" data-bs-toggle="modal" data-bs-target="#archivedColumnsModal" title="Colunas Arquivadas">
                         <i class="bi bi-archive-fill"></i> Colunas Arquivadas
@@ -604,7 +614,8 @@
                 <h5 class="fw-bold text-dark mb-3"><i class="bi bi-play-circle text-primary me-2"></i>Atividades em Andamento</h5>
                 <div class="kanban-container" id="kanban-andamento-container">
                     {% for col in colunas_andamento %}
-                    <div class="kanban-column" id="col-{{ col.id }}" data-column-name="{{ col.nome }}">
+                    {% if not focus_column or focus_column.id == col.id %}
+                    <div class="kanban-column {% if focus_column %}flex-grow-1 w-100{% endif %}" id="col-{{ col.id }}" data-column-name="{{ col.nome }}">
                         <!-- Cabeçalho da Coluna -->
                         <div class="column-header" draggable="true" ondragstart="dragColumn(event)" ondragover="allowDropColumn(event)" ondrop="dropColumn(event, {{ col.id }})" style="cursor: move;">
                             <span class="text-truncate fw-bold"><i class="bi bi-grip-vertical text-muted me-1"></i>{{ col.nome }}</span>
@@ -632,6 +643,11 @@
                                         <button class="dropdown-item" type="button" onclick="renameColumn({{ col.id }}, '{{ col.nome|escapejs }}')">
                                             <i class="bi bi-pencil me-2"></i>Renomear Coluna
                                         </button>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{% url 'boards:column_focus' board.id col.id %}">
+                                            <i class="bi bi-arrows-fullscreen me-2"></i>Modo Foco
+                                        </a>
                                     </li>
                                     <li>
                                         <form action="{% url 'boards:archive_column' col.id %}" method="POST" onsubmit="return confirm('Deseja arquivar esta coluna? Ela não aparecerá mais no quadro ativo, mas os cartões serão preservados.');">
@@ -700,8 +716,10 @@
                             <i class="bi bi-plus-lg me-1"></i>Adicionar tarefa
                         </button>
                     </div>
+                    {% endif %}
                     {% endfor %}
                     
+                    {% if not focus_column %}
                     <!-- Adicionar Coluna -->
                     <div class="kanban-column bg-transparent border-0 shadow-none" style="width: 250px; min-width: 250px;">
                         <button class="btn btn-outline-secondary w-100 py-2" data-bs-toggle="collapse" data-bs-target="#addColumnForm" aria-expanded="false" style="border-radius:10px; border-style:dashed;">
@@ -728,7 +746,8 @@
                 <h5 class="fw-bold text-dark mb-3"><i class="bi bi-check-circle text-success me-2"></i>Atividades Concluídas</h5>
                 <div class="kanban-container" id="kanban-concluido-container">
                     {% for col in colunas_concluidas %}
-                    <div class="kanban-column" id="col-{{ col.id }}-completed" data-column-name="{{ col.nome }}">
+                    {% if not focus_column or focus_column.id == col.id %}
+                    <div class="kanban-column opacity-75 {% if focus_column %}flex-grow-1 w-100{% endif %}" id="col-{{ col.id }}-completed" data-column-name="{{ col.nome }}">
                         <!-- Cabeçalho da Coluna -->
                         <div class="column-header">
                             <span class="text-truncate fw-bold">{{ col.nome }}</span>
@@ -764,6 +783,7 @@
                             {% endif %}
                         </div>
                     </div>
+                    {% endif %}
                     {% endfor %}
                 </div>
             </div>
@@ -1753,6 +1773,69 @@
                     <p class="mb-0">Não há colunas arquivadas neste quadro.</p>
                 </div>
                 {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Links Úteis -->
+<div class="modal fade" id="boardLinksModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-info text-white border-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-link-45deg me-2"></i>Links Úteis do Quadro</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body bg-light p-4">
+                <!-- Formulário para adicionar novo link -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body bg-white rounded">
+                        <h6 class="fw-bold mb-3 text-dark"><i class="bi bi-plus-circle text-primary me-2"></i>Registrar Novo Link</h6>
+                        <form id="addBoardLinkForm" onsubmit="event.preventDefault(); addBoardLink();">
+                            <div class="row g-2 align-items-end">
+                                <div class="col-md-4">
+                                    <label class="form-label small text-muted fw-bold">Título / Descrição</label>
+                                    <input type="text" id="newLinkTitle" class="form-control form-control-sm" placeholder="Ex: Planilha de Custos" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small text-muted fw-bold">URL / Link de Acesso</label>
+                                    <input type="url" id="newLinkUrl" class="form-control form-control-sm" placeholder="https://..." required>
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="submit" class="btn btn-primary btn-sm w-100">Adicionar</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Lista de links existentes -->
+                <h6 class="fw-bold mb-3 text-dark"><i class="bi bi-list-ul text-secondary me-2"></i>Links Cadastrados</h6>
+                <div id="boardLinksList">
+                    {% if board_links %}
+                    <ul class="list-group rounded shadow-sm">
+                        {% for link in board_links %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center bg-white border-bottom">
+                            <div class="text-truncate me-3">
+                                <strong class="text-dark d-block text-truncate">{{ link.titulo }}</strong>
+                                <a href="{{ link.url }}" target="_blank" class="small text-decoration-none text-truncate d-block" title="{{ link.url }}">
+                                    <i class="bi bi-box-arrow-up-right me-1"></i>{{ link.url }}
+                                </a>
+                                <small class="text-muted" style="font-size: 0.65rem;">Criado por {{ link.criado_por.nome_completo|default:"Desconhecido" }} em {{ link.criado_em|date:"d/m/Y" }}</small>
+                            </div>
+                            <button class="btn btn-sm btn-outline-danger flex-shrink-0" onclick="deleteBoardLink({{ link.id }}, this)" title="Excluir Link">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <div class="text-center py-4 text-muted border rounded bg-white border-dashed">
+                        <i class="bi bi-link-45deg d-block fs-1 mb-2 opacity-50"></i>
+                        <p class="mb-0 small">Nenhum link registrado neste quadro ainda.</p>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
@@ -5245,6 +5328,51 @@
                 alert('Erro de conexão ao renomear a coluna.');
             });
         }
+    }
+
+    function addBoardLink() {
+        const titulo = document.getElementById('newLinkTitle').value;
+        const url = document.getElementById('newLinkUrl').value;
+        
+        if (!titulo || !url) return;
+        
+        fetch(`/boards/{{ board.id }}/links/novo/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ titulo: titulo, url: url })
+        }).then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Erro ao registrar link: ' + data.error);
+            }
+        }).catch(error => {
+            alert('Erro de conexão.');
+        });
+    }
+
+    function deleteBoardLink(linkId, btnElement) {
+        if (!confirm('Deseja realmente remover este link?')) return;
+        
+        fetch(`/boards/links/${linkId}/excluir/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        }).then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Erro ao remover link: ' + data.error);
+            }
+        }).catch(error => {
+            alert('Erro de conexão.');
+        });
     }
 
     if (document.readyState === 'loading') {

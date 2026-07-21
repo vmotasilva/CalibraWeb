@@ -87,6 +87,28 @@ class BoardLabel(models.Model):
         return f"{self.quadro.nome} - {self.nome} ({self.cor})"
 
 
+class BoardLink(models.Model):
+    quadro = models.ForeignKey(Board, on_delete=models.CASCADE, related_name="links")
+    titulo = models.CharField(max_length=150, verbose_name="Título do Link")
+    url = models.URLField(max_length=800, verbose_name="URL")
+    criado_em = models.DateTimeField(auto_now_add=True)
+    criado_por = models.ForeignKey(
+        Colaborador, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        related_name="links_criados"
+    )
+
+    class Meta:
+        ordering = ['-criado_em']
+        verbose_name = "Link do Quadro"
+        verbose_name_plural = "Links do Quadro"
+
+    def __str__(self):
+        return f"{self.quadro.nome} - {self.titulo}"
+
+
+
 class Card(models.Model):
     PRIORIDADE_CHOICES = [
         ('BAIXA', 'Baixa'),

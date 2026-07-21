@@ -33,5 +33,8 @@ urlpatterns = [
     path('colunas/<int:column_id>/renomear/', views.api_rename_column_view, name='api_rename_column'),
     path('colunas/<int:column_id>/arquivar/', views.archive_column_view, name='archive_column'),
     path('colunas/<int:column_id>/desarquivar/', views.unarchive_column_view, name='unarchive_column'),
+    path('<int:board_id>/colunas/<int:focus_column_id>/foco/', views.board_detail_view, name='column_focus'),
+    path('<int:board_id>/links/novo/', views.api_add_board_link_view, name='api_add_board_link'),
+    path('links/<int:link_id>/excluir/', views.api_delete_board_link_view, name='api_delete_board_link'),
 ]
 
