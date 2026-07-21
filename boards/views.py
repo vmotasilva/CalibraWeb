@@ -317,6 +317,63 @@ def delete_column_view(request, column_id):
 
 from django.urls import reverse
 
+
+@login_required
+@require_POST
+def copy_column_view(request, column_id):
+    """Cria uma cópia de uma coluna (com novo nome) no mesmo quadro"""
+    colab = get_user_colaborador(request.user)
+    coluna = get_object_or_404(BoardColumn, id=column_id)
+    board = coluna.quadro
+
+    novo_nome = request.POST.get('nome', '').strip()
+    if not novo_nome:
+        novo_nome = f"{coluna.nome} (Cópia)"
+
+    maior_ordem = board.colunas.aggregate(Max('ordem'))['ordem__max']
+    nova_ordem = (maior_ordem + 1) if maior_ordem is not None else 0
+
+    nova_coluna = BoardColumn.objects.create(
+        quadro=board,
+        nome=novo_nome,
+        descricao=coluna.descricao,
+        ordem=nova_ordem
+    )
+
+    # Copiar sub-sessões
+    for sub in coluna.subsecoes.all():
+        from boards.models import BoardSubSection
+        BoardSubSection.objects.create(coluna=nova_coluna, nome=sub.nome, ordem=sub.ordem)
+
+    BoardActivity.objects.create(
+        quadro=board,
+        colaborador=colab,
+        descricao=f"criou uma cópia da coluna '{coluna.nome}' como '{novo_nome}'."
+    )
+    messages.success(request, f"Coluna '{novo_nome}' criada como cópia de '{coluna.nome}'.")
+    return redirect('boards:board_detail', board_id=board.id)
+
+
+@login_required
+def api_column_description_view(request, column_id):
+    """GET: retorna descrição da coluna. POST: atualiza descrição."""
+    coluna = get_object_or_404(BoardColumn, id=column_id)
+
+    if request.method == 'GET':
+        return JsonResponse({'descricao': coluna.descricao or ''})
+
+    elif request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            coluna.descricao = data.get('descricao', '').strip() or None
+            coluna.save(update_fields=['descricao'])
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+    return JsonResponse({'error': 'Método não permitido.'}, status=405)
+
+
 @login_required
 @require_POST
 def create_card_view(request, column_id):
@@ -478,27 +535,6 @@ def api_move_card_view(request):
         
         nova_coluna = get_object_or_404(BoardColumn, id=to_column_id)
         
-        if nova_coluna.quadro.tipo == 'PLANOS_ACAO':
-            from acoes.models import LinhaAcao
-            linha = get_object_or_404(LinhaAcao, id=card_id)
-            old_status = linha.status
-            new_status = nova_coluna.status_linha_acao
-            
-            linha.status = new_status
-            if new_status == 'completa':
-                linha.data_conclusao = timezone.now().date()
-            else:
-                linha.data_conclusao = None
-            linha.save()
-            
-            if old_status != new_status:
-                BoardActivity.objects.create(
-                    quadro=nova_coluna.quadro,
-                    colaborador=colab,
-                    descricao=f"alterou o status da ação #{linha.numero_acao} de '{old_status}' para '{new_status}'."
-                )
-            return JsonResponse({'success': True})
-            
         card = get_object_or_404(Card, id=card_id)
         old_col_nome = card.coluna.nome
         old_coluna = card.coluna

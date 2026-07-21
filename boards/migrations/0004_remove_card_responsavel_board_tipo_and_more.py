@@ -27,12 +27,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='board',
             name='tipo',
-            field=models.CharField(choices=[('PADRAO', 'Padrão'), ('PLANOS_ACAO', 'Planos de Ação')], default='PADRAO', max_length=20, verbose_name='Tipo de Quadro'),
-        ),
-        migrations.AddField(
-            model_name='boardcolumn',
-            name='status_linha_acao',
-            field=models.CharField(blank=True, max_length=20, null=True, verbose_name='Status da Linha de Ação'),
+            field=models.CharField(choices=[('PADRAO', 'Padrão')], default='PADRAO', max_length=20, verbose_name='Tipo de Quadro'),
         ),
         migrations.AddField(
             model_name='card',

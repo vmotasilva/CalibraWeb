@@ -470,7 +470,6 @@
                     <div class="vr mx-2"></div>
                     
                     <!-- Botões de Ações do Quadro -->
-                    {% if board.tipo != 'PLANOS_ACAO' %}
                     {% if colunas %}
                     <button type="button" class="btn btn-primary btn-sm me-1" onclick="openAddCardModal('{{ colunas.0.id }}', '{{ colunas.0.nome|escapejs }}')" data-bs-toggle="modal" data-bs-target="#addCardModal" title="Adicionar Nova Tarefa">
                         <i class="bi bi-plus-lg me-1"></i>Nova Tarefa
@@ -544,21 +543,6 @@
                         {% endfor %}
                     </select>
 
-                    {% if board.tipo == 'PLANOS_ACAO' %}
-                    {# Quadro de Planos de Ação: filtro por status da LinhaAcao como "etiqueta" #}
-                    <select id="globalFilterLabel" class="form-select form-select-sm" style="width: 165px;" onchange="applyGlobalFilters()">
-                        <option value="">Etiqueta: Todas</option>
-                        <option value="Planejada">Planejada</option>
-                        <option value="Em Curso/Andamento">Em Curso/Andamento</option>
-                        <option value="Retardo/Atrasada">Retardo/Atrasada</option>
-                        <option value="Concluída">Concluída</option>
-                        <option value="Cancelada">Cancelada</option>
-                    </select>
-                    {# O select globalFilterStatus não são usados para PLANOS_ACAO; ocultar #}
-                    <select id="globalFilterStatus" class="d-none" onchange="applyGlobalFilters()">
-                        <option value="">Status: Todos</option>
-                    </select>
-                    {% else %}
                     <!-- Filtro por Etiqueta -->
                     <select id="globalFilterLabel" class="form-select form-select-sm" style="width: 155px;" onchange="applyGlobalFilters()">
                         <option value="">Etiqueta: Todas</option>
@@ -605,71 +589,6 @@
     <div class="tab-content" id="boardTab">
         <!-- ABA 1: KANBAN BOARD -->
         <div class="tab-pane fade show active" id="kanban" role="tabpanel">
-            {% if board.tipo == 'PLANOS_ACAO' %}
-            <!-- QUADRO DE PLANOS DE AÇÃO: colunas = arquivos dos planos -->
-            <div class="mb-2" id="kanbanAndamentoSection">
-                <div class="d-flex align-items-center justify-content-between mb-3">
-                    <h5 class="fw-bold text-dark mb-0">
-                        <i class="bi bi-folder2-open text-primary me-2"></i>Acompanhamento por Plano de Ação
-                    </h5>
-                    <span class="text-muted small">{{ colunas_andamento|length }} plano{{ colunas_andamento|length|pluralize }} &bull; {{ total_cartoes }} ação{{ total_cartoes|pluralize }} no total</span>
-                </div>
-                <div class="kanban-container" id="kanban-andamento-container">
-                    {% for col in colunas_andamento %}
-                    <div class="kanban-column" id="col-{{ col.id }}" data-column-name="{{ col.nome }}">
-                        <!-- Cabeçalho da Coluna: nome do arquivo do plano de ação -->
-                        <div class="column-header" style="flex-direction: column; align-items: flex-start; gap: 4px;">
-                            <div class="d-flex align-items-center gap-2 w-100">
-                                <i class="bi bi-file-earmark-text text-primary" style="font-size: 1rem; flex-shrink:0;"></i>
-                                <span class="fw-bold text-truncate" style="font-size: 0.85rem;" title="{{ col.nome }}">{{ col.nome }}</span>
-                            </div>
-                            <div class="d-flex gap-2 mt-1" style="font-size: 0.7rem;">
-                                {% if col.cartoes_list_andamento %}
-                                <span class="badge rounded-pill bg-primary bg-opacity-10 text-primary">
-                                    <i class="bi bi-activity me-1"></i>{{ col.cartoes_list_andamento|length }} ativas
-                                </span>
-                                {% endif %}
-                                {% if col.cartoes_list_concluido %}
-                                <span class="badge rounded-pill bg-success bg-opacity-10 text-success">
-                                    <i class="bi bi-check2 me-1"></i>{{ col.cartoes_list_concluido|length }} concluídas
-                                </span>
-                                {% endif %}
-                            </div>
-                        </div>
-                        <!-- Container dos Cartões -->
-                        <div class="card-container" id="cards-col-{{ col.id }}-pending" data-is-concluida="false">
-                            {% if col.cartoes_list_andamento %}
-                                <div class="mb-1 px-1" style="font-size:0.68rem; font-weight:700; color:#0d6efd; text-transform:uppercase; letter-spacing:0.5px;">
-                                    <i class="bi bi-activity me-1"></i>Em Andamento
-                                </div>
-                                {% for card in col.cartoes_list_andamento %}
-                                    {% include "boards/card_render_virtual.html" with card=card %}
-                                {% endfor %}
-                            {% endif %}
-                            {% if col.cartoes_list_concluido %}
-                                <div class="{% if col.cartoes_list_andamento %}mt-3 {% endif %}mb-1 px-1" style="font-size:0.68rem; font-weight:700; color:#198754; text-transform:uppercase; letter-spacing:0.5px;">
-                                    <i class="bi bi-check2-all me-1"></i>Concluídas / Canceladas
-                                </div>
-                                {% for card in col.cartoes_list_concluido %}
-                                    {% include "boards/card_render_virtual.html" with card=card %}
-                                {% endfor %}
-                            {% endif %}
-                            {% if not col.cartoes_list %}
-                                <div class="text-center text-muted py-4" style="font-size: 0.75rem;">
-                                    <i class="bi bi-inbox fs-4 d-block mb-1 opacity-50"></i>Sem ações registradas
-                                </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                    {% empty %}
-                    <div class="text-center text-muted py-5">
-                        <i class="bi bi-folder2-open fs-1 d-block mb-2 opacity-25"></i>
-                        <p>Nenhum plano de ação com ações corretivas ou preventivas cadastrado.</p>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-            {% else %}
             <!-- Seção 1: Atividades em Andamento -->
             <div class="mb-5" id="kanbanAndamentoSection">
                 <h5 class="fw-bold text-dark mb-3"><i class="bi bi-play-circle text-primary me-2"></i>Atividades em Andamento</h5>
@@ -677,9 +596,8 @@
                     {% for col in colunas_andamento %}
                     <div class="kanban-column" id="col-{{ col.id }}" data-column-name="{{ col.nome }}">
                         <!-- Cabeçalho da Coluna -->
-                        <div class="column-header" {% if board.tipo != 'PLANOS_ACAO' %}draggable="true" ondragstart="dragColumn(event)" ondragover="allowDropColumn(event)" ondrop="dropColumn(event, {{ col.id }})" style="cursor: move;"{% endif %}>
-                            <span class="text-truncate fw-bold">{% if board.tipo != 'PLANOS_ACAO' %}<i class="bi bi-grip-vertical text-muted me-1"></i>{% endif %}{{ col.nome }}</span>
-                            {% if board.tipo != 'PLANOS_ACAO' %}
+                        <div class="column-header" draggable="true" ondragstart="dragColumn(event)" ondragover="allowDropColumn(event)" ondrop="dropColumn(event, {{ col.id }})" style="cursor: move;">
+                            <span class="text-truncate fw-bold"><i class="bi bi-grip-vertical text-muted me-1"></i>{{ col.nome }}</span>
                             <div class="dropdown">
                                 <button class="btn btn-sm btn-link text-muted p-0" type="button" data-bs-toggle="dropdown">
                                     <i class="bi bi-three-dots"></i>
@@ -691,6 +609,17 @@
                                         </button>
                                     </li>
                                     <li>
+                                        <button class="dropdown-item" type="button" onclick="openCopyColumnModal({{ col.id }}, '{{ col.nome|escapejs }}')">
+                                            <i class="bi bi-copy me-2"></i>Duplicar Coluna
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button class="dropdown-item" type="button" onclick="openColumnDescriptionModal({{ col.id }}, '{{ col.nome|escapejs }}')">
+                                            <i class="bi bi-card-text me-2"></i>Descrição da Coluna
+                                        </button>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
                                         <form action="{% url 'boards:delete_column' col.id %}" method="POST" onsubmit="return confirm('Excluir esta coluna e TODAS as tarefas nela contidas?');">
                                             {% csrf_token %}
                                             <button type="submit" class="dropdown-item text-danger"><i class="bi bi-trash me-2"></i>Excluir Coluna</button>
@@ -698,7 +627,6 @@
                                     </li>
                                 </ul>
                             </div>
-                            {% endif %}
                         </div>
                         
                         <!-- Container dos Cartões -->
@@ -709,12 +637,19 @@
                                 <div class="subsection-group mb-2 border rounded p-1 bg-white shadow-xs" style="background-color: #fcfcfc !important;">
                                     <div class="subsection-header d-flex justify-content-between align-items-center px-2 py-1 mb-1 border-bottom bg-light rounded-top" style="font-size: 0.75rem; font-weight: 600; color: #495057;">
                                         <span><i class="bi bi-folder2-open text-primary me-1"></i>{{ sub.nome }}</span>
-                                        {% if board.tipo != 'PLANOS_ACAO' %}
-                                        <form action="{% url 'boards:delete_subsection' sub.id %}" method="POST" class="d-inline" onsubmit="return confirm('Deseja excluir esta sub-sessão? As tarefas nela contidas serão mantidas na coluna.');">
-                                            {% csrf_token %}
-                                            <button type="submit" class="btn btn-sm btn-link text-danger p-0 border-0" style="line-height: 1;"><i class="bi bi-trash"></i></button>
-                                        </form>
-                                        {% endif %}
+                                        <div class="dropdown">
+                                            <button class="btn btn-sm btn-link text-muted p-0 border-0" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="line-height: 1;" title="Opções da sub-sessão">
+                                                <i class="bi bi-three-dots"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end shadow" style="min-width: 160px;">
+                                                <li>
+                                                    <form action="{% url 'boards:delete_subsection' sub.id %}" method="POST" onsubmit="return confirm('Deseja excluir esta sub-sessão? As tarefas nela contidas serão mantidas na coluna.');">
+                                                        {% csrf_token %}
+                                                        <button type="submit" class="dropdown-item text-danger"><i class="bi bi-trash me-2"></i>Excluir Sub-sessão</button>
+                                                    </form>
+                                                </li>
+                                            </ul>
+                                        </div>
                                     </div>
                                     <div class="card-container-subsection" id="cards-col-{{ col.id }}-sub-{{ sub.id }}-pending" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }}, {{ sub.id }})" data-column-id="{{ col.id }}" data-subsection-id="{{ sub.id }}" style="min-height: 40px; display: flex; flex-direction: column; gap: 0.5rem; padding: 4px;">
                                         {% for card in sub.cartoes_list_andamento %}
@@ -740,11 +675,9 @@
                         </div>
                         
                         <!-- Adicionar Cartão -->
-                        {% if board.tipo != 'PLANOS_ACAO' %}
                         <button class="btn-add-card" onclick="openAddCardModal({{ col.id }}, '{{ col.nome }}')">
                             <i class="bi bi-plus-lg me-1"></i>Adicionar tarefa
                         </button>
-                        {% endif %}
                     </div>
                     {% endfor %}
                     
@@ -943,7 +876,7 @@
                         <tbody>
                             {% for col in colunas %}
                                 {% for card in col.cartoes_list %}
-                                    <tr class="task-table-row cursor-pointer" onclick="{% if board.tipo == 'PLANOS_ACAO' %}openLinhaAcaoModal({{ card.id }}){% else %}openCardModal({{ card.id }}){% endif %}" data-is-concluida="{% if card.data_conclusao %}true{% else %}false{% endif %}" data-row-card-id="{{ card.id }}">
+                                    <tr class="task-table-row cursor-pointer" onclick="openCardModal({{ card.id }})" data-is-concluida="{% if card.data_conclusao %}true{% else %}false{% endif %}" data-row-card-id="{{ card.id }}">
                                         <td>
                                             <div class="fw-semibold text-dark">{{ card.titulo }}</div>
                                             {% if card.descricao %}
@@ -1021,11 +954,7 @@
                                             </div>
                                         </td>
                                         <td class="text-end" onclick="event.stopPropagation();">
-                                            {% if board.tipo == 'PLANOS_ACAO' %}
-                                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="openLinhaAcaoModal({{ card.id }})"><i class="bi bi-eye"></i> Detalhes</button>
-                                            {% else %}
-                                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="openCardModal({{ card.id }})"><i class="bi bi-eye"></i> Detalhes</button>
-                                            {% endif %}
+                                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="openCardModal({{ card.id }})"><i class="bi bi-eye"></i> Detalhes</button>
                                         </td>
                                     </tr>
                                 {% endfor %}
@@ -1205,7 +1134,7 @@
                             {{ card_form.subsecao }}
                         </div>
                     </div>
-                    {% if board.tipo != 'PLANOS_ACAO' and board.etiquetas.all %}
+                    {% if board.etiquetas.all %}
                     <div class="row mt-3">
                         <div class="col-md-12 mb-0">
                             <label class="form-label fw-bold">Etiquetas</label>
@@ -1323,7 +1252,6 @@
                             </div>
                             
                             <!-- Etiquetas da Tarefa -->
-                            {% if board.tipo != 'PLANOS_ACAO' %}
                             <div class="mb-3">
                                 <label class="form-label fw-bold text-muted small d-block">Etiquetas</label>
                                 <div id="detailCardActiveLabels" class="d-flex flex-wrap gap-1 mb-2"></div>
@@ -1345,7 +1273,6 @@
                                     </ul>
                                 </div>
                             </div>
-                            {% endif %}
                             
                             <div class="mb-3">
                                 <label class="form-label fw-bold text-muted small d-block">Coluna</label>
@@ -1513,6 +1440,59 @@
                     <button type="submit" class="btn btn-primary px-4">Criar Sub-sessão</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Duplicar Coluna -->
+<div class="modal fade" id="copyColumnModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg" style="border-radius: 14px;">
+            <div class="modal-header bg-secondary text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                <h5 class="modal-title fw-bold"><i class="bi bi-copy me-2"></i>Duplicar Coluna</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="copyColumnForm" method="POST" action="">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <p class="text-muted small mb-3">Criando cópia de: <strong id="copyColumnSourceName"></strong></p>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nome da Nova Coluna</label>
+                        <input type="text" name="nome" id="copyColumnNameInput" class="form-control" placeholder="Digite o nome da cópia..." required autocomplete="off">
+                    </div>
+                </div>
+                <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary px-4"><i class="bi bi-copy me-1"></i>Criar Cópia</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Descrição da Coluna -->
+<div class="modal fade" id="columnDescriptionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg" style="border-radius: 14px;">
+            <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                <div>
+                    <h5 class="modal-title fw-bold"><i class="bi bi-card-text me-2"></i>Descrição da Coluna</h5>
+                    <small class="text-white-50" id="columnDescriptionModalSubtitle"></small>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Descrição</label>
+                    <textarea id="columnDescriptionInput" class="form-control" rows="5" placeholder="Adicione uma descrição para esta coluna (opcional)..."></textarea>
+                    <div class="form-text">A descrição é visível apenas através das opções <strong>(⋯)</strong> da coluna.</div>
+                </div>
+                <div id="columnDescriptionSaveStatus" class="text-success small fw-semibold d-none"><i class="bi bi-check2-circle me-1"></i>Descrição salva!</div>
+            </div>
+            <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-primary px-4" id="btnSaveColumnDescription"><i class="bi bi-save me-1"></i>Salvar Descrição</button>
+            </div>
         </div>
     </div>
 </div>
@@ -1930,6 +1910,69 @@
         const modal = new bootstrap.Modal(document.getElementById('addSubSectionModal'));
         modal.show();
     }
+
+    // ── Duplicar Coluna ──────────────────────────────────────────────────────
+    function openCopyColumnModal(columnId, columnName) {
+        const form = document.getElementById('copyColumnForm');
+        form.action = `/boards/colunas/${columnId}/copiar/`;
+        document.getElementById('copyColumnSourceName').textContent = columnName;
+        document.getElementById('copyColumnNameInput').value = columnName + ' (Cópia)';
+        const modal = new bootstrap.Modal(document.getElementById('copyColumnModal'));
+        modal.show();
+        // Selecionar texto para facilitar edição
+        setTimeout(() => {
+            const input = document.getElementById('copyColumnNameInput');
+            input.select();
+        }, 350);
+    }
+
+    // ── Descrição da Coluna ──────────────────────────────────────────────────
+    let _columnDescriptionActiveId = null;
+
+    function openColumnDescriptionModal(columnId, columnName) {
+        _columnDescriptionActiveId = columnId;
+        document.getElementById('columnDescriptionModalSubtitle').textContent = columnName;
+        document.getElementById('columnDescriptionInput').value = '';
+        document.getElementById('columnDescriptionSaveStatus').classList.add('d-none');
+
+        // Buscar descrição atual via API
+        fetch(`/boards/colunas/${columnId}/descricao/`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('columnDescriptionInput').value = data.descricao || '';
+        })
+        .catch(() => {});
+
+        const modal = new bootstrap.Modal(document.getElementById('columnDescriptionModal'));
+        modal.show();
+    }
+
+    document.getElementById('btnSaveColumnDescription').addEventListener('click', function () {
+        if (!_columnDescriptionActiveId) return;
+        const descricao = document.getElementById('columnDescriptionInput').value.trim();
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        fetch(`/boards/colunas/${_columnDescriptionActiveId}/descricao/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ descricao: descricao })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const status = document.getElementById('columnDescriptionSaveStatus');
+                status.classList.remove('d-none');
+                setTimeout(() => status.classList.add('d-none'), 3000);
+            }
+        })
+        .catch(() => {});
+    });
 
     function filterByPeriod(val) {
         const url = new URL(window.location.href);
@@ -3263,12 +3306,6 @@
         const destName = destOpt ? destOpt.text.toLowerCase() : '';
         const isCompletedDest = destName.includes("concluido") || destName.includes("concluído") || destName.includes("done") || destName.includes("terminado") || destName.includes("pronto");
         
-        const isVirtual = {% if board.tipo == 'PLANOS_ACAO' %}true{% else %}false{% endif %};
-        if (isVirtual) {
-            alert("Ações de Planos de Ação não podem ser editadas diretamente no quadro.");
-            return;
-        }
-        
         const cardEl = document.getElementById(`card-${activeCardId}`);
         const wasCompleted = cardEl ? cardEl.closest('.card-container').getAttribute('data-is-concluida') === 'true' : false;
         const periodicidadeLabel = document.getElementById('cardDetailPeriodicidade').options[document.getElementById('cardDetailPeriodicidade').selectedIndex].text;
@@ -4071,12 +4108,10 @@
             const labelMatch = !filterLabel || etiquetas.includes(filterLabel);
             
             const isConcluded = card.getAttribute('data-is-concluida') === 'true';
-            // Para cartões virtuais (PLANOS_ACAO), o filtro de status usa data-status diretamente
             const cardStatus = card.getAttribute('data-status') || '';
             let statusMatch = true;
             if (filterStatus === 'andamento') statusMatch = !isConcluded;
             if (filterStatus === 'concluido') statusMatch = isConcluded;
-            // Status específicos da LinhaAcao são filtrados via filterLabel (que usa data-etiquetas)
             
             if (textMatch && priorMatch && respMatch && labelMatch && statusMatch) {
                 card.style.display = '';

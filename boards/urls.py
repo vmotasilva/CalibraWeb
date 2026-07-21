@@ -28,5 +28,7 @@ urlpatterns = [
     path('<int:board_id>/etiquetas/nova/', views.create_label_view, name='create_label'),
     path('etiquetas/<int:label_id>/excluir/', views.delete_label_view, name='delete_label'),
     path('mencoes/<int:mention_id>/visualizar/', views.read_mention_view, name='read_mention'),
+    path('colunas/<int:column_id>/copiar/', views.copy_column_view, name='copy_column'),
+    path('colunas/<int:column_id>/descricao/', views.api_column_description_view, name='api_column_description'),
 ]
 
