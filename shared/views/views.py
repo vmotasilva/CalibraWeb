@@ -532,14 +532,21 @@ def hub_view(request):
 def inbox_view(request):
     """View dedicada à Caixa de Entrada de tarefas pendentes individuais"""
     from shared.inbox import get_user_inbox_items
+    from collections import defaultdict
     
     inbox_items = get_user_inbox_items(request.user)
     
+    # Agrupar por módulo
+    grouped_items = defaultdict(list)
+    for item in inbox_items:
+        grouped_items[item.module.capitalize()].append(item)
+        
     return render(
         request,
         "shared/inbox_page.html",
         {
             "inbox_items": inbox_items,
+            "grouped_items": dict(grouped_items),
         },
     )
 
