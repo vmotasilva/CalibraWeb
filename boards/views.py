@@ -1520,3 +1520,139 @@ def read_board_notification_view(request, notif_id):
     
     url = reverse("boards:board_detail", args=[notif.cartao.coluna.quadro.id])
     return redirect(f"{url}?card_id={notif.cartao.id}")
+
+from django.http import HttpResponse
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
+from reportlab.lib.colors import HexColor
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
+
+@login_required
+def export_board_pdf_view(request, board_id):
+    colab = get_user_colaborador(request.user)
+    
+    if request.user.is_superuser:
+        board = get_object_or_404(Board, id=board_id)
+    else:
+        board = get_object_or_404(
+            Board.objects.filter(Q(criado_por=colab) | Q(membros=colab)), 
+            id=board_id
+        )
+
+    cartoes_param = request.GET.get('cartoes', '')
+    if cartoes_param:
+        cartoes_ids = [int(cid) for cid in cartoes_param.split(',') if cid.isdigit()]
+        cartoes = Card.objects.filter(id__in=cartoes_ids, coluna__quadro_id=board_id).select_related('coluna', 'subsecao').prefetch_related('responsaveis', 'comentarios', 'comentarios__criado_por').order_by('coluna__ordem', 'ordem')
+    else:
+        cartoes = Card.objects.none()
+
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'inline; filename="Quadro_{board.nome[:20]}_Tarefas.pdf"'
+
+    doc = SimpleDocTemplate(
+        response,
+        pagesize=A4,
+        rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40
+    )
+
+    styles = getSampleStyleSheet()
+    
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=18,
+        textColor=HexColor('#1a1a1a'),
+        spaceAfter=20,
+        alignment=TA_CENTER
+    )
+    
+    card_title_style = ParagraphStyle(
+        'CardTitle',
+        parent=styles['Heading2'],
+        fontSize=14,
+        textColor=HexColor('#2c3e50'),
+        spaceBefore=15,
+        spaceAfter=5
+    )
+    
+    meta_style = ParagraphStyle(
+        'MetaText',
+        parent=styles['Normal'],
+        fontSize=10,
+        textColor=HexColor('#555555'),
+        spaceAfter=5
+    )
+    
+    desc_style = ParagraphStyle(
+        'DescText',
+        parent=styles['Normal'],
+        fontSize=11,
+        spaceBefore=5,
+        spaceAfter=10
+    )
+
+    comment_header_style = ParagraphStyle(
+        'CommentHeader',
+        parent=styles['Normal'],
+        fontSize=9,
+        textColor=HexColor('#666666'),
+        spaceBefore=2,
+        spaceAfter=2
+    )
+
+    comment_body_style = ParagraphStyle(
+        'CommentBody',
+        parent=styles['Normal'],
+        fontSize=10,
+        leftIndent=15,
+        spaceAfter=8
+    )
+
+    story = []
+    
+    story.append(Paragraph(f"Tarefas: {board.nome}", title_style))
+    story.append(HRFlowable(width="100%", thickness=1, color=HexColor('#cccccc'), spaceAfter=20))
+
+    if not cartoes:
+        story.append(Paragraph("Nenhuma tarefa selecionada ou encontrada.", desc_style))
+        doc.build(story)
+        return response
+
+    for card in cartoes:
+        story.append(Paragraph(f"Tarefa: {card.titulo}", card_title_style))
+        
+        meta_info = f"<b>Coluna:</b> {card.coluna.nome}"
+        if card.subsecao:
+            meta_info += f" | <b>Sub-sessão:</b> {card.subsecao.nome}"
+            
+        prioridade_label = dict(Card.PRIORITY_CHOICES).get(card.prioridade, card.prioridade)
+        meta_info += f" | <b>Prioridade:</b> {prioridade_label}"
+        
+        resp_nomes = [r.nome_completo for r in card.responsaveis.all()]
+        if resp_nomes:
+            meta_info += f"<br/><b>Responsáveis:</b> {', '.join(resp_nomes)}"
+            
+        if card.data_entrega:
+            meta_info += f" | <b>Prazo:</b> {card.data_entrega.strftime('%d/%m/%Y')}"
+            
+        story.append(Paragraph(meta_info, meta_style))
+        
+        if card.descricao:
+            desc_text = card.descricao.replace('\n', '<br/>')
+            story.append(Paragraph(f"<b>Descrição:</b><br/>{desc_text}", desc_style))
+        
+        comentarios = card.comentarios.all().order_by('criado_em')
+        if comentarios:
+            story.append(Paragraph("<b>Comentários:</b>", meta_style))
+            for comment in comentarios:
+                autor = comment.criado_por.nome_completo if comment.criado_por else "Sistema"
+                data_str = comment.criado_em.strftime('%d/%m/%Y %H:%M')
+                story.append(Paragraph(f"<i>{autor} em {data_str}</i>", comment_header_style))
+                c_text = comment.texto.replace('\n', '<br/>')
+                story.append(Paragraph(c_text, comment_body_style))
+        
+        story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor('#eeeeee'), spaceBefore=10, spaceAfter=10))
+
+    doc.build(story)
+    return response

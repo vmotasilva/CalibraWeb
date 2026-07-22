@@ -589,6 +589,11 @@
                         <i class="bi bi-arrow-clockwise me-1"></i>Reaplicar
                     </button>
 
+                    <!-- Botão Exportar PDF -->
+                    <button type="button" class="btn btn-sm btn-outline-danger ms-1" onclick="exportFilteredTasksPDF()" title="Exportar as tarefas visíveis para PDF">
+                        <i class="bi bi-file-earmark-pdf me-1"></i>Exportar PDF
+                    </button>
+
                     <!-- Flag Ocultar Colunas Vazias -->
                     <div class="form-check form-switch ms-2 mt-1" title="Ocultar colunas que ficarem sem cartões visíveis">
                         <input class="form-check-input" type="checkbox" id="hideEmptyColumnsFlag" onchange="applyGlobalFilters()">
@@ -5387,6 +5392,17 @@
         }).catch(error => {
             alert('Erro de conexão.');
         });
+    }
+
+    function exportFilteredTasksPDF() {
+        const visibleCards = document.querySelectorAll('.kanban-card:not(.d-none)');
+        if (visibleCards.length === 0) {
+            alert('Nenhuma tarefa visível para exportar.');
+            return;
+        }
+        const cardIds = Array.from(visibleCards).map(card => card.id.replace('card-', ''));
+        const idsParam = cardIds.join(',');
+        window.open(`/boards/{{ board.id }}/exportar-pdf/?cartoes=${idsParam}`, '_blank');
     }
 
     if (document.readyState === 'loading') {
