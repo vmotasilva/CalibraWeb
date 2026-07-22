@@ -534,7 +534,17 @@ def inbox_view(request):
     from shared.inbox import get_user_inbox_items
     from collections import defaultdict
     
-    inbox_items = get_user_inbox_items(request.user)
+    can_toggle_global = request.user.is_superuser or request.user.is_staff
+    
+    if can_toggle_global and 'global' in request.GET:
+        if request.GET.get('global') == '1':
+            request.session['inbox_global'] = True
+        else:
+            request.session['inbox_global'] = False
+            
+    inbox_is_global = request.session.get('inbox_global', False)
+    
+    inbox_items = get_user_inbox_items(request.user, is_global=inbox_is_global)
     
     # Agrupar por módulo
     grouped_items = defaultdict(list)
@@ -547,6 +557,8 @@ def inbox_view(request):
         {
             "inbox_items": inbox_items,
             "grouped_items": dict(grouped_items),
+            "can_toggle_global": can_toggle_global,
+            "inbox_is_global": inbox_is_global,
         },
     )
 

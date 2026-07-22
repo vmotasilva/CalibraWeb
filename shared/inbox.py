@@ -17,19 +17,19 @@ class InboxItem:
     date: date              # For sorting (oldest first)
     is_urgent: bool = False # Flag for highlighting very old tasks
 
-def get_user_inbox_items(user: Any) -> list[InboxItem]:
+def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
     """Retorna uma lista individual de pendências reais para formar a Inbox."""
     if not getattr(user, "is_authenticated", False):
         return []
         
-    cache_key = f"inbox_items:v1:user:{getattr(user, 'pk', 'anon')}"
+    cache_key = f"inbox_items:v1:user:{getattr(user, 'pk', 'anon')}:global:{is_global}"
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
 
     items: list[InboxItem] = []
     hoje = date.today()
-    is_global_viewer = _is_global_viewer(user)
+    is_global_viewer = is_global and _is_global_viewer(user)
     colaborador = _get_colaborador_for_user(user)
     
     from shared.permissions import has_module_access, has_view_access
@@ -58,7 +58,7 @@ def get_user_inbox_items(user: Any) -> list[InboxItem]:
                                 description=f"Período atrasado: {p['label']}",
                                 module="auditoria",
                                 icon="bi-clipboard-check",
-                                url=reverse("auditoria:registro_create_modelo", args=[modelo.id]),
+                                url=reverse("auditoria:selecionar_modelo_preenchimento"),
                                 action_text="Preencher",
                                 date=fim_date,
                                 is_urgent=(hoje - fim_date).days > 30
@@ -153,11 +153,11 @@ def get_user_inbox_items(user: Any) -> list[InboxItem]:
                 items.append(
                     InboxItem(
                         id=f"card_{card.id}",
-                        title=f"Atrasado: {card.titulo}",
-                        description=f"Quadro: {card.coluna.quadro.nome} - Venceu há {dias} dias",
+                        title=f"A tarefa '{card.titulo}' do quadro '{card.coluna.quadro.nome}' está atrasada há {dias} dias",
+                        description=f"Vencida em {card.data_entrega.strftime('%d/%m/%Y')}",
                         module="quadros",
                         icon="bi-kanban",
-                        url=reverse("boards:board_detail", args=[card.coluna.quadro.id]),
+                        url=f"{reverse('boards:board_detail', args=[card.coluna.quadro.id])}?card={card.id}",
                         action_text="Ver Card",
                         date=card.data_entrega,
                         is_urgent=dias > 5
@@ -171,7 +171,7 @@ def get_user_inbox_items(user: Any) -> list[InboxItem]:
                     items.append(
                         InboxItem(
                             id=f"mention_{mencao.id}",
-                            title=f"Marcação: {mencao.comentario.cartao.titulo}",
+                            title=f"Você foi mencionado em um comentário na tarefa '{mencao.comentario.cartao.titulo}' do quadro '{mencao.comentario.cartao.coluna.quadro.nome}'",
                             description=f"Por {mencao.criado_por.nome_completo if mencao.criado_por else 'Sistema'}",
                             module="quadros",
                             icon="bi-at",
@@ -188,8 +188,8 @@ def get_user_inbox_items(user: Any) -> list[InboxItem]:
                     items.append(
                         InboxItem(
                             id=f"notif_{notif.id}",
-                            title=f"Atualização: {notif.cartao.titulo}",
-                            description=f"{notif.mensagem} (por {notif.criado_por.nome_completo if notif.criado_por else 'Sistema'})",
+                            title=f"A tarefa '{notif.cartao.titulo}' do quadro '{notif.cartao.coluna.quadro.nome}' {notif.mensagem} por {notif.criado_por.nome_completo if notif.criado_por else 'Sistema'}",
+                            description=f"Alteração passiva",
                             module="quadros",
                             icon="bi-bell",
                             url=reverse("boards:read_board_notification", args=[notif.id]),
