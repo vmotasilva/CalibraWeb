@@ -157,7 +157,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                         description=f"Vencida em {card.data_entrega.strftime('%d/%m/%Y')}",
                         module="quadros",
                         icon="bi-kanban",
-                        url=f"{reverse('boards:board_detail', args=[card.coluna.quadro.id])}?card={card.id}",
+                        url=f"{reverse('boards:board_detail', args=[card.coluna.quadro.id])}?card_id={card.id}",
                         action_text="Ver Card",
                         date=card.data_entrega,
                         is_urgent=dias > 5

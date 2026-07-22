@@ -1519,4 +1519,4 @@ def read_board_notification_view(request, notif_id):
     notif.save()
     
     url = reverse("boards:board_detail", args=[notif.cartao.coluna.quadro.id])
-    return redirect(f"{url}?card={notif.cartao.id}")
+    return redirect(f"{url}?card_id={notif.cartao.id}")
