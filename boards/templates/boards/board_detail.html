@@ -1207,7 +1207,7 @@
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content" style="border-radius: 14px;">
             <div class="modal-header border-bottom-0 pb-0">
-                <h5 class="modal-title fw-bold flex-grow-1 me-3" id="cardDetailTitle" contenteditable="true" style="outline: none; border: 1px dashed transparent; border-radius: 4px; padding: 2px 6px; cursor: text; transition: all 0.2s;" onfocus="this.style.borderColor='#ccc'; this.style.backgroundColor='#f8f9fa';" onblur="this.style.borderColor='transparent'; this.style.backgroundColor='transparent';" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur(); if(typeof saveCardDetails === 'function' && typeof activeCardId !== 'undefined' && activeCardId) saveCardDetails(activeCardId);}" title="Clique para editar o título">Título da Tarefa</h5>
+                <h5 class="modal-title fw-bold flex-grow-1 me-3" id="cardDetailTitle" contenteditable="true" style="outline: none; border: 1px dashed transparent; border-radius: 4px; padding: 2px 6px; cursor: text; transition: all 0.2s;" onfocus="this.style.borderColor='#ccc'; this.style.backgroundColor='#f8f9fa';" onblur="this.style.borderColor='transparent'; this.style.backgroundColor='transparent'; if(typeof saveCardResponsiblesSilently === 'function') saveCardResponsiblesSilently();" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" title="Clique para editar o título">Título da Tarefa</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body pt-2 px-4">
@@ -3464,6 +3464,7 @@
                 'X-CSRFToken': '{{ csrf_token }}'
             },
             body: JSON.stringify({
+                titulo: document.getElementById('cardDetailTitle') ? document.getElementById('cardDetailTitle').textContent.trim() : '',
                 descricao: desc,
                 responsaveis_ids: respIds,
                 prioridade: priority,
@@ -4052,6 +4053,7 @@
         const subsecaoId = subSelect ? (subSelect.value || null) : null;
 
         const payload = {
+            titulo: document.getElementById('cardDetailTitle') ? document.getElementById('cardDetailTitle').textContent.trim() : '',
             descricao: desc,
             responsaveis_ids: respIds,
             prioridade: priority,
@@ -4088,9 +4090,16 @@
             if (data && data.success) {
                 const selectedColabs = detailCardCollaborators.filter(c => c.selected);
                 
+                const newTitle = document.getElementById('cardDetailTitle') ? document.getElementById('cardDetailTitle').textContent.trim() : '';
+
                 // 1. Update Kanban card
                 const cardEl = document.getElementById(`card-${activeCardId}`);
                 if (cardEl) {
+                    if (newTitle) {
+                        cardEl.setAttribute('data-titulo', newTitle);
+                        const titleSpan = cardEl.querySelector('.fw-bold.text-dark');
+                        if (titleSpan) titleSpan.textContent = newTitle;
+                    }
                     const responsaveisStr = selectedColabs.map(c => c.name).join(';') + (selectedColabs.length > 0 ? ';' : '');
                     cardEl.setAttribute('data-responsaveis', responsaveisStr);
 
@@ -4120,6 +4129,10 @@
                 const tableRow = document.querySelector(`[data-row-card-id="${activeCardId}"]`);
                 if (tableRow) {
                     const cells = tableRow.getElementsByTagName('td');
+                    if (newTitle && cells && cells[0]) {
+                        const rowTitleSpan = cells[0].querySelector('.fw-bold');
+                        if (rowTitleSpan) rowTitleSpan.textContent = newTitle;
+                    }
                     if (cells && cells[3]) {
                         const cellContainer = cells[3].querySelector('.d-flex') || cells[3];
                         cellContainer.innerHTML = '';

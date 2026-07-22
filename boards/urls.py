@@ -6,6 +6,7 @@ app_name = 'boards'
 urlpatterns = [
     path('', views.dashboard_view, name='dashboard'),
     path('<int:board_id>/', views.board_detail_view, name='board_detail'),
+    path('<int:board_id>/exportar-pdf/', views.export_board_pdf_view, name='export_board_pdf'),
     path('<int:board_id>/editar/', views.edit_board_view, name='edit_board'),
     path('<int:board_id>/excluir/', views.delete_board_view, name='delete_board'),
     path('<int:board_id>/colunas/nova/', views.create_column_view, name='create_column'),
