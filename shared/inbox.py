@@ -133,7 +133,7 @@ def get_user_inbox_items(user: Any) -> list[InboxItem]:
     # 4. Quadros (Kanban)
     try:
         if has_module_access(user, "boards") and has_view_access(user, "boards:dashboard"):
-            from boards.models import Card, BoardMention
+            from boards.models import Card, BoardMention, BoardNotification
             from django.db.models import Q
             
             # 4.1 Cartões Atrasados
@@ -178,6 +178,23 @@ def get_user_inbox_items(user: Any) -> list[InboxItem]:
                             url=reverse("boards:read_mention", args=[mencao.id]),
                             action_text="Ler",
                             date=mencao.criado_em.date(),
+                            is_urgent=False
+                        )
+                    )
+            # 4.3 Notificações passivas (alterações no cartão)
+            if colaborador:
+                notificacoes = BoardNotification.objects.filter(colaborador=colaborador, lida=False)
+                for notif in notificacoes:
+                    items.append(
+                        InboxItem(
+                            id=f"notif_{notif.id}",
+                            title=f"Atualização: {notif.cartao.titulo}",
+                            description=f"{notif.mensagem} (por {notif.criado_por.nome_completo if notif.criado_por else 'Sistema'})",
+                            module="quadros",
+                            icon="bi-bell",
+                            url=reverse("boards:read_board_notification", args=[notif.id]),
+                            action_text="Ver Card",
+                            date=notif.criado_em.date(),
                             is_urgent=False
                         )
                     )

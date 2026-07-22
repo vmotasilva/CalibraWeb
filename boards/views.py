@@ -10,7 +10,19 @@ import json
 import datetime
 import calendar
 
-from boards.models import Board, BoardColumn, Card, ChecklistItem, CardComment, BoardActivity, BoardSubSection, BoardLabel, CardPlanningDate, BoardLink
+from boards.models import Board, BoardColumn, Card, ChecklistItem, CardComment, BoardActivity, BoardSubSection, BoardLabel, CardPlanningDate, BoardLink, BoardNotification
+
+def notify_card_update(card, actor, message):
+    for responsavel in card.responsaveis.all():
+        if actor and responsavel.id == actor.id:
+            continue
+        BoardNotification.objects.create(
+            colaborador=responsavel,
+            cartao=card,
+            mensagem=message,
+            criado_por=actor
+        )
+
 from boards.forms import BoardForm, CardForm
 from rh.models import Colaborador
 
@@ -714,6 +726,7 @@ def api_move_card_view(request):
                 colaborador=colab,
                 descricao=f"moveu o cartão '{card.titulo}' de '{old_col_nome}' para '{nova_coluna.nome}'."
             )
+            notify_card_update(card, colab, f"foi movido para a coluna '{nova_coluna.nome}'")
             
         return JsonResponse({'success': True})
     except Exception as e:
@@ -1124,6 +1137,7 @@ def api_card_detail_view(request, card_id):
                 colaborador=colab,
                 descricao=f"editou o cartão '{card.titulo}'."
             )
+            notify_card_update(card, colab, "teve seus detalhes editados")
             return JsonResponse({'success': True})
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=400)
@@ -1495,3 +1509,14 @@ def api_delete_board_link_view(request, link_id):
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
+
+@login_required
+def read_board_notification_view(request, notif_id):
+    """Marca uma notificação passiva como lida e redireciona para o cartão"""
+    colab = get_user_colaborador(request.user)
+    notif = get_object_or_404(BoardNotification, id=notif_id, colaborador=colab)
+    notif.lida = True
+    notif.save()
+    
+    url = reverse("boards:board_detail", args=[notif.cartao.coluna.quadro.id])
+    return redirect(f"{url}?card={notif.cartao.id}")
