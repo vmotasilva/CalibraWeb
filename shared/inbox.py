@@ -144,7 +144,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
             )
             
             if not is_global_viewer:
-                cards_vencidos = cards_vencidos.filter(Q(responsaveis=colaborador) | Q(criado_por=colaborador)).distinct()
+                cards_vencidos = cards_vencidos.filter(responsaveis=colaborador).distinct()
                 
             for card in cards_vencidos:
                 if not card.data_entrega:
