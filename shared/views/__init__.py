@@ -1,6 +1,7 @@
 from .views import (
     home_view,
     hub_view,
+    inbox_view,
     dashboard_view,
     health_check,
     api_change_password,
@@ -24,6 +25,7 @@ from .views import (
 __all__ = [
     'home_view',
     'hub_view',
+    'inbox_view',
     'dashboard_view',
     'health_check',
     'api_change_password',
