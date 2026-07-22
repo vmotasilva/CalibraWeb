@@ -1543,7 +1543,7 @@ def export_board_pdf_view(request, board_id):
     cartoes_param = request.GET.get('cartoes', '')
     if cartoes_param:
         cartoes_ids = [int(cid) for cid in cartoes_param.split(',') if cid.isdigit()]
-        cartoes = Card.objects.filter(id__in=cartoes_ids, coluna__quadro_id=board_id).select_related('coluna', 'subsecao').prefetch_related('responsaveis', 'comentarios', 'comentarios__criado_por').order_by('coluna__ordem', 'ordem')
+        cartoes = Card.objects.filter(id__in=cartoes_ids, coluna__quadro_id=board_id).select_related('coluna', 'subsecao').prefetch_related('responsaveis', 'comentarios', 'comentarios__autor').order_by('coluna__ordem', 'ordem')
     else:
         cartoes = Card.objects.none()
 
@@ -1646,7 +1646,7 @@ def export_board_pdf_view(request, board_id):
         if comentarios:
             story.append(Paragraph("<b>Comentários:</b>", meta_style))
             for comment in comentarios:
-                autor = comment.criado_por.nome_completo if comment.criado_por else "Sistema"
+                autor = comment.autor.nome_completo if comment.autor else "Sistema"
                 data_str = comment.criado_em.strftime('%d/%m/%Y %H:%M')
                 story.append(Paragraph(f"<i>{autor} em {data_str}</i>", comment_header_style))
                 c_text = comment.texto.replace('\n', '<br/>')
