@@ -5,16 +5,17 @@ from rh.models import Colaborador
 class BoardForm(forms.ModelForm):
     class Meta:
         model = Board
-        fields = ['nome', 'descricao', 'membros']
+        fields = ['nome', 'descricao', 'membros', 'todos_colaboradores']
         widgets = {
             'nome': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nome do Quadro'}),
             'descricao': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Breve descrição do quadro...'}),
             'membros': forms.SelectMultiple(attrs={'class': 'form-select', 'size': 8}),
+            'todos_colaboradores': forms.CheckboxInput(attrs={'class': 'form-check-input'})
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['membros'].queryset = Colaborador.objects.filter(is_active=True).order_by('nome_completo')
+        self.fields['membros'].queryset = Colaborador.objects.all().order_by('nome_completo')
         self.fields['membros'].required = False
 
 

@@ -550,7 +550,7 @@
                     <select id="globalFilterResp" class="form-select form-select-sm" style="width: 175px;" onchange="applyGlobalFilters()">
                         <option value="">Responsável: Todos</option>
                         <option value="__sem_responsavel__">Sem Responsável</option>
-                        {% for c in todos_colaboradores %}
+                        {% for c in colaboradores_com_tarefas %}
                         <option value="{{ c.nome_completo }}">{{ c.nome_completo }}</option>
                         {% endfor %}
                     </select>
@@ -1428,6 +1428,16 @@
                     <div class="mb-3">
                         <label class="form-label fw-bold">Descrição</label>
                         <textarea name="descricao" class="form-control" rows="3">{{ board.descricao|default:'' }}</textarea>
+                    </div>
+                    
+                    <div class="mb-4 form-check form-switch p-3 bg-light rounded border border-info border-opacity-50">
+                        <input class="form-check-input ms-0 me-3" type="checkbox" id="flexSwitchTodosColab" name="todos_colaboradores" style="width: 2.5em; height: 1.25em; cursor: pointer;" {% if board.todos_colaboradores %}checked{% endif %}>
+                        <label class="form-check-label fw-bold text-dark" for="flexSwitchTodosColab" style="cursor: pointer; padding-top: 3px;">
+                            Permitir acesso a todos os colaboradores da empresa
+                            <small class="d-block text-muted fw-normal mt-1" style="font-size: 0.8rem;">
+                                Ao ativar, todos os funcionários poderão ver este quadro, não sendo necessário adicioná-los individualmente abaixo.
+                            </small>
+                        </label>
                     </div>
                     <div class="mb-3 position-relative">
                         <label class="form-label fw-bold text-dark"><i class="bi bi-search me-1"></i>Buscar Colaboradores</label>

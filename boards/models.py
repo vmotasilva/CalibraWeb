@@ -22,6 +22,7 @@ class Board(models.Model):
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
     arquivado = models.BooleanField(default=False, verbose_name="Arquivado")
+    todos_colaboradores = models.BooleanField(default=False, verbose_name="Todos os Colaboradores")
     tipo = models.CharField(
         max_length=20,
         choices=TIPO_CHOICES,

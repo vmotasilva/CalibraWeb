@@ -40,7 +40,7 @@ def dashboard_view(request):
         quadros_base = Board.objects.all().distinct()
     else:
         quadros_base = Board.objects.filter(
-            Q(criado_por=colab) | Q(membros=colab)
+            Q(criado_por=colab) | Q(membros=colab) | Q(todos_colaboradores=True)
         ).distinct()
 
     quadros = quadros_base.filter(arquivado=False)
@@ -132,7 +132,7 @@ def board_detail_view(request, board_id, focus_column_id=None):
         board = get_object_or_404(Board, id=board_id)
     else:
         board = get_object_or_404(
-            Board.objects.filter(Q(criado_por=colab) | Q(membros=colab)), 
+            Board.objects.filter(Q(criado_por=colab) | Q(membros=colab) | Q(todos_colaboradores=True)), 
             id=board_id
         )
         
@@ -248,12 +248,15 @@ def board_detail_view(request, board_id, focus_column_id=None):
     # Formulários para criação rápida
     card_form = CardForm(board=board)
     
-    # Lista de colaboradores para o dropdown de transferência de responsável (todos os ativos + os atuais responsáveis dos cartões no quadro)
+    # Lista de colaboradores para o dropdown de transferência de responsável (todos os colaboradores, ativos ou não)
     responsaveis_atuais_ids = list(Card.objects.filter(coluna__quadro=board).values_list('responsaveis__id', flat=True))
     responsaveis_atuais_ids = [r_id for r_id in responsaveis_atuais_ids if r_id is not None]
-    todos_colaboradores = Colaborador.objects.filter(
-        Q(is_active=True) | Q(id__in=responsaveis_atuais_ids)
-    ).distinct().order_by('nome_completo')
+    
+    # Para o filtro global, apenas os que têm tarefa associada a eles neste quadro
+    colaboradores_com_tarefas = Colaborador.objects.filter(id__in=responsaveis_atuais_ids).distinct().order_by('nome_completo')
+    
+    # Para dropdown de atribuição (nova tarefa / edição)
+    todos_colaboradores = Colaborador.objects.all().order_by('nome_completo')
         
     colunas_andamento = [col for col in colunas if col.id not in concluido_colunas_ids]
     colunas_concluidas = colunas_andamento
@@ -287,7 +290,8 @@ def board_detail_view(request, board_id, focus_column_id=None):
         'cartoes_atrasados': cartoes_atrasados,
         'atividades': atividades,
         'todos_colaboradores': todos_colaboradores,
-        'colaboradores_sistema': Colaborador.objects.filter(is_active=True).order_by('nome_completo'),
+        'colaboradores_com_tarefas': colaboradores_com_tarefas,
+        'colaboradores_sistema': Colaborador.objects.all().order_by('nome_completo'),
         'chart_membros_nomes': json.dumps(chart_membros_nomes),
         'chart_membros_valores': json.dumps(chart_membros_valores),
         'distribuicao_colunas': json.dumps(distribuicao_colunas),
