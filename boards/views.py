@@ -10,7 +10,7 @@ import json
 import datetime
 import calendar
 
-from boards.models import Board, BoardColumn, Card, ChecklistItem, CardComment, BoardActivity, BoardSubSection, BoardLabel, CardPlanningDate, BoardLink, BoardNotification
+from boards.models import Board, BoardColumn, Card, ChecklistItem, CardComment, BoardActivity, BoardSubSection, BoardLabel, CardPlanningDate, BoardLink, BoardNotification, BoardMention
 
 def notify_card_update(card, actor, message):
     for responsavel in card.responsaveis.all():
