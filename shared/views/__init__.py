@@ -2,6 +2,7 @@ from .views import (
     home_view,
     hub_view,
     inbox_view,
+    changelog_view,
     dashboard_view,
     health_check,
     api_change_password,

@@ -132,35 +132,57 @@ def get_user_inbox_items(user: Any) -> list[InboxItem]:
 
     # 4. Quadros (Kanban)
     try:
-        if has_module_access(user, "quadros") and has_view_access(user, "quadros:quadros_list"):
-            from quadros.models import Card
+        if has_module_access(user, "boards") and has_view_access(user, "boards:dashboard"):
+            from boards.models import Card, BoardMention
             from django.db.models import Q
             
+            # 4.1 Cartões Atrasados
             cards_vencidos = Card.objects.filter(
-                quadro__ativo=True,
-                status="ATIVO",
-                prazo__lt=hoje
+                coluna__quadro__arquivado=False,
+                data_conclusao__isnull=True,
+                data_entrega__lt=hoje
             )
             
             if not is_global_viewer:
-                cards_vencidos = cards_vencidos.filter(Q(responsaveis=user) | Q(criado_por=user)).distinct()
+                cards_vencidos = cards_vencidos.filter(Q(responsaveis=colaborador) | Q(criado_por=colaborador)).distinct()
                 
             for card in cards_vencidos:
-                dias = (hoje - card.prazo).days
+                if not card.data_entrega:
+                    continue
+                dias = (hoje - card.data_entrega).days
                 items.append(
                     InboxItem(
                         id=f"card_{card.id}",
-                        title=f"Card Atrasado: {card.titulo}",
-                        description=f"Quadro: {card.quadro.nome} - Venceu há {dias} dias",
+                        title=f"Atrasado: {card.titulo}",
+                        description=f"Quadro: {card.coluna.quadro.nome} - Venceu há {dias} dias",
                         module="quadros",
                         icon="bi-kanban",
-                        url=reverse("quadros:card_detail", args=[card.id]),
+                        url=reverse("boards:board_detail", args=[card.coluna.quadro.id]),
                         action_text="Ver Card",
-                        date=card.prazo,
+                        date=card.data_entrega,
                         is_urgent=dias > 5
                     )
                 )
-    except Exception:
+                
+            # 4.2 Marcações não lidas
+            if colaborador:
+                mencoes = BoardMention.objects.filter(mencionado=colaborador, visualizada=False)
+                for mencao in mencoes:
+                    items.append(
+                        InboxItem(
+                            id=f"mention_{mencao.id}",
+                            title=f"Marcação: {mencao.comentario.cartao.titulo}",
+                            description=f"Por {mencao.criado_por.nome_completo if mencao.criado_por else 'Sistema'}",
+                            module="quadros",
+                            icon="bi-at",
+                            url=reverse("boards:read_mention", args=[mencao.id]),
+                            action_text="Ler",
+                            date=mencao.criado_em.date(),
+                            is_urgent=False
+                        )
+                    )
+    except Exception as e:
+        print(f"Erro no inbox quadros: {e}")
         pass
 
     # Sort items: oldest date first (most urgent)

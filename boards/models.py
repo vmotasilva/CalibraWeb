@@ -266,3 +266,20 @@ class BoardMention(models.Model):
     def __str__(self):
         return f"Menção a {self.mencionado.nome_completo} em {self.comentario.cartao.titulo}"
 
+
+class BoardNotification(models.Model):
+    colaborador = models.ForeignKey(Colaborador, on_delete=models.CASCADE, related_name="notificacoes_recebidas")
+    cartao = models.ForeignKey(Card, on_delete=models.CASCADE, related_name="notificacoes")
+    mensagem = models.CharField(max_length=255)
+    lida = models.BooleanField(default=False)
+    criado_por = models.ForeignKey(Colaborador, on_delete=models.SET_NULL, null=True, blank=True, related_name="notificacoes_geradas")
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-criado_em']
+        verbose_name = "Notificação do Quadro"
+        verbose_name_plural = "Notificações do Quadro"
+
+    def __str__(self):
+        return f"Notificação para {self.colaborador.nome_completo}: {self.mensagem}"
+
