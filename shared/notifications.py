@@ -132,49 +132,21 @@ def get_user_cobrancas_counts(user: Any) -> dict[str, int]:
 
     # Auditoria: modelos atribuídos ao usuário que estão "em atraso" pela periodicidade
     try:
-        from auditoria.models import ModeloAuditoria, RegistroAuditoria, JustificativaAuditoria
-        from django.db.models import Exists, OuterRef, Q
-
-        month_start = _first_day_of_month(hoje)
-        next_month = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
+        from auditoria.models import ModeloAuditoria
+        from django.db.models import Q
+        from auditoria.utils_periodos import calcular_periodos_pendentes
 
         modelos = ModeloAuditoria.objects.filter(ativo=True)
         if not is_global_viewer:
             modelos = modelos.filter(Q(responsavel=user) | Q(responsaveis=user)).distinct()
 
-        registro_mes_qs = RegistroAuditoria.objects.filter(
-            modelo_id=OuterRef("pk"),
-            data_auditoria__gte=month_start,
-            data_auditoria__lt=next_month,
-        )
-        registro_algum_qs = RegistroAuditoria.objects.filter(modelo_id=OuterRef("pk"))
-        
-        justificativa_mes_qs = JustificativaAuditoria.objects.filter(
-            modelo_id=OuterRef("pk"),
-            mes_referencia=hoje.month,
-            ano_referencia=hoje.year,
-        )
-
-        modelos = modelos.annotate(
-            _tem_registro_mes=Exists(registro_mes_qs),
-            _tem_registro_algum=Exists(registro_algum_qs),
-            _tem_justificativa_mes=Exists(justificativa_mes_qs),
-        )
-
-        counts["auditoria"] = modelos.filter(
-            Q(periodicidade="UNICA", _tem_registro_algum=False)
-            | (Q(periodicidade__in=[
-                "DIARIA",
-                "SEMANAL",
-                "QUINZENAL",
-                "MENSAL",
-                "TRIMESTRAL",
-                "SEMESTRAL",
-                "ANUAL",
-            ])
-            & Q(_tem_registro_mes=False)
-            & Q(_tem_justificativa_mes=False))
-        ).count()
+        pendencias_count = 0
+        for modelo in modelos:
+            periodos = calcular_periodos_pendentes(modelo, limit=1)
+            if periodos:
+                pendencias_count += 1
+                
+        counts["auditoria"] = pendencias_count
     except Exception:
         counts["auditoria"] = 0
 

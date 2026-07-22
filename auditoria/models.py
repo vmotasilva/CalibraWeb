@@ -569,8 +569,8 @@ class JustificativaAuditoria(models.Model):
         related_name="justificativas",
         verbose_name="Modelo",
     )
-    mes_referencia = models.IntegerField(verbose_name="Mês de Referência")
-    ano_referencia = models.IntegerField(verbose_name="Ano de Referência")
+    periodo_inicio = models.DateField(verbose_name="Início do Período", null=True)
+    periodo_fim = models.DateField(verbose_name="Fim do Período", null=True)
     justificativa = models.TextField(verbose_name="Justificativa")
     criado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -584,7 +584,7 @@ class JustificativaAuditoria(models.Model):
     class Meta:
         verbose_name = "Justificativa de Auditoria"
         verbose_name_plural = "Justificativas de Auditoria"
-        ordering = ["-ano_referencia", "-mes_referencia", "-criado_em"]
+        ordering = ["-periodo_inicio", "-criado_em"]
 
     def __str__(self):
-        return f"Justificativa para {self.modelo.nome} em {self.mes_referencia:02d}/{self.ano_referencia}"
+        return f"Justificativa para {self.modelo.nome} ({self.periodo_inicio} a {self.periodo_fim})"

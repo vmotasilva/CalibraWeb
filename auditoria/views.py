@@ -678,12 +678,24 @@ def justificar_nao_execucao(request, pk):
         messages.error(request, "A justificativa é obrigatória.")
         return redirect("auditoria:selecionar_modelo_preenchimento")
         
-    hoje = timezone.localdate()
+    periodo_str = (request.POST.get("periodo") or "").strip()
+    if not periodo_str or "|" not in periodo_str:
+        messages.error(request, "Período inválido.")
+        return redirect("auditoria:selecionar_modelo_preenchimento")
+        
+    try:
+        p_inicio_str, p_fim_str = periodo_str.split("|")
+        from datetime import datetime
+        p_inicio = datetime.strptime(p_inicio_str, "%Y-%m-%d").date()
+        p_fim = datetime.strptime(p_fim_str, "%Y-%m-%d").date()
+    except ValueError:
+        messages.error(request, "Formato de data inválido.")
+        return redirect("auditoria:selecionar_modelo_preenchimento")
     
     JustificativaAuditoria.objects.create(
         modelo=modelo,
-        mes_referencia=hoje.month,
-        ano_referencia=hoje.year,
+        periodo_inicio=p_inicio,
+        periodo_fim=p_fim,
         justificativa=justificativa_texto,
         criado_por=request.user
     )
@@ -1139,48 +1151,24 @@ def selecionar_modelo_preenchimento(request):
     if periodicidade:
         modelos = modelos.filter(periodicidade=periodicidade)
 
-    from datetime import timedelta
-    from django.db.models import Exists, OuterRef, Q, BooleanField, ExpressionWrapper
-    from django.utils import timezone
-    from auditoria.models import RegistroAuditoria, JustificativaAuditoria
+    from auditoria.utils_periodos import calcular_periodos_pendentes
 
-    hoje = timezone.localdate()
-    month_start = hoje.replace(day=1)
-    next_month = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
-
-    registro_mes_qs = RegistroAuditoria.objects.filter(
-        modelo_id=OuterRef("pk"),
-        data_auditoria__gte=month_start,
-        data_auditoria__lt=next_month,
-    )
-    registro_algum_qs = RegistroAuditoria.objects.filter(modelo_id=OuterRef("pk"))
-    justificativa_mes_qs = JustificativaAuditoria.objects.filter(
-        modelo_id=OuterRef("pk"),
-        mes_referencia=hoje.month,
-        ano_referencia=hoje.year,
-    )
-
-    modelos = modelos.annotate(
-        _tem_registro_mes=Exists(registro_mes_qs),
-        _tem_registro_algum=Exists(registro_algum_qs),
-        _tem_justificativa_mes=Exists(justificativa_mes_qs),
-    ).annotate(
-        is_pendente=ExpressionWrapper(
-            Q(periodicidade="UNICA", _tem_registro_algum=False) |
-            (Q(periodicidade__in=[
-                "DIARIA", "SEMANAL", "QUINZENAL", "MENSAL",
-                "TRIMESTRAL", "SEMESTRAL", "ANUAL"
-            ]) & Q(_tem_registro_mes=False) & Q(_tem_justificativa_mes=False)),
-            output_field=BooleanField()
-        )
-    )
-
-    if pendentes == "mes":
-        modelos = modelos.filter(is_pendente=True)
-
+    modelos_com_pendencias = []
+    
+    # We will fetch and annotate all models first
     modelos = modelos.annotate(
         total_perguntas=Count("perguntas", filter=models.Q(perguntas__ativo=True))
     ).order_by("nome")
+
+    for modelo in modelos:
+        pendencias = calcular_periodos_pendentes(modelo, limit=24)
+        modelo.is_pendente = len(pendencias) > 0
+        modelo.periodos_pendentes = pendencias
+        if not pendencias and pendentes == "mes":
+            continue
+        modelos_com_pendencias.append(modelo)
+        
+    modelos = modelos_com_pendencias
 
     User = get_user_model()
     modelos_com_responsavel = _filter_modelos_para_usuario(

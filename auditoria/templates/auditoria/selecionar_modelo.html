@@ -3,6 +3,32 @@
 {% block title %}Selecionar Modelo para Preencher - Auditoria{% endblock %}
 
 {% block content %}
+<style>
+    .auditoria-card {
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    .auditoria-card:hover {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    }
+    .card-actions-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(255, 255, 255, 0.98);
+        padding: 1rem;
+        transform: translateY(100%);
+        transition: transform 0.3s ease-in-out, opacity 0.3s ease;
+        opacity: 0;
+        border-top: 1px solid rgba(0,0,0,0.05);
+    }
+    .auditoria-card:hover .card-actions-overlay,
+    .auditoria-card:focus-within .card-actions-overlay {
+        transform: translateY(0);
+        opacity: 1;
+    }
+</style>
 <div class="container-fluid mt-4">
     <div class="row mb-4">
         <div class="col-12">
@@ -78,9 +104,16 @@
     <div class="row g-3">
         {% for modelo in modelos %}
         <div class="col-md-6 col-lg-4">
-            <div class="card h-100 shadow-sm">
+            <div class="card h-100 shadow-sm auditoria-card position-relative">
                 <div class="card-body">
-                    <h5 class="card-title">{{ modelo.nome }}</h5>
+                    {% if modelo.is_pendente %}
+                    <div class="position-absolute top-0 end-0 mt-2 me-2">
+                        <span class="badge bg-danger rounded-pill" title="{{ modelo.periodos_pendentes|length }} período(s) pendente(s)">
+                            <i class="bi bi-exclamation-circle-fill"></i> Pendente
+                        </span>
+                    </div>
+                    {% endif %}
+                    <h5 class="card-title pe-4">{{ modelo.nome }}</h5>
                     <p class="card-text text-muted">
                         <small>
                             <i class="bi bi-box"></i> {{ modelo.objeto_auditoria }}
@@ -104,13 +137,14 @@
                     </p>
                     {% endif %}
                 </div>
-                <div class="card-footer bg-transparent">
+                <!-- Overlay de Ações -->
+                <div class="card-actions-overlay shadow">
                     <div class="d-grid gap-2">
                         <a href="{% url 'auditoria:registro_create_modelo' modelo.id %}" class="btn btn-success btn-sm">
                             <i class="bi bi-pencil-square"></i> Preencher Formulário
                         </a>
                         <a href="{% url 'auditoria:registros_por_modelo' modelo.id %}" class="btn btn-outline-primary btn-sm">
-                            <i class="bi bi-file-earmark-text"></i> Ver Registros Preenchidos
+                            <i class="bi bi-file-earmark-text"></i> Ver Registros
                         </a>
                         {% if modelo.is_pendente %}
                         <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#justificarModal{{ modelo.id }}">
@@ -133,7 +167,16 @@
                       <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                      <p>Você está justificando a não execução da auditoria <strong>{{ modelo.nome }}</strong> para o período atual.</p>
+                      <p>Selecione o período sem preenchimento para justificar a auditoria <strong>{{ modelo.nome }}</strong>.</p>
+                      <div class="mb-3">
+                        <label for="periodo{{ modelo.id }}" class="form-label">Período Pendente <span class="text-danger">*</span></label>
+                        <select class="form-select" id="periodo{{ modelo.id }}" name="periodo" required>
+                          <option value="">Selecione um período...</option>
+                          {% for p in modelo.periodos_pendentes %}
+                            <option value="{{ p.inicio }}|{{ p.fim }}">{{ p.label }}</option>
+                          {% endfor %}
+                        </select>
+                      </div>
                       <div class="mb-3">
                         <label for="justificativa{{ modelo.id }}" class="form-label">Justificativa <span class="text-danger">*</span></label>
                         <textarea class="form-control" id="justificativa{{ modelo.id }}" name="justificativa" rows="3" required></textarea>
