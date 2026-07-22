@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Caixa de Entrada (Inbox){% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --hub-ink: #16353b;
+        --hub-surface: #fffdf9;
+        --hub-border: #d7e2de;
+        --hub-muted: #607176;
+    }
+</style>
+<div class="container py-4" style="max-width: 900px;">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h2 class="h3 mb-1"><i class="bi bi-inboxes text-primary"></i> Caixa de Entrada</h2>
+            <p class="text-muted mb-0">Pendências individuais que exigem sua ação imediata.</p>
+        </div>
+        <span class="badge bg-primary fs-6 rounded-pill px-3 py-2">{{ inbox_items|length }} itens pendentes</span>
+    </div>
+
+    <div class="list-group shadow-sm border-0 rounded-4 overflow-hidden mb-5">
+        {% for item in inbox_items %}
+        <a href="{{ item.url }}" class="list-group-item list-group-item-action d-flex align-items-center gap-3 p-4 {% if item.is_urgent %}border-start border-danger border-4{% else %}border-start border-warning border-4{% endif %}" style="background: var(--hub-surface);">
+            <div class="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0" style="width: 48px; height: 48px; background-color: var(--hub-ink);">
+                <i class="bi {{ item.icon }} fs-5"></i>
+            </div>
+            <div class="flex-grow-1 min-w-0">
+                <h6 class="mb-1 fw-bold fs-5 text-dark text-truncate">{{ item.title }}</h6>
+                <p class="mb-0 text-muted">{{ item.description }}</p>
+            </div>
+            <div class="text-end flex-shrink-0">
+                <small class="text-muted d-block mb-2 fw-semibold"><i class="bi bi-clock-history"></i> {{ item.date|date:"d/m/Y" }}</small>
+                <span class="btn btn-sm btn-outline-primary px-3 rounded-pill fw-bold">{{ item.action_text }}</span>
+            </div>
+        </a>
+        {% empty %}
+        <div class="list-group-item p-5 text-center text-muted border-0" style="background: var(--hub-surface);">
+            <div class="mb-3"><i class="bi bi-check-circle-fill display-2 text-success opacity-75"></i></div>
+            <h4 class="mb-2 text-dark">Caixa de entrada limpa!</h4>
+            <p class="mb-0 fs-5">Você não tem pendências atrasadas no momento. Bom trabalho!</p>
+            <div class="mt-4">
+                <a href="{% url 'hub' %}" class="btn btn-primary px-4"><i class="bi bi-arrow-left"></i> Voltar ao Hub</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

@@ -16,6 +16,7 @@ urlpatterns = [
     
     # Shared URLs
     path('hub/', views.hub_view, name='hub'),
+    path('inbox/', views.inbox_view, name='inbox'),
     # path('', views.dashboard_view, name='dashboard'),
     # path('health/', views.health_check, name='health_check'),
     # Mais URLs serão adicionadas na Fase 3
