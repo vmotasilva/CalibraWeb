@@ -91,9 +91,22 @@ def nav_notifications(request: Any) -> dict[str, Any]:
     }
 
 
-def system_version(request: Any) -> dict[str, str]:
-    """Context processor: disponibiliza a versão do sistema globalmente."""
-    from django.conf import settings
+def system_version(request: Any) -> dict[str, Any]:
+    """Provide system version to all templates."""
+    
+    changelog = []
+    try:
+        import json
+        from django.conf import settings
+        import os
+        
+        changelog_path = os.path.join(settings.BASE_DIR, 'changelog.json')
+        with open(changelog_path, 'r', encoding='utf-8') as f:
+            changelog = json.load(f)
+    except Exception:
+        pass
+
     return {
         "system_version": getattr(settings, "SYSTEM_VERSION", "1.0.0"),
+        "system_changelog": changelog
     }

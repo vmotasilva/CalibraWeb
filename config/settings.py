@@ -545,4 +545,12 @@ CSRF_USE_SESSIONS = os.environ.get("CSRF_USE_SESSIONS", "false").lower() in (
 )
 
 # System version
-SYSTEM_VERSION = "2.4.0"
+import json
+from datetime import datetime
+
+try:
+    with open(BASE_DIR / "version_info.json", "r") as f:
+        version_data = json.load(f)
+        SYSTEM_VERSION = f"{version_data.get('date', 'Desconhecido')} - {version_data.get('hash', 'local')}"
+except Exception:
+    SYSTEM_VERSION = f"Local - {datetime.now().strftime('%d/%m/%Y %H:%M')}"
