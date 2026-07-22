@@ -178,11 +178,15 @@ def _hub_build_action(user, module_key, module_title, action_config):
 
 @login_required
 def hub_view(request):
+    from shared.inbox import get_user_inbox_items
+    
     laboratorio_open_count = _hub_get_laboratorio_open_count()
     counts = {
         **get_user_cobrancas_counts(request.user),
         "laboratorio_abertas": laboratorio_open_count,
     }
+
+    inbox_items = get_user_inbox_items(request.user)
 
     pending_items = [
         {
@@ -523,6 +527,7 @@ def hub_view(request):
         {
             "hub_stats": hub_stats,
             "pending_items": pending_items,
+            "inbox_items": inbox_items,
             "quick_actions": quick_actions,
             "modules": modules,
         },

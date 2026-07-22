@@ -63,8 +63,15 @@ def nav_notifications(request: Any) -> dict[str, Any]:
     """
 
     user = getattr(request, "user", None)
+    
+    # We use the new Inbox items instead of just raw counts
+    from shared.inbox import get_user_inbox_items
+    inbox_items = get_user_inbox_items(user)
+    
+    total = len(inbox_items)
+    
+    # Optional: fetch old counts just in case it's used elsewhere, but total comes from inbox now.
     counts = get_user_cobrancas_counts(user)
-    total = int(counts.get("total", 0) or 0)
     
     unread_board_mentions_count = 0
     if user and user.is_authenticated:
@@ -79,6 +86,7 @@ def nav_notifications(request: Any) -> dict[str, Any]:
             
     return {
         "nav_notifications_total": total,
+        "nav_inbox_items": inbox_items[:5], # Take top 5 most urgent
         "unread_board_mentions_count": unread_board_mentions_count,
     }
 
