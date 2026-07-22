@@ -560,3 +560,31 @@ class RelatorioCompartilhadoAuditoria(models.Model):
 
     def __str__(self):
         return f"{self.modelo.nome} | {self.remetente} -> {self.destinatario}"
+
+
+class JustificativaAuditoria(models.Model):
+    modelo = models.ForeignKey(
+        ModeloAuditoria,
+        on_delete=models.CASCADE,
+        related_name="justificativas",
+        verbose_name="Modelo",
+    )
+    mes_referencia = models.IntegerField(verbose_name="Mês de Referência")
+    ano_referencia = models.IntegerField(verbose_name="Ano de Referência")
+    justificativa = models.TextField(verbose_name="Justificativa")
+    criado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Justificado por",
+    )
+    criado_em = models.DateTimeField(auto_now_add=True, verbose_name="Data da Justificativa")
+
+    class Meta:
+        verbose_name = "Justificativa de Auditoria"
+        verbose_name_plural = "Justificativas de Auditoria"
+        ordering = ["-ano_referencia", "-mes_referencia", "-criado_em"]
+
+    def __str__(self):
+        return f"Justificativa para {self.modelo.nome} em {self.mes_referencia:02d}/{self.ano_referencia}"

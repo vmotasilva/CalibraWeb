@@ -98,8 +98,42 @@
                         <a href="{% url 'auditoria:registros_por_modelo' modelo.id %}" class="btn btn-outline-primary btn-sm">
                             <i class="bi bi-file-earmark-text"></i> Ver Registros Preenchidos
                         </a>
+                        {% if pendentes %}
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#justificarModal{{ modelo.id }}">
+                            <i class="bi bi-x-circle"></i> Justificar Não Execução
+                        </button>
+                        {% endif %}
                     </div>
                 </div>
+            </div>
+            
+            {% if pendentes %}
+            <!-- Modal Justificar -->
+            <div class="modal fade" id="justificarModal{{ modelo.id }}" tabindex="-1" aria-hidden="true">
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <form action="{% url 'auditoria:justificar_nao_execucao' modelo.id %}" method="post">
+                    {% csrf_token %}
+                    <div class="modal-header">
+                      <h5 class="modal-title">Justificar Não Execução</h5>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                      <p>Você está justificando a não execução da auditoria <strong>{{ modelo.nome }}</strong> para o período atual.</p>
+                      <div class="mb-3">
+                        <label for="justificativa{{ modelo.id }}" class="form-label">Justificativa <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="justificativa{{ modelo.id }}" name="justificativa" rows="3" required></textarea>
+                      </div>
+                    </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                      <button type="submit" class="btn btn-primary">Salvar Justificativa</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+            {% endif %}
             </div>
         </div>
         {% endfor %}

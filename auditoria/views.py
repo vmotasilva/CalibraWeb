@@ -660,6 +660,39 @@ def modelo_arquivar(request, pk):
 
 
 @login_required
+@require_POST
+def justificar_nao_execucao(request, pk):
+    from auditoria.models import JustificativaAuditoria
+    from django.utils import timezone
+    
+    modelo = get_object_or_404(ModeloAuditoria, pk=pk)
+    
+    # Valida se o usuário tem permissão para preencher/justificar este modelo
+    modelos_do_usuario = _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.filter(pk=pk))
+    if not modelos_do_usuario.exists():
+        messages.error(request, "Acesso negado. Você não tem permissão para justificar este modelo.")
+        return redirect("auditoria:selecionar_modelo_preenchimento")
+        
+    justificativa_texto = (request.POST.get("justificativa") or "").strip()
+    if not justificativa_texto:
+        messages.error(request, "A justificativa é obrigatória.")
+        return redirect("auditoria:selecionar_modelo_preenchimento")
+        
+    hoje = timezone.localdate()
+    
+    JustificativaAuditoria.objects.create(
+        modelo=modelo,
+        mes_referencia=hoje.month,
+        ano_referencia=hoje.year,
+        justificativa=justificativa_texto,
+        criado_por=request.user
+    )
+    
+    messages.success(request, f"Justificativa para '{modelo.nome}' registrada com sucesso.")
+    return redirect("auditoria:selecionar_modelo_preenchimento")
+
+
+@login_required
 def modelo_create(request):
     if not _auditoria_is_admin(request.user):
         messages.error(request, "Apenas usuários Staff/Superuser podem criar modelos de auditoria.")
@@ -1111,7 +1144,7 @@ def selecionar_modelo_preenchimento(request):
         from django.db.models import Exists, OuterRef, Q
         from django.utils import timezone
 
-        from auditoria.models import RegistroAuditoria
+        from auditoria.models import RegistroAuditoria, JustificativaAuditoria
 
         hoje = timezone.localdate()
         month_start = hoje.replace(day=1)
@@ -1123,10 +1156,16 @@ def selecionar_modelo_preenchimento(request):
             data_auditoria__lt=next_month,
         )
         registro_algum_qs = RegistroAuditoria.objects.filter(modelo_id=OuterRef("pk"))
+        justificativa_mes_qs = JustificativaAuditoria.objects.filter(
+            modelo_id=OuterRef("pk"),
+            mes_referencia=hoje.month,
+            ano_referencia=hoje.year,
+        )
 
         modelos = modelos.annotate(
             _tem_registro_mes=Exists(registro_mes_qs),
             _tem_registro_algum=Exists(registro_algum_qs),
+            _tem_justificativa_mes=Exists(justificativa_mes_qs),
         ).filter(
             Q(periodicidade="UNICA", _tem_registro_algum=False)
             | (Q(periodicidade__in=[
@@ -1138,7 +1177,8 @@ def selecionar_modelo_preenchimento(request):
                 "SEMESTRAL",
                 "ANUAL",
             ])
-            & Q(_tem_registro_mes=False))
+            & Q(_tem_registro_mes=False)
+            & Q(_tem_justificativa_mes=False))
         )
 
     modelos = modelos.annotate(

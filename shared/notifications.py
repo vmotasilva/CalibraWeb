@@ -132,7 +132,7 @@ def get_user_cobrancas_counts(user: Any) -> dict[str, int]:
 
     # Auditoria: modelos atribuídos ao usuário que estão "em atraso" pela periodicidade
     try:
-        from auditoria.models import ModeloAuditoria, RegistroAuditoria
+        from auditoria.models import ModeloAuditoria, RegistroAuditoria, JustificativaAuditoria
         from django.db.models import Exists, OuterRef, Q
 
         month_start = _first_day_of_month(hoje)
@@ -148,10 +148,17 @@ def get_user_cobrancas_counts(user: Any) -> dict[str, int]:
             data_auditoria__lt=next_month,
         )
         registro_algum_qs = RegistroAuditoria.objects.filter(modelo_id=OuterRef("pk"))
+        
+        justificativa_mes_qs = JustificativaAuditoria.objects.filter(
+            modelo_id=OuterRef("pk"),
+            mes_referencia=hoje.month,
+            ano_referencia=hoje.year,
+        )
 
         modelos = modelos.annotate(
             _tem_registro_mes=Exists(registro_mes_qs),
             _tem_registro_algum=Exists(registro_algum_qs),
+            _tem_justificativa_mes=Exists(justificativa_mes_qs),
         )
 
         counts["auditoria"] = modelos.filter(
@@ -165,7 +172,8 @@ def get_user_cobrancas_counts(user: Any) -> dict[str, int]:
                 "SEMESTRAL",
                 "ANUAL",
             ])
-            & Q(_tem_registro_mes=False))
+            & Q(_tem_registro_mes=False)
+            & Q(_tem_justificativa_mes=False))
         ).count()
     except Exception:
         counts["auditoria"] = 0
