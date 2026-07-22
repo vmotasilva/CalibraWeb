@@ -550,6 +550,11 @@ def inbox_view(request):
         },
     )
 
+@login_required
+def changelog_view(request):
+    """View para exibir a página inteira de histórico de alterações."""
+    return render(request, "shared/changelog_page.html")
+
 
 def dashboard_view(request):
     """Dashboard principal agregando dados de todos os módulos."""

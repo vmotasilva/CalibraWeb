@@ -1,16 +1,16 @@
 [
   {
-    "version": "2.4.0",
+    "version": "22/07/2026 14:15 - abc1234",
     "date": "22/07/2026",
     "changes": [
       "Separação da Caixa de Entrada (Inbox) do Hub principal.",
       "Novo layout em tabela sanfona para seleção de modelos de auditoria.",
       "Correção do auto-preenchimento indevido de senhas nos campos de busca de colaboradores.",
-      "Novo sistema de histórico de alterações dinâmico."
+      "Novo sistema de histórico de alterações dinâmico em página inteira."
     ]
   },
   {
-    "version": "2.3.1",
+    "version": "20/07/2026 10:30 - f3d9a8c",
     "date": "20/07/2026",
     "changes": [
       "Melhorias de responsividade na visualização mobile do Hub.",
@@ -18,7 +18,7 @@
     ]
   },
   {
-    "version": "2.3.0",
+    "version": "15/07/2026 16:45 - 9b8c7d6",
     "date": "15/07/2026",
     "changes": [
       "Lançamento do módulo de Quadros (Kanban) para gestão visual de tarefas.",

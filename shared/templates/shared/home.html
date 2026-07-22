@@ -9,9 +9,9 @@
             <h1 class="display-4 mb-4">Bem-vindo ao CalibraWeb!</h1>
             <p class="lead">Sua plataforma de gestão de calibração, instrumentos e qualidade.</p>
             <div class="d-flex justify-content-center align-items-center gap-2 mb-3">
-                <button type="button" class="btn btn-sm btn-secondary px-3 py-2 border-0 shadow-sm rounded-pill" data-bs-toggle="modal" data-bs-target="#changelogModal" style="font-size: 0.9rem; font-weight: 500;">
+                <a href="{% url 'changelog' %}" class="btn btn-sm btn-secondary px-3 py-2 border-0 shadow-sm rounded-pill text-decoration-none" style="font-size: 0.9rem; font-weight: 500;">
                     <i class="bi bi-info-circle me-1"></i> Versão {{ system_version }}
-                </button>
+                </a>
             </div>
             <hr class="my-4">
             <p class="text-muted">Aqui você encontrará avisos, informações e artigos importantes para o seu dia a dia.<br>
@@ -149,51 +149,4 @@
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
-</div>
-<!-- Modal do Changelog -->
-<div class="modal fade" id="changelogModal" tabindex="-1" aria-labelledby="changelogModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
-        <div class="modal-content">
-            <div class="modal-header border-bottom-0 pb-0">
-                <h5 class="modal-title fs-4 fw-bold text-dark" id="changelogModalLabel">
-                    <i class="bi bi-clock-history text-primary me-2"></i> Histórico de Alterações
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body py-4">
-                {% if system_changelog %}
-                    <div class="position-relative ps-4" style="border-left: 2px solid #e9ecef;">
-                        {% for entry in system_changelog %}
-                            <div class="mb-5 position-relative">
-                                <!-- Ponto na timeline -->
-                                <div class="position-absolute bg-primary rounded-circle" style="width: 14px; height: 14px; left: -32px; top: 6px; border: 3px solid white; box-shadow: 0 0 0 1px var(--bs-primary);"></div>
-                                
-                                <div class="d-flex align-items-baseline gap-3 mb-2">
-                                    <h5 class="fw-bold mb-0 text-dark">Versão {{ entry.version }}</h5>
-                                    <span class="badge bg-light text-secondary border px-2">{{ entry.date }}</span>
-                                </div>
-                                <ul class="text-muted mt-2 ps-3 mb-0" style="list-style-type: disc;">
-                                    {% for change in entry.changes %}
-                                        <li class="mb-1">{{ change }}</li>
-                                    {% endfor %}
-                                </ul>
-                            </div>
-                        {% endfor %}
-                    </div>
-                {% else %}
-                    <div class="text-center text-muted py-4">
-                        <i class="bi bi-journal-x display-4 opacity-50 mb-3"></i>
-                        <p class="mb-0">Nenhum histórico de alterações disponível no momento.</p>
-                    </div>
-                {% endif %}
-            </div>
-            <div class="modal-footer border-top-0 pt-0">
-                <button type="button" class="btn btn-secondary px-4 rounded-pill" data-bs-dismiss="modal">Fechar</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 {% endblock %}
