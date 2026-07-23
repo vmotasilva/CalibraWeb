@@ -297,7 +297,7 @@ class RegistroCoatingForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["turno_coating"].queryset = TurnoCoating.objects.order_by("-data", "-turno")
+        self.fields["turno_coating"].queryset = TurnoCoating.objects.order_by("-data", "regra__hora_inicio")
         self.fields["maquina"].queryset = Maquina.objects.order_by("codigo", "fabricante")
         self.fields["tratamento"].queryset = TratamentoAntiReflexo.objects.filter(ativo=True).order_by("nome")
         self.fields["preparacao"].queryset = Colaborador.objects.filter(setor__nome__icontains="laboratorio").order_by("nome_completo")
