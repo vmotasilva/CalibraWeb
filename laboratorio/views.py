@@ -945,9 +945,10 @@ def coating_painel(request):
                             break
                             
                 if regra_encontrada:
+                    data_escolhida = cleaned_data.get('data_registro', hoje)
                     # Pega ou cria o Turno Diário para a data e regra
                     turno_diario, created = TurnoCoating.objects.get_or_create(
-                        data=hoje,
+                        data=data_escolhida,
                         regra=regra_encontrada
                     )
                     

@@ -277,6 +277,11 @@ class TurnoCoatingForm(forms.ModelForm):
 
 
 class NovoLoteCoatingForm(forms.ModelForm):
+    data_registro = forms.DateField(
+        label="Data do Registro",
+        widget=forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+    )
+
     class Meta:
         model = RegistroCoating
         fields = ["maquina", "lote", "tratamento", "hora_entrada"]
@@ -291,6 +296,10 @@ class NovoLoteCoatingForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["maquina"].queryset = Maquina.objects.order_by("codigo", "fabricante")
         self.fields["tratamento"].queryset = TratamentoAntiReflexo.objects.filter(ativo=True).order_by("nome")
+        
+        # Seta a data de hoje como padrão
+        if not self.is_bound and "data_registro" not in self.initial:
+            self.initial["data_registro"] = timezone.localdate()
 
 
 class RegistroCoatingForm(forms.ModelForm):
