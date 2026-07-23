@@ -31,14 +31,12 @@
                     <i class="bi bi-three-dots-vertical"></i> Ações
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="perfilActionsDropdown">
-                    {% if can_novo_perfil %}
                     <li>
                         <a href="{% url 'procedures:novo_perfil' %}" class="dropdown-item" title="Criar um novo perfil de treinamento">
                             <i class="bi bi-plus-circle me-2 text-primary"></i> Novo Perfil
                         </a>
                     </li>
                     <li><hr class="dropdown-divider"></li>
-                    {% endif %}
                     {% if can_importar_estrutura %}
                     <li>
                         <a href="{% url 'procedures:importar_estrutura' %}" class="dropdown-item" title="Importação completa de perfis, grupos, subgrupos e colaboradores">
