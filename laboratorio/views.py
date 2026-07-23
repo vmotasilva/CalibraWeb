@@ -28,6 +28,7 @@ from .models import (
     OcorrenciaLaboratorio, 
     OcorrenciaLaboratorioAnotacao,
     TratamentoAntiReflexo,
+    RegraTurnoCoating,
     TurnoCoating,
     RegistroCoating,
 )
