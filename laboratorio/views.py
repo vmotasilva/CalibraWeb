@@ -19,6 +19,7 @@ from .forms import (
     OcorrenciaEncerramentoForm,
     OcorrenciaLaboratorioForm,
     TratamentoAntiReflexoForm,
+    RegraTurnoCoatingForm,
     RegistroCoatingForm,
     TurnoCoatingForm,
 )
@@ -935,7 +936,7 @@ def coating_painel(request):
     
     # Initialize forms for GET
     registro_form = RegistroCoatingForm()
-    turno_form = TurnoCoatingForm(initial={'data': hoje, 'inicio': timezone.now()})
+    turno_form = TurnoCoatingForm(initial={'data': hoje})
     
     # Fetch today's records
     registros = RegistroCoating.objects.filter(turno_coating__data=hoje).select_related(
@@ -968,3 +969,46 @@ def coating_painel(request):
     }
     
     return render(request, "laboratorio/coating_painel.html", context)
+
+
+@login_required
+def regra_turno_list(request):
+    regras = RegraTurnoCoating.objects.all()
+    return render(request, "laboratorio/regra_turno_list.html", {"regras": regras})
+
+
+@login_required
+def regra_turno_create(request):
+    if request.method == "POST":
+        form = RegraTurnoCoatingForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Regra de turno criada com sucesso.")
+            return redirect("laboratorio:regra_turno_list")
+    else:
+        form = RegraTurnoCoatingForm()
+    
+    return render(
+        request, 
+        "laboratorio/tratamento_form.html", 
+        {"form": form, "titulo": "Nova Regra de Turno", "acao": "Salvar regra"}
+    )
+
+
+@login_required
+def regra_turno_update(request, pk):
+    regra = get_object_or_404(RegraTurnoCoating, pk=pk)
+    if request.method == "POST":
+        form = RegraTurnoCoatingForm(request.POST, instance=regra)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Regra de turno atualizada com sucesso.")
+            return redirect("laboratorio:regra_turno_list")
+    else:
+        form = RegraTurnoCoatingForm(instance=regra)
+        
+    return render(
+        request, 
+        "laboratorio/tratamento_form.html", 
+        {"form": form, "titulo": "Editar Regra de Turno", "acao": "Salvar alterações"}
+    )

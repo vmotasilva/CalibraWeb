@@ -308,16 +308,24 @@ class TratamentoAntiReflexo(models.Model):
         return self.nome
 
 
+class RegraTurnoCoating(models.Model):
+    nome = models.CharField(max_length=50, verbose_name="Nome da Regra (Ex: Turno 01)")
+    hora_inicio = models.TimeField(verbose_name="Horário de Início")
+    hora_fim = models.TimeField(verbose_name="Horário de Fim")
+    ativo = models.BooleanField(default=True, verbose_name="Ativo")
+
+    class Meta:
+        ordering = ["hora_inicio"]
+        verbose_name = "Regra de Turno de Coating"
+        verbose_name_plural = "Regras de Turnos de Coating"
+
+    def __str__(self):
+        return f"{self.nome} ({self.hora_inicio.strftime('%H:%M')} - {self.hora_fim.strftime('%H:%M')})"
+
+
 class TurnoCoating(models.Model):
-    TURNO_CHOICES = [
-        ('1', 'Turno 01'),
-        ('2', 'Turno 02'),
-        ('3', 'Turno 03'),
-    ]
     data = models.DateField(default=timezone.now, verbose_name="Data do Turno")
-    turno = models.CharField(max_length=1, choices=TURNO_CHOICES, verbose_name="Turno")
-    inicio = models.DateTimeField(verbose_name="Início do Turno")
-    fim = models.DateTimeField(null=True, blank=True, verbose_name="Fim do Turno")
+    regra = models.ForeignKey(RegraTurnoCoating, on_delete=models.PROTECT, verbose_name="Regra de Turno", null=True)
     responsavel = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -327,13 +335,15 @@ class TurnoCoating(models.Model):
     )
 
     class Meta:
-        ordering = ["-data", "-turno"]
-        verbose_name = "Turno de Coating"
-        verbose_name_plural = "Turnos de Coating"
-        unique_together = [('data', 'turno')]
+        ordering = ["-data", "regra__hora_inicio"]
+        verbose_name = "Turno Diário de Coating"
+        verbose_name_plural = "Turnos Diários de Coating"
+        unique_together = [('data', 'regra')]
 
     def __str__(self):
-        return f"{self.get_turno_display()} - {self.data.strftime('%d/%m/%Y')}"
+        if self.regra:
+            return f"{self.regra.nome} - {self.data.strftime('%d/%m/%Y')}"
+        return f"Turno sem regra - {self.data.strftime('%d/%m/%Y')}"
 
 
 class RegistroCoating(models.Model):

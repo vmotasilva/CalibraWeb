@@ -24,6 +24,11 @@ urlpatterns = [
     path("tratamentos/novo/", views.tratamento_create, name="tratamento_create"),
     path("tratamentos/<int:pk>/editar/", views.tratamento_update, name="tratamento_update"),
     
+    # Rotas para Regra de Turno Coating
+    path("coating/regras-turno/", views.regra_turno_list, name="regra_turno_list"),
+    path("coating/regras-turno/nova/", views.regra_turno_create, name="regra_turno_create"),
+    path("coating/regras-turno/<int:pk>/editar/", views.regra_turno_update, name="regra_turno_update"),
+    
     # Rota para Painel de Registro de Coating
     path("coating/painel/", views.coating_painel, name="coating_painel"),
 ]

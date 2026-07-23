@@ -7,6 +7,7 @@ from .models import (
     OcorrenciaLaboratorio, 
     OcorrenciaLaboratorioAnotacao, 
     TratamentoAntiReflexo,
+    RegraTurnoCoating,
     TurnoCoating,
     RegistroCoating
 )
@@ -252,15 +253,25 @@ class TratamentoAntiReflexoForm(forms.ModelForm):
         }
 
 
+class RegraTurnoCoatingForm(forms.ModelForm):
+    class Meta:
+        model = RegraTurnoCoating
+        fields = ["nome", "hora_inicio", "hora_fim", "ativo"]
+        widgets = {
+            "nome": forms.TextInput(attrs={"class": "form-control", "placeholder": "Ex: Turno 01"}),
+            "hora_inicio": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
+            "hora_fim": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
+            "ativo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
+
+
 class TurnoCoatingForm(forms.ModelForm):
     class Meta:
         model = TurnoCoating
-        fields = ["data", "turno", "inicio", "fim", "responsavel"]
+        fields = ["data", "regra", "responsavel"]
         widgets = {
             "data": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
-            "turno": forms.Select(attrs={"class": "form-select"}),
-            "inicio": forms.DateTimeInput(attrs={"class": "form-control", "type": "datetime-local"}),
-            "fim": forms.DateTimeInput(attrs={"class": "form-control", "type": "datetime-local"}),
+            "regra": forms.Select(attrs={"class": "form-select"}),
             "responsavel": forms.Select(attrs={"class": "form-select"}),
         }
 
