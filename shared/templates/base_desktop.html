@@ -200,6 +200,10 @@
                                 {% if nav_maq_categorias %}<li><a class="dropdown-item" href="{% url 'maquinas:categorias_list' %}"><i class="bi bi-diagram-3"></i> Categorias de Maquinas</a></li>{% endif %}
                             {% endif %}
                         {% endif %}
+                        
+                        <li><h6 class="dropdown-header text-muted">COATING (ANTI-REFLEXO)</h6></li>
+                        <li><a class="dropdown-item" href="{% url 'laboratorio:tratamento_list' %}"><i class="bi bi-droplet-half"></i> Tratamentos</a></li>
+                        <li><a class="dropdown-item fw-bold text-primary" href="{% url 'laboratorio:tratamento_create' %}"><i class="bi bi-plus-circle me-1"></i>Novo Tratamento</a></li>
                     </ul>
                 </li>
                 {% endif %}
