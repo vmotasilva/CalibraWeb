@@ -222,8 +222,9 @@
                         
                         <li><hr class="dropdown-divider"></li>
                         <li><h6 class="dropdown-header text-muted">COATING (ANTI-REFLEXO)</h6></li>
+                        <li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:coating_painel' %}"><i class="bi bi-grid-3x3-gap"></i> Painel Diário</a></li>
                         <li><a class="dropdown-item" href="{% url 'laboratorio:tratamento_list' %}"><i class="bi bi-droplet-half"></i> Tratamentos</a></li>
-                        <li><a class="dropdown-item fw-bold text-primary" href="{% url 'laboratorio:tratamento_create' %}"><i class="bi bi-plus-circle me-1"></i>Novo Tratamento</a></li>
+                        <li><a class="dropdown-item text-primary" href="{% url 'laboratorio:tratamento_create' %}"><i class="bi bi-plus-circle me-1"></i>Novo Tratamento</a></li>
                     </ul>
                 </li>
                 {% endif %}

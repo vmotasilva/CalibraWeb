@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+        <div>
+            <h2 class="mb-1">Painel de Coating</h2>
+            <p class="text-muted mb-0">Registro diário de Lotes, Limpezas e Trocas.</p>
+        </div>
+        <div>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#turnoModal">Registrar Turno</button>
+        </div>
+    </div>
+    
+    <!-- Alertas -->
+    {% if alertas_limpeza %}
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <strong>Atenção!</strong> Há máquinas que atingiram o ciclo de <strong>Limpeza</strong>. Por favor, verifique.
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+    {% if alertas_troca %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <strong>Atenção!</strong> Há máquinas que atingiram o ciclo de <strong>Troca</strong>. Por favor, verifique.
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+
+    <!-- Inserção rápida -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white fw-bold">Novo Lote</div>
+        <div class="card-body">
+            <form method="post" class="row g-2 align-items-end">
+                {% csrf_token %}
+                <div class="col-md-2">
+                    <label class="form-label small mb-0">Turno Ref.</label>
+                    {{ registro_form.turno_coating }}
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small mb-0">Máquina</label>
+                    {{ registro_form.maquina }}
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label small mb-0">Lote</label>
+                    {{ registro_form.lote }}
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label small mb-0">Lado</label>
+                    {{ registro_form.lado }}
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small mb-0">Tratamento</label>
+                    {{ registro_form.tratamento }}
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label small mb-0">Entrada</label>
+                    {{ registro_form.hora_entrada }}
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small mb-0">Preparação</label>
+                    {{ registro_form.preparacao }}
+                </div>
+                <div class="col-md-1">
+                    <button type="submit" name="btn_salvar_registro" class="btn btn-success w-100">Adicionar</button>
+                </div>
+                <!-- Montagem e Hora Saída ficam ocultos no grid rápido ou seriam editados depois -->
+                <div class="d-none">
+                    {{ registro_form.hora_saida }}
+                    {{ registro_form.montagem }}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabela -->
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped align-middle mb-0 text-center text-nowrap">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Turno</th>
+                            <th>Máquina</th>
+                            <th>Lote</th>
+                            <th>Lado</th>
+                            <th>Tratamento</th>
+                            <th>Entrada</th>
+                            <th>Saída</th>
+                            <th>Preparação</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for reg in registros %}
+                        <tr class="{% if reg.maquina.id in alertas_limpeza %}table-warning{% elif reg.maquina.id in alertas_troca %}table-danger{% endif %}">
+                            <td>{{ reg.turno_coating.get_turno_display }}</td>
+                            <td class="fw-bold">{{ reg.maquina.codigo }}</td>
+                            <td>{{ reg.lote }}</td>
+                            <td>{{ reg.get_lado_display }}</td>
+                            <td>{{ reg.tratamento.nome }}</td>
+                            <td>{{ reg.hora_entrada|time:"H:i" }}</td>
+                            <td>{{ reg.hora_saida|time:"H:i"|default:"-" }}</td>
+                            <td>{{ reg.preparacao.nome_completo }}</td>
+                            <td>
+                                <!-- Ação futura: Marcar saída, editar etc -->
+                                <button class="btn btn-sm btn-outline-secondary">Editar</button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="text-center text-muted py-4">Nenhum lote registrado para os turnos de hoje.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Turno -->
+<div class="modal fade" id="turnoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">Registrar Turno</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label>Data</label>
+                        {{ turno_form.data }}
+                    </div>
+                    <div class="mb-3">
+                        <label>Turno</label>
+                        {{ turno_form.turno }}
+                    </div>
+                    <div class="mb-3">
+                        <label>Início</label>
+                        {{ turno_form.inicio }}
+                    </div>
+                    <div class="mb-3">
+                        <label>Responsável</label>
+                        {{ turno_form.responsavel }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" name="btn_salvar_turno" class="btn btn-primary">Salvar Turno</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock content %}

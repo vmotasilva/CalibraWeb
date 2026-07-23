@@ -19,6 +19,8 @@ from .forms import (
     OcorrenciaEncerramentoForm,
     OcorrenciaLaboratorioForm,
     TratamentoAntiReflexoForm,
+    RegistroCoatingForm,
+    TurnoCoatingForm,
 )
 from .models import (
     CategoriaLaboratorio, 
@@ -904,3 +906,63 @@ def tratamento_update(request, pk):
         "laboratorio/tratamento_form.html",
         {"form": form, "titulo": "Editar Tratamento Antirreflexo", "acao": "Salvar alterações", "tratamento": tratamento},
     )
+
+
+@login_required
+def coating_painel(request):
+    hoje = timezone.localdate()
+    
+    # Process form submission
+    if request.method == "POST":
+        if "btn_salvar_registro" in request.POST:
+            registro_form = RegistroCoatingForm(request.POST)
+            if registro_form.is_valid():
+                registro_form.save()
+                messages.success(request, "Registro adicionado com sucesso.")
+                return redirect("laboratorio:coating_painel")
+            else:
+                messages.error(request, "Erro ao adicionar registro. Verifique os dados inseridos.")
+        elif "btn_salvar_turno" in request.POST:
+            turno_form = TurnoCoatingForm(request.POST)
+            if turno_form.is_valid():
+                turno_form.save()
+                messages.success(request, "Turno registrado com sucesso.")
+                return redirect("laboratorio:coating_painel")
+            else:
+                messages.error(request, "Erro ao registrar turno.")
+    
+    # Initialize forms for GET
+    registro_form = RegistroCoatingForm()
+    turno_form = TurnoCoatingForm(initial={'data': hoje, 'inicio': timezone.now()})
+    
+    # Fetch today's records
+    registros = RegistroCoating.objects.filter(turno_coating__data=hoje).select_related(
+        'turno_coating', 'maquina', 'tratamento', 'preparacao', 'montagem'
+    ).order_by('-hora_entrada', '-id')
+    
+    # Calculate machine alerts (mock logic based on batch counts for today)
+    # Ideally, this should aggregate actual active cycles.
+    maquina_ciclos = {}
+    for r in registros:
+        maq_id = r.maquina_id
+        if maq_id not in maquina_ciclos:
+            maquina_ciclos[maq_id] = 0
+        maquina_ciclos[maq_id] += 1
+        
+    alertas_limpeza = []
+    alertas_troca = []
+    for maq_id, contagem in maquina_ciclos.items():
+        if contagem % 10 == 0 and contagem > 0:
+            alertas_limpeza.append(maq_id)
+        if contagem % 50 == 0 and contagem > 0:
+            alertas_troca.append(maq_id)
+
+    context = {
+        "registros": registros,
+        "registro_form": registro_form,
+        "turno_form": turno_form,
+        "alertas_limpeza": alertas_limpeza,
+        "alertas_troca": alertas_troca,
+    }
+    
+    return render(request, "laboratorio/coating_painel.html", context)

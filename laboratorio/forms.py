@@ -2,7 +2,14 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
-from .models import CategoriaLaboratorio, OcorrenciaLaboratorio, OcorrenciaLaboratorioAnotacao, TratamentoAntiReflexo
+from .models import (
+    CategoriaLaboratorio, 
+    OcorrenciaLaboratorio, 
+    OcorrenciaLaboratorioAnotacao, 
+    TratamentoAntiReflexo,
+    TurnoCoating,
+    RegistroCoating
+)
 from rh.models import Colaborador
 from maquinas.models import Maquina
 
@@ -243,3 +250,50 @@ class TratamentoAntiReflexoForm(forms.ModelForm):
             "nome": forms.TextInput(attrs={"class": "form-control", "placeholder": "Nome do tratamento..."}),
             "ativo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
+
+
+class TurnoCoatingForm(forms.ModelForm):
+    class Meta:
+        model = TurnoCoating
+        fields = ["data", "turno", "inicio", "fim", "responsavel"]
+        widgets = {
+            "data": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "turno": forms.Select(attrs={"class": "form-select"}),
+            "inicio": forms.DateTimeInput(attrs={"class": "form-control", "type": "datetime-local"}),
+            "fim": forms.DateTimeInput(attrs={"class": "form-control", "type": "datetime-local"}),
+            "responsavel": forms.Select(attrs={"class": "form-select"}),
+        }
+
+
+class RegistroCoatingForm(forms.ModelForm):
+    class Meta:
+        model = RegistroCoating
+        fields = [
+            "turno_coating", "maquina", "lote", "tratamento", "lado", 
+            "hora_entrada", "hora_saida", "preparacao", "montagem"
+        ]
+        widgets = {
+            "turno_coating": forms.Select(attrs={"class": "form-select"}),
+            "maquina": forms.Select(attrs={"class": "form-select"}),
+            "lote": forms.NumberInput(attrs={"class": "form-control", "placeholder": "Lote..."}),
+            "tratamento": forms.Select(attrs={"class": "form-select"}),
+            "lado": forms.Select(attrs={"class": "form-select"}),
+            "hora_entrada": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
+            "hora_saida": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
+            "preparacao": forms.Select(attrs={"class": "form-select"}),
+            "montagem": forms.Select(attrs={"class": "form-select"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["turno_coating"].queryset = TurnoCoating.objects.order_by("-data", "-turno")
+        self.fields["maquina"].queryset = Maquina.objects.order_by("codigo", "fabricante")
+        self.fields["tratamento"].queryset = TratamentoAntiReflexo.objects.filter(ativo=True).order_by("nome")
+        self.fields["preparacao"].queryset = Colaborador.objects.filter(setor__nome__icontains="laboratorio").order_by("nome_completo")
+        self.fields["montagem"].queryset = Colaborador.objects.filter(setor__nome__icontains="laboratorio").order_by("nome_completo")
+        
+        # Fallback if no matching department for employees
+        if not self.fields["preparacao"].queryset.exists():
+            self.fields["preparacao"].queryset = Colaborador.objects.all().order_by("nome_completo")
+        if not self.fields["montagem"].queryset.exists():
+            self.fields["montagem"].queryset = Colaborador.objects.all().order_by("nome_completo")

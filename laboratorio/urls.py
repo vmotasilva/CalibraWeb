@@ -23,4 +23,7 @@ urlpatterns = [
     path("tratamentos/", views.tratamento_list, name="tratamento_list"),
     path("tratamentos/novo/", views.tratamento_create, name="tratamento_create"),
     path("tratamentos/<int:pk>/editar/", views.tratamento_update, name="tratamento_update"),
+    
+    # Rota para Painel de Registro de Coating
+    path("coating/painel/", views.coating_painel, name="coating_painel"),
 ]
