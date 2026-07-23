@@ -365,8 +365,8 @@ class RegistroCoating(models.Model):
     hora_entrada = models.TimeField(verbose_name="Hora de Entrada")
     hora_saida = models.TimeField(null=True, blank=True, verbose_name="Hora de Saída")
     
-    preparacao = models.ForeignKey(Colaborador, on_delete=models.PROTECT, related_name="preparacoes_coating", verbose_name="Preparação")
-    montagem = models.ForeignKey(Colaborador, on_delete=models.PROTECT, related_name="montagens_coating", verbose_name="Montagem")
+    preparacao = models.ForeignKey(Colaborador, on_delete=models.PROTECT, related_name="preparacoes_coating", verbose_name="Preparação", null=True, blank=True)
+    montagem = models.ForeignKey(Colaborador, on_delete=models.PROTECT, related_name="montagens_coating", verbose_name="Montagem", null=True, blank=True)
     
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
