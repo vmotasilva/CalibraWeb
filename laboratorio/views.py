@@ -966,11 +966,9 @@ def coating_painel(request):
     ).order_by('-hora_entrada', '-id')
     
     # Identify machines (Evaporadoras)
-    # Tenta buscar por categoria 'evaporadora', senão pega todas do laboratório ou todas.
     evaporadoras = Maquina.objects.filter(
-        Q(categoria__nome__icontains='evap') | 
-        Q(nome__icontains='evap') | 
-        Q(descricao__icontains='evap')
+        Q(categoria__nome__icontains='evaporadora') | 
+        Q(nome__icontains='evaporadora')
     ).distinct().order_by("codigo", "fabricante")
     
     if not evaporadoras.exists():
