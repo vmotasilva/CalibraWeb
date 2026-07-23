@@ -281,6 +281,16 @@ class NovoLoteCoatingForm(forms.ModelForm):
         label="Data do Registro",
         widget=forms.DateInput(attrs={"class": "form-control", "type": "date"}),
     )
+    LADO_CHOICES = [
+        ('AMBOS', 'Ambos (CC e CX)'),
+        ('CC', 'Apenas Côncavo (CC)'),
+        ('CX', 'Apenas Convexo (CX)'),
+    ]
+    lado_entrada = forms.ChoiceField(
+        choices=LADO_CHOICES,
+        label="Atribuir Entrada a",
+        widget=forms.Select(attrs={"class": "form-select"})
+    )
 
     class Meta:
         model = RegistroCoating

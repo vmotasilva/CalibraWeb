@@ -362,7 +362,7 @@ class RegistroCoating(models.Model):
     tratamento = models.ForeignKey(TratamentoAntiReflexo, on_delete=models.PROTECT, verbose_name="Tratamento")
     lado = models.CharField(max_length=2, choices=LADO_CHOICES, verbose_name="Lado da Lente")
     
-    hora_entrada = models.TimeField(verbose_name="Hora de Entrada")
+    hora_entrada = models.TimeField(null=True, blank=True, verbose_name="Hora de Entrada")
     hora_saida = models.TimeField(null=True, blank=True, verbose_name="Hora de Saída")
     
     preparacao = models.ForeignKey(Colaborador, on_delete=models.PROTECT, related_name="preparacoes_coating", verbose_name="Preparação", null=True, blank=True)
