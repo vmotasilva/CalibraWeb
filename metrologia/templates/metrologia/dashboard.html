@@ -55,8 +55,8 @@
     <!-- CABEÇALHO -->
     <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2 flex-shrink-0">
         <div class="d-flex align-items-center gap-3">
-            <button class="btn btn-light border shadow-sm" onclick="toggleSidebar()" title="Alternar Filtros">
-                <i class="bi bi-layout-sidebar" id="sidebarIcon"></i>
+            <button type="button" class="btn btn-outline-primary btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#filtrosModal">
+                <i class="bi bi-funnel"></i> Filtros
             </button>
             <div>
                 <h4 class="fw-bold text-primary mb-0">Metrologia</h4>
@@ -160,8 +160,15 @@
 
     <div class="row h-100 overflow-hidden">
         
-        <!-- SIDEBAR FILTROS -->
-        <div class="col-md-3 col-lg-2 border-end pe-3 d-flex flex-column" id="sidebar-col">
+        <!-- Modal Filtros -->
+        <div class="modal fade" id="filtrosModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content shadow-lg" style="border-radius: 14px;">
+                    <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                        <h5 class="modal-title fw-bold"><i class="bi bi-funnel me-2"></i>Filtros Avançados</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
 
             <!-- Busca e ações dos filtros (sem títulos adicionais) -->
             <div class="mb-2 flex-shrink-0">
@@ -305,11 +312,19 @@
                     </div>
                 </div>
 
+                    </div>
+                    <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; justify-content: space-between;">
+                        <button class="btn btn-sm btn-outline-secondary" type="button" onclick="limparFiltros()">Limpar Filtros</button>
+                        <button type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal">
+                            <i class="bi bi-check-circle me-1"></i>Aplicar
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- TABELA PRINCIPAL -->
-        <div class="col-md-9 col-lg-10 transition-all h-100 d-flex flex-column" id="content-col">
+        <div class="col-12 transition-all h-100 d-flex flex-column" id="content-col">
             
             <div class="d-flex justify-content-between align-items-center mb-2 flex-shrink-0">
                 <span class="badge bg-secondary bg-opacity-10 text-secondary border">
