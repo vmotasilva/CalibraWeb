@@ -18,4 +18,9 @@ urlpatterns = [
     path("categorias/<int:pk>/editar/", views.categoria_update, name="categoria_update"),
     path("dashboard/", views.dashboard_laboratorio, name="dashboard"),
     path("dashboard/pdf/", views.dashboard_laboratorio_pdf, name="dashboard_pdf"),
+    
+    # Rotas para Tratamento Antirreflexo
+    path("tratamentos/", views.tratamento_list, name="tratamento_list"),
+    path("tratamentos/novo/", views.tratamento_create, name="tratamento_create"),
+    path("tratamentos/<int:pk>/editar/", views.tratamento_update, name="tratamento_update"),
 ]

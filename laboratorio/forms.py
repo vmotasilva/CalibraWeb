@@ -2,7 +2,7 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
-from .models import CategoriaLaboratorio, OcorrenciaLaboratorio, OcorrenciaLaboratorioAnotacao
+from .models import CategoriaLaboratorio, OcorrenciaLaboratorio, OcorrenciaLaboratorioAnotacao, TratamentoAntiReflexo
 from rh.models import Colaborador
 from maquinas.models import Maquina
 
@@ -233,3 +233,13 @@ class OcorrenciaEncerramentoForm(forms.ModelForm):
 
         cleaned_data["unidade_perda_producao"] = unidade_perda
         return cleaned_data
+
+
+class TratamentoAntiReflexoForm(forms.ModelForm):
+    class Meta:
+        model = TratamentoAntiReflexo
+        fields = ["nome", "ativo"]
+        widgets = {
+            "nome": forms.TextInput(attrs={"class": "form-control", "placeholder": "Nome do tratamento..."}),
+            "ativo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }

@@ -18,8 +18,14 @@ from .forms import (
     OcorrenciaAnotacaoForm,
     OcorrenciaEncerramentoForm,
     OcorrenciaLaboratorioForm,
+    TratamentoAntiReflexoForm,
 )
-from .models import CategoriaLaboratorio, OcorrenciaLaboratorio, OcorrenciaLaboratorioAnotacao
+from .models import (
+    CategoriaLaboratorio, 
+    OcorrenciaLaboratorio, 
+    OcorrenciaLaboratorioAnotacao,
+    TratamentoAntiReflexo,
+)
 
 
 def _parse_date(value):
@@ -851,3 +857,50 @@ def dashboard_laboratorio_pdf(request):
         f'attachment; filename="dashboard_laboratorio_{data_arquivo}.pdf"'
     )
     return response
+
+
+@login_required
+def tratamento_list(request):
+    tratamentos = TratamentoAntiReflexo.objects.all()
+    return render(
+        request,
+        "laboratorio/tratamento_list.html",
+        {"tratamentos": tratamentos},
+    )
+
+
+@login_required
+def tratamento_create(request):
+    if request.method == "POST":
+        form = TratamentoAntiReflexoForm(request.POST)
+        if form.is_valid():
+            tratamento = form.save()
+            messages.success(request, f"Tratamento '{tratamento.nome}' criado com sucesso.")
+            return redirect("laboratorio:tratamento_list")
+    else:
+        form = TratamentoAntiReflexoForm()
+
+    return render(
+        request,
+        "laboratorio/tratamento_form.html",
+        {"form": form, "titulo": "Novo Tratamento Antirreflexo", "acao": "Salvar tratamento"},
+    )
+
+
+@login_required
+def tratamento_update(request, pk):
+    tratamento = get_object_or_404(TratamentoAntiReflexo, pk=pk)
+    if request.method == "POST":
+        form = TratamentoAntiReflexoForm(request.POST, instance=tratamento)
+        if form.is_valid():
+            tratamento = form.save()
+            messages.success(request, f"Tratamento '{tratamento.nome}' atualizado com sucesso.")
+            return redirect("laboratorio:tratamento_list")
+    else:
+        form = TratamentoAntiReflexoForm(instance=tratamento)
+
+    return render(
+        request,
+        "laboratorio/tratamento_form.html",
+        {"form": form, "titulo": "Editar Tratamento Antirreflexo", "acao": "Salvar alterações", "tratamento": tratamento},
+    )

@@ -291,3 +291,81 @@ class OcorrenciaLaboratorioAnotacao(models.Model):
         if not self.usuario:
             return "Usuario nao informado"
         return self.usuario.get_full_name() or self.usuario.username
+
+
+class TratamentoAntiReflexo(models.Model):
+    nome = models.CharField(max_length=150, unique=True, verbose_name="Nome do Tratamento")
+    ativo = models.BooleanField(default=True, verbose_name="Ativo")
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["nome"]
+        verbose_name = "Tratamento Antirreflexo"
+        verbose_name_plural = "Tratamentos Antirreflexo"
+
+    def __str__(self):
+        return self.nome
+
+
+class TurnoCoating(models.Model):
+    TURNO_CHOICES = [
+        ('1', 'Turno 01'),
+        ('2', 'Turno 02'),
+        ('3', 'Turno 03'),
+    ]
+    data = models.DateField(default=timezone.now, verbose_name="Data do Turno")
+    turno = models.CharField(max_length=1, choices=TURNO_CHOICES, verbose_name="Turno")
+    inicio = models.DateTimeField(verbose_name="Início do Turno")
+    fim = models.DateTimeField(null=True, blank=True, verbose_name="Fim do Turno")
+    responsavel = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Responsável pelo Fechamento",
+    )
+
+    class Meta:
+        ordering = ["-data", "-turno"]
+        verbose_name = "Turno de Coating"
+        verbose_name_plural = "Turnos de Coating"
+        unique_together = [('data', 'turno')]
+
+    def __str__(self):
+        return f"{self.get_turno_display()} - {self.data.strftime('%d/%m/%Y')}"
+
+
+class RegistroCoating(models.Model):
+    LADO_CHOICES = [
+        ('CC', 'Côncavo'),
+        ('CX', 'Convexo'),
+    ]
+    turno_coating = models.ForeignKey(
+        TurnoCoating, 
+        on_delete=models.PROTECT, 
+        related_name="registros",
+        verbose_name="Turno de Referência"
+    )
+    maquina = models.ForeignKey(Maquina, on_delete=models.PROTECT, verbose_name="Máquina")
+    lote = models.IntegerField(verbose_name="Número do Lote")
+    tratamento = models.ForeignKey(TratamentoAntiReflexo, on_delete=models.PROTECT, verbose_name="Tratamento")
+    lado = models.CharField(max_length=2, choices=LADO_CHOICES, verbose_name="Lado da Lente")
+    
+    hora_entrada = models.TimeField(verbose_name="Hora de Entrada")
+    hora_saida = models.TimeField(null=True, blank=True, verbose_name="Hora de Saída")
+    
+    preparacao = models.ForeignKey(Colaborador, on_delete=models.PROTECT, related_name="preparacoes_coating", verbose_name="Preparação")
+    montagem = models.ForeignKey(Colaborador, on_delete=models.PROTECT, related_name="montagens_coating", verbose_name="Montagem")
+    
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-turno_coating__data", "-hora_entrada", "lote"]
+        verbose_name = "Registro de Coating"
+        verbose_name_plural = "Registros de Coating"
+
+    def __str__(self):
+        return f"Lote {self.lote} - {self.maquina} ({self.get_lado_display()})"
+
