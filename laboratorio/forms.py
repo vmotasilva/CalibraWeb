@@ -276,6 +276,23 @@ class TurnoCoatingForm(forms.ModelForm):
         }
 
 
+class NovoLoteCoatingForm(forms.ModelForm):
+    class Meta:
+        model = RegistroCoating
+        fields = ["maquina", "lote", "tratamento", "hora_entrada"]
+        widgets = {
+            "maquina": forms.Select(attrs={"class": "form-select"}),
+            "lote": forms.NumberInput(attrs={"class": "form-control", "placeholder": "Ex: 12345"}),
+            "tratamento": forms.Select(attrs={"class": "form-select"}),
+            "hora_entrada": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["maquina"].queryset = Maquina.objects.order_by("codigo", "fabricante")
+        self.fields["tratamento"].queryset = TratamentoAntiReflexo.objects.filter(ativo=True).order_by("nome")
+
+
 class RegistroCoatingForm(forms.ModelForm):
     class Meta:
         model = RegistroCoating

@@ -9,7 +9,9 @@
             <p class="text-muted mb-0">Registro diário de Lotes, Limpezas e Trocas.</p>
         </div>
         <div>
-            <!-- Turno é inserido automaticamente via Regra -->
+            <button class="btn btn-primary fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#novoLoteModal">
+                <i class="bi bi-plus-circle"></i> Adicionar Lote
+            </button>
         </div>
     </div>
     
@@ -27,54 +29,37 @@
     </div>
     {% endif %}
 
-    <!-- Inserção rápida -->
-    <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header bg-white fw-bold">Novo Lote</div>
-        <div class="card-body">
-            <form method="post" class="row g-2 align-items-end">
-                {% csrf_token %}
 
-                <div class="col-md-2">
-                    <label class="form-label small mb-0">Máquina</label>
-                    {{ registro_form.maquina }}
-                </div>
-                <div class="col-md-1">
-                    <label class="form-label small mb-0">Lote</label>
-                    {{ registro_form.lote }}
-                </div>
-                <div class="col-md-1">
-                    <label class="form-label small mb-0">Lado</label>
-                    {{ registro_form.lado }}
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label small mb-0">Tratamento</label>
-                    {{ registro_form.tratamento }}
-                </div>
-                <div class="col-md-1">
-                    <label class="form-label small mb-0">Entrada</label>
-                    {{ registro_form.hora_entrada }}
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label small mb-0">Preparação</label>
-                    {{ registro_form.preparacao }}
-                </div>
-                <div class="col-md-1">
-                    <button type="submit" name="btn_salvar_registro" class="btn btn-success w-100">Adicionar</button>
-                </div>
-                <!-- Montagem e Hora Saída ficam ocultos no grid rápido ou seriam editados depois -->
-                <div class="d-none">
-                    {{ registro_form.hora_saida }}
-                    {{ registro_form.montagem }}
-                </div>
-            </form>
-        </div>
-    </div>
 
+    <style>
+        .tab-color-1 { background-color: #0d6efd !important; color: white !important; }
+        .tab-color-2 { background-color: #198754 !important; color: white !important; }
+        .tab-color-3 { background-color: #ffc107 !important; color: black !important; }
+        .tab-color-4 { background-color: #dc3545 !important; color: white !important; }
+        .tab-color-5 { background-color: #0dcaf0 !important; color: black !important; }
+        .tab-color-6 { background-color: #6c757d !important; color: white !important; }
+        .nav-tabs .nav-link.active {
+            filter: brightness(1.1);
+            border-bottom-color: transparent !important;
+            box-shadow: 0 -3px 5px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+        .nav-tabs .nav-link {
+            opacity: 0.7;
+            border-radius: 8px 8px 0 0;
+            margin-right: 4px;
+            transition: 0.2s all;
+        }
+        .nav-tabs .nav-link:hover {
+            opacity: 1;
+        }
+    </style>
     <!-- Tabela -->
-    <ul class="nav nav-tabs mb-3" id="evapTabs" role="tablist">
+    <ul class="nav nav-tabs mb-3 border-0 mt-4" id="evapTabs" role="tablist">
         {% for evap in evaporadoras %}
+        {% cycle 'tab-color-1' 'tab-color-2' 'tab-color-3' 'tab-color-4' 'tab-color-5' 'tab-color-6' as tcolor %}
         <li class="nav-item" role="presentation">
-            <button class="nav-link {% if forloop.first %}active{% endif %} fw-bold text-dark" 
+            <button class="nav-link {% if forloop.first %}active{% endif %} fw-bold {{ tcolor }}" 
                     id="evap-{{ evap.id }}-tab" data-bs-toggle="tab" 
                     data-bs-target="#evap-{{ evap.id }}-pane" type="button" role="tab"
                     onclick="document.getElementById('{{ registro_form.maquina.id_for_label }}').value = '{{ evap.id }}'">
@@ -198,5 +183,45 @@
     });
 </script>
 
+<!-- Modal Novo Lote -->
+<div class="modal fade" id="novoLoteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">Registrar Lote (CC e CX)</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">
+                        A máquina padrão está pré-selecionada de acordo com a aba ativa.<br>
+                        Os registros de lado <strong>CC</strong> e <strong>CX</strong> serão criados automaticamente.
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Máquina</label>
+                        {{ registro_form.maquina }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Lote</label>
+                        {{ registro_form.lote }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Tratamento</label>
+                        {{ registro_form.tratamento }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Entrada</label>
+                        {{ registro_form.hora_entrada }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" name="btn_salvar_registro" class="btn btn-success">Salvar Lotes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 {% endblock content %}

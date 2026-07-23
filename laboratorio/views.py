@@ -21,6 +21,7 @@ from .forms import (
     TratamentoAntiReflexoForm,
     RegraTurnoCoatingForm,
     RegistroCoatingForm,
+    NovoLoteCoatingForm,
     TurnoCoatingForm,
 )
 from django.db.models import Q
@@ -921,12 +922,12 @@ def coating_painel(request):
     # Process form submission
     if request.method == "POST":
         if "btn_salvar_registro" in request.POST:
-            registro_form = RegistroCoatingForm(request.POST)
+            registro_form = NovoLoteCoatingForm(request.POST)
             if registro_form.is_valid():
-                registro = registro_form.save(commit=False)
+                cleaned_data = registro_form.cleaned_data
                 
                 # Descobrir a regra de turno baseado na hora_entrada
-                hora_entrada = registro.hora_entrada
+                hora_entrada = cleaned_data['hora_entrada']
                 regras = RegraTurnoCoating.objects.filter(ativo=True)
                 
                 regra_encontrada = None
@@ -949,9 +950,26 @@ def coating_painel(request):
                         data=hoje,
                         regra=regra_encontrada
                     )
-                    registro.turno_coating = turno_diario
-                    registro.save()
-                    messages.success(request, "Registro adicionado com sucesso. Turno detectado automaticamente.")
+                    
+                    # Salva CC e CX casados
+                    RegistroCoating.objects.create(
+                        turno_coating=turno_diario,
+                        maquina=cleaned_data['maquina'],
+                        lote=cleaned_data['lote'],
+                        tratamento=cleaned_data['tratamento'],
+                        hora_entrada=hora_entrada,
+                        lado='CC'
+                    )
+                    RegistroCoating.objects.create(
+                        turno_coating=turno_diario,
+                        maquina=cleaned_data['maquina'],
+                        lote=cleaned_data['lote'],
+                        tratamento=cleaned_data['tratamento'],
+                        hora_entrada=hora_entrada,
+                        lado='CX'
+                    )
+                    
+                    messages.success(request, "Lote adicionado com sucesso para CC e CX. Turno detectado automaticamente.")
                     return redirect("laboratorio:coating_painel")
                 else:
                     messages.error(request, "Nenhum turno ativo encontrado para o horário de entrada informado.")
@@ -959,7 +977,7 @@ def coating_painel(request):
                 messages.error(request, "Erro ao adicionar registro. Verifique os dados inseridos.")
     
     # Initialize form for GET
-    registro_form = RegistroCoatingForm()
+    registro_form = NovoLoteCoatingForm()
     
     # Fetch today's records
     registros = RegistroCoating.objects.filter(turno_coating__data=hoje).select_related(
