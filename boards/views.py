@@ -1630,7 +1630,7 @@ def export_board_pdf_view(request, board_id):
         if card.subsecao:
             meta_info += f" | <b>Sub-sessão:</b> {card.subsecao.nome}"
             
-        prioridade_label = dict(Card.PRIORITY_CHOICES).get(card.prioridade, card.prioridade)
+        prioridade_label = dict(Card.PRIORIDADE_CHOICES).get(card.prioridade, card.prioridade)
         meta_info += f" | <b>Prioridade:</b> {prioridade_label}"
         
         resp_nomes = [r.nome_completo for r in card.responsaveis.all()]
