@@ -23,6 +23,7 @@ from .forms import (
     RegistroCoatingForm,
     TurnoCoatingForm,
 )
+from django.db.models import Q
 from .models import (
     CategoriaLaboratorio, 
     OcorrenciaLaboratorio, 
@@ -964,6 +965,23 @@ def coating_painel(request):
         'turno_coating', 'maquina', 'tratamento', 'preparacao', 'montagem'
     ).order_by('-hora_entrada', '-id')
     
+    # Identify machines (Evaporadoras)
+    # Tenta buscar por categoria 'evaporadora', senão pega todas do laboratório ou todas.
+    evaporadoras = Maquina.objects.filter(
+        Q(categoria__nome__icontains='evap') | 
+        Q(nome__icontains='evap') | 
+        Q(descricao__icontains='evap')
+    ).distinct().order_by("codigo", "fabricante")
+    
+    if not evaporadoras.exists():
+        # Fallback to all lab machines if category isn't set
+        evaporadoras = Maquina.objects.filter(setor__nome__icontains='laboratorio').order_by("codigo", "fabricante")
+        if not evaporadoras.exists():
+            evaporadoras = Maquina.objects.all().order_by("codigo", "fabricante")
+
+    # Update form queryset to only show these machines
+    registro_form.fields["maquina"].queryset = evaporadoras
+    
     # Calculate machine alerts (mock logic based on batch counts for today)
     # Ideally, this should aggregate actual active cycles.
     maquina_ciclos = {}
@@ -986,6 +1004,7 @@ def coating_painel(request):
         "registro_form": registro_form,
         "alertas_limpeza": alertas_limpeza,
         "alertas_troca": alertas_troca,
+        "evaporadoras": evaporadoras,
     }
     
     return render(request, "laboratorio/coating_painel.html", context)

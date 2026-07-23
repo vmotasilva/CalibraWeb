@@ -71,50 +71,128 @@
     </div>
 
     <!-- Tabela -->
-    <div class="card shadow-sm border-0">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover table-striped align-middle mb-0 text-center text-nowrap">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>Turno</th>
-                            <th>Máquina</th>
-                            <th>Lote</th>
-                            <th>Lado</th>
-                            <th>Tratamento</th>
-                            <th>Entrada</th>
-                            <th>Saída</th>
-                            <th>Preparação</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for reg in registros %}
-                        <tr class="{% if reg.maquina.id in alertas_limpeza %}table-warning{% elif reg.maquina.id in alertas_troca %}table-danger{% endif %}">
-                            <td>{{ reg.turno_coating.get_turno_display }}</td>
-                            <td class="fw-bold">{{ reg.maquina.codigo }}</td>
-                            <td>{{ reg.lote }}</td>
-                            <td>{{ reg.get_lado_display }}</td>
-                            <td>{{ reg.tratamento.nome }}</td>
-                            <td>{{ reg.hora_entrada|time:"H:i" }}</td>
-                            <td>{{ reg.hora_saida|time:"H:i"|default:"-" }}</td>
-                            <td>{{ reg.preparacao.nome_completo }}</td>
-                            <td>
-                                <!-- Ação futura: Marcar saída, editar etc -->
-                                <button class="btn btn-sm btn-outline-secondary">Editar</button>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="9" class="text-center text-muted py-4">Nenhum lote registrado para os turnos de hoje.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+    <ul class="nav nav-tabs mb-3" id="evapTabs" role="tablist">
+        {% for evap in evaporadoras %}
+        <li class="nav-item" role="presentation">
+            <button class="nav-link {% if forloop.first %}active{% endif %} fw-bold text-dark" 
+                    id="evap-{{ evap.id }}-tab" data-bs-toggle="tab" 
+                    data-bs-target="#evap-{{ evap.id }}-pane" type="button" role="tab"
+                    onclick="document.getElementById('{{ registro_form.maquina.id_for_label }}').value = '{{ evap.id }}'">
+                {{ evap.codigo }}
+            </button>
+        </li>
+        {% empty %}
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active fw-bold text-dark" type="button" role="tab">Geral</button>
+        </li>
+        {% endfor %}
+    </ul>
+
+    <div class="tab-content" id="evapTabsContent">
+        {% for evap in evaporadoras %}
+        <div class="tab-pane fade {% if forloop.first %}show active{% endif %}" id="evap-{{ evap.id }}-pane" role="tabpanel">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped align-middle mb-0 text-center text-nowrap">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Turno</th>
+                                    <th>Lote</th>
+                                    <th>Lado</th>
+                                    <th>Tratamento</th>
+                                    <th>Entrada</th>
+                                    <th>Saída</th>
+                                    <th>Preparação</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for reg in registros %}
+                                    {% if reg.maquina.id == evap.id %}
+                                    <tr class="{% if reg.maquina.id in alertas_limpeza %}table-warning{% elif reg.maquina.id in alertas_troca %}table-danger{% endif %}">
+                                        <td>{{ reg.turno_coating.regra.nome }}</td>
+                                        <td>{{ reg.lote }}</td>
+                                        <td>{{ reg.get_lado_display }}</td>
+                                        <td>{{ reg.tratamento.nome }}</td>
+                                        <td>{{ reg.hora_entrada|time:"H:i" }}</td>
+                                        <td>{{ reg.hora_saida|time:"H:i"|default:"-" }}</td>
+                                        <td>{{ reg.preparacao.nome_completo }}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-secondary">Editar</button>
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
+        {% empty %}
+        <!-- Fallback if no evaporadoras -->
+        <div class="tab-pane fade show active" id="geral-pane" role="tabpanel">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped align-middle mb-0 text-center text-nowrap">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Turno</th>
+                                    <th>Máquina</th>
+                                    <th>Lote</th>
+                                    <th>Lado</th>
+                                    <th>Tratamento</th>
+                                    <th>Entrada</th>
+                                    <th>Saída</th>
+                                    <th>Preparação</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for reg in registros %}
+                                <tr class="{% if reg.maquina.id in alertas_limpeza %}table-warning{% elif reg.maquina.id in alertas_troca %}table-danger{% endif %}">
+                                    <td>{{ reg.turno_coating.regra.nome }}</td>
+                                    <td class="fw-bold">{{ reg.maquina.codigo }}</td>
+                                    <td>{{ reg.lote }}</td>
+                                    <td>{{ reg.get_lado_display }}</td>
+                                    <td>{{ reg.tratamento.nome }}</td>
+                                    <td>{{ reg.hora_entrada|time:"H:i" }}</td>
+                                    <td>{{ reg.hora_saida|time:"H:i"|default:"-" }}</td>
+                                    <td>{{ reg.preparacao.nome_completo }}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-secondary">Editar</button>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="9" class="text-center text-muted py-4">Nenhum lote registrado para os turnos de hoje.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
     </div>
 </div>
+<!-- Auto-selecionar evaporadora no form baseado na aba ativa -->
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Ao carregar, ver se tem uma aba ativa e setar a máquina
+        let activeTab = document.querySelector("#evapTabs .nav-link.active");
+        if (activeTab && activeTab.id.startsWith("evap-")) {
+            let evapId = activeTab.id.split("-")[1];
+            let maquinaSelect = document.getElementById("{{ registro_form.maquina.id_for_label }}");
+            if (maquinaSelect) {
+                maquinaSelect.value = evapId;
+            }
+        }
+    });
+</script>
 
 
 {% endblock content %}
