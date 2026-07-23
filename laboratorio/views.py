@@ -921,23 +921,43 @@ def coating_painel(request):
         if "btn_salvar_registro" in request.POST:
             registro_form = RegistroCoatingForm(request.POST)
             if registro_form.is_valid():
-                registro_form.save()
-                messages.success(request, "Registro adicionado com sucesso.")
-                return redirect("laboratorio:coating_painel")
+                registro = registro_form.save(commit=False)
+                
+                # Descobrir a regra de turno baseado na hora_entrada
+                hora_entrada = registro.hora_entrada
+                regras = RegraTurnoCoating.objects.filter(ativo=True)
+                
+                regra_encontrada = None
+                for regra in regras:
+                    # Lógica simples de verificação se a hora está entre inicio e fim
+                    # Pode precisar de ajustes se o turno virar a meia noite
+                    if regra.hora_inicio <= regra.hora_fim:
+                        if regra.hora_inicio <= hora_entrada <= regra.hora_fim:
+                            regra_encontrada = regra
+                            break
+                    else:
+                        # Turno vira a meia noite (ex: 22:00 as 06:00)
+                        if hora_entrada >= regra.hora_inicio or hora_entrada <= regra.hora_fim:
+                            regra_encontrada = regra
+                            break
+                            
+                if regra_encontrada:
+                    # Pega ou cria o Turno Diário para a data e regra
+                    turno_diario, created = TurnoCoating.objects.get_or_create(
+                        data=hoje,
+                        regra=regra_encontrada
+                    )
+                    registro.turno_coating = turno_diario
+                    registro.save()
+                    messages.success(request, "Registro adicionado com sucesso. Turno detectado automaticamente.")
+                    return redirect("laboratorio:coating_painel")
+                else:
+                    messages.error(request, "Nenhum turno ativo encontrado para o horário de entrada informado.")
             else:
                 messages.error(request, "Erro ao adicionar registro. Verifique os dados inseridos.")
-        elif "btn_salvar_turno" in request.POST:
-            turno_form = TurnoCoatingForm(request.POST)
-            if turno_form.is_valid():
-                turno_form.save()
-                messages.success(request, "Turno registrado com sucesso.")
-                return redirect("laboratorio:coating_painel")
-            else:
-                messages.error(request, "Erro ao registrar turno.")
     
-    # Initialize forms for GET
+    # Initialize form for GET
     registro_form = RegistroCoatingForm()
-    turno_form = TurnoCoatingForm(initial={'data': hoje})
     
     # Fetch today's records
     registros = RegistroCoating.objects.filter(turno_coating__data=hoje).select_related(
@@ -964,7 +984,6 @@ def coating_painel(request):
     context = {
         "registros": registros,
         "registro_form": registro_form,
-        "turno_form": turno_form,
         "alertas_limpeza": alertas_limpeza,
         "alertas_troca": alertas_troca,
     }
@@ -991,7 +1010,7 @@ def regra_turno_create(request):
     
     return render(
         request, 
-        "laboratorio/tratamento_form.html", 
+        "laboratorio/regra_turno_form.html", 
         {"form": form, "titulo": "Nova Regra de Turno", "acao": "Salvar regra"}
     )
 
@@ -1010,6 +1029,6 @@ def regra_turno_update(request, pk):
         
     return render(
         request, 
-        "laboratorio/tratamento_form.html", 
+        "laboratorio/regra_turno_form.html", 
         {"form": form, "titulo": "Editar Regra de Turno", "acao": "Salvar alterações"}
     )

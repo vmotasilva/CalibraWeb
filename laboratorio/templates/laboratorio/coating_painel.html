@@ -9,7 +9,7 @@
             <p class="text-muted mb-0">Registro diário de Lotes, Limpezas e Trocas.</p>
         </div>
         <div>
-            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#turnoModal">Registrar Turno</button>
+            <!-- Turno é inserido automaticamente via Regra -->
         </div>
     </div>
     
@@ -33,10 +33,7 @@
         <div class="card-body">
             <form method="post" class="row g-2 align-items-end">
                 {% csrf_token %}
-                <div class="col-md-2">
-                    <label class="form-label small mb-0">Turno Ref.</label>
-                    {{ registro_form.turno_coating }}
-                </div>
+
                 <div class="col-md-2">
                     <label class="form-label small mb-0">Máquina</label>
                     {{ registro_form.maquina }}
@@ -119,36 +116,5 @@
     </div>
 </div>
 
-<!-- Modal Turno -->
-<div class="modal fade" id="turnoModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form method="post">
-                {% csrf_token %}
-                <div class="modal-header">
-                    <h5 class="modal-title">Registrar Turno</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label>Data</label>
-                        {{ turno_form.data }}
-                    </div>
-                    <div class="mb-3">
-                        <label>Regra do Turno</label>
-                        {{ turno_form.regra }}
-                    </div>
-                    <div class="mb-3">
-                        <label>Responsável</label>
-                        {{ turno_form.responsavel }}
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" name="btn_salvar_turno" class="btn btn-primary">Salvar Turno</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+
 {% endblock content %}

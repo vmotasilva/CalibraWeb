@@ -280,11 +280,10 @@ class RegistroCoatingForm(forms.ModelForm):
     class Meta:
         model = RegistroCoating
         fields = [
-            "turno_coating", "maquina", "lote", "tratamento", "lado", 
+            "maquina", "lote", "tratamento", "lado", 
             "hora_entrada", "hora_saida", "preparacao", "montagem"
         ]
         widgets = {
-            "turno_coating": forms.Select(attrs={"class": "form-select"}),
             "maquina": forms.Select(attrs={"class": "form-select"}),
             "lote": forms.NumberInput(attrs={"class": "form-control", "placeholder": "Lote..."}),
             "tratamento": forms.Select(attrs={"class": "form-select"}),
@@ -297,7 +296,6 @@ class RegistroCoatingForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["turno_coating"].queryset = TurnoCoating.objects.order_by("-data", "regra__hora_inicio")
         self.fields["maquina"].queryset = Maquina.objects.order_by("codigo", "fabricante")
         self.fields["tratamento"].queryset = TratamentoAntiReflexo.objects.filter(ativo=True).order_by("nome")
         self.fields["preparacao"].queryset = Colaborador.objects.filter(setor__nome__icontains="laboratorio").order_by("nome_completo")
