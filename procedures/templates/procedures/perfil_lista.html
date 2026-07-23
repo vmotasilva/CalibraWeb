@@ -25,52 +25,51 @@
             </span>
             {% endif %}
         </div>
-        <div>
-            <div class="btn-group me-2" role="group">
-                <div class="dropdown">
-                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="perfilActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-three-dots-vertical"></i> Ações
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="perfilActionsDropdown">
-                        {% if can_importar_estrutura %}
-                        <li>
-                            <a href="{% url 'procedures:importar_estrutura' %}" class="dropdown-item" title="Importação completa de perfis, grupos, subgrupos e colaboradores">
-                                <i class="bi bi-file-earmark-excel me-2 text-success"></i> Importar Estrutura
-                            </a>
-                        </li>
-                        {% endif %}
-                        {% if can_importar_perfis %}
-                        <li>
-                            <a href="{% url 'procedures:importar_perfis' %}" class="dropdown-item" title="Importação simples - apenas perfis">
-                                <i class="bi bi-upload me-2 text-success"></i> Importar Perfis
-                            </a>
-                        </li>
-                        {% endif %}
-                        {% if can_exportar_estrutura %}
-                        <li>
-                            <a href="{% url 'procedures:exportar_estrutura' %}" class="dropdown-item" title="Exporta todos os perfis, grupos, subgrupos e procedimentos">
-                                <i class="bi bi-download me-2 text-info"></i> Exportar Estrutura
-                            </a>
-                        </li>
-                        {% endif %}
-                    </ul>
-                </div>
-            </div>
-            <div class="btn-group" role="group">
-                {% if can_deletar_perfis_em_massa %}
-                <button class="btn btn-sm btn-outline-danger d-none" id="deleteSelectedBtn" onclick="deleteSelected()">
-                    <i class="bi bi-trash"></i> Deletar Selecionados
+        <div class="d-flex gap-2">
+            <div class="dropdown">
+                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="perfilActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-three-dots-vertical"></i> Ações
                 </button>
-                {% endif %}
-                <button class="btn btn-sm btn-outline-secondary" onclick="limparFiltros()">
-                    <i class="bi bi-arrow-counterclockwise"></i> Limpar
-                </button>
-                {% if can_novo_perfil %}
-                <a href="{% url 'procedures:novo_perfil' %}" class="btn btn-primary">
-                    <i class="bi bi-plus-circle"></i> Novo Perfil
-                </a>
-                {% endif %}
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="perfilActionsDropdown">
+                    {% if can_importar_estrutura %}
+                    <li>
+                        <a href="{% url 'procedures:importar_estrutura' %}" class="dropdown-item" title="Importação completa de perfis, grupos, subgrupos e colaboradores">
+                            <i class="bi bi-file-earmark-excel me-2 text-success"></i> Importar Estrutura
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% if can_importar_perfis %}
+                    <li>
+                        <a href="{% url 'procedures:importar_perfis' %}" class="dropdown-item" title="Importação simples - apenas perfis">
+                            <i class="bi bi-upload me-2 text-success"></i> Importar Perfis
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% if can_exportar_estrutura %}
+                    <li>
+                        <a href="{% url 'procedures:exportar_estrutura' %}" class="dropdown-item" title="Exporta todos os perfis, grupos, subgrupos e procedimentos">
+                            <i class="bi bi-download me-2 text-info"></i> Exportar Estrutura
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
             </div>
+            
+            {% if can_deletar_perfis_em_massa %}
+            <button class="btn btn-sm btn-outline-danger d-none" id="deleteSelectedBtn" onclick="deleteSelected()">
+                <i class="bi bi-trash"></i> Deletar Selecionados
+            </button>
+            {% endif %}
+            
+            <button class="btn btn-sm btn-outline-secondary" onclick="limparFiltros()">
+                <i class="bi bi-arrow-counterclockwise"></i> Limpar
+            </button>
+            
+            {% if can_novo_perfil %}
+            <a href="{% url 'procedures:novo_perfil' %}" class="btn btn-primary btn-sm">
+                <i class="bi bi-plus-circle"></i> Novo Perfil
+            </a>
+            {% endif %}
         </div>
     </div>
 
