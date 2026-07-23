@@ -55,9 +55,9 @@
         }
     </style>
     <!-- Tabela -->
-    <ul class="nav nav-tabs mb-3 border-0 mt-4" id="evapTabs" role="tablist">
+    <ul class="nav nav-tabs mb-0 border-bottom-0 mt-4 px-2" id="evapTabs" role="tablist">
         {% for evap in evaporadoras %}
-        {% cycle 'tab-color-1' 'tab-color-2' 'tab-color-3' 'tab-color-4' 'tab-color-5' 'tab-color-6' as tcolor %}
+        {% cycle 'tab-color-1' 'tab-color-2' 'tab-color-3' 'tab-color-4' 'tab-color-5' 'tab-color-6' as tcolor silent %}
         <li class="nav-item" role="presentation">
             <button class="nav-link {% if forloop.first %}active{% endif %} fw-bold {{ tcolor }}" 
                     id="evap-{{ evap.id }}-tab" data-bs-toggle="tab" 
@@ -76,7 +76,7 @@
     <div class="tab-content" id="evapTabsContent">
         {% for evap in evaporadoras %}
         <div class="tab-pane fade {% if forloop.first %}show active{% endif %}" id="evap-{{ evap.id }}-pane" role="tabpanel">
-            <div class="card shadow-sm border-0">
+            <div class="card shadow-sm border" style="border-top-left-radius: 0; border-top-right-radius: 0;">
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-hover table-striped align-middle mb-0 text-center text-nowrap">
@@ -120,7 +120,7 @@
         {% empty %}
         <!-- Fallback if no evaporadoras -->
         <div class="tab-pane fade show active" id="geral-pane" role="tabpanel">
-            <div class="card shadow-sm border-0">
+            <div class="card shadow-sm border" style="border-top-left-radius: 0; border-top-right-radius: 0;">
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-hover table-striped align-middle mb-0 text-center text-nowrap">
