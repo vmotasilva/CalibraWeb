@@ -33,6 +33,7 @@ from .models import (
     TurnoCoating,
     RegistroCoating,
 )
+from maquinas.models import Maquina
 
 
 def _parse_date(value):
