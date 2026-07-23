@@ -226,25 +226,11 @@
                 <div class="d-flex flex-column flex-xl-row justify-content-between align-items-xl-center gap-3 mb-4">
                     <h5 class="fw-bold mb-0"><i class="bi bi-table text-primary me-2"></i>Geral de Ações e Atividades</h5>
                     <!-- Filtros na Tabela -->
+                    <!-- Botão Filtros -->
                     <div class="d-flex flex-wrap gap-2 align-items-center">
-                        <select id="actionsFilterBoard" class="form-select form-select-sm" style="width: 170px;" onchange="filterActionsTableView()">
-                            <option value="">Quadros: Todos</option>
-                            {% for b in quadros_list %}
-                            <option value="{{ b.nome }}">{{ b.nome }}</option>
-                            {% endfor %}
-                        </select>
-                        <select id="actionsFilterPrior" class="form-select form-select-sm" style="width: 140px;" onchange="filterActionsTableView()">
-                            <option value="">Prioridade: Todas</option>
-                            <option value="Alta">Alta</option>
-                            <option value="Média">Média</option>
-                            <option value="Baixa">Baixa</option>
-                        </select>
-                        <select id="actionsFilterResp" class="form-select form-select-sm" style="width: 170px;" onchange="filterActionsTableView()">
-                            <option value="">Responsável: Todos</option>
-                            {% for c in todos_colaboradores %}
-                            <option value="{{ c.nome_completo }}">{{ c.nome_completo }}</option>
-                            {% endfor %}
-                        </select>
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#dashboardFiltersModal" title="Filtros Avançados">
+                            <i class="bi bi-funnel"></i> Filtros
+                        </button>
                         <div class="input-group input-group-sm" style="max-width: 250px;">
                             <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
                             <input type="search" id="actionsSearchInput" class="form-control border-start-0" placeholder="Buscar ações/tarefas..." oninput="filterActionsTableView()" readonly onfocus="this.removeAttribute('readonly');" autocomplete="off">
@@ -433,6 +419,64 @@
                     <button type="submit" class="btn btn-primary px-4" style="border-radius: 8px;">Criar Quadro</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Filtros do Dashboard -->
+<div class="modal fade" id="dashboardFiltersModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg" style="border-radius: 14px;">
+            <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                <h5 class="modal-title fw-bold"><i class="bi bi-funnel me-2"></i>Filtros Avançados</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row g-3">
+                    <div class="col-md-12">
+                        <label class="form-label text-muted small mb-1 fw-bold">Quadro</label>
+                        <select id="actionsFilterBoard" class="form-select form-select-sm" onchange="filterActionsTableView()">
+                            <option value="">Quadros: Todos</option>
+                            {% for b in quadros_list %}
+                            <option value="{{ b.nome }}">{{ b.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small mb-1 fw-bold">Prioridade</label>
+                        <select id="actionsFilterPrior" class="form-select form-select-sm" onchange="filterActionsTableView()">
+                            <option value="">Prioridade: Todas</option>
+                            <option value="Alta">Alta</option>
+                            <option value="Média">Média</option>
+                            <option value="Baixa">Baixa</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small mb-1 fw-bold">Responsável</label>
+                        <select id="actionsFilterResp" class="form-select form-select-sm" onchange="filterActionsTableView()">
+                            <option value="">Responsável: Todos</option>
+                            {% for c in todos_colaboradores %}
+                            <option value="{{ c.nome_completo }}">{{ c.nome_completo }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; justify-content: space-between;">
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="
+                    document.getElementById('actionsFilterBoard').value='';
+                    document.getElementById('actionsFilterPrior').value='';
+                    document.getElementById('actionsFilterResp').value='';
+                    filterActionsTableView();
+                ">
+                    <i class="bi bi-x-circle me-1"></i>Limpar
+                </button>
+                <div>
+                    <button type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal">
+                        Concluído
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 </div>

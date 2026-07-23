@@ -482,123 +482,72 @@
                         <i class="bi bi-plus-lg me-1"></i>Nova Tarefa
                     </button>
                     {% endif %}
-                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#boardLabelsModal" title="Gerenciar Etiquetas do Quadro">
-                        <i class="bi bi-tags"></i>
-                    </button>
-                    <button type="button" class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#boardLinksModal" title="Links Úteis do Quadro">
-                        <i class="bi bi-link-45deg"></i> Links Úteis
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm text-warning border-warning" data-bs-toggle="modal" data-bs-target="#archivedColumnsModal" title="Colunas Arquivadas">
-                        <i class="bi bi-archive-fill"></i> Colunas Arquivadas
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#boardConfigModal" title="Configurar Quadro">
-                        <i class="bi bi-gear"></i>
-                    </button>
-                    {% if board.criado_por == user.colaborador or user.is_superuser %}
-                    
-                        {% if board.arquivado %}
-                        <form action="{% url 'boards:unarchive_board' board.id %}" method="POST" class="d-inline">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-outline-success btn-sm" title="Reabrir Quadro">
-                                <i class="bi bi-box-arrow-up"></i> Reabrir
-                            </button>
-                        </form>
-                        {% else %}
-                        <form action="{% url 'boards:archive_board' board.id %}" method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja encerrar e arquivar este quadro? Ele não aparecerá mais na visão principal do painel.');">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-outline-warning btn-sm" title="Encerrar/Arquivar Quadro">
-                                <i class="bi bi-archive"></i> Encerrar
-                            </button>
-                        </form>
-                        {% endif %}
-                    {% endif %}
+                    <!-- Menu Dropdown de Ações -->
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="boardActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-three-dots-vertical"></i> Ações
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="boardActionsDropdown">
+                            <li>
+                                <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#boardLabelsModal">
+                                    <i class="bi bi-tags me-2 text-secondary"></i>Gerenciar Etiquetas
+                                </button>
+                            </li>
+                            <li>
+                                <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#boardLinksModal">
+                                    <i class="bi bi-link-45deg me-2 text-info"></i>Links Úteis
+                                </button>
+                            </li>
+                            <li>
+                                <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#archivedColumnsModal">
+                                    <i class="bi bi-archive-fill me-2 text-warning"></i>Colunas Arquivadas
+                                </button>
+                            </li>
+                            <li>
+                                <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#boardConfigModal">
+                                    <i class="bi bi-gear me-2 text-secondary"></i>Configurar Quadro
+                                </button>
+                            </li>
+                            <li>
+                                <button class="dropdown-item" type="button" onclick="exportFilteredTasksPDF()">
+                                    <i class="bi bi-file-earmark-pdf me-2 text-danger"></i>Exportar PDF
+                                </button>
+                            </li>
+                            
+                            {% if board.criado_por == user.colaborador or user.is_superuser %}
+                            <li><hr class="dropdown-divider"></li>
+                                {% if board.arquivado %}
+                                <li>
+                                    <form action="{% url 'boards:unarchive_board' board.id %}" method="POST" class="d-inline w-100">
+                                        {% csrf_token %}
+                                        <button type="submit" class="dropdown-item text-success">
+                                            <i class="bi bi-box-arrow-up me-2"></i>Reabrir Quadro
+                                        </button>
+                                    </form>
+                                </li>
+                                {% else %}
+                                <li>
+                                    <form action="{% url 'boards:archive_board' board.id %}" method="POST" class="d-inline w-100" onsubmit="return confirm('Tem certeza que deseja encerrar e arquivar este quadro? Ele não aparecerá mais na visão principal do painel.');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="dropdown-item text-warning">
+                                            <i class="bi bi-archive me-2"></i>Encerrar Quadro
+                                        </button>
+                                    </form>
+                                </li>
+                                {% endif %}
+                            {% endif %}
+                        </ul>
+                    </div>
                 </div>
             </div>
 
             <!-- Linha 2: Barra de Filtros Globais (Top) -->
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mt-3 pt-3 border-top">
                 <div class="d-flex flex-wrap gap-2 align-items-center">
-                    <!-- Filtro de Período -->
-                    <div class="input-group input-group-sm" style="max-width: 170px;">
-                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-filter"></i></span>
-                        <select class="form-select border-start-0" id="periodFilter" onchange="filterByPeriod(this.value)">
-                            <option value="tudo" {% if periodo == 'tudo' or not periodo %}selected{% endif %}>Tudo</option>
-                            <option value="hoje" {% if periodo == 'hoje' %}selected{% endif %}>Hoje</option>
-                            <option value="semana" {% if periodo == 'semana' %}selected{% endif %}>Esta Semana</option>
-                            <option value="mes" {% if periodo == 'mes' %}selected{% endif %}>Este Mês</option>
-                            <option value="ano" {% if periodo == 'ano' %}selected{% endif %}>Este Ano</option>
-                        </select>
-                    </div>
-
-                    <!-- Filtro por Colunas -->
-                    <select id="globalFilterCol" class="form-select form-select-sm" style="width: 155px;" onchange="applyGlobalFilters()">
-                        <option value="">Colunas: Todas</option>
-                        {% for col in colunas %}
-                        <option value="{{ col.nome }}">{{ col.nome }}</option>
-                        {% endfor %}
-                    </select>
-
-                    <!-- Filtro por Prioridade -->
-                    <select id="globalFilterPrior" class="form-select form-select-sm" style="width: 145px;" onchange="applyGlobalFilters()">
-                        <option value="">Prioridade: Todas</option>
-                        <option value="Alta">Alta</option>
-                        <option value="Média">Média</option>
-                        <option value="Baixa">Baixa</option>
-                    </select>
-
-                    <!-- Filtro por Responsável -->
-                    <select id="globalFilterResp" class="form-select form-select-sm" style="width: 175px;" onchange="applyGlobalFilters()">
-                        <option value="">Responsável: Todos</option>
-                        <option value="__sem_responsavel__">Sem Responsável</option>
-                        {% for c in colaboradores_com_tarefas %}
-                        <option value="{{ c.nome_completo }}">{{ c.nome_completo }}</option>
-                        {% endfor %}
-                    </select>
-
-                    <!-- Filtro por Etiqueta -->
-                    <select id="globalFilterLabel" class="form-select form-select-sm" style="width: 155px;" onchange="applyGlobalFilters()">
-                        <option value="">Etiqueta: Todas</option>
-                        {% for label in board.etiquetas.all %}
-                        <option value="{{ label.nome }}">{{ label.nome }}</option>
-                        {% endfor %}
-                    </select>
-
-                    <!-- Filtro por Sub-sessão -->
-                    <select id="globalFilterSub" class="form-select form-select-sm" style="width: 170px;" onchange="applyGlobalFilters()">
-                        <option value="">Sub-sessão: Todas</option>
-                        <option value="__sem_subsecao__">Sem Sub-sessão</option>
-                        {% for nome in subsecoes_unicas %}
-                        <option value="{{ nome }}">{{ nome }}</option>
-                        {% endfor %}
-                    </select>
-
-                    <!-- Filtro por Status -->
-                    <select id="globalFilterStatus" class="form-select form-select-sm" style="width: 165px;" onchange="applyGlobalFilters()">
-                        <option value="">Status: Todos</option>
-                        <option value="andamento">Status: Em Andamento</option>
-                        <option value="concluido">Status: Concluídas</option>
-                    </select>
-
-                    <!-- Botão Limpar Filtros -->
-                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearAllFilters()" title="Limpar todos os filtros">
-                        <i class="bi bi-x-circle me-1"></i>Limpar
+                    <!-- Botão Filtros -->
+                    <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#advancedFiltersModal" title="Filtros Avançados">
+                        <i class="bi bi-funnel"></i> Filtros
                     </button>
-
-                    <!-- Botão Reaplicar Filtros -->
-                    <button type="button" class="btn btn-sm btn-outline-primary ms-1" onclick="applyGlobalFilters()" title="Reaplicar filtros atuais">
-                        <i class="bi bi-arrow-clockwise me-1"></i>Reaplicar
-                    </button>
-
-                    <!-- Botão Exportar PDF -->
-                    <button type="button" class="btn btn-sm btn-outline-danger ms-1" onclick="exportFilteredTasksPDF()" title="Exportar as tarefas visíveis para PDF">
-                        <i class="bi bi-file-earmark-pdf me-1"></i>Exportar PDF
-                    </button>
-
-                    <!-- Flag Ocultar Colunas Vazias -->
-                    <div class="form-check form-switch ms-2 mt-1" title="Ocultar colunas que ficarem sem cartões visíveis">
-                        <input class="form-check-input" type="checkbox" id="hideEmptyColumnsFlag" onchange="applyGlobalFilters()">
-                        <label class="form-check-label text-muted small" style="user-select: none; cursor: pointer;" for="hideEmptyColumnsFlag">Ocultar colunas vazias</label>
-                    </div>
                 </div>
 
                 <!-- Campo de Busca Global -->
@@ -1471,6 +1420,106 @@
                     <button type="submit" class="btn btn-primary px-4">Salvar Configurações</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Filtros Avançados -->
+<div class="modal fade" id="advancedFiltersModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg" style="border-radius: 14px;">
+            <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                <h5 class="modal-title fw-bold"><i class="bi bi-funnel me-2"></i>Filtros Avançados</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small mb-1 fw-bold">Período</label>
+                        <select class="form-select form-select-sm" id="periodFilter" onchange="filterByPeriod(this.value)">
+                            <option value="tudo" {% if periodo == 'tudo' or not periodo %}selected{% endif %}>Tudo</option>
+                            <option value="hoje" {% if periodo == 'hoje' %}selected{% endif %}>Hoje</option>
+                            <option value="semana" {% if periodo == 'semana' %}selected{% endif %}>Esta Semana</option>
+                            <option value="mes" {% if periodo == 'mes' %}selected{% endif %}>Este Mês</option>
+                            <option value="ano" {% if periodo == 'ano' %}selected{% endif %}>Este Ano</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small mb-1 fw-bold">Coluna</label>
+                        <select id="globalFilterCol" class="form-select form-select-sm" onchange="applyGlobalFilters()">
+                            <option value="">Colunas: Todas</option>
+                            {% for col in colunas %}
+                            <option value="{{ col.nome }}">{{ col.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small mb-1 fw-bold">Prioridade</label>
+                        <select id="globalFilterPrior" class="form-select form-select-sm" onchange="applyGlobalFilters()">
+                            <option value="">Prioridade: Todas</option>
+                            <option value="Alta">Alta</option>
+                            <option value="Média">Média</option>
+                            <option value="Baixa">Baixa</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small mb-1 fw-bold">Responsável</label>
+                        <select id="globalFilterResp" class="form-select form-select-sm" onchange="applyGlobalFilters()">
+                            <option value="">Responsável: Todos</option>
+                            <option value="__sem_responsavel__">Sem Responsável</option>
+                            {% for c in colaboradores_com_tarefas %}
+                            <option value="{{ c.nome_completo }}">{{ c.nome_completo }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small mb-1 fw-bold">Etiqueta</label>
+                        <select id="globalFilterLabel" class="form-select form-select-sm" onchange="applyGlobalFilters()">
+                            <option value="">Etiqueta: Todas</option>
+                            {% for label in board.etiquetas.all %}
+                            <option value="{{ label.nome }}">{{ label.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small mb-1 fw-bold">Sub-sessão</label>
+                        <select id="globalFilterSub" class="form-select form-select-sm" onchange="applyGlobalFilters()">
+                            <option value="">Sub-sessão: Todas</option>
+                            <option value="__sem_subsecao__">Sem Sub-sessão</option>
+                            {% for nome in subsecoes_unicas %}
+                            <option value="{{ nome }}">{{ nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small mb-1 fw-bold">Status</label>
+                        <select id="globalFilterStatus" class="form-select form-select-sm" onchange="applyGlobalFilters()">
+                            <option value="">Status: Todos</option>
+                            <option value="andamento">Status: Em Andamento</option>
+                            <option value="concluido">Status: Concluídas</option>
+                        </select>
+                    </div>
+                    <div class="col-12 mt-4">
+                        <div class="form-check form-switch bg-light p-2 rounded border" title="Ocultar colunas que ficarem sem cartões visíveis">
+                            <input class="form-check-input ms-0 me-3" type="checkbox" id="hideEmptyColumnsFlag" onchange="applyGlobalFilters()">
+                            <label class="form-check-label text-muted small fw-bold" style="user-select: none; cursor: pointer; padding-top: 2px;" for="hideEmptyColumnsFlag">Ocultar colunas vazias</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; justify-content: space-between;">
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearAllFilters()">
+                    <i class="bi bi-x-circle me-1"></i>Limpar
+                </button>
+                <div>
+                    <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="applyGlobalFilters()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Atualizar
+                    </button>
+                    <button type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal">
+                        Concluído
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
