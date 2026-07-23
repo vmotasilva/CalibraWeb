@@ -5,12 +5,21 @@
 {% block header_title %}Avaliação de Eficácia de Treinamentos{% endblock %}
 
 {% block header_actions %}
-<div class="d-flex align-items-center gap-2">
-    <a href="{% url 'procedures:avaliacao_eficacia_export_excel' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-success btn-sm fw-semibold">
-        <i class="bi bi-file-earmark-excel"></i> Exportar Excel
-    </a>
-    <div class="text-muted small d-none d-md-block">
+<div class="d-flex flex-wrap gap-2 justify-content-end align-items-center">
+    <div class="text-muted small d-none d-md-block me-2">
         <i class="bi bi-info-circle"></i> Controle de autoavaliações de procedimentos críticos aplicadas por líderes a partir de 30 dias.
+    </div>
+    <div class="dropdown">
+        <button class="btn btn-outline-secondary dropdown-toggle btn-sm" type="button" id="avaliacaoActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-three-dots-vertical"></i> Ações
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="avaliacaoActionsDropdown">
+            <li>
+                <a href="{% url 'procedures:avaliacao_eficacia_export_excel' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}" class="dropdown-item">
+                    <i class="bi bi-file-earmark-excel me-2 text-success"></i> Exportar Excel
+                </a>
+            </li>
+        </ul>
     </div>
 </div>
 {% endblock %}
@@ -111,97 +120,116 @@
 </div>
 
 <!-- Filtros de Busca -->
-<div class="card shadow-sm border-0 mb-4">
-    <div class="card-header bg-white py-3">
-        <h6 class="mb-0 fw-bold"><i class="bi bi-funnel"></i> Filtros de Acompanhamento</h6>
-    </div>
-    <div class="card-body">
-        <form method="GET" class="row g-3">
-            <div class="col-md-3">
-                <label class="form-label small fw-semibold">Buscar por Colaborador ou Procedimento</label>
-                <input type="text" name="q" class="form-control form-control-sm" placeholder="Nome, código ou título" value="{{ busca }}">
-            </div>
-            <div class="col-md-3">
-                <label class="form-label small fw-semibold">Líder</label>
-                <select name="lider" class="form-select form-select-sm">
-                    <option value="">-- Todos --</option>
-                    {% for l in lideres %}
-                        <option value="{{ l.id }}" {% if lider_id == l.id|stringformat:"s" %}selected{% endif %}>{{ l.nome_completo }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label small fw-semibold">Setor</label>
-                <select name="setor" class="form-select form-select-sm">
-                    <option value="">-- Todos --</option>
-                    {% for s in setores %}
-                        <option value="{{ s.id }}" {% if setor_id == s.id|stringformat:"s" %}selected{% endif %}>{{ s.nome }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label small fw-semibold">Status Eficácia</label>
-                <select name="status" class="form-select form-select-sm">
-                    <option value="">-- Todos --</option>
-                    <option value="PENDENTE" {% if status_filtro == 'PENDENTE' %}selected{% endif %}>Pendente (>= 30 dias)</option>
-                    <option value="CARENCIA" {% if status_filtro == 'CARENCIA' %}selected{% endif %}>Carência (< 30 dias)</option>
-                    <option value="EFICAZ" {% if status_filtro == 'EFICAZ' %}selected{% endif %}>Eficaz</option>
-                    <option value="INEFICAZ" {% if status_filtro == 'INEFICAZ' %}selected{% endif %}>Ineficaz</option>
-                    <option value="NAO_APLICA" {% if status_filtro == 'NAO_APLICA' %}selected{% endif %}>Não se Aplica</option>
-                </select>
-            </div>
-            
-            <div class="col-md-3">
-                <label class="form-label small fw-semibold">Matriz de Procedimento</label>
-                <select name="matriz" class="form-select form-select-sm">
-                    <option value="">-- Todas --</option>
-                    {% for m in matrizes_opcoes %}
-                        <option value="{{ m.nome }}" {% if matriz_filtro == m.nome %}selected{% endif %}>{{ m.nome }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label small fw-semibold">Dias Decorridos</label>
-                <select name="dias_decorridos" class="form-select form-select-sm">
-                    <option value="">-- Todos --</option>
-                    <option value="menos_30" {% if dias_decorridos_filtro == 'menos_30' %}selected{% endif %}>Carência (< 30 dias)</option>
-                    <option value="30_60" {% if dias_decorridos_filtro == '30_60' %}selected{% endif %}>30 a 60 dias</option>
-                    <option value="60_90" {% if dias_decorridos_filtro == '60_90' %}selected{% endif %}>60 a 90 dias</option>
-                    <option value="90_mais" {% if dias_decorridos_filtro == '90_mais' %}selected{% endif %}>Mais de 90 dias</option>
-                </select>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label small fw-semibold">Vínculo ao Perfil</label>
-                <select name="vinculo" class="form-select form-select-sm">
-                    <option value="">-- Todos --</option>
-                    <option value="COM_VINCULO" {% if vinculo_filtro == 'COM_VINCULO' %}selected{% endif %}>Com Vínculo ao Perfil</option>
-                    <option value="SEM_VINCULO" {% if vinculo_filtro == 'SEM_VINCULO' %}selected{% endif %}>Sem Vínculo ao Perfil</option>
-                </select>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label small fw-semibold">Treinamento Posterior</label>
-                <select name="posterior" class="form-select form-select-sm">
-                    <option value="">-- Todos --</option>
-                    <option value="COM_POSTERIOR" {% if posterior_filtro == 'COM_POSTERIOR' %}selected{% endif %}>Com novo treinamento em aberto</option>
-                    <option value="SEM_POSTERIOR" {% if posterior_filtro == 'SEM_POSTERIOR' %}selected{% endif %}>Sem novo treinamento em aberto</option>
-                </select>
-            </div>
+<div class="d-flex align-items-center gap-2 mb-4">
+    <form method="GET" class="d-flex flex-grow-1 gap-2 m-0">
+        <!-- Search -->
+        <div class="input-group input-group-sm" style="max-width: 300px;">
+            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" name="q" class="form-control border-start-0" placeholder="Nome, código ou título" value="{{ busca }}">
+            <button class="btn btn-outline-secondary border-start-0" type="submit"><i class="bi bi-search"></i></button>
+        </div>
 
-            <div class="col-md-3">
-                <label class="form-label small fw-semibold">Exibir Registros</label>
-                <select name="exibir" class="form-select form-select-sm">
-                    <option value="30" {% if exibir == '30' %}selected{% endif %}>30 por página</option>
-                    <option value="100" {% if exibir == '100' %}selected{% endif %}>100 por página</option>
-                    <option value="todos" {% if exibir == 'todos' %}selected{% endif %}>Exibir Todos</option>
-                </select>
-            </div>
+        <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#filtrosModal">
+            <i class="bi bi-funnel"></i> Filtros
+        </button>
+        
+        <a href="{% url 'procedures:avaliacao_eficacia_list' %}" class="btn btn-outline-secondary btn-sm" title="Limpar Filtros">
+            <i class="bi bi-x-circle"></i> Limpar
+        </a>
 
-            <div class="col-md-9 d-flex align-items-end justify-content-end gap-2">
-                <button type="submit" class="btn btn-primary btn-sm px-4"><i class="bi bi-search"></i> Filtrar</button>
-                <a href="{% url 'procedures:avaliacao_eficacia_list' %}" class="btn btn-outline-secondary btn-sm px-3">Limpar Filtros</a>
+        <!-- Modal Filtros -->
+        <div class="modal fade" id="filtrosModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content shadow-lg" style="border-radius: 14px;">
+                    <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                        <h5 class="modal-title fw-bold"><i class="bi bi-funnel me-2"></i>Filtros de Acompanhamento</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small fw-bold">Líder</label>
+                                <select name="lider" class="form-select form-select-sm">
+                                    <option value="">-- Todos --</option>
+                                    {% for l in lideres %}
+                                        <option value="{{ l.id }}" {% if lider_id == l.id|stringformat:"s" %}selected{% endif %}>{{ l.nome_completo }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small fw-bold">Setor</label>
+                                <select name="setor" class="form-select form-select-sm">
+                                    <option value="">-- Todos --</option>
+                                    {% for s in setores %}
+                                        <option value="{{ s.id }}" {% if setor_id == s.id|stringformat:"s" %}selected{% endif %}>{{ s.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small fw-bold">Status Eficácia</label>
+                                <select name="status" class="form-select form-select-sm">
+                                    <option value="">-- Todos --</option>
+                                    <option value="PENDENTE" {% if status_filtro == 'PENDENTE' %}selected{% endif %}>Pendente (>= 30 dias)</option>
+                                    <option value="CARENCIA" {% if status_filtro == 'CARENCIA' %}selected{% endif %}>Carência (< 30 dias)</option>
+                                    <option value="EFICAZ" {% if status_filtro == 'EFICAZ' %}selected{% endif %}>Eficaz</option>
+                                    <option value="INEFICAZ" {% if status_filtro == 'INEFICAZ' %}selected{% endif %}>Ineficaz</option>
+                                    <option value="NAO_APLICA" {% if status_filtro == 'NAO_APLICA' %}selected{% endif %}>Não se Aplica</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small fw-bold">Matriz de Procedimento</label>
+                                <select name="matriz" class="form-select form-select-sm">
+                                    <option value="">-- Todas --</option>
+                                    {% for m in matrizes_opcoes %}
+                                        <option value="{{ m.nome }}" {% if matriz_filtro == m.nome %}selected{% endif %}>{{ m.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small fw-bold">Dias Decorridos</label>
+                                <select name="dias_decorridos" class="form-select form-select-sm">
+                                    <option value="">-- Todos --</option>
+                                    <option value="menos_30" {% if dias_decorridos_filtro == 'menos_30' %}selected{% endif %}>Carência (< 30 dias)</option>
+                                    <option value="30_60" {% if dias_decorridos_filtro == '30_60' %}selected{% endif %}>30 a 60 dias</option>
+                                    <option value="60_90" {% if dias_decorridos_filtro == '60_90' %}selected{% endif %}>60 a 90 dias</option>
+                                    <option value="90_mais" {% if dias_decorridos_filtro == '90_mais' %}selected{% endif %}>Mais de 90 dias</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small fw-bold">Vínculo ao Perfil</label>
+                                <select name="vinculo" class="form-select form-select-sm">
+                                    <option value="">-- Todos --</option>
+                                    <option value="COM_VINCULO" {% if vinculo_filtro == 'COM_VINCULO' %}selected{% endif %}>Com Vínculo ao Perfil</option>
+                                    <option value="SEM_VINCULO" {% if vinculo_filtro == 'SEM_VINCULO' %}selected{% endif %}>Sem Vínculo ao Perfil</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small fw-bold">Treinamento Posterior</label>
+                                <select name="posterior" class="form-select form-select-sm">
+                                    <option value="">-- Todos --</option>
+                                    <option value="COM_POSTERIOR" {% if posterior_filtro == 'COM_POSTERIOR' %}selected{% endif %}>Com novo treinamento em aberto</option>
+                                    <option value="SEM_POSTERIOR" {% if posterior_filtro == 'SEM_POSTERIOR' %}selected{% endif %}>Sem novo treinamento em aberto</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small fw-bold">Exibir Registros</label>
+                                <select name="exibir" class="form-select form-select-sm">
+                                    <option value="30" {% if exibir == '30' %}selected{% endif %}>30 por página</option>
+                                    <option value="100" {% if exibir == '100' %}selected{% endif %}>100 por página</option>
+                                    <option value="todos" {% if exibir == 'todos' %}selected{% endif %}>Exibir Todos</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; justify-content: flex-end;">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="bi bi-search me-1"></i>Aplicar Filtros
+                        </button>
+                    </div>
+                </div>
             </div>
-        </form>
-    </div>
+        </div>
+    </form>
 </div>
 
 <!-- Painel de Ações em Massa -->

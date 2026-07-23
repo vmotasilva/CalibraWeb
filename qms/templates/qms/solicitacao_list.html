@@ -14,35 +14,55 @@
     </div>
 
     <!-- Filtros -->
-    <div class="card mb-4">
-        <div class="card-body">
-            <form method="get" class="row g-3">
-                <div class="col-md-4">
-                    <label for="status" class="form-label">Status</label>
-                    <select name="status" id="status" class="form-select">
-                        <option value="">Todos os Status</option>
-                        {% for code, label in status_choices %}
-                            <option value="{{ code }}" {% if selected_status == code %}selected{% endif %}>{{ label }}</option>
-                        {% endfor %}
-                    </select>
+    <div class="d-flex align-items-center gap-2 mb-4">
+        <form method="get" class="d-flex flex-grow-1 gap-2 m-0">
+            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#filtrosModal">
+                <i class="bi bi-funnel"></i> Filtros
+            </button>
+            
+            <a href="{% url 'solicitacao_list' %}" class="btn btn-outline-secondary btn-sm" title="Limpar Filtros">
+                <i class="bi bi-x-circle"></i> Limpar
+            </a>
+
+            <!-- Modal Filtros -->
+            <div class="modal fade" id="filtrosModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content shadow-lg" style="border-radius: 14px;">
+                        <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                            <h5 class="modal-title fw-bold"><i class="bi bi-funnel me-2"></i>Filtros Avançados</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body p-4">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="status" class="form-label text-muted small fw-bold">Status</label>
+                                    <select name="status" id="status" class="form-select form-select-sm">
+                                        <option value="">Todos os Status</option>
+                                        {% for code, label in status_choices %}
+                                            <option value="{{ code }}" {% if selected_status == code %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="tipo" class="form-label text-muted small fw-bold">Tipo</label>
+                                    <select name="tipo" id="tipo" class="form-select form-select-sm">
+                                        <option value="">Todos os Tipos</option>
+                                        {% for code, label in tipo_choices %}
+                                            <option value="{{ code }}" {% if selected_tipo == code %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; justify-content: flex-end;">
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="bi bi-search me-1"></i>Aplicar Filtros
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-md-4">
-                    <label for="tipo" class="form-label">Tipo</label>
-                    <select name="tipo" id="tipo" class="form-select">
-                        <option value="">Todos os Tipos</option>
-                        {% for code, label in tipo_choices %}
-                            <option value="{{ code }}" {% if selected_tipo == code %}selected{% endif %}>{{ label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">&nbsp;</label>
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-search"></i> Filtrar
-                    </button>
-                </div>
-            </form>
-        </div>
+            </div>
+        </form>
     </div>
 
     <!-- Tabela de Solicitações -->

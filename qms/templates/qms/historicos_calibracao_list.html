@@ -33,71 +33,81 @@
     </div>
 
     <!-- Filtros -->
-    <div class="card filter-card mb-4">
-        <div class="card-body">
-            <form method="get" class="row g-3">
-                <div class="col-md-3">
-                    <label class="form-label">Buscar</label>
-                    <input type="text" name="q" class="form-control form-control-sm" 
-                           placeholder="Instrumento, Código, Certificado..." value="{{ search_query }}">
-                </div>
+    <div class="d-flex align-items-center gap-2 mb-4">
+        <form method="get" class="d-flex flex-grow-1 gap-2 m-0">
+            <!-- Search -->
+            <div class="input-group input-group-sm" style="max-width: 300px;">
+                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" name="q" class="form-control border-start-0" placeholder="Instrumento, Código, Certificado..." value="{{ search_query }}">
+                <button class="btn btn-outline-secondary border-start-0" type="submit"><i class="bi bi-search"></i></button>
+            </div>
+            
+            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#filtrosModal">
+                <i class="bi bi-funnel"></i> Filtros
+            </button>
+            
+            <a href="{% url 'qms:listar_historicos_calibracao' %}" class="btn btn-outline-secondary btn-sm" title="Limpar Filtros">
+                <i class="bi bi-x-circle"></i> Limpar
+            </a>
 
-                <div class="col-md-2">
-                    <label class="form-label">Status</label>
-                    <select name="status" class="form-select form-select-sm">
-                        <option value="">Todos</option>
-                        <option value="vigentes" {% if status_filter == 'vigentes' %}selected{% endif %}>Vigentes</option>
-                        <option value="avencer" {% if status_filter == 'avencer' %}selected{% endif %}>A Vencer (30 dias)</option>
-                        <option value="vencidas" {% if status_filter == 'vencidas' %}selected{% endif %}>Vencidas</option>
-                    </select>
+            <!-- Modal Filtros -->
+            <div class="modal fade" id="filtrosModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-content shadow-lg" style="border-radius: 14px;">
+                        <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                            <h5 class="modal-title fw-bold"><i class="bi bi-funnel me-2"></i>Filtros Avançados</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body p-4">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold">Status</label>
+                                    <select name="status" class="form-select form-select-sm">
+                                        <option value="">Todos</option>
+                                        <option value="vigentes" {% if status_filter == 'vigentes' %}selected{% endif %}>Vigentes</option>
+                                        <option value="avencer" {% if status_filter == 'avencer' %}selected{% endif %}>A Vencer (30 dias)</option>
+                                        <option value="vencidas" {% if status_filter == 'vencidas' %}selected{% endif %}>Vencidas</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold">Resultado</label>
+                                    <select name="resultado" class="form-select form-select-sm">
+                                        <option value="">Todos</option>
+                                        <option value="APROVADO_SEM_CORRECAO" {% if resultado_filter == 'APROVADO_SEM_CORRECAO' %}selected{% endif %}>Aprovado</option>
+                                        <option value="APROVADO_COM_CORRECAO" {% if resultado_filter == 'APROVADO_COM_CORRECAO' %}selected{% endif %}>Aprv. c/ Correção</option>
+                                        <option value="REPROVADO" {% if resultado_filter == 'REPROVADO' %}selected{% endif %}>Reprovado</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold">Tipo</label>
+                                    <select name="tipo" class="form-select form-select-sm">
+                                        <option value="">Todos</option>
+                                        <option value="EXTERNA" {% if tipo_filter == 'EXTERNA' %}selected{% endif %}>Externa</option>
+                                        <option value="INTERNA" {% if tipo_filter == 'INTERNA' %}selected{% endif %}>Interna</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold">Categoria</label>
+                                    <select name="categoria" class="form-select form-select-sm">
+                                        <option value="">Todas</option>
+                                        {% for categoria in categorias %}
+                                        <option value="{{ categoria.id }}" {% if categoria_filter|stringformat:"s" == categoria.id|stringformat:"s" %}selected{% endif %}>
+                                            {{ categoria.nome }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; justify-content: flex-end;">
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="bi bi-search me-1"></i>Aplicar Filtros
+                            </button>
+                        </div>
+                    </div>
                 </div>
-
-                <div class="col-md-2">
-                    <label class="form-label">Resultado</label>
-                    <select name="resultado" class="form-select form-select-sm">
-                        <option value="">Todos</option>
-                        <option value="APROVADO_SEM_CORRECAO" {% if resultado_filter == 'APROVADO_SEM_CORRECAO' %}selected{% endif %}>Aprovado</option>
-                        <option value="APROVADO_COM_CORRECAO" {% if resultado_filter == 'APROVADO_COM_CORRECAO' %}selected{% endif %}>Aprv. c/ Correção</option>
-                        <option value="REPROVADO" {% if resultado_filter == 'REPROVADO' %}selected{% endif %}>Reprovado</option>
-                    </select>
-                </div>
-
-                <div class="col-md-2">
-                    <label class="form-label">Tipo</label>
-                    <select name="tipo" class="form-select form-select-sm">
-                        <option value="">Todos</option>
-                        <option value="EXTERNA" {% if tipo_filter == 'EXTERNA' %}selected{% endif %}>Externa</option>
-                        <option value="INTERNA" {% if tipo_filter == 'INTERNA' %}selected{% endif %}>Interna</option>
-                    </select>
-                </div>
-
-                <div class="col-md-2">
-                    <label class="form-label">Categoria</label>
-                    <select name="categoria" class="form-select form-select-sm">
-                        <option value="">Todas</option>
-                        {% for categoria in categorias %}
-                        <option value="{{ categoria.id }}" {% if categoria_filter|stringformat:"s" == categoria.id|stringformat:"s" %}selected{% endif %}>
-                            {{ categoria.nome }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div class="col-md-1">
-                    <label class="form-label">&nbsp;</label>
-                    <button type="submit" class="btn btn-primary btn-sm w-100">
-                        <i class="bi bi-search"></i> Filtrar
-                    </button>
-                </div>
-
-                <div class="col-md-1">
-                    <label class="form-label">&nbsp;</label>
-                    <a href="{% url 'qms:listar_historicos_calibracao' %}" class="btn btn-secondary btn-sm w-100">
-                        <i class="bi bi-arrow-clockwise"></i> Limpar
-                    </a>
-                </div>
-            </form>
-        </div>
+            </div>
+        </form>
     </div>
 
     <!-- Resultados -->

@@ -9,72 +9,111 @@
             <p class="text-muted small mb-0">Exibindo {{ total_filtrados }} de {{ total_registros }} registros.</p>
         </div>
         <div class="d-flex flex-wrap gap-2">
-            <a href="{% url 'laboratorio:modulo' %}" class="btn btn-outline-secondary">Modulo</a>
-            <a href="{% url 'laboratorio:ocorrencia_create' %}" class="btn btn-primary">Nova ocorrencia</a>
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="ocorrenciasActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-three-dots-vertical"></i> Ações
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="ocorrenciasActionsDropdown">
+                    <li>
+                        <a href="{% url 'laboratorio:modulo' %}" class="dropdown-item">
+                            <i class="bi bi-arrow-left me-2 text-secondary"></i> Modulo
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            <a href="{% url 'laboratorio:ocorrencia_create' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Nova ocorrencia
+            </a>
         </div>
     </div>
 
-    <div class="card shadow-sm border-0 mb-4">
-        <div class="card-body">
-            <form method="get" class="row g-3 align-items-end">
-                <div class="col-xl-3 col-md-6">
-                    <label for="filtro-busca" class="form-label">Busca</label>
-                    <input type="text" id="filtro-busca" name="q" class="form-control" value="{{ filtros.q }}" placeholder="Assunto, detalhamento ou consequencias" title="Busca por assunto, detalhamento ou consequencias">
+    <!-- Filtros -->
+    <div class="d-flex align-items-center gap-2 mb-4">
+        <form method="get" class="d-flex flex-grow-1 gap-2 m-0">
+            <!-- Search -->
+            <div class="input-group input-group-sm" style="max-width: 300px;">
+                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" name="q" class="form-control border-start-0" placeholder="Assunto, detalhamento..." value="{{ filtros.q }}" title="Busca por assunto, detalhamento ou consequencias">
+                <button class="btn btn-outline-secondary border-start-0" type="submit"><i class="bi bi-search"></i></button>
+            </div>
+            
+            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#filtrosModal">
+                <i class="bi bi-funnel"></i> Filtros
+            </button>
+            
+            <a href="{% url 'laboratorio:ocorrencia_list' %}" class="btn btn-outline-secondary btn-sm" title="Limpar Filtros">
+                <i class="bi bi-x-circle"></i> Limpar
+            </a>
+
+            <!-- Modal Filtros -->
+            <div class="modal fade" id="filtrosModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-content shadow-lg" style="border-radius: 14px;">
+                        <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                            <h5 class="modal-title fw-bold"><i class="bi bi-funnel me-2"></i>Filtros Avançados</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body p-4">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="filtro-categoria" class="form-label text-muted small fw-bold">Categoria</label>
+                                    <select id="filtro-categoria" name="categoria" class="form-select form-select-sm" title="Filtrar por categoria">
+                                        <option value="">Todas</option>
+                                        {% for categoria in categorias %}
+                                        <option value="{{ categoria.pk }}" {% if filtros.categoria == categoria.pk|stringformat:'s' %}selected{% endif %}>{{ categoria.nome }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="semana-picker" class="form-label text-muted small fw-bold">Semana</label>
+                                    <input type="hidden" name="semana" id="semana" value="{{ filtros.semana }}">
+                                    <input type="text" id="semana-picker" class="form-control form-control-sm" value="{{ semana_filtro_label }}" placeholder="Selecione uma semana" title="Selecione uma semana" autocomplete="off">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="filtro-impacto" class="form-label text-muted small fw-bold">Impacto</label>
+                                    <select id="filtro-impacto" name="impacto" class="form-select form-select-sm" title="Filtrar por impacto">
+                                        <option value="">Todos</option>
+                                        {% for codigo, nome in impacto_choices %}
+                                        <option value="{{ codigo }}" {% if filtros.impacto == codigo %}selected{% endif %}>{{ nome }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="filtro-status" class="form-label text-muted small fw-bold">Status</label>
+                                    <select id="filtro-status" name="status" class="form-select form-select-sm" title="Filtrar por status">
+                                        <option value="">Todos</option>
+                                        <option value="abertas" {% if filtros.status == 'abertas' %}selected{% endif %}>Abertas</option>
+                                        <option value="encerradas" {% if filtros.status == 'encerradas' %}selected{% endif %}>Encerradas</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="filtro-inicio" class="form-label text-muted small fw-bold">Abertura inicial</label>
+                                    <input type="date" id="filtro-inicio" name="inicio" class="form-control form-control-sm" value="{{ filtros.inicio }}" placeholder="aaaa-mm-dd" title="Filtrar por abertura inicial">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="filtro-fim" class="form-label text-muted small fw-bold">Abertura final</label>
+                                    <input type="date" id="filtro-fim" name="fim" class="form-control form-control-sm" value="{{ filtros.fim }}" placeholder="aaaa-mm-dd" title="Filtrar por abertura final">
+                                </div>
+                                <div class="col-12">
+                                    <label for="filtro-responsavel" class="form-label text-muted small fw-bold">Responsavel</label>
+                                    <select id="filtro-responsavel" name="responsavel" class="form-select form-select-sm" title="Filtrar por responsavel">
+                                        <option value="">Todos</option>
+                                        {% for r in responsaveis %}
+                                        <option value="{{ r.pk }}" {% if filtros.responsavel == r.pk|stringformat:'s' %}selected{% endif %}>{{ r.get_full_name|default:r.username }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; justify-content: flex-end;">
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="bi bi-search me-1"></i>Aplicar Filtros
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-xl-2 col-md-6">
-                    <label for="filtro-categoria" class="form-label">Categoria</label>
-                    <select id="filtro-categoria" name="categoria" class="form-select" title="Filtrar por categoria">
-                        <option value="">Todas</option>
-                        {% for categoria in categorias %}
-                        <option value="{{ categoria.pk }}" {% if filtros.categoria == categoria.pk|stringformat:'s' %}selected{% endif %}>{{ categoria.nome }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-xl-2 col-md-6">
-                    <label for="semana-picker" class="form-label">Semana</label>
-                    <input type="hidden" name="semana" id="semana" value="{{ filtros.semana }}">
-                    <input type="text" id="semana-picker" class="form-control" value="{{ semana_filtro_label }}" placeholder="Selecione uma semana" title="Selecione uma semana" autocomplete="off">
-                </div>
-                <div class="col-xl-2 col-md-6">
-                    <label for="filtro-impacto" class="form-label">Impacto</label>
-                    <select id="filtro-impacto" name="impacto" class="form-select" title="Filtrar por impacto">
-                        <option value="">Todos</option>
-                        {% for codigo, nome in impacto_choices %}
-                        <option value="{{ codigo }}" {% if filtros.impacto == codigo %}selected{% endif %}>{{ nome }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-xl-2 col-md-6">
-                    <label for="filtro-status" class="form-label">Status</label>
-                    <select id="filtro-status" name="status" class="form-select" title="Filtrar por status">
-                        <option value="">Todos</option>
-                        <option value="abertas" {% if filtros.status == 'abertas' %}selected{% endif %}>Abertas</option>
-                        <option value="encerradas" {% if filtros.status == 'encerradas' %}selected{% endif %}>Encerradas</option>
-                    </select>
-                </div>
-                <div class="col-xl-2 col-md-6">
-                    <label for="filtro-inicio" class="form-label">Abertura inicial</label>
-                    <input type="date" id="filtro-inicio" name="inicio" class="form-control" value="{{ filtros.inicio }}" placeholder="aaaa-mm-dd" title="Filtrar por abertura inicial">
-                </div>
-                <div class="col-xl-2 col-md-6">
-                    <label for="filtro-fim" class="form-label">Abertura final</label>
-                    <input type="date" id="filtro-fim" name="fim" class="form-control" value="{{ filtros.fim }}" placeholder="aaaa-mm-dd" title="Filtrar por abertura final">
-                </div>
-                <div class="col-xl-2 col-md-6">
-                    <label for="filtro-responsavel" class="form-label">Responsavel</label>
-                    <select id="filtro-responsavel" name="responsavel" class="form-select" title="Filtrar por responsavel">
-                        <option value="">Todos</option>
-                        {% for r in responsaveis %}
-                        <option value="{{ r.pk }}" {% if filtros.responsavel == r.pk|stringformat:'s' %}selected{% endif %}>{{ r.get_full_name|default:r.username }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-xl-2 col-md-6 d-grid">
-                    <button type="submit" class="btn btn-outline-primary">Filtrar</button>
-                <button type="reset" class="btn btn-outline-secondary mt-2">Limpar Filtros</button>
-                </div>
-            </form>
-        </div>
+            </div>
+        </form>
     </div>
 
     <div class="card shadow-sm border-0">

@@ -25,26 +25,27 @@
             {% can_nav_view user 'procedures:importacao_matriz' 'procedures' as can_importar %}
             {% can_nav_view user 'procedures:editar_matriz' 'procedures' as can_editar_matriz %}
 
-            {% if can_exportar %}
-                <div class="btn-group" role="group">
-                    <button type="button" class="btn btn-warning dropdown-toggle" data-bs-toggle="dropdown">
-                        <i class="bi bi-download"></i> Exportar
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{% url 'procedures:exportar_matrizes' 'csv' %}">
-                            <i class="bi bi-filetype-csv"></i> Exportar como CSV
-                        </a></li>
-                        <li><a class="dropdown-item" href="{% url 'procedures:exportar_matrizes' 'excel' %}">
-                            <i class="bi bi-file-earmark-excel"></i> Exportar como Excel
-                        </a></li>
-                    </ul>
-                </div>
-            {% endif %}
-            {% if can_importar %}
-                <a href="{% url 'procedures:importacao_matriz' %}" class="btn btn-success">
-                    <i class="bi bi-cloud-upload"></i> Importação em Massa
-                </a>
-            {% endif %}
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="matrizActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-three-dots-vertical"></i> Ações
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="matrizActionsDropdown">
+                    {% if can_exportar %}
+                    <li><a class="dropdown-item" href="{% url 'procedures:exportar_matrizes' 'csv' %}">
+                        <i class="bi bi-filetype-csv me-2 text-warning"></i> Exportar como CSV
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'procedures:exportar_matrizes' 'excel' %}">
+                        <i class="bi bi-file-earmark-excel me-2 text-success"></i> Exportar como Excel
+                    </a></li>
+                    {% endif %}
+                    {% if can_importar %}
+                    <li><a class="dropdown-item" href="{% url 'procedures:importacao_matriz' %}">
+                        <i class="bi bi-cloud-upload me-2 text-info"></i> Importação em Massa
+                    </a></li>
+                    {% endif %}
+                </ul>
+            </div>
+
             {% if can_editar_matriz %}
                 <a href="{% url 'procedures:nova_matriz' %}" class="btn btn-primary">
                     <i class="bi bi-plus-circle"></i> Nova Matriz
@@ -53,26 +54,49 @@
         </div>
     </div>
 
-    <div class="filters-card">
-        <form method="get">
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <label class="form-label">Buscar</label>
-                    <input type="text" name="q" class="form-control" placeholder="Código ou Nome" value="{{ termo }}">
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Status</label>
-                    <select name="ativo" class="form-select">
-                        <option value="">Todos</option>
-                        <option value="true" {% if ativo == 'true' %}selected{% endif %}>Ativos</option>
-                        <option value="false" {% if ativo == 'false' %}selected{% endif %}>Inativos</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">&nbsp;</label>
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-search"></i> Filtrar
-                    </button>
+    <div class="d-flex align-items-center gap-2 mb-4">
+        <form method="get" class="d-flex flex-grow-1 gap-2 m-0">
+            <!-- Search -->
+            <div class="input-group input-group-sm" style="max-width: 300px;">
+                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" name="q" class="form-control border-start-0" placeholder="Código ou Nome" value="{{ termo }}">
+                <button class="btn btn-outline-secondary border-start-0" type="submit"><i class="bi bi-search"></i></button>
+            </div>
+
+            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#filtrosModal">
+                <i class="bi bi-funnel"></i> Filtros
+            </button>
+            
+            <a href="{% url 'procedures:matriz_lista' %}" class="btn btn-outline-secondary btn-sm" title="Limpar Filtros">
+                <i class="bi bi-x-circle"></i> Limpar
+            </a>
+
+            <!-- Modal Filtros -->
+            <div class="modal fade" id="filtrosModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content shadow-lg" style="border-radius: 14px;">
+                        <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                            <h5 class="modal-title fw-bold"><i class="bi bi-funnel me-2"></i>Filtros Avançados</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body p-4">
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label class="form-label text-muted small fw-bold">Status</label>
+                                    <select name="ativo" class="form-select form-select-sm">
+                                        <option value="">Todos</option>
+                                        <option value="true" {% if ativo == 'true' %}selected{% endif %}>Ativos</option>
+                                        <option value="false" {% if ativo == 'false' %}selected{% endif %}>Inativos</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; justify-content: flex-end;">
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="bi bi-search me-1"></i>Aplicar Filtros
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </form>

@@ -36,42 +36,67 @@
         <a href="{% url 'auditoria:modulo' %}" class="btn btn-outline-secondary">Módulo Auditoria</a>
     </div>
 
-    <form method="get" class="row g-2 mb-3">
-        <div class="col-md-3">
-            <label class="form-label">Modelo</label>
-            <select name="modelo" class="form-select" title="Filtrar por modelo de auditoria">
-                <option value="">Todos os modelos</option>
-                {% for m in todos_modelos %}
-                <option value="{{ m.id }}" {% if modelo_id == m.id|stringformat:"s" %}selected{% endif %}>{{ m.nome }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-3">
-            <label class="form-label">Responsável</label>
-            <select name="responsavel" class="form-select" title="Filtrar por responsavel">
-                <option value="">Todos</option>
-                {% for u in responsaveis %}
-                <option value="{{ u.id }}" {% if responsavel_id == u.id|stringformat:"s" %}selected{% endif %}>
-                    {{ u.get_full_name|default:u.username }}
-                </option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-2">
-            <label class="form-label">Período inicial</label>
-            <input type="date" name="inicio" class="form-control" value="{{ inicio|default:'' }}" placeholder="aaaa-mm-dd" title="Filtrar por periodo inicial">
-            <div class="form-text">Formato: ANO-MÊS-DIA (AAAA-MM-DD)</div>
-        </div>
-        <div class="col-md-2">
-            <label class="form-label">Período final</label>
-            <input type="date" name="fim" class="form-control" value="{{ fim|default:'' }}" placeholder="aaaa-mm-dd" title="Filtrar por periodo final">
-            <div class="form-text">Formato: ANO-MÊS-DIA (AAAA-MM-DD)</div>
-        </div>
-        <div class="col-md-2 d-flex flex-wrap align-items-end gap-2">
-            <button type="submit" class="btn btn-outline-primary">Aplicar Filtro</button>
-            <a href="{% url 'auditoria:dashboard' %}" class="btn btn-outline-secondary">Limpar</a>
-        </div>
-    </form>
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <form method="get" class="d-flex flex-grow-1 gap-2 m-0">
+            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#filtrosModal">
+                <i class="bi bi-funnel"></i> Filtros
+            </button>
+            <a href="{% url 'auditoria:dashboard' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-x-circle"></i> Limpar
+            </a>
+
+            <!-- Modal Filtros -->
+            <div class="modal fade" id="filtrosModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-content shadow-lg" style="border-radius: 14px;">
+                        <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                            <h5 class="modal-title fw-bold"><i class="bi bi-funnel me-2"></i>Filtros Avançados</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body p-4">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold">Modelo</label>
+                                    <select name="modelo" class="form-select form-select-sm" title="Filtrar por modelo de auditoria">
+                                        <option value="">Todos os modelos</option>
+                                        {% for m in todos_modelos %}
+                                        <option value="{{ m.id }}" {% if modelo_id == m.id|stringformat:"s" %}selected{% endif %}>{{ m.nome }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold">Responsável</label>
+                                    <select name="responsavel" class="form-select form-select-sm" title="Filtrar por responsavel">
+                                        <option value="">Todos</option>
+                                        {% for u in responsaveis %}
+                                        <option value="{{ u.id }}" {% if responsavel_id == u.id|stringformat:"s" %}selected{% endif %}>
+                                            {{ u.get_full_name|default:u.username }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold">Período inicial</label>
+                                    <input type="date" name="inicio" class="form-control form-control-sm" value="{{ inicio|default:'' }}" placeholder="aaaa-mm-dd" title="Filtrar por periodo inicial">
+                                    <div class="form-text small">Formato: ANO-MÊS-DIA (AAAA-MM-DD)</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold">Período final</label>
+                                    <input type="date" name="fim" class="form-control form-control-sm" value="{{ fim|default:'' }}" placeholder="aaaa-mm-dd" title="Filtrar por periodo final">
+                                    <div class="form-text small">Formato: ANO-MÊS-DIA (AAAA-MM-DD)</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; justify-content: flex-end;">
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="bi bi-search me-1"></i>Aplicar Filtros
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
 
     {% if inicio or fim or modelo_selecionado or responsavel_selecionado %}
     <div class="alert alert-info py-2">

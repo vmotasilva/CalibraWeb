@@ -6,16 +6,10 @@
 
 {% block header_actions %}
     {% can_nav_view user 'procedures:novo_treinamento' 'procedures' as can_novo_treinamento %}
-    {% can_nav_view user 'procedures:treinamentos_importar' 'procedures' as can_importar_treinamentos %}
 
     <div class="d-flex gap-2">
         {% if can_novo_treinamento %}
             <a href="{% url 'procedures:novo_treinamento' %}" class="btn btn-primary btn-sm">+ Novo Treinamento</a>
-        {% endif %}
-        {% if can_importar_treinamentos %}
-            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importModal">
-                <i class="bi bi-upload"></i> Importar
-            </button>
         {% endif %}
     </div>
 {% endblock %}
@@ -77,125 +71,171 @@
 {% endif %}
 
 {% block main_content %}
-<div class="card">
-    <div class="card-header">
-        <h6 class="mb-0">Filtros</h6>
-    </div>
-    <div class="card-body">
-        <form method="GET" class="row g-3">
-            <div class="col-md-3">
-                <label class="form-label small">Buscar</label>
-                <input type="text" name="q" class="form-control form-control-sm" placeholder="Nome ou código" value="{% if busca and busca != 'None' %}{{ busca }}{% endif %}">
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small">Setor</label>
-                <select name="setor" class="form-select form-select-sm">
-                    <option value="">-- Todos --</option>
-                    {% for s in setores %}
-                        <option value="{{ s.id }}" {% if s.id|stringformat:"s" == setor_id %}selected{% endif %}>
-                            {{ s }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small">Turno</label>
-                <select name="turno" class="form-select form-select-sm">
-                    <option value="">-- Todos --</option>
-                    {% for t in turnos %}
-                        <option value="{{ t.value }}" {% if t.value == turno %}selected{% endif %}>{{ t.label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small">Colaborador</label>
-                <select name="colaborador" class="form-select form-select-sm">
-                    <option value="">-- Todos --</option>
-                    {% for col in colaboradores %}
-                        <option value="{{ col.id }}" {% if col.id|stringformat:"s" == colaborador_id %}selected{% endif %}>
-                            {{ col.nome_completo }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small">Líder</label>
-                <select name="lider" class="form-select form-select-sm">
-                    <option value="">-- Todos --</option>
-                    {% for lider in lideres %}
-                        <option value="{{ lider.id }}" {% if lider.id|stringformat:"s" == lider_id %}selected{% endif %}>
-                            {{ lider.nome_completo }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small">Procedimento</label>
-                <select name="procedimento" class="form-select form-select-sm">
-                    <option value="">-- Todos --</option>
-                    {% for proc in procedimentos %}
-                        <option value="{{ proc.id }}" {% if proc.id|stringformat:"s" == procedimento_id %}selected{% endif %}>
-                            {{ proc.codigo }} - {{ proc.nome|truncatewords:5 }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small">Criticidade</label>
-                <select name="criticidade" class="form-select form-select-sm">
-                    <option value="">Todos</option>
-                    {% for value, label in criticidade_choices %}
-                        <option value="{{ value }}" {% if value|stringformat:"s" == criticidade %}selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small">Matriz</label>
-                <select name="matriz" class="form-select form-select-sm">
-                    <option value="">-- Todas --</option>
-                    {% for m in matrizes %}
-                        <option value="{{ m }}" {% if matriz == m %}selected{% endif %}>{{ m }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small">Sub-Área</label>
-                <select name="sub_area" class="form-select form-select-sm">
-                    <option value="">-- Todas --</option>
-                    {% for sa in sub_areas %}
-                        <option value="{{ sa }}" {% if sub_area == sa %}selected{% endif %}>{{ sa }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small">Status</label>
-                <select name="status" class="form-select form-select-sm">
-                    <option value="">Todos</option>
-                    <option value="OK" {% if status == 'OK' %}selected{% endif %}>Em dias</option>
-                    <option value="PENDENTE" {% if status == 'PENDENTE' %}selected{% endif %}>Pendente</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small">Ativo</label>
-                <select name="ativo" class="form-select form-select-sm">
-                    <option value="">Todos</option>
-                    <option value="1" {% if ativo == '1' %}selected{% endif %}>Ativos</option>
-                    <option value="0" {% if ativo == '0' %}selected{% endif %}>Inativos</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small">Perfil</label>
-                <div class="form-check mt-1">
-                    <input type="hidden" name="perfil_assoc" value="0">
-                    <input class="form-check-input" type="checkbox" name="perfil_assoc" value="1" id="perfil_assoc" {% if perfil_assoc == '1' %}checked{% endif %}>
-                    <label class="form-check-label small" for="perfil_assoc">Somente associados a perfil</label>
+<div class="d-flex align-items-center gap-2 mb-4">
+    <form method="GET" class="d-flex flex-grow-1 gap-2 m-0">
+        <!-- Search -->
+        <div class="input-group input-group-sm" style="max-width: 300px;">
+            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" name="q" class="form-control border-start-0" placeholder="Nome ou código" value="{% if busca and busca != 'None' %}{{ busca }}{% endif %}">
+            <button class="btn btn-outline-secondary border-start-0" type="submit"><i class="bi bi-search"></i></button>
+        </div>
+
+        <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#filtrosModal">
+            <i class="bi bi-funnel"></i> Filtros
+        </button>
+        
+        <a href="{% url 'procedures:treinamentos_list' %}" class="btn btn-outline-secondary btn-sm" title="Limpar Filtros">
+            <i class="bi bi-x-circle"></i> Limpar
+        </a>
+
+        <!-- Modal Filtros -->
+        <div class="modal fade" id="filtrosModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content shadow-lg" style="border-radius: 14px;">
+                    <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                        <h5 class="modal-title fw-bold"><i class="bi bi-funnel me-2"></i>Filtros Avançados</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small fw-bold">Setor</label>
+                                <select name="setor" class="form-select form-select-sm">
+                                    <option value="">-- Todos --</option>
+                                    {% for s in setores %}
+                                        <option value="{{ s.id }}" {% if s.id|stringformat:"s" == setor_id %}selected{% endif %}>
+                                            {{ s }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small fw-bold">Turno</label>
+                                <select name="turno" class="form-select form-select-sm">
+                                    <option value="">-- Todos --</option>
+                                    {% for t in turnos %}
+                                        <option value="{{ t.value }}" {% if t.value == turno %}selected{% endif %}>{{ t.label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small fw-bold">Colaborador</label>
+                                <select name="colaborador" class="form-select form-select-sm">
+                                    <option value="">-- Todos --</option>
+                                    {% for col in colaboradores %}
+                                        <option value="{{ col.id }}" {% if col.id|stringformat:"s" == colaborador_id %}selected{% endif %}>
+                                            {{ col.nome_completo }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small fw-bold">Líder</label>
+                                <select name="lider" class="form-select form-select-sm">
+                                    <option value="">-- Todos --</option>
+                                    {% for lider in lideres %}
+                                        <option value="{{ lider.id }}" {% if lider.id|stringformat:"s" == lider_id %}selected{% endif %}>
+                                            {{ lider.nome_completo }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small fw-bold">Procedimento</label>
+                                <select name="procedimento" class="form-select form-select-sm">
+                                    <option value="">-- Todos --</option>
+                                    {% for proc in procedimentos %}
+                                        <option value="{{ proc.id }}" {% if proc.id|stringformat:"s" == procedimento_id %}selected{% endif %}>
+                                            {{ proc.codigo }} - {{ proc.nome|truncatewords:5 }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small fw-bold">Criticidade</label>
+                                <select name="criticidade" class="form-select form-select-sm">
+                                    <option value="">Todos</option>
+                                    {% for value, label in criticidade_choices %}
+                                        <option value="{{ value }}" {% if value|stringformat:"s" == criticidade %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small fw-bold">Matriz</label>
+                                <select name="matriz" class="form-select form-select-sm">
+                                    <option value="">-- Todas --</option>
+                                    {% for m in matrizes %}
+                                        <option value="{{ m }}" {% if matriz == m %}selected{% endif %}>{{ m }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small fw-bold">Sub-Área</label>
+                                <select name="sub_area" class="form-select form-select-sm">
+                                    <option value="">-- Todas --</option>
+                                    {% for sa in sub_areas %}
+                                        <option value="{{ sa }}" {% if sub_area == sa %}selected{% endif %}>{{ sa }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small fw-bold">Status</label>
+                                <select name="status" class="form-select form-select-sm">
+                                    <option value="">Todos</option>
+                                    <option value="OK" {% if status == 'OK' %}selected{% endif %}>Em dias</option>
+                                    <option value="PENDENTE" {% if status == 'PENDENTE' %}selected{% endif %}>Pendente</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small fw-bold">Ativo</label>
+                                <select name="ativo" class="form-select form-select-sm">
+                                    <option value="">Todos</option>
+                                    <option value="1" {% if ativo == '1' %}selected{% endif %}>Ativos</option>
+                                    <option value="0" {% if ativo == '0' %}selected{% endif %}>Inativos</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small fw-bold">Perfil</label>
+                                <div class="form-check mt-1">
+                                    <input type="hidden" name="perfil_assoc" value="0">
+                                    <input class="form-check-input" type="checkbox" name="perfil_assoc" value="1" id="perfil_assoc" {% if perfil_assoc == '1' %}checked{% endif %}>
+                                    <label class="form-check-label small" for="perfil_assoc">Somente associados a perfil</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; justify-content: flex-end;">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="bi bi-search me-1"></i>Aplicar Filtros
+                        </button>
+                    </div>
                 </div>
             </div>
-            <div class="col-md-1 d-flex align-items-end gap-1">
-                <button type="submit" class="btn btn-outline-primary btn-sm w-100">Filtrar</button>
-                <a href="{% url 'procedures:treinamentos_list' %}" class="btn btn-outline-secondary btn-sm">Limpar</a>
-            </div>
-        </form>
+        </div>
+    </form>
+
+    {% can_nav_view user 'procedures:treinamentos_importar' 'procedures' as can_importar_treinamentos %}
+    {% can_nav_view user 'procedures:treinamentos_exportar_excel' 'procedures' as can_exportar_excel %}
+    <div class="dropdown ms-auto">
+        <button class="btn btn-outline-secondary dropdown-toggle btn-sm" type="button" id="treinamentosActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-three-dots-vertical"></i> Ações
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="treinamentosActionsDropdown">
+            {% if can_importar_treinamentos %}
+            <li>
+                <a href="#" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#importModal">
+                    <i class="bi bi-upload me-2 text-info"></i> Importar
+                </a>
+            </li>
+            {% endif %}
+            {% if can_exportar_excel %}
+            <li>
+                <a href="{% url 'procedures:treinamentos_exportar_excel' %}{% if query_string %}?{{ query_string }}{% endif %}" class="dropdown-item">
+                    <i class="bi bi-file-earmark-excel me-2 text-success"></i> Exportar Excel
+                </a>
+            </li>
+            {% endif %}
+        </ul>
     </div>
 </div>
 
@@ -206,12 +246,6 @@
                 Registros 
                 <span class="badge bg-info">{{ total_registros }} total</span>
             </h6>
-            {% can_nav_view user 'procedures:treinamentos_exportar_excel' 'procedures' as can_exportar_excel %}
-            {% if can_exportar_excel %}
-                <a href="{% url 'procedures:treinamentos_exportar_excel' %}{% if query_string %}?{{ query_string }}{% endif %}" class="btn btn-success btn-sm" title="Exportar para Excel">
-                    <i class="bi bi-file-earmark-excel"></i> Exportar Excel
-                </a>
-            {% endif %}
             {% if treinamentos.paginator.num_pages > 1 %}
                 <small class="text-muted">
                     Página {{ treinamentos.number }} de {{ treinamentos.paginator.num_pages }}

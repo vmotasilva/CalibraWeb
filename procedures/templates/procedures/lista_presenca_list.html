@@ -21,83 +21,102 @@
                 {% can_nav_view user 'procedures:lista_presenca_export' 'procedures' as can_lista_export %}
                 {% can_nav_view user 'procedures:lista_presenca_delete' 'procedures' as can_lista_delete %}
 
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="listaActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-three-dots-vertical"></i> Ações
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="listaActionsDropdown">
+                        {% if can_lista_import %}
+                        <li>
+                            <a href="{% url 'procedures:lista_presenca_importar' %}" class="dropdown-item">
+                                <i class="bi bi-upload me-2 text-success"></i> Importar
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if can_lista_export %}
+                        <li>
+                            <a href="{% url 'procedures:lista_presenca_export' %}" class="dropdown-item" title="Exportar para Excel">
+                                <i class="bi bi-download me-2 text-info"></i> Exportar
+                            </a>
+                        </li>
+                        {% endif %}
+                        <li>
+                            <a href="{% url 'procedures:gerenciar_templates_presenca' %}" class="dropdown-item">
+                                <i class="bi bi-file-earmark-excel me-2 text-secondary"></i> Templates
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
                 {% if can_lista_create %}
                     <a href="{% url 'procedures:lista_presenca_create' %}" class="btn btn-primary">
                         <i class="bi bi-plus-circle"></i> Nova Lista
                     </a>
                 {% endif %}
-                {% if can_lista_import %}
-                    <a href="{% url 'procedures:lista_presenca_importar' %}" class="btn btn-success">
-                        <i class="bi bi-upload"></i> Importar
-                    </a>
-                {% endif %}
-                {% if can_lista_export %}
-                    <a href="{% url 'procedures:lista_presenca_export' %}" class="btn btn-info" title="Exportar para Excel">
-                        <i class="bi bi-download"></i> Exportar
-                    </a>
-                {% endif %}
-                <a href="{% url 'procedures:gerenciar_templates_presenca' %}" class="btn btn-secondary">
-                    <i class="bi bi-file-earmark-excel"></i> Templates
-                </a>
             </div>
         </div>
     </div>
 
     <!-- Filtros -->
-    <div class="card mb-4 shadow-sm">
-        <div class="card-header bg-light">
-            <h6 class="mb-0"><i class="bi bi-funnel"></i> Filtros</h6>
-        </div>
-        <div class="card-body">
-            <form method="get" class="row g-3">
-                <!-- Busca -->
-                <div class="col-md-3">
-                    <label for="busca" class="form-label">Buscar</label>
-                    <input type="text" name="busca" id="busca" class="form-control form-control-sm" 
-                           placeholder="Código, título, local..." value="{{ filtros.busca }}">
-                </div>
+    <div class="d-flex align-items-center gap-2 mb-4">
+        <form method="get" class="d-flex flex-grow-1 gap-2 m-0">
+            <!-- Search -->
+            <div class="input-group input-group-sm" style="max-width: 300px;">
+                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" name="busca" class="form-control border-start-0" placeholder="Código, título, local..." value="{{ filtros.busca }}">
+                <button class="btn btn-outline-secondary border-start-0" type="submit"><i class="bi bi-search"></i></button>
+            </div>
 
-                <!-- Data Início -->
-                <div class="col-md-2">
-                    <label for="data_inicio" class="form-label">Data Início</label>
-                    <input type="date" name="data_inicio" id="data_inicio" class="form-control form-control-sm" 
-                           value="{{ filtros.data_inicio }}">
-                    <div class="form-text">Formato: ANO-MÊS-DIA (AAAA-MM-DD)</div>
-                </div>
+            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#filtrosModal">
+                <i class="bi bi-funnel"></i> Filtros
+            </button>
+            
+            <a href="{% url 'procedures:lista_presenca_list' %}" class="btn btn-outline-secondary btn-sm" title="Limpar Filtros">
+                <i class="bi bi-x-circle"></i> Limpar
+            </a>
 
-                <!-- Data Fim -->
-                <div class="col-md-2">
-                    <label for="data_fim" class="form-label">Data Fim</label>
-                    <input type="date" name="data_fim" id="data_fim" class="form-control form-control-sm" 
-                           value="{{ filtros.data_fim }}">
-                    <div class="form-text">Formato: ANO-MÊS-DIA (AAAA-MM-DD)</div>
+            <!-- Modal Filtros -->
+            <div class="modal fade" id="filtrosModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-content shadow-lg" style="border-radius: 14px;">
+                        <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                            <h5 class="modal-title fw-bold"><i class="bi bi-funnel me-2"></i>Filtros Avançados</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body p-4">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="data_inicio" class="form-label text-muted small fw-bold">Data Início</label>
+                                    <input type="date" name="data_inicio" id="data_inicio" class="form-control form-control-sm" value="{{ filtros.data_inicio }}">
+                                    <div class="form-text small">Formato: ANO-MÊS-DIA (AAAA-MM-DD)</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="data_fim" class="form-label text-muted small fw-bold">Data Fim</label>
+                                    <input type="date" name="data_fim" id="data_fim" class="form-control form-control-sm" value="{{ filtros.data_fim }}">
+                                    <div class="form-text small">Formato: ANO-MÊS-DIA (AAAA-MM-DD)</div>
+                                </div>
+                                <div class="col-12">
+                                    <label for="instrutor" class="form-label text-muted small fw-bold">Instrutor</label>
+                                    <select name="instrutor" id="instrutor" class="form-select form-select-sm">
+                                        <option value="">Todos</option>
+                                        {% for colab in instrutores %}
+                                            <option value="{{ colab.id }}" {% if filtros.instrutor|add:"0" == colab.id %}selected{% endif %}>
+                                                {{ colab.nome_completo }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; justify-content: flex-end;">
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="bi bi-search me-1"></i>Aplicar Filtros
+                            </button>
+                        </div>
+                    </div>
                 </div>
-
-                <!-- Instrutor -->
-                <div class="col-md-3">
-                    <label for="instrutor" class="form-label">Instrutor</label>
-                    <select name="instrutor" id="instrutor" class="form-select form-select-sm">
-                        <option value="">Todos</option>
-                        {% for colab in instrutores %}
-                            <option value="{{ colab.id }}" 
-                                {% if filtros.instrutor|add:"0" == colab.id %}selected{% endif %}>
-                                {{ colab.nome_completo }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <!-- Botões -->
-                <div class="col-md-2 d-flex gap-2 align-items-end">
-                    <button type="submit" class="btn btn-sm btn-primary flex-grow-1">
-                        <i class="bi bi-search"></i> Filtrar
-                    </button>
-                    <a href="{% url 'procedures:lista_presenca_list' %}" class="btn btn-sm btn-secondary" title="Limpar filtros">
-                        <i class="bi bi-arrow-counterclockwise"></i>
-                    </a>
-                </div>
-            </form>
-        </div>
+            </div>
+        </form>
     </div>
 
     <!-- Tabela -->

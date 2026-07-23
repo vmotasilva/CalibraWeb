@@ -19,34 +19,52 @@
     </div>
 
     <!-- Filtros -->
-    <div class="card mb-4">
-        <div class="card-body">
-            <form method="get" class="row g-3">
-                {% if cobranca %}
-                    <input type="hidden" name="cobranca" value="{{ cobranca }}">
-                {% endif %}
-                <div class="col-md-6">
-                    <label for="status" class="form-label">Status</label>
-                    <select name="status" id="status" class="form-select">
-                        <option value="">Todos os status</option>
-                        {% for value, label in status_choices %}
-                            <option value="{{ value }}" {% if status == value %}selected{% endif %}>
-                                {{ label }}
-                            </option>
-                        {% endfor %}
-                    </select>
+    <div class="d-flex align-items-center gap-2 mb-4">
+        <form method="get" class="d-flex flex-grow-1 gap-2 m-0">
+            {% if cobranca %}
+                <input type="hidden" name="cobranca" value="{{ cobranca }}">
+            {% endif %}
+            
+            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#filtrosModal">
+                <i class="bi bi-funnel"></i> Filtros
+            </button>
+            
+            <a href="{% url 'metrologia:solicitacao_list' %}" class="btn btn-outline-secondary btn-sm" title="Limpar filtros">
+                <i class="bi bi-x-circle"></i> Limpar
+            </a>
+
+            <!-- Modal Filtros -->
+            <div class="modal fade" id="filtrosModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content shadow-lg" style="border-radius: 14px;">
+                        <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                            <h5 class="modal-title fw-bold"><i class="bi bi-funnel me-2"></i>Filtros Avançados</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body p-4">
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label for="status" class="form-label text-muted small mb-1 fw-bold">Status</label>
+                                    <select name="status" id="status" class="form-select form-select-sm">
+                                        <option value="">Todos os status</option>
+                                        {% for value, label in status_choices %}
+                                            <option value="{{ value }}" {% if status == value %}selected{% endif %}>
+                                                {{ label }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; justify-content: flex-end;">
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="bi bi-search me-1"></i>Aplicar Filtros
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-md-6"></div>
-                <div class="col-12">
-                    <button type="submit" class="btn btn-sm btn-primary">
-                        <i class="bi bi-funnel"></i> Filtrar
-                    </button>
-                    <a href="{% url 'metrologia:solicitacao_list' %}" class="btn btn-sm btn-secondary">
-                        <i class="bi bi-arrow-clockwise"></i> Limpar
-                    </a>
-                </div>
-            </form>
-        </div>
+            </div>
+        </form>
     </div>
 
     <!-- Tabela de Solicitações -->

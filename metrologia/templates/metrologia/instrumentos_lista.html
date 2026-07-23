@@ -85,98 +85,90 @@
     </div>
 
     <!-- Filter Section -->
-    <div class="card mb-4">
-        <div class="card-header bg-light">
-            <h6 class="mb-0"><i class="bi bi-funnel"></i> Filtros</h6>
-        </div>
-        <div class="card-body">
-            <form method="get" action="">
-                <div class="row g-3">
-                    <!-- Search -->
-                    <div class="col-md-3">
-                        <label class="form-label">Pesquisar</label>
-                        <!-- Dummy inputs to intercept Chrome autofill -->
-                        <input type="text" name="chrome_autofill_dummy_user" style="display:none;" aria-hidden="true" autocomplete="off" />
-                        <input type="password" name="chrome_autofill_dummy_pass" style="display:none;" aria-hidden="true" autocomplete="off" />
-                        <input 
-                            type="search" 
-                            name="q" 
-                            class="form-control form-control-sm"
-                            placeholder="Tag, descrição, código..." 
-                            value="{{ search_query }}"
-                            autocomplete="one-time-code"
-                        >
-                    </div>
+    <div class="d-flex align-items-center gap-2 mb-4">
+        <form method="get" action="" class="d-flex flex-grow-1 gap-2 m-0" id="filterForm">
+            <!-- Search -->
+            <div class="input-group input-group-sm" style="max-width: 300px;">
+                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                <input type="search" name="q" class="form-control border-start-0" placeholder="Tag, descrição, código..." value="{{ search_query }}" autocomplete="one-time-code">
+                <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-search"></i></button>
+            </div>
+            
+            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#filtrosModal">
+                <i class="bi bi-funnel"></i> Filtros
+            </button>
+            
+            <a href="{% url 'listar_instrumentos' %}" class="btn btn-outline-secondary btn-sm" title="Limpar filtros">
+                <i class="bi bi-x-circle"></i> Limpar
+            </a>
 
-                    <!-- Status Filter -->
-                    <div class="col-md-2">
-                        <label class="form-label">Status</label>
-                        <select name="status" class="form-select form-select-sm">
-                            <option value="">Todos</option>
-                            <option value="vigentes" {% if status_filter == 'vigentes' %}selected{% endif %}>
-                                ✓ Vigentes
-                            </option>
-                            <option value="avencer" {% if status_filter == 'avencer' %}selected{% endif %}>
-                                ⚠ A Vencer (30 dias)
-                            </option>
-                            <option value="vencidos" {% if status_filter == 'vencidos' %}selected{% endif %}>
-                                ✗ Vencidos
-                            </option>
-                        </select>
-                    </div>
+            <!-- Modal Filtros -->
+            <div class="modal fade" id="filtrosModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content shadow-lg" style="border-radius: 14px;">
+                        <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                            <h5 class="modal-title fw-bold"><i class="bi bi-funnel me-2"></i>Filtros Avançados</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body p-4">
+                            <div class="row g-3">
+                                <!-- Status Filter -->
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small mb-1 fw-bold">Status</label>
+                                    <select name="status" class="form-select form-select-sm">
+                                        <option value="">Todos</option>
+                                        <option value="vigentes" {% if status_filter == 'vigentes' %}selected{% endif %}>✓ Vigentes</option>
+                                        <option value="avencer" {% if status_filter == 'avencer' %}selected{% endif %}>⚠ A Vencer (30 dias)</option>
+                                        <option value="vencidos" {% if status_filter == 'vencidos' %}selected{% endif %}>✗ Vencidos</option>
+                                    </select>
+                                </div>
 
-                    <!-- Ativo Filter -->
-                    <div class="col-md-2">
-                        <label class="form-label">Situação</label>
-                        <select name="ativo" class="form-select form-select-sm">
-                            <option value="">Todos</option>
-                            <option value="ativos" {% if ativo_filter == 'ativos' %}selected{% endif %}>
-                                Ativos
-                            </option>
-                            <option value="inativos" {% if ativo_filter == 'inativos' %}selected{% endif %}>
-                                Inativos
-                            </option>
-                        </select>
-                    </div>
+                                <!-- Ativo Filter -->
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small mb-1 fw-bold">Situação</label>
+                                    <select name="ativo" class="form-select form-select-sm">
+                                        <option value="">Todos</option>
+                                        <option value="ativos" {% if ativo_filter == 'ativos' %}selected{% endif %}>Ativos</option>
+                                        <option value="inativos" {% if ativo_filter == 'inativos' %}selected{% endif %}>Inativos</option>
+                                    </select>
+                                </div>
 
-                    <!-- Category Filter -->
-                    <div class="col-md-2">
-                        <label class="form-label">Categoria</label>
-                        <select name="categoria" class="form-select form-select-sm">
-                            <option value="">Todas</option>
-                            {% for cat in categorias %}
-                                <option value="{{ cat.id }}" {% if categoria_filter|stringformat:"s" == cat.id|stringformat:"s" %}selected{% endif %}>
-                                    {{ cat.nome }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </div>
+                                <!-- Category Filter -->
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small mb-1 fw-bold">Categoria</label>
+                                    <select name="categoria" class="form-select form-select-sm">
+                                        <option value="">Todas</option>
+                                        {% for cat in categorias %}
+                                            <option value="{{ cat.id }}" {% if categoria_filter|stringformat:"s" == cat.id|stringformat:"s" %}selected{% endif %}>
+                                                {{ cat.nome }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
 
-                    <!-- Sector Filter -->
-                    <div class="col-md-2">
-                        <label class="form-label">Setor</label>
-                        <select name="setor" class="form-select form-select-sm">
-                            <option value="">Todos</option>
-                            {% for setor in setores %}
-                                <option value="{{ setor.id }}" {% if setor_filter|stringformat:"s" == setor.id|stringformat:"s" %}selected{% endif %}>
-                                    {{ setor.nome }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <!-- Buttons -->
-                    <div class="col-md-1 d-flex gap-1 align-items-end">
-                        <button type="submit" class="btn btn-sm btn-primary flex-grow-1">
-                            <i class="bi bi-search"></i> Filtrar
-                        </button>
-                        <a href="{% url 'listar_instrumentos' %}" class="btn btn-sm btn-secondary" title="Limpar filtros">
-                            <i class="bi bi-arrow-counterclockwise"></i>
-                        </a>
+                                <!-- Sector Filter -->
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small mb-1 fw-bold">Setor</label>
+                                    <select name="setor" class="form-select form-select-sm">
+                                        <option value="">Todos</option>
+                                        {% for setor in setores %}
+                                            <option value="{{ setor.id }}" {% if setor_filter|stringformat:"s" == setor.id|stringformat:"s" %}selected{% endif %}>
+                                                {{ setor.nome }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; justify-content: flex-end;">
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="bi bi-search me-1"></i>Aplicar Filtros
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </form>
-        </div>
+            </div>
+        </form>
     </div>
 
     <!-- Sorting Section -->

@@ -15,14 +15,26 @@
         </div>
         <div class="col-md-4">
             <div class="d-flex flex-wrap gap-2 justify-content-start justify-content-md-end">
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary dropdown-toggle shadow-sm" type="button" id="heActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-three-dots-vertical"></i> Ações
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="heActionsDropdown">
+                        <li>
+                            <a href="{% url 'rh:motivo_planejamento_list' %}" class="dropdown-item">
+                                <i class="bi bi-gear me-2 text-primary"></i> Gerenciar Motivos
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a href="{% url 'modulo_rh' %}" class="dropdown-item">
+                                <i class="bi bi-arrow-left me-2 text-secondary"></i> Painel de RH
+                            </a>
+                        </li>
+                    </ul>
+                </div>
                 <a href="{% url 'rh:planejamento_hora_extra_create' %}" class="btn btn-primary shadow-sm">
                     <i class="bi bi-plus-circle"></i> Novo Registro
-                </a>
-                <a href="{% url 'rh:motivo_planejamento_list' %}" class="btn btn-outline-primary">
-                    <i class="bi bi-gear"></i> Gerenciar Motivos
-                </a>
-                <a href="{% url 'modulo_rh' %}" class="btn btn-outline-secondary">
-                    <i class="bi bi-arrow-left"></i> Painel de RH
                 </a>
             </div>
         </div>
@@ -83,65 +95,84 @@
     </div>
 
     <!-- Filtros -->
-    <div class="card mb-4 shadow-sm border-0">
-        <div class="card-body bg-light rounded shadow-inner">
-            <form method="GET" class="row g-3 align-items-end">
-                <div class="col-md-2">
-                    <label for="id_busca" class="form-label small fw-semibold">Motivo (Texto livre)</label>
-                    <input type="text" name="busca" id="id_busca" class="form-control" placeholder="Buscar detalhe..." value="{{ busca }}">
-                </div>
+    <div class="d-flex align-items-center gap-2 mb-4">
+        <form method="GET" class="d-flex flex-grow-1 gap-2 m-0">
+            <!-- Search -->
+            <div class="input-group input-group-sm" style="max-width: 300px;">
+                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" name="busca" class="form-control border-start-0" placeholder="Buscar detalhe..." value="{{ busca }}">
+                <button class="btn btn-outline-secondary border-start-0" type="submit"><i class="bi bi-search"></i></button>
+            </div>
+            
+            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#filtrosModal">
+                <i class="bi bi-funnel"></i> Filtros
+            </button>
+            
+            <a href="{% url 'rh:planejamento_hora_extra_list' %}" class="btn btn-outline-secondary btn-sm" title="Limpar Filtros">
+                <i class="bi bi-x-circle"></i> Limpar
+            </a>
 
-                <div class="col-md-2">
-                    <label for="id_tipo" class="form-label small fw-semibold">Tipo</label>
-                    <select name="tipo" id="id_tipo" class="form-select">
-                        <option value="">Todos</option>
-                        <option value="HORA_EXTRA" {% if tipo == 'HORA_EXTRA' %}selected{% endif %}>Hora Extra</option>
-                        <option value="FOLGA" {% if tipo == 'FOLGA' %}selected{% endif %}>Folga Planejada</option>
-                    </select>
-                </div>
+            <!-- Modal Filtros -->
+            <div class="modal fade" id="filtrosModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-content shadow-lg" style="border-radius: 14px;">
+                        <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                            <h5 class="modal-title fw-bold"><i class="bi bi-funnel me-2"></i>Filtros Avançados</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body p-4">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="id_tipo" class="form-label text-muted small fw-bold">Tipo</label>
+                                    <select name="tipo" id="id_tipo" class="form-select form-select-sm">
+                                        <option value="">Todos</option>
+                                        <option value="HORA_EXTRA" {% if tipo == 'HORA_EXTRA' %}selected{% endif %}>Hora Extra</option>
+                                        <option value="FOLGA" {% if tipo == 'FOLGA' %}selected{% endif %}>Folga Planejada</option>
+                                    </select>
+                                </div>
 
-                <div class="col-md-2">
-                    <label for="id_semana" class="form-label small fw-semibold">Acompanhamento Semanal</label>
-                    <select name="semana" id="id_semana" class="form-select">
-                        <option value="">Todo o período</option>
-                        <option value="passada" {% if semana == 'passada' %}selected{% endif %}>Semana Passada</option>
-                        <option value="atual" {% if semana == 'atual' %}selected{% endif %}>Esta Semana</option>
-                        <option value="proxima" {% if semana == 'proxima' %}selected{% endif %}>Próxima Semana</option>
-                    </select>
-                </div>
+                                <div class="col-md-6">
+                                    <label for="id_semana" class="form-label text-muted small fw-bold">Acompanhamento Semanal</label>
+                                    <select name="semana" id="id_semana" class="form-select form-select-sm">
+                                        <option value="">Todo o período</option>
+                                        <option value="passada" {% if semana == 'passada' %}selected{% endif %}>Semana Passada</option>
+                                        <option value="atual" {% if semana == 'atual' %}selected{% endif %}>Esta Semana</option>
+                                        <option value="proxima" {% if semana == 'proxima' %}selected{% endif %}>Próxima Semana</option>
+                                    </select>
+                                </div>
 
-                <div class="col-md-2">
-                    <label for="id_data_inicio" class="form-label small fw-semibold">Data Inicial</label>
-                    <input type="date" name="data_inicio" id="id_data_inicio" class="form-control" value="{{ data_inicio }}">
-                </div>
+                                <div class="col-md-6">
+                                    <label for="id_data_inicio" class="form-label text-muted small fw-bold">Data Inicial</label>
+                                    <input type="date" name="data_inicio" id="id_data_inicio" class="form-control form-control-sm" value="{{ data_inicio }}">
+                                </div>
 
-                <div class="col-md-2">
-                    <label for="id_data_fim" class="form-label small fw-semibold">Data Final</label>
-                    <input type="date" name="data_fim" id="id_data_fim" class="form-control" value="{{ data_fim }}">
-                </div>
+                                <div class="col-md-6">
+                                    <label for="id_data_fim" class="form-label text-muted small fw-bold">Data Final</label>
+                                    <input type="date" name="data_fim" id="id_data_fim" class="form-control form-control-sm" value="{{ data_fim }}">
+                                </div>
 
-                <div class="col-md-2">
-                    <label for="id_colaborador" class="form-label small fw-semibold">Colaborador</label>
-                    <select name="colaborador_id" id="id_colaborador" class="form-select">
-                        <option value="">Todos</option>
-                        {% for colab in colaboradores %}
-                            <option value="{{ colab.id }}" {% if colaborador_id|add:"0" == colab.id %}selected{% endif %}>
-                                {{ colab.nome_completo }}
-                            </option>
-                        {% endfor %}
-                    </select>
+                                <div class="col-12">
+                                    <label for="id_colaborador" class="form-label text-muted small fw-bold">Colaborador</label>
+                                    <select name="colaborador_id" id="id_colaborador" class="form-select form-select-sm">
+                                        <option value="">Todos</option>
+                                        {% for colab in colaboradores %}
+                                            <option value="{{ colab.id }}" {% if colaborador_id|add:"0" == colab.id %}selected{% endif %}>
+                                                {{ colab.nome_completo }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; justify-content: flex-end;">
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="bi bi-search me-1"></i>Aplicar Filtros
+                            </button>
+                        </div>
+                    </div>
                 </div>
-
-                <div class="col-12 d-flex justify-content-end gap-2 mt-2">
-                    <button type="submit" class="btn btn-primary px-4">
-                        <i class="bi bi-funnel"></i> Filtrar
-                    </button>
-                    <a href="{% url 'rh:planejamento_hora_extra_list' %}" class="btn btn-outline-secondary px-3" title="Limpar Filtros">
-                        <i class="bi bi-arrow-clockwise"></i> Limpar Filtros
-                    </a>
-                </div>
-            </form>
-        </div>
+            </div>
+        </form>
     </div>
 
     <!-- Tabela -->

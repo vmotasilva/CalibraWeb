@@ -12,14 +12,31 @@
                 <h1 class="h5 mb-0"><i class="bi bi-graph-up text-primary me-2"></i>Dashboard de Treinamentos</h1>
                 <small class="text-muted dashboard-desc">Visão geral de estatísticas e conformidade</small>
             </div>
-            <div class="d-flex align-items-center gap-3">
-                <button id="exportCsv" class="btn btn-outline-success btn-sm py-1">
-                    <i class="bi bi-file-earmark-excel me-1"></i>Exportar CSV
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-outline-primary btn-sm py-1" data-bs-toggle="modal" data-bs-target="#filtrosModal">
+                    <i class="bi bi-funnel"></i> Filtros
                 </button>
-                <button id="exportPdf" class="btn btn-outline-danger btn-sm py-1">
-                    <i class="bi bi-file-earmark-pdf me-1"></i>Exportar PDF
+                <button id="clearFiltersBtn" type="button" class="btn btn-outline-secondary btn-sm py-1" title="Limpar Filtros">
+                    <i class="bi bi-x-circle"></i> Limpar
                 </button>
-                <span class="badge bg-light text-dark dashboard-badge-time">
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary dropdown-toggle btn-sm py-1" type="button" id="dashboardActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-three-dots-vertical"></i> Ações
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="dashboardActionsDropdown">
+                        <li>
+                            <a href="#" id="exportCsv" class="dropdown-item">
+                                <i class="bi bi-file-earmark-excel me-2 text-success"></i> Exportar CSV
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" id="exportPdf" class="dropdown-item">
+                                <i class="bi bi-file-earmark-pdf me-2 text-danger"></i> Exportar PDF
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                <span class="badge bg-light text-dark dashboard-badge-time ms-2">
                     <i class="bi bi-clock me-1"></i>Atualizado: {% now "d/m/Y H:i" %}
                 </span>
             </div>
@@ -27,165 +44,160 @@
     </div>
     
     <div class="dashboard-body">
-        <!-- Sidebar de Filtros (Recolhível) - Estilo RH -->
-        <div id="sidebarCol" class="col-auto sidebar-col">
-            <div id="filterSidebar" class="filter-card">
-                <div class="card-header d-flex justify-content-between align-items-center bg-white border-bottom">
-                    <h6 class="fw-bold mb-0 text-secondary"><i class="bi bi-funnel-fill"></i> FILTROS</h6>
-                </div>
-
-                <div class="filter-card-body">
-                    <div class="sidebar-scroll">
-                        
-                        <!-- Setor -->
-                        <div class="filter-group">
-                            <div class="filter-header" onclick="toggleFilterGroup(this)">
-                                <label class="filter-title">Setor</label>
-                                <i class="bi bi-chevron-down"></i>
-                            </div>
-                            <div class="filter-content">
-                                <div class="d-flex flex-column gap-1">
-                                    {% for s in setores %}
-                                    <div class="form-check">
-                                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ s.id }}" data-category="setor" id="set_{{ s.id }}" {% if s.id|stringformat:"s" in filtro_setor_list %}checked{% endif %}>
-                                        <label class="form-check-label small text-truncate" for="set_{{ s.id }}" title="{{ s.nome }}">
-                                            {{ s.nome }}
-                                        </label>
-                                    </div>
-                                    {% endfor %}
+        <!-- Modal Filtros -->
+        <div class="modal fade" id="filtrosModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content shadow-lg" style="border-radius: 14px;">
+                    <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                        <h5 class="modal-title fw-bold"><i class="bi bi-funnel me-2"></i>Filtros Avançados</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label text-muted small fw-bold">Setor</label>
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-secondary btn-sm w-100 text-start dropdown-toggle text-truncate" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside">
+                                        Selecionar Setor
+                                    </button>
+                                    <ul class="dropdown-menu w-100 p-2" style="max-height: 200px; overflow-y: auto;">
+                                        {% for s in setores %}
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ s.id }}" data-category="setor" id="set_{{ s.id }}" {% if s.id|stringformat:"s" in filtro_setor_list %}checked{% endif %}>
+                                                <label class="form-check-label small text-truncate" for="set_{{ s.id }}" title="{{ s.nome }}">
+                                                    {{ s.nome }}
+                                                </label>
+                                            </div>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
                                 </div>
                             </div>
-                        </div>
-                        
-                        <!-- Turno -->
-                        <div class="filter-group">
-                            <div class="filter-header" onclick="toggleFilterGroup(this)">
-                                <label class="filter-title">Turno</label>
-                                <i class="bi bi-chevron-down"></i>
-                            </div>
-                            <div class="filter-content">
-                                <div class="d-flex flex-column gap-1">
-                                    {% for t in turnos %}
-                                    <div class="form-check">
-                                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ t.value }}" data-category="turno" id="turn_{{ t.value }}" {% if t.value in filtro_turno_list %}checked{% endif %}>
-                                        <label class="form-check-label small text-truncate" for="turn_{{ t.value }}">
-                                            {{ t.label }}
-                                        </label>
-                                    </div>
-                                    {% endfor %}
+                            <div class="col-md-4">
+                                <label class="form-label text-muted small fw-bold">Turno</label>
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-secondary btn-sm w-100 text-start dropdown-toggle text-truncate" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside">
+                                        Selecionar Turno
+                                    </button>
+                                    <ul class="dropdown-menu w-100 p-2" style="max-height: 200px; overflow-y: auto;">
+                                        {% for t in turnos %}
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ t.value }}" data-category="turno" id="turn_{{ t.value }}" {% if t.value in filtro_turno_list %}checked{% endif %}>
+                                                <label class="form-check-label small text-truncate" for="turn_{{ t.value }}">
+                                                    {{ t.label }}
+                                                </label>
+                                            </div>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
                                 </div>
                             </div>
-                        </div>
-                        
-                        <!-- Líder -->
-                        <div class="filter-group">
-                            <div class="filter-header" onclick="toggleFilterGroup(this)">
-                                <label class="filter-title">Líder</label>
-                                <i class="bi bi-chevron-down"></i>
-                            </div>
-                            <div class="filter-content">
-                                <div class="d-flex flex-column gap-1">
-                                    {% for l in lideres %}
-                                    <div class="form-check">
-                                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ l.id }}" data-category="lider" id="lider_{{ l.id }}" {% if l.id|stringformat:"s" in filtro_lider_list %}checked{% endif %}>
-                                        <label class="form-check-label small text-truncate" for="lider_{{ l.id }}" title="{{ l.nome }}">
-                                            {{ l.nome }}
-                                        </label>
-                                    </div>
-                                    {% endfor %}
+                            <div class="col-md-4">
+                                <label class="form-label text-muted small fw-bold">Líder</label>
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-secondary btn-sm w-100 text-start dropdown-toggle text-truncate" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside">
+                                        Selecionar Líder
+                                    </button>
+                                    <ul class="dropdown-menu w-100 p-2" style="max-height: 200px; overflow-y: auto;">
+                                        {% for l in lideres %}
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ l.id }}" data-category="lider" id="lider_{{ l.id }}" {% if l.id|stringformat:"s" in filtro_lider_list %}checked{% endif %}>
+                                                <label class="form-check-label small text-truncate" for="lider_{{ l.id }}" title="{{ l.nome }}">
+                                                    {{ l.nome }}
+                                                </label>
+                                            </div>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
                                 </div>
                             </div>
-                        </div>
-
-                        <!-- Instrutor Responsável -->
-                        <div class="filter-group">
-                            <div class="filter-header" onclick="toggleFilterGroup(this)">
-                                <label class="filter-title">Instrutor Responsável</label>
-                                <i class="bi bi-chevron-down"></i>
-                            </div>
-                            <div class="filter-content">
-                                <div class="d-flex flex-column gap-1">
-                                    {% for instrutor in instrutores_responsaveis %}
-                                    <div class="form-check">
-                                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ instrutor.id }}" data-category="instrutor_responsavel" id="instrutor_resp_{{ instrutor.id }}" {% if instrutor.id|stringformat:"s" in filtro_instrutor_responsavel_list %}checked{% endif %}>
-                                        <label class="form-check-label small text-truncate" for="instrutor_resp_{{ instrutor.id }}" title="{{ instrutor.nome }}">
-                                            {{ instrutor.nome }}
-                                        </label>
-                                    </div>
-                                    {% empty %}
-                                    <small class="text-muted">Nenhum instrutor responsável cadastrado.</small>
-                                    {% endfor %}
+                            <div class="col-md-4">
+                                <label class="form-label text-muted small fw-bold">Instrutor Responsável</label>
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-secondary btn-sm w-100 text-start dropdown-toggle text-truncate" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside">
+                                        Selecionar Instrutor
+                                    </button>
+                                    <ul class="dropdown-menu w-100 p-2" style="max-height: 200px; overflow-y: auto;">
+                                        {% for instrutor in instrutores_responsaveis %}
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ instrutor.id }}" data-category="instrutor_responsavel" id="instrutor_resp_{{ instrutor.id }}" {% if instrutor.id|stringformat:"s" in filtro_instrutor_responsavel_list %}checked{% endif %}>
+                                                <label class="form-check-label small text-truncate" for="instrutor_resp_{{ instrutor.id }}" title="{{ instrutor.nome }}">
+                                                    {{ instrutor.nome }}
+                                                </label>
+                                            </div>
+                                        </li>
+                                        {% empty %}
+                                        <li><small class="text-muted ms-2">Nenhum instrutor.</small></li>
+                                        {% endfor %}
+                                    </ul>
                                 </div>
                             </div>
-                        </div>
-
-                        <!-- Criticidade -->
-                        <div class="filter-group">
-                            <div class="filter-header" onclick="toggleFilterGroup(this)">
-                                <label class="filter-title">Criticidade</label>
-                                <i class="bi bi-chevron-down"></i>
-                            </div>
-                            <div class="filter-content">
-                                <div class="d-flex flex-column gap-1">
-                                    {% for value, label in criticidade_choices %}
-                                    <div class="form-check">
-                                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ value }}" data-category="criticidade" id="crit_{{ value }}" {% if value|stringformat:"s" in filtro_criticidade_list %}checked{% endif %}>
-                                        <label class="form-check-label small text-truncate" for="crit_{{ value }}" title="{{ label }}">
-                                            {{ label }}
-                                        </label>
-                                    </div>
-                                    {% endfor %}
+                            <div class="col-md-4">
+                                <label class="form-label text-muted small fw-bold">Criticidade</label>
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-secondary btn-sm w-100 text-start dropdown-toggle text-truncate" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside">
+                                        Selecionar Criticidade
+                                    </button>
+                                    <ul class="dropdown-menu w-100 p-2" style="max-height: 200px; overflow-y: auto;">
+                                        {% for value, label in criticidade_choices %}
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ value }}" data-category="criticidade" id="crit_{{ value }}" {% if value|stringformat:"s" in filtro_criticidade_list %}checked{% endif %}>
+                                                <label class="form-check-label small text-truncate" for="crit_{{ value }}" title="{{ label }}">
+                                                    {{ label }}
+                                                </label>
+                                            </div>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
                                 </div>
                             </div>
-                        </div>
-
-                        <!-- Matriz -->
-                        <div class="filter-group">
-                            <div class="filter-header" onclick="toggleFilterGroup(this)">
-                                <label class="filter-title">Matriz</label>
-                                <i class="bi bi-chevron-down"></i>
-                            </div>
-                            <div class="filter-content">
-                                <div class="d-flex flex-column gap-1">
-                                    {% for m in matrizes %}
-                                    <div class="form-check">
-                                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ m }}" data-category="matriz" id="matriz_{{ forloop.counter }}" {% if m in filtro_matriz_list %}checked{% endif %}>
-                                        <label class="form-check-label small text-truncate" for="matriz_{{ forloop.counter }}" title="{{ m }}">
-                                            {{ m }}
-                                        </label>
-                                    </div>
-                                    {% endfor %}
+                            <div class="col-md-4">
+                                <label class="form-label text-muted small fw-bold">Matriz</label>
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-secondary btn-sm w-100 text-start dropdown-toggle text-truncate" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside">
+                                        Selecionar Matriz
+                                    </button>
+                                    <ul class="dropdown-menu w-100 p-2" style="max-height: 200px; overflow-y: auto;">
+                                        {% for m in matrizes %}
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ m }}" data-category="matriz" id="matriz_{{ forloop.counter }}" {% if m in filtro_matriz_list %}checked{% endif %}>
+                                                <label class="form-check-label small text-truncate" for="matriz_{{ forloop.counter }}" title="{{ m }}">
+                                                    {{ m }}
+                                                </label>
+                                            </div>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
                                 </div>
                             </div>
-                        </div>
-
-                        <!-- Sub-Área -->
-                        <div class="filter-group">
-                            <div class="filter-header" onclick="toggleFilterGroup(this)">
-                                <label class="filter-title">Sub-Área</label>
-                                <i class="bi bi-chevron-down"></i>
-                            </div>
-                            <div class="filter-content">
-                                <div class="d-flex flex-column gap-1">
-                                    {% for sa in sub_areas %}
-                                    <div class="form-check">
-                                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ sa }}" data-category="sub_area" id="subarea_{{ forloop.counter }}" {% if sa in filtro_sub_area_list %}checked{% endif %}>
-                                        <label class="form-check-label small text-truncate" for="subarea_{{ forloop.counter }}" title="{{ sa }}">
-                                            {{ sa }}
-                                        </label>
-                                    </div>
-                                    {% endfor %}
+                            <div class="col-md-4">
+                                <label class="form-label text-muted small fw-bold">Sub-Área</label>
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-secondary btn-sm w-100 text-start dropdown-toggle text-truncate" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside">
+                                        Selecionar Sub-Área
+                                    </button>
+                                    <ul class="dropdown-menu w-100 p-2" style="max-height: 200px; overflow-y: auto;">
+                                        {% for sa in sub_areas %}
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ sa }}" data-category="sub_area" id="subarea_{{ forloop.counter }}" {% if sa in filtro_sub_area_list %}checked{% endif %}>
+                                                <label class="form-check-label small text-truncate" for="subarea_{{ forloop.counter }}" title="{{ sa }}">
+                                                    {{ sa }}
+                                                </label>
+                                            </div>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
                                 </div>
                             </div>
-                        </div>
-
-                        <!-- Colaborador (Select) -->
-                        <div class="filter-group open">
-                            <div class="filter-header" onclick="toggleFilterGroup(this)">
-                                <label class="filter-title">Colaborador</label>
-                                <i class="bi bi-chevron-down"></i>
-                            </div>
-                            <div class="filter-content">
+                            <div class="col-md-8">
+                                <label class="form-label text-muted small fw-bold">Colaborador</label>
                                 <select id="filterColaboradorId" class="form-select form-select-sm">
                                     <option value="">Todos</option>
                                     {% for c in colaboradores_todos %}
@@ -194,18 +206,10 @@
                                 </select>
                             </div>
                         </div>
-                        
                     </div>
-                </div>
-
-                <!-- Footer com Botões -->
-                <div class="filter-card-footer border-top">
-                    <div class="d-grid gap-2 p-2">
-                        <button type="button" id="applyFilters" class="btn btn-primary btn-sm">
-                            <i class="bi bi-funnel-fill me-1"></i>Filtrar
-                        </button>
-                        <button type="button" id="clearFilters" class="btn btn-outline-secondary btn-sm">
-                            <i class="bi bi-x-circle me-1"></i>Limpar
+                    <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; justify-content: flex-end;">
+                        <button type="button" id="applyFilters" class="btn btn-primary btn-sm" data-bs-dismiss="modal">
+                            <i class="bi bi-search me-1"></i>Aplicar Filtros
                         </button>
                     </div>
                 </div>

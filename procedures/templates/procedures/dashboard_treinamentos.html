@@ -6,116 +6,109 @@
 {% block content %}
 <div class="container-fluid py-4">
     <div id="mainContent">
-        <div class="row">
-            <!-- Sidebar de filtros -->
-            <aside id="sidebar" class="sidebar col-md-3">
-                <div class="card mb-3">
-                    <div class="card-body">
-                        <h6 class="mb-3">Filtros</h6>
+        <!-- Botão de Filtros -->
+        <div class="d-flex align-items-center gap-2 mb-4">
+            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#filtrosModal">
+                <i class="bi bi-funnel"></i> Filtros
+            </button>
+            <button id="clearFiltersBtn" type="button" class="btn btn-outline-secondary btn-sm" title="Limpar Filtros">
+                <i class="bi bi-x-circle"></i> Limpar
+            </button>
+        </div>
+
+        <!-- Modal Filtros -->
+        <div class="modal fade" id="filtrosModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content shadow-lg" style="border-radius: 14px;">
+                    <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                        <h5 class="modal-title fw-bold"><i class="bi bi-funnel me-2"></i>Filtros Avançados</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
                         <form id="filterForm">
-                            <div class="mb-2">
-                                <label class="form-label small">Setor</label>
-                                <select name="setor" class="form-select form-select-sm">
-                                    <option value="">Todos</option>
-                                    {% for s in setores %}
-                                    <option value="{{ s.id }}">{{ s.nome }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <div class="card p-3">
-                            <h6 class="card-title">Planejamento por Instrutor</h6>
-                            <canvas id="chartPlanejamentoInstrutor" style="height:200px;"></canvas>
-                            <div id="chartPlanejamentoInstrutorFallback" class="small text-muted mt-2">Carregando...</div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card p-3">
-                            <h6 class="card-title">Planejamento por Setor - Turno</h6>
-                            <canvas id="chartPlanejamentoSetorTurno" style="height:200px;"></canvas>
-                            <div id="chartPlanejamentoSetorTurnoFallback" class="small text-muted mt-2">Carregando...</div>
-                        </div>
-                    </div>
-                </div>
-
-                            <div class="mb-2">
-                                <label class="form-label small">Turno</label>
-                                <select name="turno" class="form-select form-select-sm">
-                                    <option value="">Todos</option>
-                                    {% for t in turnos %}
-                                    <option value="{{ t.value }}">{{ t.label }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-
-                            <div class="mb-2">
-                                <label class="form-label small">Líder</label>
-                                <select name="lider" class="form-select form-select-sm">
-                                    <option value="">Todos</option>
-                                    {% for l in lideres %}
-                                    <option value="{{ l.id }}">{{ l.nome }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-
-                            <div class="d-flex gap-2 mt-3">
-                                <button id="applyFilters" type="button" class="btn btn-primary btn-sm flex-fill">Aplicar</button>
-                                <button id="clearFilters" type="button" class="btn btn-outline-secondary btn-sm flex-fill">Limpar</button>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label text-muted small fw-bold">Setor</label>
+                                    <select name="setor" class="form-select form-select-sm">
+                                        <option value="">Todos</option>
+                                        {% for s in setores %}
+                                        <option value="{{ s.id }}">{{ s.nome }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label text-muted small fw-bold">Turno</label>
+                                    <select name="turno" class="form-select form-select-sm">
+                                        <option value="">Todos</option>
+                                        {% for t in turnos %}
+                                        <option value="{{ t.value }}">{{ t.label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label text-muted small fw-bold">Líder</label>
+                                    <select name="lider" class="form-select form-select-sm">
+                                        <option value="">Todos</option>
+                                        {% for l in lideres %}
+                                        <option value="{{ l.id }}">{{ l.nome }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
                             </div>
                         </form>
                     </div>
-                </div>
-
-                <div id="activeStatusFilter" class="mb-2 text-center"></div>
-
-                <div class="card mb-3">
-                    <div class="card-body text-center">
-                        <h6 class="mb-1">Taxa de Conformidade</h6>
-                        <div class="progress mb-2" style="height:18px">
-                            <div id="progressConformidade" class="progress-bar bg-success" role="progressbar" style="width: {{ taxa_conformidade }}%"></div>
-                        </div>
-                        <div id="taxaConformidade" class="small text-muted">{{ taxa_conformidade }}% de conformidade</div>
+                    <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; justify-content: flex-end;">
+                        <button id="applyFilters" type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal">
+                            <i class="bi bi-search me-1"></i>Aplicar Filtros
+                        </button>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                <div class="card">
-                    <div class="card-body text-center">
-                        <h6 class="mb-1">Últimos 30 dias</h6>
-                        <div id="treinamentos30Dias" class="display-6">{{ treinamentos_ultimos_30_dias }}</div>
-                        <small class="text-muted">treinamentos registrados</small>
-                    </div>
-                </div>
-            </aside>
+        <div id="activeStatusFilter" class="mb-2 text-center"></div>
 
-            <!-- Conteúdo principal -->
-            <section class="col-md-9">
-                <div class="row mb-3">
-                    <div class="col-md-3">
-                        <div class="card p-3 text-center">
-                            <div class="small text-muted">Total Treinamentos</div>
-                            <div id="totalTreinamentos" class="h5">{{ total_treinamentos }}</div>
-                        </div>
+        <div class="row mb-3">
+            <div class="col-md-2">
+                <div class="card p-3 text-center h-100">
+                    <div class="small text-muted">Conformidade</div>
+                    <div class="progress mt-2 mb-1" style="height:12px">
+                        <div id="progressConformidade" class="progress-bar bg-success" role="progressbar" style="width: {{ taxa_conformidade }}%"></div>
                     </div>
-                    <div class="col-md-3">
-                        <div class="card p-3 text-center">
-                            <div class="small text-muted">Vigentes</div>
-                            <div id="treinamentosVigentes" class="h5">{{ treinamentos_vigentes }}</div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card p-3 text-center">
-                            <div class="small text-muted">Pendentes</div>
-                            <div id="treinamentosPendentes" class="h5">{{ treinamentos_pendentes }}</div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card p-3 text-center">
-                            <div class="small text-muted">Colaboradores Treinados</div>
-                            <div id="totalColaboradoresTreinados" class="h5">{{ total_colaboradores_treinados }}</div>
-                        </div>
-                    </div>
+                    <div id="taxaConformidade" class="small text-muted fw-bold">{{ taxa_conformidade }}%</div>
                 </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card p-3 text-center h-100 justify-content-center">
+                    <div class="small text-muted">Últimos 30 dias</div>
+                    <div id="treinamentos30Dias" class="h5 mt-2 mb-0">{{ treinamentos_ultimos_30_dias }}</div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card p-3 text-center h-100 justify-content-center">
+                    <div class="small text-muted">Total</div>
+                    <div id="totalTreinamentos" class="h5 mt-2 mb-0">{{ total_treinamentos }}</div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card p-3 text-center h-100 justify-content-center">
+                    <div class="small text-muted">Vigentes</div>
+                    <div id="treinamentosVigentes" class="h5 mt-2 mb-0">{{ treinamentos_vigentes }}</div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card p-3 text-center h-100 justify-content-center">
+                    <div class="small text-muted">Pendentes</div>
+                    <div id="treinamentosPendentes" class="h5 mt-2 mb-0">{{ treinamentos_pendentes }}</div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card p-3 text-center h-100 justify-content-center">
+                    <div class="small text-muted">Colab. Treinados</div>
+                    <div id="totalColaboradoresTreinados" class="h5 mt-2 mb-0">{{ total_colaboradores_treinados }}</div>
+                </div>
+            </div>
+        </div>
 
                 <div class="row mb-4">
                     <div class="col-md-4">
@@ -208,7 +201,6 @@
 
             </section>
         </div>
-    </div>
 </div>
 
 <!-- Chart.js para gráficos -->

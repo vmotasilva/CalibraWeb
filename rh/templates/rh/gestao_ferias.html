@@ -44,22 +44,38 @@
         </div>
         <div class="col-md-4">
             <div class="d-flex flex-wrap gap-2 justify-content-start justify-content-md-end">
-                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalSelecionarColaborador">
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="feriasActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-ellipsis-v"></i> Ações
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="feriasActionsDropdown">
+                        <li>
+                            <a href="{% url 'rh:atualizar_status_ferias' %}" class="dropdown-item" title="Atualizar status de férias em massa">
+                                <i class="fas fa-sync text-warning me-2"></i> Atualizar Status
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'rh:importar_ferias' %}" class="dropdown-item" title="Importar férias em massa de um arquivo">
+                                <i class="fas fa-file-import text-info me-2"></i> Importar
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'rh:exportar_ferias' %}?status={{ status_filtro }}&aprovada={{ aprovada_filtro }}&colaborador={{ colaborador_filtro }}" 
+                               class="dropdown-item" title="Exportar férias para Excel">
+                                <i class="fas fa-file-excel text-success me-2"></i> Exportar
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a href="{% url 'modulo_rh' %}" class="dropdown-item">
+                                <i class="fas fa-arrow-left text-secondary me-2"></i> Voltar ao RH
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalSelecionarColaborador">
                     <i class="fas fa-plus"></i> Registrar Férias
                 </button>
-                <a href="{% url 'rh:atualizar_status_ferias' %}" class="btn btn-warning" title="Atualizar status de férias em massa">
-                    <i class="fas fa-sync"></i> Atualizar Status
-                </a>
-                <a href="{% url 'rh:importar_ferias' %}" class="btn btn-info" title="Importar férias em massa de um arquivo">
-                    <i class="fas fa-file-import"></i> Importar
-                </a>
-                <a href="{% url 'rh:exportar_ferias' %}?status={{ status_filtro }}&aprovada={{ aprovada_filtro }}&colaborador={{ colaborador_filtro }}" 
-                   class="btn btn-outline-success" title="Exportar férias para Excel">
-                    <i class="fas fa-file-excel"></i> Exportar
-                </a>
-                <a href="{% url 'modulo_rh' %}" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left"></i> Voltar ao RH
-                </a>
             </div>
         </div>
     </div>
@@ -124,60 +140,69 @@
     </div>
 
     <!-- Filtros -->
-    <div class="card mb-4">
-        <div class="card-header bg-light">
-            <h5 class="mb-0">
+    <div class="d-flex align-items-center gap-2 mb-4">
+        <form method="get" class="d-flex flex-grow-1 gap-2 m-0">
+            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#filtrosModal">
                 <i class="fas fa-filter"></i> Filtros
-            </h5>
-        </div>
-        <div class="card-body">
-            <form method="get" class="row g-3">
-                <div class="col-md-3">
-                    <label for="status" class="form-label">Status</label>
-                    <select name="status" id="status" class="form-select">
-                        <option value="">Todos os Status</option>
-                        {% for value, label in status_choices %}
-                            <option value="{{ value }}" {% if status == value %}selected{% endif %}>
-                                {{ label }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
+            </button>
+            
+            <a href="{% url 'rh:gestao_ferias' %}" class="btn btn-outline-secondary btn-sm" title="Limpar filtros">
+                <i class="fas fa-times-circle"></i> Limpar
+            </a>
 
-                <div class="col-md-3">
-                    <label for="aprovada" class="form-label">Aprovação</label>
-                    <select name="aprovada" id="aprovada" class="form-select">
-                        <option value="">Todas</option>
-                        <option value="1" {% if aprovada_filtro == '1' %}selected{% endif %}>Aprovadas</option>
-                        <option value="0" {% if aprovada_filtro == '0' %}selected{% endif %}>Pendentes</option>
-                    </select>
-                </div>
+            <!-- Modal Filtros -->
+            <div class="modal fade" id="filtrosModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content shadow-lg" style="border-radius: 14px;">
+                        <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                            <h5 class="modal-title fw-bold"><i class="fas fa-filter me-2"></i>Filtros Avançados</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body p-4">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="status" class="form-label text-muted small mb-1 fw-bold">Status</label>
+                                    <select name="status" id="status" class="form-select form-select-sm">
+                                        <option value="">Todos os Status</option>
+                                        {% for value, label in status_choices %}
+                                            <option value="{{ value }}" {% if status == value %}selected{% endif %}>
+                                                {{ label }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
 
-                <div class="col-md-4">
-                    <label for="colaborador_id" class="form-label">Colaborador</label>
-                    <select name="colaborador_id" id="colaborador_id" class="form-select">
-                        <option value="">Todos os Colaboradores</option>
-                        {% for colab in colaboradores %}
-                            <option value="{{ colab.id }}" {% if colaborador_filtro|stringformat:"s" == colab.id|stringformat:"s" %}selected{% endif %}>
-                                {{ colab.nome_completo }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
+                                <div class="col-md-6">
+                                    <label for="aprovada" class="form-label text-muted small mb-1 fw-bold">Aprovação</label>
+                                    <select name="aprovada" id="aprovada" class="form-select form-select-sm">
+                                        <option value="">Todas</option>
+                                        <option value="1" {% if aprovada_filtro == '1' %}selected{% endif %}>Aprovadas</option>
+                                        <option value="0" {% if aprovada_filtro == '0' %}selected{% endif %}>Pendentes</option>
+                                    </select>
+                                </div>
 
-                <div class="col-md-2 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="fas fa-search"></i> Filtrar
-                    </button>
+                                <div class="col-12">
+                                    <label for="colaborador_id" class="form-label text-muted small mb-1 fw-bold">Colaborador</label>
+                                    <select name="colaborador_id" id="colaborador_id" class="form-select form-select-sm">
+                                        <option value="">Todos os Colaboradores</option>
+                                        {% for colab in colaboradores %}
+                                            <option value="{{ colab.id }}" {% if colaborador_filtro|stringformat:"s" == colab.id|stringformat:"s" %}selected{% endif %}>
+                                                {{ colab.nome_completo }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; justify-content: flex-end;">
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="fas fa-search me-1"></i>Aplicar Filtros
+                            </button>
+                        </div>
+                    </div>
                 </div>
-
-                <div class="col-md-2">
-                    <a href="{% url 'rh:gestao_ferias' %}" class="btn btn-secondary w-100">
-                        <i class="fas fa-redo"></i> Limpar
-                    </a>
-                </div>
-            </form>
-        </div>
+            </div>
+        </form>
     </div>
 
     <!-- Listagem de Férias -->

@@ -185,23 +185,40 @@
         <div class="d-flex flex-wrap gap-2 justify-content-start justify-content-md-end">
             {% load nav_access %}
             {% can_nav_block user 'rh' 'horas_extras' as can_he %}
-            {% if can_he %}
-            <a href="{% url 'rh:planejamento_hora_extra_list' %}" class="btn btn-warning text-white btn-sm shadow-sm" title="Gerenciar planejamento de horas extras e absenteísmo">
-                <i class="bi bi-clock-history"></i> Horas Extras e Absenteísmo
-            </a>
-            {% endif %}
-            <a href="{% url 'rh:gestao_ferias' %}" class="btn btn-info text-white btn-sm shadow-sm" title="Gerenciar férias de todos os colaboradores">
-                <i class="bi bi-calendar-check"></i> Gestão de Férias
-            </a>
-            <a href="{% url 'qms:importar_colaboradores' %}" class="btn btn-success btn-sm shadow-sm">
-                <i class="bi bi-file-earmark-spreadsheet"></i> Importar RH
-            </a>
+            
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary btn-sm shadow-sm dropdown-toggle" type="button" id="rhActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-three-dots-vertical"></i> Ações
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="rhActionsDropdown">
+                    {% if can_he %}
+                    <li>
+                        <a href="{% url 'rh:planejamento_hora_extra_list' %}" class="dropdown-item" title="Gerenciar planejamento de horas extras e absenteísmo">
+                            <i class="bi bi-clock-history me-2 text-warning"></i> Horas Extras e Absenteísmo
+                        </a>
+                    </li>
+                    {% endif %}
+                    <li>
+                        <a href="{% url 'rh:gestao_ferias' %}" class="dropdown-item" title="Gerenciar férias de todos os colaboradores">
+                            <i class="bi bi-calendar-check me-2 text-info"></i> Gestão de Férias
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'qms:importar_colaboradores' %}" class="dropdown-item">
+                            <i class="bi bi-file-earmark-spreadsheet me-2 text-success"></i> Importar RH
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a href="{% url 'dl_template_colab_dados' %}" class="dropdown-item" title="Baixar Base de Dados em Excel">
+                            <i class="bi bi-download me-2 text-secondary"></i> Exportar Dados
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
             <a href="{% url 'rh:criar_colaborador' %}" class="btn btn-primary btn-sm shadow-sm">
                 <i class="bi bi-plus-lg"></i> Novo
-            </a>
-            <div class="vr mx-1 d-none d-md-block"></div>
-            <a href="{% url 'dl_template_colab_dados' %}" class="btn btn-outline-secondary btn-sm d-none d-md-inline-block" title="Baixar Base de Dados em Excel">
-                <i class="bi bi-download"></i> Dados
             </a>
         </div>
 

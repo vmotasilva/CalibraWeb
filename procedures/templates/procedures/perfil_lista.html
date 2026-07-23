@@ -27,21 +27,34 @@
         </div>
         <div>
             <div class="btn-group me-2" role="group">
-                {% if can_importar_estrutura %}
-                <a href="{% url 'procedures:importar_estrutura' %}" class="btn btn-success" title="Importação completa de perfis, grupos, subgrupos e colaboradores">
-                    <i class="bi bi-file-earmark-excel"></i> Importar Estrutura
-                </a>
-                {% endif %}
-                {% if can_importar_perfis %}
-                <a href="{% url 'procedures:importar_perfis' %}" class="btn btn-outline-success" title="Importação simples - apenas perfis">
-                    <i class="bi bi-upload"></i> Importar Perfis
-                </a>
-                {% endif %}
-                {% if can_exportar_estrutura %}
-                <a href="{% url 'procedures:exportar_estrutura' %}" class="btn btn-outline-info" title="Exporta todos os perfis, grupos, subgrupos e procedimentos">
-                    <i class="bi bi-download"></i> Exportar Estrutura
-                </a>
-                {% endif %}
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="perfilActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-three-dots-vertical"></i> Ações
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="perfilActionsDropdown">
+                        {% if can_importar_estrutura %}
+                        <li>
+                            <a href="{% url 'procedures:importar_estrutura' %}" class="dropdown-item" title="Importação completa de perfis, grupos, subgrupos e colaboradores">
+                                <i class="bi bi-file-earmark-excel me-2 text-success"></i> Importar Estrutura
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if can_importar_perfis %}
+                        <li>
+                            <a href="{% url 'procedures:importar_perfis' %}" class="dropdown-item" title="Importação simples - apenas perfis">
+                                <i class="bi bi-upload me-2 text-success"></i> Importar Perfis
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if can_exportar_estrutura %}
+                        <li>
+                            <a href="{% url 'procedures:exportar_estrutura' %}" class="dropdown-item" title="Exporta todos os perfis, grupos, subgrupos e procedimentos">
+                                <i class="bi bi-download me-2 text-info"></i> Exportar Estrutura
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
             </div>
             <div class="btn-group" role="group">
                 {% if can_deletar_perfis_em_massa %}
@@ -61,26 +74,48 @@
         </div>
     </div>
 
-    <div class="card mb-3">
-        <div class="card-body">
-            <form method="get" class="row g-3">
-                <div class="col-md-5">
-                    <input type="text" name="q" class="form-control" placeholder="Buscar por código ou nome" value="{{ termo }}">
+    <div class="d-flex align-items-center gap-2 mb-4">
+        <form method="get" class="d-flex flex-grow-1 gap-2 m-0" id="filtroForm">
+            <!-- Search -->
+            <div class="input-group input-group-sm" style="max-width: 300px;">
+                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" name="q" id="inputSearch" class="form-control border-start-0" placeholder="Buscar por código ou nome" value="{{ termo }}">
+                <button class="btn btn-outline-secondary border-start-0" type="submit"><i class="bi bi-search"></i></button>
+            </div>
+
+            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#filtrosModal">
+                <i class="bi bi-funnel"></i> Filtros
+            </button>
+            
+            <!-- Modal Filtros -->
+            <div class="modal fade" id="filtrosModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content shadow-lg" style="border-radius: 14px;">
+                        <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                            <h5 class="modal-title fw-bold"><i class="bi bi-funnel me-2"></i>Filtros Avançados</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body p-4">
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label class="form-label text-muted small fw-bold">Status</label>
+                                    <select name="ativo" id="selectAtivo" class="form-select form-select-sm">
+                                        <option value="">Todos</option>
+                                        <option value="true" {% if ativo == 'true' %}selected{% endif %}>Ativos</option>
+                                        <option value="false" {% if ativo == 'false' %}selected{% endif %}>Inativos</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; justify-content: flex-end;">
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="bi bi-search me-1"></i>Aplicar Filtros
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-md-3">
-                    <select name="ativo" class="form-select">
-                        <option value="">Todos</option>
-                        <option value="true" {% if ativo == 'true' %}selected{% endif %}>Ativos</option>
-                        <option value="false" {% if ativo == 'false' %}selected{% endif %}>Inativos</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-search"></i> Filtrar
-                    </button>
-                </div>
-            </form>
-        </div>
+            </div>
+        </form>
     </div>
 
     <div class="row">

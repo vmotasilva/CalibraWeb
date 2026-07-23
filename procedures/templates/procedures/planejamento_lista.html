@@ -131,78 +131,97 @@
         </div>
     </div>
 
-    <!-- Filtros -->
-    <div class="filters-card mb-3">
-        <form method="get" class="row g-2">
-            <div class="col-md-3">
-                <label class="form-label">Buscar</label>
-                <input type="text" name="q" class="form-control form-control-sm" placeholder="Título ou procedimento" value="{{ termo }}">
+    <div class="d-flex align-items-center gap-2 mb-4">
+        <form method="get" class="d-flex flex-grow-1 gap-2 m-0">
+            <!-- Search -->
+            <div class="input-group input-group-sm" style="max-width: 300px;">
+                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" name="q" class="form-control border-start-0" placeholder="Título ou procedimento" value="{{ termo }}">
+                <button class="btn btn-outline-secondary border-start-0" type="submit"><i class="bi bi-search"></i></button>
             </div>
-            <div class="col-md-2">
-                <label class="form-label">Status</label>
-                <select name="status" class="form-select form-select-sm">
-                    <option value="">Todos</option>
-                    <option value="PLANEJADO" {% if status == 'PLANEJADO' %}selected{% endif %}>Planejado</option>
-                    <option value="CONFIRMADO" {% if status == 'CONFIRMADO' %}selected{% endif %}>Confirmado</option>
-                    <option value="REALIZADO" {% if status == 'REALIZADO' %}selected{% endif %}>Realizado</option>
-                    <option value="CANCELADO" {% if status == 'CANCELADO' %}selected{% endif %}>Cancelado</option>
-                    <option value="ATRASADO" {% if status == 'ATRASADO' %}selected{% endif %}>Atrasado</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Instrutor</label>
-                <select name="instrutor" class="form-select form-select-sm">
-                    <option value="">Todos</option>
-                    {% for inst in instrutores %}
-                    <option value="{{ inst.id }}" {% if instrutor_id == inst.id|stringformat:"s" %}selected{% endif %}>
-                        {{ inst.nome_completo }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Colaborador</label>
-                <select name="colaborador" class="form-select form-select-sm">
-                    <option value="">Todos</option>
-                    {% for colab in colaboradores %}
-                    <option value="{{ colab.id }}" {% if colaborador_id == colab.id|stringformat:"s" %}selected{% endif %}>
-                        {{ colab.nome_completo|truncatewords:3 }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-1">
-                <label class="form-label">Mês</label>
-                <input type="month" name="mes" class="form-control form-control-sm" value="{{ mes }}">
-            </div>
-            <div class="col-md-2 filter-buttons">
-                <button type="submit" class="btn btn-sm btn-primary flex-grow-1">
-                    <i class="bi bi-search"></i> Filtrar
-                </button>
-                <a href="{% url 'procedures:planejamentos_list' %}" class="btn btn-sm btn-outline-secondary">
-                    <i class="bi bi-arrow-clockwise"></i>
-                </a>
+
+            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#filtrosModal">
+                <i class="bi bi-funnel"></i> Filtros
+            </button>
+            
+            <a href="{% url 'procedures:planejamentos_list' %}" class="btn btn-outline-secondary btn-sm" title="Limpar Filtros">
+                <i class="bi bi-x-circle"></i> Limpar
+            </a>
+
+            <!-- Modal Filtros -->
+            <div class="modal fade" id="filtrosModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-content shadow-lg" style="border-radius: 14px;">
+                        <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                            <h5 class="modal-title fw-bold"><i class="bi bi-funnel me-2"></i>Filtros Avançados</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body p-4">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold">Status</label>
+                                    <select name="status" class="form-select form-select-sm">
+                                        <option value="">Todos</option>
+                                        <option value="PLANEJADO" {% if status == 'PLANEJADO' %}selected{% endif %}>Planejado</option>
+                                        <option value="CONFIRMADO" {% if status == 'CONFIRMADO' %}selected{% endif %}>Confirmado</option>
+                                        <option value="REALIZADO" {% if status == 'REALIZADO' %}selected{% endif %}>Realizado</option>
+                                        <option value="CANCELADO" {% if status == 'CANCELADO' %}selected{% endif %}>Cancelado</option>
+                                        <option value="ATRASADO" {% if status == 'ATRASADO' %}selected{% endif %}>Atrasado</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold">Instrutor</label>
+                                    <select name="instrutor" class="form-select form-select-sm">
+                                        <option value="">Todos</option>
+                                        {% for inst in instrutores %}
+                                        <option value="{{ inst.id }}" {% if instrutor_id == inst.id|stringformat:"s" %}selected{% endif %}>
+                                            {{ inst.nome_completo }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold">Colaborador</label>
+                                    <select name="colaborador" class="form-select form-select-sm">
+                                        <option value="">Todos</option>
+                                        {% for colab in colaboradores %}
+                                        <option value="{{ colab.id }}" {% if colaborador_id == colab.id|stringformat:"s" %}selected{% endif %}>
+                                            {{ colab.nome_completo|truncatewords:3 }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold">Mês</label>
+                                    <input type="month" name="mes" class="form-control form-control-sm" value="{{ mes }}">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; justify-content: flex-end;">
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="bi bi-search me-1"></i>Aplicar Filtros
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </form>
-    </div>
 
-    <!-- Botão de Export (antes da tabela) -->
-    {% if planejamentos %}
-    <div class="d-flex justify-content-end mb-3 mt-2">
-        {% if can_exportar_planejamentos %}
-            <form method="get" action="{% url 'procedures:exportar_lista_planejamentos_excel' %}">
-                {% for key, value in request.GET.items %}
-                    {% if key != 'page' %}
-                        <input type="hidden" name="{{ key }}" value="{{ value }}">
-                    {% endif %}
-                {% endfor %}
-                <button type="submit" class="btn btn-success btn-sm" title="Baixar como Excel">
-                    <i class="bi bi-file-earmark-spreadsheet"></i> Exportar Excel
-                </button>
-            </form>
-        {% endif %}
+        <div class="dropdown ms-auto">
+            <button class="btn btn-outline-secondary dropdown-toggle btn-sm" type="button" id="planejamentoActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-three-dots-vertical"></i> Ações
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="planejamentoActionsDropdown">
+                {% if can_exportar_planejamentos and planejamentos %}
+                <li>
+                    <a href="{% url 'procedures:exportar_lista_planejamentos_excel' %}?{{ request.GET.urlencode }}" class="dropdown-item">
+                        <i class="bi bi-file-earmark-spreadsheet me-2 text-success"></i> Exportar Excel
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
     </div>
-    {% endif %}
     <div class="card">
         {% if can_excluir_planejamentos_massa %}
             <div class="card-header bulk-actions" id="bulk-actions" style="display: none;">

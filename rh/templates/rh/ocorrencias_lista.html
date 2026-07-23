@@ -93,57 +93,74 @@
     {% endif %}
 
     <!-- Filtros -->
-    <div class="card mb-4 shadow-sm">
-        <div class="card-body">
-            <form method="GET" class="row g-3">
-                {% if colaboradores %}
-                <div class="col-md-3">
-                    <label for="id_colaborador" class="form-label">Colaborador</label>
-                    <select name="colaborador_id" id="id_colaborador" class="form-select">
-                        <option value="">Todos</option>
-                        {% for colab in colaboradores %}
-                            <option value="{{ colab.id }}" {% if request.GET.colaborador_id|add:"0" == colab.id %}selected{% endif %}>
-                                {{ colab.nome_completo }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                {% endif %}
+    <div class="d-flex align-items-center gap-2 mb-4">
+        <form method="GET" class="d-flex flex-grow-1 gap-2 m-0">
+            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#filtrosModal">
+                <i class="bi bi-funnel"></i> Filtros
+            </button>
+            
+            <a href="{% url 'listar_ocorrencias' %}" class="btn btn-outline-secondary btn-sm" title="Limpar Filtros">
+                <i class="bi bi-x-circle"></i> Limpar
+            </a>
 
-                <div class="col-md-3">
-                    <label for="id_tipo" class="form-label">Tipo</label>
-                    <select name="tipo" id="id_tipo" class="form-select">
-                        <option value="">Todos</option>
-                        {% for value, label in tipos %}
-                            <option value="{{ value }}" {% if request.GET.tipo == value %}selected{% endif %}>
-                                {{ label }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
+            <!-- Modal Filtros -->
+            <div class="modal fade" id="filtrosModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content shadow-lg" style="border-radius: 14px;">
+                        <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                            <h5 class="modal-title fw-bold"><i class="bi bi-funnel me-2"></i>Filtros Avançados</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body p-4">
+                            <div class="row g-3">
+                                {% if colaboradores %}
+                                <div class="col-12">
+                                    <label for="id_colaborador" class="form-label text-muted small fw-bold">Colaborador</label>
+                                    <select name="colaborador_id" id="id_colaborador" class="form-select form-select-sm">
+                                        <option value="">Todos</option>
+                                        {% for colab in colaboradores %}
+                                            <option value="{{ colab.id }}" {% if request.GET.colaborador_id|add:"0" == colab.id %}selected{% endif %}>
+                                                {{ colab.nome_completo }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                {% endif %}
 
-                <div class="col-md-3">
-                    <label for="id_natureza" class="form-label">Natureza</label>
-                    <select name="natureza" id="id_natureza" class="form-select">
-                        <option value="">Todas</option>
-                        {% for value, label in naturezas %}
-                            <option value="{{ value }}" {% if request.GET.natureza == value %}selected{% endif %}>
-                                {{ label }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
+                                <div class="col-md-6">
+                                    <label for="id_tipo" class="form-label text-muted small fw-bold">Tipo</label>
+                                    <select name="tipo" id="id_tipo" class="form-select form-select-sm">
+                                        <option value="">Todos</option>
+                                        {% for value, label in tipos %}
+                                            <option value="{{ value }}" {% if request.GET.tipo == value %}selected{% endif %}>
+                                                {{ label }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
 
-                <div class="col-md-3 d-flex align-items-end gap-2">
-                    <button type="submit" class="btn btn-outline-primary flex-grow-1">
-                        <i class="bi bi-funnel"></i> Filtrar
-                    </button>
-                    <a href="{% url 'listar_ocorrencias' %}" class="btn btn-outline-secondary">
-                        <i class="bi bi-arrow-clockwise"></i>
-                    </a>
+                                <div class="col-md-6">
+                                    <label for="id_natureza" class="form-label text-muted small fw-bold">Natureza</label>
+                                    <select name="natureza" id="id_natureza" class="form-select form-select-sm">
+                                        <option value="">Todas</option>
+                                        {% for value, label in naturezas %}
+                                            <option value="{{ value }}" {% if request.GET.natureza == value %}selected{% endif %}>
+                                                {{ label }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; justify-content: flex-end;">
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="bi bi-search me-1"></i>Aplicar Filtros
+                            </button>
+                        </div>
+                    </div>
                 </div>
-            </form>
-        </div>
+            </div>
+        </form>
     </div>
 
     <!-- Listagem (lista) -->

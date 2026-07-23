@@ -4,67 +4,121 @@
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h2 class="mb-0">Procedimentos</h2>
     <div class="d-flex gap-2">
-      <a href="{% url 'novo_procedimento' %}" class="btn btn-sm btn-primary">Novo</a>
-      <a href="{% url 'export_procedimentos_excel' %}?{{ querystring_base }}" class="btn btn-sm btn-outline-success" title="Exportar Excel">Excel</a>
-      <a href="{% url 'export_procedimentos_pdf' %}?{{ querystring_base }}" class="btn btn-sm btn-outline-danger" title="Exportar PDF">PDF</a>
-      <a href="{% url 'importar_procedimentos' %}" class="btn btn-sm btn-outline-info" title="Importar em lote">Importar</a>
+      <div class="dropdown">
+        <button class="btn btn-outline-secondary dropdown-toggle btn-sm" type="button" id="procedimentoActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-three-dots-vertical"></i> Ações
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="procedimentoActionsDropdown">
+            <li>
+                <a href="{% url 'export_procedimentos_excel' %}?{{ querystring_base }}" class="dropdown-item">
+                    <i class="bi bi-file-earmark-excel me-2 text-success"></i> Exportar Excel
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'export_procedimentos_pdf' %}?{{ querystring_base }}" class="dropdown-item">
+                    <i class="bi bi-file-earmark-pdf me-2 text-danger"></i> Exportar PDF
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'importar_procedimentos' %}" class="dropdown-item">
+                    <i class="bi bi-upload me-2 text-info"></i> Importar em lote
+                </a>
+            </li>
+        </ul>
+      </div>
+      <a href="{% url 'novo_procedimento' %}" class="btn btn-sm btn-primary">
+          <i class="bi bi-plus-circle"></i> Novo
+      </a>
     </div>
   </div>
-  <form method="get" class="row g-2 mb-3">
-    <div class="col-md-3">
-      <input type="text" name="q" value="{{ termo }}" placeholder="Código ou título" class="form-control" />
-    </div>
-    <!-- Filtro por tipo removido pois campo não existe mais no modelo -->
-    <div class="col-md-2">
-      <input type="text" name="rev" value="{{ rev }}" placeholder="Revisão" class="form-control" />
-    </div>
-    <div class="col-md-2">
-      <select name="setor" class="form-select">
-        <option value="">Setor</option>
-        {% for s in setores %}
-          <option value="{{ s.id }}" {% if setor_id == s.id|stringformat:'s' %}selected{% endif %}>{{ s.nome }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="col-md-3">
-      <select name="area" class="form-select">
-        <option value="">Área</option>
-        {% for a in areas %}
-          <option value="{{ a.id }}" {% if area_id == a.id|stringformat:'s' %}selected{% endif %}>{{ a.nome }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="col-md-3">
-      <select name="elaborador" class="form-select">
-        <option value="">Elaborador</option>
-        {% for c in colaboradores %}
-          <option value="{{ c.id }}" {% if elaborador_id == c.id|stringformat:'s' %}selected{% endif %}>{{ c.nome_completo }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="col-md-3">
-      <select name="revisor" class="form-select">
-        <option value="">Revisor</option>
-        {% for c in colaboradores %}
-          <option value="{{ c.id }}" {% if revisor_id == c.id|stringformat:'s' %}selected{% endif %}>{{ c.nome_completo }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="col-md-3">
-      <select name="aprovador" class="form-select">
-        <option value="">Aprovador</option>
-        {% for c in colaboradores %}
-          <option value="{{ c.id }}" {% if aprovador_id == c.id|stringformat:'s' %}selected{% endif %}>{{ c.nome_completo }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="col-md-2">
-      <button class="btn btn-primary w-100">Filtrar</button>
-    </div>
-    <div class="col-md-2">
-      <a href="?" class="btn btn-secondary w-100">Limpar</a>
-    </div>
-  </form>
+  <div class="d-flex align-items-center gap-2 mb-3">
+      <form method="get" class="d-flex flex-grow-1 gap-2 m-0">
+          <!-- Search -->
+          <div class="input-group input-group-sm" style="max-width: 300px;">
+              <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+              <input type="text" name="q" class="form-control border-start-0" placeholder="Código ou título" value="{{ termo }}">
+              <button class="btn btn-outline-secondary border-start-0" type="submit"><i class="bi bi-search"></i></button>
+          </div>
+
+          <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#filtrosModal">
+              <i class="bi bi-funnel"></i> Filtros
+          </button>
+          
+          <a href="?" class="btn btn-outline-secondary btn-sm" title="Limpar Filtros">
+              <i class="bi bi-x-circle"></i> Limpar
+          </a>
+
+          <!-- Modal Filtros -->
+          <div class="modal fade" id="filtrosModal" tabindex="-1" aria-hidden="true">
+              <div class="modal-dialog modal-dialog-centered modal-lg">
+                  <div class="modal-content shadow-lg" style="border-radius: 14px;">
+                      <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                          <h5 class="modal-title fw-bold"><i class="bi bi-funnel me-2"></i>Filtros Avançados</h5>
+                          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                      </div>
+                      <div class="modal-body p-4">
+                          <div class="row g-3">
+                              <div class="col-md-4">
+                                <label class="form-label text-muted small fw-bold">Revisão</label>
+                                <input type="text" name="rev" value="{{ rev }}" placeholder="Revisão" class="form-control form-control-sm" />
+                              </div>
+                              <div class="col-md-4">
+                                <label class="form-label text-muted small fw-bold">Setor</label>
+                                <select name="setor" class="form-select form-select-sm">
+                                  <option value="">Todos</option>
+                                  {% for s in setores %}
+                                    <option value="{{ s.id }}" {% if setor_id == s.id|stringformat:'s' %}selected{% endif %}>{{ s.nome }}</option>
+                                  {% endfor %}
+                                </select>
+                              </div>
+                              <div class="col-md-4">
+                                <label class="form-label text-muted small fw-bold">Área</label>
+                                <select name="area" class="form-select form-select-sm">
+                                  <option value="">Todas</option>
+                                  {% for a in areas %}
+                                    <option value="{{ a.id }}" {% if area_id == a.id|stringformat:'s' %}selected{% endif %}>{{ a.nome }}</option>
+                                  {% endfor %}
+                                </select>
+                              </div>
+                              <div class="col-md-4">
+                                <label class="form-label text-muted small fw-bold">Elaborador</label>
+                                <select name="elaborador" class="form-select form-select-sm">
+                                  <option value="">Todos</option>
+                                  {% for c in colaboradores %}
+                                    <option value="{{ c.id }}" {% if elaborador_id == c.id|stringformat:'s' %}selected{% endif %}>{{ c.nome_completo }}</option>
+                                  {% endfor %}
+                                </select>
+                              </div>
+                              <div class="col-md-4">
+                                <label class="form-label text-muted small fw-bold">Revisor</label>
+                                <select name="revisor" class="form-select form-select-sm">
+                                  <option value="">Todos</option>
+                                  {% for c in colaboradores %}
+                                    <option value="{{ c.id }}" {% if revisor_id == c.id|stringformat:'s' %}selected{% endif %}>{{ c.nome_completo }}</option>
+                                  {% endfor %}
+                                </select>
+                              </div>
+                              <div class="col-md-4">
+                                <label class="form-label text-muted small fw-bold">Aprovador</label>
+                                <select name="aprovador" class="form-select form-select-sm">
+                                  <option value="">Todos</option>
+                                  {% for c in colaboradores %}
+                                    <option value="{{ c.id }}" {% if aprovador_id == c.id|stringformat:'s' %}selected{% endif %}>{{ c.nome_completo }}</option>
+                                  {% endfor %}
+                                </select>
+                              </div>
+                          </div>
+                      </div>
+                      <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; justify-content: flex-end;">
+                          <button type="submit" class="btn btn-primary btn-sm">
+                              <i class="bi bi-search me-1"></i>Aplicar Filtros
+                          </button>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </form>
+  </div>
   <div class="table-responsive bg-white shadow-sm rounded">
     <table class="table table-sm table-striped mb-0">
       <thead class="table-light">

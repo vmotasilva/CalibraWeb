@@ -89,21 +89,35 @@
             {% can_nav_view user 'procedures:procedimento_matrizes_list' 'procedures' as can_matrizes %}
             {% can_nav_view user 'procedures:novo_procedimento' 'procedures' as can_novo %}
 
-            {% if can_exportar %}
-                <a href="{% url 'procedures:export_procedimentos_excel' %}?{{ querystring_base }}" class="btn btn-outline-success" title="Exportar dados para Excel">
-                    <i class="bi bi-download"></i> Exportar Excel
-                </a>
-            {% endif %}
-            {% if can_importar %}
-                <a href="{% url 'procedures:importar_procedimentos' %}" class="btn btn-success">
-                    <i class="bi bi-upload"></i> Importar em Massa
-                </a>
-            {% endif %}
-            {% if can_matrizes %}
-                <a href="{% url 'procedures:procedimento_matrizes_list' %}" class="btn btn-outline-dark">
-                    <i class="bi bi-diagram-3"></i> Matrizes e Sub-áreas
-                </a>
-            {% endif %}
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="procedimentoActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-three-dots-vertical"></i> Ações
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="procedimentoActionsDropdown">
+                    {% if can_exportar %}
+                    <li>
+                        <a href="{% url 'procedures:export_procedimentos_excel' %}?{{ querystring_base }}" class="dropdown-item" title="Exportar dados para Excel">
+                            <i class="bi bi-download me-2 text-success"></i> Exportar Excel
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% if can_importar %}
+                    <li>
+                        <a href="{% url 'procedures:importar_procedimentos' %}" class="dropdown-item">
+                            <i class="bi bi-upload me-2 text-info"></i> Importar em Massa
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% if can_matrizes %}
+                    <li>
+                        <a href="{% url 'procedures:procedimento_matrizes_list' %}" class="dropdown-item">
+                            <i class="bi bi-diagram-3 me-2 text-dark"></i> Matrizes e Sub-áreas
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+
             {% if can_novo %}
                 <a href="{% url 'procedures:novo_procedimento' %}" class="btn btn-primary">
                     <i class="bi bi-plus-circle"></i> Novo Procedimento
@@ -113,59 +127,76 @@
     </div>
 
     <!-- FILTROS -->
-    <div class="filters-card">
-        <form method="get" action="{% url 'procedures:procedimentos_list' %}">
-            <div class="row g-3">
-                <div class="col-md-3">
-                    <label class="filter-label">Buscar</label>
-                    <input type="text" name="q" class="form-control" 
-                           placeholder="Código ou Nome" value="{{ termo }}">
-                </div>
-                <div class="col-md-2">
-                    <label class="filter-label">Classificação</label>
-                    <select name="classificacao" class="form-select">
-                        <option value="">Todas</option>
-                        {% for c in classificacoes %}
-                        <option value="{{ c }}" {% if classificacao == c %}selected{% endif %}>{{ c }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="filter-label">Criticidade</label>
-                    <select name="criticidade" class="form-select">
-                        <option value="">Todas</option>
-                        {% for value, label in criticidades %}
-                        <option value="{{ value }}" {% if criticidade == value %}selected{% endif %}>{{ label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="filter-label">Matriz</label>
-                    <select name="matriz" class="form-select">
-                        <option value="">Todas</option>
-                        {% for m in matrizes %}
-                        <option value="{{ m }}" {% if matriz == m %}selected{% endif %}>{{ m }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="filter-label">Sub-área</label>
-                    <select name="sub_area" class="form-select">
-                        <option value="">Todas</option>
-                        {% for sa in sub_areas %}
-                        <option value="{{ sa }}" {% if sub_area == sa %}selected{% endif %}>{{ sa }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="filter-label">&nbsp;</label>
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="bi bi-search"></i> Filtrar
-                        </button>
-                        <a href="{% url 'procedures:procedimentos_list' %}" class="btn btn-outline-secondary">
-                            <i class="bi bi-x-circle"></i>
-                        </a>
+    <div class="d-flex align-items-center gap-2 mb-4">
+        <form method="get" action="{% url 'procedures:procedimentos_list' %}" class="d-flex flex-grow-1 gap-2 m-0">
+            <!-- Search -->
+            <div class="input-group input-group-sm" style="max-width: 300px;">
+                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" name="q" class="form-control border-start-0" placeholder="Código ou Nome" value="{{ termo }}">
+                <button class="btn btn-outline-secondary border-start-0" type="submit"><i class="bi bi-search"></i></button>
+            </div>
+
+            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#filtrosModal">
+                <i class="bi bi-funnel"></i> Filtros
+            </button>
+            
+            <a href="{% url 'procedures:procedimentos_list' %}" class="btn btn-outline-secondary btn-sm" title="Limpar Filtros">
+                <i class="bi bi-x-circle"></i> Limpar
+            </a>
+
+            <!-- Modal Filtros -->
+            <div class="modal fade" id="filtrosModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-content shadow-lg" style="border-radius: 14px;">
+                        <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                            <h5 class="modal-title fw-bold"><i class="bi bi-funnel me-2"></i>Filtros Avançados</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body p-4">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold">Classificação</label>
+                                    <select name="classificacao" class="form-select form-select-sm">
+                                        <option value="">Todas</option>
+                                        {% for c in classificacoes %}
+                                        <option value="{{ c }}" {% if classificacao == c %}selected{% endif %}>{{ c }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold">Criticidade</label>
+                                    <select name="criticidade" class="form-select form-select-sm">
+                                        <option value="">Todas</option>
+                                        {% for value, label in criticidades %}
+                                        <option value="{{ value }}" {% if criticidade == value %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold">Matriz</label>
+                                    <select name="matriz" class="form-select form-select-sm">
+                                        <option value="">Todas</option>
+                                        {% for m in matrizes %}
+                                        <option value="{{ m }}" {% if matriz == m %}selected{% endif %}>{{ m }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold">Sub-área</label>
+                                    <select name="sub_area" class="form-select form-select-sm">
+                                        <option value="">Todas</option>
+                                        {% for sa in sub_areas %}
+                                        <option value="{{ sa }}" {% if sub_area == sa %}selected{% endif %}>{{ sa }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; justify-content: flex-end;">
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="bi bi-search me-1"></i>Aplicar Filtros
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
