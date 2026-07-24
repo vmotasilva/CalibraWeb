@@ -1033,11 +1033,14 @@ def coating_painel(request):
             lote_key = (reg_dict['turno_coating__data'], reg_dict['lote'])
             lotes_agrupados[lote_key].append(reg_dict['id'])
             
-        counters = {c.id: 0 for c in ciclos}
+        # Inicializa o contador com o limite, assim se a manutencao nunca foi feita, 
+        # ela estourara logo no lote 1.
+        counters = {c.id: c.limite_lotes for c in ciclos}
         registro_status = {}
         
         for lote_key, rids in lotes_agrupados.items():
             for cid in counters:
+                # So incrementa se ainda nao estourou, senao deixa estourado
                 counters[cid] += 1
                 
             m_cids_lote = set()
