@@ -134,7 +134,7 @@
                                             <td>{{ reg.turno_coating.regra.nome }}</td>
                                             <td>{{ reg.lote }}</td>
                                             <td>{{ reg.lado }}</td>
-                                            <td>{{ reg.tratamento.nome }}</td>
+                                            <td><span class="badge rounded-pill" style="background-color: {{ reg.tratamento.cor|default:'#0d6efd' }}; color: #fff; font-weight: 500;">{{ reg.tratamento.nome }}</span></td>
                                             <td class="editable-cell" data-id="{{ reg.id }}" data-campo="hora_entrada" data-valor="{{ reg.hora_entrada|date:'Y-m-d\TH:i'|default:'' }}" data-tipo="datetime-local" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{{ reg.hora_entrada|time:"H:i"|default:"-" }} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
                                             <td class="editable-cell" data-id="{{ reg.id }}" data-campo="hora_saida" data-valor="{{ reg.hora_saida|date:'Y-m-d\TH:i'|default:'' }}" data-tipo="datetime-local" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{{ reg.hora_saida|time:"H:i"|default:"-" }} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
                                             <td>{{ reg.tempo_rodando|time:"H:i"|default:"-" }}</td>

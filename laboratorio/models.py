@@ -295,6 +295,7 @@ class OcorrenciaLaboratorioAnotacao(models.Model):
 
 class TratamentoAntiReflexo(models.Model):
     nome = models.CharField(max_length=150, unique=True, verbose_name="Nome do Tratamento")
+    cor = models.CharField(max_length=7, default="#0d6efd", verbose_name="Cor de Destaque", help_text="Cor em formato HEX (ex: #ff0000 para vermelho)")
     ativo = models.BooleanField(default=True, verbose_name="Ativo")
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
