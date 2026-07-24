@@ -249,5 +249,46 @@
         </div>
     </div>
 </div>
-
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const getCellValue = (tr, idx) => tr.children[idx].innerText || tr.children[idx].textContent;
+    
+        const comparer = (idx, asc) => (a, b) => ((v1, v2) => {
+            // Handle DD/MM/YYYY
+            const dateRegex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+            if (dateRegex.test(v1) && dateRegex.test(v2)) {
+                let [, d1, m1, y1] = v1.match(dateRegex);
+                let [, d2, m2, y2] = v2.match(dateRegex);
+                v1 = `${y1}${m1}${d1}`;
+                v2 = `${y2}${m2}${d2}`;
+            }
+            return v1 !== '' && v2 !== '' && !isNaN(v1) && !isNaN(v2) 
+                ? v1 - v2 
+                : v1.toString().localeCompare(v2);
+        })(getCellValue(asc ? a : b, idx), getCellValue(asc ? b : a, idx));
+    
+        document.querySelectorAll('th').forEach(th => {
+            if(th.innerText.trim().toLowerCase() === 'ações') return;
+            th.style.cursor = 'pointer';
+            th.title = "Clique para ordenar";
+            th.addEventListener('click', function() {
+                const table = th.closest('table');
+                const tbody = table.querySelector('tbody');
+                
+                // Clear icons from siblings
+                Array.from(th.parentNode.children).forEach(sibling => {
+                    if(sibling !== th) sibling.innerHTML = sibling.innerText.replace(/ ▼| ▲/g, '');
+                });
+    
+                this.asc = !this.asc;
+                let textOnly = th.innerText.replace(/ ▼| ▲/g, '');
+                th.innerHTML = textOnly + (this.asc ? ' ▲' : ' ▼');
+    
+                Array.from(tbody.querySelectorAll('tr'))
+                    .sort(comparer(Array.from(th.parentNode.children).indexOf(th), this.asc))
+                    .forEach(tr => tbody.appendChild(tr));
+            });
+        });
+    });
+</script>
 {% endblock content %}
