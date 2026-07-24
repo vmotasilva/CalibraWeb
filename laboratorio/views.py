@@ -934,24 +934,26 @@ def coating_painel(request):
                 
                 # Descobrir a regra de turno baseado na hora_entrada
                 hora_entrada = cleaned_data['hora_entrada']
+                hora_time = hora_entrada.time() if hora_entrada else None
                 regras = RegraTurnoCoating.objects.filter(ativo=True)
                 
                 regra_encontrada = None
-                for regra in regras:
-                    # Lógica simples de verificação se a hora está entre inicio e fim
-                    # Pode precisar de ajustes se o turno virar a meia noite
-                    if regra.hora_inicio <= regra.hora_fim:
-                        if regra.hora_inicio <= hora_entrada <= regra.hora_fim:
-                            regra_encontrada = regra
-                            break
-                    else:
-                        # Turno vira a meia noite (ex: 22:00 as 06:00)
-                        if hora_entrada >= regra.hora_inicio or hora_entrada <= regra.hora_fim:
-                            regra_encontrada = regra
-                            break
+                if hora_time:
+                    for regra in regras:
+                        # Lógica simples de verificação se a hora está entre inicio e fim
+                        # Pode precisar de ajustes se o turno virar a meia noite
+                        if regra.hora_inicio <= regra.hora_fim:
+                            if regra.hora_inicio <= hora_time <= regra.hora_fim:
+                                regra_encontrada = regra
+                                break
+                        else:
+                            # Turno vira a meia noite (ex: 22:00 as 06:00)
+                            if hora_time >= regra.hora_inicio or hora_time <= regra.hora_fim:
+                                regra_encontrada = regra
+                                break
                             
                 if regra_encontrada:
-                    data_escolhida = cleaned_data.get('data_registro', hoje)
+                    data_escolhida = hora_entrada.date() if hora_entrada else hoje
                     # Pega ou cria o Turno Diário para a data e regra
                     turno_diario, created = TurnoCoating.objects.get_or_create(
                         data=data_escolhida,
