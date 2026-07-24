@@ -1045,6 +1045,8 @@ def coating_painel(request):
         # Tempo Rodando
         if reg.hora_entrada and reg.hora_saida:
             td = datetime.combine(date.min, reg.hora_saida) - datetime.combine(date.min, reg.hora_entrada)
+            if td.total_seconds() < 0:
+                td += timedelta(days=1)
             reg.tempo_rodando = (datetime.min + td).time()
         else:
             reg.tempo_rodando = None
@@ -1053,11 +1055,9 @@ def coating_painel(request):
         if maq_id in last_seen and reg.hora_entrada and last_seen[maq_id]:
             # Entrada atual - Saída anterior
             td_parado = datetime.combine(date.min, reg.hora_entrada) - datetime.combine(date.min, last_seen[maq_id])
-            # Se for negativo (ex: virada de dia), ignora ou ajusta
-            if td_parado.total_seconds() >= 0:
-                reg.tempo_parado = (datetime.min + td_parado).time()
-            else:
-                reg.tempo_parado = None
+            if td_parado.total_seconds() < 0:
+                td_parado += timedelta(days=1)
+            reg.tempo_parado = (datetime.min + td_parado).time()
         else:
             reg.tempo_parado = None
             
