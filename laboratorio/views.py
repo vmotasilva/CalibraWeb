@@ -994,7 +994,7 @@ def coating_painel(request):
     # Fetch today's records
     registros = RegistroCoating.objects.filter(turno_coating__data=hoje).select_related(
         'turno_coating', 'maquina', 'tratamento', 'preparacao', 'montagem'
-    ).order_by('-hora_entrada', '-id')
+    ).order_by('-id')
     
     # Identify machines (Evaporadoras)
     evaporadoras = Maquina.objects.filter(
