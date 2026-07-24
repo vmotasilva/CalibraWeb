@@ -1025,11 +1025,11 @@ def coating_painel(request):
         for ciclo in ciclos:
             ultima = ManutencaoRealizadaCoating.objects.filter(ciclo=ciclo, registro__maquina=maquina).order_by('-registro__id').first()
             if ultima:
-                registros_pos_manutencao = RegistroCoating.objects.filter(maquina=maquina, id__gt=ultima.registro.id).order_by('id')
+                lotes_pos = RegistroCoating.objects.filter(maquina=maquina, id__gt=ultima.registro.id).values('turno_coating__data', 'lote').distinct().count()
             else:
-                registros_pos_manutencao = RegistroCoating.objects.filter(maquina=maquina).order_by('id')
+                lotes_pos = RegistroCoating.objects.filter(maquina=maquina).values('turno_coating__data', 'lote').distinct().count()
                 
-            count = registros_pos_manutencao.count()
+            count = lotes_pos
             
             itens = list(ciclo.itens_checklist.all().values('id', 'texto', 'ordem'))
             
@@ -1431,26 +1431,34 @@ def registrar_manutencao_coating(request):
         
         registro = get_object_or_404(RegistroCoating, pk=registro_id)
         
-        ManutencaoRealizadaCoating.objects.filter(registro=registro).delete()
+        # Encontra ambos os lados (CC e CX) deste lote
+        registros_do_lote = RegistroCoating.objects.filter(
+            lote=registro.lote,
+            maquina=registro.maquina,
+            turno_coating=registro.turno_coating
+        )
         
-        for cid in ciclo_ids:
-            ciclo = get_object_or_404(CicloManutencaoCoating, pk=cid)
-            manut = ManutencaoRealizadaCoating.objects.create(
-                registro=registro, 
-                ciclo=ciclo,
-                observacao=observacao if observacao else None
-            )
-            
-            for item in ciclo.itens_checklist.all():
-                chk_name = f'checklist_{ciclo.id}_{item.id}'
-                feito = request.POST.get(chk_name) == 'on'
-                RespostaChecklistManutencao.objects.create(
-                    manutencao=manut,
-                    item=item,
-                    feito=feito
+        ManutencaoRealizadaCoating.objects.filter(registro__in=registros_do_lote).delete()
+        
+        for reg in registros_do_lote:
+            for cid in ciclo_ids:
+                ciclo = get_object_or_404(CicloManutencaoCoating, pk=cid)
+                manut = ManutencaoRealizadaCoating.objects.create(
+                    registro=reg, 
+                    ciclo=ciclo,
+                    observacao=observacao if observacao else None
                 )
+                
+                for item in ciclo.itens_checklist.all():
+                    chk_name = f'checklist_{ciclo.id}_{item.id}'
+                    feito = request.POST.get(chk_name) == 'on'
+                    RespostaChecklistManutencao.objects.create(
+                        manutencao=manut,
+                        item=item,
+                        feito=feito
+                    )
             
-        messages.success(request, f"Manutenções atualizadas com sucesso para o Lote {registro.lote}.")
+        messages.success(request, f"Manutenções atualizadas com sucesso para o Lote {registro.lote} (lados CC e CX).")
     except Exception as e:
         messages.error(request, f"Erro ao registrar manutenção: {str(e)}")
         
