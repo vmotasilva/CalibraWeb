@@ -282,9 +282,8 @@ class NovoLoteCoatingForm(forms.ModelForm):
         widget=forms.DateInput(attrs={"class": "form-control", "type": "date"}),
     )
     LADO_CHOICES = [
-        ('AMBOS', 'Ambos (CC e CX)'),
-        ('CC', 'Apenas Côncavo (CC)'),
-        ('CX', 'Apenas Convexo (CX)'),
+        ('CC', 'Côncavo (CC)'),
+        ('CX', 'Convexo (CX)'),
     ]
     lado_entrada = forms.ChoiceField(
         choices=LADO_CHOICES,

@@ -952,7 +952,7 @@ def coating_painel(request):
                         regra=regra_encontrada
                     )
                     
-                    lado_alvo = cleaned_data.get('lado_entrada', 'AMBOS')
+                    lado_alvo = cleaned_data.get('lado_entrada', 'CC')
                     
                     # Salva CC e CX casados
                     RegistroCoating.objects.create(
@@ -960,7 +960,7 @@ def coating_painel(request):
                         maquina=cleaned_data['maquina'],
                         lote=cleaned_data['lote'],
                         tratamento=cleaned_data['tratamento'],
-                        hora_entrada=hora_entrada if lado_alvo in ['AMBOS', 'CC'] else None,
+                        hora_entrada=hora_entrada if lado_alvo == 'CC' else None,
                         lado='CC'
                     )
                     RegistroCoating.objects.create(
@@ -968,7 +968,7 @@ def coating_painel(request):
                         maquina=cleaned_data['maquina'],
                         lote=cleaned_data['lote'],
                         tratamento=cleaned_data['tratamento'],
-                        hora_entrada=hora_entrada if lado_alvo in ['AMBOS', 'CX'] else None,
+                        hora_entrada=hora_entrada if lado_alvo == 'CX' else None,
                         lado='CX'
                     )
                     
