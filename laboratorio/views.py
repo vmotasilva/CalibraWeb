@@ -1203,6 +1203,21 @@ def atualizar_celula_coating(request):
                 parsed = parse_datetime(valor)
                 if not parsed:
                     return JsonResponse({'success': False, 'error': 'Formato de data inválido.'}, status=400)
+                
+                # Auto-ajuste de data se o usuário preencher apenas a hora e ela cruzar a meia-noite
+                if campo == 'hora_saida' and registro.hora_entrada:
+                    # Precisamos garantir que estamos comparando na mesma "base" (aware/naive)
+                    parsed_compare = parsed
+                    entrada_compare = registro.hora_entrada
+                    from django.utils import timezone
+                    if timezone.is_aware(parsed_compare) and timezone.is_naive(entrada_compare):
+                        entrada_compare = timezone.make_aware(entrada_compare)
+                    elif timezone.is_naive(parsed_compare) and timezone.is_aware(entrada_compare):
+                        parsed_compare = timezone.make_aware(parsed_compare)
+                        
+                    if parsed_compare < entrada_compare:
+                        parsed += timedelta(days=1)
+                        
                 setattr(registro, campo, parsed)
         else:
             return JsonResponse({'success': False, 'error': 'Campo não permitido para edição rápida.'}, status=400)
