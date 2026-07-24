@@ -8,11 +8,7 @@
             <h2 class="mb-1">Painel de Coating</h2>
             <p class="text-muted mb-0">Registro diário de Lotes e Manutenções.</p>
         </div>
-        <div class="d-flex gap-3 align-items-center">
-            <form method="get" class="d-flex align-items-center bg-white border rounded shadow-sm px-2 py-1">
-                <i class="bi bi-calendar3 text-muted me-2"></i>
-                <input type="date" name="data" class="form-control border-0 p-0 text-secondary" style="outline: none; box-shadow: none; font-weight: 500;" value="{{ data_selecionada|date:'Y-m-d' }}" onchange="this.form.submit()">
-            </form>
+        <div>
             <button class="btn btn-primary fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#novoLoteModal">
                 <i class="bi bi-plus-circle"></i> Adicionar Lote
             </button>
@@ -216,6 +212,42 @@
         </div>
         {% endfor %}
     </div>
+
+    <!-- Paginação Global -->
+    {% if registros.has_other_pages %}
+    <nav aria-label="Paginação de Lotes" class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if registros.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ registros.previous_page_number }}" aria-label="Anterior">
+                    <span aria-hidden="true">&laquo; Anterior</span>
+                </a>
+            </li>
+            {% else %}
+            <li class="page-item disabled">
+                <span class="page-link">&laquo; Anterior</span>
+            </li>
+            {% endif %}
+
+            <li class="page-item disabled">
+                <span class="page-link">Página {{ registros.number }} de {{ registros.paginator.num_pages }}</span>
+            </li>
+
+            {% if registros.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ registros.next_page_number }}" aria-label="Próxima">
+                    <span aria-hidden="true">Próxima &raquo;</span>
+                </a>
+            </li>
+            {% else %}
+            <li class="page-item disabled">
+                <span class="page-link">Próxima &raquo;</span>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
 </div>
 
 <!-- Modal Novo Lote -->

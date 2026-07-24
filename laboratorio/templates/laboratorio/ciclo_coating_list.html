@@ -57,6 +57,9 @@
                                 <a href="{% url 'laboratorio:configurar_checklist_ciclo' ciclo.id %}" class="btn btn-sm btn-outline-secondary me-1">
                                     <i class="bi bi-list-check"></i> Checklist
                                 </a>
+                                <button type="button" class="btn btn-sm btn-outline-primary me-1" onclick="abrirModalEditar('{{ ciclo.id }}', '{{ ciclo.tipo }}', '{{ ciclo.nome }}', '{{ ciclo.criterio }}', '{{ ciclo.limite_lotes }}')">
+                                    <i class="bi bi-pencil"></i> Editar
+                                </button>
                                 <form method="post" action="{% url 'laboratorio:ciclo_coating_delete' ciclo.id %}" style="display: inline;" onsubmit="return confirm('Tem certeza que deseja excluir esta manutenção?');">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-sm btn-outline-danger">
@@ -131,11 +134,78 @@
     </div>
 </div>
 
+<!-- Modal Editar -->
+<div class="modal fade" id="modalEditar" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" id="formEditar">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar Manutenção</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Tipo</label>
+                        <select class="form-select" name="tipo" id="editTipo" required>
+                            <option value="LIMPEZA">Limpeza</option>
+                            <option value="TROCA">Troca</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nome da Manutenção</label>
+                        <input type="text" class="form-control" name="nome" id="editNome" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Critério</label>
+                            <select class="form-select" name="criterio" id="editCriterio" required>
+                                <option value="LOTES">Por Lotes</option>
+                                <option value="DIAS">Por Tempo (Dias)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold" id="editLimiteLabel">Limite (Nº Lotes)</label>
+                            <input type="number" class="form-control" name="limite_lotes" id="editLimite" required min="1">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
     function abrirModalAdicionar(id, codigo) {
         document.getElementById('addMaquinaId').value = id;
         document.getElementById('addMaquinaCodigo').innerText = codigo;
         new bootstrap.Modal(document.getElementById('modalAdicionar')).show();
+    }
+    
+    
+    function abrirModalEditar(id, tipo, nome, criterio, limite) {
+        document.getElementById('editTipo').value = tipo;
+        document.getElementById('editNome').value = nome;
+        document.getElementById('editCriterio').value = criterio;
+        document.getElementById('editLimite').value = limite;
+        
+        // Atualiza a action do form dinamicamente
+        const form = document.getElementById('formEditar');
+        form.action = `/laboratorio/coating/ciclos/${id}/editar/`;
+        
+        // Atualiza o label do limite
+        const limiteLabel = document.getElementById('editLimiteLabel');
+        if (criterio === 'DIAS') {
+            limiteLabel.innerText = 'Limite (Dias Corridos)';
+        } else {
+            limiteLabel.innerText = 'Limite (Nº Lotes)';
+        }
+        
+        new bootstrap.Modal(document.getElementById('modalEditar')).show();
     }
     
     document.addEventListener('DOMContentLoaded', function() {
@@ -147,6 +217,18 @@
                     limiteLabel.innerText = 'Limite (Dias Corridos)';
                 } else {
                     limiteLabel.innerText = 'Limite (Nº Lotes)';
+                }
+            });
+        }
+        
+        const editCriterio = document.getElementById('editCriterio');
+        const editLimiteLabel = document.getElementById('editLimiteLabel');
+        if (editCriterio) {
+            editCriterio.addEventListener('change', function() {
+                if (this.value === 'DIAS') {
+                    editLimiteLabel.innerText = 'Limite (Dias Corridos)';
+                } else {
+                    editLimiteLabel.innerText = 'Limite (Nº Lotes)';
                 }
             });
         }

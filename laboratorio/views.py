@@ -927,14 +927,7 @@ def tratamento_update(request, pk):
 
 @login_required
 def coating_painel(request):
-    data_str = request.GET.get('data')
-    if data_str:
-        try:
-            hoje = datetime.strptime(data_str, '%Y-%m-%d').date()
-        except ValueError:
-            hoje = timezone.localdate()
-    else:
-        hoje = timezone.localdate()
+    from django.core.paginator import Paginator
     
     # Process form submission
     if request.method == "POST":
@@ -964,7 +957,7 @@ def coating_painel(request):
                                 break
                             
                 if regra_encontrada:
-                    data_escolhida = hora_entrada.date() if hora_entrada else hoje
+                    data_escolhida = hora_entrada.date() if hora_entrada else timezone.localdate()
                     # Pega ou cria o Turno Diário para a data e regra
                     turno_diario, created = TurnoCoating.objects.get_or_create(
                         data=data_escolhida,
@@ -1012,10 +1005,14 @@ def coating_painel(request):
     # Initialize form for GET
     registro_form = NovoLoteCoatingForm()
     
-    # Fetch today's records
-    registros = RegistroCoating.objects.filter(turno_coating__data=hoje).select_related(
+    # Fetch all records
+    todos_registros = RegistroCoating.objects.all().select_related(
         'turno_coating', 'maquina', 'tratamento', 'preparacao', 'montagem'
     ).order_by('-id')
+    
+    paginator = Paginator(todos_registros, 100)
+    page_number = request.GET.get('page')
+    registros = paginator.get_page(page_number)
     
     # Identify machines (Evaporadoras)
     evaporadoras = Maquina.objects.filter(
@@ -1213,7 +1210,6 @@ def coating_painel(request):
 
     context = {
         "registros": registros,
-        "data_selecionada": hoje,
         "maquinas_com_registros": maquinas_com_registros,
         "registro_form": registro_form,
         "alertas_ciclos": alertas_ciclos,
@@ -1406,6 +1402,7 @@ def ciclo_coating_create(request):
         maquina_id = request.POST.get('maquina_id')
         tipo = request.POST.get('tipo')
         nome = request.POST.get('nome')
+        criterio = request.POST.get('criterio', 'LOTES')
         limite_lotes = request.POST.get('limite_lotes')
         
         maquina = get_object_or_404(Maquina, pk=maquina_id)
@@ -1414,12 +1411,29 @@ def ciclo_coating_create(request):
             maquina=maquina,
             tipo=tipo,
             nome=nome,
+            criterio=criterio,
             limite_lotes=int(limite_lotes)
         )
         
         messages.success(request, f"Ciclo '{nome}' adicionado para a máquina {maquina.codigo}.")
     except Exception as e:
         messages.error(request, f"Erro ao adicionar ciclo: {str(e)}")
+        
+    return redirect("laboratorio:ciclo_coating_list")
+
+@login_required
+@require_POST
+def ciclo_coating_update(request, pk):
+    ciclo = get_object_or_404(CicloManutencaoCoating, pk=pk)
+    try:
+        ciclo.tipo = request.POST.get('tipo', ciclo.tipo)
+        ciclo.nome = request.POST.get('nome', ciclo.nome)
+        ciclo.criterio = request.POST.get('criterio', ciclo.criterio)
+        ciclo.limite_lotes = int(request.POST.get('limite_lotes', ciclo.limite_lotes))
+        ciclo.save()
+        messages.success(request, f"Ciclo '{ciclo.nome}' atualizado com sucesso.")
+    except Exception as e:
+        messages.error(request, f"Erro ao atualizar ciclo: {str(e)}")
         
     return redirect("laboratorio:ciclo_coating_list")
 
