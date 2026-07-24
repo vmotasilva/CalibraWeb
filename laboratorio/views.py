@@ -1006,34 +1006,75 @@ def coating_painel(request):
     
     if not evaporadoras.exists():
         # Fallback to all lab machines if category isn't set
-        evaporadoras = Maquina.objects.filter(setor__nome__icontains='laboratorio').order_by("codigo", "fabricante")
-        if not evaporadoras.exists():
-            evaporadoras = Maquina.objects.all().order_by("codigo", "fabricante")
+        evaporadoras = Maquina.objects.all().order_by("codigo", "fabricante")
 
     # Update form queryset to only show these machines
     registro_form.fields["maquina"].queryset = evaporadoras
-    
     # Configuração de Ciclos de Manutenção
     alertas_ciclos = []
     status_maquinas = {}
 
     for maquina in evaporadoras:
-        ciclos = maquina.ciclos_coating.all()
+        ciclos = list(maquina.ciclos_coating.all())
         status_maquinas[maquina.id] = []
         maquina.em_alerta = False
         
-        for ciclo in ciclos:
-            ultima = ManutencaoRealizadaCoating.objects.filter(ciclo=ciclo, registro__maquina=maquina).order_by('-registro__id').first()
-            if ultima:
-                lotes_pos = RegistroCoating.objects.filter(maquina=maquina, id__gt=ultima.registro.id).values('turno_coating__data', 'lote').distinct().count()
-            else:
-                lotes_pos = RegistroCoating.objects.filter(maquina=maquina).values('turno_coating__data', 'lote').distinct().count()
-                
-            count = lotes_pos
+        # Busca todo o historico de lotes da maquina para simular os contadores
+        lotes_historico = list(RegistroCoating.objects.filter(maquina=maquina).order_by('turno_coating__data', 'lote', 'id').values('id', 'lote', 'turno_coating__data'))
+        manutencoes = list(ManutencaoRealizadaCoating.objects.filter(registro__maquina=maquina).values('registro_id', 'ciclo_id'))
+        
+        manut_map = {}
+        for m in manutencoes:
+            manut_map.setdefault(m['registro_id'], []).append(m['ciclo_id'])
             
+        counters = {c.id: 0 for c in ciclos}
+        registro_status = {}
+        last_lote_key = None
+        
+        for reg_dict in lotes_historico:
+            rid = reg_dict['id']
+            lote_key = (reg_dict['turno_coating__data'], reg_dict['lote'])
+            
+            # Incrementa os contadores apenas se for um lote novo
+            if lote_key != last_lote_key:
+                for cid in counters:
+                    counters[cid] += 1
+                last_lote_key = lote_key
+                
+            m_cids = manut_map.get(rid, [])
+            is_ok = len(m_cids) > 0
+            
+            is_alert = False
+            for c in ciclos:
+                if counters[c.id] >= c.limite_lotes:
+                    is_alert = True
+                    break
+                    
+            registro_status[rid] = {
+                'is_ok': is_ok,
+                'is_alert': is_alert
+            }
+            
+            # Reseta os contadores para as manutenções realizadas neste registro
+            for cid in m_cids:
+                counters[cid] = 0
+                
+        # Anexa o status calculado a cada registro renderizado na pagina
+        for reg in registros:
+            if reg.maquina_id == maquina.id:
+                rs = registro_status.get(reg.id)
+                if rs:
+                    reg.is_ok = rs['is_ok']
+                    reg.is_alert = rs['is_alert']
+                else:
+                    reg.is_ok = False
+                    reg.is_alert = False
+        
+        # Prepara o status global atual da maquina
+        for ciclo in ciclos:
+            count = counters.get(ciclo.id, 0)
             itens = list(ciclo.itens_checklist.all().values('id', 'texto', 'ordem'))
             
-            # Adiciona ao status da máquina para mostrar no modal (ou na interface)
             status_maquinas[maquina.id].append({
                 "ciclo": {
                     "id": ciclo.id,
@@ -1048,14 +1089,12 @@ def coating_painel(request):
             
             if count >= ciclo.limite_lotes:
                 maquina.em_alerta = True
-                lote_estourado = registros_pos_manutencao[ciclo.limite_lotes - 1]
                 alertas_ciclos.append({
                     "maquina": maquina,
                     "ciclo": ciclo,
-                    "lote_estourado": lote_estourado.lote,
-                    "turno_estourado": lote_estourado.turno_coating.regra.nome if lote_estourado.turno_coating.regra else lote_estourado.turno_coating.turno_padrao,
-                    "data_estourada": lote_estourado.turno_coating.data,
-                    "count": count
+                    "lotes_passados": count,
+                    "ultimo_lote": lotes_historico[-1]['lote'] if lotes_historico else "N/A",
+                    "data": lotes_historico[-1]['turno_coating__data'] if lotes_historico else None,
                 })
 
     # Cálculo dos tempos Rodando e Parado

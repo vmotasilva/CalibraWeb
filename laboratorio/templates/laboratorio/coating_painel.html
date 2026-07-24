@@ -21,7 +21,7 @@
         <strong>Atenção (Manutenção Pendente):</strong> As seguintes máquinas atingiram o ciclo de manutenção e precisam de atenção:
         <ul class="mb-0 mt-2">
         {% for alerta in alertas_ciclos %}
-            <li><strong>{{ alerta.maquina.codigo }}:</strong> {{ alerta.ciclo.nome }} (Limite atingido no Lote {{ alerta.lote_estourado }}, Data: {{ alerta.data_estourada|date:"d/m/Y" }}) - <em>{{ alerta.count }} lotes desde a última.</em></li>
+            <li><strong>{{ alerta.maquina.codigo }}:</strong> {{ alerta.ciclo.nome }} (Limite atingido no Lote {{ alerta.ultimo_lote }}, Data: {{ alerta.data|date:"d/m/Y" }}) - <em>{{ alerta.lotes_passados }} lotes desde a última.</em></li>
         {% endfor %}
         </ul>
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
