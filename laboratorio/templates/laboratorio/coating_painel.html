@@ -103,9 +103,8 @@
                                     <th>T. Parado</th>
                                     <th>Preparação</th>
                                     <th>Montagem</th>
-                                    {% for ciclo in evap.ciclos_coating.all %}
-                                    <th style="min-width: 120px;">{{ ciclo.nome }}<br><small class="text-muted">({{ ciclo.limite_lotes }} lotes)</small></th>
-                                    {% endfor %}
+                                    <th>Limpezas</th>
+                                    <th>Trocas / Manut.</th>
                                     <th>Ações</th>
                                 </tr>
                             </thead>
@@ -125,25 +124,46 @@
                                             <td>{{ reg.tempo_parado|time:"H:i"|default:"-" }}</td>
                                             <td class="editable-cell" data-id="{{ reg.id }}" data-campo="preparacao_id" data-valor="{{ reg.preparacao_id|default:'' }}" data-tipo="colaborador" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{{ reg.preparacao.nome_abreviado|default:"-" }} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
                                             <td class="editable-cell" data-id="{{ reg.id }}" data-campo="montagem_id" data-valor="{{ reg.montagem_id|default:'' }}" data-tipo="colaborador" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{{ reg.montagem.nome_abreviado|default:"-" }} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
-                                            {% for c_status in reg.ciclos_status_list %}
-                                            <td>
-                                                <div class="d-flex flex-column align-items-center">
-                                                    {% if c_status.status == 'OK' %}
-                                                        <button type="button" class="btn btn-sm btn-success shadow-sm" title="Manutenção Registrada" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
-                                                            <i class="bi bi-check-circle-fill"></i> OK
-                                                        </button>
-                                                    {% elif c_status.status == 'PENDENTE' %}
-                                                        <button type="button" class="btn btn-sm btn-danger shadow-sm pulse-danger" title="Manutenção Pendente!" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
-                                                            <i class="bi bi-exclamation-circle-fill"></i> Pendente
-                                                        </button>
-                                                    {% else %}
-                                                        <button type="button" class="btn btn-sm btn-outline-secondary" title="Nenhuma manutenção pendente no momento" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
-                                                            <i class="bi bi-dash-circle"></i> S/ Farol
-                                                        </button>
-                                                    {% endif %}
+                                            <td style="max-width: 200px;">
+                                                <div class="d-flex flex-wrap gap-1 justify-content-center">
+                                                    {% for c_status in reg.ciclos_status_list %}
+                                                        {% if c_status.ciclo.tipo == 'LIMPEZA' %}
+                                                            {% if c_status.status == 'OK' %}
+                                                                <span class="badge bg-success" style="cursor:pointer;" title="OK: {{ c_status.ciclo.nome }}" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
+                                                                    <i class="bi bi-check-circle-fill"></i> {{ c_status.ciclo.nome }}
+                                                                </span>
+                                                            {% elif c_status.status == 'PENDENTE' %}
+                                                                <span class="badge bg-danger pulse-danger" style="cursor:pointer;" title="Pendente: {{ c_status.ciclo.nome }}" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
+                                                                    <i class="bi bi-exclamation-circle-fill"></i> {{ c_status.ciclo.nome }}
+                                                                </span>
+                                                            {% endif %}
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                    <span class="badge border border-secondary text-secondary" style="cursor:pointer;" title="Registrar Limpeza Extra" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }})">
+                                                        <i class="bi bi-plus"></i>
+                                                    </span>
                                                 </div>
                                             </td>
-                                            {% endfor %}
+                                            <td style="max-width: 200px;">
+                                                <div class="d-flex flex-wrap gap-1 justify-content-center">
+                                                    {% for c_status in reg.ciclos_status_list %}
+                                                        {% if c_status.ciclo.tipo == 'TROCA' %}
+                                                            {% if c_status.status == 'OK' %}
+                                                                <span class="badge bg-success" style="cursor:pointer;" title="OK: {{ c_status.ciclo.nome }}" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
+                                                                    <i class="bi bi-check-circle-fill"></i> {{ c_status.ciclo.nome }}
+                                                                </span>
+                                                            {% elif c_status.status == 'PENDENTE' %}
+                                                                <span class="badge bg-danger pulse-danger" style="cursor:pointer;" title="Pendente: {{ c_status.ciclo.nome }}" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
+                                                                    <i class="bi bi-exclamation-circle-fill"></i> {{ c_status.ciclo.nome }}
+                                                                </span>
+                                                            {% endif %}
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                    <span class="badge border border-secondary text-secondary" style="cursor:pointer;" title="Registrar Troca Extra" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }})">
+                                                        <i class="bi bi-plus"></i>
+                                                    </span>
+                                                </div>
+                                            </td>
                                             <td>
                                                 <div class="d-flex justify-content-center gap-1">
                                                     <button type="button" class="btn btn-sm btn-outline-secondary" onclick="abrirModalEditarLote('{{ reg.id }}', '{{ reg.lote }}', '{{ reg.maquina_id }}', '{{ reg.tratamento_id }}')">Editar</button>
