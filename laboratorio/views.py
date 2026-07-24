@@ -1030,7 +1030,11 @@ def coating_painel(request):
             
             # Adiciona ao status da máquina para mostrar no modal (ou na interface)
             status_maquinas[maquina.id].append({
-                "ciclo": ciclo,
+                "ciclo": {
+                    "id": ciclo.id,
+                    "nome": ciclo.nome,
+                    "tipo": ciclo.tipo
+                },
                 "count": count,
                 "limite": ciclo.limite_lotes,
                 "estourou": count >= ciclo.limite_lotes
