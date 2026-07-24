@@ -20,6 +20,7 @@
                     <thead class="table-light">
                         <tr>
                             <th>Nome do Tratamento</th>
+                            <th>Cor de Destaque</th>
                             <th>Status</th>
                             <th class="text-end">Ações</th>
                         </tr>
@@ -29,6 +30,12 @@
                         <tr>
                             <td>
                                 <div class="fw-semibold">{{ tratamento.nome }}</div>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div style="width: 24px; height: 24px; border-radius: 50%; background-color: {{ tratamento.cor|default:'#0d6efd' }}; border: 2px solid #e9ecef;"></div>
+                                    <span class="text-muted small font-monospace">{{ tratamento.cor|default:'#0d6efd' }}</span>
+                                </div>
                             </td>
                             <td>
                                 {% if tratamento.ativo %}
@@ -43,7 +50,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="3" class="text-center text-muted py-4">Nenhum tratamento cadastrado.</td>
+                            <td colspan="4" class="text-center text-muted py-4">Nenhum tratamento cadastrado.</td>
                         </tr>
                         {% endfor %}
                     </tbody>

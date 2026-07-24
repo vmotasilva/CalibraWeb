@@ -247,9 +247,10 @@ class OcorrenciaEncerramentoForm(forms.ModelForm):
 class TratamentoAntiReflexoForm(forms.ModelForm):
     class Meta:
         model = TratamentoAntiReflexo
-        fields = ["nome", "ativo"]
+        fields = ["nome", "cor", "ativo"]
         widgets = {
             "nome": forms.TextInput(attrs={"class": "form-control", "placeholder": "Nome do tratamento..."}),
+            "cor": forms.TextInput(attrs={"class": "form-control form-control-color", "type": "color", "title": "Escolha a cor do tratamento"}),
             "ativo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
 
