@@ -1122,9 +1122,8 @@ def coating_painel(request):
         # Tempo Rodando
         if hora_entrada_dt and hora_saida_dt:
             td = hora_saida_dt - hora_entrada_dt
-            if td.total_seconds() < 0:
-                td += timedelta(days=1)
-            reg.tempo_rodando = (datetime.min + td).time()
+            seconds = int(td.total_seconds()) % 86400
+            reg.tempo_rodando = (datetime.min + timedelta(seconds=seconds)).time()
         else:
             reg.tempo_rodando = None
             
@@ -1150,15 +1149,22 @@ def coating_painel(request):
                     td_parado = hora_entrada_dt - saida_anterior
                 
                 # Previne negativo se entrada atual < saída anterior (erro de preenchimento)
-                if td_parado.total_seconds() < 0:
-                    td_parado = timedelta(0)
-                    
-                reg.tempo_parado = (datetime.min + td_parado).time()
+                seconds = int(td_parado.total_seconds())
+                if seconds < 0:
+                    seconds = 0
+                else:
+                    seconds = seconds % 86400
+                reg.tempo_parado = (datetime.min + timedelta(seconds=seconds)).time()
             else:
                 # Primeiro lote da máquina (no contexto visível).
                 if hora_inicio_turno and hora_entrada_dt > hora_inicio_turno:
                     td_parado = hora_entrada_dt - hora_inicio_turno
-                    reg.tempo_parado = (datetime.min + td_parado).time()
+                    seconds = int(td_parado.total_seconds())
+                    if seconds < 0:
+                        seconds = 0
+                    else:
+                        seconds = seconds % 86400
+                    reg.tempo_parado = (datetime.min + timedelta(seconds=seconds)).time()
                 else:
                     reg.tempo_parado = None
         else:
