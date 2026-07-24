@@ -107,7 +107,13 @@
                                             <td>{{ reg.hora_saida|time:"H:i"|default:"-" }}</td>
                                             <td>{{ reg.preparacao.nome_completo|default:"-" }}</td>
                                             <td>
-                                                <button class="btn btn-sm btn-outline-secondary">Editar</button>
+                                                <div class="d-flex justify-content-center gap-1">
+                                                    <button class="btn btn-sm btn-outline-secondary">Editar</button>
+                                                    <form method="post" action="{% url 'laboratorio:registro_coating_delete' reg.id %}" onsubmit="return confirm('Tem certeza que deseja excluir o Lote {{ reg.lote }} (Lado {{ reg.lado }})?');">
+                                                        {% csrf_token %}
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir"><i class="bi bi-trash"></i></button>
+                                                    </form>
+                                                </div>
                                             </td>
                                         </tr>
                                         {% endif %}
@@ -157,7 +163,13 @@
                                     <td>{{ reg.hora_saida|time:"H:i"|default:"-" }}</td>
                                     <td>{{ reg.preparacao.nome_completo|default:"-" }}</td>
                                     <td>
-                                        <button class="btn btn-sm btn-outline-secondary">Editar</button>
+                                        <div class="d-flex justify-content-center gap-1">
+                                            <button class="btn btn-sm btn-outline-secondary">Editar</button>
+                                            <form method="post" action="{% url 'laboratorio:registro_coating_delete' reg.id %}" onsubmit="return confirm('Tem certeza que deseja excluir o Lote {{ reg.lote }} (Lado {{ reg.lado }})?');">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir"><i class="bi bi-trash"></i></button>
+                                            </form>
+                                        </div>
                                     </td>
                                 </tr>
                                 {% empty %}

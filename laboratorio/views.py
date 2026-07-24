@@ -1032,6 +1032,15 @@ def coating_painel(request):
     
     return render(request, "laboratorio/coating_painel.html", context)
 
+@login_required
+@require_POST
+def registro_coating_delete(request, pk):
+    registro = get_object_or_404(RegistroCoating, pk=pk)
+    # Could check permissions here if needed
+    registro.delete()
+    messages.success(request, f"Registro de Lote {registro.lote} (Lado {registro.lado}) excluído com sucesso.")
+    return redirect("laboratorio:coating_painel")
+
 
 @login_required
 def regra_turno_list(request):
