@@ -94,23 +94,29 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for reg in registros %}
-                                    {% if reg.maquina.id == evap.id %}
-                                    <tr class="{% if reg.maquina.id in alertas_limpeza %}table-warning{% elif reg.maquina.id in alertas_troca %}table-danger{% endif %}">
-                                        <td>{{ reg.turno_coating.data|date:"d/m/Y" }}</td>
-                                        <td>{{ reg.turno_coating.regra.nome }}</td>
-                                        <td>{{ reg.lote }}</td>
-                                        <td>{{ reg.get_lado_display }}</td>
-                                        <td>{{ reg.tratamento.nome }}</td>
-                                        <td>{{ reg.hora_entrada|time:"H:i" }}</td>
-                                        <td>{{ reg.hora_saida|time:"H:i"|default:"-" }}</td>
-                                        <td>{{ reg.preparacao.nome_completo }}</td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-secondary">Editar</button>
-                                        </td>
+                                {% if evap.id in maquinas_com_registros %}
+                                    {% for reg in registros %}
+                                        {% if reg.maquina.id == evap.id %}
+                                        <tr class="{% if reg.maquina.id in alertas_limpeza %}table-warning{% elif reg.maquina.id in alertas_troca %}table-danger{% endif %}">
+                                            <td>{{ reg.turno_coating.data|date:"d/m/Y" }}</td>
+                                            <td>{{ reg.turno_coating.regra.nome }}</td>
+                                            <td>{{ reg.lote }}</td>
+                                            <td>{{ reg.lado }}</td>
+                                            <td>{{ reg.tratamento.nome }}</td>
+                                            <td>{{ reg.hora_entrada|time:"H:i"|default:"-" }}</td>
+                                            <td>{{ reg.hora_saida|time:"H:i"|default:"-" }}</td>
+                                            <td>{{ reg.preparacao.nome_completo|default:"-" }}</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-secondary">Editar</button>
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="9" class="text-center text-muted py-4">Nenhum lote registrado nesta máquina para as datas em exibição.</td>
                                     </tr>
-                                    {% endif %}
-                                {% endfor %}
+                                {% endif %}
                             </tbody>
                         </table>
                     </div>
@@ -145,11 +151,11 @@
                                     <td>{{ reg.turno_coating.regra.nome }}</td>
                                     <td class="fw-bold">{{ reg.maquina.codigo }}</td>
                                     <td>{{ reg.lote }}</td>
-                                    <td>{{ reg.get_lado_display }}</td>
+                                    <td>{{ reg.lado }}</td>
                                     <td>{{ reg.tratamento.nome }}</td>
-                                    <td>{{ reg.hora_entrada|time:"H:i" }}</td>
+                                    <td>{{ reg.hora_entrada|time:"H:i"|default:"-" }}</td>
                                     <td>{{ reg.hora_saida|time:"H:i"|default:"-" }}</td>
-                                    <td>{{ reg.preparacao.nome_completo }}</td>
+                                    <td>{{ reg.preparacao.nome_completo|default:"-" }}</td>
                                     <td>
                                         <button class="btn btn-sm btn-outline-secondary">Editar</button>
                                     </td>

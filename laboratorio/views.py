@@ -1019,8 +1019,11 @@ def coating_painel(request):
         if contagem % 50 == 0 and contagem > 0:
             alertas_troca.append(maq_id)
 
+    maquinas_com_registros = set(r.maquina_id for r in registros)
+
     context = {
         "registros": registros,
+        "maquinas_com_registros": maquinas_com_registros,
         "registro_form": registro_form,
         "alertas_limpeza": alertas_limpeza,
         "alertas_troca": alertas_troca,
