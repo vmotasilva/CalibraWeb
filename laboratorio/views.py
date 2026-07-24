@@ -1012,7 +1012,7 @@ def coating_painel(request):
     # Update form queryset to only show these machines
     registro_form.fields["maquina"].queryset = evaporadoras
     # Configuração de Ciclos de Manutenção
-    alertas_ciclos = []
+    alertas_ciclos = {}
     status_maquinas = {}
 
     for maquina in evaporadoras:
@@ -1033,14 +1033,12 @@ def coating_painel(request):
             lote_key = (reg_dict['turno_coating__data'], reg_dict['lote'])
             lotes_agrupados[lote_key].append(reg_dict['id'])
             
-        # Inicializa o contador com o limite, assim se a manutencao nunca foi feita, 
-        # ela estourara logo no lote 1.
-        counters = {c.id: c.limite_lotes for c in ciclos}
+        counters = {c.id: 0 for c in ciclos}
+        never_done = {c.id: True for c in ciclos}
         registro_status = {}
         
         for lote_key, rids in lotes_agrupados.items():
             for cid in counters:
-                # So incrementa se ainda nao estourou, senao deixa estourado
                 counters[cid] += 1
                 
             m_cids_lote = set()
@@ -1052,7 +1050,8 @@ def coating_painel(request):
                 if c.id in m_cids_lote:
                     status = 'OK'
                     counters[c.id] = 0
-                elif counters[c.id] >= c.limite_lotes:
+                    never_done[c.id] = False
+                elif never_done[c.id] or counters[c.id] >= c.limite_lotes:
                     status = 'PENDENTE'
                 else:
                     status = 'S_FAROL'
@@ -1083,6 +1082,9 @@ def coating_painel(request):
             count = counters.get(ciclo.id, 0)
             itens = list(ciclo.itens_checklist.all().values('id', 'texto', 'ordem'))
             
+            estourou_agora = never_done[ciclo.id] or count >= ciclo.limite_lotes
+            estourou_proximo = count == (ciclo.limite_lotes - 1)
+
             status_maquinas[maquina.id].append({
                 "ciclo": {
                     "id": ciclo.id,
@@ -1092,17 +1094,23 @@ def coating_painel(request):
                 },
                 "count": count,
                 "limite": ciclo.limite_lotes,
-                "estourou": count >= ciclo.limite_lotes
+                "estourou": estourou_agora
             })
             
-            if count >= ciclo.limite_lotes:
+            if estourou_agora or estourou_proximo:
                 maquina.em_alerta = True
-                alertas_ciclos.append({
-                    "maquina": maquina,
+                if maquina.id not in alertas_ciclos:
+                    alertas_ciclos[maquina.id] = {
+                        "maquina": maquina,
+                        "alertas": []
+                    }
+                alertas_ciclos[maquina.id]["alertas"].append({
                     "ciclo": ciclo,
                     "lotes_passados": count,
                     "ultimo_lote": lotes_historico[-1]['lote'] if lotes_historico else "N/A",
                     "data": lotes_historico[-1]['turno_coating__data'] if lotes_historico else None,
+                    "estourou_agora": estourou_agora,
+                    "nunca_feito": never_done[ciclo.id]
                 })
 
     # Cálculo dos tempos Rodando e Parado

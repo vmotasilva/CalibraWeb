@@ -15,18 +15,35 @@
         </div>
     </div>
     
-    <!-- Alertas Globais -->
-    {% if alertas_ciclos %}
-    <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
-        <strong>Atenção (Manutenção Pendente):</strong> As seguintes máquinas atingiram o ciclo de manutenção e precisam de atenção:
-        <ul class="mb-0 mt-2">
-        {% for alerta in alertas_ciclos %}
-            <li><strong>{{ alerta.maquina.codigo }}:</strong> {{ alerta.ciclo.nome }} (Limite atingido no Lote {{ alerta.ultimo_lote }}, Data: {{ alerta.data|date:"d/m/Y" }}) - <em>{{ alerta.lotes_passados }} lotes desde a última.</em></li>
-        {% endfor %}
-        </ul>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    <!-- Alertas de Manutencao -->
+    <div id="alertasContainer">
+        {% if alertas_ciclos %}
+            {% for maq_id, info in alertas_ciclos.items %}
+                <div class="alert alerta-maquina d-none fade show shadow-sm {% if info.maquina.em_alerta %}alert-warning{% else %}alert-info{% endif %}" data-maquina-id="{{ maq_id }}" role="alert">
+                    <strong><i class="bi bi-exclamation-triangle-fill"></i> Atenção (Manutenção Pendente ou Próxima):</strong> A máquina {{ info.maquina.codigo }} precisa de atenção:
+                    <ul class="mb-0 mt-2">
+                    {% for alerta in info.alertas %}
+                        <li>
+                            <strong>{{ alerta.ciclo.nome }}:</strong> 
+                            {% if alerta.nunca_feito %}
+                                <em>Nenhuma manutenção registrada até o momento!</em> (Exigência a partir do primeiro lote)
+                            {% else %}
+                                {% if alerta.estourou_agora %}
+                                    <span class="text-danger fw-bold">Limite atingido!</span>
+                                {% else %}
+                                    <span class="text-warning fw-bold" style="color: #856404 !important;">Atingirá o limite no PRÓXIMO LOTE!</span>
+                                {% endif %}
+                                <span class="text-muted small">
+                                    (Último Lote: {{ alerta.ultimo_lote }}, Data: {{ alerta.data|date:"d/m/Y" }}) - <em>{{ alerta.lotes_passados }} lotes processados desde a última manutenção.</em>
+                                </span>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                    </ul>
+                </div>
+            {% endfor %}
+        {% endif %}
     </div>
-    {% endif %}
 
 
     <style>
@@ -85,7 +102,7 @@
 
     <div class="tab-content" id="evapTabsContent">
         {% for evap in evaporadoras %}
-        <div class="tab-pane fade {% if forloop.first %}show active{% endif %}" id="evap-{{ evap.id }}-pane" role="tabpanel">
+        <div class="tab-pane fade {% if forloop.first %}show active{% endif %}" id="evap-{{ evap.id }}-pane" data-maquina-id="{{ evap.id }}" role="tabpanel">
             <div class="card shadow-sm border" style="border-top-left-radius: 0; border-top-right-radius: 0;">
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -379,6 +396,30 @@
     let modalEdicaoRapida;
     const statusMaquinas = JSON.parse(document.getElementById('status_maquinas_data').textContent);
     
+    function showTabContent(targetId) {
+        document.querySelectorAll('.evap-pane').forEach(pane => {
+            pane.classList.remove('show', 'active');
+        });
+        const targetPane = document.getElementById(targetId);
+        if(targetPane) {
+            targetPane.classList.add('show', 'active');
+            const maquinaId = targetPane.getAttribute('data-maquina-id');
+            const selectMaquina = document.querySelector('#novoLoteModal select[name="maquina"]');
+            if (selectMaquina) {
+                selectMaquina.value = maquinaId;
+            }
+            
+            // Gerenciar alertas da maquina ativa
+            document.querySelectorAll('.alerta-maquina').forEach(alerta => {
+                if (alerta.getAttribute('data-maquina-id') === maquinaId) {
+                    alerta.classList.remove('d-none');
+                } else {
+                    alerta.classList.add('d-none');
+                }
+            });
+        }
+    }
+    
     document.addEventListener('DOMContentLoaded', function() {
         // Preenchimento automatico do lote
         const novoLoteModalEl = document.getElementById('novoLoteModal');
@@ -393,6 +434,16 @@
 
         modalEdicaoRapida = new bootstrap.Modal(document.getElementById('modalEdicaoRapida'));
         
+        function updateAlertsForActiveTab(evapId) {
+            document.querySelectorAll('.alerta-maquina').forEach(alerta => {
+                if (alerta.getAttribute('data-maquina-id') === evapId) {
+                    alerta.classList.remove('d-none');
+                } else {
+                    alerta.classList.add('d-none');
+                }
+            });
+        }
+
         let activeTab = document.querySelector("#evapTabs .nav-link.active");
         if (activeTab && activeTab.id.startsWith("evap-")) {
             let evapId = activeTab.id.split("-")[1];
@@ -400,7 +451,20 @@
             if (maquinaSelect) {
                 maquinaSelect.value = evapId;
             }
+            updateAlertsForActiveTab(evapId);
         }
+        
+        // Listener para mudanca de abas
+        const tabEls = document.querySelectorAll('button[data-bs-toggle="tab"]');
+        tabEls.forEach(tab => {
+            tab.addEventListener('shown.bs.tab', function (event) {
+                const targetId = event.target.getAttribute('data-bs-target');
+                if (targetId && targetId.startsWith("#evap-")) {
+                    const evapId = targetId.split("-")[1];
+                    updateAlertsForActiveTab(evapId);
+                }
+            });
+        });
 
         // Tornar modais arrastáveis pelo header
         document.querySelectorAll('.modal-header').forEach(header => {
