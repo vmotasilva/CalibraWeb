@@ -110,8 +110,8 @@
                                             <td>{{ reg.lote }}</td>
                                             <td>{{ reg.lado }}</td>
                                             <td>{{ reg.tratamento.nome }}</td>
-                                            <td class="editable-cell" data-id="{{ reg.id }}" data-campo="hora_entrada" data-valor="{{ reg.hora_entrada|time:'H:i'|default:'' }}" data-tipo="time" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{{ reg.hora_entrada|time:"H:i"|default:"-" }} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
-                                            <td class="editable-cell" data-id="{{ reg.id }}" data-campo="hora_saida" data-valor="{{ reg.hora_saida|time:'H:i'|default:'' }}" data-tipo="time" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{{ reg.hora_saida|time:"H:i"|default:"-" }} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
+                                            <td class="editable-cell" data-id="{{ reg.id }}" data-campo="hora_entrada" data-valor="{{ reg.hora_entrada|date:'Y-m-d\TH:i'|default:'' }}" data-tipo="datetime-local" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{{ reg.hora_entrada|time:"H:i"|default:"-" }} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
+                                            <td class="editable-cell" data-id="{{ reg.id }}" data-campo="hora_saida" data-valor="{{ reg.hora_saida|date:'Y-m-d\TH:i'|default:'' }}" data-tipo="datetime-local" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{{ reg.hora_saida|time:"H:i"|default:"-" }} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
                                             <td>{{ reg.tempo_rodando|time:"H:i"|default:"-" }}</td>
                                             <td>{{ reg.tempo_parado|time:"H:i"|default:"-" }}</td>
                                             <td class="editable-cell" data-id="{{ reg.id }}" data-campo="preparacao_id" data-valor="{{ reg.preparacao_id|default:'' }}" data-tipo="colaborador" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{{ reg.preparacao.nome_completo|default:"-" }} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
@@ -120,11 +120,10 @@
                                             <td class="editable-cell" data-id="{{ reg.id }}" data-campo="troca" data-valor="{{ reg.troca|yesno:'true,false' }}" data-tipo="boolean" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{% if reg.troca %}<span class="badge bg-success">Sim</span>{% else %}-{% endif %} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
                                             <td>
                                                 <div class="d-flex justify-content-center gap-1">
-                                                    <button class="btn btn-sm btn-outline-secondary">Editar</button>
-                                                    <form method="post" action="{% url 'laboratorio:registro_coating_delete' reg.id %}" onsubmit="return confirm('Tem certeza que deseja excluir o Lote {{ reg.lote }} (Lado {{ reg.lado }})?');">
-                                                        {% csrf_token %}
-                                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir"><i class="bi bi-trash"></i></button>
-                                                    </form>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="abrirModalEditarLote('{{ reg.id }}', '{{ reg.lote }}', '{{ reg.maquina_id }}', '{{ reg.tratamento_id }}')">Editar</button>
+                                                    <button type="button" class="btn btn-sm btn-outline-danger" title="Excluir Lote Inteiro" onclick="abrirModalDelete('{% url 'laboratorio:registro_coating_delete' reg.id %}', '{{ reg.lote }}')">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -176,8 +175,8 @@
                                     <td>{{ reg.lote }}</td>
                                     <td>{{ reg.lado }}</td>
                                     <td>{{ reg.tratamento.nome }}</td>
-                                    <td class="editable-cell" data-id="{{ reg.id }}" data-campo="hora_entrada" data-valor="{{ reg.hora_entrada|time:'H:i'|default:'' }}" data-tipo="time" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{{ reg.hora_entrada|time:"H:i"|default:"-" }} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
-                                    <td class="editable-cell" data-id="{{ reg.id }}" data-campo="hora_saida" data-valor="{{ reg.hora_saida|time:'H:i'|default:'' }}" data-tipo="time" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{{ reg.hora_saida|time:"H:i"|default:"-" }} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
+                                    <td class="editable-cell" data-id="{{ reg.id }}" data-campo="hora_entrada" data-valor="{{ reg.hora_entrada|date:'Y-m-d\TH:i'|default:'' }}" data-tipo="datetime-local" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{{ reg.hora_entrada|time:"H:i"|default:"-" }} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
+                                    <td class="editable-cell" data-id="{{ reg.id }}" data-campo="hora_saida" data-valor="{{ reg.hora_saida|date:'Y-m-d\TH:i'|default:'' }}" data-tipo="datetime-local" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{{ reg.hora_saida|time:"H:i"|default:"-" }} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
                                     <td>{{ reg.tempo_rodando|time:"H:i"|default:"-" }}</td>
                                     <td>{{ reg.tempo_parado|time:"H:i"|default:"-" }}</td>
                                     <td class="editable-cell" data-id="{{ reg.id }}" data-campo="preparacao_id" data-valor="{{ reg.preparacao_id|default:'' }}" data-tipo="colaborador" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{{ reg.preparacao.nome_completo|default:"-" }} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
@@ -186,11 +185,10 @@
                                     <td class="editable-cell" data-id="{{ reg.id }}" data-campo="troca" data-valor="{{ reg.troca|yesno:'true,false' }}" data-tipo="boolean" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{% if reg.troca %}<span class="badge bg-success">Sim</span>{% else %}-{% endif %} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
                                     <td>
                                         <div class="d-flex justify-content-center gap-1">
-                                            <button class="btn btn-sm btn-outline-secondary">Editar</button>
-                                            <form method="post" action="{% url 'laboratorio:registro_coating_delete' reg.id %}" onsubmit="return confirm('Tem certeza que deseja excluir o Lote {{ reg.lote }} (Lado {{ reg.lado }})?');">
-                                                {% csrf_token %}
-                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir"><i class="bi bi-trash"></i></button>
-                                            </form>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="abrirModalEditarLote('{{ reg.id }}', '{{ reg.lote }}', '{{ reg.maquina_id }}', '{{ reg.tratamento_id }}')">Editar</button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" title="Excluir Lote Inteiro" onclick="abrirModalDelete('{% url 'laboratorio:registro_coating_delete' reg.id %}', '{{ reg.lote }}')">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -272,6 +270,67 @@
     </div>
 </div>
 
+<!-- Modal Edição Lote Inteiro -->
+<div class="modal fade" id="modalEditarLote" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Lote (CC e CX)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editLoteId">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Número do Lote</label>
+                    <input type="number" class="form-control" id="editLoteNum">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Máquina</label>
+                    <div id="wrapperMaquinaEditLote">
+                        {{ registro_form.maquina }}
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Tratamento</label>
+                    <div id="wrapperTratamentoEditLote">
+                        {{ registro_form.tratamento }}
+                    </div>
+                </div>
+                <div class="alert alert-info mt-2 mb-0" style="font-size: 0.85rem;">
+                    As alterações feitas aqui serão aplicadas a <strong>ambas as linhas</strong> (Côncavo e Convexo) deste lote.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarLoteCompleto()">Salvar Alterações</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Confirmação de Exclusão -->
+<div class="modal fade" id="modalConfirmDelete" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <form id="formConfirmDelete" method="post" action="">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title text-danger">Atenção!</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <p class="mb-2">Tem certeza que deseja excluir o <strong>Lote <span id="deleteLoteText"></span></strong>?</p>
+                    <p class="text-muted small mb-0">Essa ação apagará <strong>ambos os registros</strong> (Côncavo e Convexo) simultaneamente.</p>
+                </div>
+                <div class="modal-footer justify-content-center">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger btn-sm">Sim, Excluir Lote</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Modal Edição Rápida -->
 <div class="modal fade" id="modalEdicaoRapida" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-sm">
@@ -316,8 +375,8 @@
         const container = document.getElementById('editInputContainer');
         container.innerHTML = '';
         
-        if (tipo === 'time') {
-            container.innerHTML = `<input type="time" class="form-control" id="modalEditInput" value="${valor}">`;
+        if (tipo === 'datetime-local') {
+            container.innerHTML = `<input type="datetime-local" class="form-control" id="modalEditInput" value="${valor}">`;
         } else if (tipo === 'boolean') {
             const isTrue = valor === 'true' || valor === 'True';
             container.innerHTML = `

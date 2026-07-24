@@ -362,8 +362,8 @@ class RegistroCoating(models.Model):
     tratamento = models.ForeignKey(TratamentoAntiReflexo, on_delete=models.PROTECT, verbose_name="Tratamento")
     lado = models.CharField(max_length=2, choices=LADO_CHOICES, verbose_name="Lado da Lente")
     
-    hora_entrada = models.TimeField(null=True, blank=True, verbose_name="Hora de Entrada")
-    hora_saida = models.TimeField(null=True, blank=True, verbose_name="Hora de Saída")
+    hora_entrada = models.DateTimeField(null=True, blank=True, verbose_name="Entrada (Data e Hora)")
+    hora_saida = models.DateTimeField(null=True, blank=True, verbose_name="Saída (Data e Hora)")
     
     preparacao = models.ForeignKey(Colaborador, on_delete=models.PROTECT, related_name="preparacoes_coating", verbose_name="Preparação", null=True, blank=True)
     montagem = models.ForeignKey(Colaborador, on_delete=models.PROTECT, related_name="montagens_coating", verbose_name="Montagem", null=True, blank=True)
@@ -394,3 +394,15 @@ class CicloManutencaoCoating(models.Model):
         
     def __str__(self):
         return f"Ciclos - {self.maquina}"
+
+class EquipeCoating(models.Model):
+    colaborador = models.OneToOneField("rh.Colaborador", on_delete=models.CASCADE, verbose_name="Colaborador")
+    pode_preparar = models.BooleanField(default=True, verbose_name="Pode Preparar")
+    pode_montar = models.BooleanField(default=True, verbose_name="Pode Montar")
+    
+    class Meta:
+        verbose_name = "Equipe de Coating"
+        verbose_name_plural = "Equipe de Coating"
+        
+    def __str__(self):
+        return f"{self.colaborador.nome_completo}"

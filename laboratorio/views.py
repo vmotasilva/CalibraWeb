@@ -1044,20 +1044,41 @@ def coating_painel(request):
         
         # Tempo Rodando
         if reg.hora_entrada and reg.hora_saida:
-            td = datetime.combine(date.min, reg.hora_saida) - datetime.combine(date.min, reg.hora_entrada)
-            if td.total_seconds() < 0:
-                td += timedelta(days=1)
+            td = reg.hora_saida - reg.hora_entrada
             reg.tempo_rodando = (datetime.min + td).time()
         else:
             reg.tempo_rodando = None
             
         # Tempo Parado
-        if maq_id in last_seen and reg.hora_entrada and last_seen[maq_id]:
-            # Entrada atual - Saída anterior
-            td_parado = datetime.combine(date.min, reg.hora_entrada) - datetime.combine(date.min, last_seen[maq_id])
-            if td_parado.total_seconds() < 0:
-                td_parado += timedelta(days=1)
-            reg.tempo_parado = (datetime.min + td_parado).time()
+        if reg.hora_entrada:
+            hora_inicio_turno = None
+            if reg.turno_coating and reg.turno_coating.regra and reg.turno_coating.regra.hora_inicio:
+                inicio_time = reg.turno_coating.regra.hora_inicio
+                hora_inicio_turno = datetime.combine(reg.turno_coating.data, inicio_time)
+                
+            if maq_id in last_seen and last_seen[maq_id]:
+                saida_anterior = last_seen[maq_id]
+                # Se a saída anterior ocorreu antes do início do turno atual, o tempo parado conta só do início do turno
+                if hora_inicio_turno and saida_anterior < hora_inicio_turno:
+                    if reg.hora_entrada > hora_inicio_turno:
+                        td_parado = reg.hora_entrada - hora_inicio_turno
+                    else:
+                        td_parado = timedelta(0)
+                else:
+                    td_parado = reg.hora_entrada - saida_anterior
+                
+                # Previne negativo se entrada atual < saída anterior (erro de preenchimento)
+                if td_parado.total_seconds() < 0:
+                    td_parado = timedelta(0)
+                    
+                reg.tempo_parado = (datetime.min + td_parado).time()
+            else:
+                # Primeiro lote da máquina (no contexto visível).
+                if hora_inicio_turno and reg.hora_entrada > hora_inicio_turno:
+                    td_parado = reg.hora_entrada - hora_inicio_turno
+                    reg.tempo_parado = (datetime.min + td_parado).time()
+                else:
+                    reg.tempo_parado = None
         else:
             reg.tempo_parado = None
             
@@ -1082,10 +1103,45 @@ def coating_painel(request):
 @require_POST
 def registro_coating_delete(request, pk):
     registro = get_object_or_404(RegistroCoating, pk=pk)
-    # Could check permissions here if needed
-    registro.delete()
-    messages.success(request, f"Registro de Lote {registro.lote} (Lado {registro.lado}) excluído com sucesso.")
+    lote_num = registro.lote
+    
+    registros_do_lote = RegistroCoating.objects.filter(
+        lote=registro.lote,
+        maquina=registro.maquina,
+        turno_coating=registro.turno_coating
+    )
+    qtd = registros_do_lote.count()
+    registros_do_lote.delete()
+    
+    messages.success(request, f"Lote {lote_num} excluído com sucesso ({qtd} registros removidos).")
     return redirect("laboratorio:coating_painel")
+
+@login_required
+@require_POST
+def editar_lote_completo_coating(request):
+    try:
+        data = json.loads(request.body)
+        registro_id = data.get('id')
+        lote_novo = data.get('lote')
+        maquina_id = data.get('maquina_id')
+        tratamento_id = data.get('tratamento_id')
+        
+        registro = get_object_or_404(RegistroCoating, pk=registro_id)
+        
+        registros = RegistroCoating.objects.filter(
+            lote=registro.lote,
+            maquina=registro.maquina,
+            turno_coating=registro.turno_coating
+        )
+        
+        registros.update(
+            lote=lote_novo,
+            maquina_id=maquina_id,
+            tratamento_id=tratamento_id
+        )
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 @login_required
 @require_POST
@@ -1109,8 +1165,11 @@ def atualizar_celula_coating(request):
             if not valor:
                 setattr(registro, campo, None)
             else:
-                from datetime import datetime
-                setattr(registro, campo, datetime.strptime(valor, "%H:%M").time())
+                from django.utils.dateparse import parse_datetime
+                parsed = parse_datetime(valor)
+                if not parsed:
+                    return JsonResponse({'success': False, 'error': 'Formato de data inválido.'}, status=400)
+                setattr(registro, campo, parsed)
         else:
             return JsonResponse({'success': False, 'error': 'Campo não permitido para edição rápida.'}, status=400)
             

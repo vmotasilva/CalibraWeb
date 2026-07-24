@@ -9,7 +9,8 @@ from .models import (
     TratamentoAntiReflexo,
     RegraTurnoCoating,
     TurnoCoating,
-    RegistroCoating
+    RegistroCoating,
+    EquipeCoating,
 )
 from rh.models import Colaborador
 from maquinas.models import Maquina
@@ -298,7 +299,7 @@ class NovoLoteCoatingForm(forms.ModelForm):
             "maquina": forms.Select(attrs={"class": "form-select"}),
             "lote": forms.NumberInput(attrs={"class": "form-control", "placeholder": "Ex: 12345"}),
             "tratamento": forms.Select(attrs={"class": "form-select"}),
-            "hora_entrada": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
+            "hora_entrada": forms.DateTimeInput(attrs={"class": "form-control", "type": "datetime-local"}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -323,8 +324,8 @@ class RegistroCoatingForm(forms.ModelForm):
             "lote": forms.NumberInput(attrs={"class": "form-control", "placeholder": "Lote..."}),
             "tratamento": forms.Select(attrs={"class": "form-select"}),
             "lado": forms.Select(attrs={"class": "form-select"}),
-            "hora_entrada": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
-            "hora_saida": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
+            "hora_entrada": forms.DateTimeInput(attrs={"class": "form-control", "type": "datetime-local"}),
+            "hora_saida": forms.DateTimeInput(attrs={"class": "form-control", "type": "datetime-local"}),
             "preparacao": forms.Select(attrs={"class": "form-select"}),
             "montagem": forms.Select(attrs={"class": "form-select"}),
             "limpeza": forms.CheckboxInput(attrs={"class": "form-check-input"}),
@@ -335,11 +336,29 @@ class RegistroCoatingForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["maquina"].queryset = Maquina.objects.order_by("codigo", "fabricante")
         self.fields["tratamento"].queryset = TratamentoAntiReflexo.objects.filter(ativo=True).order_by("nome")
-        self.fields["preparacao"].queryset = Colaborador.objects.filter(setor__nome__icontains="laboratorio").order_by("nome_completo")
-        self.fields["montagem"].queryset = Colaborador.objects.filter(setor__nome__icontains="laboratorio").order_by("nome_completo")
         
-        # Fallback if no matching department for employees
-        if not self.fields["preparacao"].queryset.exists():
-            self.fields["preparacao"].queryset = Colaborador.objects.all().order_by("nome_completo")
-        if not self.fields["montagem"].queryset.exists():
-            self.fields["montagem"].queryset = Colaborador.objects.all().order_by("nome_completo")
+        # Filtra pela Equipe de Coating
+        equipe_preparacao = EquipeCoating.objects.filter(pode_preparar=True).values_list('colaborador_id', flat=True)
+        equipe_montagem = EquipeCoating.objects.filter(pode_montar=True).values_list('colaborador_id', flat=True)
+        
+        self.fields["preparacao"].queryset = Colaborador.objects.filter(id__in=equipe_preparacao).order_by("nome_completo")
+        self.fields["montagem"].queryset = Colaborador.objects.filter(id__in=equipe_montagem).order_by("nome_completo")
+
+class EquipeCoatingForm(forms.ModelForm):
+    class Meta:
+        model = EquipeCoating
+        fields = ["colaborador", "pode_preparar", "pode_montar"]
+        widgets = {
+            "colaborador": forms.Select(attrs={"class": "form-select"}),
+            "pode_preparar": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "pode_montar": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Mostra colaboradores que não estão na equipe (para inclusão)
+        if not self.instance.pk:
+            existentes = EquipeCoating.objects.values_list('colaborador_id', flat=True)
+            self.fields['colaborador'].queryset = Colaborador.objects.exclude(id__in=existentes).order_by("nome_completo")
+        else:
+            self.fields['colaborador'].queryset = Colaborador.objects.filter(id=self.instance.colaborador_id)

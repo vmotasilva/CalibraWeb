@@ -205,7 +205,8 @@
                         <li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:coating_painel' %}"><i class="bi bi-grid-3x3-gap"></i> Painel Diário</a></li>
                         <li><a class="dropdown-item" href="{% url 'laboratorio:tratamento_list' %}"><i class="bi bi-droplet-half"></i> Tratamentos</a></li>
                         <li><a class="dropdown-item" href="{% url 'laboratorio:regra_turno_list' %}"><i class="bi bi-clock-history"></i> Regras de Turno</a></li>
-                        <li><a class="dropdown-item text-primary" href="{% url 'laboratorio:tratamento_create' %}"><i class="bi bi-plus-circle me-1"></i>Novo Tratamento</a></li>
+                        <li><a class="dropdown-item" href="{% url 'laboratorio:ciclo_coating_list' %}"><i class="bi bi-arrow-repeat"></i> Ciclos de Manutenção</a></li>
+                        <li><a class="dropdown-item" href="{% url 'laboratorio:equipe_coating_list' %}"><i class="bi bi-people"></i> Equipe Coating</a></li>
                     </ul>
                 </li>
                 {% endif %}
