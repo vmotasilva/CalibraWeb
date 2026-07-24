@@ -27,7 +27,8 @@
                         <tr>
                             <th class="ps-3">Tipo</th>
                             <th>Nome da Manutenção</th>
-                            <th class="text-center">Limite (Lotes)</th>
+                            <th class="text-center">Critério</th>
+                            <th class="text-center">Limite</th>
                             <th class="text-end pe-3">Ações</th>
                         </tr>
                     </thead>
@@ -43,7 +44,14 @@
                             </td>
                             <td class="fw-bold">{{ ciclo.nome }}</td>
                             <td class="text-center">
-                                <span class="badge bg-secondary px-3 py-2 fs-6">{{ ciclo.limite_lotes }} lotes</span>
+                                {% if ciclo.criterio == 'DIAS' %}
+                                    <span class="badge bg-info text-dark"><i class="bi bi-calendar-event"></i> Dias Corridos</span>
+                                {% else %}
+                                    <span class="badge bg-secondary"><i class="bi bi-box-seam"></i> Lotes Produzidos</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-dark px-3 py-2 fs-6">{{ ciclo.limite_lotes }} {% if ciclo.criterio == 'DIAS' %}dias{% else %}lotes{% endif %}</span>
                             </td>
                             <td class="text-end pe-3">
                                 <a href="{% url 'laboratorio:configurar_checklist_ciclo' ciclo.id %}" class="btn btn-sm btn-outline-secondary me-1">
@@ -100,9 +108,18 @@
                         <label class="form-label fw-bold">Nome da Manutenção</label>
                         <input type="text" class="form-control" name="nome" placeholder="Ex: Limpeza Diária, Troca do Cobre..." required>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Limite (Nº Lotes)</label>
-                        <input type="number" class="form-control" name="limite_lotes" required min="1">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Critério</label>
+                            <select class="form-select" name="criterio" required id="criterioSelect">
+                                <option value="LOTES">Por Lotes</option>
+                                <option value="DIAS">Por Tempo (Dias)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold" id="limiteLabel">Limite (Nº Lotes)</label>
+                            <input type="number" class="form-control" name="limite_lotes" required min="1">
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -120,5 +137,19 @@
         document.getElementById('addMaquinaCodigo').innerText = codigo;
         new bootstrap.Modal(document.getElementById('modalAdicionar')).show();
     }
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        const criterioSelect = document.getElementById('criterioSelect');
+        const limiteLabel = document.getElementById('limiteLabel');
+        if (criterioSelect) {
+            criterioSelect.addEventListener('change', function() {
+                if (this.value === 'DIAS') {
+                    limiteLabel.innerText = 'Limite (Dias Corridos)';
+                } else {
+                    limiteLabel.innerText = 'Limite (Nº Lotes)';
+                }
+            });
+        }
+    });
 </script>
 {% endblock %}

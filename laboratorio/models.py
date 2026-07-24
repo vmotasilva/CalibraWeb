@@ -388,10 +388,17 @@ class CicloManutencaoCoating(models.Model):
         ('LIMPEZA', 'Limpeza'),
         ('TROCA', 'Troca'),
     ]
+    
+    CRITERIO_CHOICES = [
+        ('LOTES', 'Por Quantidade de Lotes'),
+        ('DIAS', 'Por Tempo (Dias Corridos)')
+    ]
+    
     maquina = models.ForeignKey(Maquina, on_delete=models.CASCADE, related_name="ciclos_coating", verbose_name="Máquina")
     tipo = models.CharField(max_length=10, choices=TIPO_CHOICES, verbose_name="Tipo", default='LIMPEZA')
     nome = models.CharField(max_length=100, verbose_name="Nome da Manutenção", default="Manutenção Padrão")
-    limite_lotes = models.IntegerField(default=10, verbose_name="Limite de Lotes")
+    criterio = models.CharField(max_length=10, choices=CRITERIO_CHOICES, default='LOTES', verbose_name="Critério de Alerta")
+    limite_lotes = models.IntegerField(default=10, verbose_name="Limite (Lotes/Dias)")
     
     class Meta:
         verbose_name = "Ciclo de Manutenção de Coating"

@@ -927,7 +927,14 @@ def tratamento_update(request, pk):
 
 @login_required
 def coating_painel(request):
-    hoje = timezone.localdate()
+    data_str = request.GET.get('data')
+    if data_str:
+        try:
+            hoje = datetime.strptime(data_str, '%Y-%m-%d').date()
+        except ValueError:
+            hoje = timezone.localdate()
+    else:
+        hoje = timezone.localdate()
     
     # Process form submission
     if request.method == "POST":
@@ -1195,6 +1202,7 @@ def coating_painel(request):
 
     context = {
         "registros": registros,
+        "data_selecionada": hoje,
         "maquinas_com_registros": maquinas_com_registros,
         "registro_form": registro_form,
         "alertas_ciclos": alertas_ciclos,
