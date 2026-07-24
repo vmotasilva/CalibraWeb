@@ -973,6 +973,17 @@ def coating_painel(request):
                     
                     lado_alvo = cleaned_data.get('lado_entrada', 'CC')
                     
+                    # Verifica se o lote já existe para a máquina e turno
+                    lote_existente = RegistroCoating.objects.filter(
+                        turno_coating=turno_diario,
+                        maquina=cleaned_data['maquina'],
+                        lote=cleaned_data['lote']
+                    ).exists()
+                    
+                    if lote_existente:
+                        messages.error(request, f"O lote {cleaned_data['lote']} já está registrado para esta máquina no {turno_diario}.")
+                        return redirect("laboratorio:coating_painel")
+                    
                     # Salva CC e CX casados
                     RegistroCoating.objects.create(
                         turno_coating=turno_diario,
