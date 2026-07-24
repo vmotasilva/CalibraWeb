@@ -8,7 +8,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.http import HttpResponse
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Max
 from django.db.models.functions import TruncDate
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -1179,6 +1179,9 @@ def coating_painel(request):
 
     maquinas_com_registros = set(r.maquina_id for r in registros)
 
+    max_lote = RegistroCoating.objects.aggregate(max_lote=Max('lote'))['max_lote']
+    proximo_lote = (max_lote or 0) + 1
+
     context = {
         "registros": registros,
         "maquinas_com_registros": maquinas_com_registros,
@@ -1186,6 +1189,7 @@ def coating_painel(request):
         "alertas_ciclos": alertas_ciclos,
         "status_maquinas": status_maquinas,
         "evaporadoras": evaporadoras,
+        "proximo_lote": proximo_lote,
         "equipe": EquipeCoating.objects.select_related('colaborador').all().order_by('colaborador__nome_completo'),
     }
     

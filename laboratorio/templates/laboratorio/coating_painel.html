@@ -380,6 +380,17 @@
     const statusMaquinas = JSON.parse(document.getElementById('status_maquinas_data').textContent);
     
     document.addEventListener('DOMContentLoaded', function() {
+        // Preenchimento automatico do lote
+        const novoLoteModalEl = document.getElementById('novoLoteModal');
+        if (novoLoteModalEl) {
+            novoLoteModalEl.addEventListener('show.bs.modal', function () {
+                const loteInput = document.querySelector('input[name="lote"]');
+                if (loteInput && !loteInput.value) {
+                    loteInput.value = '{{ proximo_lote }}';
+                }
+            });
+        }
+
         modalEdicaoRapida = new bootstrap.Modal(document.getElementById('modalEdicaoRapida'));
         
         let activeTab = document.querySelector("#evapTabs .nav-link.active");
