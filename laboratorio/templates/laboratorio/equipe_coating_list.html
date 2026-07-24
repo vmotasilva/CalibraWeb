@@ -1,5 +1,5 @@
 {% extends "core/base.html" %}
-{% load crispy_forms_tags %}
+
 
 {% block title %}Equipe Coating | CalibraWeb{% endblock %}
 
@@ -78,7 +78,12 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    {{ form|crispy }}
+                    {% for field in form %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">{{ field.label }}</label>
+                        {{ field }}
+                    </div>
+                    {% endfor %}
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
