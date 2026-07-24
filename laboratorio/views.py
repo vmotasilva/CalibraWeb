@@ -1062,6 +1062,12 @@ def coating_painel(request):
         hora_entrada_dt = reg.hora_entrada
         hora_saida_dt = reg.hora_saida
         
+        # Garante que lidamos com naive datetime no cálculo local
+        if hora_entrada_dt and timezone.is_aware(hora_entrada_dt):
+            hora_entrada_dt = timezone.localtime(hora_entrada_dt).replace(tzinfo=None)
+        if hora_saida_dt and timezone.is_aware(hora_saida_dt):
+            hora_saida_dt = timezone.localtime(hora_saida_dt).replace(tzinfo=None)
+            
         if isinstance(hora_entrada_dt, time):
             hora_entrada_dt = datetime.combine(reg.turno_coating.data, hora_entrada_dt)
         if isinstance(hora_saida_dt, time):
