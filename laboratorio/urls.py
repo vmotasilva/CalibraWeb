@@ -68,4 +68,10 @@ urlpatterns = [
     path("coating/registro/<int:pk>/excluir/", views.registro_coating_delete, name="registro_coating_delete"),
     path("coating/registro/editar_lote_completo/", views.editar_lote_completo_coating, name="editar_lote_completo_coating"),
     path("coating/celula/atualizar/", views.atualizar_celula_coating, name="atualizar_celula_coating"),
+    
+    # Rota para Equipe e Ciclos
+    path("coating/equipe/", views.equipe_coating_list, name="equipe_coating_list"),
+    path("coating/equipe/<int:pk>/excluir/", views.equipe_coating_delete, name="equipe_coating_delete"),
+    path("coating/ciclos/", views.ciclo_coating_list, name="ciclo_coating_list"),
+    path("coating/ciclos/atualizar/", views.ciclo_coating_update, name="ciclo_coating_update"),
 ]

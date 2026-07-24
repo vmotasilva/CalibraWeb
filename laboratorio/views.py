@@ -1178,6 +1178,64 @@ def atualizar_celula_coating(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
+@login_required
+def equipe_coating_list(request):
+    equipe = EquipeCoating.objects.all().order_by('colaborador__nome_completo')
+    
+    if request.method == "POST":
+        form = EquipeCoatingForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Colaborador adicionado à Equipe de Coating.")
+            return redirect("laboratorio:equipe_coating_list")
+    else:
+        form = EquipeCoatingForm()
+        
+    return render(request, "laboratorio/equipe_coating_list.html", {
+        "equipe": equipe,
+        "form": form
+    })
+
+@login_required
+@require_POST
+def equipe_coating_delete(request, pk):
+    membro = get_object_or_404(EquipeCoating, pk=pk)
+    membro.delete()
+    messages.success(request, f"{membro.colaborador.nome_completo} removido da Equipe de Coating.")
+    return redirect("laboratorio:equipe_coating_list")
+
+@login_required
+def ciclo_coating_list(request):
+    # Assegura que todas as máquinas de coating têm ciclo configurado (default)
+    maquinas = Maquina.objects.filter(setor__nome__icontains="laboratorio", ativo=True) # ou alguma tag
+    for maq in maquinas:
+        CicloManutencaoCoating.objects.get_or_create(maquina=maq)
+        
+    ciclos = CicloManutencaoCoating.objects.all().order_by('maquina__codigo')
+    
+    return render(request, "laboratorio/ciclo_coating_list.html", {
+        "ciclos": ciclos,
+    })
+
+@login_required
+@require_POST
+def ciclo_coating_update(request):
+    try:
+        pk = request.POST.get('pk')
+        limite_limpeza = request.POST.get('limite_limpeza')
+        limite_troca = request.POST.get('limite_troca')
+        
+        ciclo = get_object_or_404(CicloManutencaoCoating, pk=pk)
+        ciclo.limite_limpeza = int(limite_limpeza)
+        ciclo.limite_troca = int(limite_troca)
+        ciclo.save()
+        
+        messages.success(request, f"Ciclos da máquina {ciclo.maquina.codigo} atualizados com sucesso.")
+    except Exception as e:
+        messages.error(request, f"Erro ao atualizar ciclos: {str(e)}")
+        
+    return redirect("laboratorio:ciclo_coating_list")
+
 
 @login_required
 def regra_turno_list(request):

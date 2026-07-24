@@ -1,0 +1,91 @@
+{% extends "core/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Equipe Coating | CalibraWeb{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1"><i class="bi bi-people text-primary"></i> Equipe Coating</h2>
+            <p class="text-muted mb-0">Gerencie os colaboradores autorizados a operar a Preparação e Montagem.</p>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalAddMembro">
+            <i class="bi bi-plus-circle me-1"></i> Adicionar Colaborador
+        </button>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3">Colaborador</th>
+                            <th class="text-center">Preparação</th>
+                            <th class="text-center">Montagem</th>
+                            <th class="text-end pe-3">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for membro in equipe %}
+                        <tr>
+                            <td class="fw-bold ps-3">{{ membro.colaborador.nome_completo }}</td>
+                            <td class="text-center">
+                                {% if membro.pode_preparar %}
+                                <span class="badge bg-success">Sim</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Não</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if membro.pode_montar %}
+                                <span class="badge bg-success">Sim</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Não</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-3">
+                                <form method="post" action="{% url 'laboratorio:equipe_coating_delete' membro.id %}" onsubmit="return confirm('Remover {{ membro.colaborador.nome_completo }} da Equipe de Coating?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> Remover</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-5">
+                                <i class="bi bi-people-fill fs-1 d-block mb-3"></i>
+                                Nenhum colaborador adicionado à equipe ainda.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Adicionar -->
+<div class="modal fade" id="modalAddMembro" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{% url 'laboratorio:equipe_coating_list' %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">Adicionar Colaborador</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    {{ form|crispy }}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Adicionar à Equipe</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
