@@ -1229,9 +1229,18 @@ def equipe_coating_delete(request, pk):
 
 @login_required
 def ciclo_coating_list(request):
-    maquinas = Maquina.objects.filter(setor__nome__icontains="laboratorio", status=True)
+    evaporadoras = Maquina.objects.filter(
+        Q(categoria__nome__icontains='evaporadora') | 
+        Q(nome__icontains='evaporadora')
+    ).distinct().order_by("codigo", "fabricante")
+    
+    if not evaporadoras.exists():
+        evaporadoras = Maquina.objects.filter(setor__nome__icontains='laboratorio', status=True).order_by("codigo", "fabricante")
+        if not evaporadoras.exists():
+            evaporadoras = Maquina.objects.filter(status=True).order_by("codigo", "fabricante")
+
     return render(request, "laboratorio/ciclo_coating_list.html", {
-        "maquinas": maquinas,
+        "maquinas": evaporadoras,
     })
 
 @login_required
