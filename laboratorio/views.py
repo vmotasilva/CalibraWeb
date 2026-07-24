@@ -1221,7 +1221,7 @@ def equipe_coating_delete(request, pk):
 @login_required
 def ciclo_coating_list(request):
     # Assegura que todas as máquinas de coating têm ciclo configurado (default)
-    maquinas = Maquina.objects.filter(setor__nome__icontains="laboratorio", ativo=True) # ou alguma tag
+    maquinas = Maquina.objects.filter(setor__nome__icontains="laboratorio", status="ATIVO") # ou alguma tag
     for maq in maquinas:
         CicloManutencaoCoating.objects.get_or_create(maquina=maq)
         
