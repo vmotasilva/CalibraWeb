@@ -325,6 +325,45 @@
                 maquinaSelect.value = evapId;
             }
         }
+
+        // Tornar modais arrastáveis pelo header
+        document.querySelectorAll('.modal-header').forEach(header => {
+            header.style.cursor = 'move';
+            let isDragging = false;
+            let startX, startY, initialLeft, initialTop;
+            const modalContent = header.closest('.modal-content');
+            
+            header.addEventListener('mousedown', function(e) {
+                if(e.target.tagName === 'BUTTON' || e.target.classList.contains('btn-close')) return;
+                isDragging = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                let computedStyle = window.getComputedStyle(modalContent);
+                initialLeft = parseInt(computedStyle.left) || 0;
+                initialTop = parseInt(computedStyle.top) || 0;
+                modalContent.style.position = 'relative';
+            });
+            
+            document.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                modalContent.style.left = (initialLeft + dx) + 'px';
+                modalContent.style.top = (initialTop + dy) + 'px';
+            });
+            
+            document.addEventListener('mouseup', function() {
+                isDragging = false;
+            });
+            
+            const modal = header.closest('.modal');
+            if (modal) {
+                modal.addEventListener('hidden.bs.modal', function () {
+                    modalContent.style.left = '0px';
+                    modalContent.style.top = '0px';
+                });
+            }
+        });
     });
 
     function abrirModalManutencao(registroId, lote, maquinaId) {
