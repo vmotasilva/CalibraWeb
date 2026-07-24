@@ -476,7 +476,7 @@
                         const itemChecked = isExisting ? 'checked' : '';
                         checklistHtml += `
                             <div class="form-check form-switch mb-1">
-                                <input class="form-check-input checklist-item" type="checkbox" name="checklist_${item.ciclo.id}_${chk.id}" id="chk_${item.ciclo.id}_${chk.id}" required ${disabledAttr} ${itemChecked}>
+                                <input class="form-check-input checklist-item" type="checkbox" name="checklist_${item.ciclo.id}_${chk.id}" id="chk_${item.ciclo.id}_${chk.id}" ${disabledAttr} ${itemChecked}>
                                 <label class="form-check-label small" for="chk_${item.ciclo.id}_${chk.id}">${chk.ordem}. ${chk.texto}</label>
                             </div>
                         `;
