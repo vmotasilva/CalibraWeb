@@ -40,6 +40,8 @@ from .models import (
     CicloManutencaoCoating,
     ManutencaoRealizadaCoating,
     EquipeCoating,
+    ItemChecklistCiclo,
+    RespostaChecklistManutencao,
 )
 from maquinas.models import Maquina
 
