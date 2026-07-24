@@ -36,6 +36,7 @@ from .models import (
     RegraTurnoCoating,
     TurnoCoating,
     RegistroCoating,
+    CicloManutencaoCoating,
 )
 from maquinas.models import Maquina
 
