@@ -10,12 +10,20 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AlterField(
+        migrations.RemoveField(
+            model_name='registrocoating',
+            name='hora_entrada',
+        ),
+        migrations.RemoveField(
+            model_name='registrocoating',
+            name='hora_saida',
+        ),
+        migrations.AddField(
             model_name='registrocoating',
             name='hora_entrada',
             field=models.DateTimeField(blank=True, null=True, verbose_name='Entrada (Data e Hora)'),
         ),
-        migrations.AlterField(
+        migrations.AddField(
             model_name='registrocoating',
             name='hora_saida',
             field=models.DateTimeField(blank=True, null=True, verbose_name='Saída (Data e Hora)'),
