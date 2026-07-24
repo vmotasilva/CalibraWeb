@@ -26,6 +26,7 @@ from .forms import (
     RegistroCoatingForm,
     NovoLoteCoatingForm,
     TurnoCoatingForm,
+    EquipeCoatingForm,
 )
 from django.db.models import Q
 from .models import (
@@ -37,6 +38,7 @@ from .models import (
     TurnoCoating,
     RegistroCoating,
     CicloManutencaoCoating,
+    EquipeCoating,
 )
 from maquinas.models import Maquina
 
