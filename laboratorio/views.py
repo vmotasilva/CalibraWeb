@@ -15,6 +15,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.http import JsonResponse
 import json
+from collections import defaultdict
 
 from .forms import (
     CategoriaLaboratorioForm,
@@ -1027,48 +1028,47 @@ def coating_painel(request):
         for m in manutencoes:
             manut_map.setdefault(m['registro_id'], []).append(m['ciclo_id'])
             
+        lotes_agrupados = defaultdict(list)
+        for reg_dict in lotes_historico:
+            lote_key = (reg_dict['turno_coating__data'], reg_dict['lote'])
+            lotes_agrupados[lote_key].append(reg_dict['id'])
+            
         counters = {c.id: 0 for c in ciclos}
         registro_status = {}
-        last_lote_key = None
         
-        for reg_dict in lotes_historico:
-            rid = reg_dict['id']
-            lote_key = (reg_dict['turno_coating__data'], reg_dict['lote'])
-            
-            # Incrementa os contadores apenas se for um lote novo
-            if lote_key != last_lote_key:
-                for cid in counters:
-                    counters[cid] += 1
-                last_lote_key = lote_key
+        for lote_key, rids in lotes_agrupados.items():
+            for cid in counters:
+                counters[cid] += 1
                 
-            m_cids = manut_map.get(rid, [])
-            is_ok = len(m_cids) > 0
-            
-            is_alert = False
+            m_cids_lote = set()
+            for rid in rids:
+                m_cids_lote.update(manut_map.get(rid, []))
+                
+            ciclos_status_lote = {}
             for c in ciclos:
-                if counters[c.id] >= c.limite_lotes:
-                    is_alert = True
-                    break
-                    
-            registro_status[rid] = {
-                'is_ok': is_ok,
-                'is_alert': is_alert
-            }
-            
-            # Reseta os contadores para as manutenções realizadas neste registro
-            for cid in m_cids:
-                counters[cid] = 0
+                if c.id in m_cids_lote:
+                    status = 'OK'
+                    counters[c.id] = 0
+                elif counters[c.id] >= c.limite_lotes:
+                    status = 'PENDENTE'
+                else:
+                    status = 'S_FAROL'
+                ciclos_status_lote[c.id] = status
+                
+            for rid in rids:
+                registro_status[rid] = ciclos_status_lote
                 
         # Anexa o status calculado a cada registro renderizado na pagina
         for reg in registros:
             if reg.maquina_id == maquina.id:
-                rs = registro_status.get(reg.id)
-                if rs:
-                    reg.is_ok = rs['is_ok']
-                    reg.is_alert = rs['is_alert']
-                else:
-                    reg.is_ok = False
-                    reg.is_alert = False
+                rs = registro_status.get(reg.id, {})
+                status_list = []
+                for c in ciclos:
+                    status_list.append({
+                        'ciclo': c,
+                        'status': rs.get(c.id, 'S_FAROL')
+                    })
+                reg.ciclos_status_list = status_list
         
         # Prepara o status global atual da maquina
         for ciclo in ciclos:

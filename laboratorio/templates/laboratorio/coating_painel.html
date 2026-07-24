@@ -103,7 +103,9 @@
                                     <th>T. Parado</th>
                                     <th>Preparação</th>
                                     <th>Montagem</th>
-                                    <th>Manutenções</th>
+                                    {% for ciclo in evap.ciclos_coating.all %}
+                                    <th style="min-width: 120px;">{{ ciclo.nome }}<br><small class="text-muted">({{ ciclo.limite_lotes }} lotes)</small></th>
+                                    {% endfor %}
                                     <th>Ações</th>
                                 </tr>
                             </thead>
@@ -123,28 +125,25 @@
                                             <td>{{ reg.tempo_parado|time:"H:i"|default:"-" }}</td>
                                             <td class="editable-cell" data-id="{{ reg.id }}" data-campo="preparacao_id" data-valor="{{ reg.preparacao_id|default:'' }}" data-tipo="colaborador" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{{ reg.preparacao.nome_completo|default:"-" }} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
                                             <td class="editable-cell" data-id="{{ reg.id }}" data-campo="montagem_id" data-valor="{{ reg.montagem_id|default:'' }}" data-tipo="colaborador" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{{ reg.montagem.nome_completo|default:"-" }} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
+                                            {% for c_status in reg.ciclos_status_list %}
                                             <td>
                                                 <div class="d-flex flex-column align-items-center">
-                                                    {% if reg.manutencoes.count > 0 %}
-                                                        <button type="button" class="btn btn-sm btn-success shadow-sm" title="Manutenção Registrada" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}')">
+                                                    {% if c_status.status == 'OK' %}
+                                                        <button type="button" class="btn btn-sm btn-success shadow-sm" title="Manutenção Registrada" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}')">
                                                             <i class="bi bi-check-circle-fill"></i> OK
                                                         </button>
-                                                        <div class="mt-1 small text-center">
-                                                            {% for man in reg.manutencoes.all %}
-                                                            <span class="badge bg-success"><i class="bi bi-check"></i> {{ man.ciclo.nome }}</span>
-                                                            {% endfor %}
-                                                        </div>
-                                                    {% elif evap.em_alerta %}
-                                                        <button type="button" class="btn btn-sm btn-danger shadow-sm pulse-danger" title="Manutenção Pendente!" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}')">
+                                                    {% elif c_status.status == 'PENDENTE' %}
+                                                        <button type="button" class="btn btn-sm btn-danger shadow-sm pulse-danger" title="Manutenção Pendente!" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}')">
                                                             <i class="bi bi-exclamation-circle-fill"></i> Pendente
                                                         </button>
                                                     {% else %}
-                                                        <button type="button" class="btn btn-sm btn-outline-secondary" title="Nenhuma manutenção pendente no momento" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}')">
+                                                        <button type="button" class="btn btn-sm btn-outline-secondary" title="Nenhuma manutenção pendente no momento" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}')">
                                                             <i class="bi bi-dash-circle"></i> S/ Farol
                                                         </button>
                                                     {% endif %}
                                                 </div>
                                             </td>
+                                            {% endfor %}
                                             <td>
                                                 <div class="d-flex justify-content-center gap-1">
                                                     <button type="button" class="btn btn-sm btn-outline-secondary" onclick="abrirModalEditarLote('{{ reg.id }}', '{{ reg.lote }}', '{{ reg.maquina_id }}', '{{ reg.tratamento_id }}')">Editar</button>
@@ -412,7 +411,7 @@
         });
     });
 
-    function abrirModalManutencao(registroId, lote, maquinaId) {
+    function abrirModalManutencao(registroId, lote, maquinaId, preSelectCicloId = null) {
         document.getElementById('manutencaoRegistroId').value = registroId;
         document.getElementById('manutencaoLoteNum').innerText = lote;
         
@@ -464,6 +463,14 @@
         // Limpar a observacao antiga sempre que abrir
         const obsField = document.querySelector('textarea[name="observacao"]');
         if (obsField) obsField.value = '';
+        
+        if (preSelectCicloId) {
+            const checkbox = document.getElementById('cicloCheck' + preSelectCicloId);
+            if (checkbox) {
+                checkbox.checked = true;
+                toggleChecklist(preSelectCicloId, true);
+            }
+        }
         
         new bootstrap.Modal(document.getElementById('modalManutencao')).show();
     }
