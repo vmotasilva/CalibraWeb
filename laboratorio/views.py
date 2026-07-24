@@ -1346,3 +1346,14 @@ def registrar_manutencao_coating(request):
         messages.error(request, f"Erro ao registrar manutenção: {str(e)}")
         
     return redirect("laboratorio:coating_painel")
+
+@login_required
+def run_migrate_view(request):
+    if request.user.is_superuser:
+        from django.core.management import call_command
+        try:
+            call_command('migrate')
+            return HttpResponse("Migrações aplicadas com sucesso no banco de dados!")
+        except Exception as e:
+            return HttpResponse(f"Erro ao aplicar migrações: {str(e)}")
+    return HttpResponse("Acesso negado.", status=403)

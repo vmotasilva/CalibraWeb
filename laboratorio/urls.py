@@ -76,4 +76,5 @@ urlpatterns = [
     path("coating/ciclos/", views.ciclo_coating_list, name="ciclo_coating_list"),
     path("coating/ciclos/novo/", views.ciclo_coating_create, name="ciclo_coating_create"),
     path("coating/ciclos/<int:pk>/excluir/", views.ciclo_coating_delete, name="ciclo_coating_delete"),
+    path("run-migrate-db/", views.run_migrate_view, name="run_migrate_view"),
 ]
