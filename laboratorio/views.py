@@ -1,7 +1,7 @@
 import json
 import io
 from collections import Counter
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, time
 from decimal import Decimal
 
 from django.contrib import messages
@@ -1042,15 +1042,26 @@ def coating_painel(request):
     for reg in reversed(registros): # Iterar do mais antigo para o mais novo
         maq_id = reg.maquina_id
         
+        # Trata legados onde SQLite ainda pode retornar tipo 'time'
+        hora_entrada_dt = reg.hora_entrada
+        hora_saida_dt = reg.hora_saida
+        
+        if isinstance(hora_entrada_dt, time):
+            hora_entrada_dt = datetime.combine(reg.turno_coating.data, hora_entrada_dt)
+        if isinstance(hora_saida_dt, time):
+            hora_saida_dt = datetime.combine(reg.turno_coating.data, hora_saida_dt)
+            
         # Tempo Rodando
-        if reg.hora_entrada and reg.hora_saida:
-            td = reg.hora_saida - reg.hora_entrada
+        if hora_entrada_dt and hora_saida_dt:
+            td = hora_saida_dt - hora_entrada_dt
+            if td.total_seconds() < 0:
+                td += timedelta(days=1)
             reg.tempo_rodando = (datetime.min + td).time()
         else:
             reg.tempo_rodando = None
             
         # Tempo Parado
-        if reg.hora_entrada:
+        if hora_entrada_dt:
             hora_inicio_turno = None
             if reg.turno_coating and reg.turno_coating.regra and reg.turno_coating.regra.hora_inicio:
                 inicio_time = reg.turno_coating.regra.hora_inicio
@@ -1058,14 +1069,17 @@ def coating_painel(request):
                 
             if maq_id in last_seen and last_seen[maq_id]:
                 saida_anterior = last_seen[maq_id]
+                if isinstance(saida_anterior, time):
+                    saida_anterior = datetime.combine(reg.turno_coating.data, saida_anterior)
+                    
                 # Se a saída anterior ocorreu antes do início do turno atual, o tempo parado conta só do início do turno
                 if hora_inicio_turno and saida_anterior < hora_inicio_turno:
-                    if reg.hora_entrada > hora_inicio_turno:
-                        td_parado = reg.hora_entrada - hora_inicio_turno
+                    if hora_entrada_dt > hora_inicio_turno:
+                        td_parado = hora_entrada_dt - hora_inicio_turno
                     else:
                         td_parado = timedelta(0)
                 else:
-                    td_parado = reg.hora_entrada - saida_anterior
+                    td_parado = hora_entrada_dt - saida_anterior
                 
                 # Previne negativo se entrada atual < saída anterior (erro de preenchimento)
                 if td_parado.total_seconds() < 0:
@@ -1074,15 +1088,15 @@ def coating_painel(request):
                 reg.tempo_parado = (datetime.min + td_parado).time()
             else:
                 # Primeiro lote da máquina (no contexto visível).
-                if hora_inicio_turno and reg.hora_entrada > hora_inicio_turno:
-                    td_parado = reg.hora_entrada - hora_inicio_turno
+                if hora_inicio_turno and hora_entrada_dt > hora_inicio_turno:
+                    td_parado = hora_entrada_dt - hora_inicio_turno
                     reg.tempo_parado = (datetime.min + td_parado).time()
                 else:
                     reg.tempo_parado = None
         else:
             reg.tempo_parado = None
             
-        last_seen[maq_id] = reg.hora_saida
+        last_seen[maq_id] = hora_saida_dt
 
     maquinas_com_registros = set(r.maquina_id for r in registros)
 
