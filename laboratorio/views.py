@@ -1018,6 +1018,7 @@ def coating_painel(request):
     for maquina in evaporadoras:
         ciclos = maquina.ciclos_coating.all()
         status_maquinas[maquina.id] = []
+        maquina.em_alerta = False
         
         for ciclo in ciclos:
             ultima = ManutencaoRealizadaCoating.objects.filter(ciclo=ciclo, registro__maquina=maquina).order_by('-registro__id').first()
@@ -1041,6 +1042,7 @@ def coating_painel(request):
             })
             
             if count >= ciclo.limite_lotes:
+                maquina.em_alerta = True
                 lote_estourado = registros_pos_manutencao[ciclo.limite_lotes - 1]
                 alertas_ciclos.append({
                     "maquina": maquina,
@@ -1129,6 +1131,7 @@ def coating_painel(request):
         "alertas_ciclos": alertas_ciclos,
         "status_maquinas": status_maquinas,
         "evaporadoras": evaporadoras,
+        "equipe": EquipeCoating.objects.select_related('colaborador').all().order_by('colaborador__nome_completo'),
     }
     
     return render(request, "laboratorio/coating_painel.html", context)

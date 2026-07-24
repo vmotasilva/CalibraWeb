@@ -51,6 +51,18 @@
         .nav-tabs .nav-link:hover {
             opacity: 1;
         }
+        .editable-cell:hover i {
+            color: #0d6efd !important;
+        }
+        
+        @keyframes pulseRed {
+            0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+            70% { box-shadow: 0 0 0 6px rgba(220, 53, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        }
+        .pulse-danger {
+            animation: pulseRed 2s infinite;
+        }
     </style>
     <!-- Tabela -->
     <ul class="nav nav-tabs mb-0 border-bottom-0 mt-4 px-2" id="evapTabs" role="tablist">
@@ -112,16 +124,26 @@
                                             <td class="editable-cell" data-id="{{ reg.id }}" data-campo="preparacao_id" data-valor="{{ reg.preparacao_id|default:'' }}" data-tipo="colaborador" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{{ reg.preparacao.nome_completo|default:"-" }} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
                                             <td class="editable-cell" data-id="{{ reg.id }}" data-campo="montagem_id" data-valor="{{ reg.montagem_id|default:'' }}" data-tipo="colaborador" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{{ reg.montagem.nome_completo|default:"-" }} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
                                             <td>
-                                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}')">
-                                                    <i class="bi bi-tools"></i> Registrar
-                                                </button>
-                                                {% if reg.manutencoes.count > 0 %}
-                                                <div class="mt-1 small">
-                                                    {% for man in reg.manutencoes.all %}
-                                                    <span class="badge bg-success" title="{{ man.ciclo.nome }}"><i class="bi bi-check-circle"></i> {{ man.ciclo.nome }}</span>
-                                                    {% endfor %}
+                                                <div class="d-flex flex-column align-items-center">
+                                                    {% if reg.manutencoes.count > 0 %}
+                                                        <button type="button" class="btn btn-sm btn-success shadow-sm" title="Manutenção Registrada" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}')">
+                                                            <i class="bi bi-check-circle-fill"></i> OK
+                                                        </button>
+                                                        <div class="mt-1 small text-center">
+                                                            {% for man in reg.manutencoes.all %}
+                                                            <span class="badge bg-success"><i class="bi bi-check"></i> {{ man.ciclo.nome }}</span>
+                                                            {% endfor %}
+                                                        </div>
+                                                    {% elif evap.em_alerta %}
+                                                        <button type="button" class="btn btn-sm btn-danger shadow-sm pulse-danger" title="Manutenção Pendente!" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}')">
+                                                            <i class="bi bi-exclamation-circle-fill"></i> Pendente
+                                                        </button>
+                                                    {% else %}
+                                                        <button type="button" class="btn btn-sm btn-outline-secondary" title="Nenhuma manutenção pendente no momento" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}')">
+                                                            <i class="bi bi-dash-circle"></i> S/ Farol
+                                                        </button>
+                                                    {% endif %}
                                                 </div>
-                                                {% endif %}
                                             </td>
                                             <td>
                                                 <div class="d-flex justify-content-center gap-1">
@@ -238,7 +260,12 @@
                 <div id="editInputContainer"></div>
                 <!-- Select oculto para clonar as opções de colaboradores -->
                 <div id="hiddenColabSelect" style="display: none;">
-                    {{ registro_form.preparacao }}
+                    <select class="form-select">
+                        <option value="">---------</option>
+                        {% for colab in equipe %}
+                            <option value="{{ colab.colaborador.id }}">{{ colab.colaborador.nome_completo }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
             </div>
             <div class="modal-footer">
