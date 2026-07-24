@@ -17,14 +17,16 @@
     
     <!-- Alertas -->
     {% if alertas_limpeza %}
-    <div class="alert alert-warning alert-dismissible fade show" role="alert">
-        <strong>Atenção!</strong> Há máquinas que atingiram o ciclo de <strong>Limpeza</strong>. Por favor, verifique.
+    <div class="alert alert-warning alert-dismissible fade show shadow-sm" role="alert">
+        <strong>Atenção (Limpeza):</strong> As seguintes máquinas atingiram ou ultrapassaram o ciclo de limpeza e precisam de manutenção urgente: 
+        {% for maq in alertas_limpeza %}<strong>{{ maq.codigo }}</strong>{% if not forloop.last %}, {% endif %}{% endfor %}.
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
     {% endif %}
     {% if alertas_troca %}
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        <strong>Atenção!</strong> Há máquinas que atingiram o ciclo de <strong>Troca</strong>. Por favor, verifique.
+    <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+        <strong>Atenção (Troca):</strong> As seguintes máquinas atingiram ou ultrapassaram o ciclo de troca e precisam de manutenção urgente: 
+        {% for maq in alertas_troca %}<strong>{{ maq.codigo }}</strong>{% if not forloop.last %}, {% endif %}{% endfor %}.
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
     {% endif %}
@@ -89,6 +91,8 @@
                                     <th>Tratamento</th>
                                     <th>Entrada</th>
                                     <th>Saída</th>
+                                    <th>T. Rodando</th>
+                                    <th>T. Parado</th>
                                     <th>Preparação</th>
                                     <th>Montagem</th>
                                     <th>Limpeza</th>
@@ -106,12 +110,14 @@
                                             <td>{{ reg.lote }}</td>
                                             <td>{{ reg.lado }}</td>
                                             <td>{{ reg.tratamento.nome }}</td>
-                                            <td>{{ reg.hora_entrada|time:"H:i"|default:"-" }}</td>
-                                            <td>{{ reg.hora_saida|time:"H:i"|default:"-" }}</td>
-                                            <td>{{ reg.preparacao.nome_completo|default:"-" }}</td>
-                                            <td>{{ reg.montagem.nome_completo|default:"-" }}</td>
-                                            <td>{% if reg.limpeza %}<span class="badge bg-success">Sim</span>{% else %}-{% endif %}</td>
-                                            <td>{% if reg.troca %}<span class="badge bg-success">Sim</span>{% else %}-{% endif %}</td>
+                                            <td class="editable-cell" data-id="{{ reg.id }}" data-campo="hora_entrada" data-valor="{{ reg.hora_entrada|time:'H:i'|default:'' }}" data-tipo="time" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{{ reg.hora_entrada|time:"H:i"|default:"-" }} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
+                                            <td class="editable-cell" data-id="{{ reg.id }}" data-campo="hora_saida" data-valor="{{ reg.hora_saida|time:'H:i'|default:'' }}" data-tipo="time" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{{ reg.hora_saida|time:"H:i"|default:"-" }} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
+                                            <td>{{ reg.tempo_rodando|time:"H:i"|default:"-" }}</td>
+                                            <td>{{ reg.tempo_parado|time:"H:i"|default:"-" }}</td>
+                                            <td class="editable-cell" data-id="{{ reg.id }}" data-campo="preparacao_id" data-valor="{{ reg.preparacao_id|default:'' }}" data-tipo="colaborador" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{{ reg.preparacao.nome_completo|default:"-" }} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
+                                            <td class="editable-cell" data-id="{{ reg.id }}" data-campo="montagem_id" data-valor="{{ reg.montagem_id|default:'' }}" data-tipo="colaborador" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{{ reg.montagem.nome_completo|default:"-" }} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
+                                            <td class="editable-cell" data-id="{{ reg.id }}" data-campo="limpeza" data-valor="{{ reg.limpeza|yesno:'true,false' }}" data-tipo="boolean" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{% if reg.limpeza %}<span class="badge bg-success">Sim</span>{% else %}-{% endif %} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
+                                            <td class="editable-cell" data-id="{{ reg.id }}" data-campo="troca" data-valor="{{ reg.troca|yesno:'true,false' }}" data-tipo="boolean" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{% if reg.troca %}<span class="badge bg-success">Sim</span>{% else %}-{% endif %} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
                                             <td>
                                                 <div class="d-flex justify-content-center gap-1">
                                                     <button class="btn btn-sm btn-outline-secondary">Editar</button>
@@ -152,6 +158,8 @@
                                     <th>Tratamento</th>
                                     <th>Entrada</th>
                                     <th>Saída</th>
+                                    <th>T. Rodando</th>
+                                    <th>T. Parado</th>
                                     <th>Preparação</th>
                                     <th>Montagem</th>
                                     <th>Limpeza</th>
@@ -168,12 +176,14 @@
                                     <td>{{ reg.lote }}</td>
                                     <td>{{ reg.lado }}</td>
                                     <td>{{ reg.tratamento.nome }}</td>
-                                    <td>{{ reg.hora_entrada|time:"H:i"|default:"-" }}</td>
-                                    <td>{{ reg.hora_saida|time:"H:i"|default:"-" }}</td>
-                                    <td>{{ reg.preparacao.nome_completo|default:"-" }}</td>
-                                    <td>{{ reg.montagem.nome_completo|default:"-" }}</td>
-                                    <td>{% if reg.limpeza %}<span class="badge bg-success">Sim</span>{% else %}-{% endif %}</td>
-                                    <td>{% if reg.troca %}<span class="badge bg-success">Sim</span>{% else %}-{% endif %}</td>
+                                    <td class="editable-cell" data-id="{{ reg.id }}" data-campo="hora_entrada" data-valor="{{ reg.hora_entrada|time:'H:i'|default:'' }}" data-tipo="time" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{{ reg.hora_entrada|time:"H:i"|default:"-" }} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
+                                    <td class="editable-cell" data-id="{{ reg.id }}" data-campo="hora_saida" data-valor="{{ reg.hora_saida|time:'H:i'|default:'' }}" data-tipo="time" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{{ reg.hora_saida|time:"H:i"|default:"-" }} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
+                                    <td>{{ reg.tempo_rodando|time:"H:i"|default:"-" }}</td>
+                                    <td>{{ reg.tempo_parado|time:"H:i"|default:"-" }}</td>
+                                    <td class="editable-cell" data-id="{{ reg.id }}" data-campo="preparacao_id" data-valor="{{ reg.preparacao_id|default:'' }}" data-tipo="colaborador" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{{ reg.preparacao.nome_completo|default:"-" }} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
+                                    <td class="editable-cell" data-id="{{ reg.id }}" data-campo="montagem_id" data-valor="{{ reg.montagem_id|default:'' }}" data-tipo="colaborador" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{{ reg.montagem.nome_completo|default:"-" }} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
+                                    <td class="editable-cell" data-id="{{ reg.id }}" data-campo="limpeza" data-valor="{{ reg.limpeza|yesno:'true,false' }}" data-tipo="boolean" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{% if reg.limpeza %}<span class="badge bg-success">Sim</span>{% else %}-{% endif %} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
+                                    <td class="editable-cell" data-id="{{ reg.id }}" data-campo="troca" data-valor="{{ reg.troca|yesno:'true,false' }}" data-tipo="boolean" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{% if reg.troca %}<span class="badge bg-success">Sim</span>{% else %}-{% endif %} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
                                     <td>
                                         <div class="d-flex justify-content-center gap-1">
                                             <button class="btn btn-sm btn-outline-secondary">Editar</button>
@@ -261,6 +271,102 @@
         </div>
     </div>
 </div>
+
+<!-- Modal Edição Rápida -->
+<div class="modal fade" id="modalEdicaoRapida" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Atualizar Valor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editRegistroId">
+                <input type="hidden" id="editCampo">
+                <div id="editInputContainer"></div>
+                <!-- Select oculto para clonar as opções de colaboradores -->
+                <div id="hiddenColabSelect" style="display: none;">
+                    {{ registro_form.preparacao }}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="salvarEdicaoRapida()">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let modalEdicaoRapida;
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        modalEdicaoRapida = new bootstrap.Modal(document.getElementById('modalEdicaoRapida'));
+    });
+
+    function abrirModalEdicao(el) {
+        const id = el.dataset.id;
+        const campo = el.dataset.campo;
+        const valor = el.dataset.valor;
+        const tipo = el.dataset.tipo;
+        
+        document.getElementById('editRegistroId').value = id;
+        document.getElementById('editCampo').value = campo;
+        
+        const container = document.getElementById('editInputContainer');
+        container.innerHTML = '';
+        
+        if (tipo === 'time') {
+            container.innerHTML = `<input type="time" class="form-control" id="modalEditInput" value="${valor}">`;
+        } else if (tipo === 'boolean') {
+            const isTrue = valor === 'true' || valor === 'True';
+            container.innerHTML = `
+                <select class="form-select" id="modalEditInput">
+                    <option value="false" ${!isTrue ? 'selected' : ''}>Não</option>
+                    <option value="true" ${isTrue ? 'selected' : ''}>Sim</option>
+                </select>
+            `;
+        } else if (tipo === 'colaborador') {
+            // Clona o select do django e ajusta id
+            const selectOriginal = document.querySelector('#hiddenColabSelect select');
+            const clone = selectOriginal.cloneNode(true);
+            clone.id = 'modalEditInput';
+            clone.className = 'form-select';
+            clone.value = valor;
+            container.appendChild(clone);
+        }
+        
+        modalEdicaoRapida.show();
+    }
+    
+    function salvarEdicaoRapida() {
+        const id = document.getElementById('editRegistroId').value;
+        const campo = document.getElementById('editCampo').value;
+        const input = document.getElementById('modalEditInput');
+        let valor = input.value;
+        
+        fetch("{% url 'laboratorio:atualizar_celula_coating' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({id: id, campo: campo, valor: valor})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload(); // Recarrega para atualizar cálculos de tempo e avisos
+            } else {
+                alert('Erro ao salvar: ' + (data.error || 'Desconhecido'));
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Erro de rede ao salvar.');
+        });
+    }
+</script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const getCellValue = (tr, idx) => tr.children[idx].innerText || tr.children[idx].textContent;

@@ -13,6 +13,8 @@ from django.db.models.functions import TruncDate
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.http import JsonResponse
+import json
 
 from .forms import (
     CategoriaLaboratorioForm,
@@ -1003,22 +1005,62 @@ def coating_painel(request):
     # Update form queryset to only show these machines
     registro_form.fields["maquina"].queryset = evaporadoras
     
-    # Calculate machine alerts (mock logic based on batch counts for today)
-    # Ideally, this should aggregate actual active cycles.
-    maquina_ciclos = {}
-    for r in registros:
-        maq_id = r.maquina_id
-        if maq_id not in maquina_ciclos:
-            maquina_ciclos[maq_id] = 0
-        maquina_ciclos[maq_id] += 1
-        
+    # Configuração de Ciclos (Limpeza e Troca)
     alertas_limpeza = []
     alertas_troca = []
-    for maq_id, contagem in maquina_ciclos.items():
-        if contagem % 10 == 0 and contagem > 0:
-            alertas_limpeza.append(maq_id)
-        if contagem % 50 == 0 and contagem > 0:
-            alertas_troca.append(maq_id)
+    contagem_limpeza = {}
+    contagem_troca = {}
+
+    for maquina in evaporadoras:
+        ciclo, _ = CicloManutencaoCoating.objects.get_or_create(maquina=maquina)
+        
+        # Limpeza
+        ultima_limpeza = RegistroCoating.objects.filter(maquina=maquina, limpeza=True).order_by('-id').first()
+        if ultima_limpeza:
+            qtd_limpeza = RegistroCoating.objects.filter(maquina=maquina, id__gt=ultima_limpeza.id).count()
+        else:
+            qtd_limpeza = RegistroCoating.objects.filter(maquina=maquina).count()
+        contagem_limpeza[maquina.id] = f"{qtd_limpeza}/{ciclo.limite_limpeza}"
+        if qtd_limpeza >= ciclo.limite_limpeza:
+            alertas_limpeza.append(maquina)
+            
+        # Troca
+        ultima_troca = RegistroCoating.objects.filter(maquina=maquina, troca=True).order_by('-id').first()
+        if ultima_troca:
+            qtd_troca = RegistroCoating.objects.filter(maquina=maquina, id__gt=ultima_troca.id).count()
+        else:
+            qtd_troca = RegistroCoating.objects.filter(maquina=maquina).count()
+        contagem_troca[maquina.id] = f"{qtd_troca}/{ciclo.limite_troca}"
+        if qtd_troca >= ciclo.limite_troca:
+            alertas_troca.append(maquina)
+
+    # Cálculo dos tempos Rodando e Parado
+    # Como `registros` está ordenado de forma decrescente (mais recente primeiro), 
+    # o lote "anterior" chronologicamente é o próximo item da lista para a mesma máquina.
+    last_seen = {}
+    for reg in reversed(registros): # Iterar do mais antigo para o mais novo
+        maq_id = reg.maquina_id
+        
+        # Tempo Rodando
+        if reg.hora_entrada and reg.hora_saida:
+            td = datetime.combine(date.min, reg.hora_saida) - datetime.combine(date.min, reg.hora_entrada)
+            reg.tempo_rodando = (datetime.min + td).time()
+        else:
+            reg.tempo_rodando = None
+            
+        # Tempo Parado
+        if maq_id in last_seen and reg.hora_entrada and last_seen[maq_id]:
+            # Entrada atual - Saída anterior
+            td_parado = datetime.combine(date.min, reg.hora_entrada) - datetime.combine(date.min, last_seen[maq_id])
+            # Se for negativo (ex: virada de dia), ignora ou ajusta
+            if td_parado.total_seconds() >= 0:
+                reg.tempo_parado = (datetime.min + td_parado).time()
+            else:
+                reg.tempo_parado = None
+        else:
+            reg.tempo_parado = None
+            
+        last_seen[maq_id] = reg.hora_saida
 
     maquinas_com_registros = set(r.maquina_id for r in registros)
 
@@ -1028,6 +1070,8 @@ def coating_painel(request):
         "registro_form": registro_form,
         "alertas_limpeza": alertas_limpeza,
         "alertas_troca": alertas_troca,
+        "contagem_limpeza": contagem_limpeza,
+        "contagem_troca": contagem_troca,
         "evaporadoras": evaporadoras,
     }
     
@@ -1041,6 +1085,38 @@ def registro_coating_delete(request, pk):
     registro.delete()
     messages.success(request, f"Registro de Lote {registro.lote} (Lado {registro.lado}) excluído com sucesso.")
     return redirect("laboratorio:coating_painel")
+
+@login_required
+@require_POST
+def atualizar_celula_coating(request):
+    try:
+        data = json.loads(request.body)
+        registro_id = data.get('id')
+        campo = data.get('campo')
+        valor = data.get('valor')
+        
+        registro = get_object_or_404(RegistroCoating, pk=registro_id)
+        
+        if campo in ['limpeza', 'troca']:
+            setattr(registro, campo, valor.lower() == 'true')
+        elif campo in ['preparacao_id', 'montagem_id']:
+            if not valor:
+                setattr(registro, campo, None)
+            else:
+                setattr(registro, campo, int(valor))
+        elif campo in ['hora_entrada', 'hora_saida']:
+            if not valor:
+                setattr(registro, campo, None)
+            else:
+                from datetime import datetime
+                setattr(registro, campo, datetime.strptime(valor, "%H:%M").time())
+        else:
+            return JsonResponse({'success': False, 'error': 'Campo não permitido para edição rápida.'}, status=400)
+            
+        registro.save()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
 @login_required

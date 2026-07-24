@@ -32,4 +32,5 @@ urlpatterns = [
     # Rota para Painel de Registro de Coating
     path("coating/painel/", views.coating_painel, name="coating_painel"),
     path("coating/registro/<int:pk>/excluir/", views.registro_coating_delete, name="registro_coating_delete"),
+    path("coating/celula/atualizar/", views.atualizar_celula_coating, name="atualizar_celula_coating"),
 ]

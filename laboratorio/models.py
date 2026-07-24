@@ -382,3 +382,15 @@ class RegistroCoating(models.Model):
     def __str__(self):
         return f"Lote {self.lote} - {self.maquina} ({self.get_lado_display()})"
 
+
+class CicloManutencaoCoating(models.Model):
+    maquina = models.OneToOneField(Maquina, on_delete=models.CASCADE, related_name="ciclo_coating", verbose_name="Máquina")
+    limite_limpeza = models.IntegerField(default=10, verbose_name="Limite para Limpeza (Lotes)")
+    limite_troca = models.IntegerField(default=50, verbose_name="Limite para Troca (Lotes)")
+    
+    class Meta:
+        verbose_name = "Ciclo de Manutenção de Coating"
+        verbose_name_plural = "Ciclos de Manutenção de Coating"
+        
+    def __str__(self):
+        return f"Ciclos - {self.maquina}"
