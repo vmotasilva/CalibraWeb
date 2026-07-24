@@ -141,6 +141,15 @@ class Colaborador(models.Model):
         """Retorna o histórico completo de mudanças ordenado por data"""
         return self.historico_geral.all().order_by('-data_mudanca')
 
+    @property
+    def nome_abreviado(self):
+        if not self.nome_completo:
+            return ""
+        partes = self.nome_completo.strip().split()
+        if len(partes) <= 1:
+            return self.nome_completo
+        return f"{partes[0]} {partes[-1]}"
+
     def __str__(self):
         return f"{self.nome_completo} ({self.matricula})"
 
