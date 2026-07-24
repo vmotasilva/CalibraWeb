@@ -8,43 +8,56 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2 class="mb-1"><i class="bi bi-arrow-repeat text-primary"></i> Ciclos de Manutenção</h2>
-            <p class="text-muted mb-0">Configure os limites de lotes para alertas de Limpeza e Troca por máquina.</p>
+            <p class="text-muted mb-0">Configure os limites de lotes para as manutenções (limpezas e trocas) de cada máquina.</p>
         </div>
     </div>
 
-    <div class="card shadow-sm border-0">
+    {% for maq in maquinas %}
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+            <h5 class="mb-0 fw-bold"><i class="bi bi-cpu text-secondary me-2"></i>{{ maq.codigo }} ({{ maq.fabricante }})</h5>
+            <button type="button" class="btn btn-sm btn-primary" onclick="abrirModalAdicionar('{{ maq.id }}', '{{ maq.codigo }}')">
+                <i class="bi bi-plus-lg"></i> Adicionar Manutenção
+            </button>
+        </div>
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th class="ps-3">Máquina</th>
-                            <th class="text-center">Limite de Limpeza</th>
-                            <th class="text-center">Limite de Troca</th>
+                            <th class="ps-3">Tipo</th>
+                            <th>Nome da Manutenção</th>
+                            <th class="text-center">Limite (Lotes)</th>
                             <th class="text-end pe-3">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for ciclo in ciclos %}
+                        {% for ciclo in maq.ciclos_coating.all %}
                         <tr>
-                            <td class="fw-bold ps-3">{{ ciclo.maquina.codigo }} ({{ ciclo.maquina.fabricante }})</td>
-                            <td class="text-center">
-                                <span class="badge bg-warning text-dark px-3 py-2 fs-6">{{ ciclo.limite_limpeza }} lotes</span>
+                            <td class="ps-3">
+                                {% if ciclo.tipo == 'LIMPEZA' %}
+                                <span class="badge bg-warning text-dark"><i class="bi bi-stars"></i> Limpeza</span>
+                                {% else %}
+                                <span class="badge bg-danger"><i class="bi bi-tools"></i> Troca</span>
+                                {% endif %}
                             </td>
+                            <td class="fw-bold">{{ ciclo.nome }}</td>
                             <td class="text-center">
-                                <span class="badge bg-danger px-3 py-2 fs-6">{{ ciclo.limite_troca }} lotes</span>
+                                <span class="badge bg-secondary px-3 py-2 fs-6">{{ ciclo.limite_lotes }} lotes</span>
                             </td>
                             <td class="text-end pe-3">
-                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="abrirModalEdicao('{{ ciclo.id }}', '{{ ciclo.maquina.codigo }}', '{{ ciclo.limite_limpeza }}', '{{ ciclo.limite_troca }}')">
-                                    <i class="bi bi-pencil-square"></i> Editar Limites
-                                </button>
+                                <form method="post" action="{% url 'laboratorio:ciclo_coating_delete' ciclo.id %}" style="display: inline;" onsubmit="return confirm('Tem certeza que deseja excluir esta manutenção?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-trash"></i> Excluir
+                                    </button>
+                                </form>
                             </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="4" class="text-center text-muted py-5">
-                                <i class="bi bi-cpu fs-1 d-block mb-3"></i>
-                                Nenhuma evaporadora cadastrada.
+                            <td colspan="4" class="text-center text-muted py-4">
+                                Nenhuma manutenção configurada para esta máquina.
                             </td>
                         </tr>
                         {% endfor %}
@@ -53,32 +66,45 @@
             </div>
         </div>
     </div>
+    {% empty %}
+    <div class="text-center text-muted py-5">
+        <i class="bi bi-cpu fs-1 d-block mb-3"></i>
+        Nenhuma evaporadora cadastrada.
+    </div>
+    {% endfor %}
 </div>
 
-<!-- Modal Edição -->
-<div class="modal fade" id="modalEdicao" tabindex="-1">
-    <div class="modal-dialog modal-sm">
+<!-- Modal Adicionar -->
+<div class="modal fade" id="modalAdicionar" tabindex="-1">
+    <div class="modal-dialog">
         <div class="modal-content">
-            <form method="post" action="{% url 'laboratorio:ciclo_coating_update' %}">
+            <form method="post" action="{% url 'laboratorio:ciclo_coating_create' %}">
                 {% csrf_token %}
-                <input type="hidden" name="pk" id="editCicloId">
+                <input type="hidden" name="maquina_id" id="addMaquinaId">
                 <div class="modal-header">
-                    <h5 class="modal-title">Limites: <span id="editMaquinaCodigo" class="text-primary"></span></h5>
+                    <h5 class="modal-title">Nova Manutenção: <span id="addMaquinaCodigo" class="text-primary"></span></h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Limpeza (Nº Lotes)</label>
-                        <input type="number" class="form-control" name="limite_limpeza" id="editLimiteLimpeza" required min="1">
+                        <label class="form-label fw-bold">Tipo</label>
+                        <select class="form-select" name="tipo" required>
+                            <option value="LIMPEZA">Limpeza</option>
+                            <option value="TROCA">Troca</option>
+                        </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Troca (Nº Lotes)</label>
-                        <input type="number" class="form-control" name="limite_troca" id="editLimiteTroca" required min="1">
+                        <label class="form-label fw-bold">Nome da Manutenção</label>
+                        <input type="text" class="form-control" name="nome" placeholder="Ex: Limpeza Diária, Troca do Cobre..." required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Limite (Nº Lotes)</label>
+                        <input type="number" class="form-control" name="limite_lotes" required min="1">
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Salvar</button>
+                    <button type="submit" class="btn btn-primary">Adicionar</button>
                 </div>
             </form>
         </div>
@@ -86,12 +112,10 @@
 </div>
 
 <script>
-    function abrirModalEdicao(id, maquina, limpeza, troca) {
-        document.getElementById('editCicloId').value = id;
-        document.getElementById('editMaquinaCodigo').innerText = maquina;
-        document.getElementById('editLimiteLimpeza').value = limpeza;
-        document.getElementById('editLimiteTroca').value = troca;
-        new bootstrap.Modal(document.getElementById('modalEdicao')).show();
+    function abrirModalAdicionar(id, codigo) {
+        document.getElementById('addMaquinaId').value = id;
+        document.getElementById('addMaquinaCodigo').innerText = codigo;
+        new bootstrap.Modal(document.getElementById('modalAdicionar')).show();
     }
 </script>
 {% endblock %}

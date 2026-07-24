@@ -368,9 +368,8 @@ class RegistroCoating(models.Model):
     preparacao = models.ForeignKey(Colaborador, on_delete=models.PROTECT, related_name="preparacoes_coating", verbose_name="Preparação", null=True, blank=True)
     montagem = models.ForeignKey(Colaborador, on_delete=models.PROTECT, related_name="montagens_coating", verbose_name="Montagem", null=True, blank=True)
     
-    limpeza = models.BooleanField(default=False, verbose_name="Limpeza Realizada")
-    troca = models.BooleanField(default=False, verbose_name="Troca Realizada")
     
+    # Manutenções agora são registradas pela tabela ManutencaoRealizadaCoating
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
 
@@ -384,16 +383,36 @@ class RegistroCoating(models.Model):
 
 
 class CicloManutencaoCoating(models.Model):
-    maquina = models.OneToOneField(Maquina, on_delete=models.CASCADE, related_name="ciclo_coating", verbose_name="Máquina")
-    limite_limpeza = models.IntegerField(default=10, verbose_name="Limite para Limpeza (Lotes)")
-    limite_troca = models.IntegerField(default=50, verbose_name="Limite para Troca (Lotes)")
+    TIPO_CHOICES = [
+        ('LIMPEZA', 'Limpeza'),
+        ('TROCA', 'Troca'),
+    ]
+    maquina = models.ForeignKey(Maquina, on_delete=models.CASCADE, related_name="ciclos_coating", verbose_name="Máquina")
+    tipo = models.CharField(max_length=10, choices=TIPO_CHOICES, verbose_name="Tipo", default='LIMPEZA')
+    nome = models.CharField(max_length=100, verbose_name="Nome da Manutenção", default="Manutenção Padrão")
+    limite_lotes = models.IntegerField(default=10, verbose_name="Limite de Lotes")
     
     class Meta:
         verbose_name = "Ciclo de Manutenção de Coating"
         verbose_name_plural = "Ciclos de Manutenção de Coating"
+        ordering = ['maquina', 'tipo', 'nome']
         
     def __str__(self):
-        return f"Ciclos - {self.maquina}"
+        return f"{self.nome} ({self.get_tipo_display()}) - {self.maquina.codigo}"
+
+
+class ManutencaoRealizadaCoating(models.Model):
+    registro = models.ForeignKey(RegistroCoating, on_delete=models.CASCADE, related_name="manutencoes", verbose_name="Registro de Lote")
+    ciclo = models.ForeignKey(CicloManutencaoCoating, on_delete=models.PROTECT, related_name="realizacoes", verbose_name="Manutenção Realizada")
+    data_realizacao = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Manutenção Realizada (Coating)"
+        verbose_name_plural = "Manutenções Realizadas (Coating)"
+        unique_together = ('registro', 'ciclo')
+
+    def __str__(self):
+        return f"{self.ciclo.nome} no {self.registro}"
 
 class EquipeCoating(models.Model):
     colaborador = models.OneToOneField("rh.Colaborador", on_delete=models.CASCADE, verbose_name="Colaborador")

@@ -1008,34 +1008,41 @@ def coating_painel(request):
     # Update form queryset to only show these machines
     registro_form.fields["maquina"].queryset = evaporadoras
     
-    # Configuração de Ciclos (Limpeza e Troca)
-    alertas_limpeza = []
-    alertas_troca = []
-    contagem_limpeza = {}
-    contagem_troca = {}
+    # Configuração de Ciclos de Manutenção
+    alertas_ciclos = []
+    status_maquinas = {}
 
     for maquina in evaporadoras:
-        ciclo, _ = CicloManutencaoCoating.objects.get_or_create(maquina=maquina)
+        ciclos = maquina.ciclos_coating.all()
+        status_maquinas[maquina.id] = []
         
-        # Limpeza
-        ultima_limpeza = RegistroCoating.objects.filter(maquina=maquina, limpeza=True).order_by('-id').first()
-        if ultima_limpeza:
-            qtd_limpeza = RegistroCoating.objects.filter(maquina=maquina, id__gt=ultima_limpeza.id).count()
-        else:
-            qtd_limpeza = RegistroCoating.objects.filter(maquina=maquina).count()
-        contagem_limpeza[maquina.id] = f"{qtd_limpeza}/{ciclo.limite_limpeza}"
-        if qtd_limpeza >= ciclo.limite_limpeza:
-            alertas_limpeza.append(maquina)
+        for ciclo in ciclos:
+            ultima = ManutencaoRealizadaCoating.objects.filter(ciclo=ciclo, registro__maquina=maquina).order_by('-registro__id').first()
+            if ultima:
+                registros_pos_manutencao = RegistroCoating.objects.filter(maquina=maquina, id__gt=ultima.registro.id).order_by('id')
+            else:
+                registros_pos_manutencao = RegistroCoating.objects.filter(maquina=maquina).order_by('id')
+                
+            count = registros_pos_manutencao.count()
             
-        # Troca
-        ultima_troca = RegistroCoating.objects.filter(maquina=maquina, troca=True).order_by('-id').first()
-        if ultima_troca:
-            qtd_troca = RegistroCoating.objects.filter(maquina=maquina, id__gt=ultima_troca.id).count()
-        else:
-            qtd_troca = RegistroCoating.objects.filter(maquina=maquina).count()
-        contagem_troca[maquina.id] = f"{qtd_troca}/{ciclo.limite_troca}"
-        if qtd_troca >= ciclo.limite_troca:
-            alertas_troca.append(maquina)
+            # Adiciona ao status da máquina para mostrar no modal (ou na interface)
+            status_maquinas[maquina.id].append({
+                "ciclo": ciclo,
+                "count": count,
+                "limite": ciclo.limite_lotes,
+                "estourou": count >= ciclo.limite_lotes
+            })
+            
+            if count >= ciclo.limite_lotes:
+                lote_estourado = registros_pos_manutencao[ciclo.limite_lotes - 1]
+                alertas_ciclos.append({
+                    "maquina": maquina,
+                    "ciclo": ciclo,
+                    "lote_estourado": lote_estourado.lote,
+                    "turno_estourado": lote_estourado.turno_coating.regra.nome if lote_estourado.turno_coating.regra else lote_estourado.turno_coating.turno_padrao,
+                    "data_estourada": lote_estourado.turno_coating.data,
+                    "count": count
+                })
 
     # Cálculo dos tempos Rodando e Parado
     # Como `registros` está ordenado de forma decrescente (mais recente primeiro), 
@@ -1106,10 +1113,8 @@ def coating_painel(request):
         "registros": registros,
         "maquinas_com_registros": maquinas_com_registros,
         "registro_form": registro_form,
-        "alertas_limpeza": alertas_limpeza,
-        "alertas_troca": alertas_troca,
-        "contagem_limpeza": contagem_limpeza,
-        "contagem_troca": contagem_troca,
+        "alertas_ciclos": alertas_ciclos,
+        "status_maquinas": status_maquinas,
         "evaporadoras": evaporadoras,
     }
     
@@ -1222,33 +1227,46 @@ def equipe_coating_delete(request, pk):
 
 @login_required
 def ciclo_coating_list(request):
-    # Assegura que todas as máquinas de coating têm ciclo configurado (default)
-    maquinas = Maquina.objects.filter(setor__nome__icontains="laboratorio", status=True) # ou alguma tag
-    for maq in maquinas:
-        CicloManutencaoCoating.objects.get_or_create(maquina=maq)
-        
-    ciclos = CicloManutencaoCoating.objects.all().order_by('maquina__codigo')
-    
+    maquinas = Maquina.objects.filter(setor__nome__icontains="laboratorio", status=True)
     return render(request, "laboratorio/ciclo_coating_list.html", {
-        "ciclos": ciclos,
+        "maquinas": maquinas,
     })
 
 @login_required
 @require_POST
-def ciclo_coating_update(request):
+def ciclo_coating_create(request):
     try:
-        pk = request.POST.get('pk')
-        limite_limpeza = request.POST.get('limite_limpeza')
-        limite_troca = request.POST.get('limite_troca')
+        maquina_id = request.POST.get('maquina_id')
+        tipo = request.POST.get('tipo')
+        nome = request.POST.get('nome')
+        limite_lotes = request.POST.get('limite_lotes')
         
-        ciclo = get_object_or_404(CicloManutencaoCoating, pk=pk)
-        ciclo.limite_limpeza = int(limite_limpeza)
-        ciclo.limite_troca = int(limite_troca)
-        ciclo.save()
+        maquina = get_object_or_404(Maquina, pk=maquina_id)
         
-        messages.success(request, f"Ciclos da máquina {ciclo.maquina.codigo} atualizados com sucesso.")
+        CicloManutencaoCoating.objects.create(
+            maquina=maquina,
+            tipo=tipo,
+            nome=nome,
+            limite_lotes=int(limite_lotes)
+        )
+        
+        messages.success(request, f"Ciclo '{nome}' adicionado para a máquina {maquina.codigo}.")
     except Exception as e:
-        messages.error(request, f"Erro ao atualizar ciclos: {str(e)}")
+        messages.error(request, f"Erro ao adicionar ciclo: {str(e)}")
+        
+    return redirect("laboratorio:ciclo_coating_list")
+
+@login_required
+@require_POST
+def ciclo_coating_delete(request, pk):
+    try:
+        ciclo = get_object_or_404(CicloManutencaoCoating, pk=pk)
+        nome = ciclo.nome
+        maq = ciclo.maquina.codigo
+        ciclo.delete()
+        messages.success(request, f"Ciclo '{nome}' removido da máquina {maq}.")
+    except Exception as e:
+        messages.error(request, f"Erro ao remover ciclo: {str(e)}")
         
     return redirect("laboratorio:ciclo_coating_list")
 
@@ -1294,3 +1312,26 @@ def regra_turno_update(request, pk):
         "laboratorio/regra_turno_form.html", 
         {"form": form, "titulo": "Editar Regra de Turno", "acao": "Salvar alterações"}
     )
+
+@login_required
+@require_POST
+def registrar_manutencao_coating(request):
+    try:
+        registro_id = request.POST.get('registro_id')
+        ciclo_ids = request.POST.getlist('ciclos')
+        
+        registro = get_object_or_404(RegistroCoating, pk=registro_id)
+        
+        # Limpar manutenções anteriores deste registro se necessário,
+        # ou apenas adicionar as novas. O melhor é substituir todas as marcadas.
+        ManutencaoRealizadaCoating.objects.filter(registro=registro).delete()
+        
+        for cid in ciclo_ids:
+            ciclo = get_object_or_404(CicloManutencaoCoating, pk=cid)
+            ManutencaoRealizadaCoating.objects.create(registro=registro, ciclo=ciclo)
+            
+        messages.success(request, f"Manutenções atualizadas com sucesso para o Lote {registro.lote}.")
+    except Exception as e:
+        messages.error(request, f"Erro ao registrar manutenção: {str(e)}")
+        
+    return redirect("laboratorio:coating_painel")
