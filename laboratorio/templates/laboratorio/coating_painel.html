@@ -233,6 +233,11 @@
                     <div id="manutencoesCheckboxList">
                         <!-- Preenchido via JS baseado na máquina -->
                     </div>
+                    <hr>
+                    <div class="mt-3">
+                        <label class="form-label fw-bold">Observações Gerais (Opcional)</label>
+                        <textarea class="form-control" name="observacao" rows="2" placeholder="Ex: Substituída peça X devido ao desgaste..."></textarea>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -421,21 +426,63 @@
             maquinasData.forEach(item => {
                 const badgeColor = item.ciclo.tipo === 'LIMPEZA' ? 'bg-warning text-dark' : 'bg-danger';
                 const estourou = item.estourou ? '<span class="badge bg-danger ms-2">Vencida!</span>' : '';
+                
+                let checklistHtml = '';
+                if (item.ciclo.itens && item.ciclo.itens.length > 0) {
+                    checklistHtml = `<div class="checklist-container mt-2 ps-4 d-none" id="checklistContainer${item.ciclo.id}">
+                        <div class="card card-body bg-light py-2 px-3 border-secondary border-opacity-25">
+                            <h6 class="card-subtitle mb-2 text-muted fw-bold small"><i class="bi bi-list-check"></i> Checklist Obrigatório</h6>
+                    `;
+                    item.ciclo.itens.forEach(chk => {
+                        checklistHtml += `
+                            <div class="form-check form-switch mb-1">
+                                <input class="form-check-input checklist-item" type="checkbox" name="checklist_${item.ciclo.id}_${chk.id}" id="chk_${item.ciclo.id}_${chk.id}" required disabled>
+                                <label class="form-check-label small" for="chk_${item.ciclo.id}_${chk.id}">${chk.ordem}. ${chk.texto}</label>
+                            </div>
+                        `;
+                    });
+                    checklistHtml += `</div></div>`;
+                }
+
                 container.innerHTML += `
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="checkbox" value="${item.ciclo.id}" id="cicloCheck${item.ciclo.id}" name="ciclos">
-                        <label class="form-check-label d-flex align-items-center" for="cicloCheck${item.ciclo.id}">
-                            <span class="badge ${badgeColor} me-2">${item.ciclo.tipo}</span> 
-                            <strong class="me-2">${item.ciclo.nome}</strong> 
-                            <small class="text-muted">(${item.count}/${item.limite} lotes)</small>
-                            ${estourou}
-                        </label>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input ciclo-checkbox" type="checkbox" value="${item.ciclo.id}" id="cicloCheck${item.ciclo.id}" name="ciclos" onchange="toggleChecklist(${item.ciclo.id}, this.checked)">
+                            <label class="form-check-label d-flex align-items-center" for="cicloCheck${item.ciclo.id}">
+                                <span class="badge ${badgeColor} me-2">${item.ciclo.tipo}</span> 
+                                <strong class="me-2">${item.ciclo.nome}</strong> 
+                                <small class="text-muted">(${item.count}/${item.limite} lotes)</small>
+                                ${estourou}
+                            </label>
+                        </div>
+                        ${checklistHtml}
                     </div>
                 `;
             });
         }
         
+        // Limpar a observacao antiga sempre que abrir
+        const obsField = document.querySelector('textarea[name="observacao"]');
+        if (obsField) obsField.value = '';
+        
         new bootstrap.Modal(document.getElementById('modalManutencao')).show();
+    }
+    
+    function toggleChecklist(cicloId, isChecked) {
+        const container = document.getElementById('checklistContainer' + cicloId);
+        if (container) {
+            const inputs = container.querySelectorAll('.checklist-item');
+            if (isChecked) {
+                container.classList.remove('d-none');
+                inputs.forEach(input => input.disabled = false);
+            } else {
+                container.classList.add('d-none');
+                inputs.forEach(input => {
+                    input.disabled = true;
+                    input.checked = false;
+                });
+            }
+        }
     }
 
     function abrirModalEditarLote(id, lote, maquina_id, tratamento_id) {

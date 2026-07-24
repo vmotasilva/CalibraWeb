@@ -405,6 +405,7 @@ class ManutencaoRealizadaCoating(models.Model):
     registro = models.ForeignKey(RegistroCoating, on_delete=models.CASCADE, related_name="manutencoes", verbose_name="Registro de Lote")
     ciclo = models.ForeignKey(CicloManutencaoCoating, on_delete=models.PROTECT, related_name="realizacoes", verbose_name="Manutenção Realizada")
     data_realizacao = models.DateTimeField(auto_now_add=True)
+    observacao = models.TextField(blank=True, null=True, verbose_name="Observações Gerais")
 
     class Meta:
         verbose_name = "Manutenção Realizada (Coating)"
@@ -413,6 +414,32 @@ class ManutencaoRealizadaCoating(models.Model):
 
     def __str__(self):
         return f"{self.ciclo.nome} no {self.registro}"
+
+class ItemChecklistCiclo(models.Model):
+    ciclo = models.ForeignKey(CicloManutencaoCoating, on_delete=models.CASCADE, related_name="itens_checklist", verbose_name="Ciclo de Manutenção")
+    texto = models.CharField(max_length=255, verbose_name="Descrição da Tarefa")
+    ordem = models.IntegerField(default=1, verbose_name="Ordem de Exibição")
+
+    class Meta:
+        verbose_name = "Item de Checklist de Ciclo"
+        verbose_name_plural = "Itens de Checklist de Ciclos"
+        ordering = ['ordem', 'id']
+
+    def __str__(self):
+        return f"{self.ordem} - {self.texto} ({self.ciclo.nome})"
+
+class RespostaChecklistManutencao(models.Model):
+    manutencao = models.ForeignKey(ManutencaoRealizadaCoating, on_delete=models.CASCADE, related_name="respostas_checklist", verbose_name="Manutenção Realizada")
+    item = models.ForeignKey(ItemChecklistCiclo, on_delete=models.CASCADE, verbose_name="Item do Checklist")
+    feito = models.BooleanField(default=False, verbose_name="Feito?")
+
+    class Meta:
+        verbose_name = "Resposta de Checklist"
+        verbose_name_plural = "Respostas de Checklist"
+        unique_together = ('manutencao', 'item')
+
+    def __str__(self):
+        return f"{self.item.texto}: {'Sim' if self.feito else 'Não'}"
 
 class EquipeCoating(models.Model):
     colaborador = models.OneToOneField("rh.Colaborador", on_delete=models.CASCADE, verbose_name="Colaborador")

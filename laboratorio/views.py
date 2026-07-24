@@ -1029,12 +1029,15 @@ def coating_painel(request):
                 
             count = registros_pos_manutencao.count()
             
+            itens = list(ciclo.itens_checklist.all().values('id', 'texto', 'ordem'))
+            
             # Adiciona ao status da máquina para mostrar no modal (ou na interface)
             status_maquinas[maquina.id].append({
                 "ciclo": {
                     "id": ciclo.id,
                     "nome": ciclo.nome,
-                    "tipo": ciclo.tipo
+                    "tipo": ciclo.tipo,
+                    "itens": itens
                 },
                 "count": count,
                 "limite": ciclo.limite_lotes,
@@ -1335,6 +1338,31 @@ def ciclo_coating_create(request):
     return redirect("laboratorio:ciclo_coating_list")
 
 @login_required
+def configurar_checklist_ciclo(request, ciclo_id):
+    ciclo = get_object_or_404(CicloManutencaoCoating, pk=ciclo_id)
+    if request.method == "POST":
+        action = request.POST.get('action')
+        if action == 'add':
+            texto = request.POST.get('texto')
+            ordem = request.POST.get('ordem', '1')
+            if texto:
+                ItemChecklistCiclo.objects.create(
+                    ciclo=ciclo,
+                    texto=texto,
+                    ordem=int(ordem) if ordem.isdigit() else 1
+                )
+                messages.success(request, "Item adicionado ao checklist.")
+        elif action == 'delete':
+            item_id = request.POST.get('item_id')
+            ItemChecklistCiclo.objects.filter(id=item_id, ciclo=ciclo).delete()
+            messages.success(request, "Item removido do checklist.")
+        return redirect('laboratorio:configurar_checklist_ciclo', ciclo_id=ciclo.id)
+        
+    return render(request, "laboratorio/ciclo_checklist_config.html", {
+        "ciclo": ciclo,
+    })
+
+@login_required
 @require_POST
 def ciclo_coating_delete(request, pk):
     try:
@@ -1397,16 +1425,28 @@ def registrar_manutencao_coating(request):
     try:
         registro_id = request.POST.get('registro_id')
         ciclo_ids = request.POST.getlist('ciclos')
+        observacao = request.POST.get('observacao', '').strip()
         
         registro = get_object_or_404(RegistroCoating, pk=registro_id)
         
-        # Limpar manutenções anteriores deste registro se necessário,
-        # ou apenas adicionar as novas. O melhor é substituir todas as marcadas.
         ManutencaoRealizadaCoating.objects.filter(registro=registro).delete()
         
         for cid in ciclo_ids:
             ciclo = get_object_or_404(CicloManutencaoCoating, pk=cid)
-            ManutencaoRealizadaCoating.objects.create(registro=registro, ciclo=ciclo)
+            manut = ManutencaoRealizadaCoating.objects.create(
+                registro=registro, 
+                ciclo=ciclo,
+                observacao=observacao if observacao else None
+            )
+            
+            for item in ciclo.itens_checklist.all():
+                chk_name = f'checklist_{ciclo.id}_{item.id}'
+                feito = request.POST.get(chk_name) == 'on'
+                RespostaChecklistManutencao.objects.create(
+                    manutencao=manut,
+                    item=item,
+                    feito=feito
+                )
             
         messages.success(request, f"Manutenções atualizadas com sucesso para o Lote {registro.lote}.")
     except Exception as e:

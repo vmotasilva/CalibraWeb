@@ -46,6 +46,9 @@
                                 <span class="badge bg-secondary px-3 py-2 fs-6">{{ ciclo.limite_lotes }} lotes</span>
                             </td>
                             <td class="text-end pe-3">
+                                <a href="{% url 'laboratorio:configurar_checklist_ciclo' ciclo.id %}" class="btn btn-sm btn-outline-secondary me-1">
+                                    <i class="bi bi-list-check"></i> Checklist
+                                </a>
                                 <form method="post" action="{% url 'laboratorio:ciclo_coating_delete' ciclo.id %}" style="display: inline;" onsubmit="return confirm('Tem certeza que deseja excluir esta manutenção?');">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-sm btn-outline-danger">

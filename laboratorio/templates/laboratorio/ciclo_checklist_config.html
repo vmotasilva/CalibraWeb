@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}Configurar Checklist - {{ ciclo.nome }} | CalibraWeb{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1"><i class="bi bi-list-check text-primary"></i> Checklist: {{ ciclo.nome }}</h2>
+            <p class="text-muted mb-0">Máquina: <strong>{{ ciclo.maquina.codigo }}</strong> | Tipo: <strong>{{ ciclo.get_tipo_display }}</strong></p>
+        </div>
+        <div>
+            <a href="{% url 'laboratorio:ciclo_coating_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0 fw-bold">Novo Item</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="add">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Descrição da Tarefa</label>
+                            <input type="text" class="form-control" name="texto" placeholder="Ex: Limpar canhão..." required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Ordem</label>
+                            <input type="number" class="form-control" name="ordem" value="1" min="1" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100"><i class="bi bi-plus-lg"></i> Adicionar Item</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0 fw-bold">Itens do Checklist</h5>
+                </div>
+                <div class="card-body p-0">
+                    <ul class="list-group list-group-flush">
+                        {% for item in ciclo.itens_checklist.all %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+                            <div>
+                                <span class="badge bg-secondary me-2">{{ item.ordem }}</span>
+                                <span class="fw-bold">{{ item.texto }}</span>
+                            </div>
+                            <form method="post" style="display:inline;" onsubmit="return confirm('Excluir este item?');">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="delete">
+                                <input type="hidden" name="item_id" value="{{ item.id }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                            </form>
+                        </li>
+                        {% empty %}
+                        <li class="list-group-item text-center text-muted py-4">
+                            Nenhum item adicionado a este checklist ainda.
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
