@@ -90,6 +90,9 @@
                                     <th>Entrada</th>
                                     <th>Saída</th>
                                     <th>Preparação</th>
+                                    <th>Montagem</th>
+                                    <th>Limpeza</th>
+                                    <th>Troca</th>
                                     <th>Ações</th>
                                 </tr>
                             </thead>
@@ -106,6 +109,9 @@
                                             <td>{{ reg.hora_entrada|time:"H:i"|default:"-" }}</td>
                                             <td>{{ reg.hora_saida|time:"H:i"|default:"-" }}</td>
                                             <td>{{ reg.preparacao.nome_completo|default:"-" }}</td>
+                                            <td>{{ reg.montagem.nome_completo|default:"-" }}</td>
+                                            <td>{% if reg.limpeza %}<span class="badge bg-success">Sim</span>{% else %}-{% endif %}</td>
+                                            <td>{% if reg.troca %}<span class="badge bg-success">Sim</span>{% else %}-{% endif %}</td>
                                             <td>
                                                 <div class="d-flex justify-content-center gap-1">
                                                     <button class="btn btn-sm btn-outline-secondary">Editar</button>
@@ -147,6 +153,9 @@
                                     <th>Entrada</th>
                                     <th>Saída</th>
                                     <th>Preparação</th>
+                                    <th>Montagem</th>
+                                    <th>Limpeza</th>
+                                    <th>Troca</th>
                                     <th>Ações</th>
                                 </tr>
                             </thead>
@@ -162,6 +171,9 @@
                                     <td>{{ reg.hora_entrada|time:"H:i"|default:"-" }}</td>
                                     <td>{{ reg.hora_saida|time:"H:i"|default:"-" }}</td>
                                     <td>{{ reg.preparacao.nome_completo|default:"-" }}</td>
+                                    <td>{{ reg.montagem.nome_completo|default:"-" }}</td>
+                                    <td>{% if reg.limpeza %}<span class="badge bg-success">Sim</span>{% else %}-{% endif %}</td>
+                                    <td>{% if reg.troca %}<span class="badge bg-success">Sim</span>{% else %}-{% endif %}</td>
                                     <td>
                                         <div class="d-flex justify-content-center gap-1">
                                             <button class="btn btn-sm btn-outline-secondary">Editar</button>

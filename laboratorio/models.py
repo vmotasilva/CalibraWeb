@@ -368,6 +368,9 @@ class RegistroCoating(models.Model):
     preparacao = models.ForeignKey(Colaborador, on_delete=models.PROTECT, related_name="preparacoes_coating", verbose_name="Preparação", null=True, blank=True)
     montagem = models.ForeignKey(Colaborador, on_delete=models.PROTECT, related_name="montagens_coating", verbose_name="Montagem", null=True, blank=True)
     
+    limpeza = models.BooleanField(default=False, verbose_name="Limpeza Realizada")
+    troca = models.BooleanField(default=False, verbose_name="Troca Realizada")
+    
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
 

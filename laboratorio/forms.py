@@ -316,7 +316,7 @@ class RegistroCoatingForm(forms.ModelForm):
         model = RegistroCoating
         fields = [
             "maquina", "lote", "tratamento", "lado", 
-            "hora_entrada", "hora_saida", "preparacao", "montagem"
+            "hora_entrada", "hora_saida", "preparacao", "montagem", "limpeza", "troca"
         ]
         widgets = {
             "maquina": forms.Select(attrs={"class": "form-select"}),
@@ -327,6 +327,8 @@ class RegistroCoatingForm(forms.ModelForm):
             "hora_saida": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
             "preparacao": forms.Select(attrs={"class": "form-select"}),
             "montagem": forms.Select(attrs={"class": "form-select"}),
+            "limpeza": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "troca": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
 
     def __init__(self, *args, **kwargs):
