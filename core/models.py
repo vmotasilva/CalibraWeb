@@ -84,6 +84,13 @@ class NavigationPermission(models.Model):
             ("nav_laboratorio_categoria_maquina_update", "NAV: Laboratório / Editar Categoria de Máquina"),
             ("nav_laboratorio_categoria_maquina_delete", "NAV: Laboratório / Excluir Categoria de Máquina"),
 
+            ("nav_laboratorio_coating", "NAV: Laboratório / Bloco Coating (Anti-Reflexo)"),
+            ("nav_laboratorio_coating_painel", "NAV: Laboratório / Coating / Painel Diário"),
+            ("nav_laboratorio_coating_tratamentos", "NAV: Laboratório / Coating / Tratamentos"),
+            ("nav_laboratorio_coating_turnos", "NAV: Laboratório / Coating / Regras de Turno"),
+            ("nav_laboratorio_coating_ciclos", "NAV: Laboratório / Coating / Ciclos de Manutenção"),
+            ("nav_laboratorio_coating_equipe", "NAV: Laboratório / Coating / Equipe Coating"),
+
             # --- METROLOGIA: blocos ---
             ("nav_metrologia_visao_geral", "NAV: Metrologia / Bloco Visão Geral"),
             ("nav_metrologia_gestao", "NAV: Metrologia / Bloco Gestão"),
