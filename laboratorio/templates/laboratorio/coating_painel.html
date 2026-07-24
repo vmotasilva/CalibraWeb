@@ -129,15 +129,15 @@
                                             <td>
                                                 <div class="d-flex flex-column align-items-center">
                                                     {% if c_status.status == 'OK' %}
-                                                        <button type="button" class="btn btn-sm btn-success shadow-sm" title="Manutenção Registrada" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}')">
+                                                        <button type="button" class="btn btn-sm btn-success shadow-sm" title="Manutenção Registrada" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
                                                             <i class="bi bi-check-circle-fill"></i> OK
                                                         </button>
                                                     {% elif c_status.status == 'PENDENTE' %}
-                                                        <button type="button" class="btn btn-sm btn-danger shadow-sm pulse-danger" title="Manutenção Pendente!" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}')">
+                                                        <button type="button" class="btn btn-sm btn-danger shadow-sm pulse-danger" title="Manutenção Pendente!" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
                                                             <i class="bi bi-exclamation-circle-fill"></i> Pendente
                                                         </button>
                                                     {% else %}
-                                                        <button type="button" class="btn btn-sm btn-outline-secondary" title="Nenhuma manutenção pendente no momento" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}')">
+                                                        <button type="button" class="btn btn-sm btn-outline-secondary" title="Nenhuma manutenção pendente no momento" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
                                                             <i class="bi bi-dash-circle"></i> S/ Farol
                                                         </button>
                                                     {% endif %}
@@ -411,7 +411,7 @@
         });
     });
 
-    function abrirModalManutencao(registroId, lote, maquinaId, preSelectCicloId = null) {
+    function abrirModalManutencao(registroId, lote, maquinaId, clickedCicloId = null, existingCids = []) {
         document.getElementById('manutencaoRegistroId').value = registroId;
         document.getElementById('manutencaoLoteNum').innerText = lote;
         
@@ -426,16 +426,26 @@
                 const badgeColor = item.ciclo.tipo === 'LIMPEZA' ? 'bg-warning text-dark' : 'bg-danger';
                 const estourou = item.estourou ? '<span class="badge bg-danger ms-2">Vencida!</span>' : '';
                 
+                const isExisting = existingCids.includes(item.ciclo.id);
+                const isClicked = (clickedCicloId == item.ciclo.id);
+                const shouldBeChecked = isExisting || isClicked;
+                const checkedAttr = shouldBeChecked ? 'checked' : '';
+                
                 let checklistHtml = '';
                 if (item.ciclo.itens && item.ciclo.itens.length > 0) {
-                    checklistHtml = `<div class="checklist-container mt-2 ps-4 d-none" id="checklistContainer${item.ciclo.id}">
+                    const dNoneClass = shouldBeChecked ? '' : 'd-none';
+                    checklistHtml = `<div class="checklist-container mt-2 ps-4 ${dNoneClass}" id="checklistContainer${item.ciclo.id}">
                         <div class="card card-body bg-light py-2 px-3 border-secondary border-opacity-25">
                             <h6 class="card-subtitle mb-2 text-muted fw-bold small"><i class="bi bi-list-check"></i> Checklist Obrigatório</h6>
                     `;
                     item.ciclo.itens.forEach(chk => {
+                        const disabledAttr = shouldBeChecked ? '' : 'disabled';
+                        // Preenche checkboxes existentes para itens requeridos.
+                        // (Por enquanto, assumimos que todos os itens obrigatorios foram marcados na hora que salvou a manutencao)
+                        const itemChecked = isExisting ? 'checked' : '';
                         checklistHtml += `
                             <div class="form-check form-switch mb-1">
-                                <input class="form-check-input checklist-item" type="checkbox" name="checklist_${item.ciclo.id}_${chk.id}" id="chk_${item.ciclo.id}_${chk.id}" required disabled>
+                                <input class="form-check-input checklist-item" type="checkbox" name="checklist_${item.ciclo.id}_${chk.id}" id="chk_${item.ciclo.id}_${chk.id}" required ${disabledAttr} ${itemChecked}>
                                 <label class="form-check-label small" for="chk_${item.ciclo.id}_${chk.id}">${chk.ordem}. ${chk.texto}</label>
                             </div>
                         `;
@@ -446,7 +456,7 @@
                 container.innerHTML += `
                     <div class="mb-3">
                         <div class="form-check">
-                            <input class="form-check-input ciclo-checkbox" type="checkbox" value="${item.ciclo.id}" id="cicloCheck${item.ciclo.id}" name="ciclos" onchange="toggleChecklist(${item.ciclo.id}, this.checked)">
+                            <input class="form-check-input ciclo-checkbox" type="checkbox" value="${item.ciclo.id}" id="cicloCheck${item.ciclo.id}" name="ciclos" onchange="toggleChecklist(${item.ciclo.id}, this.checked)" ${checkedAttr}>
                             <label class="form-check-label d-flex align-items-center" for="cicloCheck${item.ciclo.id}">
                                 <span class="badge ${badgeColor} me-2">${item.ciclo.tipo}</span> 
                                 <strong class="me-2">${item.ciclo.nome}</strong> 
@@ -463,14 +473,6 @@
         // Limpar a observacao antiga sempre que abrir
         const obsField = document.querySelector('textarea[name="observacao"]');
         if (obsField) obsField.value = '';
-        
-        if (preSelectCicloId) {
-            const checkbox = document.getElementById('cicloCheck' + preSelectCicloId);
-            if (checkbox) {
-                checkbox.checked = true;
-                toggleChecklist(preSelectCicloId, true);
-            }
-        }
         
         new bootstrap.Modal(document.getElementById('modalManutencao')).show();
     }

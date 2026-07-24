@@ -1063,12 +1063,17 @@ def coating_painel(request):
             if reg.maquina_id == maquina.id:
                 rs = registro_status.get(reg.id, {})
                 status_list = []
+                ok_cids = []
                 for c in ciclos:
+                    status = rs.get(c.id, 'S_FAROL')
                     status_list.append({
                         'ciclo': c,
-                        'status': rs.get(c.id, 'S_FAROL')
+                        'status': status
                     })
+                    if status == 'OK':
+                        ok_cids.append(c.id)
                 reg.ciclos_status_list = status_list
+                reg.ok_cids = ok_cids
         
         # Prepara o status global atual da maquina
         for ciclo in ciclos:
