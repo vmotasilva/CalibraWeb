@@ -1849,7 +1849,7 @@ def dashboard_coating(request):
     for i in range(16):
         dias.append(inicio + timedelta(days=i))
         
-    maquinas = Maquina.objects.filter(setor='COATING')
+    maquinas = Maquina.objects.filter(setor__nome__iexact='COATING')
     
     labels = [d.strftime('%d/%m') for d in dias]
     datasets = []
@@ -1952,7 +1952,7 @@ def importar_lotes_coating(request):
                     )
                     
                     # Máquina
-                    maquina = Maquina.objects.filter(nome__iexact=maq_nome, setor='COATING').first()
+                    maquina = Maquina.objects.filter(nome__iexact=maq_nome, setor__nome__iexact='COATING').first()
                     if not maquina:
                         raise ValueError(f"Máquina '{maq_nome}' não encontrada no setor Coating.")
                         
