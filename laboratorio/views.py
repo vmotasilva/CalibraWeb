@@ -1631,6 +1631,201 @@ def salvar_observacoes_lote(request):
             reg_cc.observacao = obs_cc
             reg_cc.save()
             
+        messages.success(request, f"Ciclo '{ciclo.nome}' atualizado com sucesso.")
+    except Exception as e:
+        messages.error(request, f"Erro ao atualizar ciclo: {str(e)}")
+        
+    return redirect("laboratorio:ciclo_coating_list")
+
+@login_required
+def configurar_checklist_ciclo(request, ciclo_id):
+    ciclo = get_object_or_404(CicloManutencaoCoating, pk=ciclo_id)
+    if request.method == "POST":
+        action = request.POST.get('action')
+        if action == 'add':
+            texto = request.POST.get('texto')
+            ordem = request.POST.get('ordem', '1')
+            if texto:
+                ItemChecklistCiclo.objects.create(
+                    ciclo=ciclo,
+                    texto=texto,
+                    ordem=int(ordem) if ordem.isdigit() else 1
+                )
+                messages.success(request, "Item adicionado ao checklist.")
+        elif action == 'delete':
+            item_id = request.POST.get('item_id')
+            ItemChecklistCiclo.objects.filter(id=item_id, ciclo=ciclo).delete()
+            messages.success(request, "Item removido do checklist.")
+        return redirect('laboratorio:configurar_checklist_ciclo', ciclo_id=ciclo.id)
+        
+    return render(request, "laboratorio/ciclo_checklist_config.html", {
+        "ciclo": ciclo,
+    })
+
+@login_required
+@require_POST
+def ciclo_coating_delete(request, pk):
+    try:
+        ciclo = get_object_or_404(CicloManutencaoCoating, pk=pk)
+        nome = ciclo.nome
+        maq = ciclo.maquina.codigo
+        ciclo.delete()
+        messages.success(request, f"Ciclo '{nome}' removido da máquina {maq}.")
+    except Exception as e:
+        messages.error(request, f"Erro ao remover ciclo: {str(e)}")
+        
+    return redirect("laboratorio:ciclo_coating_list")
+
+
+@login_required
+def regra_turno_list(request):
+    regras = RegraTurnoCoating.objects.all()
+    return render(request, "laboratorio/regra_turno_list.html", {"regras": regras})
+
+
+@login_required
+def regra_turno_create(request):
+    if request.method == "POST":
+        form = RegraTurnoCoatingForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Regra de turno criada com sucesso.")
+            return redirect("laboratorio:regra_turno_list")
+    else:
+        form = RegraTurnoCoatingForm()
+    
+    return render(
+        request, 
+        "laboratorio/regra_turno_form.html", 
+        {"form": form, "titulo": "Nova Regra de Turno", "acao": "Salvar regra"}
+    )
+
+
+@login_required
+def regra_turno_update(request, pk):
+    regra = get_object_or_404(RegraTurnoCoating, pk=pk)
+    if request.method == "POST":
+        form = RegraTurnoCoatingForm(request.POST, instance=regra)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Regra de turno atualizada com sucesso.")
+            return redirect("laboratorio:regra_turno_list")
+    else:
+        form = RegraTurnoCoatingForm(instance=regra)
+        
+    return render(
+        request, 
+        "laboratorio/regra_turno_form.html", 
+        {"form": form, "titulo": "Editar Regra de Turno", "acao": "Salvar alterações"}
+    )
+
+@login_required
+@require_POST
+def registrar_manutencao_coating(request):
+    try:
+        registro_id = request.POST.get('registro_id')
+        ciclo_ids = request.POST.getlist('ciclos')
+        observacao = request.POST.get('observacao', '').strip()
+        
+        registro = get_object_or_404(RegistroCoating, pk=registro_id)
+        
+        # Encontra ambos os lados (CC e CX) deste lote
+        registros_do_lote = RegistroCoating.objects.filter(
+            lote=registro.lote,
+            maquina=registro.maquina,
+            turno_coating=registro.turno_coating
+        )
+        
+        ManutencaoRealizadaCoating.objects.filter(registro__in=registros_do_lote).delete()
+        
+        for reg in registros_do_lote:
+            for cid in ciclo_ids:
+                ciclo = get_object_or_404(CicloManutencaoCoating, pk=cid)
+                manut = ManutencaoRealizadaCoating.objects.create(
+                    registro=reg, 
+                    ciclo=ciclo,
+                    observacao=observacao if observacao else None
+                )
+                
+                for item in ciclo.itens_checklist.all():
+                    chk_name = f'checklist_{ciclo.id}_{item.id}'
+                    feito = request.POST.get(chk_name) == 'on'
+                    RespostaChecklistManutencao.objects.create(
+                        manutencao=manut,
+                        item=item,
+                        feito=feito
+                    )
+            
+        messages.success(request, f"Manutenções atualizadas com sucesso para o Lote {registro.lote} (lados CC e CX).")
+    except Exception as e:
+        messages.error(request, f"Erro ao registrar manutenção: {str(e)}")
+        
+    return redirect("laboratorio:coating_painel")
+
+@login_required
+def run_migrate_view(request):
+    if request.user.is_superuser:
+        from django.core.management import call_command
+        try:
+            call_command('migrate')
+            return HttpResponse("Migrações aplicadas com sucesso no banco de dados!")
+        except Exception as e:
+            return HttpResponse(f"Erro: {str(e)}")
+        return HttpResponse("Migrações aplicadas com sucesso.")
+    return HttpResponse("Acesso negado.", status=403)
+
+@login_required
+def obter_observacoes_lote(request):
+    try:
+        registro_id = request.GET.get('id')
+        registro = get_object_or_404(RegistroCoating, pk=registro_id)
+        
+        # Busca ambos os registros do lote na mesma máquina e turno
+        registros = RegistroCoating.objects.filter(
+            turno_coating=registro.turno_coating,
+            maquina=registro.maquina,
+            lote=registro.lote
+        )
+        
+        obs_cc = ""
+        obs_cx = ""
+        id_cc = None
+        id_cx = None
+        
+        for reg in registros:
+            if reg.lado == 'CC':
+                obs_cc = reg.observacao or ""
+                id_cc = reg.id
+            elif reg.lado == 'CX':
+                obs_cx = reg.observacao or ""
+                id_cx = reg.id
+                
+        return JsonResponse({
+            'success': True,
+            'obs_cc': obs_cc,
+            'obs_cx': obs_cx,
+            'id_cc': id_cc,
+            'id_cx': id_cx,
+            'lote': registro.lote
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@login_required
+@require_POST
+def salvar_observacoes_lote(request):
+    try:
+        data = json.loads(request.body)
+        id_cc = data.get('id_cc')
+        id_cx = data.get('id_cx')
+        obs_cc = data.get('obs_cc', '')
+        obs_cx = data.get('obs_cx', '')
+        
+        if id_cc:
+            reg_cc = RegistroCoating.objects.get(pk=id_cc)
+            reg_cc.observacao = obs_cc
+            reg_cc.save()
+            
         if id_cx:
             reg_cx = RegistroCoating.objects.get(pk=id_cx)
             reg_cx.observacao = obs_cx
@@ -1639,3 +1834,114 @@ def salvar_observacoes_lote(request):
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
+
+@login_required
+def baixar_modelo_importacao_coating(request):
+    import pandas as pd
+    import io
+    
+    df = pd.DataFrame(columns=[
+        'Data (DD/MM/YYYY)', 'Turno', 'Maquina', 'Lote', 
+        'Tratamento', 'Lado', 'Observacao'
+    ])
+    df.loc[0] = ['24/07/2026', 'TURNO 01', 'DLX1200', '1', 'BLUE CUT', 'CC', 'Atraso na liberação']
+    df.loc[1] = ['24/07/2026', 'TURNO 01', 'DLX1200', '1', 'BLUE CUT', 'CX', '']
+    
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Lotes')
+    
+    response = HttpResponse(
+        output.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename=Modelo_Importacao_Lotes.xlsx'
+    return response
+
+@login_required
+@require_POST
+def importar_lotes_coating(request):
+    import pandas as pd
+    from django.db import transaction
+    
+    if 'arquivo' not in request.FILES:
+        messages.error(request, 'Nenhum arquivo selecionado.')
+        return redirect('laboratorio:coating_painel')
+        
+    arquivo = request.FILES['arquivo']
+    try:
+        if arquivo.name.endswith('.csv'):
+            df = pd.read_csv(arquivo, sep=';', encoding='latin1')
+        else:
+            df = pd.read_excel(arquivo)
+            
+        lotes_criados = 0
+        erros = []
+        
+        with transaction.atomic():
+            for index, row in df.iterrows():
+                try:
+                    data_str = str(row.get('Data (DD/MM/YYYY)', '')).strip()
+                    turno_nome = str(row.get('Turno', '')).strip()
+                    maq_nome = str(row.get('Maquina', '')).strip()
+                    lote_val = str(row.get('Lote', '')).strip()
+                    trat_nome = str(row.get('Tratamento', '')).strip()
+                    lado_val = str(row.get('Lado', '')).strip().upper()
+                    obs_val = str(row.get('Observacao', '')).strip()
+                    
+                    if obs_val == 'nan' or obs_val.lower() == 'none':
+                        obs_val = ''
+                        
+                    if not (data_str and turno_nome and maq_nome and lote_val and trat_nome and lado_val):
+                        continue # Pula linha vazia
+                        
+                    # Conversões
+                    data_obj = datetime.strptime(data_str.split(' ')[0], '%d/%m/%Y').date()
+                    
+                    # Buscar Turno (cria Registro de Turno se nao existir para a data)
+                    regra_turno = RegraTurnoCoating.objects.filter(nome__iexact=turno_nome).first()
+                    if not regra_turno:
+                        raise ValueError(f"Turno '{turno_nome}' não encontrado.")
+                        
+                    turno_obj, _ = TurnoCoating.objects.get_or_create(
+                        data=data_obj,
+                        regra=regra_turno,
+                        defaults={'aberto': False}
+                    )
+                    
+                    # Máquina
+                    maquina = Maquina.objects.filter(nome__iexact=maq_nome, setor='COATING').first()
+                    if not maquina:
+                        raise ValueError(f"Máquina '{maq_nome}' não encontrada no setor Coating.")
+                        
+                    # Tratamento
+                    tratamento = TratamentoAntiReflexo.objects.filter(nome__iexact=trat_nome).first()
+                    if not tratamento:
+                        raise ValueError(f"Tratamento '{trat_nome}' não encontrado.")
+                        
+                    # Cria ou atualiza
+                    registro, created = RegistroCoating.objects.update_or_create(
+                        turno_coating=turno_obj,
+                        maquina=maquina,
+                        lote=int(lote_val),
+                        lado=lado_val,
+                        defaults={
+                            'tratamento': tratamento,
+                            'observacao': obs_val if obs_val else None
+                        }
+                    )
+                    if created:
+                        lotes_criados += 1
+                        
+                except Exception as row_e:
+                    erros.append(f"Linha {index + 2}: {str(row_e)}")
+                    
+        if erros:
+            messages.warning(request, f"Importação concluída com {len(erros)} erros. Lotes criados: {lotes_criados}. Detalhes: {', '.join(erros[:5])}...")
+        else:
+            messages.success(request, f"Importação concluída com sucesso! {lotes_criados} registros criados.")
+            
+    except Exception as e:
+        messages.error(request, f"Erro fatal ao processar o arquivo: {str(e)}")
+        
+    return redirect('laboratorio:coating_painel')
