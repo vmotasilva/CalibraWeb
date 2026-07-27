@@ -764,6 +764,8 @@ NAV_STRUCTURE = [
                 "perm": "core.nav_laboratorio_coating",
                 "funcoes": [
                     {"nome": "Painel Diário", "view_name": ("laboratorio:coating_painel", "laboratorio:atualizar_celula_coating", "laboratorio:registro_coating_delete", "laboratorio:editar_lote_completo_coating"), "perm": "core.nav_laboratorio_coating_painel"},
+                    {"nome": "Dashboard", "view_name": "laboratorio:dashboard_coating", "perm": "core.nav_laboratorio_coating_dashboard"},
+                    {"nome": "Importação", "view_name": ("laboratorio:importar_lotes_coating", "laboratorio:baixar_modelo_importacao_coating"), "perm": "core.nav_laboratorio_coating_importacao"},
                     {"nome": "Tratamentos", "view_name": ("laboratorio:tratamento_list", "laboratorio:tratamento_create", "laboratorio:tratamento_update", "laboratorio:tratamento_delete"), "perm": "core.nav_laboratorio_coating_tratamentos"},
                     {"nome": "Regras de Turno", "view_name": ("laboratorio:regra_turno_list", "laboratorio:regra_turno_create", "laboratorio:regra_turno_update", "laboratorio:regra_turno_delete"), "perm": "core.nav_laboratorio_coating_turnos"},
                     {"nome": "Ciclos de Manutenção", "view_name": ("laboratorio:ciclo_coating_list", "laboratorio:ciclo_coating_update"), "perm": "core.nav_laboratorio_coating_ciclos"},

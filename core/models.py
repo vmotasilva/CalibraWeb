@@ -86,6 +86,8 @@ class NavigationPermission(models.Model):
 
             ("nav_laboratorio_coating", "NAV: Laboratório / Bloco Coating (Anti-Reflexo)"),
             ("nav_laboratorio_coating_painel", "NAV: Laboratório / Coating / Painel Diário"),
+            ("nav_laboratorio_coating_dashboard", "NAV: Laboratório / Coating / Dashboard"),
+            ("nav_laboratorio_coating_importacao", "NAV: Laboratório / Coating / Importação"),
             ("nav_laboratorio_coating_tratamentos", "NAV: Laboratório / Coating / Tratamentos"),
             ("nav_laboratorio_coating_turnos", "NAV: Laboratório / Coating / Regras de Turno"),
             ("nav_laboratorio_coating_ciclos", "NAV: Laboratório / Coating / Ciclos de Manutenção"),

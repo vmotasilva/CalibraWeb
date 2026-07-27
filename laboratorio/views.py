@@ -5,7 +5,7 @@ from datetime import date, datetime, timedelta, time
 from decimal import Decimal
 
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from django.views.decorators.http import require_POST
 from django.http import HttpResponse
 from django.db.models import Count, Q, Max
@@ -1836,6 +1836,7 @@ def salvar_observacoes_lote(request):
         return JsonResponse({'success': False, 'error': str(e)})
 
 @login_required
+@permission_required('core.nav_laboratorio_coating_dashboard', raise_exception=True)
 def dashboard_coating(request):
     from django.utils import timezone
     from datetime import timedelta
@@ -1878,6 +1879,7 @@ def dashboard_coating(request):
     })
 
 @login_required
+@permission_required('core.nav_laboratorio_coating_importacao', raise_exception=True)
 def baixar_modelo_importacao_coating(request):
     import pandas as pd
     import io
@@ -1902,6 +1904,7 @@ def baixar_modelo_importacao_coating(request):
 
 @login_required
 @require_POST
+@permission_required('core.nav_laboratorio_coating_importacao', raise_exception=True)
 def importar_lotes_coating(request):
     import pandas as pd
     from django.db import transaction
