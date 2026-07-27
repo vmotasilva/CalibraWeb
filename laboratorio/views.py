@@ -1618,19 +1618,14 @@ def obter_observacoes_lote(request):
 
 @login_required
 @require_POST
-def salvar_observacoes_lote(request):
+def ciclo_coating_update(request, pk):
+    ciclo = get_object_or_404(CicloManutencaoCoating, pk=pk)
     try:
-        data = json.loads(request.body)
-        id_cc = data.get('id_cc')
-        id_cx = data.get('id_cx')
-        obs_cc = data.get('obs_cc', '')
-        obs_cx = data.get('obs_cx', '')
-        
-        if id_cc:
-            reg_cc = RegistroCoating.objects.get(pk=id_cc)
-            reg_cc.observacao = obs_cc
-            reg_cc.save()
-            
+        ciclo.tipo = request.POST.get('tipo', ciclo.tipo)
+        ciclo.nome = request.POST.get('nome', ciclo.nome)
+        ciclo.criterio = request.POST.get('criterio', ciclo.criterio)
+        ciclo.limite_lotes = int(request.POST.get('limite_lotes', ciclo.limite_lotes))
+        ciclo.save()
         messages.success(request, f"Ciclo '{ciclo.nome}' atualizado com sucesso.")
     except Exception as e:
         messages.error(request, f"Erro ao atualizar ciclo: {str(e)}")
