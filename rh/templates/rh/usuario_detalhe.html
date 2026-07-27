@@ -322,9 +322,7 @@
                 <div class="card-body p-3">
                     <!-- Isenção -->
                     <div class="form-check form-switch mb-3 pb-3 border-bottom">
-                        <input class="form-check-input" type="checkbox" role="switch" id="toggleIsentoTOTP" {% if
-                            is_isento_totp %}checked{% endif %} {% if not request.user.is_superuser %}disabled{% endif
-                            %}>
+                        <input class="form-check-input" type="checkbox" role="switch" id="toggleIsentoTOTP" {% if is_isento_totp %}checked{% endif %} {% if not request.user.is_superuser %}disabled{% endif %}>
                         <label class="form-check-label fw-bold" for="toggleIsentoTOTP">Isento de Autenticação
                             2FA</label>
                         <div class="form-text mt-0">Se ativo, ignora a exigência do TOTP para este usuário.</div>

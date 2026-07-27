@@ -119,10 +119,10 @@
                         <table class="table table-hover table-striped align-middle mb-0 text-center text-nowrap w-100">
                             <thead class="table-dark">
                                 <tr>
-                                    <th>Data</th>
-                                    <th>Turno</th>
-                                    <th>Lote</th>
-                                    <th>Lado</th>
+                                    <th style="width: 1%; white-space: nowrap;">Data</th>
+                                    <th style="width: 1%; white-space: nowrap;">Turno</th>
+                                    <th style="width: 1%; white-space: nowrap;">Lote</th>
+                                    <th style="width: 1%; white-space: nowrap;">Lado</th>
                                     <th>Tratamento</th>
                                     <th>Entrada</th>
                                     <th>Saída</th>
@@ -152,8 +152,8 @@
                                             <td>{{ reg.tempo_parado|time:"H:i"|default:"-" }}</td>
                                             <td class="editable-cell" data-id="{{ reg.id }}" data-campo="preparacao_id" data-valor="{{ reg.preparacao_id|default:'' }}" data-tipo="colaborador" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{{ reg.preparacao.nome_abreviado|default:"-" }} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
                                             <td class="editable-cell" data-id="{{ reg.id }}" data-campo="montagem_id" data-valor="{{ reg.montagem_id|default:'' }}" data-tipo="colaborador" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{{ reg.montagem.nome_abreviado|default:"-" }} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
-                                            <td style="max-width: 200px;">
-                                                <div class="d-flex flex-wrap gap-1 justify-content-center">
+                                            <td>
+                                                <div class="d-flex flex-nowrap gap-1 justify-content-center">
                                                     {% for c_status in reg.ciclos_status_list %}
                                                         {% if c_status.ciclo.tipo == 'LIMPEZA' %}
                                                             {% if c_status.status == 'OK' %}
@@ -174,8 +174,8 @@
                                                     <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" data-bs-toggle="tooltip" title="Adicionar Extra" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }})"><i class="bi bi-plus-lg"></i></span>
                                                 </div>
                                             </td>
-                                            <td style="max-width: 200px;">
-                                                <div class="d-flex flex-wrap gap-1 justify-content-center">
+                                            <td>
+                                                <div class="d-flex flex-nowrap gap-1 justify-content-center">
                                                     {% for c_status in reg.ciclos_status_list %}
                                                         {% if c_status.ciclo.tipo == 'TROCA' %}
                                                             {% if c_status.status == 'OK' %}
@@ -196,8 +196,8 @@
                                                     <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" data-bs-toggle="tooltip" title="Adicionar Extra" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }})"><i class="bi bi-plus-lg"></i></span>
                                                 </div>
                                             </td>
-                                            <td style="max-width: 200px;">
-                                                <div class="d-flex flex-wrap gap-1 justify-content-center">
+                                            <td>
+                                                <div class="d-flex flex-nowrap gap-1 justify-content-center">
                                                     {% for c_status in reg.ciclos_status_list %}
                                                         {% if c_status.ciclo.tipo == 'VERIFICACAO' %}
                                                             {% if c_status.status == 'OK' %}
