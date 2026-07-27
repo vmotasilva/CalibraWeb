@@ -6,185 +6,128 @@
 {% block extra_css %}
 <style>
     .user-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 0.5rem;
-        padding: 2rem;
-    }
-    
-    .user-avatar-large {
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 2rem;
-        font-weight: bold;
-        background: rgba(255, 255, 255, 0.2);
-        border: 3px solid rgba(255, 255, 255, 0.5);
-    }
-    
-    .badge-superuser {
-        background-color: #dc3545;
-        color: white;
-    }
-    
-    .badge-staff {
-        background-color: #fd7e14;
-        color: white;
-    }
-    
-    .badge-blocked {
-        background-color: #6c757d;
-        color: white;
-    }
-    
-    .module-card {
-        border-left: 4px solid;
-        transition: all 0.2s ease;
-    }
-    
-    .module-card:hover {
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-    
-    .module-card.border-primary { border-left-color: #0d6efd; }
-    .module-card.border-success { border-left-color: #198754; }
-    .module-card.border-warning { border-left-color: #ffc107; }
-    .module-card.border-danger { border-left-color: #dc3545; }
-    .module-card.border-info { border-left-color: #0dcaf0; }
-    .module-card.border-secondary { border-left-color: #6c757d; }
-    
-    .module-header {
-        cursor: pointer;
-        user-select: none;
-    }
-    
-    .module-header:hover {
-        opacity: 0.9;
-    }
-    
-    .module-header .collapse-icon {
-        transition: transform 0.3s ease;
-    }
-    
-    .module-header.collapsed .collapse-icon {
-        transform: rotate(-90deg);
-    }
-    
-    .perm-checkbox {
-        width: 18px;
-        height: 18px;
-        cursor: pointer;
-    }
-    
-    .perm-checkbox:disabled {
-        cursor: not-allowed;
-        opacity: 0.6;
-    }
-    
-    .perm-group-header {
-        font-weight: 600;
-        color: #495057;
-        padding: 0.5rem 0;
-        border-bottom: 1px solid #dee2e6;
-        margin-bottom: 0.5rem;
-    }
-    
-    .perm-item {
-        padding: 0.35rem 0;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    
-    .perm-group {
-        margin-bottom: 1rem;
-        padding-bottom: 0.5rem;
-    }
-    
-    .perm-group:last-child {
-        margin-bottom: 0;
-        padding-bottom: 0;
-    }
-    
-    .saving-indicator {
-        display: none;
-        color: #0d6efd;
-    }
-    
-    .saving-indicator.active {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    
-    .status-toggle {
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-    
-    .status-toggle:hover {
-        opacity: 0.8;
-    }
-    
-    .info-item {
-        padding: 0.75rem 0;
-        border-bottom: 1px solid #f0f0f0;
-    }
-    
-    .info-item:last-child {
-        border-bottom: none;
-    }
-    
-    .status-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.75rem 0;
-        border-bottom: 1px solid #f0f0f0;
-    }
-    
-    .status-row:last-child {
-        border-bottom: none;
-    }
-    
-    .action-btn {
-        width: 100%;
-        text-align: left;
-        padding: 0.75rem 1rem;
-        border-radius: 0.375rem;
-        transition: all 0.2s;
-    }
-    
-    .action-btn:hover {
-        transform: translateX(5px);
-    }
-    
-    .colaborador-item {
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-    
-    .colaborador-item:hover {
-        background-color: #f8f9fa;
-    }
-    
-    .colaborador-item.selected {
-        background-color: #e7f1ff;
-        border-color: #0d6efd;
-    }
-    
-    .password-display {
-        font-family: monospace;
-        font-size: 1.25rem;
-        letter-spacing: 0.1em;
-        background: #f8f9fa;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        border: 2px dashed #dee2e6;
-    }
+        backgro-4und: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+        - .module-header .collapse-icon {
+            transition: transform 0.3s ease;
+        }
+
+        .module-header.collapsed .collapse-icon {
+            transform: rotate(-90deg);
+        }
+
+        .perm-checkbox {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .perm-checkbox:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .perm-group-header {
+            font-weight: 600;
+            color: #495057;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #dee2e6;
+            margin-bottom: 0.5rem;
+        }
+
+        .perm-item {
+            padding: 0.35rem 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .perm-group {
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+        }
+
+        .perm-group:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .saving-indicator {
+            display: none;
+            color: #0d6efd;
+        }
+
+        .saving-indicator.active {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-toggle {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .status-toggle:hover {
+            opacity: 0.8;
+        }
+
+        .info-item {
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .status-row:last-child {
+            border-bottom: none;
+        }
+
+        .action-btn {
+            width: 100%;
+            text-align: left;
+            padding: 0.75rem 1rem;
+            border-radius: 0.375rem;
+            transition: all 0.2s;
+        }
+
+        .action-btn:hover {
+            transform: translateX(5px);
+        }
+
+        .colaborador-item {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .colaborador-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .colaborador-item.selected {
+            background-color: #e7f1ff;
+            border-color: #0d6efd;
+        }
+
+        .password-display {
+            font-family: monospace;
+            font-size: 1.25rem;
+            letter-spacing: 0.1em;
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 2px dashed #dee2e6;
+        }
 </style>
 {% endblock %}
 
@@ -201,36 +144,37 @@
                     <h2 class="mb-1 d-flex align-items-center gap-2 flex-wrap">
                         {{ usuario.username }}
                         {% if not usuario.is_active %}
-                            <span class="badge badge-blocked" title="Usuário Bloqueado">
-                                <i class="bi bi-lock-fill"></i> Bloqueado
-                            </span>
+                        <span class="badge badge-blocked" title="Usuário Bloqueado">
+                            <i class="bi bi-lock-fill"></i> Bloqueado
+                        </span>
                         {% endif %}
                         {% if usuario.is_superuser %}
-                            <span class="badge badge-superuser" title="Superusuário - Acesso Total">
-                                <i class="bi bi-crown-fill"></i> Superusuário
-                            </span>
+                        <span class="badge badge-superuser" title="Superusuário - Acesso Total">
+                            <i class="bi bi-crown-fill"></i> Superusuário
+                        </span>
                         {% endif %}
                         {% if usuario.is_staff %}
-                            <span class="badge badge-staff" title="Staff - Acesso ao Admin">
-                                <i class="bi bi-gear-fill"></i> Staff
-                            </span>
+                        <span class="badge badge-staff" title="Staff - Acesso ao Admin">
+                            <i class="bi bi-gear-fill"></i> Staff
+                        </span>
                         {% endif %}
                     </h2>
                     {% if colaborador %}
-                        <p class="mb-0 opacity-75">
-                            <i class="bi bi-person"></i> {{ colaborador.nome_completo }}
-                        </p>
-                        <p class="mb-0 opacity-75 small">
-                            <i class="bi bi-building"></i> {{ colaborador.setor.nome|default:'-' }}
-                            {% if colaborador.cargo %}• {{ colaborador.cargo }}{% endif %}
-                        </p>
+                    <p class="mb-0 opacity-75">
+                        <i class="bi bi-person"></i> {{ colaborador.nome_completo }}
+                    </p>
+                    <p class="mb-0 opacity-75 small">
+                        <i class="bi bi-building"></i> {{ colaborador.setor.nome|default:'-' }}
+                        {% if colaborador.cargo %}• {{ colaborador.cargo }}{% endif %}
+                    </p>
                     {% else %}
-                        <p class="mb-0 opacity-75 fst-italic">
-                            <i class="bi bi-person-dash"></i> Sem colaborador vinculado
-                            <button class="btn btn-sm btn-light ms-2" data-bs-toggle="modal" data-bs-target="#vincularColaboradorModal">
-                                <i class="bi bi-link-45deg"></i> Vincular
-                            </button>
-                        </p>
+                    <p class="mb-0 opacity-75 fst-italic">
+                        <i class="bi bi-person-dash"></i> Sem colaborador vinculado
+                        <button class="btn btn-sm btn-light ms-2" data-bs-toggle="modal"
+                            data-bs-target="#vincularColaboradorModal">
+                            <i class="bi bi-link-45deg"></i> Vincular
+                        </button>
+                    </p>
                     {% endif %}
                 </div>
             </div>
@@ -270,74 +214,74 @@
                         <small class="text-muted d-block">Cadastrado em</small>
                         <strong>{{ usuario.date_joined|date:"d/m/Y" }}</strong>
                     </div>
-                    
+
                     <hr>
-                    
+
                     <!-- Status Ativo/Bloqueado -->
                     <div class="status-row">
                         <div>
                             <small class="text-muted d-block">Status da Conta</small>
                             <span class="badge {% if usuario.is_active %}bg-success{% else %}badge-blocked{% endif %}">
                                 {% if usuario.is_active %}
-                                    <i class="bi bi-check-circle-fill"></i> Ativo
+                                <i class="bi bi-check-circle-fill"></i> Ativo
                                 {% else %}
-                                    <i class="bi bi-lock-fill"></i> Bloqueado
+                                <i class="bi bi-lock-fill"></i> Bloqueado
                                 {% endif %}
                             </span>
                         </div>
                         {% if request.user.is_superuser and usuario.id != request.user.id %}
-                        <button class="btn btn-sm {% if usuario.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %} status-toggle active-toggle" 
-                                data-user-id="{{ usuario.id }}"
-                                title="{% if usuario.is_active %}Bloquear{% else %}Desbloquear{% endif %} usuário">
+                        <button
+                            class="btn btn-sm {% if usuario.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %} status-toggle active-toggle"
+                            data-user-id="{{ usuario.id }}"
+                            title="{% if usuario.is_active %}Bloquear{% else %}Desbloquear{% endif %} usuário">
                             <i class="bi bi-{% if usuario.is_active %}lock{% else %}unlock{% endif %}"></i>
                         </button>
                         {% endif %}
                     </div>
-                    
+
                     <!-- Status de Superusuário -->
                     <div class="status-row">
                         <div>
                             <small class="text-muted d-block">Superusuário</small>
-                            <span class="badge {% if usuario.is_superuser %}badge-superuser{% else %}bg-secondary{% endif %}">
+                            <span
+                                class="badge {% if usuario.is_superuser %}badge-superuser{% else %}bg-secondary{% endif %}">
                                 {% if usuario.is_superuser %}
-                                    <i class="bi bi-crown-fill"></i> Ativo
+                                <i class="bi bi-crown-fill"></i> Ativo
                                 {% else %}
-                                    Inativo
+                                Inativo
                                 {% endif %}
                             </span>
                         </div>
                         {% if request.user.is_superuser and usuario.id != request.user.id %}
-                        <button class="btn btn-sm btn-outline-danger status-toggle superuser-toggle" 
-                                data-user-id="{{ usuario.id }}"
-                                title="Alternar status de Superusuário">
+                        <button class="btn btn-sm btn-outline-danger status-toggle superuser-toggle"
+                            data-user-id="{{ usuario.id }}" title="Alternar status de Superusuário">
                             <i class="bi bi-toggle-{% if usuario.is_superuser %}on{% else %}off{% endif %}"></i>
                         </button>
                         {% endif %}
                     </div>
-                    
+
                     <!-- Status de Staff -->
                     <div class="status-row">
                         <div>
                             <small class="text-muted d-block">Staff</small>
                             <span class="badge {% if usuario.is_staff %}badge-staff{% else %}bg-secondary{% endif %}">
                                 {% if usuario.is_staff %}
-                                    <i class="bi bi-gear-fill"></i> Ativo
+                                <i class="bi bi-gear-fill"></i> Ativo
                                 {% else %}
-                                    Inativo
+                                Inativo
                                 {% endif %}
                             </span>
                         </div>
                         {% if request.user.is_superuser and usuario.id != request.user.id %}
-                        <button class="btn btn-sm btn-outline-warning status-toggle staff-toggle" 
-                                data-user-id="{{ usuario.id }}"
-                                title="Alternar status de Staff">
+                        <button class="btn btn-sm btn-outline-warning status-toggle staff-toggle"
+                            data-user-id="{{ usuario.id }}" title="Alternar status de Staff">
                             <i class="bi bi-toggle-{% if usuario.is_staff %}on{% else %}off{% endif %}"></i>
                         </button>
                         {% endif %}
                     </div>
                 </div>
             </div>
-            
+
             <!-- Ações Rápidas -->
             <div class="card shadow-sm">
                 <div class="card-header bg-light">
@@ -345,26 +289,31 @@
                 </div>
                 <div class="card-body p-2">
                     {% if request.user.is_superuser %}
-                    <button class="btn btn-outline-primary action-btn mb-2" data-bs-toggle="modal" data-bs-target="#resetPasswordModal">
+                    <button class="btn btn-outline-primary action-btn mb-2" data-bs-toggle="modal"
+                        data-bs-target="#resetPasswordModal">
                         <i class="bi bi-key-fill me-2"></i> Resetar Senha
                     </button>
-                    <button class="btn btn-outline-info action-btn mb-2" data-bs-toggle="modal" data-bs-target="#vincularColaboradorModal">
-                        <i class="bi bi-link-45deg me-2"></i> 
+                    <button class="btn btn-outline-info action-btn mb-2" data-bs-toggle="modal"
+                        data-bs-target="#vincularColaboradorModal">
+                        <i class="bi bi-link-45deg me-2"></i>
                         {% if colaborador %}Alterar{% else %}Vincular{% endif %} Colaborador
                     </button>
                     {% if colaborador %}
-                    <button class="btn btn-outline-secondary action-btn desvincular-btn" data-user-id="{{ usuario.id }}">
-                        <i class="bi bi-link-45deg me-2" style="text-decoration: line-through;"></i> Desvincular Colaborador
+                    <button class="btn btn-outline-secondary action-btn desvincular-btn"
+                        data-user-id="{{ usuario.id }}">
+                        <i class="bi bi-link-45deg me-2" style="text-decoration: line-through;"></i> Desvincular
+                        Colaborador
                     </button>
                     {% endif %}
                     {% elif request.user.is_staff %}
                     <div class="alert alert-info mb-0">
-                        <small><i class="bi bi-info-circle"></i> Você pode visualizar as informações, mas apenas superusuários podem fazer alterações.</small>
+                        <small><i class="bi bi-info-circle"></i> Você pode visualizar as informações, mas apenas
+                            superusuários podem fazer alterações.</small>
                     </div>
                     {% endif %}
                 </div>
             </div>
-            
+
             <!-- Autenticadores (2FA) -->
             <div class="card shadow-sm mt-4">
                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
@@ -373,41 +322,45 @@
                 <div class="card-body p-3">
                     <!-- Isenção -->
                     <div class="form-check form-switch mb-3 pb-3 border-bottom">
-                        <input class="form-check-input" type="checkbox" role="switch" id="toggleIsentoTOTP" 
-                               {% if is_isento_totp %}checked{% endif %}
-                               {% if not request.user.is_superuser %}disabled{% endif %}>
-                        <label class="form-check-label fw-bold" for="toggleIsentoTOTP">Isento de Autenticação 2FA</label>
+                        <input class="form-check-input" type="checkbox" role="switch" id="toggleIsentoTOTP" {% if
+                            is_isento_totp %}checked{% endif %} {% if not request.user.is_superuser %}disabled{% endif
+                            %}>
+                        <label class="form-check-label fw-bold" for="toggleIsentoTOTP">Isento de Autenticação
+                            2FA</label>
                         <div class="form-text mt-0">Se ativo, ignora a exigência do TOTP para este usuário.</div>
                     </div>
-                    
+
                     <!-- Lista de Dispositivos -->
                     <h6 class="fw-bold mb-2">Dispositivos Cadastrados</h6>
                     {% if totp_devices %}
-                        <ul class="list-group list-group-flush mb-3" id="listaAutenticadores">
-                            {% for device in totp_devices %}
-                            <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
-                                <div>
-                                    <i class="bi bi-phone me-2 text-primary"></i>
-                                    <strong>{{ device.name }}</strong>
-                                    <br>
-                                    <small class="text-muted">Adicionado em: {{ device.created_at|date:"d/m/Y H:i"|default:"-" }}</small>
-                                </div>
-                                {% if request.user.is_superuser or request.user.id == usuario.id %}
-                                <button class="btn btn-sm btn-outline-danger btn-remover-totp" data-id="{{ device.id }}" title="Remover dispositivo">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                                {% endif %}
-                            </li>
-                            {% endfor %}
-                        </ul>
+                    <ul class="list-group list-group-flush mb-3" id="listaAutenticadores">
+                        {% for device in totp_devices %}
+                        <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi bi-phone me-2 text-primary"></i>
+                                <strong>{{ device.name }}</strong>
+                                <br>
+                                <small class="text-muted">Adicionado em: {{ device.created_at|date:"d/m/Y
+                                    H:i"|default:"-" }}</small>
+                            </div>
+                            {% if request.user.is_superuser or request.user.id == usuario.id %}
+                            <button class="btn btn-sm btn-outline-danger btn-remover-totp" data-id="{{ device.id }}"
+                                title="Remover dispositivo">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
                     {% else %}
-                        <div class="alert alert-secondary py-2 small mb-3 text-center">
-                            Nenhum autenticador cadastrado.
-                        </div>
+                    <div class="alert alert-secondary py-2 small mb-3 text-center">
+                        Nenhum autenticador cadastrado.
+                    </div>
                     {% endif %}
-                    
+
                     {% if request.user.is_superuser or request.user.id == usuario.id %}
-                    <button class="btn btn-sm btn-primary w-100" data-bs-toggle="modal" data-bs-target="#modalAdicionarTOTP">
+                    <button class="btn btn-sm btn-primary w-100" data-bs-toggle="modal"
+                        data-bs-target="#modalAdicionarTOTP">
                         <i class="bi bi-plus-circle me-1"></i> Novo Autenticador
                     </button>
                     {% endif %}
@@ -420,18 +373,16 @@
             {% if usuario.is_superuser %}
             <div class="alert alert-danger mb-4">
                 <i class="bi bi-crown-fill me-2"></i>
-                <strong>Superusuário</strong> tem acesso total ao sistema automaticamente. 
+                <strong>Superusuário</strong> tem acesso total ao sistema automaticamente.
                 Não é necessário configurar permissões individuais.
             </div>
             {% endif %}
-            
+
             <div class="accordion" id="modulosAccordion">
                 {% for modulo in modulos %}
                 <div class="card module-card border-{{ modulo.cor }} shadow-sm mb-3">
-                    <div class="card-header bg-{{ modulo.cor }} text-white module-header collapsed p-0" 
-                         data-bs-toggle="collapse" 
-                         data-bs-target="#collapse{{ forloop.counter }}"
-                        aria-expanded="false">
+                    <div class="card-header bg-{{ modulo.cor }} text-white module-header collapsed p-0"
+                        data-bs-toggle="collapse" data-bs-target="#collapse{{ forloop.counter }}" aria-expanded="false">
                         <div class="d-flex align-items-center justify-content-between p-3">
                             <div class="d-flex align-items-center gap-3">
                                 <i class="{{ modulo.icone }} fs-5"></i>
@@ -439,17 +390,17 @@
                             </div>
                             <div class="d-flex align-items-center gap-3">
                                 <div class="form-check form-switch mb-0" onclick="event.stopPropagation()">
-                                    <input type="checkbox"
-                                           class="form-check-input perm-checkbox"
-                                           id="perm_{{ modulo.module_perm.app_label }}_{{ modulo.module_perm.codename }}"
-                                           data-codename="{{ modulo.module_perm.codename }}"
-                                           data-user-id="{{ usuario.id }}"
-                                           data-app-label="{{ modulo.module_perm.app_label }}"
-                                           {% with perm_key=modulo.module_perm.full %}
-                                           {% if perm_key in user_perms or usuario.is_superuser %}checked{% endif %}
-                                           {% endwith %}
-                                           {% if usuario.is_superuser or not request.user.is_superuser %}disabled{% endif %}>
-                                    <label class="form-check-label text-white small" for="perm_{{ modulo.module_perm.app_label }}_{{ modulo.module_perm.codename }}">No menu</label>
+                                    <input type="checkbox" class="form-check-input perm-checkbox"
+                                        id="perm_{{ modulo.module_perm.app_label }}_{{ modulo.module_perm.codename }}"
+                                        data-codename="{{ modulo.module_perm.codename }}"
+                                        data-user-id="{{ usuario.id }}"
+                                        data-app-label="{{ modulo.module_perm.app_label }}" {% with
+                                        perm_key=modulo.module_perm.full %} {% if perm_key in user_perms or
+                                        usuario.is_superuser %}checked{% endif %} {% endwith %} {% if
+                                        usuario.is_superuser or not request.user.is_superuser %}disabled{% endif %}>
+                                    <label class="form-check-label text-white small"
+                                        for="perm_{{ modulo.module_perm.app_label }}_{{ modulo.module_perm.codename }}">No
+                                        menu</label>
                                 </div>
                                 <i class="bi bi-chevron-down collapse-icon"></i>
                             </div>
@@ -460,50 +411,55 @@
                             <div class="accordion" id="blocosAccordion{{ forloop.counter }}">
                                 {% for bloco in modulo.blocos %}
                                 <div class="card border mb-2">
-                                     <div class="card-header bg-light block-header collapsed p-0"
-                                         data-bs-toggle="collapse"
-                                         data-bs-target="#collapse{{ forloop.parentloop.counter }}_{{ forloop.counter }}"
-                                         aria-expanded="false">
+                                    <div class="card-header bg-light block-header collapsed p-0"
+                                        data-bs-toggle="collapse"
+                                        data-bs-target="#collapse{{ forloop.parentloop.counter }}_{{ forloop.counter }}"
+                                        aria-expanded="false">
                                         <div class="d-flex align-items-center justify-content-between px-3 py-2">
                                             <div class="d-flex align-items-center gap-2">
                                                 <i class="bi bi-folder2-open text-muted"></i>
                                                 <strong class="small text-uppercase">{{ bloco.nome }}</strong>
                                             </div>
                                             <div class="d-flex align-items-center gap-3">
-                                                <div class="form-check form-switch mb-0" onclick="event.stopPropagation()">
-                                                    <input type="checkbox"
-                                                           class="form-check-input perm-checkbox"
-                                                           id="perm_{{ bloco.perm.app_label }}_{{ bloco.perm.codename }}"
-                                                           data-codename="{{ bloco.perm.codename }}"
-                                                           data-user-id="{{ usuario.id }}"
-                                                           data-app-label="{{ bloco.perm.app_label }}"
-                                                           {% with perm_key=bloco.perm.full %}
-                                                           {% if perm_key in user_perms or usuario.is_superuser %}checked{% endif %}
-                                                           {% endwith %}
-                                                           {% if usuario.is_superuser or not request.user.is_superuser %}disabled{% endif %}>
-                                                    <label class="form-check-label small" for="perm_{{ bloco.perm.app_label }}_{{ bloco.perm.codename }}">Exibir bloco</label>
+                                                <div class="form-check form-switch mb-0"
+                                                    onclick="event.stopPropagation()">
+                                                    <input type="checkbox" class="form-check-input perm-checkbox"
+                                                        id="perm_{{ bloco.perm.app_label }}_{{ bloco.perm.codename }}"
+                                                        data-codename="{{ bloco.perm.codename }}"
+                                                        data-user-id="{{ usuario.id }}"
+                                                        data-app-label="{{ bloco.perm.app_label }}" {% with
+                                                        perm_key=bloco.perm.full %} {% if perm_key in user_perms or
+                                                        usuario.is_superuser %}checked{% endif %} {% endwith %} {% if
+                                                        usuario.is_superuser or not request.user.is_superuser
+                                                        %}disabled{% endif %}>
+                                                    <label class="form-check-label small"
+                                                        for="perm_{{ bloco.perm.app_label }}_{{ bloco.perm.codename }}">Exibir
+                                                        bloco</label>
                                                 </div>
                                                 <i class="bi bi-chevron-down collapse-icon text-muted"></i>
                                             </div>
                                         </div>
                                     </div>
-                                    <div id="collapse{{ forloop.parentloop.counter }}_{{ forloop.counter }}" class="collapse" data-bs-parent="#blocosAccordion{{ forloop.parentloop.counter }}">
+                                    <div id="collapse{{ forloop.parentloop.counter }}_{{ forloop.counter }}"
+                                        class="collapse"
+                                        data-bs-parent="#blocosAccordion{{ forloop.parentloop.counter }}">
                                         <div class="list-group list-group-flush">
                                             {% for funcao in bloco.funcoes %}
-                                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                            <div
+                                                class="list-group-item d-flex justify-content-between align-items-center">
                                                 <div class="small">{{ funcao.nome }}</div>
                                                 <div class="form-check form-switch mb-0">
-                                                    <input type="checkbox"
-                                                           class="form-check-input perm-checkbox"
-                                                           id="perm_{{ funcao.perm.app_label }}_{{ funcao.perm.codename }}"
-                                                           data-codename="{{ funcao.perm.codename }}"
-                                                           data-user-id="{{ usuario.id }}"
-                                                           data-app-label="{{ funcao.perm.app_label }}"
-                                                           {% with perm_key=funcao.perm.full %}
-                                                           {% if perm_key in user_perms or usuario.is_superuser %}checked{% endif %}
-                                                           {% endwith %}
-                                                           {% if usuario.is_superuser or not request.user.is_superuser %}disabled{% endif %}>
-                                                    <label class="form-check-label small" for="perm_{{ funcao.perm.app_label }}_{{ funcao.perm.codename }}">Acessar</label>
+                                                    <input type="checkbox" class="form-check-input perm-checkbox"
+                                                        id="perm_{{ funcao.perm.app_label }}_{{ funcao.perm.codename }}"
+                                                        data-codename="{{ funcao.perm.codename }}"
+                                                        data-user-id="{{ usuario.id }}"
+                                                        data-app-label="{{ funcao.perm.app_label }}" {% with
+                                                        perm_key=funcao.perm.full %} {% if perm_key in user_perms or
+                                                        usuario.is_superuser %}checked{% endif %} {% endwith %} {% if
+                                                        usuario.is_superuser or not request.user.is_superuser
+                                                        %}disabled{% endif %}>
+                                                    <label class="form-check-label small"
+                                                        for="perm_{{ funcao.perm.app_label }}_{{ funcao.perm.codename }}">Acessar</label>
                                                 </div>
                                             </div>
                                             {% endfor %}
@@ -517,21 +473,24 @@
                 </div>
                 {% endfor %}
             </div>
-            
+
             {% if not usuario.is_superuser %}
             {% if request.user.is_superuser %}
             <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
                 <div class="alert alert-secondary mb-0 flex-grow-1">
                     <small>
                         <i class="bi bi-lightbulb"></i>
-                        <strong>Dica:</strong> Marque as permissões desejadas e clique em "Salvar Permissões" para aplicar as alterações.
+                        <strong>Dica:</strong> Marque as permissões desejadas e clique em "Salvar Permissões" para
+                        aplicar as alterações.
                     </small>
                 </div>
                 <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-outline-primary btn-lg" data-bs-toggle="modal" data-bs-target="#copyPermissoesModal" style="min-width: 200px;">
+                    <button type="button" class="btn btn-outline-primary btn-lg" data-bs-toggle="modal"
+                        data-bs-target="#copyPermissoesModal" style="min-width: 200px;">
                         <i class="bi bi-copy me-2"></i>Copiar permissões
                     </button>
-                    <button type="button" class="btn btn-success btn-lg" id="btnSalvarPermissoes" style="min-width: 200px;">
+                    <button type="button" class="btn btn-success btn-lg" id="btnSalvarPermissoes"
+                        style="min-width: 200px;">
                         <i class="bi bi-save me-2"></i>Salvar Permissões
                     </button>
                 </div>
@@ -540,7 +499,8 @@
             <div class="alert alert-info mb-0">
                 <small>
                     <i class="bi bi-info-circle"></i>
-                    <strong>Atenção:</strong> Você pode visualizar as permissões, mas apenas superusuários podem modificá-las.
+                    <strong>Atenção:</strong> Você pode visualizar as permissões, mas apenas superusuários podem
+                    modificá-las.
                 </small>
             </div>
             {% endif %}
@@ -570,7 +530,8 @@
                 <div id="resetPasswordForm">
                     <div class="alert alert-warning">
                         <i class="bi bi-exclamation-triangle me-2"></i>
-                        <strong>Atenção!</strong> Uma nova senha temporária será gerada para o usuário <strong>{{ usuario.username }}</strong>.
+                        <strong>Atenção!</strong> Uma nova senha temporária será gerada para o usuário <strong>{{
+                            usuario.username }}</strong>.
                     </div>
                     <p class="text-muted">
                         O usuário deverá alterar a senha no próximo login.
@@ -613,7 +574,8 @@
             </div>
             <div class="modal-body">
                 <div class="mb-3">
-                    <input type="text" class="form-control" id="searchColaborador" placeholder="Buscar colaborador por nome...">
+                    <input type="text" class="form-control" id="searchColaborador"
+                        placeholder="Buscar colaborador por nome...">
                 </div>
                 <div id="colaboradoresList" style="max-height: 400px; overflow-y: auto;">
                     <div class="text-center py-4">
@@ -647,11 +609,13 @@
             <div class="modal-body">
                 <div class="alert alert-secondary mb-3">
                     <small>
-                        Selecione um usuário abaixo e clique em <strong>Aplicar</strong> para igualar as permissões de <strong>módulos, blocos e funções</strong> de <strong>{{ usuario.username }}</strong>.
+                        Selecione um usuário abaixo e clique em <strong>Aplicar</strong> para igualar as permissões de
+                        <strong>módulos, blocos e funções</strong> de <strong>{{ usuario.username }}</strong>.
                     </small>
                 </div>
                 <div class="mb-3">
-                    <input type="text" class="form-control" id="searchUsuarioPerm" placeholder="Buscar usuário por nome, username ou e-mail...">
+                    <input type="text" class="form-control" id="searchUsuarioPerm"
+                        placeholder="Buscar usuário por nome, username ou e-mail...">
                 </div>
                 <div id="usuariosPermList" style="max-height: 420px; overflow-y: auto;">
                     <div class="text-center py-4">
@@ -687,99 +651,99 @@
 
 {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const savingIndicator = document.getElementById('savingIndicator');
-    const toast = new bootstrap.Toast(document.getElementById('toastNotification'), { delay: 2000 });
-    const toastEl = document.getElementById('toastNotification');
-    const toastMessage = document.getElementById('toastMessage');
-    
-    let selectedColaboradorId = null;
-    let selectedUsuarioPermId = null;
-    
-    function showToast(message, isSuccess = true) {
-        toastEl.classList.remove('text-bg-success', 'text-bg-danger');
-        toastEl.classList.add(isSuccess ? 'text-bg-success' : 'text-bg-danger');
-        toastMessage.textContent = message;
-        toast.show();
-    }
-    
-    function showSaving(show) {
-        savingIndicator.classList.toggle('active', show);
-    }
-    
-    // Handler para salvar todas as permissões
-    document.getElementById('btnSalvarPermissoes')?.addEventListener('click', async function() {
-        const btn = this;
-        const originalHtml = btn.innerHTML;
-        
-        // Desabilitar botão
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvando...';
-        showSaving(true);
-        
-        try {
-            // Coletar todas as permissões marcadas, agrupadas por app_label
-            const permissoesPorApp = {};
-            
-            document.querySelectorAll('.perm-checkbox:not([disabled])').forEach(checkbox => {
-                const appLabel = checkbox.dataset.appLabel;
-                const codename = checkbox.dataset.codename;
-                
-                if (!permissoesPorApp[appLabel]) {
-                    permissoesPorApp[appLabel] = [];
-                }
-                
-                if (checkbox.checked) {
-                    permissoesPorApp[appLabel].push(codename);
-                }
-            });
-            
-            console.log('Enviando permissões:', permissoesPorApp);
-            
-            // Enviar para API
-            const response = await fetch("{% url 'rh:api_atualizar_permissoes_lote' %}", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
-                },
-                body: JSON.stringify({
-                    user_id: {{ usuario.id }},
+    document.addEventListener('DOMContentLoaded', function () {
+        const savingIndicator = document.getElementById('savingIndicator');
+        const toast = new bootstrap.Toast(document.getElementById('toastNotification'), { delay: 2000 });
+        const toastEl = document.getElementById('toastNotification');
+        const toastMessage = document.getElementById('toastMessage');
+
+        let selectedColaboradorId = null;
+        let selectedUsuarioPermId = null;
+
+        function showToast(message, isSuccess = true) {
+            toastEl.classList.remove('text-bg-success', 'text-bg-danger');
+            toastEl.classList.add(isSuccess ? 'text-bg-success' : 'text-bg-danger');
+            toastMessage.textContent = message;
+            toast.show();
+        }
+
+        function showSaving(show) {
+            savingIndicator.classList.toggle('active', show);
+        }
+
+        // Handler para salvar todas as permissões
+        document.getElementById('btnSalvarPermissoes')?.addEventListener('click', async function () {
+            const btn = this;
+            const originalHtml = btn.innerHTML;
+
+            // Desabilitar botão
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvando...';
+            showSaving(true);
+
+            try {
+                // Coletar todas as permissões marcadas, agrupadas por app_label
+                const permissoesPorApp = {};
+
+                document.querySelectorAll('.perm-checkbox:not([disabled])').forEach(checkbox => {
+                    const appLabel = checkbox.dataset.appLabel;
+                    const codename = checkbox.dataset.codename;
+
+                    if (!permissoesPorApp[appLabel]) {
+                        permissoesPorApp[appLabel] = [];
+                    }
+
+                    if (checkbox.checked) {
+                        permissoesPorApp[appLabel].push(codename);
+                    }
+                });
+
+                console.log('Enviando permissões:', permissoesPorApp);
+
+                // Enviar para API
+                const response = await fetch("{% url 'rh:api_atualizar_permissoes_lote' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        user_id: {{ usuario.id }},
                     permissoes: permissoesPorApp
                 })
-            });
-            
-            const data = await response.json();
-            console.log('Resposta da API:', data);
-            
-            if (data.success) {
-                showToast(`${data.total} permissões salvas com sucesso!`, true);
-            } else {
-                showToast(data.error || 'Erro ao salvar permissões', false);
-            }
-        } catch (error) {
-            console.error('Erro:', error);
-            showToast('Erro de conexão', false);
-        } finally {
-            // Reabilitar botão
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
-            showSaving(false);
-        }
     });
-    
+
+    const data = await response.json();
+    console.log('Resposta da API:', data);
+
+    if (data.success) {
+        showToast(`${data.total} permissões salvas com sucesso!`, true);
+    } else {
+        showToast(data.error || 'Erro ao salvar permissões', false);
+    }
+        } catch (error) {
+        console.error('Erro:', error);
+        showToast('Erro de conexão', false);
+    } finally {
+        // Reabilitar botão
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+        showSaving(false);
+    }
+    });
+
     // Handler para toggle de ativo/bloqueado
     document.querySelectorAll('.active-toggle').forEach(btn => {
-        btn.addEventListener('click', async function() {
+        btn.addEventListener('click', async function () {
             const userId = this.dataset.userId;
             const isActive = this.querySelector('i').classList.contains('bi-lock');
-            
+
             if (isActive && !confirm('Tem certeza que deseja BLOQUEAR este usuário? Ele não poderá mais acessar o sistema.')) {
                 return;
             }
-            
+
             showSaving(true);
-            
+
             try {
                 const response = await fetch("{% url 'rh:api_toggle_user_active' %}", {
                     method: 'POST',
@@ -789,9 +753,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     },
                     body: JSON.stringify({ user_id: userId })
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (data.success) {
                     showToast(data.message, true);
                     setTimeout(() => location.reload(), 1000);
@@ -806,14 +770,14 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-    
+
     // Handler para toggle de staff
     document.querySelectorAll('.staff-toggle').forEach(btn => {
-        btn.addEventListener('click', async function() {
+        btn.addEventListener('click', async function () {
             const userId = this.dataset.userId;
-            
+
             showSaving(true);
-            
+
             try {
                 const response = await fetch("{% url 'rh:api_toggle_staff' %}", {
                     method: 'POST',
@@ -823,9 +787,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     },
                     body: JSON.stringify({ user_id: userId })
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (data.success) {
                     showToast(data.message, true);
                     setTimeout(() => location.reload(), 1000);
@@ -840,18 +804,18 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-    
+
     // Handler para toggle de superuser
     document.querySelectorAll('.superuser-toggle').forEach(btn => {
-        btn.addEventListener('click', async function() {
+        btn.addEventListener('click', async function () {
             const userId = this.dataset.userId;
-            
+
             if (!confirm('Tem certeza que deseja alterar o status de Superusuário? Esta ação concede ou remove acesso total ao sistema.')) {
                 return;
             }
-            
+
             showSaving(true);
-            
+
             try {
                 const response = await fetch("{% url 'rh:api_toggle_superuser' %}", {
                     method: 'POST',
@@ -861,9 +825,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     },
                     body: JSON.stringify({ user_id: userId })
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (data.success) {
                     showToast(data.message, true);
                     setTimeout(() => location.reload(), 1000);
@@ -878,13 +842,13 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-    
+
     // Handler para reset de senha
-    document.getElementById('confirmResetPassword').addEventListener('click', async function() {
+    document.getElementById('confirmResetPassword').addEventListener('click', async function () {
         const btn = this;
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Gerando...';
-        
+
         try {
             const response = await fetch("{% url 'rh:api_reset_password' %}", {
                 method: 'POST',
@@ -894,36 +858,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 body: JSON.stringify({ user_id: {{ usuario.id }} })
             });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                document.getElementById('resetPasswordForm').style.display = 'none';
-                document.getElementById('resetPasswordResult').style.display = 'block';
-                document.getElementById('newPassword').textContent = data.temp_password;
-                btn.style.display = 'none';
-                
-                // Copiar ao clicar na senha
-                document.getElementById('newPassword').style.cursor = 'pointer';
-                document.getElementById('newPassword').addEventListener('click', function() {
-                    navigator.clipboard.writeText(this.textContent);
-                    showToast('Senha copiada para a área de transferência!', true);
-                });
-            } else {
-                showToast(data.error || 'Erro ao resetar senha', false);
-                btn.disabled = false;
-                btn.innerHTML = '<i class="bi bi-key me-1"></i> Gerar Nova Senha';
-            }
+
+    const data = await response.json();
+
+    if (data.success) {
+        document.getElementById('resetPasswordForm').style.display = 'none';
+        document.getElementById('resetPasswordResult').style.display = 'block';
+        document.getElementById('newPassword').textContent = data.temp_password;
+        btn.style.display = 'none';
+
+        // Copiar ao clicar na senha
+        document.getElementById('newPassword').style.cursor = 'pointer';
+        document.getElementById('newPassword').addEventListener('click', function () {
+            navigator.clipboard.writeText(this.textContent);
+            showToast('Senha copiada para a área de transferência!', true);
+        });
+    } else {
+        showToast(data.error || 'Erro ao resetar senha', false);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-key me-1"></i> Gerar Nova Senha';
+    }
         } catch (error) {
-            console.error('Erro:', error);
-            showToast('Erro de conexão', false);
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-key me-1"></i> Gerar Nova Senha';
-        }
+        console.error('Erro:', error);
+        showToast('Erro de conexão', false);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-key me-1"></i> Gerar Nova Senha';
+    }
     });
-    
+
     // Reset modal ao fechar
-    document.getElementById('resetPasswordModal').addEventListener('hidden.bs.modal', function() {
+    document.getElementById('resetPasswordModal').addEventListener('hidden.bs.modal', function () {
         document.getElementById('resetPasswordForm').style.display = 'block';
         document.getElementById('resetPasswordResult').style.display = 'none';
         const btn = document.getElementById('confirmResetPassword');
@@ -931,23 +895,23 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-key me-1"></i> Gerar Nova Senha';
     });
-    
+
     // Carregar colaboradores quando abrir modal
-    document.getElementById('vincularColaboradorModal').addEventListener('show.bs.modal', function() {
+    document.getElementById('vincularColaboradorModal').addEventListener('show.bs.modal', function () {
         document.getElementById('searchColaborador').value = '';
         loadColaboradores('');
     });
 
     // Carregar usuários quando abrir modal de copiar permissões
-    document.getElementById('copyPermissoesModal')?.addEventListener('show.bs.modal', function() {
+    document.getElementById('copyPermissoesModal')?.addEventListener('show.bs.modal', function () {
         selectedUsuarioPermId = null;
         document.getElementById('confirmCopyPerms').disabled = true;
         document.getElementById('searchUsuarioPerm').value = '';
         loadUsuariosPermissoes('');
     });
-    
+
     let searchTimeout = null;
-    
+
     async function loadColaboradores(search = '') {
         const listEl = document.getElementById('colaboradoresList');
         listEl.innerHTML = `
@@ -958,17 +922,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 <p class="mt-2 text-muted">Carregando colaboradores...</p>
             </div>
         `;
-        
+
         try {
             const url = new URL("{% url 'rh:api_colaboradores_sem_vinculo' %}", window.location.origin);
             url.searchParams.set('user_id', '{{ usuario.id }}');
             if (search) {
                 url.searchParams.set('search', search);
             }
-            
+
             const response = await fetch(url);
             const data = await response.json();
-            
+
             if (data.success) {
                 renderColaboradores(data.colaboradores);
             } else {
@@ -1043,7 +1007,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }).join('');
 
         listEl.querySelectorAll('.usuario-perm-item').forEach(item => {
-            item.addEventListener('click', function() {
+            item.addEventListener('click', function () {
                 const isSuper = this.dataset.isSuperuser === 'true';
                 if (isSuper) {
                     if (!confirm('O usuário selecionado é SUPERUSUÁRIO. Ele tem acesso total automaticamente e pode não ter permissões individuais configuradas. Deseja continuar?')) {
@@ -1066,20 +1030,20 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
-    
+
     function renderColaboradores(colaboradores) {
         const listEl = document.getElementById('colaboradoresList');
-        
+
         if (colaboradores.length === 0) {
             listEl.innerHTML = '<div class="alert alert-info">Nenhum colaborador encontrado. Tente outra busca.</div>';
             return;
         }
-        
+
         listEl.innerHTML = colaboradores.map(c => {
             let statusBadge = '';
             let disabled = '';
             let icon = 'bi-circle';
-            
+
             if (c.vinculado) {
                 statusBadge = '<span class="badge bg-primary ms-2">Vinculado a este usuário</span>';
                 icon = 'bi-check-circle-fill text-primary';
@@ -1087,7 +1051,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 statusBadge = `<span class="badge bg-secondary ms-2">Vinculado a: ${c.usuario_vinculado}</span>`;
                 disabled = 'opacity-50';
             }
-            
+
             return `
                 <div class="colaborador-item card mb-2 ${c.vinculado ? 'selected border-primary' : ''} ${disabled}" 
                      data-id="${c.id}" data-vinculado-outro="${c.vinculado_outro}">
@@ -1103,17 +1067,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             `;
         }).join('');
-        
+
         // Adicionar handlers
         listEl.querySelectorAll('.colaborador-item').forEach(item => {
-            item.addEventListener('click', function() {
+            item.addEventListener('click', function () {
                 // Avisar se já está vinculado a outro usuário
                 if (this.dataset.vinculadoOutro === 'true') {
                     if (!confirm('Este colaborador já está vinculado a outro usuário. Deseja transferir o vínculo para este usuário?')) {
                         return;
                     }
                 }
-                
+
                 listEl.querySelectorAll('.colaborador-item').forEach(i => {
                     i.classList.remove('selected', 'border-primary');
                     const iconEl = i.querySelector('i');
@@ -1128,22 +1092,22 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
-    
+
     // Filtro de busca com debounce
-    document.getElementById('searchColaborador').addEventListener('input', function() {
+    document.getElementById('searchColaborador').addEventListener('input', function () {
         const search = this.value.trim();
-        
+
         if (searchTimeout) {
             clearTimeout(searchTimeout);
         }
-        
+
         searchTimeout = setTimeout(() => {
             loadColaboradores(search);
         }, 300);
     });
 
     // Busca de usuários para copiar permissões (debounce)
-    document.getElementById('searchUsuarioPerm')?.addEventListener('input', function() {
+    document.getElementById('searchUsuarioPerm')?.addEventListener('input', function () {
         const search = this.value.trim();
 
         if (searchTimeout) {
@@ -1156,7 +1120,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Confirmar cópia de permissões
-    document.getElementById('confirmCopyPerms')?.addEventListener('click', async function() {
+    document.getElementById('confirmCopyPerms')?.addEventListener('click', async function () {
         if (!selectedUsuarioPermId) return;
 
         if (!confirm('Tem certeza que deseja substituir as permissões de MÓDULOS, BLOCOS e FUNÇÕES deste usuário pelas do usuário selecionado?')) {
@@ -1178,50 +1142,50 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 body: JSON.stringify({
                     target_user_id: {{ usuario.id }},
-                    source_user_id: Number(selectedUsuarioPermId)
+                source_user_id: Number(selectedUsuarioPermId)
                 })
             });
 
-            const data = await response.json();
-            if (data.success) {
-                showToast(data.message || 'Permissões copiadas com sucesso!', true);
+    const data = await response.json();
+    if (data.success) {
+        showToast(data.message || 'Permissões copiadas com sucesso!', true);
 
-                // Atualizar UI (core.nav_*) sem reload
-                const appliedNav = new Set(((data.core_nav || data.modules) || []).map(String));
-                document.querySelectorAll('.perm-checkbox[data-app-label="core"]').forEach(cb => {
-                    if (cb.disabled) return;
-                    const codename = String(cb.dataset.codename || '');
-                    if (!codename.startsWith('nav_')) return;
-                    cb.checked = appliedNav.has(codename);
-                });
+        // Atualizar UI (core.nav_*) sem reload
+        const appliedNav = new Set(((data.core_nav || data.modules) || []).map(String));
+        document.querySelectorAll('.perm-checkbox[data-app-label="core"]').forEach(cb => {
+            if (cb.disabled) return;
+            const codename = String(cb.dataset.codename || '');
+            if (!codename.startsWith('nav_')) return;
+            cb.checked = appliedNav.has(codename);
+        });
 
-                // Fechar modal
-                const modalEl = document.getElementById('copyPermissoesModal');
-                const modalInstance = modalEl ? bootstrap.Modal.getInstance(modalEl) : null;
-                modalInstance?.hide();
-            } else {
-                showToast(data.error || 'Erro ao copiar permissões', false);
-                btn.disabled = false;
-                btn.innerHTML = originalHtml;
-            }
+        // Fechar modal
+        const modalEl = document.getElementById('copyPermissoesModal');
+        const modalInstance = modalEl ? bootstrap.Modal.getInstance(modalEl) : null;
+        modalInstance?.hide();
+    } else {
+        showToast(data.error || 'Erro ao copiar permissões', false);
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
         } catch (error) {
-            console.error('Erro:', error);
-            showToast('Erro de conexão', false);
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
-        } finally {
-            showSaving(false);
-        }
+        console.error('Erro:', error);
+        showToast('Erro de conexão', false);
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    } finally {
+        showSaving(false);
+    }
     });
-    
+
     // Confirmar vinculação
-    document.getElementById('confirmVincular').addEventListener('click', async function() {
+    document.getElementById('confirmVincular').addEventListener('click', async function () {
         if (!selectedColaboradorId) return;
-        
+
         const btn = this;
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Vinculando...';
-        
+
         try {
             const response = await fetch("{% url 'rh:api_vincular_colaborador' %}", {
                 method: 'POST',
@@ -1231,37 +1195,37 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 body: JSON.stringify({
                     user_id: {{ usuario.id }},
-                    colaborador_id: selectedColaboradorId
+                colaborador_id: selectedColaboradorId
                 })
             });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                showToast(data.message, true);
-                setTimeout(() => location.reload(), 1000);
-            } else {
-                showToast(data.error || 'Erro ao vincular', false);
-                btn.disabled = false;
-                btn.innerHTML = '<i class="bi bi-link-45deg me-1"></i> Vincular Selecionado';
-            }
+
+    const data = await response.json();
+
+    if (data.success) {
+        showToast(data.message, true);
+        setTimeout(() => location.reload(), 1000);
+    } else {
+        showToast(data.error || 'Erro ao vincular', false);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-link-45deg me-1"></i> Vincular Selecionado';
+    }
         } catch (error) {
-            console.error('Erro:', error);
-            showToast('Erro de conexão', false);
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-link-45deg me-1"></i> Vincular Selecionado';
-        }
+        console.error('Erro:', error);
+        showToast('Erro de conexão', false);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-link-45deg me-1"></i> Vincular Selecionado';
+    }
     });
-    
+
     // Desvincular colaborador
     document.querySelectorAll('.desvincular-btn').forEach(btn => {
-        btn.addEventListener('click', async function() {
+        btn.addEventListener('click', async function () {
             if (!confirm('Tem certeza que deseja desvincular o colaborador deste usuário?')) {
                 return;
             }
-            
+
             const userId = this.dataset.userId;
-            
+
             try {
                 const response = await fetch("{% url 'rh:api_vincular_colaborador' %}", {
                     method: 'POST',
@@ -1274,9 +1238,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         colaborador_id: null
                     })
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (data.success) {
                     showToast(data.message, true);
                     setTimeout(() => location.reload(), 1000);
@@ -1289,7 +1253,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-    
+
     // Expandir/Recolher módulos e blocos - atualizar ícone
     document.querySelectorAll('.module-header, .block-header').forEach(header => {
         const target = document.querySelector(header.dataset.bsTarget);
@@ -1322,14 +1286,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     <input type="text" class="form-control mb-3" id="totpDeviceName" placeholder="Nome do dispositivo">
                     <button class="btn btn-primary w-100" id="btnGerarTOTP">Gerar QR Code</button>
                 </div>
-                
+
                 <div id="totpStep2" class="d-none text-center">
-                    <p class="mb-2">Escaneie o QR Code usando seu aplicativo de autenticação (Google Authenticator, Authy, etc).</p>
+                    <p class="mb-2">Escaneie o QR Code usando seu aplicativo de autenticação (Google Authenticator,
+                        Authy, etc).</p>
                     <div id="totpQRCode" class="d-flex justify-content-center bg-white p-3 border rounded mb-3"></div>
                     <input type="hidden" id="newTotpDeviceId">
-                    
+
                     <p class="mb-2 fw-bold">Para concluir, digite o código de 6 dígitos gerado pelo aplicativo:</p>
-                    <input type="text" class="form-control text-center fs-4 letter-spacing-1 mb-3 mx-auto" id="totpToken" placeholder="000000" maxlength="6" style="max-width: 200px; letter-spacing: 0.5em;">
+                    <input type="text" class="form-control text-center fs-4 letter-spacing-1 mb-3 mx-auto"
+                        id="totpToken" placeholder="000000" maxlength="6"
+                        style="max-width: 200px; letter-spacing: 0.5em;">
                     <button class="btn btn-success w-100" id="btnConfirmarTOTP">Validar e Salvar</button>
                 </div>
             </div>
@@ -1338,40 +1305,40 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Toggle Isenção TOTP
-    const toggleIsentoTOTP = document.getElementById('toggleIsentoTOTP');
-    if (toggleIsentoTOTP) {
-        toggleIsentoTOTP.addEventListener('change', async function() {
-            try {
-                const response = await fetch("{% url 'rh:api_totp_toggle_isencao' %}", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': '{{ csrf_token }}'
-                    },
-                    body: JSON.stringify({
-                        user_id: {{ usuario.id }},
+    document.addEventListener('DOMContentLoaded', function () {
+        // Toggle Isenção TOTP
+        const toggleIsentoTOTP = document.getElementById('toggleIsentoTOTP');
+        if (toggleIsentoTOTP) {
+            toggleIsentoTOTP.addEventListener('change', async function () {
+                try {
+                    const response = await fetch("{% url 'rh:api_totp_toggle_isencao' %}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({
+                            user_id: {{ usuario.id }},
                         is_isento: this.checked
                     })
-                });
-                const data = await response.json();
-                if (data.success) {
-                    showToast('Status de isenção atualizado', true);
-                } else {
-                    showToast(data.error || 'Erro ao atualizar status', false);
-                    this.checked = !this.checked;
-                }
-            } catch(e) {
-                showToast('Erro de rede', false);
-                this.checked = !this.checked;
-            }
+        });
+    const data = await response.json();
+    if (data.success) {
+        showToast('Status de isenção atualizado', true);
+    } else {
+        showToast(data.error || 'Erro ao atualizar status', false);
+        this.checked = !this.checked;
+    }
+            } catch (e) {
+        showToast('Erro de rede', false);
+        this.checked = !this.checked;
+    }
         });
     }
 
     // Remover TOTP
     document.querySelectorAll('.btn-remover-totp').forEach(btn => {
-        btn.addEventListener('click', async function() {
+        btn.addEventListener('click', async function () {
             if (!confirm('Remover este autenticador? O usuário não poderá mais usá-lo para acessar/aprovar.')) return;
             try {
                 const response = await fetch("{% url 'rh:api_totp_remover' %}", {
@@ -1386,7 +1353,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     showToast(data.error || 'Erro ao remover', false);
                 }
-            } catch(e) {
+            } catch (e) {
                 showToast('Erro de rede', false);
             }
         });
@@ -1395,7 +1362,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Modal Gerar
     const modalAdicionarTOTP = document.getElementById('modalAdicionarTOTP');
     if (modalAdicionarTOTP) {
-        modalAdicionarTOTP.addEventListener('show.bs.modal', function() {
+        modalAdicionarTOTP.addEventListener('show.bs.modal', function () {
             document.getElementById('totpStep1').classList.remove('d-none');
             document.getElementById('totpStep2').classList.add('d-none');
             document.getElementById('totpDeviceName').value = '';
@@ -1404,7 +1371,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    document.getElementById('btnGerarTOTP').addEventListener('click', async function() {
+    document.getElementById('btnGerarTOTP').addEventListener('click', async function () {
         const nome = document.getElementById('totpDeviceName').value.trim() || 'Meu Celular';
         const btn = this;
         btn.disabled = true;
@@ -1415,37 +1382,37 @@ document.addEventListener('DOMContentLoaded', function() {
                 headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
                 body: JSON.stringify({ user_id: {{ usuario.id }}, nome: nome })
             });
-            const data = await response.json();
-            if (data.success) {
-                document.getElementById('totpStep1').classList.add('d-none');
-                document.getElementById('totpStep2').classList.remove('d-none');
-                document.getElementById('newTotpDeviceId').value = data.device_id;
-                
-                document.getElementById('totpQRCode').innerHTML = '';
-                new QRCode(document.getElementById('totpQRCode'), {
-                    text: data.url,
-                    width: 200,
-                    height: 200,
-                });
-            } else {
-                showToast(data.error || 'Erro ao gerar', false);
-            }
-        } catch(e) {
-            showToast('Erro de rede', false);
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = 'Gerar QR Code';
-        }
+    const data = await response.json();
+    if (data.success) {
+        document.getElementById('totpStep1').classList.add('d-none');
+        document.getElementById('totpStep2').classList.remove('d-none');
+        document.getElementById('newTotpDeviceId').value = data.device_id;
+
+        document.getElementById('totpQRCode').innerHTML = '';
+        new QRCode(document.getElementById('totpQRCode'), {
+            text: data.url,
+            width: 200,
+            height: 200,
+        });
+    } else {
+        showToast(data.error || 'Erro ao gerar', false);
+    }
+        } catch (e) {
+        showToast('Erro de rede', false);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Gerar QR Code';
+    }
     });
 
-    document.getElementById('btnConfirmarTOTP').addEventListener('click', async function() {
+    document.getElementById('btnConfirmarTOTP').addEventListener('click', async function () {
         const token = document.getElementById('totpToken').value.trim();
         if (token.length !== 6) return alert('Digite os 6 dígitos.');
-        
+
         const btn = this;
         btn.disabled = true;
         btn.innerHTML = 'Validando...';
-        
+
         try {
             const response = await fetch("{% url 'rh:api_totp_confirmar' %}", {
                 method: 'POST',
@@ -1461,7 +1428,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 btn.disabled = false;
                 btn.innerHTML = 'Validar e Salvar';
             }
-        } catch(e) {
+        } catch (e) {
             showToast('Erro de rede', false);
             btn.disabled = false;
             btn.innerHTML = 'Validar e Salvar';
