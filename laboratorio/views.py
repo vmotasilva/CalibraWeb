@@ -1455,6 +1455,22 @@ def equipe_coating_delete(request, pk):
     return redirect("laboratorio:equipe_coating_list")
 
 @login_required
+@require_POST
+def equipe_coating_update(request, pk):
+    membro = get_object_or_404(EquipeCoating, pk=pk)
+    
+    # Checkbox sends "on" if checked, otherwise it's not in POST
+    pode_preparar = request.POST.get('pode_preparar') == 'on'
+    pode_montar = request.POST.get('pode_montar') == 'on'
+    
+    membro.pode_preparar = pode_preparar
+    membro.pode_montar = pode_montar
+    membro.save()
+    
+    messages.success(request, f"Permissões de {membro.colaborador.nome_completo} atualizadas com sucesso.")
+    return redirect("laboratorio:equipe_coating_list")
+
+@login_required
 def ciclo_coating_list(request):
     evaporadoras = Maquina.objects.filter(
         Q(categoria__nome__icontains='evaporadora') | 

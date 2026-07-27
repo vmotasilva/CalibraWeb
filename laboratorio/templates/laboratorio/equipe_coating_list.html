@@ -46,7 +46,10 @@
                                 {% endif %}
                             </td>
                             <td class="text-end pe-3">
-                                <form method="post" action="{% url 'laboratorio:equipe_coating_delete' membro.id %}" onsubmit="return confirm('Remover {{ membro.colaborador.nome_completo }} da Equipe de Coating?');">
+                                <button type="button" class="btn btn-sm btn-outline-primary me-1" onclick="abrirModalEditar('{{ membro.id }}', '{{ membro.colaborador.nome_completo }}', '{{ membro.pode_preparar|yesno:'true,false' }}', '{{ membro.pode_montar|yesno:'true,false' }}')">
+                                    <i class="bi bi-pencil"></i> Editar
+                                </button>
+                                <form method="post" action="{% url 'laboratorio:equipe_coating_delete' membro.id %}" onsubmit="return confirm('Remover {{ membro.colaborador.nome_completo }} da Equipe de Coating?');" style="display: inline-block;">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> Remover</button>
                                 </form>
@@ -93,4 +96,45 @@
         </div>
     </div>
 </div>
+<!-- Modal Editar -->
+<div class="modal fade" id="modalEditMembro" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" id="formEditMembro">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar Permissões</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="fw-bold mb-3" id="editMembroNome"></p>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" role="switch" id="editPodePreparar" name="pode_preparar">
+                        <label class="form-check-label" for="editPodePreparar">Autorizado para Preparação</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" role="switch" id="editPodeMontar" name="pode_montar">
+                        <label class="form-check-label" for="editPodeMontar">Autorizado para Montagem</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function abrirModalEditar(id, nome, preparar, montar) {
+        document.getElementById('editMembroNome').innerText = nome;
+        document.getElementById('editPodePreparar').checked = (preparar === 'true');
+        document.getElementById('editPodeMontar').checked = (montar === 'true');
+        
+        document.getElementById('formEditMembro').action = `/laboratorio/coating/equipe/${id}/editar/`;
+        
+        new bootstrap.Modal(document.getElementById('modalEditMembro')).show();
+    }
+</script>
 {% endblock %}
