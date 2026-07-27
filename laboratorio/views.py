@@ -1224,7 +1224,12 @@ def coating_painel(request):
 @login_required
 @require_POST
 def registro_coating_delete(request, pk):
-    registro = get_object_or_404(RegistroCoating, pk=pk)
+    try:
+        registro = RegistroCoating.objects.get(pk=pk)
+    except RegistroCoating.DoesNotExist:
+        messages.warning(request, "Este lote já foi excluído anteriormente.")
+        return redirect("laboratorio:coating_painel")
+        
     lote_num = registro.lote
     
     # Validação TOTP para operadores sem privilégio

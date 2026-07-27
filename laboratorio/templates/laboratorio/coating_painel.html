@@ -740,6 +740,25 @@
         var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
             return new bootstrap.Tooltip(tooltipTriggerEl);
         });
+        
+        // Trava para evitar duplo clique e múltiplos envios de formulário
+        document.addEventListener("submit", function(e) {
+            if (e.target.tagName === 'FORM') {
+                const submitBtn = e.target.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    if (submitBtn.dataset.submitting) {
+                        e.preventDefault();
+                        return;
+                    }
+                    submitBtn.dataset.submitting = 'true';
+                    
+                    const originalText = submitBtn.innerHTML;
+                    submitBtn.dataset.originalText = originalText;
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Aguarde...';
+                    submitBtn.classList.add('disabled');
+                }
+            }
+        });
     });
 </script>
 {% endblock content %}
