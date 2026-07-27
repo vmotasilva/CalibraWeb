@@ -37,11 +37,11 @@ def dashboard_view(request):
     
     # Superusuários vêm todos os quadros, colaboradores comuns vêm apenas os seus, onde são membros
     if request.user.is_superuser:
-        quadros_base = Board.objects.all().distinct()
+        quadros_base = Board.objects.exclude(nome="Ações Corretivas e Preventivas").distinct()
     else:
         quadros_base = Board.objects.filter(
-            Q(criado_por=colab) | Q(membros=colab) | Q(todos_colaboradores=True)
-        ).distinct()
+            Q(criado_por=colab) | Q(membros=colab)
+        ).exclude(nome="Ações Corretivas e Preventivas").distinct()
 
     quadros = quadros_base.filter(arquivado=False)
     quadros_arquivados = quadros_base.filter(arquivado=True)
@@ -129,10 +129,12 @@ def board_detail_view(request, board_id, focus_column_id=None):
     
     # Permissão de acesso
     if request.user.is_superuser:
-        board = get_object_or_404(Board, id=board_id)
+        board = get_object_or_404(Board.objects.exclude(nome="Ações Corretivas e Preventivas"), id=board_id)
     else:
         board = get_object_or_404(
-            Board.objects.filter(Q(criado_por=colab) | Q(membros=colab) | Q(todos_colaboradores=True)), 
+            Board.objects.filter(Q(criado_por=colab) | Q(membros=colab))
+            .exclude(nome="Ações Corretivas e Preventivas")
+            .distinct(), 
             id=board_id
         )
         
@@ -1537,10 +1539,10 @@ def export_board_pdf_view(request, board_id):
     colab = get_user_colaborador(request.user)
     
     if request.user.is_superuser:
-        board = get_object_or_404(Board, id=board_id)
+        board = get_object_or_404(Board.objects.exclude(nome="Ações Corretivas e Preventivas"), id=board_id)
     else:
         board = get_object_or_404(
-            Board.objects.filter(Q(criado_por=colab) | Q(membros=colab)), 
+            Board.objects.filter(Q(criado_por=colab) | Q(membros=colab)).exclude(nome="Ações Corretivas e Preventivas"), 
             id=board_id
         )
 
