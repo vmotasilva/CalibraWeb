@@ -364,6 +364,55 @@
                     {% endif %}
                 </div>
             </div>
+            
+            <!-- Autenticadores (2FA) -->
+            <div class="card shadow-sm mt-4">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-phone-vibrate"></i> Autenticadores (2FA)</h5>
+                </div>
+                <div class="card-body p-3">
+                    <!-- Isenção -->
+                    <div class="form-check form-switch mb-3 pb-3 border-bottom">
+                        <input class="form-check-input" type="checkbox" role="switch" id="toggleIsentoTOTP" 
+                               {% if is_isento_totp %}checked{% endif %}
+                               {% if not request.user.is_superuser %}disabled{% endif %}>
+                        <label class="form-check-label fw-bold" for="toggleIsentoTOTP">Isento de Autenticação 2FA</label>
+                        <div class="form-text mt-0">Se ativo, ignora a exigência do TOTP para este usuário.</div>
+                    </div>
+                    
+                    <!-- Lista de Dispositivos -->
+                    <h6 class="fw-bold mb-2">Dispositivos Cadastrados</h6>
+                    {% if totp_devices %}
+                        <ul class="list-group list-group-flush mb-3" id="listaAutenticadores">
+                            {% for device in totp_devices %}
+                            <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="bi bi-phone me-2 text-primary"></i>
+                                    <strong>{{ device.name }}</strong>
+                                    <br>
+                                    <small class="text-muted">Adicionado em: {{ device.created_at|date:"d/m/Y H:i"|default:"-" }}</small>
+                                </div>
+                                {% if request.user.is_superuser or request.user.id == usuario.id %}
+                                <button class="btn btn-sm btn-outline-danger btn-remover-totp" data-id="{{ device.id }}" title="Remover dispositivo">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                                {% endif %}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <div class="alert alert-secondary py-2 small mb-3 text-center">
+                            Nenhum autenticador cadastrado.
+                        </div>
+                    {% endif %}
+                    
+                    {% if request.user.is_superuser or request.user.id == usuario.id %}
+                    <button class="btn btn-sm btn-primary w-100" data-bs-toggle="modal" data-bs-target="#modalAdicionarTOTP">
+                        <i class="bi bi-plus-circle me-1"></i> Novo Autenticador
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
         </div>
 
         <!-- Grid de Permissões por Módulo -->
@@ -1251,6 +1300,171 @@ document.addEventListener('DOMContentLoaded', function() {
             target.addEventListener('shown.bs.collapse', () => {
                 header.classList.remove('collapsed');
             });
+        }
+    });
+});
+</script>
+
+<!-- Script do QRCode -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<!-- Modal Adicionar TOTP -->
+<div class="modal fade" id="modalAdicionarTOTP" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Novo Autenticador (2FA)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="totpStep1">
+                    <p>Informe um nome para identificar este dispositivo (ex: Meu Celular, Tablet Produção).</p>
+                    <input type="text" class="form-control mb-3" id="totpDeviceName" placeholder="Nome do dispositivo">
+                    <button class="btn btn-primary w-100" id="btnGerarTOTP">Gerar QR Code</button>
+                </div>
+                
+                <div id="totpStep2" class="d-none text-center">
+                    <p class="mb-2">Escaneie o QR Code usando seu aplicativo de autenticação (Google Authenticator, Authy, etc).</p>
+                    <div id="totpQRCode" class="d-flex justify-content-center bg-white p-3 border rounded mb-3"></div>
+                    <input type="hidden" id="newTotpDeviceId">
+                    
+                    <p class="mb-2 fw-bold">Para concluir, digite o código de 6 dígitos gerado pelo aplicativo:</p>
+                    <input type="text" class="form-control text-center fs-4 letter-spacing-1 mb-3 mx-auto" id="totpToken" placeholder="000000" maxlength="6" style="max-width: 200px; letter-spacing: 0.5em;">
+                    <button class="btn btn-success w-100" id="btnConfirmarTOTP">Validar e Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Toggle Isenção TOTP
+    const toggleIsentoTOTP = document.getElementById('toggleIsentoTOTP');
+    if (toggleIsentoTOTP) {
+        toggleIsentoTOTP.addEventListener('change', async function() {
+            try {
+                const response = await fetch("{% url 'rh:api_totp_toggle_isencao' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        user_id: {{ usuario.id }},
+                        is_isento: this.checked
+                    })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showToast('Status de isenção atualizado', true);
+                } else {
+                    showToast(data.error || 'Erro ao atualizar status', false);
+                    this.checked = !this.checked;
+                }
+            } catch(e) {
+                showToast('Erro de rede', false);
+                this.checked = !this.checked;
+            }
+        });
+    }
+
+    // Remover TOTP
+    document.querySelectorAll('.btn-remover-totp').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            if (!confirm('Remover este autenticador? O usuário não poderá mais usá-lo para acessar/aprovar.')) return;
+            try {
+                const response = await fetch("{% url 'rh:api_totp_remover' %}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                    body: JSON.stringify({ device_id: this.dataset.id })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showToast(data.message, true);
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showToast(data.error || 'Erro ao remover', false);
+                }
+            } catch(e) {
+                showToast('Erro de rede', false);
+            }
+        });
+    });
+
+    // Modal Gerar
+    const modalAdicionarTOTP = document.getElementById('modalAdicionarTOTP');
+    if (modalAdicionarTOTP) {
+        modalAdicionarTOTP.addEventListener('show.bs.modal', function() {
+            document.getElementById('totpStep1').classList.remove('d-none');
+            document.getElementById('totpStep2').classList.add('d-none');
+            document.getElementById('totpDeviceName').value = '';
+            document.getElementById('totpToken').value = '';
+            document.getElementById('totpQRCode').innerHTML = '';
+        });
+    }
+
+    document.getElementById('btnGerarTOTP').addEventListener('click', async function() {
+        const nome = document.getElementById('totpDeviceName').value.trim() || 'Meu Celular';
+        const btn = this;
+        btn.disabled = true;
+        btn.innerHTML = 'Gerando...';
+        try {
+            const response = await fetch("{% url 'rh:api_totp_gerar' %}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                body: JSON.stringify({ user_id: {{ usuario.id }}, nome: nome })
+            });
+            const data = await response.json();
+            if (data.success) {
+                document.getElementById('totpStep1').classList.add('d-none');
+                document.getElementById('totpStep2').classList.remove('d-none');
+                document.getElementById('newTotpDeviceId').value = data.device_id;
+                
+                document.getElementById('totpQRCode').innerHTML = '';
+                new QRCode(document.getElementById('totpQRCode'), {
+                    text: data.url,
+                    width: 200,
+                    height: 200,
+                });
+            } else {
+                showToast(data.error || 'Erro ao gerar', false);
+            }
+        } catch(e) {
+            showToast('Erro de rede', false);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = 'Gerar QR Code';
+        }
+    });
+
+    document.getElementById('btnConfirmarTOTP').addEventListener('click', async function() {
+        const token = document.getElementById('totpToken').value.trim();
+        if (token.length !== 6) return alert('Digite os 6 dígitos.');
+        
+        const btn = this;
+        btn.disabled = true;
+        btn.innerHTML = 'Validando...';
+        
+        try {
+            const response = await fetch("{% url 'rh:api_totp_confirmar' %}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                body: JSON.stringify({ device_id: document.getElementById('newTotpDeviceId').value, token: token })
+            });
+            const data = await response.json();
+            if (data.success) {
+                showToast(data.message, true);
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast(data.error || 'Erro', false);
+                btn.disabled = false;
+                btn.innerHTML = 'Validar e Salvar';
+            }
+        } catch(e) {
+            showToast('Erro de rede', false);
+            btn.disabled = false;
+            btn.innerHTML = 'Validar e Salvar';
         }
     });
 });

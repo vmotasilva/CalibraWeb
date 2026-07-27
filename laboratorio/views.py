@@ -1300,14 +1300,11 @@ def registro_coating_delete(request, pk):
         messages.warning(request, "Este lote já foi excluído anteriormente.")
         return redirect("laboratorio:coating_painel")
         
-    lote_num = registro.lote
-    
     # Validação TOTP para operadores sem privilégio
     if not (request.user.is_staff or request.user.is_superuser):
         autorizador_username = request.POST.get('autorizador_username', '').strip()
-        autorizador_totp = request.POST.get('autorizador_totp', '').strip()
         
-        if not autorizador_username or not autorizador_totp:
+        if not autorizador_username:
             messages.error(request, "Autorização negada: Credenciais do supervisor não fornecidas.")
             return redirect("laboratorio:coating_painel")
             
@@ -1319,26 +1316,36 @@ def registro_coating_delete(request, pk):
             messages.error(request, "Autorização negada: O usuário informado não tem privilégios de supervisor.")
             return redirect("laboratorio:coating_painel")
             
-        from django_otp.plugins.otp_totp.models import TOTPDevice
-        devices = TOTPDevice.objects.filter(user=autorizador, confirmed=True)
-        if not devices.exists():
-            messages.error(request, "Autorização negada: O supervisor informado não possui autenticador configurado.")
-            return redirect("laboratorio:coating_painel")
-            
-        is_valid = False
-        if autorizador_totp.isdigit() and len(autorizador_totp) == 6:
-            token_int = int(autorizador_totp)
-            for device in devices:
-                try:
-                    if device.verify_token(token_int):
-                        is_valid = True
-                        break
-                except Exception:
-                    continue
-                    
-        if not is_valid:
-            messages.error(request, "Autorização negada: Código do autenticador inválido.")
-            return redirect("laboratorio:coating_painel")
+        is_isento = autorizador.groups.filter(name='Isentos 2FA').exists()
+        
+        if not is_isento:
+            autorizador_totp = request.POST.get('autorizador_totp', '').strip()
+            if not autorizador_totp:
+                messages.error(request, "Autorização negada: Código do autenticador não fornecido.")
+                return redirect("laboratorio:coating_painel")
+                
+            from django_otp.plugins.otp_totp.models import TOTPDevice
+            devices = TOTPDevice.objects.filter(user=autorizador, confirmed=True)
+            if not devices.exists():
+                messages.error(request, "Autorização negada: O supervisor informado não possui autenticador configurado.")
+                return redirect("laboratorio:coating_painel")
+                
+            is_valid = False
+            if autorizador_totp.isdigit() and len(autorizador_totp) == 6:
+                token_int = int(autorizador_totp)
+                for device in devices:
+                    try:
+                        if device.verify_token(token_int):
+                            is_valid = True
+                            break
+                    except Exception:
+                        continue
+                        
+            if not is_valid:
+                messages.error(request, "Autorização negada: Código do autenticador inválido.")
+                return redirect("laboratorio:coating_painel")
+    
+    lote_num = registro.lote
     
     registros_do_lote = RegistroCoating.objects.filter(
         lote=registro.lote,

@@ -42,6 +42,10 @@ from rh.views.views import (
     motivo_planejamento_update_view,
     motivo_planejamento_delete_view,
     api_create_motivo,
+    api_totp_gerar,
+    api_totp_confirmar,
+    api_totp_remover,
+    api_totp_toggle_isencao,
 )
 
 
@@ -93,6 +97,10 @@ urlpatterns = [
     path('api/usuarios/vincular-colaborador/', api_vincular_colaborador, name='api_vincular_colaborador'),
     path('api/colaboradores-sem-vinculo/', api_colaboradores_sem_vinculo, name='api_colaboradores_sem_vinculo'),
     path('api/usuarios/criar/', api_criar_usuario, name='api_criar_usuario'),
+    path('api/totp/gerar/', api_totp_gerar, name='api_totp_gerar'),
+    path('api/totp/confirmar/', api_totp_confirmar, name='api_totp_confirmar'),
+    path('api/totp/remover/', api_totp_remover, name='api_totp_remover'),
+    path('api/totp/isencao/', api_totp_toggle_isencao, name='api_totp_toggle_isencao'),
     # Planejamento de Horas Extras
     path('horas-extras/', planejamento_hora_extra_list_view, name='planejamento_hora_extra_list'),
     path('horas-extras/criar/', planejamento_hora_extra_create_view, name='planejamento_hora_extra_create'),

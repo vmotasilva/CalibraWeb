@@ -2859,11 +2859,22 @@ def detalhe_usuario_view(request, user_id):
     # Combinar permissões do usuário para checar checkboxes no template
     all_user_perms = {f"core.{codename}" for codename in user_perms_core}
     
+    # Contexto para Autenticadores TOTP
+    try:
+        from django_otp.plugins.otp_totp.models import TOTPDevice
+        totp_devices = TOTPDevice.objects.filter(user=user)
+    except ImportError:
+        totp_devices = []
+        
+    is_isento_totp = user.groups.filter(name='Isentos 2FA').exists()
+    
     context = {
         'usuario': user,
         'colaborador': colaborador,
         'user_perms': all_user_perms,
         'modulos': modulos,
+        'totp_devices': totp_devices,
+        'is_isento_totp': is_isento_totp,
     }
     
     return render(request, 'rh/usuario_detalhe.html', context)
@@ -3618,4 +3629,120 @@ def api_create_motivo(request):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
+@login_required
+@require_http_methods(["POST"])
+def api_totp_gerar(request):
+    """
+    Gera um novo TOTPDevice (não confirmado) para o usuário especificado.
+    """
+    import json
+    from django.contrib.auth.models import User
+    from django_otp.plugins.otp_totp.models import TOTPDevice
+    
+    try:
+        data = json.loads(request.body)
+        user_id = data.get('user_id')
+        nome_dispositivo = data.get('nome', 'Meu Autenticador')
+        
+        target_user = get_object_or_404(User, id=user_id)
+        
+        # Apenas superusuários ou o próprio usuário podem adicionar
+        if not request.user.is_superuser and request.user.id != target_user.id:
+            return JsonResponse({'success': False, 'error': 'Acesso negado'}, status=403)
+            
+        # Limpar devices não confirmados anteriores do mesmo usuário
+        TOTPDevice.objects.filter(user=target_user, confirmed=False).delete()
+        
+        # Criar novo device não confirmado
+        device = TOTPDevice.objects.create(user=target_user, name=nome_dispositivo, confirmed=False)
+        
+        url = device.config_url
+        
+        return JsonResponse({'success': True, 'url': url, 'device_id': device.id})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+@login_required
+@require_http_methods(["POST"])
+def api_totp_confirmar(request):
+    """
+    Confirma um TOTPDevice recém criado se o token fornecido for válido.
+    """
+    import json
+    from django_otp.plugins.otp_totp.models import TOTPDevice
+    
+    try:
+        data = json.loads(request.body)
+        device_id = data.get('device_id')
+        token = data.get('token', '').strip()
+        
+        device = get_object_or_404(TOTPDevice, id=device_id)
+        
+        # Apenas superusuários ou o próprio usuário podem confirmar
+        if not request.user.is_superuser and request.user.id != device.user.id:
+            return JsonResponse({'success': False, 'error': 'Acesso negado'}, status=403)
+            
+        if device.verify_token(token):
+            device.confirmed = True
+            device.save()
+            return JsonResponse({'success': True, 'message': 'Autenticador confirmado com sucesso!'})
+        else:
+            return JsonResponse({'success': False, 'error': 'Código inválido. Tente novamente.'})
+            
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+@login_required
+@require_http_methods(["POST"])
+def api_totp_remover(request):
+    """
+    Remove um TOTPDevice existente.
+    """
+    import json
+    from django_otp.plugins.otp_totp.models import TOTPDevice
+    
+    try:
+        data = json.loads(request.body)
+        device_id = data.get('device_id')
+        
+        device = get_object_or_404(TOTPDevice, id=device_id)
+        
+        # Apenas superusuários ou o próprio usuário podem remover
+        if not request.user.is_superuser and request.user.id != device.user.id:
+            return JsonResponse({'success': False, 'error': 'Acesso negado'}, status=403)
+            
+        device.delete()
+        return JsonResponse({'success': True, 'message': 'Autenticador removido.'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+@login_required
+@require_http_methods(["POST"])
+def api_totp_toggle_isencao(request):
+    """
+    Ativa ou desativa a isenção de TOTP para um usuário.
+    Apenas superusuários podem fazer isso.
+    """
+    import json
+    from django.contrib.auth.models import User, Group
+    
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'error': 'Apenas superusuários podem alterar a isenção'}, status=403)
+        
+    try:
+        data = json.loads(request.body)
+        user_id = data.get('user_id')
+        is_isento = data.get('is_isento', False)
+        
+        target_user = get_object_or_404(User, id=user_id)
+        
+        group, created = Group.objects.get_or_create(name='Isentos 2FA')
+        
+        if is_isento:
+            target_user.groups.add(group)
+        else:
+            target_user.groups.remove(group)
+            
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
