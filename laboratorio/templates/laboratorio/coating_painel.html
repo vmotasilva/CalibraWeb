@@ -171,6 +171,7 @@
                                                             {% endif %}
                                                         {% endif %}
                                                     {% endfor %}
+                                                    <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" data-bs-toggle="tooltip" title="Adicionar Extra" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }})"><i class="bi bi-plus-lg"></i></span>
                                                 </div>
                                             </td>
                                             <td style="max-width: 200px;">
@@ -192,6 +193,7 @@
                                                             {% endif %}
                                                         {% endif %}
                                                     {% endfor %}
+                                                    <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" data-bs-toggle="tooltip" title="Adicionar Extra" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }})"><i class="bi bi-plus-lg"></i></span>
                                                 </div>
                                             </td>
                                             <td style="max-width: 200px;">
@@ -212,7 +214,9 @@
                                                                 </span>
                                                             {% endif %}
                                                         {% endif %}
+                                                        {% endif %}
                                                     {% endfor %}
+                                                    <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" data-bs-toggle="tooltip" title="Adicionar Extra" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }})"><i class="bi bi-plus-lg"></i></span>
                                                 </div>
                                             </td>
                                             <td>
