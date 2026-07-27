@@ -1602,6 +1602,17 @@ def registrar_manutencao_coating(request):
         
         registro = get_object_or_404(RegistroCoating, pk=registro_id)
         
+        # Validação: Pelo menos um item do checklist deve ser marcado
+        for cid in ciclo_ids:
+            ciclo = get_object_or_404(CicloManutencaoCoating, pk=cid)
+            itens_checklist = ciclo.itens_checklist.all()
+            if itens_checklist.exists():
+                algum_feito = any(request.POST.get(f'checklist_{ciclo.id}_{item.id}') == 'on' for item in itens_checklist)
+                if not algum_feito:
+                    messages.error(request, f"Para a manutenção '{ciclo.nome}', é obrigatório preencher pelo menos um item do checklist.")
+                    url_redirecionamento = request.META.get('HTTP_REFERER', reverse('laboratorio:coating_painel'))
+                    return redirect(url_redirecionamento)
+        
         # Encontra ambos os lados (CC e CX) deste lote
         registros_do_lote = RegistroCoating.objects.filter(
             lote=registro.lote,
@@ -1765,81 +1776,6 @@ def regra_turno_create(request):
         "laboratorio/regra_turno_form.html", 
         {"form": form, "titulo": "Nova Regra de Turno", "acao": "Salvar regra"}
     )
-
-
-@login_required
-def regra_turno_update(request, pk):
-    regra = get_object_or_404(RegraTurnoCoating, pk=pk)
-    if request.method == "POST":
-        form = RegraTurnoCoatingForm(request.POST, instance=regra)
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Regra de turno atualizada com sucesso.")
-            return redirect("laboratorio:regra_turno_list")
-    else:
-        form = RegraTurnoCoatingForm(instance=regra)
-        
-    return render(
-        request, 
-        "laboratorio/regra_turno_form.html", 
-        {"form": form, "titulo": "Editar Regra de Turno", "acao": "Salvar alterações"}
-    )
-
-@login_required
-@require_POST
-def registrar_manutencao_coating(request):
-    try:
-        registro_id = request.POST.get('registro_id')
-        ciclo_ids = request.POST.getlist('ciclos')
-        observacao = request.POST.get('observacao', '').strip()
-        
-        registro = get_object_or_404(RegistroCoating, pk=registro_id)
-        
-        # Encontra ambos os lados (CC e CX) deste lote
-        registros_do_lote = RegistroCoating.objects.filter(
-            lote=registro.lote,
-            maquina=registro.maquina,
-            turno_coating=registro.turno_coating
-        )
-        
-        ManutencaoRealizadaCoating.objects.filter(registro__in=registros_do_lote).delete()
-        
-        for reg in registros_do_lote:
-            for cid in ciclo_ids:
-                ciclo = get_object_or_404(CicloManutencaoCoating, pk=cid)
-                manut = ManutencaoRealizadaCoating.objects.create(
-                    registro=reg, 
-                    ciclo=ciclo,
-                    observacao=observacao if observacao else None
-                )
-                
-                for item in ciclo.itens_checklist.all():
-                    chk_name = f'checklist_{ciclo.id}_{item.id}'
-                    feito = request.POST.get(chk_name) == 'on'
-                    RespostaChecklistManutencao.objects.create(
-                        manutencao=manut,
-                        item=item,
-                        feito=feito
-                    )
-            
-        messages.success(request, f"Manutenções atualizadas com sucesso para o Lote {registro.lote} (lados CC e CX).")
-    except Exception as e:
-        messages.error(request, f"Erro ao registrar manutenção: {str(e)}")
-        
-    return redirect("laboratorio:coating_painel")
-
-@login_required
-def run_migrate_view(request):
-    if request.user.is_superuser:
-        from django.core.management import call_command
-        try:
-            call_command('migrate')
-            return HttpResponse("Migrações aplicadas com sucesso no banco de dados!")
-        except Exception as e:
-            return HttpResponse(f"Erro: {str(e)}")
-        return HttpResponse("Migrações aplicadas com sucesso.")
-    return HttpResponse("Acesso negado.", status=403)
-
 
 @login_required
 @require_POST
