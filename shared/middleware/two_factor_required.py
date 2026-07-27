@@ -46,6 +46,10 @@ class TwoFactorRequiredMiddleware:
         
         # Verificar se o usuário está autenticado
         if request.user.is_authenticated:
+            # Verificar se o usuário pertence ao grupo de isentos
+            if request.user.groups.filter(name='Isentos 2FA').exists():
+                return self.get_response(request)
+                
             # Verificar se a URL atual é permitida
             if not self._is_allowed_url(request):
                 # Verificar se o usuário tem 2FA configurado

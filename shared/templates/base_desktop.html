@@ -201,15 +201,32 @@
                             {% endif %}
                         {% endif %}
                         
-                        <li><h6 class="dropdown-header text-muted">COATING (ANTI-REFLEXO)</h6></li>
-                        <li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:coating_painel' %}"><i class="bi bi-grid-3x3-gap"></i> Painel Diário</a></li>
-                        <li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:dashboard_coating' %}"><i class="bi bi-bar-chart-line"></i> Dashboard</a></li>
-                        <li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:importar_lotes_coating' %}"><i class="bi bi-upload"></i> Importar Lotes</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{% url 'laboratorio:tratamento_list' %}"><i class="bi bi-droplet-half"></i> Tratamentos</a></li>
-                        <li><a class="dropdown-item" href="{% url 'laboratorio:regra_turno_list' %}"><i class="bi bi-clock-history"></i> Regras de Turno</a></li>
-                        <li><a class="dropdown-item" href="{% url 'laboratorio:ciclo_coating_list' %}"><i class="bi bi-arrow-repeat"></i> Ciclos de Manutenção</a></li>
-                        <li><a class="dropdown-item" href="{% url 'laboratorio:equipe_coating_list' %}"><i class="bi bi-people"></i> Equipe Coating</a></li>
+                        {% can_nav_block user 'laboratorio' 'coating' as nav_lab_coating %}
+                        {% if nav_lab_coating %}
+                            {% can_nav_view user 'laboratorio:coating_painel' 'laboratorio' as nav_coating_painel %}
+                            {% can_nav_view user 'laboratorio:dashboard_coating' 'laboratorio' as nav_coating_dashboard %}
+                            {% can_nav_view user 'laboratorio:importar_lotes_coating' 'laboratorio' as nav_coating_importacao %}
+                            {% can_nav_view user 'laboratorio:tratamento_list' 'laboratorio' as nav_coating_tratamentos %}
+                            {% can_nav_view user 'laboratorio:regra_turno_list' 'laboratorio' as nav_coating_turnos %}
+                            {% can_nav_view user 'laboratorio:ciclo_coating_list' 'laboratorio' as nav_coating_ciclos %}
+                            {% can_nav_view user 'laboratorio:equipe_coating_list' 'laboratorio' as nav_coating_equipe %}
+                            
+                            {% if nav_coating_painel or nav_coating_dashboard or nav_coating_importacao or nav_coating_tratamentos or nav_coating_turnos or nav_coating_ciclos or nav_coating_equipe %}
+                                <li><h6 class="dropdown-header text-muted">COATING (ANTI-REFLEXO)</h6></li>
+                                {% if nav_coating_painel %}<li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:coating_painel' %}"><i class="bi bi-grid-3x3-gap"></i> Painel Diário</a></li>{% endif %}
+                                {% if nav_coating_dashboard %}<li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:dashboard_coating' %}"><i class="bi bi-bar-chart-line"></i> Dashboard</a></li>{% endif %}
+                                {% if nav_coating_importacao %}<li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:importar_lotes_coating' %}"><i class="bi bi-upload"></i> Importar Lotes</a></li>{% endif %}
+                                
+                                {% if nav_coating_tratamentos or nav_coating_turnos or nav_coating_ciclos or nav_coating_equipe %}
+                                <li><hr class="dropdown-divider"></li>
+                                {% endif %}
+                                
+                                {% if nav_coating_tratamentos %}<li><a class="dropdown-item" href="{% url 'laboratorio:tratamento_list' %}"><i class="bi bi-droplet-half"></i> Tratamentos</a></li>{% endif %}
+                                {% if nav_coating_turnos %}<li><a class="dropdown-item" href="{% url 'laboratorio:regra_turno_list' %}"><i class="bi bi-clock-history"></i> Regras de Turno</a></li>{% endif %}
+                                {% if nav_coating_ciclos %}<li><a class="dropdown-item" href="{% url 'laboratorio:ciclo_coating_list' %}"><i class="bi bi-arrow-repeat"></i> Ciclos de Manutenção</a></li>{% endif %}
+                                {% if nav_coating_equipe %}<li><a class="dropdown-item" href="{% url 'laboratorio:equipe_coating_list' %}"><i class="bi bi-people"></i> Equipe Coating</a></li>{% endif %}
+                            {% endif %}
+                        {% endif %}
                     </ul>
                 </li>
                 {% endif %}
