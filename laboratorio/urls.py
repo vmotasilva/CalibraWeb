@@ -83,5 +83,7 @@ urlpatterns = [
     path("coating/ciclos/<int:pk>/editar/", views.ciclo_coating_update, name="ciclo_coating_update"),
     path("coating/ciclos/<int:pk>/excluir/", views.ciclo_coating_delete, name="ciclo_coating_delete"),
     path("coating/ciclos/<int:ciclo_id>/checklist/", views.configurar_checklist_ciclo, name="configurar_checklist_ciclo"),
+    path("coating/ciclos/copiar/", views.copiar_ciclos_coating, name="copiar_ciclos_coating"),
+    path("coating/api/ciclos-maquina/", views.api_obter_ciclos_maquina, name="api_obter_ciclos_maquina"),
     path("run-migrate-db/", views.run_migrate_view, name="run_migrate_view"),
 ]

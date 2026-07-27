@@ -1471,6 +1471,46 @@ def ciclo_coating_list(request):
     })
 
 @login_required
+def api_obter_ciclos_maquina(request):
+    try:
+        maquina_id = request.GET.get('maquina_id')
+        ciclos = list(CicloManutencaoCoating.objects.filter(maquina_id=maquina_id).values('id', 'tipo', 'nome').order_by('tipo', 'nome'))
+        return JsonResponse({'success': True, 'ciclos': ciclos})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@login_required
+@require_POST
+def copiar_ciclos_coating(request):
+    try:
+        maquina_destino_id = request.POST.get('maquina_destino_id')
+        ciclos_ids = request.POST.getlist('ciclos_ids')
+        
+        destino = get_object_or_404(Maquina, pk=maquina_destino_id)
+        count = 0
+        
+        for cid in ciclos_ids:
+            ciclo_orig = CicloManutencaoCoating.objects.get(pk=cid)
+            itens_orig = list(ciclo_orig.itens_checklist.all())
+            
+            # Duplicar
+            ciclo_orig.pk = None
+            ciclo_orig.maquina = destino
+            ciclo_orig.save()
+            count += 1
+            
+            for item in itens_orig:
+                item.pk = None
+                item.ciclo = ciclo_orig
+                item.save()
+                
+        messages.success(request, f"{count} manutenções copiadas para a máquina {destino.codigo}.")
+    except Exception as e:
+        messages.error(request, f"Erro ao copiar ciclos: {str(e)}")
+        
+    return redirect('laboratorio:ciclo_coating_list')
+
+@login_required
 @require_POST
 def ciclo_coating_create(request):
     try:
