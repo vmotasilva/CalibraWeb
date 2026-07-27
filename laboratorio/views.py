@@ -1774,42 +1774,6 @@ def run_migrate_view(request):
         return HttpResponse("Migrações aplicadas com sucesso.")
     return HttpResponse("Acesso negado.", status=403)
 
-@login_required
-def obter_observacoes_lote(request):
-    try:
-        registro_id = request.GET.get('id')
-        registro = get_object_or_404(RegistroCoating, pk=registro_id)
-        
-        # Busca ambos os registros do lote na mesma máquina e turno
-        registros = RegistroCoating.objects.filter(
-            turno_coating=registro.turno_coating,
-            maquina=registro.maquina,
-            lote=registro.lote
-        )
-        
-        obs_cc = ""
-        obs_cx = ""
-        id_cc = None
-        id_cx = None
-        
-        for reg in registros:
-            if reg.lado == 'CC':
-                obs_cc = reg.observacao or ""
-                id_cc = reg.id
-            elif reg.lado == 'CX':
-                obs_cx = reg.observacao or ""
-                id_cx = reg.id
-                
-        return JsonResponse({
-            'success': True,
-            'obs_cc': obs_cc,
-            'obs_cx': obs_cx,
-            'id_cc': id_cc,
-            'id_cx': id_cx,
-            'lote': registro.lote
-        })
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)})
 
 @login_required
 @require_POST

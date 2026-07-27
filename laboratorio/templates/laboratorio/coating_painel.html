@@ -190,13 +190,33 @@
                                             </td>
                                             <td>
                                                 <div class="d-flex justify-content-center gap-1">
-                                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="abrirModalEditarLote('{{ reg.id }}', '{{ reg.lote }}', '{{ reg.maquina_id }}', '{{ reg.tratamento_id }}')">Editar</button>
+                                                    <!-- Comentários -->
                                                     <button type="button" class="btn btn-sm {% if reg.observacao %}btn-primary{% else %}btn-outline-primary{% endif %} position-relative" title="Observações do Lote" onclick="abrirModalObservacoes('{{ reg.id }}')">
                                                         <i class="bi bi-chat{% if reg.observacao %}-text-fill{% else %}-text{% endif %}"></i>
+                                                        {% if reg.observacao %}
+                                                        <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle">
+                                                            <span class="visually-hidden">Nova observação</span>
+                                                        </span>
+                                                        {% endif %}
                                                     </button>
-                                                    <button type="button" class="btn btn-sm btn-outline-danger" title="Excluir Lote Inteiro" onclick="abrirModalDelete('{% url 'laboratorio:registro_coating_delete' reg.id %}', '{{ reg.lote }}')">
-                                                        <i class="bi bi-trash"></i>
-                                                    </button>
+                                                    <div class="dropdown d-inline-block">
+                                                        <button class="btn btn-sm btn-light border" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Mais opções">
+                                                            <i class="bi bi-three-dots-vertical"></i>
+                                                        </button>
+                                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="min-width: auto; padding: 0.25rem 0;">
+                                                            <li>
+                                                                <button class="dropdown-item py-2 px-3 small text-secondary" type="button" onclick="abrirModalEditarLote('{{ reg.id }}', '{{ reg.lote }}', '{{ reg.maquina_id }}', '{{ reg.tratamento_id }}')">
+                                                                    <i class="bi bi-pencil-square me-2"></i> Editar Lote
+                                                                </button>
+                                                            </li>
+                                                            <li><hr class="dropdown-divider my-0"></li>
+                                                            <li>
+                                                                <button class="dropdown-item py-2 px-3 small text-danger" type="button" onclick="abrirModalDelete('{% url 'laboratorio:registro_coating_delete' reg.id %}', '{{ reg.lote }}')">
+                                                                    <i class="bi bi-trash me-2"></i> Excluir Lote
+                                                                </button>
+                                                            </li>
+                                                        </ul>
+                                                    </div>
                                                 </div>
                                             </td>
                                         </tr>
