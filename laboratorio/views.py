@@ -1575,5 +1575,67 @@ def run_migrate_view(request):
             call_command('migrate')
             return HttpResponse("Migrações aplicadas com sucesso no banco de dados!")
         except Exception as e:
-            return HttpResponse(f"Erro ao aplicar migrações: {str(e)}")
+            return HttpResponse(f"Erro: {str(e)}")
+        return HttpResponse("Migrações aplicadas com sucesso.")
     return HttpResponse("Acesso negado.", status=403)
+
+@login_required
+def obter_observacoes_lote(request):
+    try:
+        registro_id = request.GET.get('id')
+        registro = get_object_or_404(RegistroCoating, pk=registro_id)
+        
+        # Busca ambos os registros do lote na mesma máquina e turno
+        registros = RegistroCoating.objects.filter(
+            turno_coating=registro.turno_coating,
+            maquina=registro.maquina,
+            lote=registro.lote
+        )
+        
+        obs_cc = ""
+        obs_cx = ""
+        id_cc = None
+        id_cx = None
+        
+        for reg in registros:
+            if reg.lado == 'CC':
+                obs_cc = reg.observacao or ""
+                id_cc = reg.id
+            elif reg.lado == 'CX':
+                obs_cx = reg.observacao or ""
+                id_cx = reg.id
+                
+        return JsonResponse({
+            'success': True,
+            'obs_cc': obs_cc,
+            'obs_cx': obs_cx,
+            'id_cc': id_cc,
+            'id_cx': id_cx,
+            'lote': registro.lote
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@login_required
+@require_POST
+def salvar_observacoes_lote(request):
+    try:
+        data = json.loads(request.body)
+        id_cc = data.get('id_cc')
+        id_cx = data.get('id_cx')
+        obs_cc = data.get('obs_cc', '')
+        obs_cx = data.get('obs_cx', '')
+        
+        if id_cc:
+            reg_cc = RegistroCoating.objects.get(pk=id_cc)
+            reg_cc.observacao = obs_cc
+            reg_cc.save()
+            
+        if id_cx:
+            reg_cx = RegistroCoating.objects.get(pk=id_cx)
+            reg_cx.observacao = obs_cx
+            reg_cx.save()
+            
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})

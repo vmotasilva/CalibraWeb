@@ -69,6 +69,8 @@ urlpatterns = [
     path("coating/registro/editar_lote_completo/", views.editar_lote_completo_coating, name="editar_lote_completo_coating"),
     path("coating/celula/atualizar/", views.atualizar_celula_coating, name="atualizar_celula_coating"),
     path("coating/manutencao/salvar/", views.registrar_manutencao_coating, name="registrar_manutencao_coating"),
+    path("coating/registro/obter-observacoes/", views.obter_observacoes_lote, name="obter_observacoes_lote"),
+    path("coating/registro/salvar-observacoes/", views.salvar_observacoes_lote, name="salvar_observacoes_lote"),
     
     # Rota para Equipe e Ciclos
     path("coating/equipe/", views.equipe_coating_list, name="equipe_coating_list"),

@@ -191,6 +191,9 @@
                                             <td>
                                                 <div class="d-flex justify-content-center gap-1">
                                                     <button type="button" class="btn btn-sm btn-outline-secondary" onclick="abrirModalEditarLote('{{ reg.id }}', '{{ reg.lote }}', '{{ reg.maquina_id }}', '{{ reg.tratamento_id }}')">Editar</button>
+                                                    <button type="button" class="btn btn-sm {% if reg.observacao %}btn-primary{% else %}btn-outline-primary{% endif %} position-relative" title="Observações do Lote" onclick="abrirModalObservacoes('{{ reg.id }}')">
+                                                        <i class="bi bi-chat{% if reg.observacao %}-text-fill{% else %}-text{% endif %}"></i>
+                                                    </button>
                                                     <button type="button" class="btn btn-sm btn-outline-danger" title="Excluir Lote Inteiro" onclick="abrirModalDelete('{% url 'laboratorio:registro_coating_delete' reg.id %}', '{{ reg.lote }}')">
                                                         <i class="bi bi-trash"></i>
                                                     </button>
@@ -431,6 +434,42 @@
                     <button type="submit" class="btn btn-danger btn-sm">Sim, Excluir Lote</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Observações -->
+<div class="modal fade" id="modalObservacoes" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold text-primary">
+                    <i class="bi bi-chat-text-fill me-2"></i> Observações do Lote <span id="obsLoteBadge" class="badge bg-secondary ms-1"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">Você pode adicionar justificativas ou recados para cada lado do lote. Os comentários ficam salvos automaticamente ao clicar em salvar.</p>
+                <form id="formObservacoes">
+                    <input type="hidden" id="obsIdCC" name="id_cc">
+                    <input type="hidden" id="obsIdCX" name="id_cx">
+                    
+                    <div class="mb-3">
+                        <label for="obsTextCC" class="form-label fw-bold text-dark"><span class="badge bg-dark me-1">CC</span> Côncavo</label>
+                        <textarea class="form-control" id="obsTextCC" rows="3" placeholder="Nenhuma observação informada..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="obsTextCX" class="form-label fw-bold text-dark"><span class="badge bg-dark me-1">CX</span> Convexo</label>
+                        <textarea class="form-control" id="obsTextCX" rows="3" placeholder="Nenhuma observação informada..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-top-0 pt-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarObservacoes()">
+                    <i class="bi bi-check2-circle me-1"></i> Salvar Comentários
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -731,6 +770,68 @@
         .catch(err => {
             console.error(err);
             alert('Erro de rede ao salvar.');
+        });
+    }
+    
+    // Funções para o Modal de Observações
+    const modalObservacoes = new bootstrap.Modal(document.getElementById('modalObservacoes'));
+    
+    function abrirModalObservacoes(registroId) {
+        // Limpar inputs antes de abrir
+        document.getElementById('obsTextCC').value = 'Carregando...';
+        document.getElementById('obsTextCX').value = 'Carregando...';
+        document.getElementById('obsLoteBadge').innerText = '...';
+        
+        fetch(`{% url 'laboratorio:obter_observacoes_lote' %}?id=${registroId}`)
+        .then(response => response.json())
+        .then(data => {
+            if(data.success) {
+                document.getElementById('obsIdCC').value = data.id_cc || '';
+                document.getElementById('obsIdCX').value = data.id_cx || '';
+                document.getElementById('obsTextCC').value = data.obs_cc || '';
+                document.getElementById('obsTextCX').value = data.obs_cx || '';
+                document.getElementById('obsLoteBadge').innerText = data.lote;
+                modalObservacoes.show();
+            } else {
+                alert('Erro ao buscar observações: ' + data.error);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Erro de conexão ao carregar comentários.');
+        });
+    }
+    
+    function salvarObservacoes() {
+        const id_cc = document.getElementById('obsIdCC').value;
+        const id_cx = document.getElementById('obsIdCX').value;
+        const obs_cc = document.getElementById('obsTextCC').value;
+        const obs_cx = document.getElementById('obsTextCX').value;
+        
+        fetch("{% url 'laboratorio:salvar_observacoes_lote' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                id_cc: id_cc,
+                id_cx: id_cx,
+                obs_cc: obs_cc,
+                obs_cx: obs_cx
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload(); 
+            } else {
+                alert('Erro ao salvar comentários: ' + (data.error || 'Desconhecido'));
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Erro de rede ao salvar comentários.');
         });
     }
     

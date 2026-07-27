@@ -368,6 +368,7 @@ class RegistroCoating(models.Model):
     
     preparacao = models.ForeignKey(Colaborador, on_delete=models.PROTECT, related_name="preparacoes_coating", verbose_name="Preparação", null=True, blank=True)
     montagem = models.ForeignKey(Colaborador, on_delete=models.PROTECT, related_name="montagens_coating", verbose_name="Montagem", null=True, blank=True)
+    observacao = models.TextField(blank=True, null=True, verbose_name="Observação do Lote")
     
     
     # Manutenções agora são registradas pela tabela ManutencaoRealizadaCoating
