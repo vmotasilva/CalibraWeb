@@ -392,10 +392,7 @@
                                         id="perm_{{ modulo.module_perm.app_label }}_{{ modulo.module_perm.codename }}"
                                         data-codename="{{ modulo.module_perm.codename }}"
                                         data-user-id="{{ usuario.id }}"
-                                        data-app-label="{{ modulo.module_perm.app_label }}" {% with
-                                        perm_key=modulo.module_perm.full %} {% if perm_key in user_perms or
-                                        usuario.is_superuser %}checked{% endif %} {% endwith %} {% if
-                                        usuario.is_superuser or not request.user.is_superuser %}disabled{% endif %}>
+                                        data-app-label="{{ modulo.module_perm.app_label }}" {% with perm_key=modulo.module_perm.full %} {% if perm_key in user_perms or usuario.is_superuser %}checked{% endif %} {% endwith %} {% if usuario.is_superuser or not request.user.is_superuser %}disabled{% endif %}>
                                     <label class="form-check-label text-white small"
                                         for="perm_{{ modulo.module_perm.app_label }}_{{ modulo.module_perm.codename }}">No
                                         menu</label>
@@ -425,11 +422,7 @@
                                                         id="perm_{{ bloco.perm.app_label }}_{{ bloco.perm.codename }}"
                                                         data-codename="{{ bloco.perm.codename }}"
                                                         data-user-id="{{ usuario.id }}"
-                                                        data-app-label="{{ bloco.perm.app_label }}" {% with
-                                                        perm_key=bloco.perm.full %} {% if perm_key in user_perms or
-                                                        usuario.is_superuser %}checked{% endif %} {% endwith %} {% if
-                                                        usuario.is_superuser or not request.user.is_superuser
-                                                        %}disabled{% endif %}>
+                                                        data-app-label="{{ bloco.perm.app_label }}" {% with perm_key=bloco.perm.full %} {% if perm_key in user_perms or usuario.is_superuser %}checked{% endif %} {% endwith %} {% if usuario.is_superuser or not request.user.is_superuser %}disabled{% endif %}>
                                                     <label class="form-check-label small"
                                                         for="perm_{{ bloco.perm.app_label }}_{{ bloco.perm.codename }}">Exibir
                                                         bloco</label>
@@ -451,11 +444,7 @@
                                                         id="perm_{{ funcao.perm.app_label }}_{{ funcao.perm.codename }}"
                                                         data-codename="{{ funcao.perm.codename }}"
                                                         data-user-id="{{ usuario.id }}"
-                                                        data-app-label="{{ funcao.perm.app_label }}" {% with
-                                                        perm_key=funcao.perm.full %} {% if perm_key in user_perms or
-                                                        usuario.is_superuser %}checked{% endif %} {% endwith %} {% if
-                                                        usuario.is_superuser or not request.user.is_superuser
-                                                        %}disabled{% endif %}>
+                                                        data-app-label="{{ funcao.perm.app_label }}" {% with perm_key=funcao.perm.full %} {% if perm_key in user_perms or usuario.is_superuser %}checked{% endif %} {% endwith %} {% if usuario.is_superuser or not request.user.is_superuser %}disabled{% endif %}>
                                                     <label class="form-check-label small"
                                                         for="perm_{{ funcao.perm.app_label }}_{{ funcao.perm.codename }}">Acessar</label>
                                                 </div>
