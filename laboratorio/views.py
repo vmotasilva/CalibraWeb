@@ -1466,12 +1466,17 @@ def ciclo_coating_create(request):
         
         maquina = get_object_or_404(Maquina, pk=maquina_id)
         
+        try:
+            lim_val = int(limite_lotes) if limite_lotes else 1
+        except (ValueError, TypeError):
+            lim_val = 1
+        
         CicloManutencaoCoating.objects.create(
             maquina=maquina,
             tipo=tipo,
             nome=nome,
             criterio=criterio,
-            limite_lotes=int(limite_lotes)
+            limite_lotes=lim_val
         )
         
         messages.success(request, f"Ciclo '{nome}' adicionado para a máquina {maquina.codigo}.")
@@ -1485,10 +1490,16 @@ def ciclo_coating_create(request):
 def ciclo_coating_update(request, pk):
     ciclo = get_object_or_404(CicloManutencaoCoating, pk=pk)
     try:
+        limite_lotes = request.POST.get('limite_lotes')
+        try:
+            lim_val = int(limite_lotes) if limite_lotes else ciclo.limite_lotes
+        except (ValueError, TypeError):
+            lim_val = ciclo.limite_lotes
+            
         ciclo.tipo = request.POST.get('tipo', ciclo.tipo)
         ciclo.nome = request.POST.get('nome', ciclo.nome)
         ciclo.criterio = request.POST.get('criterio', ciclo.criterio)
-        ciclo.limite_lotes = int(request.POST.get('limite_lotes', ciclo.limite_lotes))
+        ciclo.limite_lotes = lim_val
         ciclo.save()
         messages.success(request, f"Ciclo '{ciclo.nome}' atualizado com sucesso.")
     except Exception as e:
