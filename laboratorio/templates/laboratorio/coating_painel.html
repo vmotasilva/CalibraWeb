@@ -665,10 +665,10 @@
                 const isClicked = (clickedCicloId == item.ciclo.id);
                 const shouldBeChecked = isExisting || isClicked;
                 const checkedAttr = shouldBeChecked ? 'checked' : '';
+                const dNoneClass = shouldBeChecked ? '' : 'd-none';
                 
                 let checklistHtml = '';
                 if (item.ciclo.itens && item.ciclo.itens.length > 0) {
-                    const dNoneClass = shouldBeChecked ? '' : 'd-none';
                     checklistHtml = `<div class="checklist-container mt-2 ps-4 ${dNoneClass}" id="checklistContainer${item.ciclo.id}">
                         <div class="card card-body bg-light py-2 px-3 border-secondary border-opacity-25">
                             <h6 class="card-subtitle mb-2 text-muted fw-bold small"><i class="bi bi-list-check"></i> Checklist Obrigatório</h6>
