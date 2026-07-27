@@ -1836,6 +1836,48 @@ def salvar_observacoes_lote(request):
         return JsonResponse({'success': False, 'error': str(e)})
 
 @login_required
+def dashboard_coating(request):
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    hoje = timezone.localtime().date()
+    inicio = hoje - timedelta(days=15)
+    
+    registros = RegistroCoating.objects.filter(turno_coating__data__gte=inicio).select_related('maquina', 'turno_coating')
+    
+    dias = []
+    for i in range(16):
+        dias.append(inicio + timedelta(days=i))
+        
+    maquinas = Maquina.objects.filter(setor='COATING')
+    
+    labels = [d.strftime('%d/%m') for d in dias]
+    datasets = []
+    
+    cores = ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#6f42c1', '#fd7e14']
+    
+    for i, maq in enumerate(maquinas):
+        data_maq = []
+        for d in dias:
+            lotes = registros.filter(maquina=maq, turno_coating__data=d).values('lote').distinct().count()
+            data_maq.append(lotes)
+            
+        cor = cores[i % len(cores)]
+        datasets.append({
+            'label': maq.codigo,
+            'data': data_maq,
+            'backgroundColor': cor,
+            'borderColor': cor,
+            'tension': 0.3,
+            'borderWidth': 2
+        })
+        
+    return render(request, "laboratorio/dashboard_coating.html", {
+        "labels_json": json.dumps(labels),
+        "datasets_json": json.dumps(datasets),
+    })
+
+@login_required
 def baixar_modelo_importacao_coating(request):
     import pandas as pd
     import io
