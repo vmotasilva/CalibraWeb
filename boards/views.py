@@ -38,10 +38,12 @@ def dashboard_view(request):
     # Superusuários vêm todos os quadros, colaboradores comuns vêm apenas os seus, onde são membros
     if request.user.is_superuser:
         quadros_base = Board.objects.exclude(nome="Ações Corretivas e Preventivas").distinct()
-    else:
+    elif colab:
         quadros_base = Board.objects.filter(
             Q(criado_por=colab) | Q(membros=colab)
         ).exclude(nome="Ações Corretivas e Preventivas").distinct()
+    else:
+        quadros_base = Board.objects.none()
 
     quadros = quadros_base.filter(arquivado=False)
     quadros_arquivados = quadros_base.filter(arquivado=True)
@@ -130,13 +132,17 @@ def board_detail_view(request, board_id, focus_column_id=None):
     # Permissão de acesso
     if request.user.is_superuser:
         board = get_object_or_404(Board.objects.exclude(nome="Ações Corretivas e Preventivas"), id=board_id)
-    else:
+    elif colab:
         board = get_object_or_404(
             Board.objects.filter(Q(criado_por=colab) | Q(membros=colab))
             .exclude(nome="Ações Corretivas e Preventivas")
             .distinct(), 
             id=board_id
         )
+    else:
+        # Colaborador nulo -> sem acesso
+        from django.http import Http404
+        raise Http404("Quadro não encontrado ou sem permissão de acesso.")
         
     # Colunas, sub-sessões e cartões pré-carregados
     todas_colunas = list(board.colunas.prefetch_related('subsecoes', 'cartoes__responsaveis', 'cartoes__checklist_itens', 'cartoes__planejamentos').all())
@@ -1540,11 +1546,14 @@ def export_board_pdf_view(request, board_id):
     
     if request.user.is_superuser:
         board = get_object_or_404(Board.objects.exclude(nome="Ações Corretivas e Preventivas"), id=board_id)
-    else:
+    elif colab:
         board = get_object_or_404(
             Board.objects.filter(Q(criado_por=colab) | Q(membros=colab)).exclude(nome="Ações Corretivas e Preventivas"), 
             id=board_id
         )
+    else:
+        from django.http import Http404
+        raise Http404("Quadro não encontrado ou sem permissão de acesso.")
 
     cartoes_param = request.GET.get('cartoes', '')
     if cartoes_param:
