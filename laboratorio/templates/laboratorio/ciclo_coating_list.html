@@ -44,14 +44,14 @@
                             </td>
                             <td class="fw-bold">{{ ciclo.nome }}</td>
                             <td class="text-center">
-                                {% if ciclo.criterio == 'DIAS' %}
-                                    <span class="badge bg-info text-dark"><i class="bi bi-calendar-event"></i> Dias Corridos</span>
-                                {% else %}
-                                    <span class="badge bg-secondary"><i class="bi bi-box-seam"></i> Lotes Produzidos</span>
-                                {% endif %}
+                                <span class="badge bg-info text-dark"><i class="bi bi-calendar-event"></i> {{ ciclo.get_criterio_display }}</span>
                             </td>
                             <td class="text-center">
-                                <span class="badge bg-dark px-3 py-2 fs-6">{{ ciclo.limite_lotes }} {% if ciclo.criterio == 'DIAS' %}dias{% else %}lotes{% endif %}</span>
+                                {% if ciclo.criterio == 'LOTES' or ciclo.criterio == 'DIAS' %}
+                                    <span class="badge bg-dark px-3 py-2 fs-6">{{ ciclo.limite_lotes }} {% if ciclo.criterio == 'DIAS' %}dias{% else %}lotes{% endif %}</span>
+                                {% else %}
+                                    <span class="text-muted small">-</span>
+                                {% endif %}
                             </td>
                             <td class="text-end pe-3">
                                 <a href="{% url 'laboratorio:configurar_checklist_ciclo' ciclo.id %}" class="btn btn-sm btn-outline-secondary me-1">
@@ -117,11 +117,16 @@
                             <select class="form-select" name="criterio" required id="criterioSelect">
                                 <option value="LOTES">Por Lotes</option>
                                 <option value="DIAS">Por Tempo (Dias)</option>
+                                <option value="DIARIO">Diário (1x ao Dia)</option>
+                                <option value="SEMANAL">Semanal (1x na Semana)</option>
+                                <option value="QUINZENAL">Quinzenal (1x na Quinzena)</option>
+                                <option value="MENSAL">Mensal (1x no Mês)</option>
+                                <option value="LIVRE">Sem Periodicidade (Livre)</option>
                             </select>
                         </div>
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-6 mb-3" id="limiteContainer">
                             <label class="form-label fw-bold" id="limiteLabel">Limite (Nº Lotes)</label>
-                            <input type="number" class="form-control" name="limite_lotes" required min="1">
+                            <input type="number" class="form-control" name="limite_lotes" id="limiteInput" required min="1" value="10">
                         </div>
                     </div>
                 </div>
@@ -162,9 +167,14 @@
                             <select class="form-select" name="criterio" id="editCriterio" required>
                                 <option value="LOTES">Por Lotes</option>
                                 <option value="DIAS">Por Tempo (Dias)</option>
+                                <option value="DIARIO">Diário (1x ao Dia)</option>
+                                <option value="SEMANAL">Semanal (1x na Semana)</option>
+                                <option value="QUINZENAL">Quinzenal (1x na Quinzena)</option>
+                                <option value="MENSAL">Mensal (1x no Mês)</option>
+                                <option value="LIVRE">Sem Periodicidade (Livre)</option>
                             </select>
                         </div>
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-6 mb-3" id="editLimiteContainer">
                             <label class="form-label fw-bold" id="editLimiteLabel">Limite (Nº Lotes)</label>
                             <input type="number" class="form-control" name="limite_lotes" id="editLimite" required min="1">
                         </div>
@@ -199,37 +209,53 @@
         
         // Atualiza o label do limite
         const limiteLabel = document.getElementById('editLimiteLabel');
-        if (criterio === 'DIAS') {
-            limiteLabel.innerText = 'Limite (Dias Corridos)';
+        const editLimiteContainer = document.getElementById('editLimiteContainer');
+        const editLimiteInput = document.getElementById('editLimite');
+        
+        if (criterio === 'DIAS' || criterio === 'LOTES') {
+            editLimiteContainer.style.display = 'block';
+            editLimiteInput.required = true;
+            if (criterio === 'DIAS') {
+                limiteLabel.innerText = 'Limite (Dias Corridos)';
+            } else {
+                limiteLabel.innerText = 'Limite (Nº Lotes)';
+            }
         } else {
-            limiteLabel.innerText = 'Limite (Nº Lotes)';
+            editLimiteContainer.style.display = 'none';
+            editLimiteInput.required = false;
         }
         
         new bootstrap.Modal(document.getElementById('modalEditar')).show();
     }
     
+    function toggleLimite(criterio, containerId, labelId, inputId) {
+        const container = document.getElementById(containerId);
+        const label = document.getElementById(labelId);
+        const input = document.getElementById(inputId);
+        
+        if (criterio === 'DIAS' || criterio === 'LOTES') {
+            container.style.display = 'block';
+            input.required = true;
+            label.innerText = criterio === 'DIAS' ? 'Limite (Dias Corridos)' : 'Limite (Nº Lotes)';
+        } else {
+            container.style.display = 'none';
+            input.required = false;
+        }
+    }
+    
     document.addEventListener('DOMContentLoaded', function() {
         const criterioSelect = document.getElementById('criterioSelect');
-        const limiteLabel = document.getElementById('limiteLabel');
         if (criterioSelect) {
             criterioSelect.addEventListener('change', function() {
-                if (this.value === 'DIAS') {
-                    limiteLabel.innerText = 'Limite (Dias Corridos)';
-                } else {
-                    limiteLabel.innerText = 'Limite (Nº Lotes)';
-                }
+                toggleLimite(this.value, 'limiteContainer', 'limiteLabel', 'limiteInput');
             });
+            toggleLimite(criterioSelect.value, 'limiteContainer', 'limiteLabel', 'limiteInput');
         }
         
         const editCriterio = document.getElementById('editCriterio');
-        const editLimiteLabel = document.getElementById('editLimiteLabel');
         if (editCriterio) {
             editCriterio.addEventListener('change', function() {
-                if (this.value === 'DIAS') {
-                    editLimiteLabel.innerText = 'Limite (Dias Corridos)';
-                } else {
-                    editLimiteLabel.innerText = 'Limite (Nº Lotes)';
-                }
+                toggleLimite(this.value, 'editLimiteContainer', 'editLimiteLabel', 'editLimite');
             });
         }
     });

@@ -163,6 +163,10 @@
                                                                 <span class="badge bg-danger pulse-danger" style="cursor:pointer;" data-bs-toggle="tooltip" title="Pendente: {{ c_status.ciclo.nome }}" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
                                                                     <i class="bi bi-exclamation-circle-fill"></i>
                                                                 </span>
+                                                            {% elif c_status.status == 'PARCIAL' %}
+                                                                <span class="badge bg-warning text-dark" style="cursor:pointer;" data-bs-toggle="tooltip" title="Parcial (Checklist Incompleto): {{ c_status.ciclo.nome }}" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
+                                                                    <i class="bi bi-exclamation-triangle-fill"></i>
+                                                                </span>
                                                             {% endif %}
                                                         {% endif %}
                                                     {% endfor %}
@@ -179,6 +183,10 @@
                                                             {% elif c_status.status == 'PENDENTE' %}
                                                                 <span class="badge bg-danger pulse-danger" style="cursor:pointer;" data-bs-toggle="tooltip" title="Pendente: {{ c_status.ciclo.nome }}" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
                                                                     <i class="bi bi-exclamation-circle-fill"></i>
+                                                                </span>
+                                                            {% elif c_status.status == 'PARCIAL' %}
+                                                                <span class="badge bg-warning text-dark" style="cursor:pointer;" data-bs-toggle="tooltip" title="Parcial (Checklist Incompleto): {{ c_status.ciclo.nome }}" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
+                                                                    <i class="bi bi-exclamation-triangle-fill"></i>
                                                                 </span>
                                                             {% endif %}
                                                         {% endif %}

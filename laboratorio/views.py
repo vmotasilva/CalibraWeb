@@ -1037,11 +1037,16 @@ def coating_painel(request):
         
         # Busca todo o historico de lotes da maquina para simular os contadores
         lotes_historico = list(RegistroCoating.objects.filter(maquina=maquina).order_by('turno_coating__data', 'lote', 'id').values('id', 'lote', 'turno_coating__data'))
-        manutencoes = list(ManutencaoRealizadaCoating.objects.filter(registro__maquina=maquina).values('registro_id', 'ciclo_id'))
+        
+        manutencoes = list(ManutencaoRealizadaCoating.objects.filter(registro__maquina=maquina).annotate(
+            total_itens=Count('ciclo__itens_checklist'),
+            itens_feitos=Count('respostas_checklist', filter=Q(respostas_checklist__feito=True))
+        ).values('registro_id', 'ciclo_id', 'total_itens', 'itens_feitos'))
         
         manut_map = {}
         for m in manutencoes:
-            manut_map.setdefault(m['registro_id'], []).append(m['ciclo_id'])
+            status_m = 'PARCIAL' if m['total_itens'] > 0 and m['itens_feitos'] < m['total_itens'] else 'OK'
+            manut_map.setdefault(m['registro_id'], []).append((m['ciclo_id'], status_m))
             
         lotes_agrupados = defaultdict(list)
         for reg_dict in lotes_historico:
@@ -1050,26 +1055,53 @@ def coating_painel(request):
             
         counters = {c.id: 0 for c in ciclos}
         never_done = {c.id: True for c in ciclos}
+        last_period = {c.id: None for c in ciclos}
         registro_status = {}
         
         for lote_key, rids in lotes_agrupados.items():
+            data_lote = lote_key[0]
+            
             for cid in counters:
                 counters[cid] += 1
                 
-            m_cids_lote = set()
+            m_cids_lote = {}
             for rid in rids:
-                m_cids_lote.update(manut_map.get(rid, []))
+                for cid, m_status in manut_map.get(rid, []):
+                    m_cids_lote[cid] = m_status
                 
             ciclos_status_lote = {}
             for c in ciclos:
+                # Determinar período atual baseado na data do lote
+                if c.criterio == 'DIARIO':
+                    curr_period = f"{data_lote.year}-{data_lote.month:02d}-{data_lote.day:02d}"
+                elif c.criterio == 'SEMANAL':
+                    curr_period = f"{data_lote.isocalendar()[0]}-W{data_lote.isocalendar()[1]}"
+                elif c.criterio == 'QUINZENAL':
+                    curr_period = f"{data_lote.year}-{data_lote.month:02d}-Q{1 if data_lote.day <= 15 else 2}"
+                elif c.criterio == 'MENSAL':
+                    curr_period = f"{data_lote.year}-{data_lote.month:02d}"
+                else:
+                    curr_period = None
+                    
                 if c.id in m_cids_lote:
-                    status = 'OK'
+                    status = m_cids_lote[c.id] # OK or PARCIAL
                     counters[c.id] = 0
                     never_done[c.id] = False
-                elif never_done[c.id] or counters[c.id] >= c.limite_lotes:
-                    status = 'PENDENTE'
+                    last_period[c.id] = curr_period
                 else:
-                    status = 'S_FAROL'
+                    if c.criterio in ['LOTES', 'DIAS']:
+                        if never_done[c.id] or counters[c.id] >= c.limite_lotes:
+                            status = 'PENDENTE'
+                        else:
+                            status = 'S_FAROL'
+                    elif c.criterio == 'LIVRE':
+                        status = 'S_FAROL'
+                    else: # Criterio Calendário
+                        if last_period[c.id] == curr_period:
+                            status = 'S_FAROL'
+                        else:
+                            status = 'PENDENTE'
+                            
                 ciclos_status_lote[c.id] = status
                 
             for rid in rids:
@@ -1093,12 +1125,34 @@ def coating_painel(request):
                 reg.ok_cids = ok_cids
         
         # Prepara o status global atual da maquina
+        hoje = timezone.now().date()
         for ciclo in ciclos:
             count = counters.get(ciclo.id, 0)
             itens = list(ciclo.itens_checklist.all().values('id', 'texto', 'ordem'))
             
-            estourou_agora = never_done[ciclo.id] or count >= ciclo.limite_lotes
-            estourou_proximo = count == (ciclo.limite_lotes - 1)
+            if ciclo.criterio in ['LOTES', 'DIAS']:
+                estourou_agora = never_done[ciclo.id] or count >= ciclo.limite_lotes
+                estourou_proximo = count == (ciclo.limite_lotes - 1)
+                lotes_passados = count
+            elif ciclo.criterio == 'LIVRE':
+                estourou_agora = False
+                estourou_proximo = False
+                lotes_passados = 0
+            else:
+                if ciclo.criterio == 'DIARIO':
+                    curr_period = f"{hoje.year}-{hoje.month:02d}-{hoje.day:02d}"
+                elif ciclo.criterio == 'SEMANAL':
+                    curr_period = f"{hoje.isocalendar()[0]}-W{hoje.isocalendar()[1]}"
+                elif ciclo.criterio == 'QUINZENAL':
+                    curr_period = f"{hoje.year}-{hoje.month:02d}-Q{1 if hoje.day <= 15 else 2}"
+                elif ciclo.criterio == 'MENSAL':
+                    curr_period = f"{hoje.year}-{hoje.month:02d}"
+                else:
+                    curr_period = None
+                    
+                estourou_agora = last_period[ciclo.id] != curr_period
+                estourou_proximo = False
+                lotes_passados = 0
 
             status_maquinas[maquina.id].append({
                 "ciclo": {
@@ -1121,7 +1175,7 @@ def coating_painel(request):
                     }
                 alertas_ciclos[maquina.id]["alertas"].append({
                     "ciclo": ciclo,
-                    "lotes_passados": count,
+                    "lotes_passados": lotes_passados,
                     "ultimo_lote": lotes_historico[-1]['lote'] if lotes_historico else "N/A",
                     "data": lotes_historico[-1]['turno_coating__data'] if lotes_historico else None,
                     "estourou_agora": estourou_agora,

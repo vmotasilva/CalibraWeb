@@ -392,7 +392,12 @@ class CicloManutencaoCoating(models.Model):
     
     CRITERIO_CHOICES = [
         ('LOTES', 'Por Quantidade de Lotes'),
-        ('DIAS', 'Por Tempo (Dias Corridos)')
+        ('DIAS', 'Por Tempo (Dias Corridos)'),
+        ('DIARIO', 'Diário (1x ao Dia)'),
+        ('SEMANAL', 'Semanal (1x na Semana)'),
+        ('QUINZENAL', 'Quinzenal (1x na Quinzena)'),
+        ('MENSAL', 'Mensal (1x no Mês)'),
+        ('LIVRE', 'Sem Periodicidade (Livre)')
     ]
     
     maquina = models.ForeignKey(Maquina, on_delete=models.CASCADE, related_name="ciclos_coating", verbose_name="Máquina")
