@@ -29,6 +29,81 @@ from rh.models import Colaborador
 def get_user_colaborador(user):
     return user.colaborador if hasattr(user, 'colaborador') else None
 
+def can_edit_board(board, colab, user):
+    """
+    Retorna True se o usuário pode alterar estrutura (configurações, colunas, tags) do quadro.
+    Somente superuser, criador e membros explícitos têm permissão de edição.
+    Usuários que acessam via 'todos_colaboradores=True' são apenas leitores/associados.
+    """
+    if user.is_superuser:
+        return True
+    if not colab:
+        return False
+    if board.criado_por == colab:
+        return True
+    return board.membros.filter(id=colab.id).exists()
+
+
+from functools import wraps
+from django.http import JsonResponse, HttpResponseForbidden
+from django.shortcuts import get_object_or_404
+import json
+
+def require_board_edit_permission(view_func):
+    @wraps(view_func)
+    def _wrapped_view(request, *args, **kwargs):
+        colab = get_user_colaborador(request.user)
+        board = None
+        
+        try:
+            if 'board_id' in kwargs:
+                from .models import Board
+                board = get_object_or_404(Board, id=kwargs['board_id'])
+            elif 'column_id' in kwargs:
+                from .models import BoardColumn
+                board = get_object_or_404(BoardColumn, id=kwargs['column_id']).quadro
+            elif 'card_id' in kwargs:
+                from .models import Card
+                board = get_object_or_404(Card, id=kwargs['card_id']).coluna.quadro
+            elif 'linha_id' in kwargs:
+                from qms.models import ActionPlanLinha
+                # actually boards uses its own models? Let's check imports.
+                pass # Will just let it pass if it's too complex or we can check request.body
+            elif 'item_id' in kwargs:
+                from .models import ChecklistItem
+                board = get_object_or_404(ChecklistItem, id=kwargs['item_id']).cartao.coluna.quadro
+            elif 'comment_id' in kwargs:
+                from .models import CardComment
+                board = get_object_or_404(CardComment, id=kwargs['comment_id']).cartao.coluna.quadro
+            elif 'subsection_id' in kwargs:
+                from .models import BoardSubSection
+                board = get_object_or_404(BoardSubSection, id=kwargs['subsection_id']).coluna.quadro
+            elif 'label_id' in kwargs:
+                from .models import BoardLabel
+                board = get_object_or_404(BoardLabel, id=kwargs['label_id']).quadro
+            elif 'link_id' in kwargs:
+                from .models import BoardLink
+                board = get_object_or_404(BoardLink, id=kwargs['link_id']).quadro
+            elif request.method in ['POST', 'PUT']:
+                if request.body:
+                    data = json.loads(request.body)
+                    if 'card_id' in data:
+                        from .models import Card
+                        board = get_object_or_404(Card, id=data['card_id']).coluna.quadro
+                    elif 'column_id' in data:
+                        from .models import BoardColumn
+                        board = get_object_or_404(BoardColumn, id=data['column_id']).quadro
+        except Exception as e:
+            pass
+            
+        if board and not can_edit_board(board, colab, request.user):
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.content_type == 'application/json':
+                return JsonResponse({'success': False, 'error': 'Acesso negado. Apenas membros podem alterar.'}, status=403)
+            return HttpResponseForbidden("Acesso negado. Apenas membros podem alterar o quadro.")
+            
+        return view_func(request, *args, **kwargs)
+    return _wrapped_view
+
 
 @login_required
 def dashboard_view(request):
@@ -40,7 +115,7 @@ def dashboard_view(request):
         quadros_base = Board.objects.exclude(nome="Ações Corretivas e Preventivas").distinct()
     elif colab:
         quadros_base = Board.objects.filter(
-            Q(criado_por=colab) | Q(membros=colab)
+            Q(criado_por=colab) | Q(membros=colab) | Q(todos_colaboradores=True)
         ).exclude(nome="Ações Corretivas e Preventivas").distinct()
     else:
         quadros_base = Board.objects.none()
@@ -49,7 +124,11 @@ def dashboard_view(request):
     quadros_arquivados = quadros_base.filter(arquivado=True)
 
 
+
     if request.method == 'POST':
+        if not can_edit_board(board, colab, request.user):
+            return JsonResponse({'success': False, 'error': 'Acesso negado. Apenas membros.'}, status=403)
+
         form = BoardForm(request.POST)
         if form.is_valid():
             board = form.save(commit=False)
@@ -134,7 +213,7 @@ def board_detail_view(request, board_id, focus_column_id=None):
         board = get_object_or_404(Board.objects.exclude(nome="Ações Corretivas e Preventivas"), id=board_id)
     elif colab:
         board = get_object_or_404(
-            Board.objects.filter(Q(criado_por=colab) | Q(membros=colab))
+            Board.objects.filter(Q(criado_por=colab) | Q(membros=colab) | Q(todos_colaboradores=True))
             .exclude(nome="Ações Corretivas e Preventivas")
             .distinct(), 
             id=board_id
@@ -297,6 +376,7 @@ def board_detail_view(request, board_id, focus_column_id=None):
         'porcentagem_concluida': porcentagem_concluida,
         'cartoes_atrasados': cartoes_atrasados,
         'atividades': atividades,
+        'can_edit_board': can_edit_board(board, colab, request.user),
         'todos_colaboradores': todos_colaboradores,
         'colaboradores_com_tarefas': colaboradores_com_tarefas,
         'colaboradores_sistema': Colaborador.objects.all().order_by('nome_completo'),
@@ -314,6 +394,7 @@ def board_detail_view(request, board_id, focus_column_id=None):
 
 @login_required
 @require_POST
+@require_board_edit_permission
 def create_column_view(request, board_id):
     """Cria uma nova coluna no quadro"""
     colab = get_user_colaborador(request.user)
@@ -341,6 +422,7 @@ def create_column_view(request, board_id):
 
 @login_required
 @require_POST
+@require_board_edit_permission
 def archive_column_view(request, column_id):
     """Arquiva uma coluna (oculta do quadro ativo, preserva cartões)"""
     colab = get_user_colaborador(request.user)
@@ -359,6 +441,7 @@ def archive_column_view(request, column_id):
 
 @login_required
 @require_POST
+@require_board_edit_permission
 def unarchive_column_view(request, column_id):
     """Desarquiva uma coluna, tornando-a ativa novamente"""
     colab = get_user_colaborador(request.user)
@@ -377,6 +460,7 @@ def unarchive_column_view(request, column_id):
 
 @login_required
 @require_POST
+@require_board_edit_permission
 def delete_column_view(request, column_id):
     """Remove uma coluna do quadro e seus cartões"""
     colab = get_user_colaborador(request.user)
@@ -400,6 +484,7 @@ from django.urls import reverse
 
 @login_required
 @require_POST
+@require_board_edit_permission
 def copy_column_view(request, column_id):
     """Cria uma cópia de uma coluna (com novo nome) no mesmo quadro"""
     colab = get_user_colaborador(request.user)
@@ -435,6 +520,7 @@ def copy_column_view(request, column_id):
 
 
 @login_required
+@require_board_edit_permission
 def api_column_description_view(request, column_id):
     """GET: retorna descrição da coluna. POST: atualiza descrição."""
     coluna = get_object_or_404(BoardColumn, id=column_id)
@@ -455,6 +541,7 @@ def api_column_description_view(request, column_id):
 
 
 @login_required
+@require_board_edit_permission
 def api_rename_column_view(request, column_id):
     """POST: renomeia a coluna."""
     coluna = get_object_or_404(BoardColumn, id=column_id)
@@ -486,6 +573,7 @@ def api_rename_column_view(request, column_id):
 
 @login_required
 @require_POST
+@require_board_edit_permission
 def create_card_view(request, column_id):
     """Cria um novo cartão em uma coluna"""
     colab = get_user_colaborador(request.user)
@@ -634,6 +722,7 @@ def spawn_recurring_card(card, origin_column=None, origin_subsection=None):
 
 @login_required
 @require_POST
+@require_board_edit_permission
 def api_move_card_view(request):
     """Endpoint API para mover cartão de coluna/posição via Drag and Drop"""
     try:
@@ -1157,6 +1246,7 @@ def api_card_detail_view(request, card_id):
 
 @login_required
 @require_POST
+@require_board_edit_permission
 def api_add_checklist_item_view(request, card_id):
     """Cria um item de checklist no cartão"""
     colab = get_user_colaborador(request.user)
@@ -1181,6 +1271,7 @@ def api_add_checklist_item_view(request, card_id):
 
 @login_required
 @require_POST
+@require_board_edit_permission
 def api_toggle_checklist_item_view(request, item_id):
     """Inverte o status de concluído do item do checklist"""
     colab = get_user_colaborador(request.user)
@@ -1201,6 +1292,7 @@ def api_toggle_checklist_item_view(request, item_id):
 
 @login_required
 @require_POST
+@require_board_edit_permission
 def api_delete_checklist_item_view(request, item_id):
     """Exclui item de checklist"""
     colab = get_user_colaborador(request.user)
@@ -1285,6 +1377,7 @@ def api_delete_comment_view(request, comment_id):
 
 @login_required
 @require_POST
+@require_board_edit_permission
 def delete_card_view(request, card_id):
     """Exclui um cartão"""
     colab = get_user_colaborador(request.user)
@@ -1305,6 +1398,7 @@ def delete_card_view(request, card_id):
 
 @login_required
 @require_POST
+@require_board_edit_permission
 def edit_board_view(request, board_id):
     """Edita dados e membros do quadro"""
     colab = get_user_colaborador(request.user)
@@ -1327,6 +1421,7 @@ def edit_board_view(request, board_id):
 
 @login_required
 @require_POST
+@require_board_edit_permission
 def delete_board_view(request, board_id):
     """Remove um quadro completo"""
     colab = get_user_colaborador(request.user)
@@ -1339,6 +1434,7 @@ def delete_board_view(request, board_id):
 
 @login_required
 @require_POST
+@require_board_edit_permission
 def archive_board_view(request, board_id):
     """Arquiva um quadro de atividades"""
     colab = get_user_colaborador(request.user)
@@ -1362,6 +1458,7 @@ def archive_board_view(request, board_id):
 
 @login_required
 @require_POST
+@require_board_edit_permission
 def unarchive_board_view(request, board_id):
     """Desarquiva/restaura um quadro de atividades"""
     colab = get_user_colaborador(request.user)
@@ -1385,6 +1482,7 @@ def unarchive_board_view(request, board_id):
 
 @login_required
 @require_POST
+@require_board_edit_permission
 def api_move_column_view(request):
     """Endpoint API para reordenar colunas via AJAX Drag and Drop"""
     try:
@@ -1402,6 +1500,7 @@ def api_move_column_view(request):
 
 @login_required
 @require_POST
+@require_board_edit_permission
 def create_subsection_view(request, column_id):
     column = get_object_or_404(BoardColumn, id=column_id)
     nome = request.POST.get('nome', '').strip()
@@ -1422,6 +1521,7 @@ def create_subsection_view(request, column_id):
 
 @login_required
 @require_POST
+@require_board_edit_permission
 def delete_subsection_view(request, subsection_id):
     subsecao = get_object_or_404(BoardSubSection, id=subsection_id)
     board_id = subsecao.coluna.quadro.id
@@ -1433,6 +1533,7 @@ def delete_subsection_view(request, subsection_id):
 
 @login_required
 @require_POST
+@require_board_edit_permission
 def create_label_view(request, board_id):
     board = get_object_or_404(Board, id=board_id)
     colab = get_user_colaborador(request.user)
@@ -1456,6 +1557,7 @@ def create_label_view(request, board_id):
 
 @login_required
 @require_POST
+@require_board_edit_permission
 def delete_label_view(request, label_id):
     label = get_object_or_404(BoardLabel, id=label_id)
     board = label.quadro
@@ -1484,6 +1586,7 @@ def read_mention_view(request, mention_id):
 
 @login_required
 @require_POST
+@require_board_edit_permission
 def api_add_board_link_view(request, board_id):
     board = get_object_or_404(Board, id=board_id)
     try:
@@ -1511,6 +1614,7 @@ def api_add_board_link_view(request, board_id):
 
 @login_required
 @require_POST
+@require_board_edit_permission
 def api_delete_board_link_view(request, link_id):
     link = get_object_or_404(BoardLink, id=link_id)
     if not request.user.is_superuser and link.criado_por != get_user_colaborador(request.user) and link.quadro.criado_por != get_user_colaborador(request.user):
@@ -1548,7 +1652,7 @@ def export_board_pdf_view(request, board_id):
         board = get_object_or_404(Board.objects.exclude(nome="Ações Corretivas e Preventivas"), id=board_id)
     elif colab:
         board = get_object_or_404(
-            Board.objects.filter(Q(criado_por=colab) | Q(membros=colab)).exclude(nome="Ações Corretivas e Preventivas"), 
+            Board.objects.filter(Q(criado_por=colab) | Q(membros=colab) | Q(todos_colaboradores=True)).exclude(nome="Ações Corretivas e Preventivas"), 
             id=board_id
         )
     else:

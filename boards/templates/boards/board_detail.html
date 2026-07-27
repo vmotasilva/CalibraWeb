@@ -5,6 +5,29 @@
 {% block header_title %}{{ board.nome }}{% endblock %}
 
 {% block extra_css %}
+{% if not can_edit_board %}
+<style>
+    /* Hide all edit actions for non-members */
+    [data-bs-target="#addCardModal"],
+    [data-bs-target="#boardConfigModal"],
+    [data-bs-target="#boardLabelsModal"],
+    [data-bs-target="#archivedColumnsModal"],
+    [data-bs-target="#addColumnModal"],
+    [data-bs-target="#newSubsectionModal"],
+    [data-bs-target="#boardLinksModal"],
+    button[onclick*="openAddCardModal"],
+    form[action*="/boards/delete_column"],
+    form[action*="/boards/delete_subsection"],
+    form#deleteCardForm,
+    #boardActionsDropdown,
+    .dropdown-toggle[id^="dropdownColumn"],
+    .kanban-column-add-task,
+    .add-checklist-item-form,
+    .add-checklist-item-btn {
+        display: none !important;
+    }
+</style>
+{% endif %}
 <style>
     /* Custom Calendar Grid Styles */
     .custom-calendar-header {
@@ -1909,6 +1932,26 @@
 {% endblock %}
 
 {% block extra_js %}
+{% if not can_edit_board %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Disable drag and drop for cards and columns
+        document.querySelectorAll('.kanban-card, .kanban-column').forEach(el => {
+            el.setAttribute('draggable', 'false');
+        });
+        
+        // Make contenteditable elements not editable
+        document.querySelectorAll('[contenteditable="true"]').forEach(el => {
+            el.setAttribute('contenteditable', 'false');
+        });
+        
+        // Ensure checklist forms are hidden just in case
+        document.querySelectorAll('.add-checklist-item-form, .add-checklist-item-btn').forEach(el => {
+            if(el) el.style.display = 'none';
+        });
+    });
+</script>
+{% endif %}
 <!-- Chart.js para gráficos -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
 
