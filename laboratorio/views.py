@@ -1477,7 +1477,10 @@ def ciclo_coating_delete(request, pk):
         ciclo.delete()
         messages.success(request, f"Ciclo '{nome}' removido da máquina {maq}.")
     except Exception as e:
-        messages.error(request, f"Erro ao remover ciclo: {str(e)}")
+        if type(e).__name__ == 'ProtectedError' or 'protected foreign keys' in str(e):
+            messages.error(request, f"Não é possível excluir o ciclo '{nome}'. Ele já possui manutenções registradas no histórico de lotes e está protegido para fins de auditoria.")
+        else:
+            messages.error(request, f"Erro ao remover ciclo: {str(e)}")
         
     return redirect("laboratorio:ciclo_coating_list")
 
@@ -1667,7 +1670,10 @@ def ciclo_coating_delete(request, pk):
         ciclo.delete()
         messages.success(request, f"Ciclo '{nome}' removido da máquina {maq}.")
     except Exception as e:
-        messages.error(request, f"Erro ao remover ciclo: {str(e)}")
+        if type(e).__name__ == 'ProtectedError' or 'protected foreign keys' in str(e):
+            messages.error(request, f"Não é possível excluir o ciclo '{nome}'. Ele já possui manutenções registradas no histórico de lotes e está protegido para fins de auditoria.")
+        else:
+            messages.error(request, f"Erro ao remover ciclo: {str(e)}")
         
     return redirect("laboratorio:ciclo_coating_list")
 
