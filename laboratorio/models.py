@@ -388,6 +388,7 @@ class CicloManutencaoCoating(models.Model):
     TIPO_CHOICES = [
         ('LIMPEZA', 'Limpeza'),
         ('TROCA', 'Troca'),
+        ('VERIFICACAO', 'Verificação')
     ]
     
     CRITERIO_CHOICES = [
@@ -401,11 +402,15 @@ class CicloManutencaoCoating(models.Model):
     ]
     
     maquina = models.ForeignKey(Maquina, on_delete=models.CASCADE, related_name="ciclos_coating", verbose_name="Máquina")
-    tipo = models.CharField(max_length=10, choices=TIPO_CHOICES, verbose_name="Tipo", default='LIMPEZA')
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, verbose_name="Tipo", default='LIMPEZA')
     nome = models.CharField(max_length=100, verbose_name="Nome da Manutenção", default="Manutenção Padrão")
     criterio = models.CharField(max_length=10, choices=CRITERIO_CHOICES, default='LOTES', verbose_name="Critério de Alerta")
-    limite_lotes = models.IntegerField(default=10, verbose_name="Limite (Lotes/Dias)")
+    limite_lotes = models.IntegerField(default=1, verbose_name="Limite de Lotes/Dias")
     
+    # Campos exclusivos para tipo VERIFICACAO
+    valor_minimo = models.FloatField(null=True, blank=True, verbose_name="Valor Mínimo Aceitável")
+    valor_maximo = models.FloatField(null=True, blank=True, verbose_name="Valor Máximo Aceitável")
+
     class Meta:
         verbose_name = "Ciclo de Manutenção de Coating"
         verbose_name_plural = "Ciclos de Manutenção de Coating"
@@ -420,6 +425,7 @@ class ManutencaoRealizadaCoating(models.Model):
     ciclo = models.ForeignKey(CicloManutencaoCoating, on_delete=models.PROTECT, related_name="realizacoes", verbose_name="Manutenção Realizada")
     data_realizacao = models.DateTimeField(auto_now_add=True)
     observacao = models.TextField(blank=True, null=True, verbose_name="Observações Gerais")
+    valor_aferido = models.FloatField(null=True, blank=True, verbose_name="Valor Aferido (Verificações)")
 
     class Meta:
         verbose_name = "Manutenção Realizada (Coating)"

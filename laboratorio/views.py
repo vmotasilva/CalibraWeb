@@ -1041,11 +1041,27 @@ def coating_painel(request):
         manutencoes = list(ManutencaoRealizadaCoating.objects.filter(registro__maquina=maquina).annotate(
             total_itens=Count('ciclo__itens_checklist'),
             itens_feitos=Count('respostas_checklist', filter=Q(respostas_checklist__feito=True))
-        ).values('registro_id', 'ciclo_id', 'total_itens', 'itens_feitos'))
+        ).values('registro_id', 'ciclo_id', 'total_itens', 'itens_feitos', 'ciclo__tipo', 'valor_aferido', 'ciclo__valor_minimo', 'ciclo__valor_maximo'))
         
         manut_map = {}
         for m in manutencoes:
-            status_m = 'PARCIAL' if m['total_itens'] > 0 and m['itens_feitos'] < m['total_itens'] else 'OK'
+            if m['ciclo__tipo'] == 'VERIFICACAO':
+                valor = m['valor_aferido']
+                vmin = m['ciclo__valor_minimo']
+                vmax = m['ciclo__valor_maximo']
+                status_m = 'OK'
+                if valor is not None:
+                    if vmin is not None and valor < vmin:
+                        status_m = 'NOK'
+                    if vmax is not None and valor > vmax:
+                        status_m = 'NOK'
+                else:
+                    # Se não informaram o valor, mas deveriam
+                    if vmin is not None or vmax is not None:
+                        status_m = 'NOK'
+            else:
+                status_m = 'PARCIAL' if m['total_itens'] > 0 and m['itens_feitos'] < m['total_itens'] else 'OK'
+            
             manut_map.setdefault(m['registro_id'], []).append((m['ciclo_id'], status_m))
             
         lotes_agrupados = defaultdict(list)
@@ -1463,6 +1479,8 @@ def ciclo_coating_create(request):
         nome = request.POST.get('nome')
         criterio = request.POST.get('criterio', 'LOTES')
         limite_lotes = request.POST.get('limite_lotes')
+        valor_minimo = request.POST.get('valor_minimo')
+        valor_maximo = request.POST.get('valor_maximo')
         
         maquina = get_object_or_404(Maquina, pk=maquina_id)
         
@@ -1476,7 +1494,9 @@ def ciclo_coating_create(request):
             tipo=tipo,
             nome=nome,
             criterio=criterio,
-            limite_lotes=lim_val
+            limite_lotes=lim_val,
+            valor_minimo=float(valor_minimo) if valor_minimo else None,
+            valor_maximo=float(valor_maximo) if valor_maximo else None
         )
         
         messages.success(request, f"Ciclo '{nome}' adicionado para a máquina {maquina.codigo}.")
@@ -1500,6 +1520,12 @@ def ciclo_coating_update(request, pk):
         ciclo.nome = request.POST.get('nome', ciclo.nome)
         ciclo.criterio = request.POST.get('criterio', ciclo.criterio)
         ciclo.limite_lotes = lim_val
+        
+        valor_minimo = request.POST.get('valor_minimo')
+        valor_maximo = request.POST.get('valor_maximo')
+        ciclo.valor_minimo = float(valor_minimo) if valor_minimo else None
+        ciclo.valor_maximo = float(valor_maximo) if valor_maximo else None
+        
         ciclo.save()
         messages.success(request, f"Ciclo '{ciclo.nome}' atualizado com sucesso.")
     except Exception as e:
@@ -1625,10 +1651,18 @@ def registrar_manutencao_coating(request):
         for reg in registros_do_lote:
             for cid in ciclo_ids:
                 ciclo = get_object_or_404(CicloManutencaoCoating, pk=cid)
+                
+                valor_aferido_str = request.POST.get(f'valor_aferido_{ciclo.id}')
+                try:
+                    valor_aferido = float(valor_aferido_str) if valor_aferido_str else None
+                except ValueError:
+                    valor_aferido = None
+                
                 manut = ManutencaoRealizadaCoating.objects.create(
                     registro=reg, 
                     ciclo=ciclo,
-                    observacao=observacao if observacao else None
+                    observacao=observacao if observacao else None,
+                    valor_aferido=valor_aferido
                 )
                 
                 for item in ciclo.itens_checklist.all():

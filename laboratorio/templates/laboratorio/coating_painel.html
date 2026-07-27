@@ -132,6 +132,7 @@
                                     <th>Montagem</th>
                                     <th>Limpezas</th>
                                     <th>Trocas</th>
+                                    <th>Verificações</th>
                                     <th>Ações</th>
                                 </tr>
                             </thead>
@@ -187,6 +188,27 @@
                                                             {% elif c_status.status == 'PARCIAL' %}
                                                                 <span class="badge bg-warning text-dark" style="cursor:pointer;" data-bs-toggle="tooltip" title="Parcial (Checklist Incompleto): {{ c_status.ciclo.nome }}" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
                                                                     <i class="bi bi-exclamation-triangle-fill"></i>
+                                                                </span>
+                                                            {% endif %}
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </div>
+                                            </td>
+                                            <td style="max-width: 200px;">
+                                                <div class="d-flex flex-wrap gap-1 justify-content-center">
+                                                    {% for c_status in reg.ciclos_status_list %}
+                                                        {% if c_status.ciclo.tipo == 'VERIFICACAO' %}
+                                                            {% if c_status.status == 'OK' %}
+                                                                <span class="badge bg-success" style="cursor:pointer;" data-bs-toggle="tooltip" title="OK: {{ c_status.ciclo.nome }}" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
+                                                                    <i class="bi bi-check-circle-fill"></i>
+                                                                </span>
+                                                            {% elif c_status.status == 'NOK' %}
+                                                                <span class="badge bg-danger text-white" style="cursor:pointer;" data-bs-toggle="tooltip" title="Fora do Limite: {{ c_status.ciclo.nome }}" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
+                                                                    <i class="bi bi-x-circle-fill"></i>
+                                                                </span>
+                                                            {% elif c_status.status == 'PENDENTE' %}
+                                                                <span class="badge bg-danger pulse-danger" style="cursor:pointer;" data-bs-toggle="tooltip" title="Pendente: {{ c_status.ciclo.nome }}" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
+                                                                    <i class="bi bi-exclamation-circle-fill"></i>
                                                                 </span>
                                                             {% endif %}
                                                         {% endif %}
@@ -661,6 +683,20 @@
                     });
                     checklistHtml += `</div></div>`;
                 }
+                
+                let verificacaoHtml = '';
+                if (item.ciclo.tipo === 'VERIFICACAO') {
+                    const disabledAttr = shouldBeChecked ? '' : 'disabled';
+                    const requiredAttr = shouldBeChecked ? 'required' : '';
+                    verificacaoHtml = `
+                        <div class="mt-2 ps-4 verificacao-container ${dNoneClass}" id="verificacaoContainer${item.ciclo.id}">
+                            <div class="card card-body bg-light py-2 px-3 border-primary border-opacity-25">
+                                <label class="form-label fw-bold small text-primary mb-1">Valor Aferido</label>
+                                <input type="number" step="0.001" class="form-control form-control-sm verificacao-item" name="valor_aferido_${item.ciclo.id}" id="valor_${item.ciclo.id}" ${disabledAttr} ${requiredAttr} placeholder="Digite o valor">
+                            </div>
+                        </div>
+                    `;
+                }
 
                 container.innerHTML += `
                     <div class="mb-3">
@@ -674,6 +710,7 @@
                             </label>
                         </div>
                         ${checklistHtml}
+                        ${verificacaoHtml}
                     </div>
                 `;
             });
@@ -699,6 +736,25 @@
                     input.disabled = true;
                     input.checked = false;
                 });
+            }
+        }
+        
+        const verifContainer = document.getElementById('verificacaoContainer' + cicloId);
+        if (verifContainer) {
+            const verifInput = verifContainer.querySelector('.verificacao-item');
+            if (isChecked) {
+                verifContainer.classList.remove('d-none');
+                if(verifInput) {
+                    verifInput.disabled = false;
+                    verifInput.required = true;
+                }
+            } else {
+                verifContainer.classList.add('d-none');
+                if(verifInput) {
+                    verifInput.disabled = true;
+                    verifInput.required = false;
+                    verifInput.value = '';
+                }
             }
         }
     }
