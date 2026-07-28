@@ -771,6 +771,9 @@
         } else {
             maquinasData = statusMaquinas[maquinaId] || [];
         }
+        if (tipoFiltro) {
+            maquinasData = maquinasData.filter(item => item.ciclo.tipo === tipoFiltro);
+        }
         if (maquinasData.length === 0) {
             container.innerHTML = '<div class="alert alert-warning">Nenhuma manutenção configurada para esta máquina. Acesse o menu de Ciclos de Coating para configurar.</div>';
         } else {
