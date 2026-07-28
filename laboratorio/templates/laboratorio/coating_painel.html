@@ -156,99 +156,111 @@
                                             <td>
                                                 <div class="d-flex flex-nowrap gap-1 justify-content-center">
                                                     {% if reg.limpezas_ok > 0 %}
-                                                    <span class="badge bg-success" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'LIMPEZA')">{{ reg.limpezas_ok }} <i class="bi bi-check-circle-fill"></i></span>
+                                                    <span class="badge bg-success" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'LIMPEZA', '{{ reg.ciclos_status_json_lote|safe }}')">{{ reg.limpezas_ok }} <i class="bi bi-check-circle-fill"></i></span>
                                                     {% endif %}
                                                     {% if reg.limpezas_pendentes > 0 %}
-                                                    <span class="badge bg-danger pulse-danger" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'LIMPEZA')">{{ reg.limpezas_pendentes }} <i class="bi bi-exclamation-circle-fill"></i></span>
+                                                    <span class="badge bg-danger pulse-danger" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'LIMPEZA', '{{ reg.ciclos_status_json_lote|safe }}')">{{ reg.limpezas_pendentes }} <i class="bi bi-exclamation-circle-fill"></i></span>
                                                     {% endif %}
-                                                    <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" data-bs-toggle="tooltip" title="Adicionar Extra" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'LIMPEZA')"><i class="bi bi-plus-lg"></i></span>
+                                                    {% if reg.limpezas_ok == 0 and reg.limpezas_pendentes == 0 %}
+<span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" data-bs-toggle="tooltip" title="Adicionar Extra" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'LIMPEZA', '{{ reg.ciclos_status_json_lote|safe }}')"><i class="bi bi-plus-lg"></i></span>
+{% endif %}
                                                 </div>
                                                 <div class="d-none full-details">
                                                     <div class="d-flex flex-nowrap gap-1 justify-content-center">
                                                     {% for c_status in reg.ciclos_status_list %}
                                                         {% if c_status.ciclo.tipo == 'LIMPEZA' %}
                                                             {% if c_status.status == 'OK' %}
-                                                                <span class="badge bg-success" style="cursor:pointer;" data-bs-toggle="tooltip" title="OK: {{ c_status.ciclo.nome }}" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }}, 'LIMPEZA')">
+                                                                <span class="badge bg-success" style="cursor:pointer;" data-bs-toggle="tooltip" title="OK: {{ c_status.ciclo.nome }}" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }}, 'LIMPEZA', '{{ reg.ciclos_status_json_lote|safe }}')">
                                                                     <i class="bi bi-check-circle-fill"></i>
                                                                 </span>
                                                             {% elif c_status.status == 'PENDENTE' %}
-                                                                <span class="badge bg-danger pulse-danger" style="cursor:pointer;" data-bs-toggle="tooltip" title="Pendente: {{ c_status.ciclo.nome }}" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }}, 'LIMPEZA')">
+                                                                <span class="badge bg-danger pulse-danger" style="cursor:pointer;" data-bs-toggle="tooltip" title="Pendente: {{ c_status.ciclo.nome }}" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }}, 'LIMPEZA', '{{ reg.ciclos_status_json_lote|safe }}')">
                                                                     <i class="bi bi-exclamation-circle-fill"></i>
                                                                 </span>
                                                             {% elif c_status.status == 'PARCIAL' %}
-                                                                <span class="badge bg-warning text-dark" style="cursor:pointer;" data-bs-toggle="tooltip" title="Parcial (Checklist Incompleto): {{ c_status.ciclo.nome }}" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }}, 'LIMPEZA')">
+                                                                <span class="badge bg-warning text-dark" style="cursor:pointer;" data-bs-toggle="tooltip" title="Parcial (Checklist Incompleto): {{ c_status.ciclo.nome }}" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }}, 'LIMPEZA', '{{ reg.ciclos_status_json_lote|safe }}')">
                                                                     <i class="bi bi-exclamation-triangle-fill"></i>
                                                                 </span>
                                                             {% endif %}
                                                         {% endif %}
                                                     {% endfor %}
-                                                    <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" data-bs-toggle="tooltip" title="Adicionar Extra" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'LIMPEZA')"><i class="bi bi-plus-lg"></i></span>
+                                                    {% if reg.limpezas_ok == 0 and reg.limpezas_pendentes == 0 %}
+<span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" data-bs-toggle="tooltip" title="Adicionar Extra" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'LIMPEZA', '{{ reg.ciclos_status_json_lote|safe }}')"><i class="bi bi-plus-lg"></i></span>
+{% endif %}
                                                 </div>
                                                 </div>
                                             </td>
                                             <td>
                                                 <div class="d-flex flex-nowrap gap-1 justify-content-center">
                                                     {% if reg.trocas_ok > 0 %}
-                                                    <span class="badge bg-success" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'TROCA')">{{ reg.trocas_ok }} <i class="bi bi-check-circle-fill"></i></span>
+                                                    <span class="badge bg-success" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'TROCA', '{{ reg.ciclos_status_json_lote|safe }}')">{{ reg.trocas_ok }} <i class="bi bi-check-circle-fill"></i></span>
                                                     {% endif %}
                                                     {% if reg.trocas_pendentes > 0 %}
-                                                    <span class="badge bg-danger pulse-danger" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'TROCA')">{{ reg.trocas_pendentes }} <i class="bi bi-exclamation-circle-fill"></i></span>
+                                                    <span class="badge bg-danger pulse-danger" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'TROCA', '{{ reg.ciclos_status_json_lote|safe }}')">{{ reg.trocas_pendentes }} <i class="bi bi-exclamation-circle-fill"></i></span>
                                                     {% endif %}
-                                                    <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" data-bs-toggle="tooltip" title="Adicionar Extra" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'TROCA')"><i class="bi bi-plus-lg"></i></span>
+                                                    {% if reg.trocas_ok == 0 and reg.trocas_pendentes == 0 %}
+<span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" data-bs-toggle="tooltip" title="Adicionar Extra" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'TROCA', '{{ reg.ciclos_status_json_lote|safe }}')"><i class="bi bi-plus-lg"></i></span>
+{% endif %}
                                                 </div>
                                                 <div class="d-none full-details">
                                                     <div class="d-flex flex-nowrap gap-1 justify-content-center">
                                                     {% for c_status in reg.ciclos_status_list %}
                                                         {% if c_status.ciclo.tipo == 'TROCA' %}
                                                             {% if c_status.status == 'OK' %}
-                                                                <span class="badge bg-success" style="cursor:pointer;" data-bs-toggle="tooltip" title="OK: {{ c_status.ciclo.nome }}" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }}, 'TROCA')">
+                                                                <span class="badge bg-success" style="cursor:pointer;" data-bs-toggle="tooltip" title="OK: {{ c_status.ciclo.nome }}" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }}, 'TROCA', '{{ reg.ciclos_status_json_lote|safe }}')">
                                                                     <i class="bi bi-check-circle-fill"></i>
                                                                 </span>
                                                             {% elif c_status.status == 'PENDENTE' %}
-                                                                <span class="badge bg-danger pulse-danger" style="cursor:pointer;" data-bs-toggle="tooltip" title="Pendente: {{ c_status.ciclo.nome }}" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }}, 'TROCA')">
+                                                                <span class="badge bg-danger pulse-danger" style="cursor:pointer;" data-bs-toggle="tooltip" title="Pendente: {{ c_status.ciclo.nome }}" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }}, 'TROCA', '{{ reg.ciclos_status_json_lote|safe }}')">
                                                                     <i class="bi bi-exclamation-circle-fill"></i>
                                                                 </span>
                                                             {% elif c_status.status == 'PARCIAL' %}
-                                                                <span class="badge bg-warning text-dark" style="cursor:pointer;" data-bs-toggle="tooltip" title="Parcial (Checklist Incompleto): {{ c_status.ciclo.nome }}" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }}, 'TROCA')">
+                                                                <span class="badge bg-warning text-dark" style="cursor:pointer;" data-bs-toggle="tooltip" title="Parcial (Checklist Incompleto): {{ c_status.ciclo.nome }}" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }}, 'TROCA', '{{ reg.ciclos_status_json_lote|safe }}')">
                                                                     <i class="bi bi-exclamation-triangle-fill"></i>
                                                                 </span>
                                                             {% endif %}
                                                         {% endif %}
                                                     {% endfor %}
-                                                    <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" data-bs-toggle="tooltip" title="Adicionar Extra" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'TROCA')"><i class="bi bi-plus-lg"></i></span>
+                                                    {% if reg.trocas_ok == 0 and reg.trocas_pendentes == 0 %}
+<span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" data-bs-toggle="tooltip" title="Adicionar Extra" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'TROCA', '{{ reg.ciclos_status_json_lote|safe }}')"><i class="bi bi-plus-lg"></i></span>
+{% endif %}
                                                 </div>
                                                 </div>
                                             </td>
                                             <td>
                                                 <div class="d-flex flex-nowrap gap-1 justify-content-center">
                                                     {% if reg.verificacoes_ok > 0 %}
-                                                    <span class="badge bg-success" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'VERIFICACAO')">{{ reg.verificacoes_ok }} <i class="bi bi-check-circle-fill"></i></span>
+                                                    <span class="badge bg-success" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'VERIFICACAO', '{{ reg.ciclos_status_json_lote|safe }}')">{{ reg.verificacoes_ok }} <i class="bi bi-check-circle-fill"></i></span>
                                                     {% endif %}
                                                     {% if reg.verificacoes_pendentes > 0 %}
-                                                    <span class="badge bg-danger pulse-danger" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'VERIFICACAO')">{{ reg.verificacoes_pendentes }} <i class="bi bi-exclamation-circle-fill"></i></span>
+                                                    <span class="badge bg-danger pulse-danger" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'VERIFICACAO', '{{ reg.ciclos_status_json_lote|safe }}')">{{ reg.verificacoes_pendentes }} <i class="bi bi-exclamation-circle-fill"></i></span>
                                                     {% endif %}
-                                                    <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" data-bs-toggle="tooltip" title="Adicionar Extra" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'VERIFICACAO')"><i class="bi bi-plus-lg"></i></span>
+                                                    {% if reg.verificacoes_ok == 0 and reg.verificacoes_pendentes == 0 %}
+<span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" data-bs-toggle="tooltip" title="Adicionar Extra" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'VERIFICACAO', '{{ reg.ciclos_status_json_lote|safe }}')"><i class="bi bi-plus-lg"></i></span>
+{% endif %}
                                                 </div>
                                                 <div class="d-none full-details">
                                                     <div class="d-flex flex-nowrap gap-1 justify-content-center">
                                                     {% for c_status in reg.ciclos_status_list %}
                                                         {% if c_status.ciclo.tipo == 'VERIFICACAO' %}
                                                             {% if c_status.status == 'OK' %}
-                                                                <span class="badge bg-success" style="cursor:pointer;" data-bs-toggle="tooltip" title="OK: {{ c_status.ciclo.nome }}" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }}, 'VERIFICACAO')">
+                                                                <span class="badge bg-success" style="cursor:pointer;" data-bs-toggle="tooltip" title="OK: {{ c_status.ciclo.nome }}" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }}, 'VERIFICACAO', '{{ reg.ciclos_status_json_lote|safe }}')">
                                                                     <i class="bi bi-check-circle-fill"></i>
                                                                 </span>
                                                             {% elif c_status.status == 'NOK' %}
-                                                                <span class="badge bg-danger text-white" style="cursor:pointer;" data-bs-toggle="tooltip" title="Fora do Limite: {{ c_status.ciclo.nome }}" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }}, 'VERIFICACAO')">
+                                                                <span class="badge bg-danger text-white" style="cursor:pointer;" data-bs-toggle="tooltip" title="Fora do Limite: {{ c_status.ciclo.nome }}" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }}, 'VERIFICACAO', '{{ reg.ciclos_status_json_lote|safe }}')">
                                                                     <i class="bi bi-x-circle-fill"></i>
                                                                 </span>
                                                             {% elif c_status.status == 'PENDENTE' %}
-                                                                <span class="badge bg-danger pulse-danger" style="cursor:pointer;" data-bs-toggle="tooltip" title="Pendente: {{ c_status.ciclo.nome }}" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }}, 'VERIFICACAO')">
+                                                                <span class="badge bg-danger pulse-danger" style="cursor:pointer;" data-bs-toggle="tooltip" title="Pendente: {{ c_status.ciclo.nome }}" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }}, 'VERIFICACAO', '{{ reg.ciclos_status_json_lote|safe }}')">
                                                                     <i class="bi bi-exclamation-circle-fill"></i>
                                                                 </span>
                                                             {% endif %}
                                                         {% endif %}
                                                     {% endfor %}
-                                                    <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" data-bs-toggle="tooltip" title="Adicionar Extra" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'VERIFICACAO')"><i class="bi bi-plus-lg"></i></span>
+                                                    {% if reg.verificacoes_ok == 0 and reg.verificacoes_pendentes == 0 %}
+<span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" data-bs-toggle="tooltip" title="Adicionar Extra" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'VERIFICACAO', '{{ reg.ciclos_status_json_lote|safe }}')"><i class="bi bi-plus-lg"></i></span>
+{% endif %}
                                                 </div>
                                                 </div>
                                             </td>
@@ -733,14 +745,32 @@
         });
     });
 
-    function abrirModalManutencao(registroId, lote, maquinaId, clickedCicloId = null, existingCids = [], tipoFiltro = null) {
+    function abrirModalManutencao(registroId, lote, maquinaId, clickedCicloId = null, existingCids = [], tipoFiltro = null, dadosHistoricosJson = null) {
         document.getElementById('manutencaoRegistroId').value = registroId;
         document.getElementById('manutencaoLoteNum').innerText = lote;
         
         const container = document.getElementById('manutencoesCheckboxList');
         container.innerHTML = '';
         
-        const maquinasData = statusMaquinas[maquinaId] || [];
+        let maquinasData = [];
+        if (dadosHistoricosJson) {
+            try {
+                if (typeof dadosHistoricosJson === 'string') {
+                    // Because it's passed in an onclick string, it might need unescaping or parsing
+                    // we decode html entities if needed
+                    var txt = document.createElement("textarea");
+                    txt.innerHTML = dadosHistoricosJson;
+                    maquinasData = JSON.parse(txt.value);
+                } else {
+                    maquinasData = dadosHistoricosJson;
+                }
+            } catch(e) {
+                console.error("Error parsing history data", e);
+                maquinasData = statusMaquinas[maquinaId] || [];
+            }
+        } else {
+            maquinasData = statusMaquinas[maquinaId] || [];
+        }
         if (maquinasData.length === 0) {
             container.innerHTML = '<div class="alert alert-warning">Nenhuma manutenção configurada para esta máquina. Acesse o menu de Ciclos de Coating para configurar.</div>';
         } else {

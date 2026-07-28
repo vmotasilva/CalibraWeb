@@ -1142,21 +1142,50 @@ def coating_painel(request):
                 registro_status[rid] = ciclos_status_lote
                 
         # Anexa o status calculado a cada registro renderizado na pagina
+        import json
         for reg in registros:
             if reg.maquina_id == maquina.id:
                 rs = registro_status.get(reg.id, {})
                 status_list = []
                 ok_cids = []
+                ciclos_json_data = []
+                
                 for c in ciclos:
-                    status = rs.get(c.id, 'S_FAROL')
+                    c_status_info = rs.get(c.id, {'status': 'S_FAROL', 'estourou': False, 'lotes_passados_str': ''})
+                    
+                    # Tratar caso o dict base não tenha as novas chaves
+                    if isinstance(c_status_info, str):
+                        c_status_info = {'status': c_status_info, 'estourou': False, 'lotes_passados_str': ''}
+                        
+                    status = c_status_info['status']
+                    
                     status_list.append({
                         'ciclo': c,
                         'status': status
                     })
                     if status == 'OK':
                         ok_cids.append(c.id)
+                        
+                    # Prepare JSON for modal
+                    itens_list = [{'id': it.id, 'ordem': it.ordem, 'texto': it.texto} for it in c.itens_checklist.all()]
+                    ciclos_json_data.append({
+                        'ciclo': {
+                            'id': c.id,
+                            'nome': c.nome,
+                            'tipo': c.tipo,
+                            'criterio': c.criterio,
+                            'itens': itens_list
+                        },
+                        'estourou': c_status_info['estourou'],
+                        'lotes_passados_str': c_status_info['lotes_passados_str'],
+                        'limite': c.limite_lotes
+                    })
+                    
                 reg.ciclos_status_list = status_list
                 reg.ok_cids = ok_cids
+                
+                # Escape quotes properly so it can be safely used in HTML templates
+                reg.ciclos_status_json_lote = json.dumps(ciclos_json_data).replace("'", "\\'").replace('"', '&quot;')
                 
                 reg.limpezas_ok = sum(1 for s in status_list if s['ciclo'].tipo == 'LIMPEZA' and s['status'] == 'OK')
                 reg.limpezas_pendentes = sum(1 for s in status_list if s['ciclo'].tipo == 'LIMPEZA' and s['status'] in ['PENDENTE', 'PARCIAL', 'NOK'])
