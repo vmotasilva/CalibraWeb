@@ -8,7 +8,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2 class="mb-1"><i class="bi bi-arrow-repeat text-primary"></i> Ciclos de Manutenção</h2>
-            <p class="text-muted mb-0">Configure os limites de lotes para as manutenções (limpezas e trocas) de cada máquina.</p>
+            <p class="text-muted mb-0">Configure os limites de lotes para as manutenções (limpezas e trocas) de cada máquina e organize a ordem dos cards arrastando-os.</p>
         </div>
     </div>
 
@@ -25,65 +25,76 @@
                 </button>
             </div>
         </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th class="ps-3">Tipo</th>
-                            <th>Nome da Manutenção</th>
-                            <th class="text-center">Critério</th>
-                            <th class="text-center">Limite</th>
-                            <th class="text-end pe-3">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for ciclo in maq.ciclos_coating.all %}
-                        <tr>
-                            <td class="ps-3">
-                                {% if ciclo.tipo == 'LIMPEZA' %}
-                                <span class="badge bg-warning text-dark"><i class="bi bi-stars"></i> Limpeza</span>
-                                {% elif ciclo.tipo == 'TROCA' %}
-                                <span class="badge bg-danger"><i class="bi bi-tools"></i> Troca</span>
-                                {% else %}
-                                <span class="badge bg-primary"><i class="bi bi-speedometer2"></i> Verificação</span>
-                                {% endif %}
-                            </td>
-                            <td class="fw-bold">{{ ciclo.nome }}</td>
-                            <td class="text-center">
-                                <span class="badge bg-info text-dark"><i class="bi bi-calendar-event"></i> {{ ciclo.get_criterio_display }}</span>
-                            </td>
-                            <td class="text-center">
-                                {% if ciclo.criterio == 'LOTES' or ciclo.criterio == 'DIAS' %}
-                                    <span class="badge bg-dark px-3 py-2 fs-6">{{ ciclo.limite_lotes }} {% if ciclo.criterio == 'DIAS' %}dias{% else %}lotes{% endif %}</span>
-                                {% else %}
-                                    <span class="text-muted small">-</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-end pe-3">
-                                <a href="{% url 'laboratorio:configurar_checklist_ciclo' ciclo.id %}" class="btn btn-sm btn-outline-secondary me-1">
-                                    <i class="bi bi-list-check"></i> Checklist
-                                </a>
-                                <button type="button" class="btn btn-sm btn-outline-primary me-1" onclick="abrirModalEditar('{{ ciclo.id }}', '{{ ciclo.tipo }}', '{{ ciclo.nome }}', '{{ ciclo.criterio }}', '{{ ciclo.limite_lotes }}', '{{ ciclo.valor_minimo|default_if_none:'' }}', '{{ ciclo.valor_maximo|default_if_none:'' }}')">
-                                    <i class="bi bi-pencil"></i> Editar
-                                </button>
-                                <form method="post" action="{% url 'laboratorio:ciclo_coating_delete' ciclo.id %}" style="display: inline;" onsubmit="return confirm('Tem certeza que deseja excluir esta manutenção?');">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">
-                                        <i class="bi bi-trash"></i> Excluir
+        <div class="card-body bg-light">
+            <div class="row sortable-ciclos" data-maquina-id="{{ maq.id }}">
+                {% for ciclo in maq.ciclos_coating.all %}
+                <div class="col-12 col-md-6 col-lg-4 mb-3 ciclo-card" data-ciclo-id="{{ ciclo.id }}">
+                    <div class="card h-100 shadow-sm border-0" style="cursor: grab;">
+                        <div class="card-body position-relative">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    {% if ciclo.tipo == 'LIMPEZA' %}
+                                    <span class="badge bg-warning text-dark mb-1"><i class="bi bi-stars"></i> Limpeza</span>
+                                    {% elif ciclo.tipo == 'TROCA' %}
+                                    <span class="badge bg-danger mb-1"><i class="bi bi-tools"></i> Troca</span>
+                                    {% else %}
+                                    <span class="badge bg-primary mb-1"><i class="bi bi-speedometer2"></i> Verificação</span>
+                                    {% endif %}
+                                    <h5 class="card-title fw-bold text-dark mb-0">{{ ciclo.nome }}</h5>
+                                </div>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-light text-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="bi bi-three-dots-vertical"></i>
                                     </button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="4" class="text-center text-muted py-4">
-                                Nenhuma manutenção configurada para esta máquina.
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                                    <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                        <li>
+                                            <a href="{% url 'laboratorio:configurar_checklist_ciclo' ciclo.id %}" class="dropdown-item">
+                                                <i class="bi bi-list-check me-2"></i> Checklist
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <button type="button" class="dropdown-item" onclick="abrirModalEditar('{{ ciclo.id }}', '{{ ciclo.tipo }}', '{{ ciclo.nome }}', '{{ ciclo.criterio }}', '{{ ciclo.limite_lotes }}', '{{ ciclo.valor_minimo|default_if_none:'' }}', '{{ ciclo.valor_maximo|default_if_none:'' }}', [ {% for t in ciclo.tratamentos_especificos.all %}{{t.id}}{% if not forloop.last %},{% endif %}{% endfor %} ])">
+                                                <i class="bi bi-pencil me-2"></i> Editar
+                                            </button>
+                                        </li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li>
+                                            <form method="post" action="{% url 'laboratorio:ciclo_coating_delete' ciclo.id %}" onsubmit="return confirm('Tem certeza que deseja excluir esta manutenção?');">
+                                                {% csrf_token %}
+                                                <button type="submit" class="dropdown-item text-danger">
+                                                    <i class="bi bi-trash me-2"></i> Excluir
+                                                </button>
+                                            </form>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex align-items-center mb-2">
+                                <span class="badge bg-info text-dark me-2"><i class="bi bi-calendar-event"></i> {{ ciclo.get_criterio_display }}</span>
+                                {% if ciclo.criterio == 'LOTES' or ciclo.criterio == 'DIAS' %}
+                                    <span class="badge bg-dark">{{ ciclo.limite_lotes }} {% if ciclo.criterio == 'DIAS' %}dias{% else %}lotes{% endif %}</span>
+                                {% endif %}
+                            </div>
+                            
+                            {% if ciclo.tratamentos_especificos.exists %}
+                            <div class="small mt-2">
+                                <span class="text-muted d-block fw-bold mb-1" style="font-size: 0.8rem;">TRATAMENTOS ESPECÍFICOS:</span>
+                                <div class="d-flex flex-wrap gap-1">
+                                    {% for t in ciclo.tratamentos_especificos.all %}
+                                    <span class="badge border border-secondary text-secondary" style="background-color: transparent;">{{ t.nome }}</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12 text-center text-muted py-4">
+                    Nenhuma manutenção configurada para esta máquina.
+                </div>
+                {% endfor %}
             </div>
         </div>
     </div>
@@ -119,6 +130,17 @@
                         <label class="form-label fw-bold">Nome da Manutenção</label>
                         <input type="text" class="form-control" name="nome" placeholder="Ex: Limpeza Diária, Troca do Cobre..." required>
                     </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Tratamentos Específicos (Opcional)</label>
+                        <select class="form-select select2-modal" name="tratamentos" id="addTratamentos" multiple>
+                            {% for t in tratamentos %}
+                            <option value="{{ t.id }}">{{ t.nome }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">Se selecionado, o ciclo só conta para lotes que usam estes tratamentos.</div>
+                    </div>
+
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold">Critério</label>
@@ -152,7 +174,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn-secondary btn" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-primary">Adicionar</button>
                 </div>
             </form>
@@ -183,6 +205,16 @@
                         <label class="form-label fw-bold">Nome da Manutenção</label>
                         <input type="text" class="form-control" name="nome" id="editNome" required>
                     </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Tratamentos Específicos (Opcional)</label>
+                        <select class="form-select select2-modal" name="tratamentos" id="editTratamentos" multiple>
+                            {% for t in tratamentos %}
+                            <option value="{{ t.id }}">{{ t.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold">Critério</label>
@@ -271,14 +303,99 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 <script>
+    function getCSRFToken() {
+        return document.querySelector("[name=csrfmiddlewaretoken]").value;
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        // Inicializar SortableJS
+        const sortableContainers = document.querySelectorAll('.sortable-ciclos');
+        sortableContainers.forEach(container => {
+            new Sortable(container, {
+                animation: 150,
+                ghostClass: 'bg-light',
+                onEnd: function(evt) {
+                    const itemEl = evt.item;
+                    const container = itemEl.parentElement;
+                    const ciclosIds = Array.from(container.children).map(child => child.getAttribute('data-ciclo-id'));
+                    
+                    if(ciclosIds.length > 0) {
+                        fetch("{% url 'laboratorio:api_reordenar_ciclos' %}", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-CSRFToken": getCSRFToken()
+                            },
+                            body: JSON.stringify({
+                                ciclos: ciclosIds
+                            })
+                        }).then(response => response.json()).then(data => {
+                            if(!data.success) {
+                                console.error("Erro ao reordenar:", data.error);
+                            }
+                        }).catch(console.error);
+                    }
+                }
+            });
+        });
+
+        // Inicializar Select2 nos modais
+        $('.select2-modal').select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            dropdownParent: $('#modalAdicionar')
+        });
+        
+        $('#editTratamentos').select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            dropdownParent: $('#modalEditar')
+        });
+
+        const tipoSelect = document.getElementById('tipoSelect');
+        if (tipoSelect) {
+            tipoSelect.addEventListener('change', function() {
+                toggleVerificacao(this.value, 'verificacaoContainer');
+            });
+        }
+        
+        const editTipo = document.getElementById('editTipo');
+        if (editTipo) {
+            editTipo.addEventListener('change', function() {
+                toggleVerificacao(this.value, 'editVerificacaoContainer');
+            });
+        }
+
+        const criterioSelect = document.getElementById('criterioSelect');
+        if (criterioSelect) {
+            criterioSelect.addEventListener('change', function() {
+                toggleLimite(this.value, 'limiteContainer', 'limiteLabel', 'limiteInput');
+            });
+            toggleLimite(criterioSelect.value, 'limiteContainer', 'limiteLabel', 'limiteInput');
+        }
+        
+        const editCriterio = document.getElementById('editCriterio');
+        if (editCriterio) {
+            editCriterio.addEventListener('change', function() {
+                toggleLimite(this.value, 'editLimiteContainer', 'editLimiteLabel', 'editLimite');
+            });
+        }
+        
+        $('#modalAdicionar').on('show.bs.modal', function() {
+            $('#addTratamentos').val(null).trigger('change');
+        });
+    });
+
     function abrirModalAdicionar(id, codigo) {
         document.getElementById('addMaquinaId').value = id;
         document.getElementById('addMaquinaCodigo').innerText = codigo;
         new bootstrap.Modal(document.getElementById('modalAdicionar')).show();
     }
-    
     
     function toggleVerificacao(tipo, containerId) {
         const container = document.getElementById(containerId);
@@ -289,7 +406,7 @@
         }
     }
 
-    function abrirModalEditar(id, tipo, nome, criterio, limite, vMin, vMax) {
+    function abrirModalEditar(id, tipo, nome, criterio, limite, vMin, vMax, tratamentos = []) {
         document.getElementById('editTipo').value = tipo;
         document.getElementById('editNome').value = nome;
         document.getElementById('editCriterio').value = criterio;
@@ -322,6 +439,8 @@
         
         toggleVerificacao(tipo, 'editVerificacaoContainer');
         
+        $('#editTratamentos').val(tratamentos).trigger('change');
+        
         new bootstrap.Modal(document.getElementById('modalEditar')).show();
     }
     
@@ -344,7 +463,6 @@
         document.getElementById('copyDestinoId').value = id;
         document.getElementById('copyDestinoCodigo').innerText = codigo;
         
-        // Reset modal
         document.getElementById('copyOrigemSelect').value = '';
         document.getElementById('copyCiclosContainer').classList.add('d-none');
         document.getElementById('copyCiclosList').innerHTML = '';
@@ -403,7 +521,6 @@
                             list.appendChild(li);
                         });
                         
-                        // Listeners pros checkboxes para habilitar/desabilitar o botão
                         document.querySelectorAll('.ciclo-checkbox').forEach(chk => {
                             chk.addEventListener('change', () => {
                                 btnSubmit.disabled = document.querySelectorAll('.ciclo-checkbox:checked').length === 0;
@@ -421,36 +538,5 @@
                 alert('Erro de rede ao carregar manutenções.');
             });
     }
-
-    document.addEventListener('DOMContentLoaded', function() {
-        const tipoSelect = document.getElementById('tipoSelect');
-        if (tipoSelect) {
-            tipoSelect.addEventListener('change', function() {
-                toggleVerificacao(this.value, 'verificacaoContainer');
-            });
-        }
-        
-        const editTipo = document.getElementById('editTipo');
-        if (editTipo) {
-            editTipo.addEventListener('change', function() {
-                toggleVerificacao(this.value, 'editVerificacaoContainer');
-            });
-        }
-
-        const criterioSelect = document.getElementById('criterioSelect');
-        if (criterioSelect) {
-            criterioSelect.addEventListener('change', function() {
-                toggleLimite(this.value, 'limiteContainer', 'limiteLabel', 'limiteInput');
-            });
-            toggleLimite(criterioSelect.value, 'limiteContainer', 'limiteLabel', 'limiteInput');
-        }
-        
-        const editCriterio = document.getElementById('editCriterio');
-        if (editCriterio) {
-            editCriterio.addEventListener('change', function() {
-                toggleLimite(this.value, 'editLimiteContainer', 'editLimiteLabel', 'editLimite');
-            });
-        }
-    });
 </script>
 {% endblock %}

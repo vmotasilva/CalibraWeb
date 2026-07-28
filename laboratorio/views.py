@@ -1008,11 +1008,21 @@ def coating_painel(request):
     # Fetch all records
     todos_registros = RegistroCoating.objects.all().select_related(
         'turno_coating', 'maquina', 'tratamento', 'preparacao', 'montagem'
-    ).order_by('-id')
+    ).order_by('-turno_coating__data', '-lote', 'lado')
     
     paginator = Paginator(todos_registros, 100)
     page_number = request.GET.get('page')
     registros = paginator.get_page(page_number)
+    
+    current_lote = None
+    group_idx = 0
+    for reg in registros:
+        if current_lote is None:
+            current_lote = reg.lote
+        elif reg.lote != current_lote:
+            current_lote = reg.lote
+            group_idx = 1 - group_idx
+        reg.bg_group = group_idx
     
     # Identify machines (Evaporadoras)
     evaporadoras = Maquina.objects.filter(
@@ -1036,7 +1046,7 @@ def coating_painel(request):
         maquina.em_alerta = False
         
         # Busca todo o historico de lotes da maquina para simular os contadores
-        lotes_historico = list(RegistroCoating.objects.filter(maquina=maquina).order_by('turno_coating__data', 'lote', 'id').values('id', 'lote', 'turno_coating__data'))
+        lotes_historico = list(RegistroCoating.objects.filter(maquina=maquina).order_by('turno_coating__data', 'lote', 'id').values('id', 'lote', 'turno_coating__data', 'tratamento_id'))
         
         manutencoes = list(ManutencaoRealizadaCoating.objects.filter(registro__maquina=maquina).annotate(
             total_itens=Count('ciclo__itens_checklist'),
@@ -1064,21 +1074,29 @@ def coating_painel(request):
             
             manut_map.setdefault(m['registro_id'], []).append((m['ciclo_id'], status_m))
             
-        lotes_agrupados = defaultdict(list)
+        lotes_agrupados = defaultdict(lambda: {'rids': [], 'tratamentos': set()})
         for reg_dict in lotes_historico:
             lote_key = (reg_dict['turno_coating__data'], reg_dict['lote'])
-            lotes_agrupados[lote_key].append(reg_dict['id'])
+            lotes_agrupados[lote_key]['rids'].append(reg_dict['id'])
+            if reg_dict['tratamento_id']:
+                lotes_agrupados[lote_key]['tratamentos'].add(reg_dict['tratamento_id'])
             
         counters = {c.id: 0 for c in ciclos}
         never_done = {c.id: True for c in ciclos}
         last_period = {c.id: None for c in ciclos}
         registro_status = {}
         
-        for lote_key, rids in lotes_agrupados.items():
+        # Pre-fetch tratamentos_especificos for cycles
+        ciclos_tratamentos_map = {c.id: set(c.tratamentos_especificos.values_list('id', flat=True)) for c in ciclos}
+        
+        for lote_key, lote_data in lotes_agrupados.items():
             data_lote = lote_key[0]
+            rids = lote_data['rids']
+            tratamentos_lote = lote_data['tratamentos']
             
-            for cid in counters:
-                counters[cid] += 1
+            for cid, c_trats in ciclos_tratamentos_map.items():
+                if not c_trats or c_trats.intersection(tratamentos_lote):
+                    counters[cid] += 1
                 
             m_cids_lote = {}
             for rid in rids:
@@ -1278,6 +1296,11 @@ def coating_painel(request):
     max_lote = RegistroCoating.objects.aggregate(max_lote=Max('lote'))['max_lote']
     proximo_lote = (max_lote or 0) + 1
 
+    proximos_lotes_map = {}
+    for maq in evaporadoras:
+        max_maq = RegistroCoating.objects.filter(maquina=maq).aggregate(max_lote=Max('lote'))['max_lote']
+        proximos_lotes_map[maq.id] = (max_maq or 0) + 1
+
     context = {
         "registros": registros,
         "maquinas_com_registros": maquinas_com_registros,
@@ -1286,6 +1309,7 @@ def coating_painel(request):
         "status_maquinas": status_maquinas,
         "evaporadoras": evaporadoras,
         "proximo_lote": proximo_lote,
+        "proximos_lotes_map_json": json.dumps(proximos_lotes_map),
         "equipe": EquipeCoating.objects.select_related('colaborador').all().order_by('colaborador__nome_completo'),
     }
     
@@ -1357,6 +1381,46 @@ def registro_coating_delete(request, pk):
     
     messages.success(request, f"Lote {lote_num} excluído com sucesso ({qtd} registros removidos).")
     return redirect("laboratorio:coating_painel")
+
+@login_required
+@require_POST
+def api_editar_linha_coating(request):
+    import json
+    try:
+        data = json.loads(request.body)
+        registro_id = data.get('id')
+        registro = get_object_or_404(RegistroCoating, pk=registro_id)
+        
+        if 'lote' in data or 'maquina_id' in data or 'tratamento_id' in data:
+            registros = RegistroCoating.objects.filter(
+                lote=registro.lote,
+                maquina=registro.maquina,
+                turno_coating=registro.turno_coating
+            )
+            update_data = {}
+            if 'lote' in data: update_data['lote'] = data['lote']
+            if 'maquina_id' in data: update_data['maquina_id'] = data['maquina_id']
+            if 'tratamento_id' in data: update_data['tratamento_id'] = data['tratamento_id']
+            registros.update(**update_data)
+            registro.refresh_from_db()
+            
+        if 'hora_entrada' in data:
+            val = data['hora_entrada']
+            registro.hora_entrada = val if val else None
+        if 'hora_saida' in data:
+            val = data['hora_saida']
+            registro.hora_saida = val if val else None
+        if 'preparacao_id' in data:
+            val = data['preparacao_id']
+            registro.preparacao_id = val if val else None
+        if 'montagem_id' in data:
+            val = data['montagem_id']
+            registro.montagem_id = val if val else None
+            
+        registro.save()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
 
 @login_required
 @require_POST
@@ -1489,8 +1553,11 @@ def ciclo_coating_list(request):
         if not evaporadoras.exists():
             evaporadoras = Maquina.objects.filter(status=True).order_by("codigo", "fabricante")
 
+    from .models import TratamentoAntiReflexo
+    tratamentos = TratamentoAntiReflexo.objects.filter(ativo=True).order_by('nome')
     return render(request, "laboratorio/ciclo_coating_list.html", {
         "maquinas": evaporadoras,
+        "tratamentos": tratamentos,
     })
 
 @login_required
@@ -1499,6 +1566,21 @@ def api_obter_ciclos_maquina(request):
         maquina_id = request.GET.get('maquina_id')
         ciclos = list(CicloManutencaoCoating.objects.filter(maquina_id=maquina_id).values('id', 'tipo', 'nome').order_by('tipo', 'nome'))
         return JsonResponse({'success': True, 'ciclos': ciclos})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@login_required
+@require_POST
+def api_reordenar_ciclos(request):
+    import json
+    try:
+        data = json.loads(request.body)
+        ciclos_ordem = data.get('ciclos', [])
+        
+        for index, ciclo_id in enumerate(ciclos_ordem):
+            CicloManutencaoCoating.objects.filter(id=ciclo_id).update(ordem=index)
+            
+        return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
 
@@ -1552,7 +1634,7 @@ def ciclo_coating_create(request):
         except (ValueError, TypeError):
             lim_val = 1
         
-        CicloManutencaoCoating.objects.create(
+        ciclo = CicloManutencaoCoating.objects.create(
             maquina=maquina,
             tipo=tipo,
             nome=nome,
@@ -1561,6 +1643,10 @@ def ciclo_coating_create(request):
             valor_minimo=float(valor_minimo) if valor_minimo else None,
             valor_maximo=float(valor_maximo) if valor_maximo else None
         )
+        
+        tratamentos_ids = request.POST.getlist('tratamentos')
+        if tratamentos_ids:
+            ciclo.tratamentos_especificos.set(tratamentos_ids)
         
         messages.success(request, f"Ciclo '{nome}' adicionado para a máquina {maquina.codigo}.")
     except Exception as e:
@@ -1590,6 +1676,13 @@ def ciclo_coating_update(request, pk):
         ciclo.valor_maximo = float(valor_maximo) if valor_maximo else None
         
         ciclo.save()
+        
+        tratamentos_ids = request.POST.getlist('tratamentos')
+        if tratamentos_ids:
+            ciclo.tratamentos_especificos.set(tratamentos_ids)
+        else:
+            ciclo.tratamentos_especificos.clear()
+            
         messages.success(request, f"Ciclo '{ciclo.nome}' atualizado com sucesso.")
     except Exception as e:
         messages.error(request, f"Erro ao atualizar ciclo: {str(e)}")

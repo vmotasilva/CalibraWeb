@@ -21,6 +21,8 @@
     form#deleteCardForm,
     #boardActionsDropdown,
     .dropdown-toggle[id^="dropdownColumn"],
+    .column-header .dropdown,
+    .subsection-header .dropdown,
     .kanban-column-add-task,
     .add-checklist-item-form,
     .add-checklist-item-btn {
@@ -5516,5 +5518,27 @@
         initCustomCalendar();
         initFiltersAndActions();
     }
+</script>
+
+<!-- DataTables -->
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css"/>
+<script type="text/javascript" src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof $ !== 'undefined' && $.fn.DataTable) {
+            $('#tasksTable').DataTable({
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json',
+                },
+                pageLength: 20,
+                lengthMenu: [10, 20, 50, 100],
+                order: [], // Mantém a ordem inicial
+                columnDefs: [
+                    { orderable: false, targets: -1 } // Desativa ordenação na coluna de ações
+                ]
+            });
+        }
+    });
 </script>
 {% endblock %}

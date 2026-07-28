@@ -140,38 +140,38 @@
                                 {% if evap.id in maquinas_com_registros %}
                                     {% for reg in registros %}
                                         {% if reg.maquina.id == evap.id %}
-                                        <tr>
+                                        <tr class="align-middle {% if reg.bg_group == 1 %}bg-light{% else %}bg-white{% endif %}" style="cursor:pointer;" onclick="abrirModalEditarLote(\'{{ reg.id }}\', \'{{ reg.lote }}\', \'{{ reg.maquina_id }}\', \'{{ reg.tratamento_id }}\', \'{{ reg.hora_entrada|date:\'Y-m-d\TH:i\'|default:\'\' }}\', \'{{ reg.hora_saida|date:\'Y-m-d\TH:i\'|default:\'\' }}\', \'{{ reg.preparacao_id|default:\'\' }}\', \'{{ reg.montagem_id|default:\'\' }}\')">
                                             <td>{{ reg.turno_coating.data|date:"d/m/Y" }}</td>
                                             <td>{{ reg.turno_coating.regra.nome }}</td>
                                             <td>{{ reg.lote }}</td>
                                             <td>{{ reg.lado }}</td>
                                             <td><span class="badge rounded-pill" style="background-color: {{ reg.tratamento.cor|default:'#0d6efd' }}; color: #fff; font-weight: 500;">{{ reg.tratamento.nome }}</span></td>
-                                            <td class="editable-cell" data-id="{{ reg.id }}" data-campo="hora_entrada" data-valor="{{ reg.hora_entrada|date:'Y-m-d\TH:i'|default:'' }}" data-tipo="datetime-local" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{{ reg.hora_entrada|time:"H:i"|default:"-" }} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
-                                            <td class="editable-cell" data-id="{{ reg.id }}" data-campo="hora_saida" data-valor="{{ reg.hora_saida|date:'Y-m-d\TH:i'|default:'' }}" data-tipo="datetime-local" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{{ reg.hora_saida|time:"H:i"|default:"-" }} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
+                                            <td>{{ reg.hora_entrada|time:"H:i"|default:"-" }}</td>
+                                            <td>{{ reg.hora_entrada|time:"H:i"|default:"-" }}</td>
                                             <td>{{ reg.tempo_rodando|time:"H:i"|default:"-" }}</td>
                                             <td>{{ reg.tempo_parado|time:"H:i"|default:"-" }}</td>
-                                            <td class="editable-cell" data-id="{{ reg.id }}" data-campo="preparacao_id" data-valor="{{ reg.preparacao_id|default:'' }}" data-tipo="colaborador" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{{ reg.preparacao.nome_abreviado|default:"-" }} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
-                                            <td class="editable-cell" data-id="{{ reg.id }}" data-campo="montagem_id" data-valor="{{ reg.montagem_id|default:'' }}" data-tipo="colaborador" style="cursor:pointer;" onclick="abrirModalEdicao(this)">{{ reg.montagem.nome_abreviado|default:"-" }} <i class="bi bi-pencil-square text-muted ms-1" style="font-size: 0.8rem;"></i></td>
+                                            <td>{{ reg.hora_entrada|time:"H:i"|default:"-" }}</td>
+                                            <td>{{ reg.hora_entrada|time:"H:i"|default:"-" }}</td>
                                             <td>
                                                 <div class="d-flex flex-nowrap gap-1 justify-content-center">
                                                     {% for c_status in reg.ciclos_status_list %}
                                                         {% if c_status.ciclo.tipo == 'LIMPEZA' %}
                                                             {% if c_status.status == 'OK' %}
-                                                                <span class="badge bg-success" style="cursor:pointer;" data-bs-toggle="tooltip" title="OK: {{ c_status.ciclo.nome }}" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
+                                                                <span class="badge bg-success" style="cursor:pointer;" data-bs-toggle="tooltip" title="OK: {{ c_status.ciclo.nome }}" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
                                                                     <i class="bi bi-check-circle-fill"></i>
                                                                 </span>
                                                             {% elif c_status.status == 'PENDENTE' %}
-                                                                <span class="badge bg-danger pulse-danger" style="cursor:pointer;" data-bs-toggle="tooltip" title="Pendente: {{ c_status.ciclo.nome }}" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
+                                                                <span class="badge bg-danger pulse-danger" style="cursor:pointer;" data-bs-toggle="tooltip" title="Pendente: {{ c_status.ciclo.nome }}" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
                                                                     <i class="bi bi-exclamation-circle-fill"></i>
                                                                 </span>
                                                             {% elif c_status.status == 'PARCIAL' %}
-                                                                <span class="badge bg-warning text-dark" style="cursor:pointer;" data-bs-toggle="tooltip" title="Parcial (Checklist Incompleto): {{ c_status.ciclo.nome }}" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
+                                                                <span class="badge bg-warning text-dark" style="cursor:pointer;" data-bs-toggle="tooltip" title="Parcial (Checklist Incompleto): {{ c_status.ciclo.nome }}" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
                                                                     <i class="bi bi-exclamation-triangle-fill"></i>
                                                                 </span>
                                                             {% endif %}
                                                         {% endif %}
                                                     {% endfor %}
-                                                    <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" data-bs-toggle="tooltip" title="Adicionar Extra" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }})"><i class="bi bi-plus-lg"></i></span>
+                                                    <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" data-bs-toggle="tooltip" title="Adicionar Extra" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }})"><i class="bi bi-plus-lg"></i></span>
                                                 </div>
                                             </td>
                                             <td>
@@ -179,21 +179,21 @@
                                                     {% for c_status in reg.ciclos_status_list %}
                                                         {% if c_status.ciclo.tipo == 'TROCA' %}
                                                             {% if c_status.status == 'OK' %}
-                                                                <span class="badge bg-success" style="cursor:pointer;" data-bs-toggle="tooltip" title="OK: {{ c_status.ciclo.nome }}" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
+                                                                <span class="badge bg-success" style="cursor:pointer;" data-bs-toggle="tooltip" title="OK: {{ c_status.ciclo.nome }}" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
                                                                     <i class="bi bi-check-circle-fill"></i>
                                                                 </span>
                                                             {% elif c_status.status == 'PENDENTE' %}
-                                                                <span class="badge bg-danger pulse-danger" style="cursor:pointer;" data-bs-toggle="tooltip" title="Pendente: {{ c_status.ciclo.nome }}" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
+                                                                <span class="badge bg-danger pulse-danger" style="cursor:pointer;" data-bs-toggle="tooltip" title="Pendente: {{ c_status.ciclo.nome }}" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
                                                                     <i class="bi bi-exclamation-circle-fill"></i>
                                                                 </span>
                                                             {% elif c_status.status == 'PARCIAL' %}
-                                                                <span class="badge bg-warning text-dark" style="cursor:pointer;" data-bs-toggle="tooltip" title="Parcial (Checklist Incompleto): {{ c_status.ciclo.nome }}" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
+                                                                <span class="badge bg-warning text-dark" style="cursor:pointer;" data-bs-toggle="tooltip" title="Parcial (Checklist Incompleto): {{ c_status.ciclo.nome }}" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
                                                                     <i class="bi bi-exclamation-triangle-fill"></i>
                                                                 </span>
                                                             {% endif %}
                                                         {% endif %}
                                                     {% endfor %}
-                                                    <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" data-bs-toggle="tooltip" title="Adicionar Extra" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }})"><i class="bi bi-plus-lg"></i></span>
+                                                    <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" data-bs-toggle="tooltip" title="Adicionar Extra" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }})"><i class="bi bi-plus-lg"></i></span>
                                                 </div>
                                             </td>
                                             <td>
@@ -201,27 +201,27 @@
                                                     {% for c_status in reg.ciclos_status_list %}
                                                         {% if c_status.ciclo.tipo == 'VERIFICACAO' %}
                                                             {% if c_status.status == 'OK' %}
-                                                                <span class="badge bg-success" style="cursor:pointer;" data-bs-toggle="tooltip" title="OK: {{ c_status.ciclo.nome }}" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
+                                                                <span class="badge bg-success" style="cursor:pointer;" data-bs-toggle="tooltip" title="OK: {{ c_status.ciclo.nome }}" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
                                                                     <i class="bi bi-check-circle-fill"></i>
                                                                 </span>
                                                             {% elif c_status.status == 'NOK' %}
-                                                                <span class="badge bg-danger text-white" style="cursor:pointer;" data-bs-toggle="tooltip" title="Fora do Limite: {{ c_status.ciclo.nome }}" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
+                                                                <span class="badge bg-danger text-white" style="cursor:pointer;" data-bs-toggle="tooltip" title="Fora do Limite: {{ c_status.ciclo.nome }}" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
                                                                     <i class="bi bi-x-circle-fill"></i>
                                                                 </span>
                                                             {% elif c_status.status == 'PENDENTE' %}
-                                                                <span class="badge bg-danger pulse-danger" style="cursor:pointer;" data-bs-toggle="tooltip" title="Pendente: {{ c_status.ciclo.nome }}" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
+                                                                <span class="badge bg-danger pulse-danger" style="cursor:pointer;" data-bs-toggle="tooltip" title="Pendente: {{ c_status.ciclo.nome }}" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }})">
                                                                     <i class="bi bi-exclamation-circle-fill"></i>
                                                                 </span>
                                                             {% endif %}
                                                         {% endif %}
                                                     {% endfor %}
-                                                    <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" data-bs-toggle="tooltip" title="Adicionar Extra" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }})"><i class="bi bi-plus-lg"></i></span>
+                                                    <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" data-bs-toggle="tooltip" title="Adicionar Extra" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }})"><i class="bi bi-plus-lg"></i></span>
                                                 </div>
                                             </td>
                                             <td>
                                                 <div class="d-flex justify-content-center gap-1">
                                                     <!-- Comentários -->
-                                                    <button type="button" class="btn btn-sm {% if reg.observacao %}btn-primary{% else %}btn-outline-primary{% endif %} position-relative" title="Observações do Lote" onclick="abrirModalObservacoes('{{ reg.id }}')">
+                                                    <button type="button" class="btn btn-sm {% if reg.observacao %}btn-primary{% else %}btn-outline-primary{% endif %} position-relative" title="Observações do Lote" onclick="event.stopPropagation(); abrirModalObservacoes('{{ reg.id }}')">
                                                         <i class="bi bi-chat{% if reg.observacao %}-text-fill{% else %}-text{% endif %}"></i>
                                                         {% if reg.observacao %}
                                                         <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle">
@@ -230,23 +230,19 @@
                                                         {% endif %}
                                                     </button>
                                                     <div class="dropdown d-inline-block">
-                                                        <button class="btn btn-sm btn-light border" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Mais opções">
+                                                        <button class="btn btn-sm btn-light border" type="button" data-bs-toggle="dropdown" onclick="event.stopPropagation();" aria-expanded="false" title="Mais opções">
                                                             <i class="bi bi-three-dots-vertical"></i>
                                                         </button>
                                                         <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="min-width: auto; padding: 0.25rem 0;">
+                                                            
                                                             <li>
-                                                                <button class="dropdown-item py-2 px-3 small text-secondary" type="button" onclick="abrirModalEditarLote('{{ reg.id }}', '{{ reg.lote }}', '{{ reg.maquina_id }}', '{{ reg.tratamento_id }}')">
-                                                                    <i class="bi bi-pencil-square me-2"></i> Editar Lote
-                                                                </button>
-                                                            </li>
-                                                            <li>
-                                                                <button class="dropdown-item py-2 px-3 small text-primary" type="button" onclick="abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }})">
+                                                                <button class="dropdown-item py-2 px-3 small text-primary" type="button" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }})">
                                                                     <i class="bi bi-tools me-2"></i> Add Manutenção (Extra)
                                                                 </button>
                                                             </li>
                                                             <li><hr class="dropdown-divider my-0"></li>
                                                             <li>
-                                                                <button class="dropdown-item py-2 px-3 small text-danger" type="button" onclick="abrirModalDelete('{% url 'laboratorio:registro_coating_delete' reg.id %}', '{{ reg.lote }}')">
+                                                                <button class="dropdown-item py-2 px-3 small text-danger" type="button" onclick="event.stopPropagation(); abrirModalDelete('{% url 'laboratorio:registro_coating_delete' reg.id %}', '{{ reg.lote }}')">
                                                                     <i class="bi bi-trash me-2"></i> Excluir Lote
                                                                 </button>
                                                             </li>
@@ -444,8 +440,38 @@
                         {{ registro_form.tratamento }}
                     </div>
                 </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Hora Entrada</label>
+                        <input type="datetime-local" class="form-control" id="editHoraEntrada">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Hora Saída</label>
+                        <input type="datetime-local" class="form-control" id="editHoraSaida">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Preparação</label>
+                        <select class="form-select" id="editPreparacao">
+                            <option value="">---------</option>
+                            {% for col in preparadores %}
+                            <option value="{{ col.id }}">{{ col.nome_abreviado }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Montagem</label>
+                        <select class="form-select" id="editMontagem">
+                            <option value="">---------</option>
+                            {% for col in montadores %}
+                            <option value="{{ col.id }}">{{ col.nome_abreviado }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
                 <div class="alert alert-info mt-2 mb-0" style="font-size: 0.85rem;">
-                    As alterações feitas aqui serão aplicadas a <strong>ambas as linhas</strong> (Côncavo e Convexo) deste lote.
+                    As alterações de Lote, Máquina e Tratamento serão aplicadas a <strong>ambas as linhas</strong> (Côncavo e Convexo) deste lote. As horas e colaboradores se aplicam apenas à linha selecionada.
                 </div>
             </div>
             <div class="modal-footer">
@@ -560,15 +586,29 @@
     }
     
     document.addEventListener('DOMContentLoaded', function() {
-        // Preenchimento automatico do lote
+        const proximosLotesMap = {{ proximos_lotes_map_json|safe|default:"{}" }};
         const novoLoteModalEl = document.getElementById('novoLoteModal');
         if (novoLoteModalEl) {
+            const selectMaquina = document.querySelector('select[name="maquina"]');
+            const loteInput = document.querySelector('input[name="lote"]');
+            
+            // Atualiza lote quando o modal abre
             novoLoteModalEl.addEventListener('show.bs.modal', function () {
-                const loteInput = document.querySelector('input[name="lote"]');
-                if (loteInput && !loteInput.value) {
+                if (loteInput && selectMaquina && proximosLotesMap[selectMaquina.value]) {
+                    loteInput.value = proximosLotesMap[selectMaquina.value];
+                } else if (loteInput && !loteInput.value) {
                     loteInput.value = '{{ proximo_lote }}';
                 }
             });
+
+            // Atualiza lote quando muda a máquina
+            if (selectMaquina && loteInput) {
+                selectMaquina.addEventListener('change', function() {
+                    if (proximosLotesMap[this.value]) {
+                        loteInput.value = proximosLotesMap[this.value];
+                    }
+                });
+            }
         }
 
         modalEdicaoRapida = new bootstrap.Modal(document.getElementById('modalEdicaoRapida'));
@@ -762,7 +802,7 @@
         }
     }
 
-    function abrirModalEditarLote(id, lote, maquina_id, tratamento_id) {
+    function abrirModalEditarLote(id, lote, maquina_id, tratamento_id, horaIn, horaOut, prep, mont) {
         document.getElementById('editLoteId').value = id;
         document.getElementById('editLoteNum').value = lote;
         
@@ -772,6 +812,11 @@
         const formGroupTratamento = document.querySelector('#wrapperTratamentoEditLote select');
         if (formGroupTratamento) formGroupTratamento.value = tratamento_id;
         
+        document.getElementById('editHoraEntrada').value = horaIn;
+        document.getElementById('editHoraSaida').value = horaOut;
+        document.getElementById('editPreparacao').value = prep;
+        document.getElementById('editMontagem').value = mont;
+        
         new bootstrap.Modal(document.getElementById('modalEditarLote')).show();
     }
 
@@ -780,14 +825,27 @@
         const lote = document.getElementById('editLoteNum').value;
         const maquina = document.querySelector('#wrapperMaquinaEditLote select').value;
         const tratamento = document.querySelector('#wrapperTratamentoEditLote select').value;
+        const horaIn = document.getElementById('editHoraEntrada').value;
+        const horaOut = document.getElementById('editHoraSaida').value;
+        const prep = document.getElementById('editPreparacao').value;
+        const mont = document.getElementById('editMontagem').value;
         
-        fetch("{% url 'laboratorio:editar_lote_completo_coating' %}", {
+        fetch("{% url 'laboratorio:api_editar_linha_coating' %}", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
             },
-            body: JSON.stringify({id: id, lote: lote, maquina_id: maquina, tratamento_id: tratamento})
+            body: JSON.stringify({
+                id: id, 
+                lote: lote, 
+                maquina_id: maquina, 
+                tratamento_id: tratamento,
+                hora_entrada: horaIn,
+                hora_saida: horaOut,
+                preparacao_id: prep,
+                montagem_id: mont
+            })
         })
         .then(response => response.json())
         .then(data => {

@@ -16,6 +16,15 @@ from django.contrib.contenttypes.models import ContentType
 
 # Definição dos módulos e suas permissões
 MODULES_PERMISSIONS = {
+    'boards': {
+        'name': 'Quadros de Atividades',
+        'permissions': [
+            'add_board',
+            'change_board',
+            'delete_board',
+            'view_board',
+        ]
+    },
     'metrologia': {
         'name': 'Metrologia - Calibração de Instrumentos',
         'permissions': [
@@ -123,6 +132,21 @@ MODULES_PERMISSIONS = {
 
 # Observação: view_name deve bater com o que o Django resolve (namespace:name).
 NAV_STRUCTURE = [
+    {
+        "label": "Quadros de Atividades",
+        "icon": "bi-kanban",
+        "module_perm": "core.nav_mod_boards",
+        "blocos": [
+            {
+                "nome": "Visão Geral",
+                "perm": "core.nav_boards_visao_geral",
+                "funcoes": [
+                    {"nome": "Acessar Dashboard", "view_name": "boards:dashboard", "perm": "core.nav_boards_dashboard"},
+                    {"nome": "Detalhe de Quadro", "view_name": "boards:board_detail", "perm": "core.nav_boards_detail"},
+                ]
+            }
+        ]
+    },
     {
         "key": "metrologia",
         "nome": "Metrologia",

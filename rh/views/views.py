@@ -3096,7 +3096,7 @@ def api_criar_usuario(request):
     
     try:
         data = json.loads(request.body)
-        username = data.get('username', '').strip()
+        username = data.get('username', '').strip().lower()
         email = data.get('email', '').strip()
         first_name = data.get('first_name', '').strip()
         last_name = data.get('last_name', '').strip()
@@ -3172,7 +3172,7 @@ def criar_usuario_view(request):
         return redirect('rh:listar_usuarios')
     
     if request.method == 'POST':
-        username = request.POST.get('username', '').strip()
+        username = request.POST.get('username', '').strip().lower()
         password = request.POST.get('password', '').strip()
         password_confirm = request.POST.get('password_confirm', '').strip()
         email = request.POST.get('email', '').strip()

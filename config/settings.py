@@ -554,3 +554,7 @@ try:
         SYSTEM_VERSION = f"{version_data.get('date', 'Desconhecido')} - {version_data.get('hash', 'local')}"
 except Exception:
     SYSTEM_VERSION = f"Local - {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+
+AUTHENTICATION_BACKENDS = [
+    "core.auth_backends.LowercaseUsernameBackend",
+]

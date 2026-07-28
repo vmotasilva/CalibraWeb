@@ -67,6 +67,7 @@ urlpatterns = [
     path("coating/painel/", views.coating_painel, name="coating_painel"),
     path("coating/dashboard/", views.dashboard_coating, name="dashboard_coating"),
     path("coating/registro/<int:pk>/excluir/", views.registro_coating_delete, name="registro_coating_delete"),
+    path("coating/registro/editar_linha/", views.api_editar_linha_coating, name="api_editar_linha_coating"),
     path("coating/registro/editar_lote_completo/", views.editar_lote_completo_coating, name="editar_lote_completo_coating"),
     path("coating/celula/atualizar/", views.atualizar_celula_coating, name="atualizar_celula_coating"),
     path("coating/manutencao/salvar/", views.registrar_manutencao_coating, name="registrar_manutencao_coating"),
@@ -86,5 +87,6 @@ urlpatterns = [
     path("coating/ciclos/<int:ciclo_id>/checklist/", views.configurar_checklist_ciclo, name="configurar_checklist_ciclo"),
     path("coating/ciclos/copiar/", views.copiar_ciclos_coating, name="copiar_ciclos_coating"),
     path("coating/api/ciclos-maquina/", views.api_obter_ciclos_maquina, name="api_obter_ciclos_maquina"),
+    path("coating/api/reordenar-ciclos/", views.api_reordenar_ciclos, name="api_reordenar_ciclos"),
     path("run-migrate-db/", views.run_migrate_view, name="run_migrate_view"),
 ]

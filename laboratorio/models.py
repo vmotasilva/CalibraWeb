@@ -411,10 +411,19 @@ class CicloManutencaoCoating(models.Model):
     valor_minimo = models.FloatField(null=True, blank=True, verbose_name="Valor Mínimo Aceitável")
     valor_maximo = models.FloatField(null=True, blank=True, verbose_name="Valor Máximo Aceitável")
 
+    # Novos campos
+    tratamentos_especificos = models.ManyToManyField(
+        'TratamentoAntiReflexo', 
+        blank=True, 
+        verbose_name="Tratamentos Específicos (Opcional)",
+        help_text="Se selecionado, a manutenção só será cobrada e contará lotes que possuam estes tratamentos."
+    )
+    ordem = models.IntegerField(default=0, verbose_name="Ordem de Exibição")
+
     class Meta:
         verbose_name = "Ciclo de Manutenção de Coating"
         verbose_name_plural = "Ciclos de Manutenção de Coating"
-        ordering = ['maquina', 'tipo', 'nome']
+        ordering = ['maquina', 'ordem', 'tipo', 'nome']
         
     def __str__(self):
         return f"{self.nome} ({self.get_tipo_display()}) - {self.maquina.codigo}"
