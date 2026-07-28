@@ -141,7 +141,7 @@
                                 {% if evap.id in maquinas_com_registros %}
                                     {% for reg in registros %}
                                         {% if reg.maquina.id == evap.id %}
-                                        <tr class="align-middle {% if reg.bg_group == 1 %}bg-light{% else %}bg-white{% endif %}" style="cursor:pointer;" onclick="abrirModalEditarLote(this, '{{ reg.id }}', '{{ reg.lote }}', '{{ reg.lado }}', '{{ reg.maquina_id }}', '{{ reg.tratamento_id }}', '{{ reg.hora_entrada|date:'Y-m-d\TH:i'|default:'' }}', '{{ reg.hora_saida|date:'Y-m-d\TH:i'|default:'' }}', '{{ reg.preparacao_id|default:'' }}', '{{ reg.montagem_id|default:'' }}')" data-observacao="{{ reg.observacao|escapejs|default:\'\' }}">
+                                        <tr class="align-middle {% if reg.bg_group == 1 %}bg-light{% else %}bg-white{% endif %}" style="cursor:pointer;" onclick="abrirModalEditarLote(this, '{{ reg.id }}', '{{ reg.lote }}', '{{ reg.lado }}', '{{ reg.maquina_id }}', '{{ reg.tratamento_id }}', '{{ reg.hora_entrada|date:'Y-m-d\TH:i'|default:'' }}', '{{ reg.hora_saida|date:'Y-m-d\TH:i'|default:'' }}', '{{ reg.preparacao_id|default:'' }}', '{{ reg.montagem_id|default:'' }}')" data-observacao="{{ reg.observacao|escapejs|default:'' }}">
                                             <td>{{ reg.turno_coating.data|date:"d/m/Y" }}</td>
                                             <td>{{ reg.turno_coating.regra.nome }}</td>
                                             <td>{{ reg.lote }}</td>
