@@ -399,11 +399,7 @@
                     <div id="manutencoesCheckboxList">
                         <!-- Preenchido via JS baseado na máquina -->
                     </div>
-                    <hr>
-                    <div class="mt-3">
-                        <label class="form-label fw-bold">Observações Gerais (Opcional)</label>
-                        <textarea class="form-control" name="observacao" rows="2" placeholder="Ex: Substituída peça X devido ao desgaste..."></textarea>
-                    </div>
+                    
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -822,24 +818,29 @@
                     `;
                 }
 
-                container.innerHTML += `
-                    <div class="mb-3">
-                        <div class="form-check">
-                            <input class="form-check-input ciclo-checkbox" type="checkbox" value="${item.ciclo.id}" id="cicloCheck${item.ciclo.id}" name="ciclos" onchange="toggleChecklist(${item.ciclo.id}, this.checked)" ${checkedAttr}>
-                            <label class="form-check-label d-flex align-items-center" for="cicloCheck${item.ciclo.id}">
-                                <span class="badge ${badgeColor} me-2">${item.ciclo.tipo}</span> 
-                                <strong class="me-2">${item.ciclo.nome}</strong> 
-                                <small class="text-muted">
-                                    (${item.lotes_passados}/${item.limite} 
-                                    ${item.ciclo.criterio === 'DIAS' ? 'dias' : item.ciclo.criterio === 'LOTES' ? 'lotes' : ''})
-                                </small>
-                                ${estourou}
-                            </label>
-                        </div>
-                        ${checklistHtml}
-                        ${verificacaoHtml}
-                    </div>
-                `;
+                                  container.innerHTML += `
+                      <div class="card mb-2 shadow-sm border-0 bg-light">
+                          <div class="card-body p-2 d-flex flex-column">
+                              <div class="d-flex align-items-center gap-3">
+                                  <input class="form-check-input ciclo-checkbox mt-0 border-secondary" style="width: 1.5rem; height: 1.5rem; cursor: pointer;" type="checkbox" value="${item.ciclo.id}" id="cicloCheck${item.ciclo.id}" name="ciclos" onchange="toggleChecklist(${item.ciclo.id}, this.checked)" ${checkedAttr}>
+                                  <label class="form-check-label w-100" for="cicloCheck${item.ciclo.id}" style="cursor: pointer;">
+                                      <div class="d-flex flex-column">
+                                          <div class="d-flex align-items-center gap-2">
+                                              <h6 class="mb-0 fw-bold">${item.ciclo.nome}</h6>
+                                              <span class="badge ${badgeColor}">${item.ciclo.tipo}</span>
+                                              ${estourou}
+                                          </div>
+                                          <small class="text-muted">
+                                              (${item.lotes_passados}/${item.limite} ${item.ciclo.criterio === 'DIAS' ? 'dias' : item.ciclo.criterio === 'LOTES' ? 'lotes' : ''})
+                                          </small>
+                                      </div>
+                                  </label>
+                              </div>
+                              ${checklistHtml}
+                              ${verificacaoHtml}
+                          </div>
+                      </div>
+                  `;
             });
         }
         
