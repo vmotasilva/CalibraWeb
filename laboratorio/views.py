@@ -1157,6 +1157,13 @@ def coating_painel(request):
                         ok_cids.append(c.id)
                 reg.ciclos_status_list = status_list
                 reg.ok_cids = ok_cids
+                
+                reg.limpezas_ok = sum(1 for s in status_list if s['ciclo'].tipo == 'LIMPEZA' and s['status'] == 'OK')
+                reg.limpezas_pendentes = sum(1 for s in status_list if s['ciclo'].tipo == 'LIMPEZA' and s['status'] in ['PENDENTE', 'PARCIAL', 'NOK'])
+                reg.trocas_ok = sum(1 for s in status_list if s['ciclo'].tipo == 'TROCA' and s['status'] == 'OK')
+                reg.trocas_pendentes = sum(1 for s in status_list if s['ciclo'].tipo == 'TROCA' and s['status'] in ['PENDENTE', 'PARCIAL', 'NOK'])
+                reg.verificacoes_ok = sum(1 for s in status_list if s['ciclo'].tipo == 'VERIFICACAO' and s['status'] == 'OK')
+                reg.verificacoes_pendentes = sum(1 for s in status_list if s['ciclo'].tipo == 'VERIFICACAO' and s['status'] in ['PENDENTE', 'PARCIAL', 'NOK'])
         
         # Prepara o status global atual da maquina
         hoje = timezone.now().date()
@@ -1193,9 +1200,11 @@ def coating_painel(request):
                     "id": ciclo.id,
                     "nome": ciclo.nome,
                     "tipo": ciclo.tipo,
+                    "criterio": ciclo.criterio,
                     "itens": itens
                 },
                 "count": count,
+                "lotes_passados": lotes_passados,
                 "limite": ciclo.limite_lotes,
                 "estourou": estourou_agora
             })
@@ -1676,6 +1685,11 @@ def ciclo_coating_update(request, pk):
         ciclo.valor_maximo = float(valor_maximo) if valor_maximo else None
         
         ciclo.save()
+        tratamentos = request.POST.getlist('tratamentos')
+        if tratamentos:
+            ciclo.tratamentos_especificos.set(tratamentos)
+        else:
+            ciclo.tratamentos_especificos.clear()
         
         tratamentos_ids = request.POST.getlist('tratamentos')
         if tratamentos_ids:
@@ -1884,22 +1898,6 @@ def obter_observacoes_lote(request):
         })
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
-
-@login_required
-@require_POST
-def ciclo_coating_update(request, pk):
-    ciclo = get_object_or_404(CicloManutencaoCoating, pk=pk)
-    try:
-        ciclo.tipo = request.POST.get('tipo', ciclo.tipo)
-        ciclo.nome = request.POST.get('nome', ciclo.nome)
-        ciclo.criterio = request.POST.get('criterio', ciclo.criterio)
-        ciclo.limite_lotes = int(request.POST.get('limite_lotes', ciclo.limite_lotes))
-        ciclo.save()
-        messages.success(request, f"Ciclo '{ciclo.nome}' atualizado com sucesso.")
-    except Exception as e:
-        messages.error(request, f"Erro ao atualizar ciclo: {str(e)}")
-        
-    return redirect("laboratorio:ciclo_coating_list")
 
 @login_required
 def configurar_checklist_ciclo(request, ciclo_id):

@@ -29,20 +29,25 @@
             </div>
         </div>
         <div class="card-body bg-light">
-            <ul class="list-group list-group-flush sortable-ciclos" data-maquina-id="{{ maq.id }}">
+            
+            {% if not maq.ciclos_coating.all %}
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item text-center text-muted p-4">
+                    Nenhuma manutenção configurada.
+                </li>
+            </ul>
+            {% else %}
+            
+            <h6 class="fw-bold text-muted mt-3 mb-2 ps-2"><i class="bi bi-stars"></i> Limpezas</h6>
+            <ul class="list-group list-group-flush sortable-ciclos mb-3" data-maquina-id="{{ maq.id }}" data-tipo="LIMPEZA">
                 {% for ciclo in maq.ciclos_coating.all %}
+                {% if ciclo.tipo == 'LIMPEZA' %}
                 <li class="list-group-item d-flex justify-content-between align-items-center ciclo-card p-3 border-bottom" data-ciclo-id="{{ ciclo.id }}" style="cursor: grab;">
                     <div class="d-flex align-items-center">
                         <i class="bi bi-grip-vertical text-muted me-3 fs-5"></i>
                         <div>
                             <div class="mb-1">
-                                {% if ciclo.tipo == 'LIMPEZA' %}
                                 <span class="badge bg-warning text-dark me-2"><i class="bi bi-stars"></i> Limpeza</span>
-                                {% elif ciclo.tipo == 'TROCA' %}
-                                <span class="badge bg-danger me-2"><i class="bi bi-tools"></i> Troca</span>
-                                {% else %}
-                                <span class="badge bg-primary me-2"><i class="bi bi-speedometer2"></i> Verificação</span>
-                                {% endif %}
                                 <span class="fw-bold fs-6 text-dark">{{ ciclo.nome }}</span>
                             </div>
                             <div>
@@ -58,11 +63,53 @@
                                 <span class="badge bg-info text-dark rounded-pill"><i class="bi bi-calendar3 me-1"></i> Anual (1x no Ano)</span>
                                 {% endif %}
                                 
-                                {% if ciclo.tipo == 'VERIFICACAO' %}
-                                    <span class="badge border border-primary text-primary rounded-pill ms-1">
-                                        <i class="bi bi-arrows-collapse"></i> 
-                                        Min: {{ ciclo.valor_minimo|default_if_none:"-" }} | Máx: {{ ciclo.valor_maximo|default_if_none:"-" }}
-                                    </span>
+                                {% if ciclo.tratamentos_especificos.exists %}
+                                <span class="badge bg-secondary ms-1 rounded-pill" data-bs-toggle="tooltip" title="{% for t in ciclo.tratamentos_especificos.all %}{{ t.nome }}{% if not forloop.last %}, {% endif %}{% endfor %}">
+                                    <i class="bi bi-funnel-fill"></i> Tratamentos Específicos ({{ ciclo.tratamentos_especificos.count }})
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-light text-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-three-dots-vertical"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                            <li><a href="{% url 'laboratorio:configurar_checklist_ciclo' ciclo.id %}" class="dropdown-item"><i class="bi bi-list-check me-2"></i> Checklist</a></li>
+                            <li><button type="button" class="dropdown-item" onclick="abrirModalEditar('{{ ciclo.id }}', '{{ ciclo.tipo }}', '{{ ciclo.nome }}', '{{ ciclo.criterio }}', '{{ ciclo.limite_lotes }}', '{{ ciclo.valor_minimo|default_if_none:'' }}', '{{ ciclo.valor_maximo|default_if_none:'' }}', [ {% for t in ciclo.tratamentos_especificos.all %}{{t.id}}{% if not forloop.last %},{% endif %}{% endfor %} ])"><i class="bi bi-pencil me-2"></i> Editar</button></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><button type="button" class="dropdown-item text-danger" onclick="abrirModalExcluir('{{ ciclo.id }}', '{{ ciclo.nome }}')"><i class="bi bi-trash me-2"></i> Excluir</button></li>
+                        </ul>
+                    </div>
+                </li>
+                {% endif %}
+                {% endfor %}
+            </ul>
+
+            <h6 class="fw-bold text-muted mt-3 mb-2 ps-2"><i class="bi bi-tools"></i> Trocas</h6>
+            <ul class="list-group list-group-flush sortable-ciclos mb-3" data-maquina-id="{{ maq.id }}" data-tipo="TROCA">
+                {% for ciclo in maq.ciclos_coating.all %}
+                {% if ciclo.tipo == 'TROCA' %}
+                <li class="list-group-item d-flex justify-content-between align-items-center ciclo-card p-3 border-bottom" data-ciclo-id="{{ ciclo.id }}" style="cursor: grab;">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-grip-vertical text-muted me-3 fs-5"></i>
+                        <div>
+                            <div class="mb-1">
+                                <span class="badge bg-danger me-2"><i class="bi bi-tools"></i> Troca</span>
+                                <span class="fw-bold fs-6 text-dark">{{ ciclo.nome }}</span>
+                            </div>
+                            <div>
+                                {% if ciclo.criterio == 'DIAS' %}
+                                <span class="badge bg-info text-dark rounded-pill"><i class="bi bi-calendar-event me-1"></i> Por Tempo (Dias Corridos)</span> <span class="badge bg-dark rounded-pill">{{ ciclo.limite_lotes }} dias</span>
+                                {% elif ciclo.criterio == 'LOTES' %}
+                                <span class="badge bg-info text-dark rounded-pill"><i class="bi bi-layers me-1"></i> Por Quantidade de Lotes</span> <span class="badge bg-dark rounded-pill">{{ ciclo.limite_lotes }} lotes</span>
+                                {% elif ciclo.criterio == 'SEMANAL' %}
+                                <span class="badge bg-info text-dark rounded-pill"><i class="bi bi-calendar-week me-1"></i> Semanal (1x na Semana)</span>
+                                {% elif ciclo.criterio == 'MENSAL' %}
+                                <span class="badge bg-info text-dark rounded-pill"><i class="bi bi-calendar-month me-1"></i> Mensal (1x no Mês)</span>
+                                {% elif ciclo.criterio == 'ANUAL' %}
+                                <span class="badge bg-info text-dark rounded-pill"><i class="bi bi-calendar3 me-1"></i> Anual (1x no Ano)</span>
                                 {% endif %}
                                 
                                 {% if ciclo.tratamentos_especificos.exists %}
@@ -78,31 +125,72 @@
                             <i class="bi bi-three-dots-vertical"></i>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                            <li>
-                                <a href="{% url 'laboratorio:configurar_checklist_ciclo' ciclo.id %}" class="dropdown-item">
-                                    <i class="bi bi-list-check me-2"></i> Checklist
-                                </a>
-                            </li>
-                            <li>
-                                <button type="button" class="dropdown-item" onclick="abrirModalEditar('{{ ciclo.id }}', '{{ ciclo.tipo }}', '{{ ciclo.nome }}', '{{ ciclo.criterio }}', '{{ ciclo.limite_lotes }}', '{{ ciclo.valor_minimo|default_if_none:'' }}', '{{ ciclo.valor_maximo|default_if_none:'' }}', [ {% for t in ciclo.tratamentos_especificos.all %}{{t.id}}{% if not forloop.last %},{% endif %}{% endfor %} ])">
-                                    <i class="bi bi-pencil me-2"></i> Editar
-                                </button>
-                            </li>
+                            <li><a href="{% url 'laboratorio:configurar_checklist_ciclo' ciclo.id %}" class="dropdown-item"><i class="bi bi-list-check me-2"></i> Checklist</a></li>
+                            <li><button type="button" class="dropdown-item" onclick="abrirModalEditar('{{ ciclo.id }}', '{{ ciclo.tipo }}', '{{ ciclo.nome }}', '{{ ciclo.criterio }}', '{{ ciclo.limite_lotes }}', '{{ ciclo.valor_minimo|default_if_none:'' }}', '{{ ciclo.valor_maximo|default_if_none:'' }}', [ {% for t in ciclo.tratamentos_especificos.all %}{{t.id}}{% if not forloop.last %},{% endif %}{% endfor %} ])"><i class="bi bi-pencil me-2"></i> Editar</button></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li>
-                                <button type="button" class="dropdown-item text-danger" onclick="abrirModalExcluir('{{ ciclo.id }}', '{{ ciclo.nome }}')">
-                                    <i class="bi bi-trash me-2"></i> Excluir
-                                </button>
-                            </li>
+                            <li><button type="button" class="dropdown-item text-danger" onclick="abrirModalExcluir('{{ ciclo.id }}', '{{ ciclo.nome }}')"><i class="bi bi-trash me-2"></i> Excluir</button></li>
                         </ul>
                     </div>
                 </li>
-                {% empty %}
-                <li class="list-group-item text-center text-muted p-4">
-                    Nenhuma manutenção configurada.
-                </li>
+                {% endif %}
                 {% endfor %}
             </ul>
+
+            <h6 class="fw-bold text-muted mt-3 mb-2 ps-2"><i class="bi bi-speedometer2"></i> Verificações</h6>
+            <ul class="list-group list-group-flush sortable-ciclos mb-3" data-maquina-id="{{ maq.id }}" data-tipo="VERIFICACAO">
+                {% for ciclo in maq.ciclos_coating.all %}
+                {% if ciclo.tipo == 'VERIFICACAO' %}
+                <li class="list-group-item d-flex justify-content-between align-items-center ciclo-card p-3 border-bottom" data-ciclo-id="{{ ciclo.id }}" style="cursor: grab;">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-grip-vertical text-muted me-3 fs-5"></i>
+                        <div>
+                            <div class="mb-1">
+                                <span class="badge bg-primary me-2"><i class="bi bi-speedometer2"></i> Verificação</span>
+                                <span class="fw-bold fs-6 text-dark">{{ ciclo.nome }}</span>
+                            </div>
+                            <div>
+                                {% if ciclo.criterio == 'DIAS' %}
+                                <span class="badge bg-info text-dark rounded-pill"><i class="bi bi-calendar-event me-1"></i> Por Tempo (Dias Corridos)</span> <span class="badge bg-dark rounded-pill">{{ ciclo.limite_lotes }} dias</span>
+                                {% elif ciclo.criterio == 'LOTES' %}
+                                <span class="badge bg-info text-dark rounded-pill"><i class="bi bi-layers me-1"></i> Por Quantidade de Lotes</span> <span class="badge bg-dark rounded-pill">{{ ciclo.limite_lotes }} lotes</span>
+                                {% elif ciclo.criterio == 'SEMANAL' %}
+                                <span class="badge bg-info text-dark rounded-pill"><i class="bi bi-calendar-week me-1"></i> Semanal (1x na Semana)</span>
+                                {% elif ciclo.criterio == 'MENSAL' %}
+                                <span class="badge bg-info text-dark rounded-pill"><i class="bi bi-calendar-month me-1"></i> Mensal (1x no Mês)</span>
+                                {% elif ciclo.criterio == 'ANUAL' %}
+                                <span class="badge bg-info text-dark rounded-pill"><i class="bi bi-calendar3 me-1"></i> Anual (1x no Ano)</span>
+                                {% endif %}
+                                
+                                <span class="badge border border-primary text-primary rounded-pill ms-1">
+                                    <i class="bi bi-arrows-collapse"></i> 
+                                    Min: {{ ciclo.valor_minimo|default_if_none:"-" }} | Máx: {{ ciclo.valor_maximo|default_if_none:"-" }}
+                                </span>
+                                
+                                {% if ciclo.tratamentos_especificos.exists %}
+                                <span class="badge bg-secondary ms-1 rounded-pill" data-bs-toggle="tooltip" title="{% for t in ciclo.tratamentos_especificos.all %}{{ t.nome }}{% if not forloop.last %}, {% endif %}{% endfor %}">
+                                    <i class="bi bi-funnel-fill"></i> Tratamentos Específicos ({{ ciclo.tratamentos_especificos.count }})
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-light text-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-three-dots-vertical"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                            <li><a href="{% url 'laboratorio:configurar_checklist_ciclo' ciclo.id %}" class="dropdown-item"><i class="bi bi-list-check me-2"></i> Checklist</a></li>
+                            <li><button type="button" class="dropdown-item" onclick="abrirModalEditar('{{ ciclo.id }}', '{{ ciclo.tipo }}', '{{ ciclo.nome }}', '{{ ciclo.criterio }}', '{{ ciclo.limite_lotes }}', '{{ ciclo.valor_minimo|default_if_none:'' }}', '{{ ciclo.valor_maximo|default_if_none:'' }}', [ {% for t in ciclo.tratamentos_especificos.all %}{{t.id}}{% if not forloop.last %},{% endif %}{% endfor %} ])"><i class="bi bi-pencil me-2"></i> Editar</button></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><button type="button" class="dropdown-item text-danger" onclick="abrirModalExcluir('{{ ciclo.id }}', '{{ ciclo.nome }}')"><i class="bi bi-trash me-2"></i> Excluir</button></li>
+                        </ul>
+                    </div>
+                </li>
+                {% endif %}
+                {% endfor %}
+            </ul>
+            {% endif %}
+
 
         </div>
     </div>
@@ -112,6 +200,30 @@
         Nenhuma evaporadora cadastrada.
     </div>
     {% endfor %}
+</div>
+
+
+<!-- Modal Excluir -->
+<div class="modal fade" id="modalConfirmDelete" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Exclusão</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir o ciclo <strong id="deleteCicloNome"></strong>?</p>
+                <p class="text-danger small"><i class="bi bi-exclamation-triangle"></i> Esta ação não pode ser desfeita.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form method="post" id="formDeleteCiclo">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Excluir</button>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Modal Adicionar -->
@@ -401,6 +513,13 @@
         });
     });
 
+    
+    function abrirModalExcluir(id, nome) {
+        document.getElementById('deleteCicloNome').innerText = nome;
+        document.getElementById('formDeleteCiclo').action = `/laboratorio/coating/ciclos/${id}/excluir/`;
+        new bootstrap.Modal(document.getElementById('modalConfirmDelete')).show();
+    }
+
     function abrirModalAdicionar(id, codigo) {
         document.getElementById('addMaquinaId').value = id;
         document.getElementById('addMaquinaCodigo').innerText = codigo;
@@ -446,6 +565,7 @@
             editLimiteContainer.style.display = 'none';
             editLimiteInput.required = false;
         }
+        
         
         toggleVerificacao(tipo, 'editVerificacaoContainer');
         

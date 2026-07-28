@@ -155,6 +155,16 @@
                                             <td>{{ reg.montagem.nome_abreviado|default:"-" }}</td>
                                             <td>
                                                 <div class="d-flex flex-nowrap gap-1 justify-content-center">
+                                                    {% if reg.limpezas_ok > 0 %}
+                                                    <span class="badge bg-success" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }})">{{ reg.limpezas_ok }} <i class="bi bi-check-circle-fill"></i></span>
+                                                    {% endif %}
+                                                    {% if reg.limpezas_pendentes > 0 %}
+                                                    <span class="badge bg-danger pulse-danger" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }})">{{ reg.limpezas_pendentes }} <i class="bi bi-exclamation-circle-fill"></i></span>
+                                                    {% endif %}
+                                                    <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" data-bs-toggle="tooltip" title="Adicionar Extra" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }})"><i class="bi bi-plus-lg"></i></span>
+                                                </div>
+                                                <div class="d-none full-details">
+                                                    <div class="d-flex flex-nowrap gap-1 justify-content-center">
                                                     {% for c_status in reg.ciclos_status_list %}
                                                         {% if c_status.ciclo.tipo == 'LIMPEZA' %}
                                                             {% if c_status.status == 'OK' %}
@@ -174,9 +184,20 @@
                                                     {% endfor %}
                                                     <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" data-bs-toggle="tooltip" title="Adicionar Extra" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }})"><i class="bi bi-plus-lg"></i></span>
                                                 </div>
+                                                </div>
                                             </td>
                                             <td>
                                                 <div class="d-flex flex-nowrap gap-1 justify-content-center">
+                                                    {% if reg.trocas_ok > 0 %}
+                                                    <span class="badge bg-success" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }})">{{ reg.trocas_ok }} <i class="bi bi-check-circle-fill"></i></span>
+                                                    {% endif %}
+                                                    {% if reg.trocas_pendentes > 0 %}
+                                                    <span class="badge bg-danger pulse-danger" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }})">{{ reg.trocas_pendentes }} <i class="bi bi-exclamation-circle-fill"></i></span>
+                                                    {% endif %}
+                                                    <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" data-bs-toggle="tooltip" title="Adicionar Extra" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }})"><i class="bi bi-plus-lg"></i></span>
+                                                </div>
+                                                <div class="d-none full-details">
+                                                    <div class="d-flex flex-nowrap gap-1 justify-content-center">
                                                     {% for c_status in reg.ciclos_status_list %}
                                                         {% if c_status.ciclo.tipo == 'TROCA' %}
                                                             {% if c_status.status == 'OK' %}
@@ -196,9 +217,20 @@
                                                     {% endfor %}
                                                     <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" data-bs-toggle="tooltip" title="Adicionar Extra" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }})"><i class="bi bi-plus-lg"></i></span>
                                                 </div>
+                                                </div>
                                             </td>
                                             <td>
                                                 <div class="d-flex flex-nowrap gap-1 justify-content-center">
+                                                    {% if reg.verificacoes_ok > 0 %}
+                                                    <span class="badge bg-success" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }})">{{ reg.verificacoes_ok }} <i class="bi bi-check-circle-fill"></i></span>
+                                                    {% endif %}
+                                                    {% if reg.verificacoes_pendentes > 0 %}
+                                                    <span class="badge bg-danger pulse-danger" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }})">{{ reg.verificacoes_pendentes }} <i class="bi bi-exclamation-circle-fill"></i></span>
+                                                    {% endif %}
+                                                    <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" data-bs-toggle="tooltip" title="Adicionar Extra" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }})"><i class="bi bi-plus-lg"></i></span>
+                                                </div>
+                                                <div class="d-none full-details">
+                                                    <div class="d-flex flex-nowrap gap-1 justify-content-center">
                                                     {% for c_status in reg.ciclos_status_list %}
                                                         {% if c_status.ciclo.tipo == 'VERIFICACAO' %}
                                                             {% if c_status.status == 'OK' %}
@@ -218,30 +250,18 @@
                                                     {% endfor %}
                                                     <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" data-bs-toggle="tooltip" title="Adicionar Extra" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }})"><i class="bi bi-plus-lg"></i></span>
                                                 </div>
+                                                </div>
                                             </td>
                                             <td>
                                                 <div class="d-flex justify-content-center gap-1">
-                                                    <!-- Comentários -->
-                                                    <button type="button" class="btn btn-sm {% if reg.observacao %}btn-primary{% else %}btn-outline-primary{% endif %} position-relative" title="Observações do Lote" onclick="event.stopPropagation(); abrirModalObservacoes('{{ reg.id }}')">
-                                                        <i class="bi bi-chat{% if reg.observacao %}-text-fill{% else %}-text{% endif %}"></i>
-                                                        {% if reg.observacao %}
-                                                        <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle">
-                                                            <span class="visually-hidden">Nova observação</span>
-                                                        </span>
-                                                        {% endif %}
-                                                    </button>
+
                                                     <div class="dropdown d-inline-block">
                                                         <button class="btn btn-sm btn-light border" type="button" data-bs-toggle="dropdown" onclick="event.stopPropagation();" aria-expanded="false" title="Mais opções">
                                                             <i class="bi bi-three-dots-vertical"></i>
                                                         </button>
                                                         <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="min-width: auto; padding: 0.25rem 0;">
                                                             
-                                                            <li>
-                                                                <button class="dropdown-item py-2 px-3 small text-primary" type="button" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }})">
-                                                                    <i class="bi bi-tools me-2"></i> Add Manutenção (Extra)
-                                                                </button>
-                                                            </li>
-                                                            <li><hr class="dropdown-divider my-0"></li>
+
                                                             <li>
                                                                 <button class="dropdown-item py-2 px-3 small text-danger" type="button" onclick="event.stopPropagation(); abrirModalDelete('{% url 'laboratorio:registro_coating_delete' reg.id %}', '{{ reg.lote }}')">
                                                                     <i class="bi bi-trash me-2"></i> Excluir Lote
@@ -772,7 +792,10 @@
                             <label class="form-check-label d-flex align-items-center" for="cicloCheck${item.ciclo.id}">
                                 <span class="badge ${badgeColor} me-2">${item.ciclo.tipo}</span> 
                                 <strong class="me-2">${item.ciclo.nome}</strong> 
-                                <small class="text-muted">(${item.count}/${item.limite} lotes)</small>
+                                <small class="text-muted">
+                                    (${item.lotes_passados}/${item.limite} 
+                                    ${item.ciclo.criterio === 'DIAS' ? 'dias' : item.ciclo.criterio === 'LOTES' ? 'lotes' : ''})
+                                </small>
                                 ${estourou}
                             </label>
                         </div>
@@ -830,9 +853,12 @@
         document.getElementById('editLoteTitleLado').innerText = lado ? "Linha: " + lado : "";
         document.getElementById('editLoteTitleLado').className = "badge ms-2 " + (lado === 'CC' ? "bg-primary" : "bg-info text-dark");
         if (tr && tr.cells) {
-            document.getElementById('modalTabLimpezas').innerHTML = tr.cells[11] ? tr.cells[11].innerHTML : '';
-            document.getElementById('modalTabTrocas').innerHTML = tr.cells[12] ? tr.cells[12].innerHTML : '';
-            document.getElementById('modalTabVerificacoes').innerHTML = tr.cells[13] ? tr.cells[13].innerHTML : '';
+            let tdLim = tr.cells[11] ? tr.cells[11].querySelector('.full-details') : null;
+            let tdTro = tr.cells[12] ? tr.cells[12].querySelector('.full-details') : null;
+            let tdVer = tr.cells[13] ? tr.cells[13].querySelector('.full-details') : null;
+            document.getElementById('modalTabLimpezas').innerHTML = tdLim ? tdLim.innerHTML : '';
+            document.getElementById('modalTabTrocas').innerHTML = tdTro ? tdTro.innerHTML : '';
+            document.getElementById('modalTabVerificacoes').innerHTML = tdVer ? tdVer.innerHTML : '';
         }
         document.getElementById('editLoteId').value = id;
         document.getElementById('editLoteNum').value = lote;
