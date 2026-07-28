@@ -1010,7 +1010,7 @@ def coating_painel(request):
         'turno_coating', 'maquina', 'tratamento', 'preparacao', 'montagem'
     ).order_by('-turno_coating__data', '-lote', 'lado')
     
-    paginator = Paginator(todos_registros, 100)
+    paginator = Paginator(todos_registros, 10)
     page_number = request.GET.get('page')
     registros = paginator.get_page(page_number)
     

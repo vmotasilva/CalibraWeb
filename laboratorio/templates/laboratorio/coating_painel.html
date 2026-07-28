@@ -22,7 +22,8 @@
     <div id="alertasContainer">
         {% if alertas_ciclos %}
             {% for maq_id, info in alertas_ciclos.items %}
-                <div class="alert alerta-maquina d-none fade show shadow-sm {% if info.maquina.em_alerta %}alert-warning{% else %}alert-info{% endif %}" data-maquina-id="{{ maq_id }}" role="alert">
+                <div class="alert alerta-maquina alert-dismissible d-none fade show shadow-sm {% if info.maquina.em_alerta %}alert-warning{% else %}alert-info{% endif %}" data-maquina-id="{{ maq_id }}" role="alert">
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     <strong><i class="bi bi-exclamation-triangle-fill"></i> Atenção (Manutenção Pendente ou Próxima):</strong> A máquina {{ info.maquina.codigo }} precisa de atenção:
                     <ul class="mb-0 mt-2">
                     {% for alerta in info.alertas %}
@@ -140,18 +141,18 @@
                                 {% if evap.id in maquinas_com_registros %}
                                     {% for reg in registros %}
                                         {% if reg.maquina.id == evap.id %}
-                                        <tr class="align-middle {% if reg.bg_group == 1 %}bg-light{% else %}bg-white{% endif %}" style="cursor:pointer;" onclick="abrirModalEditarLote('{{ reg.id }}', '{{ reg.lote }}', '{{ reg.maquina_id }}', '{{ reg.tratamento_id }}', '{{ reg.hora_entrada|date:'Y-m-d\TH:i'|default:'' }}', '{{ reg.hora_saida|date:'Y-m-d\TH:i'|default:'' }}', '{{ reg.preparacao_id|default:'' }}', '{{ reg.montagem_id|default:'' }}')">
+                                        <tr class="align-middle {% if reg.bg_group == 1 %}bg-light{% else %}bg-white{% endif %}" style="cursor:pointer;" onclick="abrirModalEditarLote(this, '{{ reg.id }}', '{{ reg.lote }}', '{{ reg.maquina_id }}', '{{ reg.tratamento_id }}', '{{ reg.hora_entrada|date:'Y-m-d\TH:i'|default:'' }}', '{{ reg.hora_saida|date:'Y-m-d\TH:i'|default:'' }}', '{{ reg.preparacao_id|default:'' }}', '{{ reg.montagem_id|default:'' }}')">
                                             <td>{{ reg.turno_coating.data|date:"d/m/Y" }}</td>
                                             <td>{{ reg.turno_coating.regra.nome }}</td>
                                             <td>{{ reg.lote }}</td>
                                             <td>{{ reg.lado }}</td>
                                             <td><span class="badge rounded-pill" style="background-color: {{ reg.tratamento.cor|default:'#0d6efd' }}; color: #fff; font-weight: 500;">{{ reg.tratamento.nome }}</span></td>
                                             <td>{{ reg.hora_entrada|time:"H:i"|default:"-" }}</td>
-                                            <td>{{ reg.hora_entrada|time:"H:i"|default:"-" }}</td>
+                                            <td>{{ reg.hora_saida|time:"H:i"|default:"-" }}</td>
                                             <td>{{ reg.tempo_rodando|time:"H:i"|default:"-" }}</td>
                                             <td>{{ reg.tempo_parado|time:"H:i"|default:"-" }}</td>
-                                            <td>{{ reg.hora_entrada|time:"H:i"|default:"-" }}</td>
-                                            <td>{{ reg.hora_entrada|time:"H:i"|default:"-" }}</td>
+                                            <td>{{ reg.preparacao.nome_abreviado|default:"-" }}</td>
+                                            <td>{{ reg.montagem.nome_abreviado|default:"-" }}</td>
                                             <td>
                                                 <div class="d-flex flex-nowrap gap-1 justify-content-center">
                                                     {% for c_status in reg.ciclos_status_list %}
@@ -422,10 +423,20 @@
                 <h5 class="modal-title">Editar Lote (CC e CX)</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
-                <input type="hidden" id="editLoteId">
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Número do Lote</label>
+            <div class="modal-body p-0">
+                <ul class="nav nav-tabs px-3 pt-3" id="editLoteTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="dados-tab" data-bs-toggle="tab" data-bs-target="#dados" type="button" role="tab" aria-controls="dados" aria-selected="true">Dados do Lote</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="manutencao-tab" data-bs-toggle="tab" data-bs-target="#manutencao" type="button" role="tab" aria-controls="manutencao" aria-selected="false">Manutenções (Limpezas/Trocas)</button>
+                    </li>
+                </ul>
+                <div class="tab-content" id="editLoteTabsContent">
+                    <div class="tab-pane fade show active p-3" id="dados" role="tabpanel" aria-labelledby="dados-tab">
+                        <input type="hidden" id="editLoteId">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Número do Lote</label>
                     <input type="number" class="form-control" id="editLoteNum">
                 </div>
                 <div class="mb-3">
@@ -455,8 +466,8 @@
                         <label class="form-label fw-bold">Preparação</label>
                         <select class="form-select" id="editPreparacao">
                             <option value="">---------</option>
-                            {% for col in preparadores %}
-                            <option value="{{ col.id }}">{{ col.nome_abreviado }}</option>
+                            {% for eq in equipe %}
+                            <option value="{{ eq.colaborador.id }}">{{ eq.colaborador.nome_abreviado }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -802,7 +813,12 @@
         }
     }
 
-    function abrirModalEditarLote(id, lote, maquina_id, tratamento_id, horaIn, horaOut, prep, mont) {
+    function abrirModalEditarLote(tr, id, lote, maquina_id, tratamento_id, horaIn, horaOut, prep, mont) {
+        if (tr && tr.cells) {
+            document.getElementById('modalTabLimpezas').innerHTML = tr.cells[11] ? tr.cells[11].innerHTML : '';
+            document.getElementById('modalTabTrocas').innerHTML = tr.cells[12] ? tr.cells[12].innerHTML : '';
+            document.getElementById('modalTabVerificacoes').innerHTML = tr.cells[13] ? tr.cells[13].innerHTML : '';
+        }
         document.getElementById('editLoteId').value = id;
         document.getElementById('editLoteNum').value = lote;
         
