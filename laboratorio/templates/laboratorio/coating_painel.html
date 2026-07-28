@@ -475,8 +475,8 @@
                         <label class="form-label fw-bold">Montagem</label>
                         <select class="form-select" id="editMontagem">
                             <option value="">---------</option>
-                            {% for col in montadores %}
-                            <option value="{{ col.id }}">{{ col.nome_abreviado }}</option>
+                            {% for eq in equipe %}
+                            <option value="{{ eq.colaborador.id }}">{{ eq.colaborador.nome_abreviado }}</option>
                             {% endfor %}
                         </select>
                     </div>
