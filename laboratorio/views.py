@@ -1151,11 +1151,11 @@ def coating_painel(request):
                 ciclos_json_data = []
                 
                 for c in ciclos:
-                    c_status_info = rs.get(c.id, {'status': 'S_FAROL', 'estourou': False, 'lotes_passados_str': ''})
+                    c_status_info = rs.get(c.id, {'status': 'S_FAROL', 'estourou': False, 'lotes_passados': 0})
                     
                     # Tratar caso o dict base não tenha as novas chaves
                     if isinstance(c_status_info, str):
-                        c_status_info = {'status': c_status_info, 'estourou': False, 'lotes_passados_str': ''}
+                        c_status_info = {'status': c_status_info, 'estourou': False, 'lotes_passados': 0}
                         
                     status = c_status_info['status']
                     
@@ -1177,7 +1177,7 @@ def coating_painel(request):
                             'itens': itens_list
                         },
                         'estourou': c_status_info['estourou'],
-                        'lotes_passados_str': c_status_info['lotes_passados_str'],
+                        'lotes_passados': c_status_info.get('lotes_passados', 0),
                         'limite': c.limite_lotes
                     })
                     
