@@ -141,7 +141,7 @@
                                 {% if evap.id in maquinas_com_registros %}
                                     {% for reg in registros %}
                                         {% if reg.maquina.id == evap.id %}
-                                        <tr class="align-middle {% if reg.bg_group == 1 %}bg-light{% else %}bg-white{% endif %}" style="cursor:pointer;" onclick="abrirModalEditarLote(this, '{{ reg.id }}', '{{ reg.lote }}', '{{ reg.lado }}', '{{ reg.maquina_id }}', '{{ reg.tratamento_id }}', '{{ reg.hora_entrada|date:'Y-m-d\TH:i'|default:'' }}', '{{ reg.hora_saida|date:'Y-m-d\TH:i'|default:'' }}', '{{ reg.preparacao_id|default:'' }}', '{{ reg.montagem_id|default:'' }}')">
+                                        <tr class="align-middle {% if reg.bg_group == 1 %}bg-light{% else %}bg-white{% endif %}" style="cursor:pointer;" onclick="abrirModalEditarLote(this, '{{ reg.id }}', '{{ reg.lote }}', '{{ reg.lado }}', '{{ reg.maquina_id }}', '{{ reg.tratamento_id }}', '{{ reg.hora_entrada|date:'Y-m-d\TH:i'|default:'' }}', '{{ reg.hora_saida|date:'Y-m-d\TH:i'|default:'' }}', '{{ reg.preparacao_id|default:'' }}', '{{ reg.montagem_id|default:'' }}')" data-observacao="{{ reg.observacao|escapejs|default:\'\' }}">
                                             <td>{{ reg.turno_coating.data|date:"d/m/Y" }}</td>
                                             <td>{{ reg.turno_coating.regra.nome }}</td>
                                             <td>{{ reg.lote }}</td>
@@ -501,6 +501,10 @@
                         </select>
                     </div>
                 </div>
+                <div class="mb-3 mt-2">
+                    <label class="form-label fw-bold">Observações (Apenas desta linha)</label>
+                    <textarea class="form-control" id="editObservacao" rows="2" placeholder="Observações específicas para esta linha..."></textarea>
+                </div>
                 <div class="alert alert-info mt-2 mb-0" style="font-size: 0.85rem;">
                     As alterações de Lote, Máquina e Tratamento serão aplicadas a <strong>ambas as linhas</strong> (Côncavo e Convexo) deste lote. As horas e colaboradores se aplicam apenas à linha selecionada.
                 </div>
@@ -729,7 +733,7 @@
         });
     });
 
-    function abrirModalManutencao(registroId, lote, maquinaId, clickedCicloId = null, existingCids = []) {
+    function abrirModalManutencao(registroId, lote, maquinaId, clickedCicloId = null, existingCids = [], tipoFiltro = null) {
         document.getElementById('manutencaoRegistroId').value = registroId;
         document.getElementById('manutencaoLoteNum').innerText = lote;
         
@@ -863,6 +867,9 @@
         document.getElementById('editLoteId').value = id;
         document.getElementById('editLoteNum').value = lote;
         
+        const obs = tr ? (tr.getAttribute('data-observacao') || '') : '';
+        document.getElementById('editObservacao').value = obs;
+        
         const formGroupMaquina = document.querySelector('#wrapperMaquinaEditLote select');
         if (formGroupMaquina) formGroupMaquina.value = maquina_id;
         
@@ -886,6 +893,7 @@
         const horaOut = document.getElementById('editHoraSaida').value;
         const prep = document.getElementById('editPreparacao').value;
         const mont = document.getElementById('editMontagem').value;
+        const observacao = document.getElementById('editObservacao').value;
         
         fetch("{% url 'laboratorio:api_editar_linha_coating' %}", {
             method: 'POST',
@@ -901,7 +909,8 @@
                 hora_entrada: horaIn,
                 hora_saida: horaOut,
                 preparacao_id: prep,
-                montagem_id: mont
+                montagem_id: mont,
+                observacao: observacao
             })
         })
         .then(response => response.json())

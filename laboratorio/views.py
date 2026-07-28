@@ -1425,6 +1425,8 @@ def api_editar_linha_coating(request):
         if 'montagem_id' in data:
             val = data['montagem_id']
             registro.montagem_id = val if val else None
+        if 'observacao' in data:
+            registro.observacao = data['observacao']
             
         registro.save()
         return JsonResponse({'success': True})
