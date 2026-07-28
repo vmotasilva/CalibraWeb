@@ -118,7 +118,7 @@ def dashboard_view(request):
             Q(criado_por=colab) | Q(membros=colab) | Q(todos_colaboradores=True)
         ).exclude(nome="Ações Corretivas e Preventivas").distinct()
     else:
-        quadros_base = Board.objects.none()
+        quadros_base = Board.objects.filter(todos_colaboradores=True).exclude(nome="Ações Corretivas e Preventivas").distinct()
 
     quadros = quadros_base.filter(arquivado=False)
     quadros_arquivados = quadros_base.filter(arquivado=True)
@@ -219,10 +219,12 @@ def board_detail_view(request, board_id, focus_column_id=None):
             id=board_id
         )
     else:
-        # Colaborador nulo -> sem acesso
-        from django.http import Http404
-        raise Http404("Quadro não encontrado ou sem permissão de acesso.")
-        
+        board = get_object_or_404(
+            Board.objects.filter(todos_colaboradores=True)
+            .exclude(nome="Ações Corretivas e Preventivas")
+            .distinct(), 
+            id=board_id
+        )        
     # Colunas, sub-sessões e cartões pré-carregados
     todas_colunas = list(board.colunas.prefetch_related('subsecoes', 'cartoes__responsaveis', 'cartoes__checklist_itens', 'cartoes__planejamentos').all())
     colunas = [col for col in todas_colunas if not col.arquivada]
@@ -1656,9 +1658,10 @@ def export_board_pdf_view(request, board_id):
             id=board_id
         )
     else:
-        from django.http import Http404
-        raise Http404("Quadro não encontrado ou sem permissão de acesso.")
-
+        board = get_object_or_404(
+            Board.objects.filter(todos_colaboradores=True).exclude(nome="Ações Corretivas e Preventivas"), 
+            id=board_id
+        )
     cartoes_param = request.GET.get('cartoes', '')
     if cartoes_param:
         cartoes_ids = [int(cid) for cid in cartoes_param.split(',') if cid.isdigit()]
