@@ -484,8 +484,21 @@
                 <div class="alert alert-info mt-2 mb-0" style="font-size: 0.85rem;">
                     As alterações de Lote, Máquina e Tratamento serão aplicadas a <strong>ambas as linhas</strong> (Côncavo e Convexo) deste lote. As horas e colaboradores se aplicam apenas à linha selecionada.
                 </div>
+                </div>
+                <div class="tab-pane fade p-3" id="manutencao" role="tabpanel" aria-labelledby="manutencao-tab">
+                    <div class="row text-center mb-3">
+                        <div class="col-12"><h6 class="fw-bold">Limpezas</h6><div id="modalTabLimpezas" class="p-2 border rounded bg-light"></div></div>
+                    </div>
+                    <div class="row text-center mb-3">
+                        <div class="col-12"><h6 class="fw-bold">Trocas</h6><div id="modalTabTrocas" class="p-2 border rounded bg-light"></div></div>
+                    </div>
+                    <div class="row text-center">
+                        <div class="col-12"><h6 class="fw-bold">Verificações</h6><div id="modalTabVerificacoes" class="p-2 border rounded bg-light"></div></div>
+                    </div>
+                </div>
+                </div>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer border-top-0">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-primary" onclick="salvarLoteCompleto()">Salvar Alterações</button>
             </div>
