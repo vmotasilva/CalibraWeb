@@ -2066,12 +2066,19 @@ def dashboard_coating(request):
     from django.db.models import Count, Avg, F, ExpressionWrapper, DurationField, Sum, Min, Max
     import json
     
-    periodo = request.GET.get('periodo', '15')
+    user_agent = request.META.get('HTTP_USER_AGENT', '').lower()
+    is_mobile = any(x in user_agent for x in ['mobile', 'android', 'iphone', 'ipad'])
+    default_periodo = '1' if is_mobile else '7'
+    
+    periodo = request.GET.get('periodo', default_periodo)
     maquina_id = request.GET.get('maquina', '')
     
     hoje = timezone.localtime().date()
     
-    if periodo == '7':
+    if periodo == '1':
+        inicio = hoje
+        dias_totais = 1
+    elif periodo == '7':
         inicio = hoje - timedelta(days=7)
         dias_totais = 8
     elif periodo == '30':
@@ -2083,7 +2090,7 @@ def dashboard_coating(request):
     elif periodo == 'ano':
         inicio = hoje.replace(month=1, day=1)
         dias_totais = (hoje - inicio).days + 1
-    else: # default 15
+    else: # fallback if somehow 15 is passed
         inicio = hoje - timedelta(days=15)
         dias_totais = 16
         
@@ -2211,45 +2218,32 @@ def dashboard_coating(request):
         datasets_sem.append({**base_dataset, 'data': data_sem, 'type': 'line', 'tension': 0.3, 'fill': False})
         datasets_mes.append({**base_dataset, 'data': data_mes, 'type': 'bar'})
 
-    # Manutenções
-    # Em vez de totais, vamos ver a tendência das manutenções por ciclo
-    ciclos_db = qs_manutencoes.values('ciclo__nome').order_by().distinct()
+    # Manutenções (Doughnut - Realizados vs Pendentes no Período)
+    ciclos_ativos = CicloManutencaoCoating.objects.filter(ativo=True)
     
-    manut_datasets_dia = []
-    manut_datasets_sem = []
-    manut_datasets_mes = []
+    total_lotes_periodo = qs_registros.values('lote').distinct().count()
     
-    for i, c_obj in enumerate(ciclos_db):
-        c_nome = c_obj['ciclo__nome']
-        c_cor = default_colors[i % len(default_colors)]
-        
-        m_data_dia = []
-        for d in dias:
-            c = qs_manutencoes.filter(ciclo__nome=c_nome, registro__turno_coating__data=d).count()
-            m_data_dia.append(c)
+    realizados_total = qs_manutencoes.count()
+    esperado_total = 0
+    
+    qtd_maquinas = qs_registros.values('maquina_id').distinct().count() or 1
+    
+    for ciclo in ciclos_ativos:
+        if ciclo.tipo_limite == 'lotes' and ciclo.limite_lotes:
+            esperado_total += (total_lotes_periodo / ciclo.limite_lotes) * qtd_maquinas
+        elif ciclo.tipo_limite == 'dias' and ciclo.limite_dias:
+            esperado_total += (dias_totais / ciclo.limite_dias) * qtd_maquinas
             
-        m_data_sem = []
-        for w_lbl, w_dias in weeks_dict.items():
-            c = qs_manutencoes.filter(ciclo__nome=c_nome, registro__turno_coating__data__in=w_dias).count()
-            m_data_sem.append(c)
-            
-        m_data_mes = []
-        for m_lbl, m_dias in months_dict.items():
-            c = qs_manutencoes.filter(ciclo__nome=c_nome, registro__turno_coating__data__in=m_dias).count()
-            m_data_mes.append(c)
-            
-        base_m = {
-            'label': c_nome,
-            'borderColor': c_cor,
-            'backgroundColor': c_cor,
-            'tension': 0.3,
-            'fill': False
-        }
-        
-        manut_datasets_dia.append({**base_m, 'data': m_data_dia, 'type': 'bar'})
-        manut_datasets_sem.append({**base_m, 'data': m_data_sem, 'type': 'line'})
-        manut_datasets_mes.append({**base_m, 'data': m_data_mes, 'type': 'line'})
-
+    esperado_total = max(int(esperado_total), 1)
+    pendentes_total = max(esperado_total - realizados_total, 0)
+    
+    manut_datasets_dia = [{
+        'data': [realizados_total, pendentes_total],
+        'backgroundColor': ['#198754', '#dc3545'],
+        'borderWidth': 0
+    }]
+    manut_datasets_sem = manut_datasets_dia
+    manut_datasets_mes = manut_datasets_dia
     
     # Novo Grid Analítico de Produção
     def format_timedelta(td):
