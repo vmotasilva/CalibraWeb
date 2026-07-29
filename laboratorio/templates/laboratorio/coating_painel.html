@@ -22,18 +22,51 @@
 <div class="mt-3">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
         <div>
-            <h2 class="mb-1">Painel de Coating</h2>
+            <h2 class="mb-1">Painel de Coating {% if audit_mode %}<span class="badge bg-danger ms-2" style="font-size:0.55em;"><i class="bi bi-shield-lock-fill"></i> MODO AUDITORIA</span>{% endif %}</h2>
             <p class="text-muted mb-0">Registro diário de Lotes e Manutenções.</p>
         </div>
         <div class="d-flex gap-2">
+            {% if not audit_mode %}
+            <a href="?audit=true" class="btn btn-outline-danger fw-bold shadow-sm" title="Investigar Anomalias">
+                <i class="bi bi-search"></i> Auditoria
+            </a>
+            {% else %}
+            <a href="?" class="btn btn-danger fw-bold shadow-sm">
+                <i class="bi bi-x-circle"></i> Sair da Auditoria
+            </a>
+            {% endif %}
+            
             <a href="{% url 'laboratorio:dashboard_coating' %}" class="btn btn-outline-secondary fw-bold shadow-sm">
                 <i class="bi bi-bar-chart-line"></i> Dashboard
             </a>
+            
+            {% if not audit_mode %}
             <button class="btn btn-primary fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#novoLoteModal">
                 <i class="bi bi-plus-circle"></i> Adicionar Lote
             </button>
+            {% endif %}
         </div>
     </div>
+    
+    {% if audit_mode %}
+    <div class="alert alert-danger shadow-sm mb-4">
+        <h5 class="alert-heading fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i> Ferramentas de Auditoria</h5>
+        <p class="mb-2">Você está no modo de investigação. Os lotes abaixo apresentam anomalias de tempo no <strong>histórico completo</strong>.</p>
+        <hr>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="?audit=true" class="btn btn-sm {% if not anomaly_filter %}btn-danger{% else %}btn-outline-danger{% endif %} fw-bold">Todas Anomalias</a>
+            <a href="?audit=true&anomaly=over_24h" class="btn btn-sm {% if anomaly_filter == 'over_24h' %}btn-danger{% else %}btn-outline-danger{% endif %} fw-bold" title="Lotes com mais de 24h">
+                <i class="bi bi-clock-history"></i> Mais de 24h
+            </a>
+            <a href="?audit=true&anomaly=negative" class="btn btn-sm {% if anomaly_filter == 'negative' %}btn-danger{% else %}btn-outline-danger{% endif %} fw-bold" title="Saída anterior à entrada">
+                <i class="bi bi-arrow-left-right"></i> Tempo Negativo
+            </a>
+            <a href="?audit=true&anomaly=missing" class="btn btn-sm {% if anomaly_filter == 'missing' %}btn-danger{% else %}btn-outline-danger{% endif %} fw-bold" title="Horários faltantes">
+                <i class="bi bi-question-circle"></i> Horários Incompletos
+            </a>
+        </div>
+    </div>
+    {% endif %}
     
     <!-- Alertas de Manutencao -->
     <div id="alertasContainer">
