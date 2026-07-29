@@ -218,7 +218,7 @@
         
         // Gerar Tabela de Dados abaixo do Gráfico
         const table = document.getElementById('chartDataTable');
-        let tableHTML = '<thead class="table-light"><tr><th class="text-start">Tratamento \ Data</th>';
+        let tableHTML = '<thead class="table-light"><tr><th class="text-start" style="width: 150px; min-width: 150px; max-width: 150px;">Tratamento \ Data</th>';
         
         // Cabeçalhos de Data
         labels_dia.forEach(label => {
@@ -228,7 +228,7 @@
         
         // Linhas de Tratamento
         datasets_dia.forEach(dataset => {
-            tableHTML += `<tr><td class="text-start fw-bold"><span style="display:inline-block;width:12px;height:12px;background-color:${dataset.backgroundColor};margin-right:8px;border-radius:2px;"></span>${dataset.label}</td>`;
+            tableHTML += `<tr><td class="text-start fw-bold" style="width: 150px; min-width: 150px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="display:inline-block;width:12px;height:12px;background-color:${dataset.backgroundColor};margin-right:8px;border-radius:2px;"></span>${dataset.label}</td>`;
             dataset.data.forEach(val => {
                 tableHTML += `<td>${val > 0 ? val : '-'}</td>`;
             });
@@ -236,7 +236,7 @@
         });
         
         // Linha de Total
-        tableHTML += '<tr class="table-secondary fw-bold"><td class="text-start">TOTAL DE LOTES</td>';
+        tableHTML += '<tr class="table-secondary fw-bold"><td class="text-start fw-bold" style="width: 150px; min-width: 150px; max-width: 150px;">TOTAL DE LOTES</td>';
         for(let i=0; i<labels_dia.length; i++) {
             let colTotal = 0;
             datasets_dia.forEach(dataset => {
@@ -266,6 +266,9 @@
                         display: false // Esconder eixo X pois as datas já estão na tabela
                     },
                     y: {
+                        afterFit: function(scaleInstance) {
+                            scaleInstance.width = 150;
+                        },
                         stacked: true,
                         beginAtZero: true,
                         ticks: { precision: 0 },
