@@ -2219,7 +2219,7 @@ def dashboard_coating(request):
         datasets_mes.append({**base_dataset, 'data': data_mes, 'type': 'bar'})
 
     # Manutenções (Doughnut - Realizados vs Pendentes no Período)
-    ciclos_ativos = CicloManutencaoCoating.objects.filter(ativo=True)
+    ciclos_ativos = CicloManutencaoCoating.objects.all()
     
     total_lotes_periodo = qs_registros.values('lote').distinct().count()
     
@@ -2229,10 +2229,18 @@ def dashboard_coating(request):
     qtd_maquinas = qs_registros.values('maquina_id').distinct().count() or 1
     
     for ciclo in ciclos_ativos:
-        if ciclo.tipo_limite == 'lotes' and ciclo.limite_lotes:
-            esperado_total += (total_lotes_periodo / ciclo.limite_lotes) * qtd_maquinas
-        elif ciclo.tipo_limite == 'dias' and ciclo.limite_dias:
-            esperado_total += (dias_totais / ciclo.limite_dias) * qtd_maquinas
+        if ciclo.criterio == 'LOTES' and ciclo.limite_lotes:
+            esperado_total += (total_lotes_periodo / ciclo.limite_lotes)
+        elif ciclo.criterio == 'DIAS' and ciclo.limite_lotes:
+            esperado_total += (dias_totais / ciclo.limite_lotes)
+        elif ciclo.criterio == 'DIARIO':
+            esperado_total += (dias_totais / 1)
+        elif ciclo.criterio == 'SEMANAL':
+            esperado_total += (dias_totais / 7)
+        elif ciclo.criterio == 'QUINZENAL':
+            esperado_total += (dias_totais / 15)
+        elif ciclo.criterio == 'MENSAL':
+            esperado_total += (dias_totais / 30)
             
     esperado_total = max(int(esperado_total), 1)
     pendentes_total = max(esperado_total - realizados_total, 0)
