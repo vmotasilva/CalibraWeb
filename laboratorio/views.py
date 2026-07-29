@@ -1385,6 +1385,8 @@ def coating_painel(request):
         "proximo_lote": proximo_lote,
         "proximos_lotes_map_json": json.dumps(proximos_lotes_map),
         "equipe": EquipeCoating.objects.select_related('colaborador').all().order_by('colaborador__nome_completo'),
+        "audit_mode": audit_mode,
+        "anomaly_filter": anomaly_filter,
     }
     
     return render(request, "laboratorio/coating_painel.html", context)
