@@ -1311,6 +1311,19 @@ def coating_painel(request):
             hora_entrada_dt = datetime.combine(reg.turno_coating.data, hora_entrada_dt)
         if isinstance(hora_saida_dt, time):
             hora_saida_dt = datetime.combine(reg.turno_coating.data, hora_saida_dt)
+
+        # Descobrir a hora de início do turno
+        hora_inicio_turno = None
+        if reg.turno_coating and reg.turno_coating.regra and reg.turno_coating.regra.hora_inicio:
+            inicio_time = reg.turno_coating.regra.hora_inicio
+            hora_inicio_turno = datetime.combine(reg.turno_coating.data, inicio_time)
+
+        # Normalizar para lidar com viradas de meia-noite (Turno 3)
+        if hora_inicio_turno:
+            if hora_entrada_dt and hora_entrada_dt.hour < 12 and hora_inicio_turno.hour > 12:
+                hora_entrada_dt += timedelta(days=1)
+            if hora_saida_dt and hora_saida_dt.hour < 12 and hora_inicio_turno.hour > 12:
+                hora_saida_dt += timedelta(days=1)
             
         # Tempo Rodando
         if hora_entrada_dt and hora_saida_dt:
@@ -1331,6 +1344,10 @@ def coating_painel(request):
                 saida_anterior = last_seen[maq_id]
                 if isinstance(saida_anterior, time):
                     saida_anterior = datetime.combine(reg.turno_coating.data, saida_anterior)
+
+                # Normalizar saida_anterior também
+                if hora_inicio_turno and saida_anterior.hour < 12 and hora_inicio_turno.hour > 12:
+                    saida_anterior += timedelta(days=1)
                     
                 # Se a saída anterior ocorreu antes do início do turno atual, o tempo parado conta só do início do turno
                 if hora_inicio_turno and saida_anterior < hora_inicio_turno:
