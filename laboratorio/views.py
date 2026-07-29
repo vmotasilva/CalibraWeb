@@ -1005,10 +1005,40 @@ def coating_painel(request):
     # Initialize form for GET
     registro_form = NovoLoteCoatingForm()
     
-    # Fetch all records
-    todos_registros = RegistroCoating.objects.all().select_related(
+    # Modo Auditoria
+    audit_mode = request.GET.get('audit') == 'true'
+    anomaly_filter = request.GET.get('anomaly', '')
+    
+    base_qs = RegistroCoating.objects.all().select_related(
         'turno_coating', 'maquina', 'tratamento', 'preparacao', 'montagem'
-    ).order_by('-turno_coating__data', '-lote', 'lado')
+    )
+    
+    if audit_mode:
+        from django.db.models import F, ExpressionWrapper, DurationField, Q
+        from datetime import timedelta
+        
+        if anomaly_filter == 'over_24h':
+            base_qs = base_qs.annotate(
+                duracao=ExpressionWrapper(F('hora_saida') - F('hora_entrada'), output_field=DurationField())
+            ).filter(duracao__gt=timedelta(hours=24))
+        elif anomaly_filter == 'negative':
+            base_qs = base_qs.filter(hora_saida__lt=F('hora_entrada'))
+        elif anomaly_filter == 'missing':
+            base_qs = base_qs.filter(Q(hora_entrada__isnull=True, hora_saida__isnull=False) | Q(hora_entrada__isnull=False, hora_saida__isnull=True))
+        else:
+            base_qs = base_qs.annotate(
+                duracao=ExpressionWrapper(F('hora_saida') - F('hora_entrada'), output_field=DurationField())
+            ).filter(
+                Q(duracao__gt=timedelta(hours=24)) | 
+                Q(hora_saida__lt=F('hora_entrada')) | 
+                Q(hora_entrada__isnull=True, hora_saida__isnull=False) | 
+                Q(hora_entrada__isnull=False, hora_saida__isnull=True)
+            )
+            
+        todos_registros = base_qs.order_by('-turno_coating__data', '-lote', 'lado')
+    else:
+        # Fetch all records
+        todos_registros = base_qs.order_by('-turno_coating__data', '-lote', 'lado')
     
     paginator = Paginator(todos_registros, 10)
     page_number = request.GET.get('page')
