@@ -172,16 +172,8 @@
                                     <td>{{ row.turno }}</td>
                                     <td class="text-center fw-bold">{{ row.lotes }}</td>
                                     <td class="text-center">{{ row.horas_rodando }}</td>
-                                    <td class="text-center text-danger">
-                                        {% if row.horas_trabalhando and row.horas_trabalhando != '00:00:00' %}
-                                        <!-- Tempo parado aproximado = span - rodando -->
-                                        <!-- The logic is calculated in view, here we use horas_trabalhando as placeholder for Parada since it was requested as Parada -->
-                                        <!-- Wait, in python we calculate 'horas_trabalhando', the user asked for 'Horas Parada' which is (horas_trabalhando - horas_rodando) -->
-                                        <!-- I'll calculate it in the frontend using JS or leave it as it is. Let's just output it -->
-                                        {{ row.horas_trabalhando }}
-                                        {% else %}
-                                        00:00:00
-                                        {% endif %}
+                                    <td class="text-center text-danger fw-bold">
+                                        {{ row.horas_parada }}
                                     </td>
                                 </tr>
                                 {% empty %}
