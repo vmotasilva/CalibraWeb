@@ -227,14 +227,14 @@
                 } else if (period === 'sem') {
                     lotesChart.data.labels = labels_sem;
                     lotesChart.data.datasets = datasets_sem;
-                    lotesChart.config.type = 'line';
-                    lotesChart.options.scales.x.display = true; // Show x-axis for weekly
+                    lotesChart.config.type = 'bar';
+                    lotesChart.options.scales.x.display = false; // Show x-axis for weekly
                     renderTable(labels_sem, datasets_sem);
                 } else if (period === 'mes') {
                     lotesChart.data.labels = labels_mes;
                     lotesChart.data.datasets = datasets_mes;
                     lotesChart.config.type = 'bar';
-                    lotesChart.options.scales.x.display = true;
+                    lotesChart.options.scales.x.display = false;
                     renderTable(labels_mes, datasets_mes);
                 }
                 lotesChart.update();
