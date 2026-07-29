@@ -2252,18 +2252,6 @@ def dashboard_coating(request):
 
     
     # Novo Grid Analítico de Produção
-    # Group by Date, Maquina, Turno
-    grid_qs = qs_registros.filter(hora_entrada__isnull=False, hora_saida__isnull=False).values(
-        'turno_coating__data',
-        'maquina__codigo',
-        'turno_coating__regra__nome'
-    ).annotate(
-        qtd_lotes=Count('lote', distinct=True),
-        horas_rodando=Sum(ExpressionWrapper(F('hora_saida') - F('hora_entrada'), output_field=DurationField())),
-        primeira_entrada=Min('hora_entrada'),
-        ultima_saida=Max('hora_saida')
-    ).order_by('-turno_coating__data', 'maquina__codigo', 'turno_coating__regra__nome')
-    
     def format_timedelta(td):
         if not td: return '00:00:00'
         total_seconds = int(td.total_seconds())
@@ -2272,26 +2260,52 @@ def dashboard_coating(request):
         seconds = total_seconds % 60
         return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
-    grid_rows = []
-    for row in grid_qs:
-        hr_rodando = row['horas_rodando']
-        hr_rodando_str = format_timedelta(hr_rodando)
+    grid_raw = qs_registros.filter(hora_entrada__isnull=False, hora_saida__isnull=False).select_related(
+        'turno_coating', 'maquina', 'turno_coating__regra'
+    ).order_by('turno_coating__data', 'maquina__codigo', 'turno_coating__regra__nome', 'hora_entrada')
+
+    groups = {}
+    for reg in grid_raw:
+        key = (reg.turno_coating.data, reg.maquina.codigo, reg.turno_coating.regra.nome)
+        if key not in groups:
+            groups[key] = {
+                'lotes_set': set(),
+                'rodando_sec': 0.0,
+                'primeira_entrada': reg.hora_entrada,
+                'ultima_saida': reg.hora_saida,
+                'lotes_processed': set()
+            }
         
-        # Calculate working hours (Total span from first entry to last exit)
-        hr_trabalhando_str = '00:00:00'
-        if row['primeira_entrada'] and row['ultima_saida']:
-            span = row['ultima_saida'] - row['primeira_entrada']
-            hr_trabalhando_str = format_timedelta(span)
+        if reg.hora_entrada < groups[key]['primeira_entrada']:
+            groups[key]['primeira_entrada'] = reg.hora_entrada
+        if reg.hora_saida > groups[key]['ultima_saida']:
+            groups[key]['ultima_saida'] = reg.hora_saida
             
-        grid_rows.append({
-            'data': row['turno_coating__data'].strftime('%d/%m/%Y'),
-            'maquina': row['maquina__codigo'],
-            'turno': row['turno_coating__regra__nome'],
-            'lotes': row['qtd_lotes'],
-            'horas_rodando': hr_rodando_str,
-            'horas_trabalhando': hr_trabalhando_str
-        })
+        groups[key]['lotes_set'].add(reg.lote)
+        
+        if reg.lote not in groups[key]['lotes_processed']:
+            diff = (reg.hora_saida - reg.hora_entrada).total_seconds()
+            if diff > 0:
+                groups[key]['rodando_sec'] += diff
+            groups[key]['lotes_processed'].add(reg.lote)
+
+    grid_rows = []
+    sorted_keys = sorted(groups.keys(), key=lambda x: (x[0], x[1], x[2]), reverse=True)
     
+    for key in sorted_keys:
+        data, maquina, turno = key
+        g = groups[key]
+        span = g['ultima_saida'] - g['primeira_entrada']
+        
+        grid_rows.append({
+            'data': data.strftime('%d/%m/%Y'),
+            'maquina': maquina,
+            'turno': turno,
+            'lotes': len(g['lotes_set']),
+            'horas_rodando': format_timedelta(timedelta(seconds=g['rodando_sec'])),
+            'horas_trabalhando': format_timedelta(span)
+        })
+
     return render(request, "laboratorio/dashboard_coating.html", {
         "maquinas": maquinas,
         "maquina_selecionada": int(maquina_id) if maquina_id else "",
