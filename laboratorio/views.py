@@ -2065,10 +2065,11 @@ def dashboard_coating(request):
         qs_registros = qs_registros.filter(maquina_id=maquina_id)
         qs_manutencoes = qs_manutencoes.filter(registro__maquina_id=maquina_id)
         
-    maquinas = Maquina.objects.filter(setor__nome__iexact='COATING')
-    maqs_to_iter = maquinas.filter(id=maquina_id) if maquina_id else maquinas
+    # As maquinas disponíveis para filtro podem vir dos proprios registros para evitar problemas de setor
+    maquinas_ids = qs_registros.values_list('maquina_id', flat=True).distinct()
+    maquinas = Maquina.objects.filter(id__in=maquinas_ids)
     
-    # KPI 1: Total Lotes (distinct by lote, data, maquina)
+    # KPI 1: Total Lotes
     lotes_unicos = qs_registros.values('lote', 'turno_coating__data', 'maquina_id').distinct()
     total_lotes = lotes_unicos.count()
     
@@ -2109,43 +2110,32 @@ def dashboard_coating(request):
     else:
         avg_parado_str = '00:00:00'
         
-    # Chart 1: Lotes Produzidos por Dia
+    # NOVO Chart: Lotes Produzidos por Dia Agrupados por Tratamento
     labels_dia = [d.strftime('%d/%m') for d in dias]
+    
+    # Obter todos os tratamentos presentes
+    tratamentos = list(qs_registros.values_list('tratamento__nome', flat=True).distinct())
+    
     datasets_dia = []
-    cores = ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#6f42c1', '#fd7e14']
+    cores = ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#6f42c1', '#fd7e14', '#0dcaf0', '#6c757d']
     
-    grid_data = { d: {} for d in dias }
-    
-    for i, maq in enumerate(maqs_to_iter):
-        data_maq = []
+    for i, trat_nome in enumerate(tratamentos):
+        data_trat = []
+        trat_label = trat_nome if trat_nome else 'Sem Tratamento'
         for d in dias:
-            count = qs_registros.filter(maquina=maq, turno_coating__data=d).values('lote').distinct().count()
-            data_maq.append(count)
-            grid_data[d][maq.codigo] = count
+            # Count lotes by this treatment on this day
+            count = qs_registros.filter(tratamento__nome=trat_nome, turno_coating__data=d).values('lote').distinct().count()
+            data_trat.append(count)
             
         cor = cores[i % len(cores)]
         datasets_dia.append({
-            'label': maq.codigo,
-            'data': data_maq,
+            'label': trat_label,
+            'data': data_trat,
             'backgroundColor': cor,
             'borderColor': cor,
-            'tension': 0.3,
-            'borderWidth': 2
+            'borderWidth': 1
         })
         
-    grid_rows = []
-    for d in dias:
-        row = {'data': d.strftime('%d/%m/%Y'), 'obj_data': d.strftime('%Y-%m-%d')}
-        for maq in maqs_to_iter:
-            row[maq.codigo] = grid_data[d][maq.codigo]
-        row['Total'] = sum(grid_data[d].values())
-        grid_rows.append(row)
-        
-    # Chart 2: Tratamentos
-    tratamentos_count = qs_registros.values('tratamento__nome').annotate(total=Count('id')).order_by('-total')
-    labels_trat = [t['tratamento__nome'] or 'Sem Tratamento' for t in tratamentos_count]
-    data_trat = [t['total'] for t in tratamentos_count]
-    
     # Chart 3: Manutenções Feitas
     manut_feitas = qs_manutencoes.values('ciclo__nome').annotate(total=Count('id')).order_by('-total')
     labels_manut = [m['ciclo__nome'] for m in manut_feitas]
@@ -2161,12 +2151,8 @@ def dashboard_coating(request):
         "avg_parado": avg_parado_str,
         "labels_json": json.dumps(labels_dia),
         "datasets_json": json.dumps(datasets_dia),
-        "labels_trat": json.dumps(labels_trat),
-        "data_trat": json.dumps(data_trat),
         "labels_manut": json.dumps(labels_manut),
         "data_manut": json.dumps(data_manut),
-        "grid_rows": grid_rows,
-        "maquinas_grid": maqs_to_iter,
     })
 
 @login_required
