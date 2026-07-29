@@ -1116,7 +1116,8 @@ def coating_painel(request):
                     curr_period = f"{data_lote.year}-{data_lote.month:02d}"
                 else:
                     curr_period = None
-                    
+
+                estourou = False
                 if c.id in m_cids_lote:
                     status = m_cids_lote[c.id] # OK or PARCIAL
                     counters[c.id] = 0
@@ -1126,6 +1127,7 @@ def coating_painel(request):
                     if c.criterio in ['LOTES', 'DIAS']:
                         if never_done[c.id] or counters[c.id] >= c.limite_lotes:
                             status = 'PENDENTE'
+                            estourou = True
                         else:
                             status = 'S_FAROL'
                     elif c.criterio == 'LIVRE':
@@ -1135,8 +1137,13 @@ def coating_painel(request):
                             status = 'S_FAROL'
                         else:
                             status = 'PENDENTE'
+                            estourou = True
                             
-                ciclos_status_lote[c.id] = status
+                ciclos_status_lote[c.id] = {
+                    'status': status,
+                    'estourou': estourou,
+                    'lotes_passados': counters[c.id]
+                }
                 
             for rid in rids:
                 registro_status[rid] = ciclos_status_lote
