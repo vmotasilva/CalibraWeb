@@ -2086,8 +2086,11 @@ def dashboard_coating(request):
         )
     )
     avg_rodando = tempos['rodando']
-    avg_rodando_str = str(avg_rodando).split('.')[0] if avg_rodando else '00:00'
-    if avg_rodando_str.startswith('0:'): avg_rodando_str = '00' + avg_rodando_str[1:]
+    if avg_rodando:
+        t_sec = int(avg_rodando.total_seconds())
+        avg_rodando_str = f"{t_sec // 3600:02d}:{(t_sec % 3600) // 60:02d}:{t_sec % 60:02d}"
+    else:
+        avg_rodando_str = '00:00:00'
     
     registros_ord = qs_registros.order_by('maquina_id', 'turno_coating__data', 'hora_entrada')
     tempos_parados = []
@@ -2104,8 +2107,8 @@ def dashboard_coating(request):
         last_saida[key] = r.hora_saida
         
     if tempos_parados:
-        avg_parado_sec = sum(tempos_parados) / len(tempos_parados)
-        avg_parado_str = str(timedelta(seconds=int(avg_parado_sec)))
+        avg_parado_sec = int(sum(tempos_parados) / len(tempos_parados))
+        avg_parado_str = f"{avg_parado_sec // 3600:02d}:{(avg_parado_sec % 3600) // 60:02d}:{avg_parado_sec % 60:02d}"
     else:
         avg_parado_str = '00:00:00'
         
@@ -2154,16 +2157,24 @@ def dashboard_coating(request):
         ultima_saida=Max('hora_saida')
     ).order_by('-turno_coating__data', 'maquina__codigo', 'turno_coating__regra__nome')
     
+    def format_timedelta(td):
+        if not td: return '00:00:00'
+        total_seconds = int(td.total_seconds())
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        seconds = total_seconds % 60
+        return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
     grid_rows = []
     for row in grid_qs:
         hr_rodando = row['horas_rodando']
-        hr_rodando_str = str(hr_rodando).split('.')[0] if hr_rodando else '00:00:00'
+        hr_rodando_str = format_timedelta(hr_rodando)
         
         # Calculate working hours (Total span from first entry to last exit)
         hr_trabalhando_str = '00:00:00'
         if row['primeira_entrada'] and row['ultima_saida']:
             span = row['ultima_saida'] - row['primeira_entrada']
-            hr_trabalhando_str = str(span).split('.')[0]
+            hr_trabalhando_str = format_timedelta(span)
             
         grid_rows.append({
             'data': row['turno_coating__data'].strftime('%d/%m/%Y'),
