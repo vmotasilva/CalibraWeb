@@ -2322,12 +2322,8 @@ def dashboard_coating(request):
                 if reg.turno_coating.regra.hora_fim:
                     reg.hora_fim_turno = datetime.combine(reg.turno_coating.data, reg.turno_coating.regra.hora_fim)
             
-            if reg.hora_inicio_turno:
-                if reg.hora_entrada_dt and reg.hora_entrada_dt.hour < 12 and reg.hora_inicio_turno.hour > 12:
-                    reg.hora_entrada_dt += timedelta(days=1)
-                if reg.hora_saida_dt and reg.hora_saida_dt.hour < 12 and reg.hora_inicio_turno.hour > 12:
-                    reg.hora_saida_dt += timedelta(days=1)
-                if reg.hora_fim_turno and reg.hora_fim_turno.hour < 12 and reg.hora_inicio_turno.hour > 12:
+            if reg.hora_inicio_turno and reg.hora_fim_turno:
+                if reg.turno_coating.regra.hora_fim < reg.turno_coating.regra.hora_inicio:
                     reg.hora_fim_turno += timedelta(days=1)
                     
             if reg.hora_entrada_dt and reg.hora_saida_dt:
