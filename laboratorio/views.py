@@ -1290,97 +1290,92 @@ def coating_painel(request):
                     "nunca_feito": never_done[ciclo.id]
                 })
 
-    # Cálculo dos tempos Rodando e Parado
-    # Como `registros` está ordenado de forma decrescente (mais recente primeiro), 
-    # o lote "anterior" chronologicamente é o próximo item da lista para a mesma máquina.
-    last_seen = {}
-    for reg in reversed(registros): # Iterar do mais antigo para o mais novo
-        maq_id = reg.maquina_id
-        
-        # Trata legados onde SQLite ainda pode retornar tipo 'time'
-        hora_entrada_dt = reg.hora_entrada
-        hora_saida_dt = reg.hora_saida
-        
-        # Garante que lidamos com naive datetime no cálculo local
-        if hora_entrada_dt and timezone.is_aware(hora_entrada_dt):
-            hora_entrada_dt = timezone.localtime(hora_entrada_dt).replace(tzinfo=None)
-        if hora_saida_dt and timezone.is_aware(hora_saida_dt):
-            hora_saida_dt = timezone.localtime(hora_saida_dt).replace(tzinfo=None)
-            
-        if isinstance(hora_entrada_dt, time):
-            hora_entrada_dt = datetime.combine(reg.turno_coating.data, hora_entrada_dt)
-        if isinstance(hora_saida_dt, time):
-            hora_saida_dt = datetime.combine(reg.turno_coating.data, hora_saida_dt)
+    # Cálculo dos tempos Rodando e Parado (NOVA LÓGICA COM CONSULTA DB PARA PRECISÃO NA PAGINAÇÃO)
+    for reg in registros:
+        reg.hora_entrada_dt = reg.hora_entrada
+        reg.hora_saida_dt = reg.hora_saida
 
-        # Descobrir a hora de início do turno
-        hora_inicio_turno = None
-        if reg.turno_coating and reg.turno_coating.regra and reg.turno_coating.regra.hora_inicio:
-            inicio_time = reg.turno_coating.regra.hora_inicio
-            hora_inicio_turno = datetime.combine(reg.turno_coating.data, inicio_time)
+        if reg.hora_entrada_dt and timezone.is_aware(reg.hora_entrada_dt):
+            reg.hora_entrada_dt = timezone.localtime(reg.hora_entrada_dt).replace(tzinfo=None)
+        if reg.hora_saida_dt and timezone.is_aware(reg.hora_saida_dt):
+            reg.hora_saida_dt = timezone.localtime(reg.hora_saida_dt).replace(tzinfo=None)
 
-        # Normalizar para lidar com viradas de meia-noite (Turno 3)
-        if hora_inicio_turno:
-            if hora_entrada_dt and hora_entrada_dt.hour < 12 and hora_inicio_turno.hour > 12:
-                hora_entrada_dt += timedelta(days=1)
-            if hora_saida_dt and hora_saida_dt.hour < 12 and hora_inicio_turno.hour > 12:
-                hora_saida_dt += timedelta(days=1)
-            
+        if isinstance(reg.hora_entrada_dt, time):
+            reg.hora_entrada_dt = datetime.combine(reg.turno_coating.data, reg.hora_entrada_dt)
+        if isinstance(reg.hora_saida_dt, time):
+            reg.hora_saida_dt = datetime.combine(reg.turno_coating.data, reg.hora_saida_dt)
+
+        reg.hora_inicio_turno = None
+        reg.hora_fim_turno = None
+        if reg.turno_coating and reg.turno_coating.regra:
+            if reg.turno_coating.regra.hora_inicio:
+                reg.hora_inicio_turno = datetime.combine(reg.turno_coating.data, reg.turno_coating.regra.hora_inicio)
+            if reg.turno_coating.regra.hora_fim:
+                reg.hora_fim_turno = datetime.combine(reg.turno_coating.data, reg.turno_coating.regra.hora_fim)
+
+        # Normalização (Turno 3 ou horários na madrugada)
+        if reg.hora_inicio_turno:
+            if reg.hora_entrada_dt and reg.hora_entrada_dt.hour < 12 and reg.hora_inicio_turno.hour > 12:
+                reg.hora_entrada_dt += timedelta(days=1)
+            if reg.hora_saida_dt and reg.hora_saida_dt.hour < 12 and reg.hora_inicio_turno.hour > 12:
+                reg.hora_saida_dt += timedelta(days=1)
+            if reg.hora_fim_turno and reg.hora_fim_turno.hour < 12 and reg.hora_inicio_turno.hour > 12:
+                reg.hora_fim_turno += timedelta(days=1)
+
         # Tempo Rodando
-        if hora_entrada_dt and hora_saida_dt:
-            td = hora_saida_dt - hora_entrada_dt
-            seconds = int(td.total_seconds()) % 86400
-            reg.tempo_rodando = (datetime.min + timedelta(seconds=seconds)).time()
+        if reg.hora_entrada_dt and reg.hora_saida_dt:
+            td = reg.hora_saida_dt - reg.hora_entrada_dt
+            seconds = int(td.total_seconds())
+            reg.tempo_rodando = (datetime.min + timedelta(seconds=max(0, seconds))).time()
         else:
             reg.tempo_rodando = None
-            
-        # Tempo Parado
-        if hora_entrada_dt:
-            hora_inicio_turno = None
-            if reg.turno_coating and reg.turno_coating.regra and reg.turno_coating.regra.hora_inicio:
-                inicio_time = reg.turno_coating.regra.hora_inicio
-                hora_inicio_turno = datetime.combine(reg.turno_coating.data, inicio_time)
-                
-            if maq_id in last_seen and last_seen[maq_id]:
-                saida_anterior = last_seen[maq_id]
-                if isinstance(saida_anterior, time):
-                    saida_anterior = datetime.combine(reg.turno_coating.data, saida_anterior)
 
-                # Normalizar saida_anterior também
-                if hora_inicio_turno and saida_anterior.hour < 12 and hora_inicio_turno.hour > 12:
-                    saida_anterior += timedelta(days=1)
-                    
-                # Se a saída anterior ocorreu antes do início do turno atual, o tempo parado conta só do início do turno
-                if hora_inicio_turno and saida_anterior < hora_inicio_turno:
-                    if hora_entrada_dt > hora_inicio_turno:
-                        td_parado = hora_entrada_dt - hora_inicio_turno
-                    else:
-                        td_parado = timedelta(0)
-                else:
-                    td_parado = hora_entrada_dt - saida_anterior
+        # Tempo Parado
+        td_parado = timedelta(0)
+
+        # Descobrir se é o PRIMEIRO lote do turno para essa máquina consultando o DB
+        primeiro_do_turno = RegistroCoating.objects.filter(
+            turno_coating=reg.turno_coating, maquina=reg.maquina, hora_entrada__isnull=False
+        ).order_by('hora_entrada', 'id').first()
+        
+        is_first = (primeiro_do_turno and primeiro_do_turno.id == reg.id)
+
+        # Gap Anterior (Aplicado apenas ao primeiro)
+        if is_first and reg.hora_entrada_dt and reg.hora_inicio_turno:
+            if reg.hora_entrada_dt > reg.hora_inicio_turno:
+                td_parado += reg.hora_entrada_dt - reg.hora_inicio_turno
+
+        # Gap Posterior
+        if reg.hora_saida_dt:
+            # Descobrir qual é o PRÓXIMO lote do turno na mesma máquina
+            prox_reg = RegistroCoating.objects.filter(
+                turno_coating=reg.turno_coating, 
+                maquina=reg.maquina, 
+                hora_entrada__isnull=False,
+                hora_entrada__gt=reg.hora_entrada if reg.hora_entrada else reg.hora_saida
+            ).order_by('hora_entrada', 'id').first()
+
+            if prox_reg:
+                prox_hora_entrada_dt = prox_reg.hora_entrada
+                if prox_hora_entrada_dt and timezone.is_aware(prox_hora_entrada_dt):
+                    prox_hora_entrada_dt = timezone.localtime(prox_hora_entrada_dt).replace(tzinfo=None)
+                if isinstance(prox_hora_entrada_dt, time):
+                    prox_hora_entrada_dt = datetime.combine(reg.turno_coating.data, prox_hora_entrada_dt)
                 
-                # Previne negativo se entrada atual < saída anterior (erro de preenchimento)
-                seconds = int(td_parado.total_seconds())
-                if seconds < 0:
-                    seconds = 0
-                else:
-                    seconds = seconds % 86400
-                reg.tempo_parado = (datetime.min + timedelta(seconds=seconds)).time()
+                if reg.hora_inicio_turno and prox_hora_entrada_dt.hour < 12 and reg.hora_inicio_turno.hour > 12:
+                    prox_hora_entrada_dt += timedelta(days=1)
+                
+                if prox_hora_entrada_dt > reg.hora_saida_dt:
+                    td_parado += prox_hora_entrada_dt - reg.hora_saida_dt
             else:
-                # Primeiro lote da máquina (no contexto visível).
-                if hora_inicio_turno and hora_entrada_dt > hora_inicio_turno:
-                    td_parado = hora_entrada_dt - hora_inicio_turno
-                    seconds = int(td_parado.total_seconds())
-                    if seconds < 0:
-                        seconds = 0
-                    else:
-                        seconds = seconds % 86400
-                    reg.tempo_parado = (datetime.min + timedelta(seconds=seconds)).time()
-                else:
-                    reg.tempo_parado = None
-        else:
-            reg.tempo_parado = None
-            
-        last_seen[maq_id] = hora_saida_dt
+                # É o último lote do turno (não há próxima entrada)
+                if reg.hora_fim_turno and reg.hora_fim_turno > reg.hora_saida_dt:
+                    td_parado += reg.hora_fim_turno - reg.hora_saida_dt
+
+        # Atribuir o tempo parado formatado
+        seconds = int(td_parado.total_seconds())
+        reg.tempo_parado = (datetime.min + timedelta(seconds=max(0, seconds))).time()
+
 
     maquinas_com_registros = set(r.maquina_id for r in registros)
 
