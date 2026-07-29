@@ -94,6 +94,12 @@
                     <div style="height: 400px; position: relative;">
                         <canvas id="lotesChart"></canvas>
                     </div>
+                    <div class="mt-4 table-responsive">
+                        <table id="chartDataTable" class="table table-sm table-bordered text-center align-middle" style="font-size: 0.85rem;">
+                            <!-- Gerado via JS -->
+                        </table>
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -209,6 +215,39 @@
         
         // Gráfico 1: Lotes por Dia (Stacked por Tratamento)
         const ctxLotes = document.getElementById('lotesChart').getContext('2d');
+        
+        // Gerar Tabela de Dados abaixo do Gráfico
+        const table = document.getElementById('chartDataTable');
+        let tableHTML = '<thead class="table-light"><tr><th class="text-start">Tratamento \ Data</th>';
+        
+        // Cabeçalhos de Data
+        labels_dia.forEach(label => {
+            tableHTML += `<th>${label}</th>`;
+        });
+        tableHTML += '</tr></thead><tbody>';
+        
+        // Linhas de Tratamento
+        datasets_dia.forEach(dataset => {
+            tableHTML += `<tr><td class="text-start fw-bold"><span style="display:inline-block;width:12px;height:12px;background-color:${dataset.backgroundColor};margin-right:8px;border-radius:2px;"></span>${dataset.label}</td>`;
+            dataset.data.forEach(val => {
+                tableHTML += `<td>${val > 0 ? val : '-'}</td>`;
+            });
+            tableHTML += '</tr>';
+        });
+        
+        // Linha de Total
+        tableHTML += '<tr class="table-secondary fw-bold"><td class="text-start">TOTAL DE LOTES</td>';
+        for(let i=0; i<labels_dia.length; i++) {
+            let colTotal = 0;
+            datasets_dia.forEach(dataset => {
+                colTotal += dataset.data[i];
+            });
+            tableHTML += `<td>${colTotal > 0 ? colTotal : '-'}</td>`;
+        }
+        tableHTML += '</tr></tbody>';
+        
+        table.innerHTML = tableHTML;
+
         new Chart(ctxLotes, {
             type: 'bar',
             data: {
