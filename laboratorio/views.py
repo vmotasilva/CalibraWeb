@@ -2363,8 +2363,8 @@ def dashboard_coating(request):
             detalhes_lotes.append({
                 'lote': reg.lote,
                 'lado': reg.lado,
-                'entrada': reg.hora_entrada.strftime('%H:%M') if reg.hora_entrada else '-',
-                'saida': reg.hora_saida.strftime('%H:%M') if reg.hora_saida else '-',
+                'entrada': reg.hora_entrada_dt.strftime('%H:%M') if reg.hora_entrada_dt else '-',
+                'saida': reg.hora_saida_dt.strftime('%H:%M') if reg.hora_saida_dt else '-',
                 'rodando': format_timedelta(timedelta(seconds=reg.tempo_rodando_sec)),
                 'parado': format_timedelta(timedelta(seconds=reg.tempo_parado_sec)),
                 'motivo_gap': motivo_gap if motivo_gap else '-'
