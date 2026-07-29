@@ -2230,17 +2230,17 @@ def dashboard_coating(request):
     
     for ciclo in ciclos_ativos:
         if ciclo.criterio == 'LOTES' and ciclo.limite_lotes:
-            esperado_total += (total_lotes_periodo / ciclo.limite_lotes)
+            esperado_total += (total_lotes_periodo / ciclo.limite_lotes) * qtd_maquinas
         elif ciclo.criterio == 'DIAS' and ciclo.limite_lotes:
-            esperado_total += (dias_totais / ciclo.limite_lotes)
+            esperado_total += (dias_totais / ciclo.limite_lotes) * qtd_maquinas
         elif ciclo.criterio == 'DIARIO':
-            esperado_total += (dias_totais / 1)
+            esperado_total += (dias_totais / 1) * qtd_maquinas
         elif ciclo.criterio == 'SEMANAL':
-            esperado_total += (dias_totais / 7)
+            esperado_total += (dias_totais / 7) * qtd_maquinas
         elif ciclo.criterio == 'QUINZENAL':
-            esperado_total += (dias_totais / 15)
+            esperado_total += (dias_totais / 15) * qtd_maquinas
         elif ciclo.criterio == 'MENSAL':
-            esperado_total += (dias_totais / 30)
+            esperado_total += (dias_totais / 30) * qtd_maquinas
             
     esperado_total = max(int(esperado_total), 1)
     pendentes_total = max(esperado_total - realizados_total, 0)
