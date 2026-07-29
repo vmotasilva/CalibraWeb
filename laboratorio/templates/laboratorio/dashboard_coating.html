@@ -87,8 +87,19 @@
     <div class="row mb-4 g-3">
         <div class="col-lg-12">
             <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
-                    <h5 class="card-title fw-bold text-dark mb-0"><i class="bi bi-bar-chart-fill me-2 text-primary"></i> Lotes Produzidos por Dia (Por Tratamento)</h5>
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
+                    <h5 class="card-title fw-bold text-dark mb-0"><i class="bi bi-bar-chart-fill me-2 text-primary"></i> Lotes Produzidos (Por Tratamento)</h5>
+                    <ul class="nav nav-pills nav-sm" id="lotesTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active py-1 px-2" data-period="dia" type="button" role="tab">Diário</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link py-1 px-2" data-period="sem" type="button" role="tab">Semanal</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link py-1 px-2" data-period="mes" type="button" role="tab">Mensal</button>
+                        </li>
+                    </ul>
                 </div>
                 <div class="card-body">
                     <div style="height: 400px; position: relative;">
@@ -109,93 +120,28 @@
     <div class="row mb-4 g-3">
         <div class="col-lg-12">
             <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
-                    <h5 class="card-title fw-bold text-dark mb-0"><i class="bi bi-tools me-2 text-success"></i> Adesão às Manutenções (Limpezas Registradas)</h5>
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
+                    <h5 class="card-title fw-bold text-dark mb-0"><i class="bi bi-tools me-2 text-success"></i> Evolução das Manutenções (Limpezas)</h5>
+                    <ul class="nav nav-pills nav-sm" id="manutTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active py-1 px-2" data-period="dia" type="button" role="tab">Diário</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link py-1 px-2" data-period="sem" type="button" role="tab">Semanal</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link py-1 px-2" data-period="mes" type="button" role="tab">Mensal</button>
+                        </li>
+                    </ul>
                 </div>
                 <div class="card-body">
-                    <div style="height: 300px; position: relative;">
-                        <canvas id="manutencoesChart"></canvas>
+                    <div style="height: 350px; position: relative;">
+                        <canvas id="manutChart"></canvas>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
-
-    <!-- Grid Dia-a-Dia -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-white border-bottom-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
-                    <h5 class="card-title fw-bold text-dark mb-0"><i class="bi bi-grid-3x3-gap-fill me-2 text-info"></i> Tabela Analítica de Produção Diária</h5>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0 text-center text-nowrap w-100" style="font-size: 0.9rem;">
-                            <thead class="table-dark">
-                                <tr>
-                                    <th>Data</th>
-                                    <th>Máquina</th>
-                                    <th>Turno</th>
-                                    <th>Lotes Prod.</th>
-                                    <th>Horas Trabalhando</th>
-                                    <th>Horas Rodando</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for row in grid_rows %}
-                                <tr>
-                                    <td class="fw-bold">{{ row.data }}</td>
-                                    <td><span class="badge bg-secondary">{{ row.maquina }}</span></td>
-                                    <td>{{ row.turno }}</td>
-                                    <td class="fw-bold text-primary">{{ row.lotes }}</td>
-                                    <td>{{ row.horas_trabalhando }}</td>
-                                    <td class="text-success fw-bold">{{ row.horas_rodando }}</td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="6" class="text-center text-muted py-4">Nenhum dado encontrado para o período selecionado.</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-</div>
-
-<!-- Modal de Importação -->
-<div class="modal fade" id="modalImportarLotes" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header border-bottom-0 pb-0">
-                <h5 class="modal-title fw-bold text-primary">
-                    <i class="bi bi-upload me-2"></i> Importar Lotes
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form method="post" action="{% url 'laboratorio:importar_lotes_coating' %}" enctype="multipart/form-data">
-                {% csrf_token %}
-                <div class="modal-body">
-                    <div class="alert alert-info small py-2 mb-3">
-                        Baixe o modelo de importação <a href="{% url 'laboratorio:baixar_modelo_importacao_coating' %}" class="fw-bold alert-link">clicando aqui</a>, preencha-o e envie o arquivo preenchido abaixo. O sistema identificará automaticamente os turnos, máquinas e tratamentos caso eles já existam.
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="arquivoImportacao" class="form-label fw-bold">Arquivo (XLSX, XLS ou CSV)</label>
-                        <input class="form-control" type="file" id="arquivoImportacao" name="arquivo" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" required>
-                    </div>
-                </div>
-                <div class="modal-footer border-top-0 pt-0">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-cloud-upload me-1"></i> Enviar Arquivo
-                    </button>
-                </div>
-            </form>
         </div>
     </div>
 </div>
@@ -207,113 +153,131 @@
     document.addEventListener("DOMContentLoaded", function() {
         
         // Dados do Backend
-        const labels_dia = JSON.parse('{{ labels_json|safe }}');
-        const datasets_dia = JSON.parse('{{ datasets_json|safe }}');
+        const labels_dia = JSON.parse('{{ labels_dia|safe }}');
+        const labels_sem = JSON.parse('{{ labels_sem|safe }}');
+        const labels_mes = JSON.parse('{{ labels_mes|safe }}');
         
-        const labels_manut = JSON.parse('{{ labels_manut|safe }}');
-        const data_manut = JSON.parse('{{ data_manut|safe }}');
+        const datasets_dia = JSON.parse('{{ datasets_dia|safe }}');
+        const datasets_sem = JSON.parse('{{ datasets_sem|safe }}');
+        const datasets_mes = JSON.parse('{{ datasets_mes|safe }}');
         
-        // Gráfico 1: Lotes por Dia (Stacked por Tratamento)
-        const ctxLotes = document.getElementById('lotesChart').getContext('2d');
+        const manut_datasets_dia = JSON.parse('{{ manut_datasets_dia|safe }}');
+        const manut_datasets_sem = JSON.parse('{{ manut_datasets_sem|safe }}');
+        const manut_datasets_mes = JSON.parse('{{ manut_datasets_mes|safe }}');
         
-        // Gerar Tabela de Dados abaixo do Gráfico
+        // Tabelas de Lotes
         const table = document.getElementById('chartDataTable');
-        let tableHTML = '<thead class="table-light"><tr><th class="text-start" style="width: 150px; min-width: 150px; max-width: 150px;">Tratamento \ Data</th>';
-        
-        // Cabeçalhos de Data
-        labels_dia.forEach(label => {
-            tableHTML += `<th>${label}</th>`;
-        });
-        tableHTML += '</tr></thead><tbody>';
-        
-        // Linhas de Tratamento
-        datasets_dia.forEach(dataset => {
-            tableHTML += `<tr><td class="text-start fw-bold" style="width: 150px; min-width: 150px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="display:inline-block;width:12px;height:12px;background-color:${dataset.backgroundColor};margin-right:8px;border-radius:2px;"></span>${dataset.label}</td>`;
-            dataset.data.forEach(val => {
-                tableHTML += `<td>${val > 0 ? val : '-'}</td>`;
+        function renderTable(labels, datasets) {
+            let tableHTML = '<thead class="table-light"><tr><th class="text-start" style="width: 150px; min-width: 150px; max-width: 150px;">Tratamento \ Data</th>';
+            labels.forEach(label => { tableHTML += `<th>${label}</th>`; });
+            tableHTML += '</tr></thead><tbody>';
+            
+            datasets.forEach(dataset => {
+                tableHTML += `<tr><td class="text-start fw-bold" style="width: 150px; min-width: 150px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="display:inline-block;width:12px;height:12px;background-color:${dataset.backgroundColor};margin-right:8px;border-radius:2px;"></span>${dataset.label}</td>`;
+                dataset.data.forEach(val => {
+                    tableHTML += `<td>${val > 0 ? val : '-'}</td>`;
+                });
+                tableHTML += '</tr>';
             });
-            tableHTML += '</tr>';
-        });
-        
-        // Linha de Total
-        tableHTML += '<tr class="table-secondary fw-bold"><td class="text-start fw-bold" style="width: 150px; min-width: 150px; max-width: 150px;">TOTAL DE LOTES</td>';
-        for(let i=0; i<labels_dia.length; i++) {
-            let colTotal = 0;
-            datasets_dia.forEach(dataset => {
-                colTotal += dataset.data[i];
-            });
-            tableHTML += `<td>${colTotal > 0 ? colTotal : '-'}</td>`;
+            
+            tableHTML += '<tr class="table-secondary fw-bold"><td class="text-start fw-bold" style="width: 150px; min-width: 150px; max-width: 150px;">TOTAL DE LOTES</td>';
+            for(let i=0; i<labels.length; i++) {
+                let colTotal = 0;
+                datasets.forEach(dataset => { colTotal += dataset.data[i]; });
+                tableHTML += `<td>${colTotal > 0 ? colTotal : '-'}</td>`;
+            }
+            tableHTML += '</tr></tbody>';
+            table.innerHTML = tableHTML;
         }
-        tableHTML += '</tr></tbody>';
         
-        table.innerHTML = tableHTML;
+        renderTable(labels_dia, datasets_dia);
 
-        new Chart(ctxLotes, {
+        // Chart 1: Lotes
+        const ctxLotes = document.getElementById('lotesChart').getContext('2d');
+        let lotesChart = new Chart(ctxLotes, {
             type: 'bar',
-            data: {
-                labels: labels_dia,
-                datasets: datasets_dia
-            },
+            data: { labels: labels_dia, datasets: datasets_dia },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                layout: {
-                    padding: { right: 0, left: 0, top: 10, bottom: 0 } // Right padding prevents rightmost bar from hitting edge
-                },
+                layout: { padding: { right: 0, left: 0, top: 10, bottom: 0 } },
                 scales: {
-                    x: {
-                        stacked: true,
-                        display: false // Esconder eixo X pois as datas já estão na tabela
-                    },
+                    x: { stacked: true, display: false },
                     y: {
-                        afterFit: function(scaleInstance) {
-                            scaleInstance.width = 150;
-                        },
-                        stacked: true,
-                        beginAtZero: true,
-                        ticks: { precision: 0 },
-                        afterFit: function(scaleInstance) {
-                            scaleInstance.width = 200; // Largura fixa do eixo Y
-                        }
+                        afterFit: function(scaleInstance) { scaleInstance.width = 150; },
+                        stacked: true, beginAtZero: true, ticks: { precision: 0 },
                     }
                 },
-                plugins: {
-                    legend: { position: 'top' },
-                    tooltip: { mode: 'index', intersect: false }
-                },
-                interaction: { mode: 'nearest', axis: 'x', intersect: false }
+                plugins: { legend: { display: false } }
             }
         });
         
-        // Gráfico 2: Manutenções (Barra Horizontal)
-        const ctxManut = document.getElementById('manutencoesChart').getContext('2d');
-        new Chart(ctxManut, {
+        // Handle Lotes Tabs
+        document.querySelectorAll('#lotesTabs button').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                document.querySelectorAll('#lotesTabs button').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                let period = this.getAttribute('data-period');
+                if (period === 'dia') {
+                    lotesChart.data.labels = labels_dia;
+                    lotesChart.data.datasets = datasets_dia;
+                    lotesChart.config.type = 'bar';
+                    lotesChart.options.scales.x.display = false; // Hide x-axis for daily (it's in the table)
+                    renderTable(labels_dia, datasets_dia);
+                } else if (period === 'sem') {
+                    lotesChart.data.labels = labels_sem;
+                    lotesChart.data.datasets = datasets_sem;
+                    lotesChart.config.type = 'line';
+                    lotesChart.options.scales.x.display = true; // Show x-axis for weekly
+                    renderTable(labels_sem, datasets_sem);
+                } else if (period === 'mes') {
+                    lotesChart.data.labels = labels_mes;
+                    lotesChart.data.datasets = datasets_mes;
+                    lotesChart.config.type = 'bar';
+                    lotesChart.options.scales.x.display = true;
+                    renderTable(labels_mes, datasets_mes);
+                }
+                lotesChart.update();
+            });
+        });
+        
+        // Chart 2: Manutenções
+        const ctxManut = document.getElementById('manutChart').getContext('2d');
+        let manutChart = new Chart(ctxManut, {
             type: 'bar',
-            data: {
-                labels: labels_manut,
-                datasets: [{
-                    label: 'Registros de Manutenção Realizados',
-                    data: data_manut,
-                    backgroundColor: '#198754',
-                    borderRadius: 4
-                }]
-            },
+            data: { labels: labels_dia, datasets: manut_datasets_dia },
             options: {
-                indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    x: {
-                        beginAtZero: true,
-                        ticks: { precision: 0 }
-                    }
-                },
-                plugins: {
-                    legend: { display: false }
+                    y: { beginAtZero: true, ticks: { precision: 0 } }
                 }
             }
         });
         
+        // Handle Manutencoes Tabs
+        document.querySelectorAll('#manutTabs button').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                document.querySelectorAll('#manutTabs button').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                let period = this.getAttribute('data-period');
+                if (period === 'dia') {
+                    manutChart.data.labels = labels_dia;
+                    manutChart.data.datasets = manut_datasets_dia;
+                    manutChart.config.type = 'bar';
+                } else if (period === 'sem') {
+                    manutChart.data.labels = labels_sem;
+                    manutChart.data.datasets = manut_datasets_sem;
+                    manutChart.config.type = 'line';
+                } else if (period === 'mes') {
+                    manutChart.data.labels = labels_mes;
+                    manutChart.data.datasets = manut_datasets_mes;
+                    manutChart.config.type = 'line';
+                }
+                manutChart.update();
+            });
+        });
+
     });
 </script>
 {% endblock %}

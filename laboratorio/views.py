@@ -2142,13 +2142,41 @@ def dashboard_coating(request):
     else:
         avg_parado_str = '00:00:00'
         
-    # Chart: Lotes Produzidos por Dia Agrupados por Tratamento
+    # Charts Data Preparation
+    def get_week_label(d):
+        start = d - timedelta(days=d.weekday())
+        end = start + timedelta(days=6)
+        return f"{start.strftime('%d/%m')} - {end.strftime('%d/%m')}"
+        
+    def get_month_label(d):
+        meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+        return f"{meses[d.month - 1]}/{d.year}"
+
+    # Group days into weeks and months for labels
     labels_dia = [d.strftime('%d/%m') for d in dias]
     
-    # Fetch distinct treatments AND their colors
+    weeks_dict = {}
+    months_dict = {}
+    for d in dias:
+        w_lbl = get_week_label(d)
+        if w_lbl not in weeks_dict:
+            weeks_dict[w_lbl] = []
+        weeks_dict[w_lbl].append(d)
+        
+        m_lbl = get_month_label(d)
+        if m_lbl not in months_dict:
+            months_dict[m_lbl] = []
+        months_dict[m_lbl].append(d)
+        
+    labels_sem = list(weeks_dict.keys())
+    labels_mes = list(months_dict.keys())
+
     tratamentos_db = qs_registros.values('tratamento__nome', 'tratamento__cor').order_by().distinct()
     
     datasets_dia = []
+    datasets_sem = []
+    datasets_mes = []
+    
     default_colors = ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#6f42c1', '#fd7e14', '#0dcaf0', '#6c757d']
     
     for i, trat in enumerate(tratamentos_db):
@@ -2156,23 +2184,71 @@ def dashboard_coating(request):
         trat_cor = trat['tratamento__cor'] or default_colors[i % len(default_colors)]
         trat_label = trat_nome if trat_nome else 'Sem Tratamento'
         
-        data_trat = []
+        data_dia = []
         for d in dias:
-            count = qs_registros.filter(tratamento__nome=trat_nome, turno_coating__data=d).values('lote').order_by().distinct().count()
-            data_trat.append(count)
+            c = qs_registros.filter(tratamento__nome=trat_nome, turno_coating__data=d).values('lote').order_by().distinct().count()
+            data_dia.append(c)
             
-        datasets_dia.append({
+        data_sem = []
+        for w_lbl, w_dias in weeks_dict.items():
+            c = qs_registros.filter(tratamento__nome=trat_nome, turno_coating__data__in=w_dias).values('lote').order_by().distinct().count()
+            data_sem.append(c)
+            
+        data_mes = []
+        for m_lbl, m_dias in months_dict.items():
+            c = qs_registros.filter(tratamento__nome=trat_nome, turno_coating__data__in=m_dias).values('lote').order_by().distinct().count()
+            data_mes.append(c)
+            
+        base_dataset = {
             'label': trat_label,
-            'data': data_trat,
             'backgroundColor': trat_cor,
             'borderColor': trat_cor,
             'borderWidth': 1
-        })
+        }
         
-    # Manutenções Feitas
-    manut_feitas = qs_manutencoes.values('ciclo__nome').annotate(total=Count('id')).order_by('-total')
-    labels_manut = [m['ciclo__nome'] for m in manut_feitas]
-    data_manut = [m['total'] for m in manut_feitas]
+        datasets_dia.append({**base_dataset, 'data': data_dia})
+        datasets_sem.append({**base_dataset, 'data': data_sem, 'type': 'line', 'tension': 0.3, 'fill': False})
+        datasets_mes.append({**base_dataset, 'data': data_mes, 'type': 'bar'})
+
+    # Manutenções
+    # Em vez de totais, vamos ver a tendência das manutenções por ciclo
+    ciclos_db = qs_manutencoes.values('ciclo__nome').order_by().distinct()
+    
+    manut_datasets_dia = []
+    manut_datasets_sem = []
+    manut_datasets_mes = []
+    
+    for i, c_obj in enumerate(ciclos_db):
+        c_nome = c_obj['ciclo__nome']
+        c_cor = default_colors[i % len(default_colors)]
+        
+        m_data_dia = []
+        for d in dias:
+            c = qs_manutencoes.filter(ciclo__nome=c_nome, registro__turno_coating__data=d).count()
+            m_data_dia.append(c)
+            
+        m_data_sem = []
+        for w_lbl, w_dias in weeks_dict.items():
+            c = qs_manutencoes.filter(ciclo__nome=c_nome, registro__turno_coating__data__in=w_dias).count()
+            m_data_sem.append(c)
+            
+        m_data_mes = []
+        for m_lbl, m_dias in months_dict.items():
+            c = qs_manutencoes.filter(ciclo__nome=c_nome, registro__turno_coating__data__in=m_dias).count()
+            m_data_mes.append(c)
+            
+        base_m = {
+            'label': c_nome,
+            'borderColor': c_cor,
+            'backgroundColor': c_cor,
+            'tension': 0.3,
+            'fill': False
+        }
+        
+        manut_datasets_dia.append({**base_m, 'data': m_data_dia, 'type': 'bar'})
+        manut_datasets_sem.append({**base_m, 'data': m_data_sem, 'type': 'line'})
+        manut_datasets_mes.append({**base_m, 'data': m_data_mes, 'type': 'line'})
+
     
     # Novo Grid Analítico de Produção
     # Group by Date, Maquina, Turno
