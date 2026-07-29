@@ -95,7 +95,7 @@
                         <canvas id="lotesChart"></canvas>
                     </div>
                     <div class="mt-4 table-responsive">
-                        <table id="chartDataTable" class="table table-sm table-bordered text-center align-middle" style="font-size: 0.85rem;">
+                        <table id="chartDataTable" class="table table-sm table-bordered text-center align-middle mb-0" style="font-size: 0.85rem; table-layout: fixed; width: 100%;">
                             <!-- Gerado via JS -->
                         </table>
                     </div>
@@ -257,14 +257,21 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: {
+                    padding: { right: 0, left: 0, top: 10, bottom: 0 } // Right padding prevents rightmost bar from hitting edge
+                },
                 scales: {
                     x: {
                         stacked: true,
+                        display: false // Esconder eixo X pois as datas já estão na tabela
                     },
                     y: {
                         stacked: true,
                         beginAtZero: true,
-                        ticks: { precision: 0 }
+                        ticks: { precision: 0 },
+                        afterFit: function(scaleInstance) {
+                            scaleInstance.width = 200; // Largura fixa do eixo Y
+                        }
                     }
                 },
                 plugins: {
