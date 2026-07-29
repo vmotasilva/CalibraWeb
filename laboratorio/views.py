@@ -1015,7 +1015,6 @@ def coating_painel(request):
     
     if audit_mode:
         from django.db.models import F, ExpressionWrapper, DurationField
-        from datetime import timedelta
         
         if anomaly_filter == 'over_24h':
             base_qs = base_qs.annotate(
