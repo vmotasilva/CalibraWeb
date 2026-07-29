@@ -2310,14 +2310,15 @@ def dashboard_coating(request):
         data, maquina, turno = key
         g = groups[key]
         span = g['ultima_saida'] - g['primeira_entrada']
-        
+        parada_sec = max(span.total_seconds() - g['rodando_sec'], 0)
+
         grid_rows.append({
             'data': data.strftime('%d/%m/%Y'),
             'maquina': maquina,
             'turno': turno,
             'lotes': len(g['lotes_set']),
             'horas_rodando': format_timedelta(timedelta(seconds=g['rodando_sec'])),
-            'horas_trabalhando': format_timedelta(span)
+            'horas_parada': format_timedelta(timedelta(seconds=parada_sec))
         })
 
     return render(request, "laboratorio/dashboard_coating.html", {
