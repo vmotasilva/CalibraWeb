@@ -115,6 +115,50 @@
         </div>
     </div>
 
+
+    <!-- Grid Dia-a-Dia -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
+                    <h5 class="card-title fw-bold text-dark mb-0"><i class="bi bi-grid-3x3-gap-fill me-2 text-info"></i> Tabela Analítica de Produção Diária</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 text-center text-nowrap w-100" style="font-size: 0.9rem;">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Máquina</th>
+                                    <th>Turno</th>
+                                    <th>Lotes Prod.</th>
+                                    <th>Horas Trabalhando</th>
+                                    <th>Horas Rodando</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in grid_rows %}
+                                <tr>
+                                    <td class="fw-bold">{{ row.data }}</td>
+                                    <td><span class="badge bg-secondary">{{ row.maquina }}</span></td>
+                                    <td>{{ row.turno }}</td>
+                                    <td class="fw-bold text-primary">{{ row.lotes }}</td>
+                                    <td>{{ row.horas_trabalhando }}</td>
+                                    <td class="text-success fw-bold">{{ row.horas_rodando }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">Nenhum dado encontrado para o período selecionado.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <!-- Modal de Importação -->

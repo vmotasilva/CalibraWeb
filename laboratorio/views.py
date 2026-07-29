@@ -2032,7 +2032,7 @@ def salvar_observacoes_lote(request):
 def dashboard_coating(request):
     from django.utils import timezone
     from datetime import timedelta, datetime
-    from django.db.models import Count, Avg, F, ExpressionWrapper, DurationField
+    from django.db.models import Count, Avg, F, ExpressionWrapper, DurationField, Sum, Min, Max
     import json
     
     periodo = request.GET.get('periodo', '15')
@@ -2065,12 +2065,11 @@ def dashboard_coating(request):
         qs_registros = qs_registros.filter(maquina_id=maquina_id)
         qs_manutencoes = qs_manutencoes.filter(registro__maquina_id=maquina_id)
         
-    # As maquinas disponíveis para filtro podem vir dos proprios registros para evitar problemas de setor
-    maquinas_ids = qs_registros.values_list('maquina_id', flat=True).distinct()
+    maquinas_ids = qs_registros.values_list('maquina_id', flat=True).order_by().distinct()
     maquinas = Maquina.objects.filter(id__in=maquinas_ids)
     
     # KPI 1: Total Lotes
-    lotes_unicos = qs_registros.values('lote', 'turno_coating__data', 'maquina_id').distinct()
+    lotes_unicos = qs_registros.values('lote', 'turno_coating__data', 'maquina_id').order_by().distinct()
     total_lotes = lotes_unicos.count()
     
     # KPI 2: Maquina mais produtiva
@@ -2110,36 +2109,70 @@ def dashboard_coating(request):
     else:
         avg_parado_str = '00:00:00'
         
-    # NOVO Chart: Lotes Produzidos por Dia Agrupados por Tratamento
+    # Chart: Lotes Produzidos por Dia Agrupados por Tratamento
     labels_dia = [d.strftime('%d/%m') for d in dias]
     
-    # Obter todos os tratamentos presentes
-    tratamentos = list(qs_registros.values_list('tratamento__nome', flat=True).distinct())
+    # Fetch distinct treatments AND their colors
+    tratamentos_db = qs_registros.values('tratamento__nome', 'tratamento__cor').order_by().distinct()
     
     datasets_dia = []
-    cores = ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#6f42c1', '#fd7e14', '#0dcaf0', '#6c757d']
+    default_colors = ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#6f42c1', '#fd7e14', '#0dcaf0', '#6c757d']
     
-    for i, trat_nome in enumerate(tratamentos):
-        data_trat = []
+    for i, trat in enumerate(tratamentos_db):
+        trat_nome = trat['tratamento__nome']
+        trat_cor = trat['tratamento__cor'] or default_colors[i % len(default_colors)]
         trat_label = trat_nome if trat_nome else 'Sem Tratamento'
+        
+        data_trat = []
         for d in dias:
-            # Count lotes by this treatment on this day
-            count = qs_registros.filter(tratamento__nome=trat_nome, turno_coating__data=d).values('lote').distinct().count()
+            count = qs_registros.filter(tratamento__nome=trat_nome, turno_coating__data=d).values('lote').order_by().distinct().count()
             data_trat.append(count)
             
-        cor = cores[i % len(cores)]
         datasets_dia.append({
             'label': trat_label,
             'data': data_trat,
-            'backgroundColor': cor,
-            'borderColor': cor,
+            'backgroundColor': trat_cor,
+            'borderColor': trat_cor,
             'borderWidth': 1
         })
         
-    # Chart 3: Manutenções Feitas
+    # Manutenções Feitas
     manut_feitas = qs_manutencoes.values('ciclo__nome').annotate(total=Count('id')).order_by('-total')
     labels_manut = [m['ciclo__nome'] for m in manut_feitas]
     data_manut = [m['total'] for m in manut_feitas]
+    
+    # Novo Grid Analítico de Produção
+    # Group by Date, Maquina, Turno
+    grid_qs = qs_registros.filter(hora_entrada__isnull=False, hora_saida__isnull=False).values(
+        'turno_coating__data',
+        'maquina__codigo',
+        'turno_coating__regra__nome'
+    ).annotate(
+        qtd_lotes=Count('lote', distinct=True),
+        horas_rodando=Sum(ExpressionWrapper(F('hora_saida') - F('hora_entrada'), output_field=DurationField())),
+        primeira_entrada=Min('hora_entrada'),
+        ultima_saida=Max('hora_saida')
+    ).order_by('-turno_coating__data', 'maquina__codigo', 'turno_coating__regra__nome')
+    
+    grid_rows = []
+    for row in grid_qs:
+        hr_rodando = row['horas_rodando']
+        hr_rodando_str = str(hr_rodando).split('.')[0] if hr_rodando else '00:00:00'
+        
+        # Calculate working hours (Total span from first entry to last exit)
+        hr_trabalhando_str = '00:00:00'
+        if row['primeira_entrada'] and row['ultima_saida']:
+            span = row['ultima_saida'] - row['primeira_entrada']
+            hr_trabalhando_str = str(span).split('.')[0]
+            
+        grid_rows.append({
+            'data': row['turno_coating__data'].strftime('%d/%m/%Y'),
+            'maquina': row['maquina__codigo'],
+            'turno': row['turno_coating__regra__nome'],
+            'lotes': row['qtd_lotes'],
+            'horas_rodando': hr_rodando_str,
+            'horas_trabalhando': hr_trabalhando_str
+        })
     
     return render(request, "laboratorio/dashboard_coating.html", {
         "maquinas": maquinas,
@@ -2153,6 +2186,7 @@ def dashboard_coating(request):
         "datasets_json": json.dumps(datasets_dia),
         "labels_manut": json.dumps(labels_manut),
         "data_manut": json.dumps(data_manut),
+        "grid_rows": grid_rows,
     })
 
 @login_required
