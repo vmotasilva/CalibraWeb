@@ -2097,8 +2097,8 @@ def dashboard_coating(request):
             continue
         key = (r.maquina_id, r.turno_coating.data)
         if key in last_saida:
-            dt_entrada = datetime.combine(hoje, r.hora_entrada)
-            dt_saida_ant = datetime.combine(hoje, last_saida[key])
+            dt_entrada = r.hora_entrada
+            dt_saida_ant = last_saida[key]
             if dt_entrada > dt_saida_ant:
                 tempos_parados.append((dt_entrada - dt_saida_ant).total_seconds())
         last_saida[key] = r.hora_saida
