@@ -91,15 +91,15 @@
                 <div class="card-header bg-white border-bottom-0 pt-4 pb-2 d-flex justify-content-between align-items-center" style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#collapseLotes">
                     <h5 class="card-title fw-bold text-dark mb-0"><i class="bi bi-bar-chart-fill me-2 text-primary"></i> Lotes Produzidos (Por Tratamento)</h5>
                     <div class="d-flex align-items-center gap-3">
-                        <ul class="nav nav-pills nav-sm" id="lotesTabs" role="tablist" onclick="event.stopPropagation();">
+                        <ul class="nav nav-pills nav-sm" id="lotesTabs" role="tablist">
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link active py-1 px-2" data-period="dia" type="button" role="tab">Diário</button>
+                                <button class="nav-link active py-1 px-2" data-period="dia" type="button" role="tab" onclick="event.stopPropagation();">Diário</button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link py-1 px-2" data-period="sem" type="button" role="tab">Semanal</button>
+                                <button class="nav-link py-1 px-2" data-period="sem" type="button" role="tab" onclick="event.stopPropagation();">Semanal</button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link py-1 px-2" data-period="mes" type="button" role="tab">Mensal</button>
+                                <button class="nav-link py-1 px-2" data-period="mes" type="button" role="tab" onclick="event.stopPropagation();">Mensal</button>
                             </li>
                         </ul>
                         <i class="bi bi-chevron-down text-muted"></i>
