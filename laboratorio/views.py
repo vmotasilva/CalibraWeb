@@ -2031,32 +2031,100 @@ def salvar_observacoes_lote(request):
 @permission_required('core.nav_laboratorio_coating_dashboard', raise_exception=True)
 def dashboard_coating(request):
     from django.utils import timezone
-    from datetime import timedelta
+    from datetime import timedelta, datetime
+    from django.db.models import Count, Avg, F, ExpressionWrapper, DurationField
+    import json
+    
+    periodo = request.GET.get('periodo', '15')
+    maquina_id = request.GET.get('maquina', '')
     
     hoje = timezone.localtime().date()
-    inicio = hoje - timedelta(days=15)
     
-    registros = RegistroCoating.objects.filter(turno_coating__data__gte=inicio).select_related('maquina', 'turno_coating')
+    if periodo == '7':
+        inicio = hoje - timedelta(days=7)
+        dias_totais = 8
+    elif periodo == '30':
+        inicio = hoje - timedelta(days=30)
+        dias_totais = 31
+    elif periodo == 'mes':
+        inicio = hoje.replace(day=1)
+        dias_totais = (hoje - inicio).days + 1
+    elif periodo == 'ano':
+        inicio = hoje.replace(month=1, day=1)
+        dias_totais = (hoje - inicio).days + 1
+    else: # default 15
+        inicio = hoje - timedelta(days=15)
+        dias_totais = 16
+        
+    dias = [inicio + timedelta(days=i) for i in range(dias_totais)]
     
-    dias = []
-    for i in range(16):
-        dias.append(inicio + timedelta(days=i))
+    qs_registros = RegistroCoating.objects.filter(turno_coating__data__gte=inicio, turno_coating__data__lte=hoje).select_related('maquina', 'turno_coating', 'tratamento')
+    qs_manutencoes = ManutencaoRealizadaCoating.objects.filter(registro__turno_coating__data__gte=inicio, registro__turno_coating__data__lte=hoje).select_related('ciclo')
+    
+    if maquina_id:
+        qs_registros = qs_registros.filter(maquina_id=maquina_id)
+        qs_manutencoes = qs_manutencoes.filter(registro__maquina_id=maquina_id)
         
     maquinas = Maquina.objects.filter(setor__nome__iexact='COATING')
+    maqs_to_iter = maquinas.filter(id=maquina_id) if maquina_id else maquinas
     
-    labels = [d.strftime('%d/%m') for d in dias]
-    datasets = []
+    # KPI 1: Total Lotes (distinct by lote, data, maquina)
+    lotes_unicos = qs_registros.values('lote', 'turno_coating__data', 'maquina_id').distinct()
+    total_lotes = lotes_unicos.count()
     
+    # KPI 2: Maquina mais produtiva
+    maquina_counts = lotes_unicos.values('maquina__codigo').annotate(total=Count('lote')).order_by('-total')
+    maq_mais_produtiva = maquina_counts.first()['maquina__codigo'] if maquina_counts else 'N/A'
+    
+    # KPI 3 e 4: Tempos Médios
+    tempos = qs_registros.filter(hora_entrada__isnull=False, hora_saida__isnull=False).aggregate(
+        rodando=Avg(
+            ExpressionWrapper(
+                F('hora_saida') - F('hora_entrada'),
+                output_field=DurationField()
+            )
+        )
+    )
+    avg_rodando = tempos['rodando']
+    avg_rodando_str = str(avg_rodando).split('.')[0] if avg_rodando else '00:00'
+    if avg_rodando_str.startswith('0:'): avg_rodando_str = '00' + avg_rodando_str[1:]
+    
+    registros_ord = qs_registros.order_by('maquina_id', 'turno_coating__data', 'hora_entrada')
+    tempos_parados = []
+    last_saida = {}
+    for r in registros_ord:
+        if not r.hora_entrada or not r.hora_saida:
+            continue
+        key = (r.maquina_id, r.turno_coating.data)
+        if key in last_saida:
+            dt_entrada = datetime.combine(hoje, r.hora_entrada)
+            dt_saida_ant = datetime.combine(hoje, last_saida[key])
+            if dt_entrada > dt_saida_ant:
+                tempos_parados.append((dt_entrada - dt_saida_ant).total_seconds())
+        last_saida[key] = r.hora_saida
+        
+    if tempos_parados:
+        avg_parado_sec = sum(tempos_parados) / len(tempos_parados)
+        avg_parado_str = str(timedelta(seconds=int(avg_parado_sec)))
+    else:
+        avg_parado_str = '00:00:00'
+        
+    # Chart 1: Lotes Produzidos por Dia
+    labels_dia = [d.strftime('%d/%m') for d in dias]
+    datasets_dia = []
     cores = ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#6f42c1', '#fd7e14']
     
-    for i, maq in enumerate(maquinas):
+    grid_data = { d: {} for d in dias }
+    
+    for i, maq in enumerate(maqs_to_iter):
         data_maq = []
         for d in dias:
-            lotes = registros.filter(maquina=maq, turno_coating__data=d).values('lote').distinct().count()
-            data_maq.append(lotes)
+            count = qs_registros.filter(maquina=maq, turno_coating__data=d).values('lote').distinct().count()
+            data_maq.append(count)
+            grid_data[d][maq.codigo] = count
             
         cor = cores[i % len(cores)]
-        datasets.append({
+        datasets_dia.append({
             'label': maq.codigo,
             'data': data_maq,
             'backgroundColor': cor,
@@ -2065,9 +2133,40 @@ def dashboard_coating(request):
             'borderWidth': 2
         })
         
+    grid_rows = []
+    for d in dias:
+        row = {'data': d.strftime('%d/%m/%Y'), 'obj_data': d.strftime('%Y-%m-%d')}
+        for maq in maqs_to_iter:
+            row[maq.codigo] = grid_data[d][maq.codigo]
+        row['Total'] = sum(grid_data[d].values())
+        grid_rows.append(row)
+        
+    # Chart 2: Tratamentos
+    tratamentos_count = qs_registros.values('tratamento__nome').annotate(total=Count('id')).order_by('-total')
+    labels_trat = [t['tratamento__nome'] or 'Sem Tratamento' for t in tratamentos_count]
+    data_trat = [t['total'] for t in tratamentos_count]
+    
+    # Chart 3: Manutenções Feitas
+    manut_feitas = qs_manutencoes.values('ciclo__nome').annotate(total=Count('id')).order_by('-total')
+    labels_manut = [m['ciclo__nome'] for m in manut_feitas]
+    data_manut = [m['total'] for m in manut_feitas]
+    
     return render(request, "laboratorio/dashboard_coating.html", {
-        "labels_json": json.dumps(labels),
-        "datasets_json": json.dumps(datasets),
+        "maquinas": maquinas,
+        "maquina_selecionada": int(maquina_id) if maquina_id else "",
+        "periodo": periodo,
+        "total_lotes": total_lotes,
+        "maq_mais_produtiva": maq_mais_produtiva,
+        "avg_rodando": avg_rodando_str,
+        "avg_parado": avg_parado_str,
+        "labels_json": json.dumps(labels_dia),
+        "datasets_json": json.dumps(datasets_dia),
+        "labels_trat": json.dumps(labels_trat),
+        "data_trat": json.dumps(data_trat),
+        "labels_manut": json.dumps(labels_manut),
+        "data_manut": json.dumps(data_manut),
+        "grid_rows": grid_rows,
+        "maquinas_grid": maqs_to_iter,
     })
 
 @login_required

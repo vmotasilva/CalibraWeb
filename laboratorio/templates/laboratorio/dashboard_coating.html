@@ -5,7 +5,7 @@
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <div>
             <h2 class="mb-1">Dashboard de Coating</h2>
-            <p class="text-muted mb-0">Acompanhamento do volume de produção das máquinas nos últimos 15 dias.</p>
+            <p class="text-muted mb-0">Acompanhamento e eficiência de produção das máquinas.</p>
         </div>
         <div class="d-flex flex-wrap gap-2">
             <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalImportarLotes">
@@ -15,20 +15,165 @@
         </div>
     </div>
 
-    <div class="row mb-4">
-        <div class="col-12">
+    <!-- Filtros Globais -->
+    <div class="card shadow-sm border-0 mb-4 bg-white">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold text-muted small mb-1">Período de Análise</label>
+                    <select name="periodo" class="form-select form-select-sm">
+                        <option value="7" {% if periodo == '7' %}selected{% endif %}>Últimos 7 dias</option>
+                        <option value="15" {% if periodo == '15' %}selected{% endif %}>Últimos 15 dias</option>
+                        <option value="30" {% if periodo == '30' %}selected{% endif %}>Últimos 30 dias</option>
+                        <option value="mes" {% if periodo == 'mes' %}selected{% endif %}>Este Mês</option>
+                        <option value="ano" {% if periodo == 'ano' %}selected{% endif %}>Este Ano</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold text-muted small mb-1">Máquina</label>
+                    <select name="maquina" class="form-select form-select-sm">
+                        <option value="">Todas as Máquinas</option>
+                        {% for maq in maquinas %}
+                        <option value="{{ maq.id }}" {% if maquina_selecionada == maq.id %}selected{% endif %}>{{ maq.codigo }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary btn-sm w-100">
+                        <i class="bi bi-filter"></i> Aplicar Filtros
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="row mb-4 g-3">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100 text-center" style="background: linear-gradient(135deg, #0d6efd, #0b5ed7); color: white;">
+                <div class="card-body py-4">
+                    <h6 class="text-uppercase fw-bold opacity-75 mb-2">Total de Lotes</h6>
+                    <h2 class="display-5 fw-bold mb-0">{{ total_lotes }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100 text-center" style="background: linear-gradient(135deg, #198754, #157347); color: white;">
+                <div class="card-body py-4">
+                    <h6 class="text-uppercase fw-bold opacity-75 mb-2">Máquina + Produtiva</h6>
+                    <h2 class="display-6 fw-bold mb-0 pt-2">{{ maq_mais_produtiva }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100 text-center bg-white">
+                <div class="card-body py-4">
+                    <h6 class="text-uppercase fw-bold text-muted mb-2">Média Tempo Rodando</h6>
+                    <h2 class="display-5 fw-bold text-dark mb-0">{{ avg_rodando }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100 text-center bg-white">
+                <div class="card-body py-4">
+                    <h6 class="text-uppercase fw-bold text-muted mb-2">Média Tempo Parado</h6>
+                    <h2 class="display-5 fw-bold text-danger mb-0">{{ avg_parado }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráficos Principais -->
+    <div class="row mb-4 g-3">
+        <div class="col-lg-8">
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
                     <h5 class="card-title fw-bold text-dark mb-0"><i class="bi bi-bar-chart-fill me-2 text-primary"></i> Lotes Produzidos por Dia</h5>
                 </div>
                 <div class="card-body">
-                    <div style="height: 400px; position: relative;">
+                    <div style="height: 350px; position: relative;">
                         <canvas id="lotesChart"></canvas>
                     </div>
                 </div>
             </div>
         </div>
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+                    <h5 class="card-title fw-bold text-dark mb-0"><i class="bi bi-pie-chart-fill me-2 text-warning"></i> Tratamentos</h5>
+                </div>
+                <div class="card-body d-flex align-items-center justify-content-center">
+                    <div style="height: 300px; width: 100%; position: relative;">
+                        <canvas id="tratamentosChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+    
+    <!-- Manutenções e OEE (opcional) -->
+    <div class="row mb-4 g-3">
+        <div class="col-lg-12">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+                    <h5 class="card-title fw-bold text-dark mb-0"><i class="bi bi-tools me-2 text-success"></i> Adesão às Manutenções (Limpezas)</h5>
+                </div>
+                <div class="card-body">
+                    <div style="height: 300px; position: relative;">
+                        <canvas id="manutencoesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grid Dia-a-Dia -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
+                    <h5 class="card-title fw-bold text-dark mb-0"><i class="bi bi-grid-3x3-gap-fill me-2 text-info"></i> Grid de Acompanhamento Diário</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 text-center text-nowrap w-100" style="font-size: 0.9rem;">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Data</th>
+                                    {% for maq in maquinas_grid %}
+                                    <th>{{ maq.codigo }}</th>
+                                    {% endfor %}
+                                    <th class="bg-primary border-primary">Total do Dia</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in grid_rows %}
+                                <tr>
+                                    <td class="fw-bold">{{ row.data }}</td>
+                                    {% for maq in maquinas_grid %}
+                                    <td>
+                                        {% for key, val in row.items %}
+                                            {% if key == maq.codigo %}
+                                                {{ val }}
+                                            {% endif %}
+                                        {% endfor %}
+                                    </td>
+                                    {% endfor %}
+                                    <td class="fw-bold text-primary">{{ row.Total }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="10" class="text-center text-muted py-4">Nenhum dado encontrado para o período selecionado.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <!-- Modal de Importação -->
@@ -69,16 +214,24 @@
 
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        const ctx = document.getElementById('lotesChart').getContext('2d');
         
-        const labels = JSON.parse('{{ labels_json|safe }}');
-        const datasets = JSON.parse('{{ datasets_json|safe }}');
+        // Dados do Backend
+        const labels_dia = JSON.parse('{{ labels_json|safe }}');
+        const datasets_dia = JSON.parse('{{ datasets_json|safe }}');
         
-        new Chart(ctx, {
+        const labels_trat = JSON.parse('{{ labels_trat|safe }}');
+        const data_trat = JSON.parse('{{ data_trat|safe }}');
+        
+        const labels_manut = JSON.parse('{{ labels_manut|safe }}');
+        const data_manut = JSON.parse('{{ data_manut|safe }}');
+        
+        // Gráfico 1: Lotes por Dia
+        const ctxLotes = document.getElementById('lotesChart').getContext('2d');
+        new Chart(ctxLotes, {
             type: 'bar',
             data: {
-                labels: labels,
-                datasets: datasets
+                labels: labels_dia,
+                datasets: datasets_dia
             },
             options: {
                 responsive: true,
@@ -86,31 +239,67 @@
                 scales: {
                     y: {
                         beginAtZero: true,
-                        ticks: {
-                            precision: 0
-                        },
-                        title: {
-                            display: true,
-                            text: 'Qtd de Lotes'
-                        }
+                        ticks: { precision: 0 }
                     }
                 },
                 plugins: {
-                    legend: {
-                        position: 'top',
-                    },
-                    tooltip: {
-                        mode: 'index',
-                        intersect: false,
-                    }
+                    legend: { position: 'top' },
+                    tooltip: { mode: 'index', intersect: false }
                 },
-                interaction: {
-                    mode: 'nearest',
-                    axis: 'x',
-                    intersect: false
+                interaction: { mode: 'nearest', axis: 'x', intersect: false }
+            }
+        });
+        
+        // Gráfico 2: Tratamentos (Rosca)
+        const ctxTrat = document.getElementById('tratamentosChart').getContext('2d');
+        new Chart(ctxTrat, {
+            type: 'doughnut',
+            data: {
+                labels: labels_trat,
+                datasets: [{
+                    data: data_trat,
+                    backgroundColor: ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#6f42c1', '#fd7e14', '#0dcaf0', '#6c757d'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' }
                 }
             }
         });
+        
+        // Gráfico 3: Manutenções (Barra Horizontal)
+        const ctxManut = document.getElementById('manutencoesChart').getContext('2d');
+        new Chart(ctxManut, {
+            type: 'bar',
+            data: {
+                labels: labels_manut,
+                datasets: [{
+                    label: 'Registros de Manutenção Realizados',
+                    data: data_manut,
+                    backgroundColor: '#198754',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: { precision: 0 }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+        
     });
 </script>
 {% endblock %}
