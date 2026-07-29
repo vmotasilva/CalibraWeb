@@ -2276,50 +2276,123 @@ def dashboard_coating(request):
 
     grid_raw = qs_registros.filter(hora_entrada__isnull=False, hora_saida__isnull=False).select_related(
         'turno_coating', 'maquina', 'turno_coating__regra'
-    ).order_by('turno_coating__data', 'maquina__codigo', 'turno_coating__regra__nome', 'hora_entrada')
+    ).order_by('turno_coating__data', 'maquina__codigo', 'turno_coating__regra__nome', 'hora_entrada', 'id')
 
-    groups = {}
+    # Agrupar registros por turno/maquina para aplicar a matematica precisa
+    from collections import defaultdict
+    import json
+    
+    groups = defaultdict(list)
     for reg in grid_raw:
         key = (reg.turno_coating.data, reg.maquina.codigo, reg.turno_coating.regra.nome)
-        if key not in groups:
-            groups[key] = {
-                'lotes_set': set(),
-                'rodando_sec': 0.0,
-                'primeira_entrada': reg.hora_entrada,
-                'ultima_saida': reg.hora_saida,
-                'lotes_processed': set()
-            }
-        
-        if reg.hora_entrada < groups[key]['primeira_entrada']:
-            groups[key]['primeira_entrada'] = reg.hora_entrada
-        if reg.hora_saida > groups[key]['ultima_saida']:
-            groups[key]['ultima_saida'] = reg.hora_saida
-            
-        groups[key]['lotes_set'].add(reg.lote)
-        
-        if reg.lote not in groups[key]['lotes_processed']:
-            diff = (reg.hora_saida - reg.hora_entrada).total_seconds()
-            if diff > 0:
-                groups[key]['rodando_sec'] += diff
-            groups[key]['lotes_processed'].add(reg.lote)
+        groups[key].append(reg)
 
     grid_rows = []
     sorted_keys = sorted(groups.keys(), key=lambda x: (x[0], x[1], x[2]), reverse=True)
-    
+
     for key in sorted_keys:
         data, maquina, turno = key
-        g = groups[key]
-        span = g['ultima_saida'] - g['primeira_entrada']
-        parada_sec = max(span.total_seconds() - g['rodando_sec'], 0)
+        lista_regs = groups[key]
+        
+        rodando_sec_total = 0.0
+        parada_sec_total = 0.0
+        lotes_set = set()
+        detalhes_lotes = []
+        
+        # 1. Normalizar horarios
+        for reg in lista_regs:
+            reg.hora_entrada_dt = reg.hora_entrada
+            reg.hora_saida_dt = reg.hora_saida
+            
+            if reg.hora_entrada_dt and timezone.is_aware(reg.hora_entrada_dt):
+                reg.hora_entrada_dt = timezone.localtime(reg.hora_entrada_dt).replace(tzinfo=None)
+            if reg.hora_saida_dt and timezone.is_aware(reg.hora_saida_dt):
+                reg.hora_saida_dt = timezone.localtime(reg.hora_saida_dt).replace(tzinfo=None)
+                
+            if isinstance(reg.hora_entrada_dt, time):
+                reg.hora_entrada_dt = datetime.combine(reg.turno_coating.data, reg.hora_entrada_dt)
+            if isinstance(reg.hora_saida_dt, time):
+                reg.hora_saida_dt = datetime.combine(reg.turno_coating.data, reg.hora_saida_dt)
+                
+            reg.hora_inicio_turno = None
+            reg.hora_fim_turno = None
+            if reg.turno_coating and reg.turno_coating.regra:
+                if reg.turno_coating.regra.hora_inicio:
+                    reg.hora_inicio_turno = datetime.combine(reg.turno_coating.data, reg.turno_coating.regra.hora_inicio)
+                if reg.turno_coating.regra.hora_fim:
+                    reg.hora_fim_turno = datetime.combine(reg.turno_coating.data, reg.turno_coating.regra.hora_fim)
+            
+            if reg.hora_inicio_turno:
+                if reg.hora_entrada_dt and reg.hora_entrada_dt.hour < 12 and reg.hora_inicio_turno.hour > 12:
+                    reg.hora_entrada_dt += timedelta(days=1)
+                if reg.hora_saida_dt and reg.hora_saida_dt.hour < 12 and reg.hora_inicio_turno.hour > 12:
+                    reg.hora_saida_dt += timedelta(days=1)
+                if reg.hora_fim_turno and reg.hora_fim_turno.hour < 12 and reg.hora_inicio_turno.hour > 12:
+                    reg.hora_fim_turno += timedelta(days=1)
+                    
+            if reg.hora_entrada_dt and reg.hora_saida_dt:
+                diff = (reg.hora_saida_dt - reg.hora_entrada_dt).total_seconds()
+                reg.tempo_rodando_sec = max(0, diff)
+            else:
+                reg.tempo_rodando_sec = 0
+
+        # 2. Calcular gaps
+        for i, reg in enumerate(lista_regs):
+            td_parado_sec = 0
+            motivo_gap = ""
+            
+            if i == 0 and reg.hora_entrada_dt and reg.hora_inicio_turno:
+                if reg.hora_entrada_dt > reg.hora_inicio_turno:
+                    td_parado_sec += (reg.hora_entrada_dt - reg.hora_inicio_turno).total_seconds()
+                    motivo_gap += f"Abertura de Turno ({reg.hora_inicio_turno.strftime('%H:%M')})"
+                    
+            if reg.hora_saida_dt:
+                if i < len(lista_regs) - 1:
+                    prox_reg = lista_regs[i+1]
+                    if prox_reg.hora_entrada_dt and prox_reg.hora_entrada_dt > reg.hora_saida_dt:
+                        td_parado_sec += (prox_reg.hora_entrada_dt - reg.hora_saida_dt).total_seconds()
+                        if motivo_gap: motivo_gap += " e "
+                        motivo_gap += "Até Próxima Entrada"
+                else:
+                    if reg.hora_fim_turno and reg.hora_fim_turno > reg.hora_saida_dt:
+                        td_parado_sec += (reg.hora_fim_turno - reg.hora_saida_dt).total_seconds()
+                        if motivo_gap: motivo_gap += " e "
+                        motivo_gap += f"Até Fim do Turno ({reg.hora_fim_turno.strftime('%H:%M')})"
+                        
+            td_parado_sec = max(0, td_parado_sec)
+            reg.tempo_parado_sec = td_parado_sec
+            
+            lotes_set.add(reg.lote)
+            
+            detalhes_lotes.append({
+                'lote': reg.lote,
+                'lado': reg.lado,
+                'entrada': reg.hora_entrada.strftime('%H:%M') if reg.hora_entrada else '-',
+                'saida': reg.hora_saida.strftime('%H:%M') if reg.hora_saida else '-',
+                'rodando': format_timedelta(timedelta(seconds=reg.tempo_rodando_sec)),
+                'parado': format_timedelta(timedelta(seconds=reg.tempo_parado_sec)),
+                'motivo_gap': motivo_gap if motivo_gap else '-'
+            })
+
+        lotes_processed = set()
+        for reg in lista_regs:
+            if reg.lote not in lotes_processed:
+                rodando_sec_total += reg.tempo_rodando_sec
+                lotes_processed.add(reg.lote)
+            parada_sec_total += reg.tempo_parado_sec
+
+        detalhes_json = json.dumps(detalhes_lotes)
 
         grid_rows.append({
             'data': data.strftime('%d/%m/%Y'),
             'maquina': maquina,
             'turno': turno,
-            'lotes': len(g['lotes_set']),
-            'horas_rodando': format_timedelta(timedelta(seconds=g['rodando_sec'])),
-            'horas_parada': format_timedelta(timedelta(seconds=parada_sec))
+            'lotes': len(lotes_set),
+            'horas_rodando': format_timedelta(timedelta(seconds=rodando_sec_total)),
+            'horas_parada': format_timedelta(timedelta(seconds=parada_sec_total)),
+            'detalhes_json': detalhes_json
         })
+
 
     return render(request, "laboratorio/dashboard_coating.html", {
         "maquinas": maquinas,
@@ -2336,6 +2409,8 @@ def dashboard_coating(request):
         "datasets_sem": json.dumps(datasets_sem),
         "datasets_mes": json.dumps(datasets_mes),
         "manut_datasets_dia": json.dumps(manut_datasets_dia),
+        "manut_realizadas": realizados_total,
+        "manut_pendentes": pendentes_total,
         "manut_datasets_sem": json.dumps(manut_datasets_sem),
         "manut_datasets_mes": json.dumps(manut_datasets_mes),
         "grid_rows": grid_rows,
