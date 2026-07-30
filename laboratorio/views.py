@@ -2022,6 +2022,7 @@ def api_recalcular_turno_registro(request):
 
 
 @login_required
+@require_POST
 def api_recalcular_todos_turnos(request):
     """
     Recalcula o turno de TODOS os RegistroCoating que possuem hora_entrada,
