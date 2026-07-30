@@ -111,7 +111,7 @@ from rh.views.views import _has_nav_view_access
 def dashboard_view(request):
     if not _has_nav_view_access(request.user, 'boards:dashboard'):
         messages.error(request, 'Acesso Negado. Você não tem permissão para acessar os Quadros.')
-        return redirect('core:home')
+        return redirect('home')
     
     """Exibe todos os quadros que o usuário gerencia ou participa"""
     colab = get_user_colaborador(request.user)
