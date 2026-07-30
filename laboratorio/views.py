@@ -1079,10 +1079,10 @@ def coating_painel(request):
                 Q(hora_entrada__isnull=False, hora_saida__isnull=True)
             )
             
-        todos_registros = base_qs.order_by('-turno_coating__data', '-lote', 'lado')
+        todos_registros = base_qs.order_by('-lote', 'lado', '-id')
     else:
         # Fetch all records
-        todos_registros = base_qs.order_by('-turno_coating__data', '-lote', 'lado')
+        todos_registros = base_qs.order_by('-lote', 'lado', '-id')
     
     paginator = Paginator(todos_registros, 10)
     page_number = request.GET.get('page')
