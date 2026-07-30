@@ -23,9 +23,10 @@
 
     {% for maq in maquinas %}
     <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3" data-bs-toggle="collapse" href="#collapse-maq-{{ maq.id }}" role="button" aria-expanded="true" aria-controls="collapse-maq-{{ maq.id }}" style="cursor: pointer;">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3" data-bs-toggle="collapse" href="#collapse-maq-{{ maq.id }}" role="button" aria-expanded="false" aria-controls="collapse-maq-{{ maq.id }}" style="cursor: pointer;">
             <h5 class="mb-0 fw-bold">
                 <i class="bi bi-cpu text-secondary me-2"></i>{{ maq.codigo }}{% if maq.fabricante %} ({{ maq.fabricante }}){% endif %}
+                <span class="badge bg-secondary rounded-pill ms-2" style="font-size: 0.75rem;">{{ maq.num_ciclos }}</span>
                 <i class="bi bi-chevron-down ms-2 fs-6 text-muted collapse-icon"></i>
             </h5>
             <div onclick="event.stopPropagation();">
@@ -37,7 +38,7 @@
                 </button>
             </div>
         </div>
-        <div class="collapse show" id="collapse-maq-{{ maq.id }}">
+        <div class="collapse" id="collapse-maq-{{ maq.id }}">
         <div class="card-body bg-light">
             
             {% if not maq.ciclos_coating.all %}
@@ -48,20 +49,21 @@
             </ul>
             {% else %}
             
-            <h6 class="fw-bold text-muted mt-3 mb-2 ps-2" data-bs-toggle="collapse" href="#collapse-limpeza-{{ maq.id }}" role="button" aria-expanded="true" aria-controls="collapse-limpeza-{{ maq.id }}" style="cursor: pointer;">
-                <i class="bi bi-stars"></i> Limpezas <i class="bi bi-chevron-down ms-1 fs-6 collapse-icon"></i>
+            <h6 class="fw-bold text-muted mt-3 mb-2 ps-2" data-bs-toggle="collapse" href="#collapse-limpeza-{{ maq.id }}" role="button" aria-expanded="false" aria-controls="collapse-limpeza-{{ maq.id }}" style="cursor: pointer;">
+                <i class="bi bi-stars"></i> Limpezas <span class="badge bg-light text-secondary border rounded-pill ms-1">{{ maq.num_limpezas }}</span> <i class="bi bi-chevron-down ms-1 fs-6 collapse-icon"></i>
             </h6>
-            <div class="collapse show" id="collapse-limpeza-{{ maq.id }}">
+            <div class="collapse" id="collapse-limpeza-{{ maq.id }}">
             <ul class="list-group list-group-flush sortable-ciclos mb-3" data-maquina-id="{{ maq.id }}" data-tipo="LIMPEZA">
                 {% for ciclo in maq.ciclos_coating.all %}
                 {% if ciclo.tipo == 'LIMPEZA' %}
-                <li class="list-group-item d-flex justify-content-between align-items-center ciclo-card p-3 border-bottom" data-ciclo-id="{{ ciclo.id }}" style="cursor: grab;">
+                <li class="list-group-item d-flex justify-content-between align-items-center ciclo-card p-3 border-bottom {% if not ciclo.ativo %}opacity-50{% endif %}" data-ciclo-id="{{ ciclo.id }}" style="cursor: grab; {% if not ciclo.ativo %}background-color: #f8f9fa;{% endif %}">
                     <div class="d-flex align-items-center">
                         <i class="bi bi-grip-vertical text-muted me-3 fs-5"></i>
                         <div>
                             <div class="mb-1">
                                 <span class="badge bg-warning text-dark me-2"><i class="bi bi-stars"></i> Limpeza</span>
                                 <span class="fw-bold fs-6 text-dark">{{ ciclo.nome }}</span>
+                                {% if not ciclo.ativo %}<span class="badge bg-secondary ms-2">Inativo</span>{% endif %}
                             </div>
                             <div>
                                 {% if ciclo.criterio == 'DIAS' %}
@@ -92,6 +94,7 @@
                             <li><a href="{% url 'laboratorio:configurar_checklist_ciclo' ciclo.id %}" class="dropdown-item"><i class="bi bi-list-check me-2"></i> Checklist</a></li>
                             <li><button type="button" class="dropdown-item" onclick="abrirModalEditar('{{ ciclo.id }}', '{{ ciclo.tipo }}', '{{ ciclo.nome }}', '{{ ciclo.criterio }}', '{{ ciclo.limite_lotes }}', '{{ ciclo.valor_minimo|default_if_none:'' }}', '{{ ciclo.valor_maximo|default_if_none:'' }}', [ {% for t in ciclo.tratamentos_especificos.all %}{{t.id}}{% if not forloop.last %},{% endif %}{% endfor %} ])"><i class="bi bi-pencil me-2"></i> Editar</button></li>
                             <li><hr class="dropdown-divider"></li>
+                            <li><button type="button" class="dropdown-item" onclick="toggleAtivo('{{ ciclo.id }}')"><i class="bi {% if ciclo.ativo %}bi-eye-slash text-warning{% else %}bi-eye text-success{% endif %} me-2"></i> {% if ciclo.ativo %}Desativar{% else %}Ativar{% endif %}</button></li>
                             <li><button type="button" class="dropdown-item text-danger" onclick="abrirModalExcluir('{{ ciclo.id }}', '{{ ciclo.nome }}')"><i class="bi bi-trash me-2"></i> Excluir</button></li>
                         </ul>
                     </div>
@@ -101,20 +104,21 @@
             </ul>
             </div>
 
-            <h6 class="fw-bold text-muted mt-3 mb-2 ps-2" data-bs-toggle="collapse" href="#collapse-troca-{{ maq.id }}" role="button" aria-expanded="true" aria-controls="collapse-troca-{{ maq.id }}" style="cursor: pointer;">
-                <i class="bi bi-tools"></i> Trocas <i class="bi bi-chevron-down ms-1 fs-6 collapse-icon"></i>
+            <h6 class="fw-bold text-muted mt-3 mb-2 ps-2" data-bs-toggle="collapse" href="#collapse-troca-{{ maq.id }}" role="button" aria-expanded="false" aria-controls="collapse-troca-{{ maq.id }}" style="cursor: pointer;">
+                <i class="bi bi-tools"></i> Trocas <span class="badge bg-light text-secondary border rounded-pill ms-1">{{ maq.num_trocas }}</span> <i class="bi bi-chevron-down ms-1 fs-6 collapse-icon"></i>
             </h6>
-            <div class="collapse show" id="collapse-troca-{{ maq.id }}">
+            <div class="collapse" id="collapse-troca-{{ maq.id }}">
             <ul class="list-group list-group-flush sortable-ciclos mb-3" data-maquina-id="{{ maq.id }}" data-tipo="TROCA">
                 {% for ciclo in maq.ciclos_coating.all %}
                 {% if ciclo.tipo == 'TROCA' %}
-                <li class="list-group-item d-flex justify-content-between align-items-center ciclo-card p-3 border-bottom" data-ciclo-id="{{ ciclo.id }}" style="cursor: grab;">
+                <li class="list-group-item d-flex justify-content-between align-items-center ciclo-card p-3 border-bottom {% if not ciclo.ativo %}opacity-50{% endif %}" data-ciclo-id="{{ ciclo.id }}" style="cursor: grab; {% if not ciclo.ativo %}background-color: #f8f9fa;{% endif %}">
                     <div class="d-flex align-items-center">
                         <i class="bi bi-grip-vertical text-muted me-3 fs-5"></i>
                         <div>
                             <div class="mb-1">
                                 <span class="badge bg-danger me-2"><i class="bi bi-tools"></i> Troca</span>
                                 <span class="fw-bold fs-6 text-dark">{{ ciclo.nome }}</span>
+                                {% if not ciclo.ativo %}<span class="badge bg-secondary ms-2">Inativo</span>{% endif %}
                             </div>
                             <div>
                                 {% if ciclo.criterio == 'DIAS' %}
@@ -145,6 +149,7 @@
                             <li><a href="{% url 'laboratorio:configurar_checklist_ciclo' ciclo.id %}" class="dropdown-item"><i class="bi bi-list-check me-2"></i> Checklist</a></li>
                             <li><button type="button" class="dropdown-item" onclick="abrirModalEditar('{{ ciclo.id }}', '{{ ciclo.tipo }}', '{{ ciclo.nome }}', '{{ ciclo.criterio }}', '{{ ciclo.limite_lotes }}', '{{ ciclo.valor_minimo|default_if_none:'' }}', '{{ ciclo.valor_maximo|default_if_none:'' }}', [ {% for t in ciclo.tratamentos_especificos.all %}{{t.id}}{% if not forloop.last %},{% endif %}{% endfor %} ])"><i class="bi bi-pencil me-2"></i> Editar</button></li>
                             <li><hr class="dropdown-divider"></li>
+                            <li><button type="button" class="dropdown-item" onclick="toggleAtivo('{{ ciclo.id }}')"><i class="bi {% if ciclo.ativo %}bi-eye-slash text-warning{% else %}bi-eye text-success{% endif %} me-2"></i> {% if ciclo.ativo %}Desativar{% else %}Ativar{% endif %}</button></li>
                             <li><button type="button" class="dropdown-item text-danger" onclick="abrirModalExcluir('{{ ciclo.id }}', '{{ ciclo.nome }}')"><i class="bi bi-trash me-2"></i> Excluir</button></li>
                         </ul>
                     </div>
@@ -154,20 +159,21 @@
             </ul>
             </div>
 
-            <h6 class="fw-bold text-muted mt-3 mb-2 ps-2" data-bs-toggle="collapse" href="#collapse-verificacao-{{ maq.id }}" role="button" aria-expanded="true" aria-controls="collapse-verificacao-{{ maq.id }}" style="cursor: pointer;">
-                <i class="bi bi-speedometer2"></i> Verificações <i class="bi bi-chevron-down ms-1 fs-6 collapse-icon"></i>
+            <h6 class="fw-bold text-muted mt-3 mb-2 ps-2" data-bs-toggle="collapse" href="#collapse-verificacao-{{ maq.id }}" role="button" aria-expanded="false" aria-controls="collapse-verificacao-{{ maq.id }}" style="cursor: pointer;">
+                <i class="bi bi-speedometer2"></i> Verificações <span class="badge bg-light text-secondary border rounded-pill ms-1">{{ maq.num_verificacoes }}</span> <i class="bi bi-chevron-down ms-1 fs-6 collapse-icon"></i>
             </h6>
-            <div class="collapse show" id="collapse-verificacao-{{ maq.id }}">
+            <div class="collapse" id="collapse-verificacao-{{ maq.id }}">
             <ul class="list-group list-group-flush sortable-ciclos mb-3" data-maquina-id="{{ maq.id }}" data-tipo="VERIFICACAO">
                 {% for ciclo in maq.ciclos_coating.all %}
                 {% if ciclo.tipo == 'VERIFICACAO' %}
-                <li class="list-group-item d-flex justify-content-between align-items-center ciclo-card p-3 border-bottom" data-ciclo-id="{{ ciclo.id }}" style="cursor: grab;">
+                <li class="list-group-item d-flex justify-content-between align-items-center ciclo-card p-3 border-bottom {% if not ciclo.ativo %}opacity-50{% endif %}" data-ciclo-id="{{ ciclo.id }}" style="cursor: grab; {% if not ciclo.ativo %}background-color: #f8f9fa;{% endif %}">
                     <div class="d-flex align-items-center">
                         <i class="bi bi-grip-vertical text-muted me-3 fs-5"></i>
                         <div>
                             <div class="mb-1">
                                 <span class="badge bg-primary me-2"><i class="bi bi-speedometer2"></i> Verificação</span>
                                 <span class="fw-bold fs-6 text-dark">{{ ciclo.nome }}</span>
+                                {% if not ciclo.ativo %}<span class="badge bg-secondary ms-2">Inativo</span>{% endif %}
                             </div>
                             <div>
                                 {% if ciclo.criterio == 'DIAS' %}
@@ -203,6 +209,7 @@
                             <li><a href="{% url 'laboratorio:configurar_checklist_ciclo' ciclo.id %}" class="dropdown-item"><i class="bi bi-list-check me-2"></i> Checklist</a></li>
                             <li><button type="button" class="dropdown-item" onclick="abrirModalEditar('{{ ciclo.id }}', '{{ ciclo.tipo }}', '{{ ciclo.nome }}', '{{ ciclo.criterio }}', '{{ ciclo.limite_lotes }}', '{{ ciclo.valor_minimo|default_if_none:'' }}', '{{ ciclo.valor_maximo|default_if_none:'' }}', [ {% for t in ciclo.tratamentos_especificos.all %}{{t.id}}{% if not forloop.last %},{% endif %}{% endfor %} ])"><i class="bi bi-pencil me-2"></i> Editar</button></li>
                             <li><hr class="dropdown-divider"></li>
+                            <li><button type="button" class="dropdown-item" onclick="toggleAtivo('{{ ciclo.id }}')"><i class="bi {% if ciclo.ativo %}bi-eye-slash text-warning{% else %}bi-eye text-success{% endif %} me-2"></i> {% if ciclo.ativo %}Desativar{% else %}Ativar{% endif %}</button></li>
                             <li><button type="button" class="dropdown-item text-danger" onclick="abrirModalExcluir('{{ ciclo.id }}', '{{ ciclo.nome }}')"><i class="bi bi-trash me-2"></i> Excluir</button></li>
                         </ul>
                     </div>
@@ -689,6 +696,30 @@
                 loading.classList.add('d-none');
                 alert('Erro de rede ao carregar manutenções.');
             });
+    }
+
+    function toggleAtivo(cicloId) {
+        if(!confirm('Deseja realmente alterar o status de ativação desta manutenção? (Manutenções desativadas param de gerar alertas no Painel Coating e perdem seu progresso pendente)')) return;
+        fetch('{% url "laboratorio:api_toggle_ciclo_ativo" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ciclo_id: cicloId})
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.success) {
+                window.location.reload();
+            } else {
+                alert('Erro: ' + data.error);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Erro de rede ao alterar status.');
+        });
     }
 </script>
 {% endblock %}

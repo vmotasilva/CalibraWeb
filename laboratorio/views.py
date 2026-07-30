@@ -1127,7 +1127,7 @@ def coating_painel(request):
     status_maquinas = {}
 
     for maquina in evaporadoras:
-        ciclos = list(maquina.ciclos_coating.all())
+        ciclos = list(maquina.ciclos_coating.filter(ativo=True))
         status_maquinas[maquina.id] = []
         maquina.em_alerta = False
         
@@ -1705,6 +1705,14 @@ def ciclo_coating_list(request):
 
     from .models import TratamentoAntiReflexo
     tratamentos = TratamentoAntiReflexo.objects.filter(ativo=True).order_by('nome')
+
+    # Pre-calcular contagens para o template (inclui inativos na gestao)
+    for maq in evaporadoras:
+        ciclos = list(maq.ciclos_coating.all())
+        maq.num_ciclos = len(ciclos)
+        maq.num_limpezas = sum(1 for c in ciclos if c.tipo == 'LIMPEZA')
+        maq.num_trocas = sum(1 for c in ciclos if c.tipo == 'TROCA')
+        maq.num_verificacoes = sum(1 for c in ciclos if c.tipo == 'VERIFICACAO')
     return render(request, "laboratorio/ciclo_coating_list.html", {
         "maquinas": evaporadoras,
         "tratamentos": tratamentos,
@@ -1731,6 +1739,22 @@ def api_reordenar_ciclos(request):
             CicloManutencaoCoating.objects.filter(id=ciclo_id).update(ordem=index)
             
         return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@login_required
+@require_POST
+def api_toggle_ciclo_ativo(request):
+    import json
+    try:
+        data = json.loads(request.body)
+        ciclo_id = data.get('ciclo_id')
+        
+        ciclo = CicloManutencaoCoating.objects.get(id=ciclo_id)
+        ciclo.ativo = not ciclo.ativo
+        ciclo.save()
+        
+        return JsonResponse({'success': True, 'ativo': ciclo.ativo})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
 
@@ -2362,7 +2386,7 @@ def dashboard_coating(request):
         datasets_mes.append({**base_dataset, 'data': data_mes, 'type': 'bar'})
 
     # Manutenções (Doughnut - Realizados vs Pendentes no Período)
-    ciclos_ativos = CicloManutencaoCoating.objects.all()
+    ciclos_ativos = CicloManutencaoCoating.objects.filter(ativo=True)
     
     total_lotes_periodo = qs_registros.count() * 0.5
     

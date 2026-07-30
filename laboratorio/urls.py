@@ -88,6 +88,7 @@ urlpatterns = [
     path("coating/ciclos/copiar/", views.copiar_ciclos_coating, name="copiar_ciclos_coating"),
     path("coating/api/ciclos-maquina/", views.api_obter_ciclos_maquina, name="api_obter_ciclos_maquina"),
     path("coating/api/reordenar-ciclos/", views.api_reordenar_ciclos, name="api_reordenar_ciclos"),
+    path("coating/api/toggle-ciclo/", views.api_toggle_ciclo_ativo, name="api_toggle_ciclo_ativo"),
     path("run-migrate-db/", views.run_migrate_view, name="run_migrate_view"),
     path("coating/api/recalcular-turno/", views.api_recalcular_turno_registro, name="api_recalcular_turno_registro"),
     path("coating/api/recalcular-todos-turnos/", views.api_recalcular_todos_turnos, name="api_recalcular_todos_turnos"),

@@ -419,6 +419,7 @@ class CicloManutencaoCoating(models.Model):
         help_text="Se selecionado, a manutenção só será cobrada e contará lotes que possuam estes tratamentos."
     )
     ordem = models.IntegerField(default=0, verbose_name="Ordem de Exibição")
+    ativo = models.BooleanField(default=True, verbose_name="Ativo")
 
     class Meta:
         verbose_name = "Ciclo de Manutenção de Coating"
