@@ -40,6 +40,12 @@
                 <i class="bi bi-bar-chart-line"></i> Dashboard
             </a>
             
+            {% if request.user.is_staff or request.user.is_superuser %}
+            <button class="btn btn-outline-warning fw-bold shadow-sm" id="btnRecalcularTodos" onclick="recalcularTodosTurnos()" title="Recalcula o turno de todos os registros com hora de entrada preenchida">
+                <i class="bi bi-arrow-clockwise"></i> Recalcular Turnos
+            </button>
+            {% endif %}
+
             {% if not audit_mode %}
             <button class="btn btn-primary fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#novoLoteModal">
                 <i class="bi bi-plus-circle"></i> Adicionar Lote
@@ -323,6 +329,12 @@
                                                         </button>
                                                         <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="min-width: auto; padding: 0.25rem 0;">
                                                             
+                                                            <li>
+                                                                <button class="dropdown-item py-2 px-3 small text-info" type="button" onclick="event.stopPropagation(); recalcularTurnoLinha({{ reg.id }})">
+                                                                    <i class="bi bi-arrow-clockwise me-2"></i> Recalcular Turno
+                                                                </button>
+                                                            </li>
+                                                            <li><hr class="dropdown-divider my-1"></li>
 
                                                             <li>
                                                                 <button class="dropdown-item py-2 px-3 small text-danger" type="button" onclick="event.stopPropagation(); abrirModalDelete('{% url 'laboratorio:registro_coating_delete' reg.id %}', '{{ reg.lote }}')">
@@ -1015,6 +1027,63 @@
         document.getElementById('formConfirmDelete').action = url;
         document.getElementById('deleteLoteText').innerText = lote;
         new bootstrap.Modal(document.getElementById('modalConfirmDelete')).show();
+    }
+
+    function recalcularTurnoLinha(registroId) {
+        const btn = event.currentTarget;
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Recalculando...'; }
+
+        fetch('{% url "laboratorio:api_recalcular_turno_registro" %}', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken()},
+            body: JSON.stringify({id: registroId})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                if (data.changed) {
+                    showToast('success', `Turno atualizado: ${data.turno_anterior} → ${data.turno_novo}`);
+                    setTimeout(() => location.reload(), 1200);
+                } else {
+                    showToast('info', 'Turno já estava correto. Nenhuma alteração necessária.');
+                }
+            } else {
+                showToast('danger', 'Erro ao recalcular: ' + data.error);
+            }
+        })
+        .catch(() => showToast('danger', 'Erro de rede ao recalcular turno.'))
+        .finally(() => { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i> Recalcular Turno'; } });
+    }
+
+    function recalcularTodosTurnos() {
+        const btn = document.getElementById('btnRecalcularTodos');
+        if (!confirm('Recalcular o turno de TODOS os registros com hora de entrada preenchida?')) return;
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Recalculando...'; }
+
+        fetch('{% url "laboratorio:api_recalcular_todos_turnos" %}', {
+            method: 'GET',
+            headers: {'X-CSRFToken': getCsrfToken()}
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast('success', `Concluído! ${data.atualizados} atualizados, ${data.sem_mudanca} já estavam corretos.`);
+                if (data.atualizados > 0) setTimeout(() => location.reload(), 2000);
+            } else {
+                showToast('danger', 'Erro: ' + data.error);
+            }
+        })
+        .catch(() => showToast('danger', 'Erro de rede ao recalcular todos os turnos.'))
+        .finally(() => { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Recalcular Turnos'; } });
+    }
+
+    function showToast(type, message) {
+        const colors = {success: '#198754', danger: '#dc3545', info: '#0dcaf0', warning: '#ffc107'};
+        const el = document.createElement('div');
+        el.style.cssText = `position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;background:${colors[type]||'#333'};color:#fff;padding:.75rem 1.25rem;border-radius:.5rem;box-shadow:0 4px 12px rgba(0,0,0,.25);font-size:.9rem;max-width:360px;`;
+        el.innerHTML = message;
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 4000);
     }
 
     function abrirModalEdicao(el) {

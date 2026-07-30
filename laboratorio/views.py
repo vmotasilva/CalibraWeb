@@ -1990,6 +1990,75 @@ def run_migrate_view(request):
         return HttpResponse("Migrações aplicadas com sucesso.")
     return HttpResponse("Acesso negado.", status=403)
 
+
+@login_required
+@require_POST
+def api_recalcular_turno_registro(request):
+    """
+    Recalcula o turno de um único registro pelo seu pk,
+    com base na hora_entrada e nas regras de turno ativas.
+    """
+    try:
+        data = json.loads(request.body)
+        pk = data.get('id')
+        if not pk:
+            return JsonResponse({'success': False, 'error': 'ID não informado.'}, status=400)
+
+        registro = get_object_or_404(RegistroCoating, pk=pk)
+        turno_anterior = str(registro.turno_coating) if registro.turno_coating else '—'
+
+        _atualizar_turno_coating(registro)
+        registro.save(update_fields=['turno_coating'])
+
+        turno_novo = str(registro.turno_coating) if registro.turno_coating else '—'
+        return JsonResponse({
+            'success': True,
+            'turno_anterior': turno_anterior,
+            'turno_novo': turno_novo,
+            'changed': turno_anterior != turno_novo,
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+@login_required
+def api_recalcular_todos_turnos(request):
+    """
+    Recalcula o turno de TODOS os RegistroCoating que possuem hora_entrada,
+    com base nas regras de turno ativas.
+    Apenas superusuários ou staff podem executar.
+    """
+    if not (request.user.is_staff or request.user.is_superuser):
+        return JsonResponse({'success': False, 'error': 'Acesso negado.'}, status=403)
+
+    try:
+        registros = RegistroCoating.objects.select_related(
+            'turno_coating', 'turno_coating__regra'
+        ).filter(hora_entrada__isnull=False)
+
+        atualizados = 0
+        sem_regra = 0
+        sem_mudanca = 0
+
+        for reg in registros:
+            turno_id_antes = reg.turno_coating_id
+            _atualizar_turno_coating(reg)
+
+            if reg.turno_coating_id != turno_id_antes:
+                reg.save(update_fields=['turno_coating'])
+                atualizados += 1
+            else:
+                sem_mudanca += 1
+
+        return JsonResponse({
+            'success': True,
+            'atualizados': atualizados,
+            'sem_mudanca': sem_mudanca,
+            'sem_regra': sem_regra,
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
 @login_required
 def obter_observacoes_lote(request):
     try:
