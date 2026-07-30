@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load widget_tweaks %}
+{% load widget_tweaks laboratorio_tags %}
 
 {% block content %}
 <style>
@@ -194,9 +194,9 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% if evap.id in maquinas_com_registros %}
-                                    {% for reg in registros %}
-                                        {% if reg.maquina.id == evap.id %}
+                                {% with reg_page=registros_por_maquina|get_item:evap.id %}
+                                {% if reg_page %}
+                                    {% for reg in reg_page %}
                                         <tr class="align-middle {% if reg.bg_group == 1 %}bg-lote-group{% else %}bg-white{% endif %}" style="cursor:pointer;" onclick="abrirModalEditarLote(this, '{{ reg.id }}', '{{ reg.lote }}', '{{ reg.lado }}', '{{ reg.maquina_id }}', '{{ reg.tratamento_id }}', '{{ reg.hora_entrada|date:'Y-m-d\TH:i'|default:'' }}', '{{ reg.hora_saida|date:'Y-m-d\TH:i'|default:'' }}', '{{ reg.preparacao_id|default:'' }}', '{{ reg.montagem_id|default:'' }}')" data-observacao="{{ reg.observacao|escapejs|default:'' }}">
                                             <td>{{ reg.turno_coating.data|date:"d/m/Y" }}</td>
                                             <td>{{ reg.turno_coating.regra.nome }}</td>
@@ -348,54 +348,53 @@
                                         </tr>
                                         {% endif %}
                                     {% endfor %}
-                                {% else %}
-                                    <tr>
-                                        <td colspan="15" class="text-center text-muted py-4">Nenhum lote registrado nesta máquina para as datas em exibição.</td>
-                                    </tr>
-                                {% endif %}
+                                    {% empty %}
+                                        <tr>
+                                            <td colspan="15" class="text-center text-muted py-4">Nenhum lote registrado nesta máquina para as datas em exibição.</td>
+                                        </tr>
+                                    {% endfor %}
+                                {% endwith %}
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
+
+            <!-- Paginação desta máquina -->
+            {% with reg_page=registros_por_maquina|get_item:evap.id %}
+            {% if reg_page.has_other_pages %}
+            <nav aria-label="Paginação {{ evap.codigo }}" class="mt-3">
+                <ul class="pagination justify-content-center">
+                    {% if reg_page.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page_{{ evap.id }}={{ reg_page.previous_page_number }}" aria-label="Anterior">
+                            <span aria-hidden="true">&laquo; Anterior</span>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled"><span class="page-link">&laquo; Anterior</span></li>
+                    {% endif %}
+                    <li class="page-item disabled">
+                        <span class="page-link">Página {{ reg_page.number }} de {{ reg_page.paginator.num_pages }}</span>
+                    </li>
+                    {% if reg_page.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page_{{ evap.id }}={{ reg_page.next_page_number }}" aria-label="Próxima">
+                            <span aria-hidden="true">Próxima &raquo;</span>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled"><span class="page-link">Próxima &raquo;</span></li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+            {% endwith %}
         </div>
         {% endfor %}
     </div>
 
-    <!-- Paginação Global -->
-    {% if registros.has_other_pages %}
-    <nav aria-label="Paginação de Lotes" class="mt-4">
-        <ul class="pagination justify-content-center">
-            {% if registros.has_previous %}
-            <li class="page-item">
-                <a class="page-link" href="?page={{ registros.previous_page_number }}" aria-label="Anterior">
-                    <span aria-hidden="true">&laquo; Anterior</span>
-                </a>
-            </li>
-            {% else %}
-            <li class="page-item disabled">
-                <span class="page-link">&laquo; Anterior</span>
-            </li>
-            {% endif %}
 
-            <li class="page-item disabled">
-                <span class="page-link">Página {{ registros.number }} de {{ registros.paginator.num_pages }}</span>
-            </li>
-
-            {% if registros.has_next %}
-            <li class="page-item">
-                <a class="page-link" href="?page={{ registros.next_page_number }}" aria-label="Próxima">
-                    <span aria-hidden="true">Próxima &raquo;</span>
-                </a>
-            </li>
-            {% else %}
-            <li class="page-item disabled">
-                <span class="page-link">Próxima &raquo;</span>
-            </li>
-            {% endif %}
-        </ul>
-    </nav>
-    {% endif %}
 
 </div>
 
@@ -741,6 +740,16 @@
             });
         }
 
+        // Restaurar aba ativa a partir do param URL ?tab=evap-{id}
+        const urlParams = new URLSearchParams(window.location.search);
+        const tabParam = urlParams.get('tab');
+        if (tabParam) {
+            const tabEl = document.querySelector(`#evapTabs [data-bs-target="#${tabParam}-pane"]`);
+            if (tabEl) {
+                new bootstrap.Tab(tabEl).show();
+            }
+        }
+
         let activeTab = document.querySelector("#evapTabs .nav-link.active");
         if (activeTab && activeTab.id.startsWith("evap-")) {
             let evapId = activeTab.id.split("-")[1];
@@ -751,7 +760,7 @@
             updateAlertsForActiveTab(evapId);
         }
         
-        // Listener para mudanca de abas
+        // Listener para mudanca de abas — atualiza URL e links de paginação
         const tabEls = document.querySelectorAll('button[data-bs-toggle="tab"]');
         tabEls.forEach(tab => {
             tab.addEventListener('shown.bs.tab', function (event) {
@@ -759,6 +768,16 @@
                 if (targetId && targetId.startsWith("#evap-")) {
                     const evapId = targetId.split("-")[1];
                     updateAlertsForActiveTab(evapId);
+                    // Atualiza o parametro ?tab= na URL sem recarregar
+                    const newUrl = new URL(window.location.href);
+                    newUrl.searchParams.set('tab', targetId.replace('#', '').replace('-pane', ''));
+                    window.history.replaceState({}, '', newUrl.toString());
+                    // Atualiza links de paginação desta aba para preservar ?tab=
+                    document.querySelectorAll(`${targetId}-pane .pagination .page-link[href]`).forEach(link => {
+                        const lUrl = new URL(link.href);
+                        lUrl.searchParams.set('tab', targetId.replace('#', '').replace('-pane', ''));
+                        link.href = lUrl.toString();
+                    });
                 }
             });
         });

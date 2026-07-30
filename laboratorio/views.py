@@ -1084,29 +1084,41 @@ def coating_painel(request):
         # Fetch all records
         todos_registros = base_qs.order_by('-lote', 'lado', '-id')
     
-    paginator = Paginator(todos_registros, 10)
-    page_number = request.GET.get('page')
-    registros = paginator.get_page(page_number)
-    
-    current_lote = None
-    group_idx = 0
-    for reg in registros:
-        if current_lote is None:
-            current_lote = reg.lote
-        elif reg.lote != current_lote:
-            current_lote = reg.lote
-            group_idx = 1 - group_idx
-        reg.bg_group = group_idx
-    
-    # Identify machines (Evaporadoras)
+    # --- Paginação por máquina (cada aba tem sua própria página) ---
+    # Identificar máquinas antes para poder paginar por elas
     evaporadoras = Maquina.objects.filter(
         Q(categoria__nome__icontains='evaporadora') | 
         Q(nome__icontains='evaporadora')
     ).distinct().order_by("codigo", "fabricante")
     
     if not evaporadoras.exists():
-        # Fallback to all lab machines if category isn't set
         evaporadoras = Maquina.objects.all().order_by("codigo", "fabricante")
+
+    registros_por_maquina = {}  # maquina.id -> paginated page object
+    for evap in evaporadoras:
+        qs_evap = todos_registros.filter(maquina=evap)
+        page_param = f'page_{evap.id}'
+        page_num = request.GET.get(page_param, 1)
+        pag = Paginator(qs_evap, 10)
+        page_obj = pag.get_page(page_num)
+        # Zebra striping por lote
+        current_lote = None
+        group_idx = 0
+        for reg in page_obj:
+            if current_lote is None:
+                current_lote = reg.lote
+            elif reg.lote != current_lote:
+                current_lote = reg.lote
+                group_idx = 1 - group_idx
+            reg.bg_group = group_idx
+        registros_por_maquina[evap.id] = page_obj
+
+    # registros globais ainda necessários para cálculos de ciclos abaixo
+    # (usamos todos os registros da página ativa de todas as máquinas)
+    registros_all = []
+    for page_obj in registros_por_maquina.values():
+        registros_all.extend(list(page_obj))
+    registros = registros_all  # compatibilidade com o código de ciclos abaixo
 
     # Update form queryset to only show these machines
     registro_form.fields["maquina"].queryset = evaporadoras
@@ -1434,6 +1446,7 @@ def coating_painel(request):
 
     context = {
         "registros": registros,
+        "registros_por_maquina": registros_por_maquina,
         "maquinas_com_registros": maquinas_com_registros,
         "registro_form": registro_form,
         "alertas_ciclos": alertas_ciclos,
