@@ -12,6 +12,7 @@ psycopg2-binary==2.9.11
 celery==5.3.1
 redis==4.6.0
 django-redis==5.4.0
+vercel
 
 # Data processing
 numpy==1.26.4

@@ -19,9 +19,9 @@
     <div class="card shadow-sm border-0 mb-4 bg-white">
         <div class="card-body">
             <form method="get" class="row g-3 align-items-end">
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <label class="form-label fw-bold text-muted small mb-1">Período de Análise</label>
-                    <select name="periodo" class="form-select form-select-sm">
+                    <select name="periodo" class="form-select form-select-sm" onchange="this.form.submit()">
                         <option value="1" {% if periodo == '1' %}selected{% endif %}>Hoje</option>
                         <option value="7" {% if periodo == '7' %}selected{% endif %}>Últimos 7 dias</option>
                         <option value="15" {% if periodo == '15' %}selected{% endif %}>Últimos 15 dias</option>
@@ -30,19 +30,14 @@
                         <option value="ano" {% if periodo == 'ano' %}selected{% endif %}>Este Ano</option>
                     </select>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <label class="form-label fw-bold text-muted small mb-1">Máquina</label>
-                    <select name="maquina" class="form-select form-select-sm">
+                    <select name="maquina" class="form-select form-select-sm" onchange="this.form.submit()">
                         <option value="">Todas as Máquinas</option>
                         {% for maq in maquinas %}
                         <option value="{{ maq.id }}" {% if maquina_selecionada == maq.id %}selected{% endif %}>{{ maq.codigo }}</option>
                         {% endfor %}
                     </select>
-                </div>
-                <div class="col-md-4">
-                    <button type="submit" class="btn btn-primary btn-sm w-100">
-                        <i class="bi bi-filter"></i> Aplicar Filtros
-                    </button>
                 </div>
             </form>
         </div>

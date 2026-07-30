@@ -136,9 +136,15 @@
                             {% can_nav_view user 'auditoria:modelos_list' 'auditoria' as nav_aud_modelos %}
                             {% can_nav_view user 'auditoria:perguntas_list' 'auditoria' as nav_aud_perg %}
                             {% if nav_aud_modelos or nav_aud_perg %}
-                                <li><h6 class="dropdown-header text-muted">CADASTRO</h6></li>
+                                <li>
+                                    <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseCADASTRO" style="cursor: pointer;">
+                                        CADASTRO <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+                                    </h6>
+                                    <ul class="list-unstyled collapse show" id="collapseCADASTRO">
                                 {% if nav_aud_modelos %}<li><a class="dropdown-item" href="{% url 'auditoria:modelos_list' %}">Modelos de Auditoria</a></li>{% endif %}
                                 {% if nav_aud_perg %}<li><a class="dropdown-item" href="{% url 'auditoria:perguntas_list' %}">Perguntas por Modelo</a></li>{% endif %}
+                                    </ul>
+                                </li>
                                 <li><hr class="dropdown-divider"></li>
                             {% endif %}
                         {% endif %}
@@ -147,8 +153,14 @@
                         {% if nav_aud_an %}
                             {% can_nav_view user 'auditoria:dashboard' 'auditoria' as nav_aud_dash %}
                             {% if nav_aud_dash %}
-                                <li><h6 class="dropdown-header text-muted">ANÁLISE</h6></li>
+                                <li>
+                                    <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseANLISE" style="cursor: pointer;">
+                                        ANÁLISE <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+                                    </h6>
+                                    <ul class="list-unstyled collapse show" id="collapseANLISE">
                                 <li><a class="dropdown-item" href="{% url 'auditoria:dashboard' %}">Dashboard Auditoria</a></li>
+                                    </ul>
+                                </li>
                             {% endif %}
                         {% endif %}
                     </ul>
@@ -197,12 +209,18 @@
                             {% can_nav_view user 'laboratorio:categorias_list' 'laboratorio' as nav_lab_categorias %}
                             {% can_nav_view user 'laboratorio:dashboard' 'laboratorio' as nav_lab_dashboard %}
                             {% if nav_lab_nova or nav_lab_modulo or nav_lab_lista or nav_lab_categorias or nav_lab_dashboard %}
-                                <li><h6 class="dropdown-header text-muted">OCORRENCIAS GERAIS</h6></li>
+                                <li>
+                                    <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseOCORRENCIASGERAIS" style="cursor: pointer;">
+                                        OCORRENCIAS GERAIS <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+                                    </h6>
+                                    <ul class="list-unstyled collapse show" id="collapseOCORRENCIASGERAIS">
                                 {% if nav_lab_nova %}<li><a class="dropdown-item fw-bold text-primary" href="{% url 'laboratorio:ocorrencia_create' %}"><i class="bi bi-plus-circle me-1"></i>NOVA OCORRENCIA</a></li>{% endif %}
                                 {% if nav_lab_modulo %}<li><a class="dropdown-item" href="{% url 'laboratorio:modulo' %}"><i class="bi bi-card-text"></i> Modulo de Observacoes Gerais</a></li>{% endif %}
                                 {% if nav_lab_lista %}<li><a class="dropdown-item" href="{% url 'laboratorio:ocorrencias_list' %}"><i class="bi bi-list-ul"></i> Listagem de Ocorrencias</a></li>{% endif %}
                                 {% if nav_lab_categorias %}<li><a class="dropdown-item" href="{% url 'laboratorio:categorias_list' %}"><i class="bi bi-tags"></i> Tabela de Categorias</a></li>{% endif %}
                                 {% if nav_lab_dashboard %}<li><a class="dropdown-item" href="{% url 'laboratorio:dashboard' %}"><i class="bi bi-graph-up"></i> Dashboard</a></li>{% endif %}
+                                    </ul>
+                                </li>
                                 <li><hr class="dropdown-divider"></li>
                             {% endif %}
                         {% endif %}
@@ -213,10 +231,16 @@
                             {% can_nav_view user 'maquinas:maquina_create' 'laboratorio' as nav_maq_nova %}
                             {% can_nav_view user 'maquinas:categorias_list' 'laboratorio' as nav_maq_categorias %}
                             {% if nav_maq_lista or nav_maq_nova or nav_maq_categorias %}
-                                <li><h6 class="dropdown-header text-muted">MAQUINAS</h6></li>
+                                <li>
+                                    <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseMAQUINAS" style="cursor: pointer;">
+                                        MAQUINAS <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+                                    </h6>
+                                    <ul class="list-unstyled collapse show" id="collapseMAQUINAS">
                                 {% if nav_maq_lista %}<li><a class="dropdown-item" href="{% url 'maquinas:maquinas_list' %}"><i class="bi bi-cpu"></i> Cadastro de Maquinas</a></li>{% endif %}
                                 {% if nav_maq_nova %}<li><a class="dropdown-item fw-bold text-primary" href="{% url 'maquinas:maquina_create' %}"><i class="bi bi-plus-circle me-1"></i>Nova Maquina</a></li>{% endif %}
                                 {% if nav_maq_categorias %}<li><a class="dropdown-item" href="{% url 'maquinas:categorias_list' %}"><i class="bi bi-diagram-3"></i> Categorias de Maquinas</a></li>{% endif %}
+                                    </ul>
+                                </li>
                             {% endif %}
                         {% endif %}
                         
@@ -232,12 +256,18 @@
                             
                             {% if nav_coating_painel or nav_coating_dashboard or nav_coating_importacao or nav_coating_tratamentos or nav_coating_turnos or nav_coating_ciclos or nav_coating_equipe %}
                                 <li><hr class="dropdown-divider"></li>
-                                <li><h6 class="dropdown-header text-muted">COATING (ANTI-REFLEXO)</h6></li>
+                                <li>
+                                    <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseCOATINGANTIREFLEXO" style="cursor: pointer;">
+                                        COATING (ANTI-REFLEXO) <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+                                    </h6>
+                                    <ul class="list-unstyled collapse show" id="collapseCOATINGANTIREFLEXO">
                                 {% if nav_coating_painel %}<li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:coating_painel' %}"><i class="bi bi-grid-3x3-gap"></i> Painel Diário</a></li>{% endif %}
                                 {% if nav_coating_dashboard %}<li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:dashboard_coating' %}"><i class="bi bi-bar-chart-line"></i> Dashboard</a></li>{% endif %}
                                 {% if nav_coating_importacao %}<li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:importar_lotes_coating' %}"><i class="bi bi-upload"></i> Importar Lotes</a></li>{% endif %}
                                 
                                 {% if nav_coating_tratamentos or nav_coating_turnos or nav_coating_ciclos or nav_coating_equipe %}
+                                    </ul>
+                                </li>
                                 <li><hr class="dropdown-divider"></li>
                                 {% endif %}
                                 
@@ -261,11 +291,17 @@
                         {% if nav_met_visao %}
                             {% can_nav_view user 'dashboard' 'metrologia' as nav_met_dashboard %}
                             {% if nav_met_dashboard %}
-                                <li><h6 class="dropdown-header text-muted">VISÃO GERAL</h6></li>
+                                <li>
+                                    <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseVISOGERAL" style="cursor: pointer;">
+                                        VISÃO GERAL <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+                                    </h6>
+                                    <ul class="list-unstyled collapse show" id="collapseVISOGERAL">
                                 <li>
                                     <a class="dropdown-item" href="{% url 'dashboard' %}">
                                         <i class="bi bi-speedometer2"></i> Dashboard Metrologia
                                     </a>
+                                </li>
+                                    </ul>
                                 </li>
                                 <li><hr class="dropdown-divider"></li>
                             {% endif %}
@@ -278,11 +314,17 @@
                             {% can_nav_view user 'metrologia:categorias_list' 'metrologia' as nav_met_cat %}
                             {% can_nav_view user 'metrologia:unidades_list' 'metrologia' as nav_met_uni %}
                             {% if nav_met_lista or nav_met_hist or nav_met_cat or nav_met_uni %}
-                                <li><h6 class="dropdown-header text-muted">GESTÃO</h6></li>
+                                <li>
+                                    <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseGESTO" style="cursor: pointer;">
+                                        GESTÃO <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+                                    </h6>
+                                    <ul class="list-unstyled collapse show" id="collapseGESTO">
                                 {% if nav_met_lista %}<li><a class="dropdown-item" href="{% url 'modulo_metrologia' %}">📋 Lista de Instrumentos</a></li>{% endif %}
                                 {% if nav_met_hist %}<li><a class="dropdown-item" href="{% url 'qms:listar_historicos_calibracao' %}"><i class="bi bi-clock-history"></i> Históricos de Calibração</a></li>{% endif %}
                                 {% if nav_met_cat %}<li><a class="dropdown-item" href="{% url 'metrologia:categorias_list' %}"><i class="bi bi-tags"></i> Categorias</a></li>{% endif %}
                                 {% if nav_met_uni %}<li><a class="dropdown-item" href="{% url 'metrologia:unidades_list' %}"><i class="bi bi-rulers"></i> Unidades de Medida</a></li>{% endif %}
+                                    </ul>
+                                </li>
                                 <li><hr class="dropdown-divider"></li>
                             {% endif %}
                         {% endif %}
@@ -291,8 +333,14 @@
                         {% if nav_met_cotacoes %}
                             {% can_nav_view user 'metrologia:solicitacao_list' 'metrologia' as nav_met_sol %}
                             {% if nav_met_sol %}
-                                <li><h6 class="dropdown-header text-muted">COTAÇÕES</h6></li>
+                                <li>
+                                    <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseCOTAES" style="cursor: pointer;">
+                                        COTAÇÕES <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+                                    </h6>
+                                    <ul class="list-unstyled collapse show" id="collapseCOTAES">
                                 <li><a class="dropdown-item" href="{% url 'metrologia:solicitacao_list' %}">📝 Solicitações de Cotação</a></li>
+                                    </ul>
+                                </li>
                                 <li><hr class="dropdown-divider"></li>
                             {% endif %}
                         {% endif %}
@@ -302,9 +350,15 @@
                             {% can_nav_view user 'qms:importar_instrumentos' 'metrologia' as nav_met_imp_inst %}
                             {% can_nav_view user 'qms:importar_historico' 'metrologia' as nav_met_imp_hist %}
                             {% if nav_met_imp_inst or nav_met_imp_hist %}
-                                <li><h6 class="dropdown-header text-muted">IMPORTAÇÃO</h6></li>
+                                <li>
+                                    <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseIMPORTAO" style="cursor: pointer;">
+                                        IMPORTAÇÃO <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+                                    </h6>
+                                    <ul class="list-unstyled collapse show" id="collapseIMPORTAO">
                                 {% if nav_met_imp_inst %}<li><a class="dropdown-item" href="{% url 'qms:importar_instrumentos' %}">📥 Importar Instrumentos</a></li>{% endif %}
                                 {% if nav_met_imp_hist %}<li><a class="dropdown-item" href="{% url 'qms:importar_historico' %}">📜 Importar Histórico</a></li>{% endif %}
+                                    </ul>
+                                </li>
                             {% endif %}
                         {% endif %}
                     </ul>
@@ -325,12 +379,18 @@
                             {% can_nav_view user 'rh:atualizar_liderancas_em_massa' 'rh' as nav_pe_lid %}
                             {% can_nav_view user 'listar_ocorrencias' 'rh' as nav_pe_oco %}
                             {% if nav_pe_colab or nav_pe_novo or nav_pe_ferias or nav_pe_lid or nav_pe_oco %}
-                                <li><h6 class="dropdown-header text-muted">EQUIPE</h6></li>
+                                <li>
+                                    <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseEQUIPE" style="cursor: pointer;">
+                                        EQUIPE <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+                                    </h6>
+                                    <ul class="list-unstyled collapse show" id="collapseEQUIPE">
                                 {% if nav_pe_colab %}<li><a class="dropdown-item" href="{% url 'modulo_rh' %}">👥 Colaboradores</a></li>{% endif %}
                                 {% if nav_pe_novo %}<li><a class="dropdown-item" href="{% url 'rh:criar_colaborador' %}"><i class="bi bi-plus-circle text-success"></i> Novo Colaborador</a></li>{% endif %}
                                 {% if nav_pe_ferias %}<li><a class="dropdown-item" href="{% url 'rh:gestao_ferias' %}">📅 Gestão de Férias</a></li>{% endif %}
                                 {% if nav_pe_lid %}<li><a class="dropdown-item" href="{% url 'rh:atualizar_liderancas_em_massa' %}">🛠️ Lideranças</a></li>{% endif %}
                                 {% if nav_pe_oco %}<li><a class="dropdown-item" href="{% url 'listar_ocorrencias' %}">⚠️ Ocorrências</a></li>{% endif %}
+                                    </ul>
+                                </li>
                                 <li><hr class="dropdown-divider"></li>
                             {% endif %}
                         {% endif %}
@@ -339,8 +399,14 @@
                         {% if nav_pe_horas_extras %}
                             {% can_nav_view user 'rh:planejamento_hora_extra_list' 'rh' as nav_pe_he_list %}
                             {% if nav_pe_he_list %}
-                                <li><h6 class="dropdown-header text-muted">HORAS EXTRAS E ABSENTEÍSMO</h6></li>
+                                <li>
+                                    <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseHORASEXTRASEABSENTESMO" style="cursor: pointer;">
+                                        HORAS EXTRAS E ABSENTEÍSMO <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+                                    </h6>
+                                    <ul class="list-unstyled collapse show" id="collapseHORASEXTRASEABSENTESMO">
                                 <li><a class="dropdown-item" href="{% url 'rh:planejamento_hora_extra_list' %}"><i class="bi bi-clock-history"></i> Planejamento de Horas Extras e Absenteísmo</a></li>
+                                    </ul>
+                                </li>
                                 <li><hr class="dropdown-divider"></li>
                             {% endif %}
                         {% endif %}
@@ -350,9 +416,15 @@
                             {% can_nav_view user 'qms:importar_colaboradores' 'rh' as nav_pe_imp_p %}
                             {% can_nav_view user 'qms:importar_hierarquia' 'rh' as nav_pe_imp_h %}
                             {% if nav_pe_imp_p or nav_pe_imp_h %}
-                                <li><h6 class="dropdown-header text-muted">IMPORTAÇÃO</h6></li>
+                                <li>
+                                    <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseIMPORTAO" style="cursor: pointer;">
+                                        IMPORTAÇÃO <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+                                    </h6>
+                                    <ul class="list-unstyled collapse show" id="collapseIMPORTAO">
                                 {% if nav_pe_imp_p %}<li><a class="dropdown-item" href="{% url 'qms:importar_colaboradores' %}">📥 Importar Pessoas</a></li>{% endif %}
                                 {% if nav_pe_imp_h %}<li><a class="dropdown-item" href="{% url 'qms:importar_hierarquia' %}">🌳 Importar Hierarquia</a></li>{% endif %}
+                                    </ul>
+                                </li>
                             {% endif %}
                         {% endif %}
                     </ul>
@@ -390,9 +462,15 @@
                             {% can_nav_view user 'procedures:dashboard_treinamentos' 'procedures' as nav_tr_dash %}
                             {% can_nav_view user 'procedures:treinamentos_calendario' 'procedures' as nav_tr_cal %}
                             {% if nav_tr_dash or nav_tr_cal %}
-                                <li><h6 class="dropdown-header text-muted">ACOMPANHAMENTO</h6></li>
+                                <li>
+                                    <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseACOMPANHAMENTO" style="cursor: pointer;">
+                                        ACOMPANHAMENTO <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+                                    </h6>
+                                    <ul class="list-unstyled collapse show" id="collapseACOMPANHAMENTO">
                                 {% if nav_tr_dash %}<li><a class="dropdown-item" href="{% url 'procedures:dashboard_treinamentos' %}"><i class="bi bi-graph-up"></i> Dashboard</a></li>{% endif %}
                                 {% if nav_tr_cal %}<li><a class="dropdown-item" href="{% url 'procedures:treinamentos_calendario' %}"><i class="bi bi-calendar3"></i> Calendário</a></li>{% endif %}
+                                    </ul>
+                                </li>
                                 <li><hr class="dropdown-divider"></li>
                             {% endif %}
                         {% endif %}
@@ -404,11 +482,17 @@
                             {% can_nav_view user 'procedures:planejamentos_list' 'procedures' as nav_tr_plan %}
                             {% can_nav_view user 'procedures:avaliacao_eficacia_list' 'procedures' as nav_tr_eficacia %}
                             {% if nav_tr_reg or nav_tr_lp or nav_tr_plan or nav_tr_eficacia %}
-                                <li><h6 class="dropdown-header text-muted">GESTÃO DE TREINAMENTOS</h6></li>
+                                <li>
+                                    <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseGESTODETREINAMENTOS" style="cursor: pointer;">
+                                        GESTÃO DE TREINAMENTOS <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+                                    </h6>
+                                    <ul class="list-unstyled collapse show" id="collapseGESTODETREINAMENTOS">
                                 {% if nav_tr_reg %}<li><a class="dropdown-item" href="{% url 'procedures:treinamentos_list' %}"><i class="bi bi-list-check"></i> Registros de Treinamento</a></li>{% endif %}
                                 {% if nav_tr_lp %}<li><a class="dropdown-item" href="{% url 'procedures:lista_presenca_list' %}"><i class="bi bi-clipboard-check"></i> Listas de Presença</a></li>{% endif %}
                                 {% if nav_tr_plan %}<li><a class="dropdown-item" href="{% url 'procedures:planejamentos_list' %}"><i class="bi bi-calendar-event"></i> Planejamento</a></li>{% endif %}
                                 {% if nav_tr_eficacia %}<li><a class="dropdown-item" href="{% url 'procedures:avaliacao_eficacia_list' %}"><i class="bi bi-shield-check"></i> Avaliação de Eficácia</a></li>{% endif %}
+                                    </ul>
+                                </li>
                                 <li><hr class="dropdown-divider"></li>
                             {% endif %}
                         {% endif %}
@@ -419,10 +503,16 @@
                             {% can_nav_view user 'procedures:disciplinas_list' 'procedures' as nav_tr_disc %}
                             {% can_nav_view user 'procedures:matriz_avaliacoes' 'procedures' as nav_tr_av %}
                             {% if nav_tr_mat or nav_tr_disc or nav_tr_av %}
-                                <li><h6 class="dropdown-header text-muted">MATRIZ DE COMPETÊNCIAS</h6></li>
+                                <li>
+                                    <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseMATRIZDECOMPETNCIAS" style="cursor: pointer;">
+                                        MATRIZ DE COMPETÊNCIAS <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+                                    </h6>
+                                    <ul class="list-unstyled collapse show" id="collapseMATRIZDECOMPETNCIAS">
                                 {% if nav_tr_mat %}<li><a class="dropdown-item" href="{% url 'procedures:matrizes_list' %}"><i class="bi bi-grid-3x3"></i> Matrizes</a></li>{% endif %}
                                 {% if nav_tr_disc %}<li><a class="dropdown-item" href="{% url 'procedures:disciplinas_list' %}"><i class="bi bi-book"></i> Disciplinas</a></li>{% endif %}
                                 {% if nav_tr_av %}<li><a class="dropdown-item" href="{% url 'procedures:matriz_avaliacoes' %}"><i class="bi bi-clipboard-check"></i> Avaliações de Colaboradores</a></li>{% endif %}
+                                    </ul>
+                                </li>
                                 <li><hr class="dropdown-divider"></li>
                             {% endif %}
                         {% endif %}
@@ -431,8 +521,14 @@
                         {% if nav_tr_perfis %}
                             {% can_nav_view user 'procedures:perfis_list' 'procedures' as nav_tr_per %}
                             {% if nav_tr_per %}
-                                <li><h6 class="dropdown-header text-muted">PERFIS DE TREINAMENTO</h6></li>
+                                <li>
+                                    <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapsePERFISDETREINAMENTO" style="cursor: pointer;">
+                                        PERFIS DE TREINAMENTO <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+                                    </h6>
+                                    <ul class="list-unstyled collapse show" id="collapsePERFISDETREINAMENTO">
                                 <li><a class="dropdown-item" href="{% url 'procedures:perfis_list' %}"><i class="bi bi-person-badge"></i> Perfis e Grupos</a></li>
+                                    </ul>
+                                </li>
                                 <li><hr class="dropdown-divider"></li>
                             {% endif %}
                         {% endif %}
@@ -442,9 +538,15 @@
                             {% can_nav_view user 'procedures:procedimentos_list' 'procedures' as nav_tr_proc %}
                             {% can_nav_view user 'procedures:procedimento_matrizes_list' 'procedures' as nav_tr_proc_mat %}
                             {% if nav_tr_proc or nav_tr_proc_mat %}
-                                <li><h6 class="dropdown-header text-muted">PROCEDIMENTOS</h6></li>
+                                <li>
+                                    <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapsePROCEDIMENTOS" style="cursor: pointer;">
+                                        PROCEDIMENTOS <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+                                    </h6>
+                                    <ul class="list-unstyled collapse show" id="collapsePROCEDIMENTOS">
                                 {% if nav_tr_proc %}<li><a class="dropdown-item" href="{% url 'procedures:procedimentos_list' %}"><i class="bi bi-journal-bookmark"></i> Procedimentos</a></li>{% endif %}
                                 {% if nav_tr_proc_mat %}<li><a class="dropdown-item" href="{% url 'procedures:procedimento_matrizes_list' %}"><i class="bi bi-diagram-3"></i> Matrizes e Sub-áreas</a></li>{% endif %}
+                                    </ul>
+                                </li>
                             {% endif %}
                         {% endif %}
                     </ul>
@@ -649,6 +751,17 @@
         applyMondayFirstCalendars();
         const observer = new MutationObserver(() => applyMondayFirstCalendars());
         observer.observe(document.body, { childList: true, subtree: true });
+
+        // Evita que o menu feche ao clicar no cabeçalho do collapse
+        document.querySelectorAll('.dropdown-header[data-bs-toggle="collapse"]').forEach(function(header) {
+            header.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const icon = this.querySelector('.bi-chevron-down');
+                if(icon) {
+                    icon.classList.toggle('rotate-180');
+                }
+            });
+        });
 
         applyIsoDateHelpers();
     });
