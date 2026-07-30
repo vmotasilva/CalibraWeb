@@ -133,16 +133,29 @@ MODULES_PERMISSIONS = {
 # Observação: view_name deve bater com o que o Django resolve (namespace:name).
 NAV_STRUCTURE = [
     {
-        "label": "Quadros de Atividades",
-        "icon": "bi-kanban",
+        "key": "boards",
+        "nome": "Quadros",
+        "cor": "danger",
+        "icone": "bi bi-kanban",
         "module_perm": "core.nav_mod_boards",
         "blocos": [
             {
-                "nome": "Visão Geral",
+                "key": "visao_geral",
+                "nome": "VISÃO GERAL",
                 "perm": "core.nav_boards_visao_geral",
                 "funcoes": [
                     {"nome": "Acessar Dashboard", "view_name": "boards:dashboard", "perm": "core.nav_boards_dashboard"},
                     {"nome": "Detalhe de Quadro", "view_name": "boards:board_detail", "perm": "core.nav_boards_detail"},
+                ]
+            },
+            {
+                "key": "gestao",
+                "nome": "GESTÃO",
+                "perm": "core.nav_boards_gestao",
+                "funcoes": [
+                    {"nome": "Criar Quadro", "view_name": "boards:create_board", "perm": "core.nav_boards_create"},
+                    {"nome": "Editar Quadro", "view_name": "boards:edit_board", "perm": "core.nav_boards_edit"},
+                    {"nome": "Excluir Quadro", "view_name": "boards:delete_board", "perm": "core.nav_boards_delete"},
                 ]
             }
         ]

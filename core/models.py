@@ -61,6 +61,19 @@ class NavigationPermission(models.Model):
             ("nav_mod_auditoria", "NAV: Módulo Auditoria"),
             ("nav_mod_laboratorio", "NAV: Módulo Laboratório"),
             ("nav_mod_usuarios", "NAV: Módulo Usuários"),
+            ("nav_mod_boards", "NAV: Módulo Quadros"),
+
+
+            # --- BOARDS: blocos ---
+            ("nav_boards_visao_geral", "NAV: Quadros / Bloco Visão Geral"),
+            ("nav_boards_gestao", "NAV: Quadros / Bloco Gestão"),
+
+            # --- BOARDS: funcoes ---
+            ("nav_boards_dashboard", "NAV: Quadros / Acessar Dashboard"),
+            ("nav_boards_detail", "NAV: Quadros / Detalhe de Quadro"),
+            ("nav_boards_create", "NAV: Quadros / Criar Quadro"),
+            ("nav_boards_edit", "NAV: Quadros / Editar Quadro"),
+            ("nav_boards_delete", "NAV: Quadros / Excluir Quadro"),
 
             # --- LABORATORIO: blocos ---
             ("nav_laboratorio_ocorrencias_gerais", "NAV: Laboratório / Bloco Ocorrências Gerais"),
