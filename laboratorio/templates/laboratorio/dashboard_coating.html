@@ -135,47 +135,76 @@
                 </div>
                 <div id="collapseGrid" class="collapse show">
                 <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover table-striped align-middle mb-0" style="font-size: 0.85rem;">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Data</th>
-                                    <th>Turno</th>
-                                    <th class="text-center">Lotes</th>
-                                    <th class="text-center">Horas Rodando</th>
-                                    <th class="text-center">Horas Parada</th>
-                                </tr>
-                            </thead>
-                            <tbody id="gridAnaliticoBody">
-                                {% for row in grid_rows %}
-                                <tr class="grid-item-row" style="cursor:pointer; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#f8f9fa'" onmouseout="this.style.backgroundColor=''" onclick="openDetalhesModal(this)" data-detalhes="{{ row.detalhes_json|escape }}">
-                                    <td>{{ row.data }}</td>
-                                    <td>{{ row.turno }}</td>
-                                    <td class="text-center fw-bold">{{ row.lotes }}</td>
-                                    <td class="text-center">{{ row.horas_rodando }}</td>
-                                    <td class="text-center text-danger fw-bold">
-                                        {{ row.horas_parada }}
-                                    </td>
-                                </tr>
-                                {% empty %}
-                                <tr id="emptyGridRow">
-                                    <td colspan="5" class="text-center text-muted py-4">Nenhum registro encontrado no período.</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                    {% regroup grid_rows by maquina as grids_por_maquina %}
+                    <ul class="nav nav-tabs px-3 pt-3 border-bottom-0" id="gridTabs" role="tablist">
+                        {% for m in grids_por_maquina %}
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link {% if forloop.first %}active{% endif %}" id="tab-{{ m.grouper|slugify }}" data-bs-toggle="tab" data-bs-target="#pane-{{ m.grouper|slugify }}" type="button" role="tab" aria-controls="pane-{{ m.grouper|slugify }}" aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">
+                                    {{ m.grouper }}
+                                </button>
+                            </li>
+                        {% empty %}
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="tab-todos" data-bs-toggle="tab" data-bs-target="#pane-todos" type="button" role="tab" aria-selected="true">
+                                    Todos
+                                </button>
+                            </li>
+                        {% endfor %}
+                    </ul>
                     
-                    <!-- Pagination Controls -->
-                    <div class="d-flex justify-content-between align-items-center p-3 border-top bg-light">
-                        <div class="text-muted small" id="gridPageInfo"></div>
-                        <nav>
-                            <ul class="pagination pagination-sm mb-0" id="gridPagination">
-                                <!-- Generated via JS -->
-                            </ul>
-                        </nav>
+                    <div class="tab-content" id="gridTabsContent">
+                        {% for m in grids_por_maquina %}
+                            <div class="tab-pane fade {% if forloop.first %}show active{% endif %}" id="pane-{{ m.grouper|slugify }}" role="tabpanel" aria-labelledby="tab-{{ m.grouper|slugify }}">
+                                <div class="table-responsive">
+                                    <table class="table table-hover table-striped align-middle mb-0" style="font-size: 0.85rem;">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Data</th>
+                                                <th>Turno</th>
+                                                <th class="text-center">Lotes</th>
+                                                <th class="text-center">Horas Rodando</th>
+                                                <th class="text-center">Horas Parada</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for row in m.list %}
+                                            <tr class="grid-item-row" style="cursor:pointer; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#f8f9fa'" onmouseout="this.style.backgroundColor=''" onclick="openDetalhesModal(this)" data-detalhes="{{ row.detalhes_json|escape }}">
+                                                <td>{{ row.data }}</td>
+                                                <td>{{ row.turno }}</td>
+                                                <td class="text-center fw-bold">{{ row.lotes }}</td>
+                                                <td class="text-center">{{ row.horas_rodando }}</td>
+                                                <td class="text-center text-danger fw-bold">
+                                                    {{ row.horas_parada }}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        {% empty %}
+                            <div class="tab-pane fade show active" id="pane-todos" role="tabpanel">
+                                <div class="table-responsive">
+                                    <table class="table table-hover table-striped align-middle mb-0" style="font-size: 0.85rem;">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Data</th>
+                                                <th>Turno</th>
+                                                <th class="text-center">Lotes</th>
+                                                <th class="text-center">Horas Rodando</th>
+                                                <th class="text-center">Horas Parada</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr id="emptyGridRow">
+                                                <td colspan="5" class="text-center text-muted py-4">Nenhum registro encontrado no período.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        {% endfor %}
                     </div>
-
                 </div>
                 </div>
             </div>
