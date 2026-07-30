@@ -938,7 +938,7 @@ def coating_painel(request):
                 
                 # Descobrir a regra de turno baseado na hora_entrada
                 hora_entrada = cleaned_data['hora_entrada']
-                hora_time = hora_entrada.time() if hora_entrada else None
+                hora_time = timezone.localtime(hora_entrada).time() if hora_entrada else None
                 regras = RegraTurnoCoating.objects.filter(ativo=True)
                 
                 regra_encontrada = None
@@ -1507,6 +1507,7 @@ def api_editar_linha_coating(request):
         if 'observacao' in data:
             registro.observacao = data['observacao']
             
+        _atualizar_turno_coating(registro)
         registro.save()
         return JsonResponse({'success': True})
     except Exception as e:
@@ -1584,6 +1585,7 @@ def atualizar_celula_coating(request):
         else:
             return JsonResponse({'success': False, 'error': 'Campo não permitido para edição rápida.'}, status=400)
             
+        _atualizar_turno_coating(registro)
         registro.save()
         return JsonResponse({'success': True})
     except Exception as e:
@@ -2119,11 +2121,12 @@ def dashboard_coating(request):
     maquinas = Maquina.objects.filter(id__in=maquinas_ids)
     
     # KPI 1: Total Lotes
-    lotes_unicos = qs_registros.values('lote', 'turno_coating__data', 'maquina_id').order_by().distinct()
-    total_lotes = lotes_unicos.count()
+    total_lotes = qs_registros.count() * 0.5
+    if total_lotes.is_integer():
+        total_lotes = int(total_lotes)
     
     # KPI 2: Maquina mais produtiva
-    maquina_counts = lotes_unicos.values('maquina__codigo').annotate(total=Count('lote')).order_by('-total')
+    maquina_counts = qs_registros.values('maquina__codigo').annotate(total=Count('id')).order_by('-total')
     maq_mais_produtiva = maquina_counts.first()['maquina__codigo'] if maquina_counts else 'N/A'
     
     # KPI 3 e 4: Tempos Médios
@@ -2206,18 +2209,18 @@ def dashboard_coating(request):
         
         data_dia = []
         for d in dias:
-            c = qs_registros.filter(tratamento__nome=trat_nome, turno_coating__data=d).values('lote').order_by().distinct().count()
-            data_dia.append(c)
+            c = qs_registros.filter(tratamento__nome=trat_nome, turno_coating__data=d).count() * 0.5
+            data_dia.append(c if not c.is_integer() else int(c))
             
         data_sem = []
         for w_lbl, w_dias in weeks_dict.items():
-            c = qs_registros.filter(tratamento__nome=trat_nome, turno_coating__data__in=w_dias).values('lote').order_by().distinct().count()
-            data_sem.append(c)
+            c = qs_registros.filter(tratamento__nome=trat_nome, turno_coating__data__in=w_dias).count() * 0.5
+            data_sem.append(c if not c.is_integer() else int(c))
             
         data_mes = []
         for m_lbl, m_dias in months_dict.items():
-            c = qs_registros.filter(tratamento__nome=trat_nome, turno_coating__data__in=m_dias).values('lote').order_by().distinct().count()
-            data_mes.append(c)
+            c = qs_registros.filter(tratamento__nome=trat_nome, turno_coating__data__in=m_dias).count() * 0.5
+            data_mes.append(c if not c.is_integer() else int(c))
             
         base_dataset = {
             'label': trat_label,
@@ -2233,7 +2236,7 @@ def dashboard_coating(request):
     # Manutenções (Doughnut - Realizados vs Pendentes no Período)
     ciclos_ativos = CicloManutencaoCoating.objects.all()
     
-    total_lotes_periodo = qs_registros.values('lote').distinct().count()
+    total_lotes_periodo = qs_registros.count() * 0.5
     
     realizados_total = qs_manutencoes.count()
     esperado_total = 0
@@ -2379,11 +2382,13 @@ def dashboard_coating(request):
 
         detalhes_json = json.dumps(detalhes_lotes)
 
+        grid_lotes = len(lista_regs) * 0.5
+        
         grid_rows.append({
             'data': data.strftime('%d/%m/%Y'),
             'maquina': maquina,
             'turno': turno,
-            'lotes': len(lotes_set),
+            'lotes': grid_lotes if not grid_lotes.is_integer() else int(grid_lotes),
             'horas_rodando': format_timedelta(timedelta(seconds=rodando_sec_total)),
             'horas_parada': format_timedelta(timedelta(seconds=parada_sec_total)),
             'detalhes_json': detalhes_json
