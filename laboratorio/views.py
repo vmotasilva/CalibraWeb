@@ -55,7 +55,21 @@ def _atualizar_turno_coating(registro):
     if not registro.hora_entrada:
         return
         
-    hora_time = timezone.localtime(registro.hora_entrada).time()
+    hora_entrada = registro.hora_entrada
+    if isinstance(hora_entrada, str):
+        from django.utils.dateparse import parse_datetime
+        parsed = parse_datetime(hora_entrada)
+        if parsed:
+            if timezone.is_naive(parsed):
+                parsed = timezone.make_aware(parsed)
+            hora_entrada = parsed
+            registro.hora_entrada = parsed
+            
+    from datetime import datetime
+    if not isinstance(hora_entrada, datetime):
+        return
+        
+    hora_time = timezone.localtime(hora_entrada).time()
     regras = RegraTurnoCoating.objects.filter(ativo=True)
     
     regra_encontrada = None
