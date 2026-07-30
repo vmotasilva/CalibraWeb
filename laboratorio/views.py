@@ -2528,7 +2528,8 @@ def dashboard_coating(request):
                 'rodando': format_timedelta(timedelta(seconds=reg.tempo_rodando_sec)),
                 'parado': format_timedelta(timedelta(seconds=reg.tempo_parado_sec)),
                 'motivo_gap': motivo_gap if motivo_gap else '-',
-                'manutencao': manutencao_str
+                'manutencao': manutencao_str,
+                'observacao': reg.observacao if reg.observacao else '-'
             })
 
         lotes_processed = set()

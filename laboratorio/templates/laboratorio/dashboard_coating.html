@@ -343,6 +343,7 @@
                         <th class="fw-semibold">Rodando</th>
                         <th class="fw-semibold">Parado</th>
                         <th class="fw-semibold">Manutenção</th>
+                        <th class="fw-semibold">Observações</th>
                         <th class="fw-semibold text-start">Referência (Gap)</th>
                     </tr>
                 </thead>
@@ -403,6 +404,10 @@ function openDetalhesModal(trElement) {
         tdMotivo.className = 'text-start small text-muted';
         tdMotivo.textContent = item.motivo_gap;
         
+        var tdObservacao = document.createElement('td');
+        tdObservacao.className = 'text-start small text-muted';
+        tdObservacao.textContent = item.observacao;
+        
         tr.appendChild(tdLote);
         tr.appendChild(tdLado);
         tr.appendChild(tdEntrada);
@@ -410,6 +415,7 @@ function openDetalhesModal(trElement) {
         tr.appendChild(tdRodando);
         tr.appendChild(tdParado);
         tr.appendChild(tdManutencao);
+        tr.appendChild(tdObservacao);
         tr.appendChild(tdMotivo);
         
         tbody.appendChild(tr);
