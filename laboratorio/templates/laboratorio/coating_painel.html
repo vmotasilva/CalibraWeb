@@ -979,7 +979,8 @@
         document.getElementById('editLoteId').value = id;
         document.getElementById('editLoteNum').value = lote;
         
-        const obs = tr ? (tr.getAttribute('data-observacao') || '') : '';
+        let obs = tr ? (tr.getAttribute('data-observacao') || '') : '';
+        if (obs === 'None') obs = '';
         document.getElementById('editObservacao').value = obs;
         
         const formGroupMaquina = document.querySelector('#wrapperMaquinaEditLote select');

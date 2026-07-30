@@ -1563,7 +1563,10 @@ def api_editar_linha_coating(request):
             val = data['montagem_id']
             registro.montagem_id = val if val else None
         if 'observacao' in data:
-            registro.observacao = data['observacao']
+            val = data['observacao']
+            if val is None or str(val).strip() == 'None':
+                val = ''
+            registro.observacao = val
             
         _atualizar_turno_coating(registro)
         registro.save()
@@ -2521,6 +2524,8 @@ def dashboard_coating(request):
             manutencao_str = ", ".join([m.ciclo.nome for m in manuts]) if manuts else "Não"
             manutencao_count = len(manuts)
             
+            obs_text = reg.observacao if reg.observacao and str(reg.observacao).strip() != 'None' else ''
+            
             detalhes_lotes.append({
                 'lote': reg.lote,
                 'lado': reg.lado,
@@ -2531,7 +2536,7 @@ def dashboard_coating(request):
                 'motivo_gap': motivo_gap if motivo_gap else '-',
                 'manutencao': manutencao_str,
                 'manutencao_count': manutencao_count,
-                'observacao': reg.observacao if reg.observacao else '-'
+                'observacao': obs_text
             })
 
         lotes_processed = set()

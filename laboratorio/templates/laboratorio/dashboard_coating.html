@@ -405,8 +405,12 @@ function openDetalhesModal(trElement) {
         tdMotivo.textContent = item.motivo_gap;
         
         var tdObservacao = document.createElement('td');
-        tdObservacao.className = 'text-start small text-muted';
-        tdObservacao.textContent = item.observacao;
+        if (item.observacao) {
+            tdObservacao.innerHTML = '<span class="text-primary" style="cursor: help;" data-bs-toggle="tooltip" data-bs-placement="top" title="' + item.observacao + '"><i class="bi bi-chat-text-fill fs-5"></i></span>';
+        } else {
+            tdObservacao.className = 'text-muted small';
+            tdObservacao.textContent = '-';
+        }
         
         tr.appendChild(tdLote);
         tr.appendChild(tdLado);
