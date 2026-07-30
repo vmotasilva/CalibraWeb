@@ -195,7 +195,6 @@
                             </thead>
                             <tbody>
                                 {% with reg_page=registros_por_maquina|get_item:evap.id %}
-                                {% if reg_page %}
                                     {% for reg in reg_page %}
                                         <tr class="align-middle {% if reg.bg_group == 1 %}bg-lote-group{% else %}bg-white{% endif %}" style="cursor:pointer;" onclick="abrirModalEditarLote(this, '{{ reg.id }}', '{{ reg.lote }}', '{{ reg.lado }}', '{{ reg.maquina_id }}', '{{ reg.tratamento_id }}', '{{ reg.hora_entrada|date:'Y-m-d\TH:i'|default:'' }}', '{{ reg.hora_saida|date:'Y-m-d\TH:i'|default:'' }}', '{{ reg.preparacao_id|default:'' }}', '{{ reg.montagem_id|default:'' }}')" data-observacao="{{ reg.observacao|escapejs|default:'' }}">
                                             <td>{{ reg.turno_coating.data|date:"d/m/Y" }}</td>
