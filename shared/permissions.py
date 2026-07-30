@@ -155,7 +155,7 @@ NAV_STRUCTURE = [
                 "funcoes": [
                     {"nome": "Criar Quadro", "view_name": "boards:create_board", "perm": "core.nav_boards_create"},
                     {"nome": "Editar Quadro", "view_name": "boards:edit_board", "perm": "core.nav_boards_edit"},
-                    {"nome": "Excluir Quadro", "view_name": "boards:delete_board", "perm": "core.nav_boards_delete"},
+                    {"nome": "Arquivar Quadro", "view_name": ["boards:archive_board", "boards:unarchive_board"], "perm": "core.nav_boards_archive"},
                 ]
             }
         ]

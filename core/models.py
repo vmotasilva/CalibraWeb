@@ -73,7 +73,7 @@ class NavigationPermission(models.Model):
             ("nav_boards_detail", "NAV: Quadros / Detalhe de Quadro"),
             ("nav_boards_create", "NAV: Quadros / Criar Quadro"),
             ("nav_boards_edit", "NAV: Quadros / Editar Quadro"),
-            ("nav_boards_delete", "NAV: Quadros / Excluir Quadro"),
+            ("nav_boards_archive", "NAV: Quadros / Arquivar Quadro"),
 
             # --- LABORATORIO: blocos ---
             ("nav_laboratorio_ocorrencias_gerais", "NAV: Laboratório / Bloco Ocorrências Gerais"),
