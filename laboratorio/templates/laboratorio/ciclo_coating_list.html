@@ -7,6 +7,12 @@
 <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
 
 {% block content %}
+<style>
+    .collapse-icon { transition: transform 0.3s ease; }
+    [aria-expanded="false"] > h5 > .collapse-icon, 
+    [aria-expanded="false"] > .collapse-icon,
+    [aria-expanded="false"] .collapse-icon { transform: rotate(-90deg); }
+</style>
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -17,9 +23,12 @@
 
     {% for maq in maquinas %}
     <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
-            <h5 class="mb-0 fw-bold"><i class="bi bi-cpu text-secondary me-2"></i>{{ maq.codigo }} ({{ maq.fabricante }})</h5>
-            <div>
+        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3" data-bs-toggle="collapse" href="#collapse-maq-{{ maq.id }}" role="button" aria-expanded="true" aria-controls="collapse-maq-{{ maq.id }}" style="cursor: pointer;">
+            <h5 class="mb-0 fw-bold">
+                <i class="bi bi-cpu text-secondary me-2"></i>{{ maq.codigo }}{% if maq.fabricante %} ({{ maq.fabricante }}){% endif %}
+                <i class="bi bi-chevron-down ms-2 fs-6 text-muted collapse-icon"></i>
+            </h5>
+            <div onclick="event.stopPropagation();">
                 <button type="button" class="btn btn-sm btn-outline-secondary me-2" onclick="abrirModalCopiar('{{ maq.id }}', '{{ maq.codigo }}')">
                     <i class="bi bi-files"></i> Copiar
                 </button>
@@ -28,6 +37,7 @@
                 </button>
             </div>
         </div>
+        <div class="collapse show" id="collapse-maq-{{ maq.id }}">
         <div class="card-body bg-light">
             
             {% if not maq.ciclos_coating.all %}
@@ -38,7 +48,10 @@
             </ul>
             {% else %}
             
-            <h6 class="fw-bold text-muted mt-3 mb-2 ps-2"><i class="bi bi-stars"></i> Limpezas</h6>
+            <h6 class="fw-bold text-muted mt-3 mb-2 ps-2" data-bs-toggle="collapse" href="#collapse-limpeza-{{ maq.id }}" role="button" aria-expanded="true" aria-controls="collapse-limpeza-{{ maq.id }}" style="cursor: pointer;">
+                <i class="bi bi-stars"></i> Limpezas <i class="bi bi-chevron-down ms-1 fs-6 collapse-icon"></i>
+            </h6>
+            <div class="collapse show" id="collapse-limpeza-{{ maq.id }}">
             <ul class="list-group list-group-flush sortable-ciclos mb-3" data-maquina-id="{{ maq.id }}" data-tipo="LIMPEZA">
                 {% for ciclo in maq.ciclos_coating.all %}
                 {% if ciclo.tipo == 'LIMPEZA' %}
@@ -86,8 +99,12 @@
                 {% endif %}
                 {% endfor %}
             </ul>
+            </div>
 
-            <h6 class="fw-bold text-muted mt-3 mb-2 ps-2"><i class="bi bi-tools"></i> Trocas</h6>
+            <h6 class="fw-bold text-muted mt-3 mb-2 ps-2" data-bs-toggle="collapse" href="#collapse-troca-{{ maq.id }}" role="button" aria-expanded="true" aria-controls="collapse-troca-{{ maq.id }}" style="cursor: pointer;">
+                <i class="bi bi-tools"></i> Trocas <i class="bi bi-chevron-down ms-1 fs-6 collapse-icon"></i>
+            </h6>
+            <div class="collapse show" id="collapse-troca-{{ maq.id }}">
             <ul class="list-group list-group-flush sortable-ciclos mb-3" data-maquina-id="{{ maq.id }}" data-tipo="TROCA">
                 {% for ciclo in maq.ciclos_coating.all %}
                 {% if ciclo.tipo == 'TROCA' %}
@@ -135,8 +152,12 @@
                 {% endif %}
                 {% endfor %}
             </ul>
+            </div>
 
-            <h6 class="fw-bold text-muted mt-3 mb-2 ps-2"><i class="bi bi-speedometer2"></i> Verificações</h6>
+            <h6 class="fw-bold text-muted mt-3 mb-2 ps-2" data-bs-toggle="collapse" href="#collapse-verificacao-{{ maq.id }}" role="button" aria-expanded="true" aria-controls="collapse-verificacao-{{ maq.id }}" style="cursor: pointer;">
+                <i class="bi bi-speedometer2"></i> Verificações <i class="bi bi-chevron-down ms-1 fs-6 collapse-icon"></i>
+            </h6>
+            <div class="collapse show" id="collapse-verificacao-{{ maq.id }}">
             <ul class="list-group list-group-flush sortable-ciclos mb-3" data-maquina-id="{{ maq.id }}" data-tipo="VERIFICACAO">
                 {% for ciclo in maq.ciclos_coating.all %}
                 {% if ciclo.tipo == 'VERIFICACAO' %}
@@ -189,9 +210,10 @@
                 {% endif %}
                 {% endfor %}
             </ul>
+            </div>
             {% endif %}
 
-
+        </div>
         </div>
     </div>
     {% empty %}
