@@ -2431,6 +2431,8 @@ def dashboard_coating(request):
 
     grid_raw = qs_registros.filter(hora_entrada__isnull=False, hora_saida__isnull=False).select_related(
         'turno_coating', 'maquina', 'turno_coating__regra'
+    ).prefetch_related(
+        'manutencoes', 'manutencoes__ciclo'
     ).order_by('turno_coating__data', 'maquina__codigo', 'turno_coating__regra__nome', 'hora_entrada', 'id')
 
     # Agrupar registros por turno/maquina para aplicar a matematica precisa
@@ -2515,6 +2517,9 @@ def dashboard_coating(request):
             
             lotes_set.add(reg.lote)
             
+            manuts = list(reg.manutencoes.all())
+            manutencao_str = ", ".join([m.ciclo.nome for m in manuts]) if manuts else "Não"
+            
             detalhes_lotes.append({
                 'lote': reg.lote,
                 'lado': reg.lado,
@@ -2522,7 +2527,8 @@ def dashboard_coating(request):
                 'saida': reg.hora_saida_dt.strftime('%H:%M') if reg.hora_saida_dt else '-',
                 'rodando': format_timedelta(timedelta(seconds=reg.tempo_rodando_sec)),
                 'parado': format_timedelta(timedelta(seconds=reg.tempo_parado_sec)),
-                'motivo_gap': motivo_gap if motivo_gap else '-'
+                'motivo_gap': motivo_gap if motivo_gap else '-',
+                'manutencao': manutencao_str
             })
 
         lotes_processed = set()
