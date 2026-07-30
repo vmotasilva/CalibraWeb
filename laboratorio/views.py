@@ -2519,6 +2519,7 @@ def dashboard_coating(request):
             
             manuts = list(reg.manutencoes.all())
             manutencao_str = ", ".join([m.ciclo.nome for m in manuts]) if manuts else "Não"
+            manutencao_count = len(manuts)
             
             detalhes_lotes.append({
                 'lote': reg.lote,
@@ -2529,6 +2530,7 @@ def dashboard_coating(request):
                 'parado': format_timedelta(timedelta(seconds=reg.tempo_parado_sec)),
                 'motivo_gap': motivo_gap if motivo_gap else '-',
                 'manutencao': manutencao_str,
+                'manutencao_count': manutencao_count,
                 'observacao': reg.observacao if reg.observacao else '-'
             })
 

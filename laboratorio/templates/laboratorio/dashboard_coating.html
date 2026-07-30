@@ -394,7 +394,7 @@ function openDetalhesModal(trElement) {
         
         var tdManutencao = document.createElement('td');
         if (item.manutencao !== 'Não') {
-            tdManutencao.innerHTML = '<span class="badge bg-warning text-dark"><i class="bi bi-tools me-1"></i>' + item.manutencao + '</span>';
+            tdManutencao.innerHTML = '<span class="badge bg-warning text-dark" style="cursor: help;" data-bs-toggle="tooltip" data-bs-placement="top" title="' + item.manutencao + '"><i class="bi bi-tools me-1"></i>' + item.manutencao_count + '</span>';
         } else {
             tdManutencao.className = 'text-muted small';
             tdManutencao.textContent = '-';
@@ -419,6 +419,12 @@ function openDetalhesModal(trElement) {
         tr.appendChild(tdMotivo);
         
         tbody.appendChild(tr);
+    });
+    
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('#modalDetalhesTbody [data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
     });
     
     var modal = new bootstrap.Modal(document.getElementById('modalDetalhesGrid'));
