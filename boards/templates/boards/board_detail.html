@@ -1117,11 +1117,25 @@
                         </div>
                     </div>
                     <div class="row">
-                        <div class="col-md-6 mb-0">
+                        <div class="col-md-12 mb-0">
                             <label class="form-label fw-bold">Data de Entrega</label>
                             {{ card_form.data_entrega }}
                         </div>
-                        <div class="col-md-6 mb-0">
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-md-12 mb-0">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="addCardCheckRecorrencia" onchange="toggleAddCardRecurrence(this.checked)">
+                                <label class="form-check-label fw-bold text-dark" for="addCardCheckRecorrencia">
+                                    <i class="bi bi-arrow-repeat me-1 text-primary"></i>Ativar modo de recorrência
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3" id="addCardRecurrenceFields" style="display: none;">
+                        <div class="col-md-12 mb-0">
                             <label class="form-label fw-bold">Periodicidade</label>
                             {{ card_form.periodicidade }}
                         </div>
@@ -1180,6 +1194,19 @@
         </div>
     </div>
 </div>
+
+<script>
+    function toggleAddCardRecurrence(checked) {
+        const fields = document.getElementById('addCardRecurrenceFields');
+        const periodicidadeSelect = fields ? fields.querySelector('select') : null;
+        if (fields) {
+            fields.style.display = checked ? 'flex' : 'none';
+        }
+        if (!checked && periodicidadeSelect) {
+            periodicidadeSelect.value = 'AVULSA';
+        }
+    }
+</script>
 
 <!-- Modal Detalhado do Cartão -->
 <div class="modal fade" id="cardDetailModal" tabindex="-1" aria-hidden="true">
@@ -5006,10 +5033,59 @@
                 
                 dayEvents.forEach(evt => {
                     const evtItem = document.createElement('div');
-                    evtItem.className = 'custom-calendar-event-item';
+                    evtItem.className = 'custom-calendar-event-item d-flex align-items-center justify-content-between gap-1';
                     evtItem.style.backgroundColor = evt.backgroundColor || '#0d6efd';
                     evtItem.style.borderColor = evt.borderColor || '#0d6efd';
-                    evtItem.textContent = evt.title;
+                    
+                    const titleSpan = document.createElement('span');
+                    titleSpan.style.whiteSpace = 'nowrap';
+                    titleSpan.style.overflow = 'hidden';
+                    titleSpan.style.textOverflow = 'ellipsis';
+                    titleSpan.textContent = evt.title;
+                    evtItem.appendChild(titleSpan);
+                    
+                    if (evt.extendedProps && evt.extendedProps.responsaveis) {
+                        const responsaveisArr = evt.extendedProps.responsaveis.split(';').filter(r => r.trim() !== '');
+                        if (responsaveisArr.length > 0) {
+                            const respContainer = document.createElement('div');
+                            respContainer.className = 'd-flex align-items-center flex-shrink-0';
+                            respContainer.title = "Responsáveis: " + responsaveisArr.join(', ');
+                            
+                            if (responsaveisArr.length === 1) {
+                                const nomeParts = responsaveisArr[0].trim().split(' ');
+                                let initials = nomeParts[0].charAt(0);
+                                if (nomeParts.length > 1) initials += nomeParts[nomeParts.length - 1].charAt(0);
+                                
+                                const initialCircle = document.createElement('div');
+                                initialCircle.style.width = '16px';
+                                initialCircle.style.height = '16px';
+                                initialCircle.style.borderRadius = '50%';
+                                initialCircle.style.backgroundColor = 'rgba(255,255,255,0.3)';
+                                initialCircle.style.color = 'white';
+                                initialCircle.style.fontSize = '0.6rem';
+                                initialCircle.style.display = 'flex';
+                                initialCircle.style.alignItems = 'center';
+                                initialCircle.style.justifyContent = 'center';
+                                initialCircle.style.fontWeight = 'bold';
+                                initialCircle.textContent = initials.toUpperCase();
+                                respContainer.appendChild(initialCircle);
+                            } else {
+                                const respIcon = document.createElement('i');
+                                respIcon.className = 'bi bi-people-fill';
+                                respIcon.style.fontSize = '0.75rem';
+                                respContainer.appendChild(respIcon);
+                                
+                                const countSpan = document.createElement('span');
+                                countSpan.style.fontSize = '0.65rem';
+                                countSpan.style.marginLeft = '2px';
+                                countSpan.style.fontWeight = 'bold';
+                                countSpan.textContent = responsaveisArr.length;
+                                respContainer.appendChild(countSpan);
+                            }
+                            evtItem.appendChild(respContainer);
+                        }
+                    }
+                    
                     evtItem.title = `${evt.title} (${evt.extendedProps?.coluna || ''})`;
                     
                     evtItem.addEventListener('click', (e) => {

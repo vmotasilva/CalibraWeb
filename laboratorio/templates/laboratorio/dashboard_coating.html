@@ -130,7 +130,7 @@
                 </div>
                 <div id="collapseGrid" class="collapse show">
                 <div class="card-body p-0">
-                    {% regroup grid_rows by maquina as grids_por_maquina %}
+                    {% regroup grid_rows|dictsort:"maquina" by maquina as grids_por_maquina %}
                     <ul class="nav nav-tabs px-3 pt-3 border-bottom-0" id="gridTabs" role="tablist">
                         {% for m in grids_por_maquina %}
                             <li class="nav-item" role="presentation">
