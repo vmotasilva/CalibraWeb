@@ -132,8 +132,9 @@ def dashboard_view(request):
 
 
     if request.method == 'POST':
-        if not can_edit_board(board, colab, request.user):
-            return JsonResponse({'success': False, 'error': 'Acesso negado. Apenas membros.'}, status=403)
+        if not request.user.has_perm('core.nav_boards_create') and not request.user.is_superuser:
+            messages.error(request, 'Acesso Negado. Você não tem permissão para criar Quadros.')
+            return redirect('boards:dashboard')
 
         form = BoardForm(request.POST)
         if form.is_valid():
