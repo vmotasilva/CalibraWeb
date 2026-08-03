@@ -929,6 +929,38 @@
         if (obsField) obsField.value = '';
         
         new bootstrap.Modal(document.getElementById('modalManutencao')).show();
+        
+        // Buscar dados detalhados para preencher valor aferido e checklists via AJAX
+        fetch(`/laboratorio/coating/registro/obter-manutencoes/?id=${registroId}&tipo=${tipoFiltro || ''}`)
+            .then(response => response.json())
+            .then(data => {
+                if(data.success) {
+                    const manutencoes = data.manutencoes;
+                    for (const cid in manutencoes) {
+                        const m = manutencoes[cid];
+                        const check = document.getElementById(`cicloCheck${cid}`);
+                        if (check && !check.checked) {
+                            check.checked = true;
+                            toggleChecklist(cid, true);
+                        }
+                        
+                        const valorInput = document.getElementById(`valor_${cid}`);
+                        if (valorInput && m.valor_aferido !== undefined && m.valor_aferido !== null) {
+                            valorInput.value = m.valor_aferido;
+                        }
+                        
+                        if (m.checklists) {
+                            m.checklists.forEach(itemId => {
+                                const itemCheck = document.getElementById(`check_${cid}_${itemId}`);
+                                if (itemCheck) {
+                                    itemCheck.checked = true;
+                                }
+                            });
+                        }
+                    }
+                }
+            })
+            .catch(err => console.error("Erro ao buscar dados das manutenções:", err));
     }
     
     function toggleChecklist(cicloId, isChecked) {

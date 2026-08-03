@@ -1999,6 +1999,8 @@ def registrar_manutencao_coating(request):
                 ciclo = get_object_or_404(CicloManutencaoCoating, pk=cid)
                 
                 valor_aferido_str = request.POST.get(f'valor_aferido_{ciclo.id}')
+                if valor_aferido_str:
+                    valor_aferido_str = valor_aferido_str.replace(',', '.')
                 try:
                     valor_aferido = float(valor_aferido_str) if valor_aferido_str else None
                 except ValueError:
@@ -2105,6 +2107,41 @@ def api_recalcular_todos_turnos(request):
             'sem_mudanca': sem_mudanca,
             'sem_regra': sem_regra,
         })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+@login_required
+def obter_manutencoes_lote(request):
+    try:
+        registro_id = request.GET.get('id')
+        tipo_filtro = request.GET.get('tipo', '')
+        registro = get_object_or_404(RegistroCoating, pk=registro_id)
+        
+        registros = RegistroCoating.objects.filter(
+            turno_coating=registro.turno_coating,
+            maquina=registro.maquina,
+            lote=registro.lote
+        )
+        
+        qs = ManutencaoRealizadaCoating.objects.filter(registro__in=registros).select_related('ciclo')
+        if tipo_filtro:
+            qs = qs.filter(ciclo__tipo=tipo_filtro)
+            
+        manutencoes = qs.prefetch_related('respostas_checklist')
+        
+        dados = {}
+        for m in manutencoes:
+            cid = m.ciclo_id
+            if cid not in dados:
+                dados[cid] = {
+                    'valor_aferido': m.valor_aferido if m.valor_aferido is not None else '',
+                    'checklists': []
+                }
+            for resp in m.respostas_checklist.all():
+                if resp.feito:
+                    dados[cid]['checklists'].append(resp.item_id)
+                    
+        return JsonResponse({'success': True, 'manutencoes': dados})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
