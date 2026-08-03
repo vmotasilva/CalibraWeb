@@ -90,7 +90,7 @@ def calcular_periodos_pendentes(modelo, limit=24):
     
     todos_periodos = iter_periodos(modelo, start_date, hoje)
     
-    registros = RegistroAuditoria.objects.filter(modelo=modelo).values_list('data_auditoria', flat=True)
+    registros = RegistroAuditoria.objects.filter(modelo=modelo).values_list('periodo_inicio', 'periodo_fim')
     justificativas = JustificativaAuditoria.objects.filter(modelo=modelo).values_list('periodo_inicio', 'periodo_fim')
     just_set = set(justificativas)
     
@@ -100,7 +100,10 @@ def calcular_periodos_pendentes(modelo, limit=24):
         if (p_inicio, p_fim) in just_set:
             continue
             
-        tem_registro = any(p_inicio <= d <= p_fim for d in registros if d)
+        tem_registro = any(
+            r_inicio and r_fim and (r_inicio <= p_fim and r_fim >= p_inicio)
+            for r_inicio, r_fim in registros
+        )
         if tem_registro:
             continue
             
