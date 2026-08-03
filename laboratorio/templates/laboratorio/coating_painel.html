@@ -888,10 +888,17 @@
                 if (item.ciclo.tipo === 'VERIFICACAO') {
                     const disabledAttr = shouldBeChecked ? '' : 'disabled';
                     const requiredAttr = shouldBeChecked ? 'required' : '';
+                    let limitsHtml = '';
+                    if (item.ciclo.valor_minimo !== null || item.ciclo.valor_maximo !== null) {
+                        const minStr = item.ciclo.valor_minimo !== null ? `Mín: ${item.ciclo.valor_minimo}` : '';
+                        const maxStr = item.ciclo.valor_maximo !== null ? `Máx: ${item.ciclo.valor_maximo}` : '';
+                        const sepStr = (item.ciclo.valor_minimo !== null && item.ciclo.valor_maximo !== null) ? ' - ' : '';
+                        limitsHtml = `<span class="ms-2 text-muted" style="font-size: 0.75rem;">(${minStr}${sepStr}${maxStr})</span>`;
+                    }
                     verificacaoHtml = `
                         <div class="mt-2 ps-4 verificacao-container ${dNoneClass}" id="verificacaoContainer${item.ciclo.id}">
                             <div class="card card-body bg-light py-2 px-3 border-primary border-opacity-25">
-                                <label class="form-label fw-bold small text-primary mb-1">Valor Aferido</label>
+                                <label class="form-label fw-bold small text-primary mb-1">Valor Aferido ${limitsHtml}</label>
                                 <input type="number" step="0.001" class="form-control form-control-sm verificacao-item" name="valor_aferido_${item.ciclo.id}" id="valor_${item.ciclo.id}" ${disabledAttr} ${requiredAttr} placeholder="Digite o valor">
                             </div>
                         </div>

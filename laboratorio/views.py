@@ -1267,7 +1267,9 @@ def coating_painel(request):
                             'nome': c.nome,
                             'tipo': c.tipo,
                             'criterio': c.criterio,
-                            'itens': itens_list
+                            'itens': itens_list,
+                            'valor_minimo': c.valor_minimo if c.valor_minimo is not None else None,
+                            'valor_maximo': c.valor_maximo if c.valor_maximo is not None else None
                         },
                         'estourou': c_status_info['estourou'],
                         'lotes_passados': c_status_info.get('lotes_passados', 0),
