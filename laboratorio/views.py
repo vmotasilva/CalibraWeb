@@ -1977,6 +1977,8 @@ def registrar_manutencao_coating(request):
                     url_redirecionamento = request.META.get('HTTP_REFERER', reverse('laboratorio:coating_painel'))
                     return redirect(url_redirecionamento)
         
+        tipo_filtro = request.POST.get('tipo_filtro')
+        
         # Encontra ambos os lados (CC e CX) deste lote
         registros_do_lote = RegistroCoating.objects.filter(
             lote=registro.lote,
@@ -1984,7 +1986,13 @@ def registrar_manutencao_coating(request):
             turno_coating=registro.turno_coating
         )
         
-        ManutencaoRealizadaCoating.objects.filter(registro__in=registros_do_lote).delete()
+        if tipo_filtro:
+            ManutencaoRealizadaCoating.objects.filter(
+                registro__in=registros_do_lote,
+                ciclo__tipo=tipo_filtro
+            ).delete()
+        else:
+            ManutencaoRealizadaCoating.objects.filter(registro__in=registros_do_lote).delete()
         
         for reg in registros_do_lote:
             for cid in ciclo_ids:

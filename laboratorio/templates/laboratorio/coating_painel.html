@@ -448,6 +448,7 @@
             <form method="post" action="{% url 'laboratorio:registrar_manutencao_coating' %}">
                 {% csrf_token %}
                 <input type="hidden" name="registro_id" id="manutencaoRegistroId">
+                <input type="hidden" name="tipo_filtro" id="manutencaoTipoFiltro">
                 <div class="modal-header">
                     <h5 class="modal-title">Registrar Manutenções - Lote <span id="manutencaoLoteNum"></span></h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -822,6 +823,7 @@
     function abrirModalManutencao(registroId, lote, maquinaId, clickedCicloId = null, existingCids = [], tipoFiltro = null, dadosHistoricosJson = null) {
         document.getElementById('manutencaoRegistroId').value = registroId;
         document.getElementById('manutencaoLoteNum').innerText = lote;
+        document.getElementById('manutencaoTipoFiltro').value = tipoFiltro || '';
         
         const container = document.getElementById('manutencoesCheckboxList');
         container.innerHTML = '';

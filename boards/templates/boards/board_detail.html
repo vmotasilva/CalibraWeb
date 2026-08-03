@@ -1551,10 +1551,14 @@
                             <option value="concluido">Status: Concluídas</option>
                         </select>
                     </div>
-                    <div class="col-12 mt-4">
+                    <div class="col-12 mt-4 d-flex flex-column flex-sm-row gap-3">
                         <div class="form-check form-switch bg-light p-2 rounded border" title="Ocultar colunas que ficarem sem cartões visíveis">
                             <input class="form-check-input ms-0 me-3" type="checkbox" id="hideEmptyColumnsFlag" onchange="applyGlobalFilters()">
                             <label class="form-check-label text-muted small fw-bold" style="user-select: none; cursor: pointer; padding-top: 2px;" for="hideEmptyColumnsFlag">Ocultar colunas vazias</label>
+                        </div>
+                        <div class="form-check form-switch bg-light p-2 rounded border" title="Mostrar apenas tarefas em atraso">
+                            <input class="form-check-input ms-0 me-3" type="checkbox" id="showOnlyOverdueFlag" onchange="applyGlobalFilters()">
+                            <label class="form-check-label text-danger small fw-bold" style="user-select: none; cursor: pointer; padding-top: 2px;" for="showOnlyOverdueFlag">Apenas tarefas em atraso</label>
                         </div>
                     </div>
                 </div>
@@ -2268,6 +2272,7 @@
         sessionStorage.removeItem('boardFilterLabel_' + boardIdStr);
         sessionStorage.removeItem('boardFilterStatus_' + boardIdStr);
         sessionStorage.removeItem('boardFilterSub_' + boardIdStr);
+        sessionStorage.removeItem('boardFilterOverdue_' + boardIdStr);
         sessionStorage.removeItem('boardHideEmpty_' + boardIdStr);
         
         if (periodFilter && periodFilter.value !== 'tudo') {
@@ -2284,6 +2289,7 @@
         if (document.getElementById('globalFilterStatus')) document.getElementById('globalFilterStatus').value = "";
         if (document.getElementById('globalFilterSub')) document.getElementById('globalFilterSub').value = "";
         if (document.getElementById('hideEmptyColumnsFlag')) document.getElementById('hideEmptyColumnsFlag').checked = false;
+        if (document.getElementById('showOnlyOverdueFlag')) document.getElementById('showOnlyOverdueFlag').checked = false;
         if (document.getElementById('globalSearchInput')) document.getElementById('globalSearchInput').value = "";
 
         applyGlobalFilters();
@@ -4346,6 +4352,7 @@
         const filterLabel = document.getElementById('globalFilterLabel') ? document.getElementById('globalFilterLabel').value.trim() : "";
         const filterStatus = document.getElementById('globalFilterStatus') ? document.getElementById('globalFilterStatus').value : "";
         const filterSub = document.getElementById('globalFilterSub') ? document.getElementById('globalFilterSub').value.trim() : "";
+        const showOnlyOverdue = document.getElementById('showOnlyOverdueFlag') ? document.getElementById('showOnlyOverdueFlag').checked : false;
         
         sessionStorage.setItem('boardFilterCol_' + '{{ board.id }}', filterCol);
         sessionStorage.setItem('boardFilterPrior_' + '{{ board.id }}', filterPrior);
@@ -4353,6 +4360,7 @@
         sessionStorage.setItem('boardFilterLabel_' + '{{ board.id }}', filterLabel);
         sessionStorage.setItem('boardFilterStatus_' + '{{ board.id }}', filterStatus);
         sessionStorage.setItem('boardFilterSub_' + '{{ board.id }}', filterSub);
+        sessionStorage.setItem('boardFilterOverdue_' + '{{ board.id }}', showOnlyOverdue ? 'true' : 'false');
         
         // Kanban Board Section Visibility
         const andamentoSec = document.getElementById('kanbanAndamentoSection');
@@ -4410,12 +4418,18 @@
             }
             
             const isConcluded = card.getAttribute('data-is-concluida') === 'true';
+            const isAtrasado = card.getAttribute('data-is-atrasado') === 'true';
             const cardStatus = card.getAttribute('data-status') || '';
             let statusMatch = true;
             if (filterStatus === 'andamento') statusMatch = !isConcluded;
             if (filterStatus === 'concluido') statusMatch = isConcluded;
             
-            if (textMatch && priorMatch && respMatch && labelMatch && subMatch && statusMatch) {
+            let overdueMatch = true;
+            if (showOnlyOverdue) {
+                overdueMatch = isAtrasado;
+            }
+            
+            if (textMatch && priorMatch && respMatch && labelMatch && subMatch && statusMatch && overdueMatch) {
                 card.style.display = '';
             } else {
                 card.style.display = 'none';
