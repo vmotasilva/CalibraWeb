@@ -29,19 +29,7 @@
                     </div>
                     <div class="card-body pb-2">
 
-                        <!-- Upload de Certificado -->
-                        <div class="mb-3">
-                            <label for="id_certificado" class="form-label fw-bold">
-                                Certificado (PDF) <span class="text-danger">*</span>
-                            </label>
-                            {{ form.certificado|add_class:"form-control" }}
-                            <small class="form-text text-muted d-block mt-2">
-                                <i class="bi bi-info-circle"></i> Faça upload do certificado para visualizá-lo ao lado enquanto preenche os dados
-                            </small>
-                            {% if form.certificado.errors %}
-                                <div class="text-danger small mt-1">{{ form.certificado.errors }}</div>
-                            {% endif %}
-                        </div>
+                        <!-- Upload de Certificado (Oculto na simplificação) -->
 
                         <!-- Datas -->
                         <div class="row g-2">
@@ -78,66 +66,14 @@
                         <div class="row g-2">
                             <div class="col-md-6">
                                 <div class="mb-2">
-                                    <label for="id_responsavel" class="form-label fw-bold small">Responsável</label>
-                                    {{ form.responsavel|add_class:"form-control form-control-sm" }}
+                                    <label for="id_fornecedor" class="form-label fw-bold small">Laboratório / Fornecedor</label>
+                                    {{ form.fornecedor|add_class:"form-control form-control-sm" }}
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-2">
-                                    <label for="id_fornecedor" class="form-label fw-bold small">Laboratório</label>
-                                    {{ form.fornecedor|add_class:"form-control form-control-sm" }}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="mb-2">
-                            <div class="form-check">
-                                {{ form.tem_selo_rbc|add_class:"form-check-input" }}
-                                <label for="id_tem_selo_rbc" class="form-check-label small">
-                                    Possui Selo RBC?
-                                </label>
-                            </div>
-                        </div>
-
-                        <!-- Upload de Padrões -->
-                        <div class="mb-2{% if form.instance.pk and form.instance.tem_selo_rbc %} d-none{% endif %}" id="arquivos-padroes-section">
-                            <div class="card bg-light border-info" style="font-size: 0.9rem;">
-                                <div class="card-header bg-info text-white p-2" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#padroes-collapse">
-                                    <i class="bi bi-chevron-down" id="padroes-icon"></i>
-                                    <i class="bi bi-file-pdf text-danger"></i> <small>Padrões de Calibração</small>
-                                </div>
-                                <div id="padroes-collapse" class="collapse show">
-                                    <div class="card-body p-2">
-                                        <label for="id_arquivos_padroes" class="form-label fw-bold small">Arquivos de Padrões (PDF)</label>
-                                        <input type="file" id="id_arquivos_padroes" name="arquivos_padroes[]" class="form-control form-control-sm" accept=".pdf" multiple>
-                                        <div class="form-text small">Anexe um ou mais arquivos PDF de padrões utilizados.</div>
-
-                                        {% if form.instance.pk and form.instance.arquivos_padroes.exists %}
-                                            <div class="mt-2">
-                                                <strong class="small">Arquivos já anexados:</strong>
-                                                <div class="list-group list-group-sm mt-1">
-                                                    {% for arquivo in form.instance.arquivos_padroes.all|dictsortreversed:'criado_em' %}
-                                                        <div class="list-group-item d-flex justify-content-between align-items-center py-2" style="font-size: 0.85rem;">
-                                                            <div class="small">
-                                                                <i class="bi bi-file-pdf text-danger"></i> {{ arquivo.nome|default:arquivo.arquivo.name }}
-                                                            </div>
-                                                            <div class="btn-group btn-group-sm">
-                                                                <a href="{{ arquivo.arquivo.url }}" download class="btn btn-sm btn-outline-primary">
-                                                                    <i class="bi bi-download"></i>
-                                                                </a>
-                                                                <form method="post" action="{% url 'remover_arquivo_padrao' arquivo.id %}" style="display:inline;">
-                                                                    {% csrf_token %}
-                                                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remover?');">
-                                                                        <i class="bi bi-trash"></i>
-                                                                    </button>
-                                                                </form>
-                                                            </div>
-                                                        </div>
-                                                    {% endfor %}
-                                                </div>
-                                            </div>
-                                        {% endif %}
-                                    </div>
+                                    <label for="id_resultado" class="form-label fw-bold small">Resultado</label>
+                                    {{ form.resultado|add_class:"form-select form-select-sm" }}
                                 </div>
                             </div>
                         </div>

@@ -679,10 +679,15 @@ function renderPagination(rows) {
     }
 }
 
-// Reset page on filter changes
-document.getElementById('searchInput')?.addEventListener('keyup', () => { currentPage = 1; });
-document.querySelectorAll('.filter-checkbox').forEach(cb => {
-    cb.addEventListener('change', () => { currentPage = 1; });
+// Reset page on filter changes (placed properly now)
+document.addEventListener('DOMContentLoaded', function() {
+    const sInput = document.getElementById('searchInput');
+    if (sInput) {
+        sInput.addEventListener('keyup', () => { currentPage = 1; });
+    }
+    document.querySelectorAll('.filter-checkbox').forEach(cb => {
+        cb.addEventListener('change', () => { currentPage = 1; });
+    });
 });
 }
 
