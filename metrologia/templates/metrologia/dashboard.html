@@ -180,137 +180,165 @@
                     <button class="btn btn-sm btn-outline-secondary" type="button" onclick="limparFiltros()">Limpar filtros</button>
                 </div>
             </div>
-            <!-- keep sidebar-col open so sidebar-scroll stays inside -->
-
+                        <!-- keep sidebar-col open so sidebar-scroll stays inside -->
             <div class="sidebar-scroll">
-                
-                <!-- 1. SITUAÇÃO (Vencimento) -->
-                <div class="filter-group open mb-1">
-                    <div class="filter-header" onclick="toggleFilterGroup(this)">
-                        <label class="form-label small fw-bold text-muted mb-0">SITUAÇÃO</label>
-                        <i class="bi bi-chevron-down"></i>
+                <div class="row">
+                    <!-- Coluna 1 -->
+                    <div class="col-md-4">
+                        <!-- 1. SITUAÇÃO (Vencimento) -->
+                        <div class="filter-group open mb-3">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="form-label small fw-bold text-muted mb-0">SITUAÇÃO</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <button class="btn btn-xs btn-link p-0 mb-2 small" onclick="selectAllInCategory('situacao')">Selecionar Todos</button>
+                                <div class="d-flex flex-column gap-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="VENCIDO" data-category="situacao">
+                                        <label class="form-check-label small text-danger fw-bold">Vencidos</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="AVENCER_30" data-category="situacao">
+                                        <label class="form-check-label small text-warning fw-bold">A Vencer (30 dias)</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="AVENCER_60" data-category="situacao">
+                                        <label class="form-check-label small text-warning">A Vencer (60 dias)</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="AVENCER_90" data-category="situacao">
+                                        <label class="form-check-label small text-warning">A Vencer (90 dias)</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="AVENCER_120" data-category="situacao">
+                                        <label class="form-check-label small text-warning">A Vencer (120 dias)</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="EM_DIA" data-category="situacao">
+                                        <label class="form-check-label small text-success">Em Dia</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. STATUS (Ativo/Inativo) -->
+                        <div class="filter-group open mb-3">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="form-label small fw-bold text-muted mb-0">STATUS</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <button class="btn btn-xs btn-link p-0 mb-2 small" onclick="selectAllInCategory('status')">Selecionar Todos</button>
+                                <div class="d-flex flex-column gap-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="ATIVO" id="st_ativo" data-category="status" checked>
+                                        <label class="form-check-label small">Ativos</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="INATIVO" data-category="status">
+                                        <label class="form-check-label small">Inativos / Descontinuados</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="filter-content">
-                        <button class="btn btn-xs btn-link p-0 mb-2 small" onclick="selectAllInCategory('situacao')">Selecionar Todos</button>
-                        <div class="d-flex flex-column gap-1">
-                            <div class="form-check">
-                                <input class="form-check-input filter-checkbox" type="checkbox" value="VENCIDO" data-category="situacao">
-                                <label class="form-check-label small text-danger fw-bold">Vencidos</label>
+
+                    <!-- Coluna 2 -->
+                    <div class="col-md-4">
+                        <!-- 3. AÇÃO -->
+                        <div class="filter-group open mb-3">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="form-label small fw-bold text-muted mb-0">AÇÃO</label>
+                                <i class="bi bi-chevron-down"></i>
                             </div>
-                            <div class="form-check">
-                                <input class="form-check-input filter-checkbox" type="checkbox" value="AVENCER_30" data-category="situacao">
-                                <label class="form-check-label small text-warning fw-bold">A Vencer (30 dias)</label>
+                            <div class="filter-content">
+                                <button class="btn btn-xs btn-link p-0 mb-2 small" onclick="selectAllInCategory('acao')">Selecionar Todos</button>
+                                <div class="d-flex flex-column gap-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="CALIBRACAO" data-category="acao">
+                                        <label class="form-check-label small">Calibração</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="VERIFICACAO" data-category="acao">
+                                        <label class="form-check-label small">Verificação</label>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="form-check">
-                                <input class="form-check-input filter-checkbox" type="checkbox" value="AVENCER_60" data-category="situacao">
-                                <label class="form-check-label small text-warning">A Vencer (60 dias)</label>
+                        </div>
+
+                        <!-- 4. CATEGORIA -->
+                        <div class="filter-group open mb-3">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="form-label small fw-bold text-muted mb-0">CATEGORIA</label>
+                                <i class="bi bi-chevron-down"></i>
                             </div>
-                            <div class="form-check">
-                                <input class="form-check-input filter-checkbox" type="checkbox" value="AVENCER_90" data-category="situacao">
-                                <label class="form-check-label small text-warning">A Vencer (90 dias)</label>
+                            <div class="filter-content">
+                                <button class="btn btn-xs btn-link p-0 mb-2 small" onclick="selectAllInCategory('categoria')">Selecionar Todos</button>
+                                <div class="d-flex flex-column gap-1" style="max-height: 180px; overflow-y: auto;">
+                                    {% for cat in categorias %}
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ cat.id }}" data-category="categoria">
+                                        <label class="form-check-label small">{{ cat.nome }}</label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
                             </div>
-                            <div class="form-check">
-                                <input class="form-check-input filter-checkbox" type="checkbox" value="AVENCER_120" data-category="situacao">
-                                <label class="form-check-label small text-warning">A Vencer (120 dias)</label>
+                        </div>
+                    </div>
+
+                    <!-- Coluna 3 -->
+                    <div class="col-md-4">
+                        <!-- 5. SETOR -->
+                        <div class="filter-group open mb-3">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="form-label small fw-bold text-muted mb-0">SETOR</label>
+                                <i class="bi bi-chevron-down"></i>
                             </div>
-                            <div class="form-check">
-                                <input class="form-check-input filter-checkbox" type="checkbox" value="EM_DIA" data-category="situacao">
-                                <label class="form-check-label small text-success">Em Dia</label>
+                            <div class="filter-content">
+                                <button class="btn btn-xs btn-link p-0 mb-2 small" onclick="selectAllInCategory('setor')">Selecionar Todos</button>
+                                <div class="d-flex flex-column gap-1" style="max-height: 180px; overflow-y: auto;">
+                                    {% for s in setores %}
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ s.id }}" data-category="setor">
+                                        <label class="form-check-label small">{{ s.nome }}</label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 6. RESULTADO -->
+                        <div class="filter-group open mb-3">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="form-label small fw-bold text-muted mb-0">RESULTADO</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <button class="btn btn-xs btn-link p-0 mb-2 small" onclick="selectAllInCategory('resultado')">Selecionar Todos</button>
+                                <div class="d-flex flex-column gap-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="APROVADO_SEM_CORRECAO" data-category="resultado">
+                                        <label class="form-check-label small">Aprovado</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="APROVADO_COM_CORRECAO" data-category="resultado">
+                                        <label class="form-check-label small">Aprv. c/ Correção</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="REPROVADO" data-category="resultado">
+                                        <label class="form-check-label small">Reprovado</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="SEM_CALIBRACAO" data-category="resultado">
+                                        <label class="form-check-label small">Sem Calibração</label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                <!-- 2. STATUS (Ativo/Inativo) -->
-                <div class="filter-group mb-1">
-                    <div class="filter-header" onclick="toggleFilterGroup(this)">
-                        <label class="form-label small fw-bold text-muted mb-0">STATUS</label>
-                        <i class="bi bi-chevron-down"></i>
-                    </div>
-                    <div class="filter-content">
-                        <button class="btn btn-xs btn-link p-0 mb-2 small" onclick="selectAllInCategory('status')">Selecionar Todos</button>
-                        <div class="d-flex flex-column gap-1">
-                            <div class="form-check">
-                                <input class="form-check-input filter-checkbox" type="checkbox" value="ATIVO" data-category="status" id="st_ativo" checked>
-                                <label class="form-check-label small">Ativo</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input filter-checkbox" type="checkbox" value="INATIVO" data-category="status">
-                                <label class="form-check-label small">Inativo</label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 3. CATEGORIA -->
-                <div class="filter-group mb-1">
-                    <div class="filter-header" onclick="toggleFilterGroup(this)">
-                        <label class="form-label small fw-bold text-muted mb-0">CATEGORIA</label>
-                        <i class="bi bi-chevron-down"></i>
-                    </div>
-                    <div class="filter-content">
-                        <button class="btn btn-xs btn-link p-0 mb-2 small" onclick="selectAllInCategory('categoria')">Selecionar Todos</button>
-                        <div class="d-flex flex-column gap-1 ps-1">
-                            {% for cat in categorias_filtro %}
-                            <div class="form-check">
-                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ cat.id }}" data-category="categoria">
-                                <label class="form-check-label small text-truncate" title="{{ cat.nome }}">{{ cat.nome }}</label>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 4. SETOR -->
-                <div class="filter-group mb-1">
-                    <div class="filter-header" onclick="toggleFilterGroup(this)">
-                        <label class="form-label small fw-bold text-muted mb-0">SETOR</label>
-                        <i class="bi bi-chevron-down"></i>
-                    </div>
-                    <div class="filter-content">
-                        <button class="btn btn-xs btn-link p-0 mb-2 small" onclick="selectAllInCategory('setor')">Selecionar Todos</button>
-                        <div class="d-flex flex-column gap-1 ps-1">
-                            {% for setor in setores_filtro %}
-                            <div class="form-check">
-                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ setor.id }}" data-category="setor">
-                                <label class="form-check-label small text-truncate" title="{{ setor.nome }}">{{ setor.nome }}</label>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 5. RESULTADO -->
-                <div class="filter-group mb-1">
-                    <div class="filter-header" onclick="toggleFilterGroup(this)">
-                        <label class="form-label small fw-bold text-muted mb-0">RESULTADO</label>
-                        <i class="bi bi-chevron-down"></i>
-                    </div>
-                    <div class="filter-content">
-                        <button class="btn btn-xs btn-link p-0 mb-2 small" onclick="selectAllInCategory('resultado')">Selecionar Todos</button>
-                        <div class="d-flex flex-column gap-1">
-                            <div class="form-check">
-                                <input class="form-check-input filter-checkbox" type="checkbox" value="APROVADO_SEM_CORRECAO" data-category="resultado">
-                                <label class="form-check-label small">Aprovado</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input filter-checkbox" type="checkbox" value="APROVADO_COM_CORRECAO" data-category="resultado">
-                                <label class="form-check-label small">Aprv. c/ Correção</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input filter-checkbox" type="checkbox" value="REPROVADO" data-category="resultado">
-                                <label class="form-check-label small">Reprovado</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input filter-checkbox" type="checkbox" value="SEM_CALIBRACAO" data-category="resultado">
-                                <label class="form-check-label small">Sem Calibração</label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                    </div>
-                    </div>
+            </div>
                     <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; justify-content: space-between;">
                         <button class="btn btn-sm btn-outline-secondary" type="button" onclick="limparFiltros()">Limpar Filtros</button>
                         <button type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal">
@@ -351,6 +379,7 @@
                             data-nome="{{ i.tag|default:''|lower }} {{ i.descricao|default:''|lower }} {{ i.fabricante|default:''|lower }}"
                             data-status="{% if i.ativo %}ATIVO{% else %}INATIVO{% endif %}"
                             data-categoria="{{ i.categoria_id|default:'' }}"
+                            data-acao="{{ i.categoria.acao|default:'' }}"
                             data-setor="{{ i.setor_id|default:'' }}"
                             data-resultado="{% with historico=i.historicos.all|first %}{% if historico %}{{ historico.resultado }}{% else %}SEM_CALIBRACAO{% endif %}{% endwith %}"
                             data-situacao="{% if i.data_proxima_calibracao %}{% if i.data_proxima_calibracao < hoje %}VENCIDO{% elif i.data_proxima_calibracao <= alerta_30d %}AVENCER_30{% elif i.data_proxima_calibracao <= alerta_60d %}AVENCER_60{% elif i.data_proxima_calibracao <= alerta_90d %}AVENCER_90{% elif i.data_proxima_calibracao <= alerta_120d %}AVENCER_120{% else %}EM_DIA{% endif %}{% else %}EM_DIA{% endif %}">
@@ -505,7 +534,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function getFilterState() {
-    const state = { q: '', st: [], sit: [], cat: [], set: [], res: [] };
+    const state = { q: '', st: [], sit: [], cat: [], set: [], res: [], acao: [] };
     const qEl = document.getElementById('searchInput');
     state.q = (qEl && qEl.value) ? qEl.value : '';
     document.querySelectorAll('.filter-checkbox').forEach(cb => {
@@ -517,6 +546,7 @@ function getFilterState() {
             case 'categoria': state.cat.push(val); break;
             case 'setor': state.set.push(val); break;
             case 'resultado': state.res.push(val); break;
+            case 'acao': state.acao.push(val); break;
         }
     });
     return state;
@@ -530,6 +560,7 @@ function buildQueryString(state){
     if (state.cat.length) params.push('cat=' + encodeURIComponent(state.cat.join(',')));
     if (state.set.length) params.push('set=' + encodeURIComponent(state.set.join(',')));
     if (state.res.length) params.push('res=' + encodeURIComponent(state.res.join(',')));
+    if (state.acao.length) params.push('acao=' + encodeURIComponent(state.acao.join(',')));
     return params.join('&');
 }
 
@@ -551,6 +582,7 @@ function applyStateFromQuery(){
     const cat = (sp.get('cat') || '').split(',').filter(Boolean);
     const set = (sp.get('set') || '').split(',').filter(Boolean);
     const res = (sp.get('res') || '').split(',').filter(Boolean);
+    const acao = (sp.get('acao') || '').split(',').filter(Boolean);
     const qEl = document.getElementById('searchInput');
     if (qEl) qEl.value = q;
     document.querySelectorAll('.filter-checkbox').forEach(cb => {
@@ -561,6 +593,7 @@ function applyStateFromQuery(){
             case 'categoria': cb.checked = cat.includes(val); break;
             case 'setor': cb.checked = set.includes(val); break;
             case 'resultado': cb.checked = res.includes(val); break;
+            case 'acao': cb.checked = acao.includes(val); break;
         }
     });
 }
@@ -574,7 +607,7 @@ function filtrar() {
     const countDisplay = document.getElementById('countDisplay');
     const termoBusca = searchInput.value.toLowerCase();
     
-    const filtrosAtivos = { status: [], situacao: [], categoria: [], setor: [], resultado: [] };
+    const filtrosAtivos = { status: [], situacao: [], categoria: [], setor: [], resultado: [], acao: [] };
     
     document.querySelectorAll('.filter-checkbox').forEach(cb => {
         if (cb.checked) filtrosAtivos[cb.dataset.category].push(cb.value);
@@ -592,6 +625,7 @@ function filtrar() {
         if (mostrar && filtrosAtivos.categoria.length > 0 && !filtrosAtivos.categoria.includes(row.dataset.categoria)) mostrar = false;
         if (mostrar && filtrosAtivos.setor.length > 0 && !filtrosAtivos.setor.includes(row.dataset.setor)) mostrar = false;
         if (mostrar && filtrosAtivos.resultado.length > 0 && !filtrosAtivos.resultado.includes(row.dataset.resultado)) mostrar = false;
+        if (mostrar && filtrosAtivos.acao.length > 0 && !filtrosAtivos.acao.includes(row.dataset.acao)) mostrar = false;
 
         if (mostrar) {
             filteredRows.push(row);
@@ -689,7 +723,6 @@ document.addEventListener('DOMContentLoaded', function() {
         cb.addEventListener('change', () => { currentPage = 1; });
     });
 });
-}
 
 function limparFiltros() {
     document.getElementById('searchInput').value = '';
