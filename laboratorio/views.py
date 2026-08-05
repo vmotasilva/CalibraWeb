@@ -1148,9 +1148,9 @@ def coating_painel(request):
                 status_m = 'OK'
                 if valor is not None:
                     if vmin is not None and valor < vmin:
-                        status_m = 'NOK'
+                        status_m = 'FORA_LIMITE'
                     if vmax is not None and valor > vmax:
-                        status_m = 'NOK'
+                        status_m = 'FORA_LIMITE'
                 else:
                     # Se não informaram o valor, mas deveriam
                     if vmin is not None or vmax is not None:
