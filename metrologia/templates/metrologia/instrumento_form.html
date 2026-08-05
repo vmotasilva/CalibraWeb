@@ -78,18 +78,25 @@
                         </div>
 
                         <div class="row">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <div class="mb-3">
                                     <label for="id_frequencia_meses" class="form-label fw-bold">Frequência (meses)</label>
                                     {{ form.frequencia_meses|add_class:"form-control" }}
                                     {% if form.frequencia_meses.errors %}<small class="text-danger">{{ form.frequencia_meses.errors }}</small>{% endif %}
                                 </div>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <div class="mb-3">
                                     <label for="id_tratativa_calibracao" class="form-label fw-bold">Tratativa de Calibração <span class="text-danger">*</span></label>
                                     {{ form.tratativa_calibracao|add_class:"form-select" }}
                                     {% if form.tratativa_calibracao.errors %}<small class="text-danger">{{ form.tratativa_calibracao.errors }}</small>{% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Ação (Categoria)</label>
+                                    <input type="text" class="form-control" value="{% if form.instance.categoria %}{{ form.instance.categoria.get_acao_display }}{% else %}Indefinido{% endif %}" disabled>
+                                    <small class="text-muted" style="font-size:0.75rem;">Definido na Categoria</small>
                                 </div>
                             </div>
                         </div>
