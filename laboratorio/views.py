@@ -1288,6 +1288,7 @@ def coating_painel(request):
                 reg.trocas_pendentes = sum(1 for s in status_list if s['ciclo'].tipo == 'TROCA' and s['status'] in ['PENDENTE', 'PARCIAL', 'NOK'])
                 reg.verificacoes_ok = sum(1 for s in status_list if s['ciclo'].tipo == 'VERIFICACAO' and s['status'] == 'OK')
                 reg.verificacoes_pendentes = sum(1 for s in status_list if s['ciclo'].tipo == 'VERIFICACAO' and s['status'] in ['PENDENTE', 'PARCIAL', 'NOK'])
+                reg.verificacoes_alerta = sum(1 for s in status_list if s['ciclo'].tipo == 'VERIFICACAO' and s['status'] == 'FORA_LIMITE')
         
         # Prepara o status global atual da maquina
         hoje = timezone.now().date()

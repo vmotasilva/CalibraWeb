@@ -290,7 +290,10 @@
                                                     {% if reg.verificacoes_pendentes > 0 %}
                                                     <span class="badge bg-danger pulse-danger" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'VERIFICACAO', '{{ reg.ciclos_status_json_lote|safe }}')">{{ reg.verificacoes_pendentes }} <i class="bi bi-exclamation-circle-fill"></i></span>
                                                     {% endif %}
-                                                    {% if reg.verificacoes_ok == 0 and reg.verificacoes_pendentes == 0 %}
+                                                    {% if reg.verificacoes_alerta > 0 %}
+                                                    <span class="badge bg-warning text-dark" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'VERIFICACAO', '{{ reg.ciclos_status_json_lote|safe }}')">{{ reg.verificacoes_alerta }} <i class="bi bi-exclamation-triangle-fill"></i></span>
+                                                    {% endif %}
+                                                    {% if reg.verificacoes_ok == 0 and reg.verificacoes_pendentes == 0 and reg.verificacoes_alerta == 0 %}
 <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" data-bs-toggle="tooltip" title="Adicionar Extra" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'VERIFICACAO', '{{ reg.ciclos_status_json_lote|safe }}')"><i class="bi bi-plus-lg"></i></span>
 {% endif %}
                                                 </div>
@@ -303,8 +306,12 @@
                                                                     <i class="bi bi-check-circle-fill"></i>
                                                                 </span>
                                                             {% elif c_status.status == 'NOK' %}
-                                                                <span class="badge bg-danger text-white" style="cursor:pointer;" data-bs-toggle="tooltip" title="Fora do Limite: {{ c_status.ciclo.nome }}" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }}, 'VERIFICACAO', '{{ reg.ciclos_status_json_lote|safe }}')">
+                                                                <span class="badge bg-danger text-white" style="cursor:pointer;" data-bs-toggle="tooltip" title="Valor Não Informado: {{ c_status.ciclo.nome }}" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }}, 'VERIFICACAO', '{{ reg.ciclos_status_json_lote|safe }}')">
                                                                     <i class="bi bi-x-circle-fill"></i>
+                                                                </span>
+                                                            {% elif c_status.status == 'FORA_LIMITE' %}
+                                                                <span class="badge bg-warning text-dark" style="cursor:pointer;" data-bs-toggle="tooltip" title="Fora do Limite: {{ c_status.ciclo.nome }}" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }}, 'VERIFICACAO', '{{ reg.ciclos_status_json_lote|safe }}')">
+                                                                    <i class="bi bi-exclamation-triangle-fill"></i>
                                                                 </span>
                                                             {% elif c_status.status == 'PENDENTE' %}
                                                                 <span class="badge bg-danger pulse-danger" style="cursor:pointer;" data-bs-toggle="tooltip" title="Pendente: {{ c_status.ciclo.nome }}" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', '{{ c_status.ciclo.id }}', {{ reg.ok_cids|safe }}, 'VERIFICACAO', '{{ reg.ciclos_status_json_lote|safe }}')">
@@ -313,7 +320,7 @@
                                                             {% endif %}
                                                         {% endif %}
                                                     {% endfor %}
-                                                    {% if reg.verificacoes_ok == 0 and reg.verificacoes_pendentes == 0 %}
+                                                    {% if reg.verificacoes_ok == 0 and reg.verificacoes_pendentes == 0 and reg.verificacoes_alerta == 0 %}
 <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" data-bs-toggle="tooltip" title="Adicionar Extra" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'VERIFICACAO', '{{ reg.ciclos_status_json_lote|safe }}')"><i class="bi bi-plus-lg"></i></span>
 {% endif %}
                                                 </div>
