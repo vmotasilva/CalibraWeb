@@ -54,11 +54,14 @@ class HistoricoCalibracaoForm(forms.ModelForm):
     class Meta:
         model = HistoricoCalibracao
         fields = [
-            'data_calibracao', 'proxima_calibracao', 'numero_certificado',
-            'tipo_calibracao', 'responsavel', 'fornecedor', 'tem_selo_rbc',
-            'certificado'
+            'numero_certificado', 'data_calibracao', 'proxima_calibracao',
+            'tipo_calibracao', 'fornecedor', 'resultado'
         ]
         widgets = {
+            'numero_certificado': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ex: CERT-2024-001'
+            }),
             'data_calibracao': forms.DateInput(attrs={
                 'class': 'form-control',
                 'type': 'date'
@@ -67,21 +70,12 @@ class HistoricoCalibracaoForm(forms.ModelForm):
                 'class': 'form-control',
                 'type': 'date'
             }),
-            'numero_certificado': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Ex: CERT-2024-001'
-            }),
             'tipo_calibracao': forms.Select(attrs={'class': 'form-select'}),
-            'responsavel': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Nome do responsável'
-            }),
             'fornecedor': forms.TextInput(attrs={
                 'class': 'form-control',
                 'placeholder': 'Nome do laboratório/fornecedor'
             }),
-            'tem_selo_rbc': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'certificado': forms.FileInput(attrs={'class': 'form-control'}),
+            'resultado': forms.Select(attrs={'class': 'form-select'}),
         }
     
     def __init__(self, *args, **kwargs):
@@ -90,19 +84,7 @@ class HistoricoCalibracaoForm(forms.ModelForm):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         
-        if not self.is_bound and user is not None:
-            first = (getattr(user, 'first_name', '') or '').strip()
-            last = (getattr(user, 'last_name', '') or '').strip()
-            nome_resp = (first + ' ' + last).strip()
-            
-            if not nome_resp:
-                full_name = (getattr(user, 'get_full_name', lambda: '')() or '').strip()
-                nome_resp = full_name or (getattr(user, 'username', '') or '').strip()
-            
-            if nome_resp:
-                self.fields['responsavel'].initial = nome_resp
-        
-        self.fields['responsavel'].required = True
+        # Removemos a atribuição de responsável pois o campo foi ocultado para simplificação
 
 
 class ImportacaoInstrumentosForm(forms.Form):

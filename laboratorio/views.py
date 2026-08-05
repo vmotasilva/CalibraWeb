@@ -1211,7 +1211,7 @@ def coating_painel(request):
                     last_period[c.id] = curr_period
                 else:
                     if c.criterio in ['LOTES', 'DIAS']:
-                        if never_done[c.id] or counters[c.id] >= c.limite_lotes:
+                        if counters[c.id] >= c.limite_lotes:
                             status = 'PENDENTE'
                             estourou = True
                         else:
@@ -1296,7 +1296,7 @@ def coating_painel(request):
             itens = list(ciclo.itens_checklist.all().values('id', 'texto', 'ordem'))
             
             if ciclo.criterio in ['LOTES', 'DIAS']:
-                estourou_agora = never_done[ciclo.id] or count >= ciclo.limite_lotes
+                estourou_agora = count >= ciclo.limite_lotes
                 estourou_proximo = count == (ciclo.limite_lotes - 1)
                 lotes_passados = count
             elif ciclo.criterio == 'LIVRE':

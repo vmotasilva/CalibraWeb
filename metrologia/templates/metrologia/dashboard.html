@@ -429,6 +429,15 @@
                     </tbody>
                 </table>
             </div>
+            
+            <!-- PAGINATION CONTROLS -->
+            <div class="d-flex justify-content-between align-items-center mt-3 pb-2 flex-shrink-0">
+                <div class="small text-muted" id="paginationInfo">Mostrando 0 a 0 de 0 instrumentos</div>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0" id="paginationControls">
+                    </ul>
+                </nav>
+            </div>
         </div>
     </div>
 </div>
@@ -571,7 +580,7 @@ function filtrar() {
         if (cb.checked) filtrosAtivos[cb.dataset.category].push(cb.value);
     });
 
-    let visiveis = 0;
+    let filteredRows = [];
     
     document.querySelectorAll('.instrumento-row').forEach(row => {
         let mostrar = true;
@@ -584,11 +593,97 @@ function filtrar() {
         if (mostrar && filtrosAtivos.setor.length > 0 && !filtrosAtivos.setor.includes(row.dataset.setor)) mostrar = false;
         if (mostrar && filtrosAtivos.resultado.length > 0 && !filtrosAtivos.resultado.includes(row.dataset.resultado)) mostrar = false;
 
-        row.style.display = mostrar ? '' : 'none';
-        if (mostrar) visiveis++;
+        if (mostrar) {
+            filteredRows.push(row);
+        } else {
+            row.style.display = 'none';
+        }
     });
 
-    if(countDisplay) countDisplay.innerText = visiveis;
+    if(countDisplay) countDisplay.innerText = filteredRows.length;
+    renderPagination(filteredRows);
+}
+
+let currentPage = 1;
+const itemsPerPage = 15;
+
+function renderPagination(rows) {
+    const totalItems = rows.length;
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    
+    if (currentPage > totalPages) currentPage = totalPages || 1;
+    if (currentPage < 1) currentPage = 1;
+    
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+    
+    // Esconde todos os filtrados e exibe apenas os da pagina atual
+    rows.forEach((row, index) => {
+        if (index >= startIndex && index < endIndex) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    // Atualiza o info de paginacao
+    const info = document.getElementById('paginationInfo');
+    if (info) {
+        if (totalItems === 0) {
+            info.innerText = `Nenhum instrumento encontrado.`;
+        } else {
+            info.innerText = `Mostrando ${startIndex + 1} a ${endIndex} de ${totalItems} instrumentos`;
+        }
+    }
+    
+    // Constroi os botoes
+    const controls = document.getElementById('paginationControls');
+    if (controls) {
+        controls.innerHTML = '';
+        if (totalPages > 1) {
+            // Botão Anterior
+            let liPrev = document.createElement('li');
+            liPrev.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+            liPrev.innerHTML = `<a class="page-link" href="#" aria-label="Anterior"><span aria-hidden="true">&laquo;</span></a>`;
+            if (currentPage > 1) {
+                liPrev.addEventListener('click', (e) => { e.preventDefault(); currentPage--; renderPagination(rows); });
+            }
+            controls.appendChild(liPrev);
+            
+            // Botões numéricos limitados (para não quebrar o layout se houver muitas páginas)
+            let startPage = Math.max(1, currentPage - 2);
+            let endPage = Math.min(totalPages, startPage + 4);
+            if (endPage - startPage < 4) {
+                startPage = Math.max(1, endPage - 4);
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                let li = document.createElement('li');
+                li.className = `page-item ${i === currentPage ? 'active' : ''}`;
+                li.innerHTML = `<a class="page-link" href="#">${i}</a>`;
+                if (i !== currentPage) {
+                    li.addEventListener('click', (e) => { e.preventDefault(); currentPage = i; renderPagination(rows); });
+                }
+                controls.appendChild(li);
+            }
+            
+            // Botão Próximo
+            let liNext = document.createElement('li');
+            liNext.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+            liNext.innerHTML = `<a class="page-link" href="#" aria-label="Próximo"><span aria-hidden="true">&raquo;</span></a>`;
+            if (currentPage < totalPages) {
+                liNext.addEventListener('click', (e) => { e.preventDefault(); currentPage++; renderPagination(rows); });
+            }
+            controls.appendChild(liNext);
+        }
+    }
+}
+
+// Reset page on filter changes
+document.getElementById('searchInput')?.addEventListener('keyup', () => { currentPage = 1; });
+document.querySelectorAll('.filter-checkbox').forEach(cb => {
+    cb.addEventListener('change', () => { currentPage = 1; });
+});
 }
 
 function limparFiltros() {

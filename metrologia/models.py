@@ -35,6 +35,17 @@ class CategoriaInstrumento(models.Model):
         verbose_name="Frequência de Calibração (Meses)",
         help_text="Intervalo em meses entre as calibrações para instrumentos desta categoria"
     )
+    
+    ACAO_CHOICES = [
+        ('CALIBRACAO', 'Calibração'),
+        ('VERIFICACAO', 'Verificação'),
+    ]
+    acao = models.CharField(
+        max_length=20,
+        choices=ACAO_CHOICES,
+        default='CALIBRACAO',
+        verbose_name="Ação"
+    )
 
     def __str__(self):
         return self.nome
