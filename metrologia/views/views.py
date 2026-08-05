@@ -704,6 +704,7 @@ def detalhe_instrumento_view(request, instrumento_id):
             "today": date.today(),
             "edit_url": f"/instrumento/{inst.id}/editar/",
             "solicitacoes_cotacao": solicitacoes_cotacao,
+            "historico_form": HistoricoCalibracaoForm(),
         },
     )
 
@@ -837,22 +838,39 @@ def remover_certificado_historico_view(request, historico_id):
 
 @login_required
 def registrar_historico_calibracao_view(request, instrumento_id):
-    """Cria novo histórico de calibração e redireciona para edição no template unificado (editar_historico.html)."""
+    """Cria novo histórico de calibração a partir do modal ou cria um vazio e redireciona (legado)."""
     try:
+        from datetime import date
+        
         instrumento = get_object_or_404(Instrumento, id=instrumento_id)
         logger.info(f"Registrar histórico: instrumento_id={instrumento_id}, method={request.method}, user={request.user}")
         
-        # Cria um novo histórico vazio para o instrumento
-        historico = HistoricoCalibracao.objects.create(
-            instrumento=instrumento,
-            resultado='PENDENTE'  # Estado inicial
-        )
-        
-        logger.info(f"✓ Histórico vazio {historico.id} criado com sucesso para instrumento {instrumento_id}")
-        
-        # Redireciona para edição no template unificado (editar_historico.html)
-        messages.success(request, f"✓ Novo histórico criado! Agora preencha os dados.")
-        return redirect('editar_historico_calibracao', historico_id=historico.id)
+        if request.method == 'POST' and 'numero_certificado' in request.POST:
+            # Submissão do modal (formulário simplificado)
+            form = HistoricoCalibracaoForm(request.POST, request.FILES)
+            if form.is_valid():
+                historico = form.save(commit=False)
+                historico.instrumento = instrumento
+                historico.save()
+                messages.success(request, f"✓ Histórico registrado com sucesso!")
+                return redirect('detalhe_instrumento', instrumento_id=instrumento_id)
+            else:
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        messages.error(request, f"{field}: {error}")
+                return redirect('detalhe_instrumento', instrumento_id=instrumento_id)
+        else:
+            # Cria um novo histórico vazio para o instrumento
+            historico = HistoricoCalibracao.objects.create(
+                instrumento=instrumento,
+                resultado='PENDENTE'  # Estado inicial
+            )
+            
+            logger.info(f"✓ Histórico vazio {historico.id} criado com sucesso para instrumento {instrumento_id}")
+            
+            # Redireciona para edição no template unificado (editar_historico.html)
+            messages.success(request, f"✓ Novo histórico criado! Agora preencha os dados.")
+            return redirect('editar_historico_calibracao', historico_id=historico.id)
         
     except Exception as e:
         logger.error(f"❌ Erro crítico em registrar_historico_calibracao_view: {e}", exc_info=True)

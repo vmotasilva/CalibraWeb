@@ -912,10 +912,16 @@
                         <strong>Preenchimento Simplificado:</strong> Preencha apenas os dados essenciais para registrar o andamento da demanda.
                     </div>
                     <div class="row g-3">
+                        <!-- Primeira Linha -->
                         <div class="col-md-6">
                             <label class="form-label fw-bold mb-1">N° do Certificado</label>
                             {{ historico_form.numero_certificado|add_class:"form-control form-control-sm" }}
                         </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold mb-1">Interno/Externo</label>
+                            {{ historico_form.tipo_calibracao|add_class:"form-select form-select-sm" }}
+                        </div>
+                        <!-- Segunda Linha -->
                         <div class="col-md-6">
                             <label class="form-label fw-bold mb-1">Data da Calibração</label>
                             {{ historico_form.data_calibracao|add_class:"form-control form-control-sm" }}
@@ -924,10 +930,7 @@
                             <label class="form-label fw-bold mb-1">Próxima Calibração</label>
                             {{ historico_form.proxima_calibracao|add_class:"form-control form-control-sm" }}
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold mb-1">Interno/Externo</label>
-                            {{ historico_form.tipo_calibracao|add_class:"form-select form-select-sm" }}
-                        </div>
+                        <!-- Terceira Linha -->
                         <div class="col-md-6">
                             <label class="form-label fw-bold mb-1">Fornecedor</label>
                             {{ historico_form.fornecedor|add_class:"form-select form-select-sm" }}
