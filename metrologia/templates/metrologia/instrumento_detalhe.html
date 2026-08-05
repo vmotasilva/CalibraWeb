@@ -187,12 +187,9 @@
 
             <div class="d-flex justify-content-end mb-2">
                 {% if can_registrar_historico %}
-                    <form method="post" action="{% url 'registrar_historico_calibracao' instrumento.id %}" style="display: inline;">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-primary btn-sm">
-                            <i class="bi bi-plus-circle"></i> Registrar novo histórico
-                        </button>
-                    </form>
+                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalNovoHistorico">
+                        <i class="bi bi-plus-circle"></i> Registrar novo histórico
+                    </button>
                 {% endif %}
             </div>
             <ul class="nav nav-tabs" id="myTab" role="tablist">
@@ -898,7 +895,93 @@
     </div>
 </div>
 
+<!-- Modal Novo Histórico Simplificado -->
+<div class="modal fade" id="modalNovoHistorico" tabindex="-1" aria-labelledby="modalNovoHistoricoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="post" action="{% url 'registrar_historico_calibracao' instrumento.id %}">
+                {% csrf_token %}
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="modalNovoHistoricoLabel">
+                        <i class="bi bi-plus-circle me-2"></i> Registrar Novo Histórico
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info py-2 small mb-3">
+                        <strong>Preenchimento Simplificado:</strong> Preencha apenas os dados essenciais para registrar o andamento da demanda.
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold mb-1">N° do Certificado</label>
+                            {{ historico_form.numero_certificado|add_class:"form-control form-control-sm" }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold mb-1">Data da Calibração</label>
+                            {{ historico_form.data_calibracao|add_class:"form-control form-control-sm" }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold mb-1">Próxima Calibração</label>
+                            {{ historico_form.proxima_calibracao|add_class:"form-control form-control-sm" }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold mb-1">Interno/Externo</label>
+                            {{ historico_form.tipo_calibracao|add_class:"form-select form-select-sm" }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold mb-1">Fornecedor</label>
+                            {{ historico_form.fornecedor|add_class:"form-select form-select-sm" }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold mb-1">Resultado</label>
+                            {{ historico_form.resultado|add_class:"form-select form-select-sm" }}
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Salvar Registro</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
+// Logic to auto-fill form inside modal Novo Historico
+document.addEventListener('DOMContentLoaded', function() {
+    const modalHistorico = document.getElementById('modalNovoHistorico');
+    if (modalHistorico) {
+        const dataCalibracaoInput = modalHistorico.querySelector('[name="data_calibracao"]');
+        const proximaCalibracaoInput = modalHistorico.querySelector('[name="proxima_calibracao"]');
+        const tipoCalibracaoInput = modalHistorico.querySelector('[name="tipo_calibracao"]');
+        const frequenciaMeses = {{ instrumento.frequencia_meses|default:0 }};
+        const categoriaAcao = "{{ instrumento.categoria.acao|default:'' }}";
+
+        // Auto preencher tipo base na acao da categoria
+        modalHistorico.addEventListener('show.bs.modal', function () {
+            if (tipoCalibracaoInput && !tipoCalibracaoInput.value) {
+                if (categoriaAcao === 'VERIFICACAO') {
+                    tipoCalibracaoInput.value = 'INTERNA';
+                } else if (categoriaAcao === 'CALIBRACAO') {
+                    tipoCalibracaoInput.value = 'EXTERNA';
+                }
+            }
+        });
+
+        // Auto calcular proxima calibracao
+        if (dataCalibracaoInput && proximaCalibracaoInput) {
+            dataCalibracaoInput.addEventListener('change', function() {
+                if (this.value && frequenciaMeses > 0) {
+                    const date = new Date(this.value);
+                    date.setMonth(date.getMonth() + frequenciaMeses);
+                    const isoStr = date.toISOString().split('T')[0];
+                    proximaCalibracaoInput.value = isoStr;
+                }
+            });
+        }
+    }
+});
 // Preparar modal para atualizar data de calibração
 function prepareModalAtualizarData(atendimentoId, dataPrevista) {
     const form = document.getElementById('formAtualizarData');

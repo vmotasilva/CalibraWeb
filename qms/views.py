@@ -184,6 +184,8 @@ def detalhe_instrumento_view(request, instrumento_id):
     
     # Get instrument or return 404
     instrumento = get_object_or_404(Instrumento, id=instrumento_id)
+    
+    from .forms_historico import HistoricoCalibracaoForm
 
     # Get related data with optimization and error handling
     try:
@@ -312,6 +314,7 @@ def detalhe_instrumento_view(request, instrumento_id):
         'solicitacoes_cotacao': solicitacoes_cotacao,
         'rastreios_laboratorio': rastreios_laboratorio,
         'processos_automatizacao': processos_automatizacao,
+        'historico_form': HistoricoCalibracaoForm(),
     }
     return render(request, 'metrologia/instrumento_detalhe.html', context)
 
@@ -322,29 +325,42 @@ def detalhe_instrumento_view(request, instrumento_id):
 
 @login_required
 def registrar_historico_calibracao_view(request, instrumento_id):
-    """Cria novo histórico de calibração e redireciona para edição no template unificado (editar_historico.html)."""
+    """Cria novo histórico de calibração a partir do modal ou cria um vazio e redireciona (legado)."""
     try:
+        from .forms_historico import HistoricoCalibracaoForm
         from datetime import date
         
         instrumento = get_object_or_404(Instrumento, id=instrumento_id)
         logger.info(f"Registrar histórico: instrumento_id={instrumento_id}, method={request.method}, user={request.user}")
         
-        # Cria um novo histórico vazio para o instrumento com campos obrigatórios preenchidos
-        historico = HistoricoCalibracao.objects.create(
-            instrumento=instrumento,
-            data_calibracao=date.today(),  # Campo obrigatório
-            data_aprovacao=date.today(),  # Campo obrigatório com default
-            numero_certificado="S/N",  # Campo obrigatório com default
-            tipo_calibracao="EXTERNA",  # Campo obrigatório com default
-            resultado="APROVADO_SEM_CORRECAO"  # Campo obrigatório com default
-        )
-        
-        logger.info(f"✓ Histórico vazio {historico.id} criado com sucesso para instrumento {instrumento_id}")
-        
-        # Redireciona para edição no template unificado (editar_historico.html)
-        messages.success(request, f"✓ Novo histórico criado! Agora preencha os dados.")
-        return redirect('editar_historico_calibracao', historico_id=historico.id)
-        
+        if request.method == 'POST' and 'numero_certificado' in request.POST:
+            # Submissão do modal (formulário simplificado)
+            form = HistoricoCalibracaoForm(request.POST, request.FILES)
+            if form.is_valid():
+                historico = form.save(commit=False)
+                historico.instrumento = instrumento
+                historico.save()
+                messages.success(request, f"✓ Histórico registrado com sucesso!")
+                return redirect('detalhe_instrumento', instrumento_id=instrumento_id)
+            else:
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        messages.error(request, f"{field}: {error}")
+                return redirect('detalhe_instrumento', instrumento_id=instrumento_id)
+        else:
+            # Comportamento antigo (cria vazio e redireciona)
+            historico = HistoricoCalibracao.objects.create(
+                instrumento=instrumento,
+                data_calibracao=date.today(),
+                data_aprovacao=date.today(),
+                numero_certificado="S/N",
+                tipo_calibracao="EXTERNA",
+                resultado="APROVADO_SEM_CORRECAO"
+            )
+            logger.info(f"✓ Histórico vazio {historico.id} criado para instrumento {instrumento_id}")
+            messages.success(request, f"✓ Novo histórico criado! Agora preencha os dados.")
+            return redirect('editar_historico_calibracao', historico_id=historico.id)
+            
     except Exception as e:
         logger.error(f"❌ Erro crítico em registrar_historico_calibracao_view: {e}", exc_info=True)
         messages.error(request, f'Erro ao criar histórico: {str(e)}')
