@@ -21,7 +21,7 @@ class InstrumentoForm(forms.ModelForm):
         model = Instrumento
         fields = [
             'tag', 'descricao', 'categoria', 'setor', 'fabricante', 'modelo', 
-            'serie', 'frequencia_meses', 'tratativa_calibracao', 'ativo'
+            'serie', 'frequencia_meses', 'tratativa_calibracao', 'acao', 'ativo'
         ]
         widgets = {
             'tag': forms.TextInput(attrs={
@@ -43,6 +43,7 @@ class InstrumentoForm(forms.ModelForm):
                 'step': '1'
             }),
             'tratativa_calibracao': forms.Select(attrs={'class': 'form-select'}),
+            'acao': forms.Select(attrs={'class': 'form-select'}),
             'ativo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 

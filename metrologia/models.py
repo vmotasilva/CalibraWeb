@@ -35,17 +35,7 @@ class CategoriaInstrumento(models.Model):
         verbose_name="Frequência de Calibração (Meses)",
         help_text="Intervalo em meses entre as calibrações para instrumentos desta categoria"
     )
-    
-    ACAO_CHOICES = [
-        ('CALIBRACAO', 'Calibração'),
-        ('VERIFICACAO', 'Verificação'),
-    ]
-    acao = models.CharField(
-        max_length=20,
-        choices=ACAO_CHOICES,
-        default='CALIBRACAO',
-        verbose_name="Ação"
-    )
+
 
     def __str__(self):
         return self.nome
@@ -179,6 +169,17 @@ class Instrumento(models.Model):
         default='INTERNA',
         verbose_name='Tratativa de Calibração',
         help_text='Indica se a calibração é feita internamente ou com fornecedor externo'
+    )
+    
+    ACAO_CHOICES = [
+        ('CALIBRACAO', 'Calibração'),
+        ('VERIFICACAO', 'Verificação'),
+    ]
+    acao = models.CharField(
+        max_length=20,
+        choices=ACAO_CHOICES,
+        default='CALIBRACAO',
+        verbose_name="Ação"
     )
 
     class Meta:

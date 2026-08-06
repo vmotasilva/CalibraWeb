@@ -380,7 +380,7 @@
                             data-nome="{{ i.tag|default:''|lower }} {{ i.descricao|default:''|lower }} {{ i.fabricante|default:''|lower }}"
                             data-status="{% if i.ativo %}ATIVO{% else %}INATIVO{% endif %}"
                             data-categoria="{{ i.categoria_id|default:'' }}"
-                            data-acao="{{ i.categoria.acao|default:'' }}"
+                            data-acao="{{ i.acao|default:'' }}"
                             data-setor="{{ i.setor_id|default:'' }}"
                             data-resultado="{% with historico=i.historicos.all|first %}{% if historico %}{{ historico.resultado }}{% else %}SEM_CALIBRACAO{% endif %}{% endwith %}"
                             data-situacao="{% if i.data_proxima_calibracao %}{% if i.data_proxima_calibracao < hoje %}VENCIDO{% elif i.data_proxima_calibracao <= alerta_30d %}AVENCER_30{% elif i.data_proxima_calibracao <= alerta_60d %}AVENCER_60{% elif i.data_proxima_calibracao <= alerta_90d %}AVENCER_90{% elif i.data_proxima_calibracao <= alerta_120d %}AVENCER_120{% else %}EM_DIA{% endif %}{% else %}EM_DIA{% endif %}">

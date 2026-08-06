@@ -157,8 +157,12 @@
                                         </select>
                                     </div>
                                     <div class="col-md-3 mb-3">
-                                        <label class="form-label fw-bold">Ação (Categoria)</label>
-                                        <input type="text" class="form-control fw-bold" value="{% if instrumento.categoria %}{{ instrumento.categoria.get_acao_display|default:'Não Definida' }}{% else %}Sem Categoria{% endif %}" disabled>
+                                        <label for="id_acao" class="form-label">Ação (Categoria) <span class="text-danger">*</span></label>
+                                        <select class="form-select" id="id_acao" name="acao" required>
+                                            <option value="">-- Selecione --</option>
+                                            <option value="CALIBRACAO" {% if instrumento.acao == 'CALIBRACAO' %}selected{% endif %}>Calibração</option>
+                                            <option value="VERIFICACAO" {% if instrumento.acao == 'VERIFICACAO' %}selected{% endif %}>Verificação</option>
+                                        </select>
                                     </div>
                                 </div>
                             </div>

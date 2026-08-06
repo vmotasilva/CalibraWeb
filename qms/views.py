@@ -2419,6 +2419,14 @@ def editar_instrumento_view(request, instrumento_id):
                     except:
                         pass
                 
+                tratativa = request.POST.get('tratativa_calibracao')
+                if tratativa:
+                    instrumento.tratativa_calibracao = tratativa
+                    
+                acao_inst = request.POST.get('acao')
+                if acao_inst:
+                    instrumento.acao = acao_inst
+                
                 # Atualizar tolerância
                 tolerancia = request.POST.get('tolerancia_processo')
                 if tolerancia:
