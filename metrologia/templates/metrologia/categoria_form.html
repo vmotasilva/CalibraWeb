@@ -243,6 +243,34 @@
                             </small>
                         </form>
                     </div>
+                    
+                    <hr class="my-3">
+                    
+                    <!-- Atualizar Ação -->
+                    <div class="mb-0">
+                        <form method="post" action="{% url 'metrologia:categoria_bulk_update_acao' categoria.id %}" class="w-100">
+                            {% csrf_token %}
+                            <label class="form-label small fw-bold mb-2">
+                                <i class="bi bi-gear-wide-connected"></i> Atualizar Ação
+                            </label>
+                            <div class="input-group input-group-sm mb-2">
+                                <select name="acao" class="form-select" required>
+                                    <option value="">-- Selecione --</option>
+                                    <option value="CALIBRACAO" {% if categoria.acao == 'CALIBRACAO' %}selected{% endif %}>Calibração</option>
+                                    <option value="VERIFICACAO" {% if categoria.acao == 'VERIFICACAO' %}selected{% endif %}>Verificação</option>
+                                </select>
+                                <button type="submit" class="btn btn-primary" title="Atualizar ação">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                            </div>
+                            <div class="form-check form-check-sm">
+                                <input type="checkbox" name="aplicar_instrumentos" class="form-check-input" id="aplAcao" checked>
+                                <label class="form-check-label" for="aplAcao">
+                                    Aplicar a todos os {{ total_instrumentos }} instrumento(s)
+                                </label>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
             {% endif %}

@@ -666,3 +666,40 @@ def categoria_bulk_update_frequencia_view(request, categoria_id):
     
     messages.success(request, mensagem)
     return redirect('metrologia:categoria_update', categoria_id=categoria_id)
+
+@login_required
+@require_http_methods(["POST"])
+def categoria_bulk_update_acao_view(request, categoria_id):
+    "Atualizar a ação padrão (Calibração/Verificação) da categoria e aplicar a todos os instrumentos."
+    categoria = get_object_or_404(CategoriaInstrumento, id=categoria_id)
+    
+    nova_acao = request.POST.get('acao')
+    opcoes_validas = [choice[0] for choice in CategoriaInstrumento.ACAO_CHOICES]
+    
+    if nova_acao not in opcoes_validas:
+        messages.error(request, 'Ação inválida.')
+        return redirect('metrologia:categoria_update', categoria_id=categoria_id)
+    
+    # Atualizar ação da categoria
+    categoria.acao = nova_acao
+    categoria.save()
+    
+    mensagem = f'Categoria atualizada com ação padrão "{dict(CategoriaInstrumento.ACAO_CHOICES).get(nova_acao)}".'
+    
+    # Se opção marcada, aplicar a todos os instrumentos
+    aplicar_instrumentos = request.POST.get('aplicar_instrumentos') == 'on'
+    if aplicar_instrumentos:
+        instrumentos = Instrumento.objects.filter(categoria=categoria)
+        atualizados = 0
+        
+        for instrumento in instrumentos:
+            if instrumento.acao != nova_acao:
+                instrumento.acao = nova_acao
+                instrumento.save(update_fields=['acao'])
+                atualizados += 1
+        
+        if atualizados > 0:
+            mensagem += f' {atualizados} instrumento(s) tiveram suas ações atualizadas para "{dict(CategoriaInstrumento.ACAO_CHOICES).get(nova_acao)}".'
+    
+    messages.success(request, mensagem)
+    return redirect('metrologia:categoria_update', categoria_id=categoria_id)

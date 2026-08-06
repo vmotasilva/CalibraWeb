@@ -34,6 +34,7 @@ urlpatterns = [
     path('categorias/<int:categoria_id>/atualizar-sigla-em-massa/', categorias.categoria_bulk_update_sigla_view, name='categoria_bulk_update_sigla'),
     path('categorias/<int:categoria_id>/atualizar-tratativa-em-massa/', categorias.categoria_bulk_update_tratativa_view, name='categoria_bulk_update_tratativa'),
     path('categorias/<int:categoria_id>/atualizar-frequencia-em-massa/', categorias.categoria_bulk_update_frequencia_view, name='categoria_bulk_update_frequencia'),
+    path('categorias/<int:categoria_id>/atualizar-acao-em-massa/', categorias.categoria_bulk_update_acao_view, name='categoria_bulk_update_acao'),
     path('api/categorias/', categorias.categorias_api_view, name='categorias_api'),
     
     # Faixas padrão de categorias

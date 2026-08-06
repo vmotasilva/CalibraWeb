@@ -170,4 +170,27 @@
         {% endif %}
     </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectCategoria = document.getElementById('id_categoria');
+    const selectAcao = document.getElementById('id_acao');
+    
+    const categoriaAcoes = {
+        {% for cat in form.fields.categoria.queryset %}
+        "{{ cat.id }}": "{{ cat.acao|default:'' }}",
+        {% endfor %}
+    };
+
+    if (selectCategoria && selectAcao) {
+        selectCategoria.addEventListener('change', function() {
+            const catId = this.value;
+            if (catId && categoriaAcoes[catId]) {
+                selectAcao.value = categoriaAcoes[catId];
+                selectAcao.classList.add('is-valid');
+                setTimeout(() => selectAcao.classList.remove('is-valid'), 1500);
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

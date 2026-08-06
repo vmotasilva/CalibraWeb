@@ -76,9 +76,9 @@
                                     <div class="col-md-6 mb-3">
                                         <label for="id_categoria" class="form-label">Categoria</label>
                                         <select class="form-select" id="id_categoria" name="categoria">
-                                            <option value="">-- Selecionar --</option>
+                                            <option value="" data-acao="">-- Selecionar --</option>
                                             {% for categoria in categorias %}
-                                                <option value="{{ categoria.id }}" {% if instrumento.categoria.id == categoria.id %}selected{% endif %}>
+                                                <option value="{{ categoria.id }}" data-acao="{{ categoria.acao|default:'' }}" {% if instrumento.categoria.id == categoria.id %}selected{% endif %}>
                                                     {{ categoria.nome }}
                                                 </option>
                                             {% endfor %}
@@ -214,5 +214,31 @@
         margin-bottom: 0.5rem;
     }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectCategoria = document.getElementById('id_categoria');
+    const selectAcao = document.getElementById('id_acao');
+
+    if (selectCategoria && selectAcao) {
+        selectCategoria.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            if (selectedOption) {
+                const novaAcao = selectedOption.getAttribute('data-acao');
+                if (novaAcao && novaAcao !== '') {
+                    // Update value and trigger visual feedback
+                    selectAcao.value = novaAcao;
+                    
+                    // Flash effect to show it was updated automatically
+                    selectAcao.classList.add('is-valid');
+                    setTimeout(() => {
+                        selectAcao.classList.remove('is-valid');
+                    }, 1500);
+                }
+            }
+        });
+    }
+});
+</script>
 
 {% endblock %}
