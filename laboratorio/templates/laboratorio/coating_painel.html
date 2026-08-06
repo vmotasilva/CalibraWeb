@@ -1278,7 +1278,7 @@
         // Trava para evitar duplo clique e múltiplos envios de formulário
         document.addEventListener("submit", function(e) {
             if (e.target.tagName === 'FORM') {
-                const submitBtn = e.target.querySelector('button[type="submit"]');
+                const submitBtn = e.submitter || e.target.querySelector('button[type="submit"]');
                 if (submitBtn) {
                     if (submitBtn.dataset.submitting) {
                         e.preventDefault();
@@ -1286,9 +1286,21 @@
                     }
                     submitBtn.dataset.submitting = 'true';
                     
+                    // Garantir que o name/value do botão seja enviado pro backend (visto que vamos desabilitá-lo)
+                    if (submitBtn.name) {
+                        const hiddenInput = document.createElement('input');
+                        hiddenInput.type = 'hidden';
+                        hiddenInput.name = submitBtn.name;
+                        hiddenInput.value = submitBtn.value || '1';
+                        e.target.appendChild(hiddenInput);
+                    }
+                    
                     const originalText = submitBtn.innerHTML;
                     submitBtn.dataset.originalText = originalText;
                     submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Aguarde...';
+                    
+                    // Usar propriedade nativa para bloquear clicks totalmente
+                    submitBtn.disabled = true;
                     submitBtn.classList.add('disabled');
                 }
             }
