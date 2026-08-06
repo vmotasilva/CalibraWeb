@@ -1241,7 +1241,7 @@ def registrar_ocorrencia(request):
             data_ocorrencia=data_ocorrencia or datetime.now().date(),
             status='ABERTA'
         )
-        messages.success(request, 'Ocorrência registrada com sucesso.')
+        messages.success(request, 'OcorrÃªncia registrada com sucesso.')
     return redirect(request.META.get('HTTP_REFERER', 'metrologia:modulo_metrologia'))
 
 @login_required
@@ -1256,6 +1256,5 @@ def encerrar_ocorrencia(request, ocorrencia_id):
         ocorrencia.status = 'ENCERRADA'
         ocorrencia.data_encerramento = datetime.now().date()
         ocorrencia.save()
-        messages.success(request, 'Ocorrência encerrada com sucesso.')
+        messages.success(request, 'OcorrÃªncia encerrada com sucesso.')
     return redirect(request.META.get('HTTP_REFERER', 'metrologia:modulo_metrologia'))
-
