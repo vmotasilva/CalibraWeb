@@ -16,7 +16,7 @@ from metrologia.forms import CategoriaInstrumentoForm, FaixaMedicaoPadraoCategor
 
 @login_required
 def categorias_list_view(request):
-    """Lista todas as categorias de instrumentos com estatísticas."""
+    """Lista todas as categorias de instrumentos com estatÃ­sticas."""
     categorias = CategoriaInstrumento.objects.annotate(
         total_instrumentos=Count('instrumento', distinct=True),
         total_faixas=Count('instrumento__faixas', distinct=True)
@@ -74,7 +74,7 @@ def categoria_update_view(request, categoria_id):
     # Contar instrumentos nesta categoria
     total_instrumentos = categoria.instrumento_set.count()
     
-    # Faixas padrão da categoria
+    # Faixas padrÃ£o da categoria
     faixas_padrao = FaixaMedicaoPadraoCategoria.objects.filter(
         categoria=categoria
     ).select_related('unidade').order_by('valor_minimo')
@@ -94,16 +94,16 @@ def categoria_update_view(request, categoria_id):
 @login_required
 @require_http_methods(["POST"])
 def categoria_delete_view(request, categoria_id):
-    """Deletar categoria de instrumento (se não tiver instrumentos)."""
+    """Deletar categoria de instrumento (se nÃ£o tiver instrumentos)."""
     categoria = get_object_or_404(CategoriaInstrumento, id=categoria_id)
     
-    # Verificar se há instrumentos nesta categoria
+    # Verificar se hÃ¡ instrumentos nesta categoria
     total_instrumentos = categoria.instrumento_set.count()
     
     if total_instrumentos > 0:
         messages.error(
             request, 
-            f'Não é possível deletar a categoria "{categoria.nome}" pois ela possui {total_instrumentos} instrumento(s) cadastrado(s).'
+            f'NÃ£o Ã© possÃ­vel deletar a categoria "{categoria.nome}" pois ela possui {total_instrumentos} instrumento(s) cadastrado(s).'
         )
     else:
         nome = categoria.nome
@@ -123,12 +123,12 @@ def categoria_detail_view(request, categoria_id):
         categoria=categoria
     ).select_related('setor', 'responsavel').prefetch_related('faixas').order_by('tag')
     
-    # Faixas de medição (agregadas de todos os instrumentos da categoria, ordenadas por TAG do instrumento)
+    # Faixas de mediÃ§Ã£o (agregadas de todos os instrumentos da categoria, ordenadas por TAG do instrumento)
     faixas_instrumentos = FaixaMedicao.objects.filter(
         instrumento__categoria=categoria
     ).select_related('instrumento', 'unidade').distinct().order_by('instrumento__tag')
     
-    # Faixas padrão da categoria
+    # Faixas padrÃ£o da categoria
     faixas_padrao = FaixaMedicaoPadraoCategoria.objects.filter(
         categoria=categoria
     ).select_related('unidade').order_by('valor_minimo')
@@ -147,7 +147,7 @@ def categoria_detail_view(request, categoria_id):
 
 @login_required
 def categorias_api_view(request):
-    """API para listar categorias em JSON (para selects dinâmicos)."""
+    """API para listar categorias em JSON (para selects dinÃ¢micos)."""
     search = request.GET.get('search', '').strip()
     
     categorias = CategoriaInstrumento.objects.all().order_by('nome')
@@ -171,12 +171,12 @@ def categorias_api_view(request):
 
 
 # ==============================================================================
-# GERENCIAMENTO DE FAIXAS PADRÃO DE CATEGORIAS
+# GERENCIAMENTO DE FAIXAS PADRÃO DE CATEGORIAS
 # ==============================================================================
 
 @login_required
 def faixa_categoria_create_view(request, categoria_id):
-    """Criar nova faixa padrão para uma categoria."""
+    """Criar nova faixa padrÃ£o para uma categoria."""
     categoria = get_object_or_404(CategoriaInstrumento, id=categoria_id)
     
     if request.method == 'POST':
@@ -185,7 +185,7 @@ def faixa_categoria_create_view(request, categoria_id):
             faixa = form.save(commit=False)
             faixa.categoria = categoria
             faixa.save()
-            messages.success(request, f'Faixa padrão adicionada com sucesso à categoria.')
+            messages.success(request, f'Faixa padrÃ£o adicionada com sucesso Ã  categoria.')
             return redirect('metrologia:categoria_detail', categoria_id=categoria_id)
         else:
             for field, errors in form.errors.items():
@@ -197,14 +197,14 @@ def faixa_categoria_create_view(request, categoria_id):
     context = {
         'form': form,
         'categoria': categoria,
-        'titulo': f'Nova Faixa Padrão - {categoria.nome}',
+        'titulo': f'Nova Faixa PadrÃ£o - {categoria.nome}',
     }
     return render(request, 'metrologia/faixa_categoria_form.html', context)
 
 
 @login_required
 def faixa_categoria_update_view(request, faixa_id):
-    """Atualizar faixa padrão de uma categoria."""
+    """Atualizar faixa padrÃ£o de uma categoria."""
     faixa = get_object_or_404(FaixaMedicaoPadraoCategoria, id=faixa_id)
     categoria = faixa.categoria
     
@@ -212,7 +212,7 @@ def faixa_categoria_update_view(request, faixa_id):
         form = FaixaMedicaoPadraoCategoriForm(request.POST, instance=faixa)
         if form.is_valid():
             faixa = form.save()
-            messages.success(request, 'Faixa padrão atualizada com sucesso.')
+            messages.success(request, 'Faixa padrÃ£o atualizada com sucesso.')
             return redirect('metrologia:categoria_detail', categoria_id=categoria.id)
         else:
             for field, errors in form.errors.items():
@@ -225,7 +225,7 @@ def faixa_categoria_update_view(request, faixa_id):
         'form': form,
         'faixa': faixa,
         'categoria': categoria,
-        'titulo': f'Editar Faixa Padrão - {categoria.nome}',
+        'titulo': f'Editar Faixa PadrÃ£o - {categoria.nome}',
     }
     return render(request, 'metrologia/faixa_categoria_form.html', context)
 
@@ -233,19 +233,19 @@ def faixa_categoria_update_view(request, faixa_id):
 @login_required
 @require_http_methods(["POST"])
 def faixa_categoria_delete_view(request, faixa_id):
-    """Deletar faixa padrão de uma categoria."""
+    """Deletar faixa padrÃ£o de uma categoria."""
     faixa = get_object_or_404(FaixaMedicaoPadraoCategoria, id=faixa_id)
     categoria_id = faixa.categoria.id
     
     faixa.delete()
-    messages.success(request, 'Faixa padrão removida com sucesso.')
+    messages.success(request, 'Faixa padrÃ£o removida com sucesso.')
     
     return redirect('metrologia:categoria_detail', categoria_id=categoria_id)
 
 
 @login_required
 def faixas_categoria_api_view(request, categoria_id):
-    """API para obter faixas padrão de uma categoria em JSON."""
+    """API para obter faixas padrÃ£o de uma categoria em JSON."""
     categoria = get_object_or_404(CategoriaInstrumento, id=categoria_id)
     
     faixas = FaixaMedicaoPadraoCategoria.objects.filter(
@@ -272,7 +272,7 @@ def faixas_categoria_api_view(request, categoria_id):
 @login_required
 @require_http_methods(["POST"])
 def faixa_categoria_add_to_instrument_view(request, categoria_id):
-    """Adicionar uma faixa padrão da categoria a um instrumento."""
+    """Adicionar uma faixa padrÃ£o da categoria a um instrumento."""
     categoria = get_object_or_404(CategoriaInstrumento, id=categoria_id)
     
     instrumento_id = request.POST.get('instrumento_id')
@@ -281,7 +281,7 @@ def faixa_categoria_add_to_instrument_view(request, categoria_id):
     instrumento = get_object_or_404(Instrumento, id=instrumento_id, categoria=categoria)
     faixa_padrao = get_object_or_404(FaixaMedicaoPadraoCategoria, id=faixa_padrao_id, categoria=categoria)
     
-    # Verificar se já existe essa faixa no instrumento
+    # Verificar se jÃ¡ existe essa faixa no instrumento
     faixa_existente = FaixaMedicao.objects.filter(
         instrumento=instrumento,
         unidade=faixa_padrao.unidade,
@@ -290,9 +290,9 @@ def faixa_categoria_add_to_instrument_view(request, categoria_id):
     ).exists()
     
     if faixa_existente:
-        messages.warning(request, 'Esta faixa já existe para este instrumento.')
+        messages.warning(request, 'Esta faixa jÃ¡ existe para este instrumento.')
     else:
-        # Criar nova faixa baseada na faixa padrão
+        # Criar nova faixa baseada na faixa padrÃ£o
         nova_faixa = FaixaMedicao.objects.create(
             instrumento=instrumento,
             unidade=faixa_padrao.unidade,
@@ -332,11 +332,11 @@ def faixa_instrumento_delete_view(request, categoria_id, faixa_id):
 @login_required
 @require_http_methods(["GET", "POST"])
 def faixa_instrumento_replace_view(request, categoria_id, faixa_id):
-    """Substituir uma faixa de um instrumento por uma faixa padrão."""
+    """Substituir uma faixa de um instrumento por uma faixa padrÃ£o."""
     categoria = get_object_or_404(CategoriaInstrumento, id=categoria_id)
     faixa_atual = get_object_or_404(FaixaMedicao, id=faixa_id, instrumento__categoria=categoria)
     
-    # Faixas padrão disponíveis
+    # Faixas padrÃ£o disponÃ­veis
     faixas_padrao = FaixaMedicaoPadraoCategoria.objects.filter(
         categoria=categoria
     ).select_related('unidade').order_by('valor_minimo')
@@ -345,7 +345,7 @@ def faixa_instrumento_replace_view(request, categoria_id, faixa_id):
         faixa_padrao_id = request.POST.get('faixa_padrao_id')
         faixa_padrao = get_object_or_404(FaixaMedicaoPadraoCategoria, id=faixa_padrao_id, categoria=categoria)
         
-        # Verificar se a nova faixa já existe no instrumento
+        # Verificar se a nova faixa jÃ¡ existe no instrumento
         faixa_existente = FaixaMedicao.objects.filter(
             instrumento=faixa_atual.instrumento,
             unidade=faixa_padrao.unidade,
@@ -354,10 +354,10 @@ def faixa_instrumento_replace_view(request, categoria_id, faixa_id):
         ).exclude(id=faixa_atual.id).exists()
         
         if faixa_existente:
-            messages.warning(request, 'A faixa padrão selecionada já existe para este instrumento.')
+            messages.warning(request, 'A faixa padrÃ£o selecionada jÃ¡ existe para este instrumento.')
             return redirect('metrologia:faixa_instrumento_replace', categoria_id=categoria_id, faixa_id=faixa_id)
         
-        # Atualizar a faixa com valores da faixa padrão
+        # Atualizar a faixa com valores da faixa padrÃ£o
         faixa_antiga = f"{faixa_atual.valor_minimo} - {faixa_atual.valor_maximo} {faixa_atual.unidade.nome}"
         
         faixa_atual.unidade = faixa_padrao.unidade
@@ -371,7 +371,7 @@ def faixa_instrumento_replace_view(request, categoria_id, faixa_id):
         faixa_nova = f"{faixa_padrao.valor_minimo} - {faixa_padrao.valor_maximo} {faixa_padrao.unidade.nome}"
         messages.success(
             request, 
-            f'Faixa do instrumento "{faixa_atual.instrumento.tag}" substituída de "{faixa_antiga}" para "{faixa_nova}".'
+            f'Faixa do instrumento "{faixa_atual.instrumento.tag}" substituÃ­da de "{faixa_antiga}" para "{faixa_nova}".'
         )
         
         return redirect('metrologia:categoria_detail', categoria_id=categoria_id)
@@ -388,7 +388,7 @@ def faixa_instrumento_replace_view(request, categoria_id, faixa_id):
 @login_required
 @require_http_methods(["POST"])
 def faixa_instrumento_bulk_delete_view(request, categoria_id):
-    """Remover múltiplas faixas de instrumentos em massa."""
+    """Remover mÃºltiplas faixas de instrumentos em massa."""
     categoria = get_object_or_404(CategoriaInstrumento, id=categoria_id)
     
     faixa_ids = request.POST.getlist('faixa_ids')
@@ -397,14 +397,14 @@ def faixa_instrumento_bulk_delete_view(request, categoria_id):
         messages.warning(request, 'Nenhuma faixa foi selecionada.')
         return redirect('metrologia:categoria_detail', categoria_id=categoria_id)
     
-    # Validar que todas as faixas pertencem à categoria
+    # Validar que todas as faixas pertencem Ã  categoria
     faixas = FaixaMedicao.objects.filter(
         id__in=faixa_ids,
         instrumento__categoria=categoria
     )
     
     if faixas.count() != len(faixa_ids):
-        messages.error(request, 'Algumas faixas selecionadas não pertencem a esta categoria.')
+        messages.error(request, 'Algumas faixas selecionadas nÃ£o pertencem a esta categoria.')
         return redirect('metrologia:categoria_detail', categoria_id=categoria_id)
     
     quantidade = faixas.count()
@@ -417,10 +417,10 @@ def faixa_instrumento_bulk_delete_view(request, categoria_id):
 @login_required
 @require_http_methods(["GET", "POST"])
 def faixa_instrumento_bulk_replace_view(request, categoria_id):
-    """Substituir múltiplas faixas por uma faixa padrão."""
+    """Substituir mÃºltiplas faixas por uma faixa padrÃ£o."""
     categoria = get_object_or_404(CategoriaInstrumento, id=categoria_id)
     
-    # Faixas padrão disponíveis
+    # Faixas padrÃ£o disponÃ­veis
     faixas_padrao = FaixaMedicaoPadraoCategoria.objects.filter(
         categoria=categoria
     ).select_related('unidade').order_by('valor_minimo')
@@ -434,7 +434,7 @@ def faixa_instrumento_bulk_replace_view(request, categoria_id):
             return redirect('metrologia:categoria_detail', categoria_id=categoria_id)
         
         if not faixa_padrao_id:
-            messages.error(request, 'Nenhuma faixa padrão foi selecionada.')
+            messages.error(request, 'Nenhuma faixa padrÃ£o foi selecionada.')
             return redirect('metrologia:categoria_detail', categoria_id=categoria_id)
         
         faixa_padrao = get_object_or_404(FaixaMedicaoPadraoCategoria, id=faixa_padrao_id, categoria=categoria)
@@ -446,12 +446,12 @@ def faixa_instrumento_bulk_replace_view(request, categoria_id):
         )
         
         if faixas.count() != len(faixa_ids):
-            messages.error(request, 'Algumas faixas selecionadas não pertencem a esta categoria.')
+            messages.error(request, 'Algumas faixas selecionadas nÃ£o pertencem a esta categoria.')
             return redirect('metrologia:categoria_detail', categoria_id=categoria_id)
         
         quantidade = 0
         for faixa in faixas:
-            # Verificar se a nova faixa já existe neste instrumento
+            # Verificar se a nova faixa jÃ¡ existe neste instrumento
             faixa_existente = FaixaMedicao.objects.filter(
                 instrumento=faixa.instrumento,
                 unidade=faixa_padrao.unidade,
@@ -472,10 +472,10 @@ def faixa_instrumento_bulk_replace_view(request, categoria_id):
         if quantidade > 0:
             messages.success(
                 request, 
-                f'{quantidade} faixa(s) substituída(s) pela faixa padrão "{faixa_padrao.valor_minimo} - {faixa_padrao.valor_maximo} {faixa_padrao.unidade.nome}".'
+                f'{quantidade} faixa(s) substituÃ­da(s) pela faixa padrÃ£o "{faixa_padrao.valor_minimo} - {faixa_padrao.valor_maximo} {faixa_padrao.unidade.nome}".'
             )
         else:
-            messages.warning(request, 'Nenhuma faixa foi substituída (todas já existem nos instrumentos).')
+            messages.warning(request, 'Nenhuma faixa foi substituÃ­da (todas jÃ¡ existem nos instrumentos).')
         
         return redirect('metrologia:categoria_detail', categoria_id=categoria_id)
     
@@ -490,7 +490,7 @@ def faixa_instrumento_bulk_replace_view(request, categoria_id):
 @login_required
 @require_http_methods(["POST"])
 def instrumento_bulk_change_category_view(request, categoria_id):
-    """Alterar categoria de múltiplos instrumentos em massa."""
+    """Alterar categoria de mÃºltiplos instrumentos em massa."""
     categoria_destino = get_object_or_404(CategoriaInstrumento, id=categoria_id)
     
     instrumento_ids = request.POST.getlist('instrumento_ids')
@@ -503,7 +503,7 @@ def instrumento_bulk_change_category_view(request, categoria_id):
     instrumentos = Instrumento.objects.filter(id__in=instrumento_ids)
     
     if instrumentos.count() != len(instrumento_ids):
-        messages.error(request, 'Alguns instrumentos selecionados não foram encontrados.')
+        messages.error(request, 'Alguns instrumentos selecionados nÃ£o foram encontrados.')
         return redirect('metrologia:categoria_detail', categoria_id=categoria_id)
     
     quantidade = 0
@@ -519,7 +519,7 @@ def instrumento_bulk_change_category_view(request, categoria_id):
             f'{quantidade} instrumento(s) movido(s) para a categoria "{categoria_destino.nome}" com sucesso.'
         )
     else:
-        messages.info(request, 'Os instrumentos selecionados já estão nesta categoria.')
+        messages.info(request, 'Os instrumentos selecionados jÃ¡ estÃ£o nesta categoria.')
     
     return redirect('metrologia:categoria_detail', categoria_id=categoria_id)
 
@@ -534,7 +534,7 @@ def categoria_bulk_update_sigla_view(request, categoria_id):
     aplicar_instrumentos = request.POST.get('aplicar_instrumentos') == 'on'
     
     if not nova_sigla:
-        messages.error(request, 'Sigla não pode ser vazia.')
+        messages.error(request, 'Sigla nÃ£o pode ser vazia.')
         return redirect('metrologia:categoria_update', categoria_id=categoria_id)
     
     # Atualizar sigla da categoria
@@ -543,22 +543,22 @@ def categoria_bulk_update_sigla_view(request, categoria_id):
     
     mensagem = f'Categoria atualizada com sigla "{nova_sigla}".'
     
-    # Se opção marcada, atualizar tags dos instrumentos
+    # Se opÃ§Ã£o marcada, atualizar tags dos instrumentos
     if aplicar_instrumentos:
         instrumentos = Instrumento.objects.filter(categoria=categoria)
         atualizados = 0
         
         for instrumento in instrumentos:
-            # Atualizar tag para começar com a sigla
+            # Atualizar tag para comeÃ§ar com a sigla
             partes_tag = instrumento.tag.split('-')
             if len(partes_tag) >= 2:
                 # Substituir o prefixo existente pela nova sigla
                 nova_tag = f"{nova_sigla}-{'-'.join(partes_tag[1:])}"
             else:
-                # Se a tag não tem hífen, adicionar sigla como prefixo
+                # Se a tag nÃ£o tem hÃ­fen, adicionar sigla como prefixo
                 nova_tag = f"{nova_sigla}-{instrumento.tag}"
             
-            # Verificar se a nova tag já existe
+            # Verificar se a nova tag jÃ¡ existe
             if not Instrumento.objects.filter(tag=nova_tag).exclude(id=instrumento.id).exists():
                 instrumento.tag = nova_tag
                 instrumento.save()
@@ -574,16 +574,16 @@ def categoria_bulk_update_sigla_view(request, categoria_id):
 @login_required
 @require_http_methods(["POST"])
 def categoria_bulk_update_tratativa_view(request, categoria_id):
-    """Atualizar tratativa de calibração da categoria e aplicar a todos os instrumentos."""
+    """Atualizar tratativa de calibraÃ§Ã£o da categoria e aplicar a todos os instrumentos."""
     categoria = get_object_or_404(CategoriaInstrumento, id=categoria_id)
     
     nova_tratativa = request.POST.get('tratativa_calibracao', '').strip()
     aplicar_instrumentos = request.POST.get('aplicar_instrumentos') == 'on'
     
-    # Validar opção de tratativa
+    # Validar opÃ§Ã£o de tratativa
     opcoes_validas = [choice[0] for choice in CategoriaInstrumento.TRATATIVA_CHOICES]
     if nova_tratativa not in opcoes_validas:
-        messages.error(request, 'Tratativa de calibração inválida.')
+        messages.error(request, 'Tratativa de calibraÃ§Ã£o invÃ¡lida.')
         return redirect('metrologia:categoria_update', categoria_id=categoria_id)
     
     # Atualizar tratativa da categoria
@@ -592,7 +592,7 @@ def categoria_bulk_update_tratativa_view(request, categoria_id):
     
     mensagem = f'Categoria atualizada com tratativa "{dict(CategoriaInstrumento.TRATATIVA_CHOICES).get(nova_tratativa)}".'
     
-    # Se opção marcada, atualizar tratativa de todos os instrumentos
+    # Se opÃ§Ã£o marcada, atualizar tratativa de todos os instrumentos
     if aplicar_instrumentos:
         instrumentos = Instrumento.objects.filter(categoria=categoria)
         atualizados = 0
@@ -613,26 +613,26 @@ def categoria_bulk_update_tratativa_view(request, categoria_id):
 @login_required
 @require_http_methods(["POST"])
 def categoria_bulk_update_frequencia_view(request, categoria_id):
-    """Atualizar frequência de calibração da categoria e aplicar a todos os instrumentos."""
+    """Atualizar frequÃªncia de calibraÃ§Ã£o da categoria e aplicar a todos os instrumentos."""
     categoria = get_object_or_404(CategoriaInstrumento, id=categoria_id)
     
     try:
         nova_frequencia = int(request.POST.get('frequencia_calibracao_meses', 0))
     except (ValueError, TypeError):
-        messages.error(request, 'Frequência deve ser um número inteiro.')
+        messages.error(request, 'FrequÃªncia deve ser um nÃºmero inteiro.')
         return redirect('metrologia:categoria_update', categoria_id=categoria_id)
     
     if nova_frequencia <= 0:
-        messages.error(request, 'Frequência deve ser maior que zero.')
+        messages.error(request, 'FrequÃªncia deve ser maior que zero.')
         return redirect('metrologia:categoria_update', categoria_id=categoria_id)
     
-    # Atualizar frequência da categoria
+    # Atualizar frequÃªncia da categoria
     categoria.frequencia_calibracao_meses = nova_frequencia
     categoria.save()
     
-    mensagem = f'Categoria atualizada com frequência de {nova_frequencia} mês(es).'
+    mensagem = f'Categoria atualizada com frequÃªncia de {nova_frequencia} mÃªs(es).'
     
-    # Se opção marcada, atualizar frequência de todos os instrumentos
+    # Se opÃ§Ã£o marcada, atualizar frequÃªncia de todos os instrumentos
     aplicar_instrumentos = request.POST.get('aplicar_instrumentos') == 'on'
     if aplicar_instrumentos:
         from dateutil.relativedelta import relativedelta
@@ -642,11 +642,11 @@ def categoria_bulk_update_frequencia_view(request, categoria_id):
         atualizados = 0
         
         for instrumento in instrumentos:
-            # Atualizar a frequência do instrumento
+            # Atualizar a frequÃªncia do instrumento
             frequencia_anterior = instrumento.frequencia_meses
             instrumento.frequencia_meses = nova_frequencia
             
-            # Recalcular próxima calibração baseado na última
+            # Recalcular prÃ³xima calibraÃ§Ã£o baseado na Ãºltima
             ultimo_historico = HistoricoCalibracao.objects.filter(
                 instrumento=instrumento
             ).order_by('-data_calibracao').first()
@@ -660,7 +660,7 @@ def categoria_bulk_update_frequencia_view(request, categoria_id):
             atualizados += 1
         
         if atualizados > 0:
-            mensagem += f' {atualizados} instrumento(s) tiveram suas frequências atualizadas com recálculo de próximas datas.'
+            mensagem += f' {atualizados} instrumento(s) tiveram suas frequÃªncias atualizadas com recÃ¡lculo de prÃ³ximas datas.'
         else:
             mensagem += ' Nenhum instrumento ativo encontrado para atualizar.'
     
@@ -670,23 +670,23 @@ def categoria_bulk_update_frequencia_view(request, categoria_id):
 @login_required
 @require_http_methods(["POST"])
 def categoria_bulk_update_acao_view(request, categoria_id):
-    "Atualizar a a��o padr�o (Calibra��o/Verifica��o) da categoria e aplicar a todos os instrumentos."
+    "Atualizar a ao padro (Calibrao/Verificao) da categoria e aplicar a todos os instrumentos."
     categoria = get_object_or_404(CategoriaInstrumento, id=categoria_id)
     
     nova_acao = request.POST.get('acao')
     opcoes_validas = [choice[0] for choice in CategoriaInstrumento.ACAO_CHOICES]
     
     if nova_acao not in opcoes_validas:
-        messages.error(request, 'A��o inv�lida.')
+        messages.error(request, 'Ao invlida.')
         return redirect('metrologia:categoria_update', categoria_id=categoria_id)
     
-    # Atualizar a��o da categoria
+    # Atualizar ao da categoria
     categoria.acao = nova_acao
     categoria.save()
     
-    mensagem = f'Categoria atualizada com a��o padr�o "{dict(CategoriaInstrumento.ACAO_CHOICES).get(nova_acao)}".'
+    mensagem = f'Categoria atualizada com ao padro "{dict(CategoriaInstrumento.ACAO_CHOICES).get(nova_acao)}".'
     
-    # Se op��o marcada, aplicar a todos os instrumentos
+    # Se opo marcada, aplicar a todos os instrumentos
     aplicar_instrumentos = request.POST.get('aplicar_instrumentos') == 'on'
     if aplicar_instrumentos:
         instrumentos = Instrumento.objects.filter(categoria=categoria)
@@ -699,7 +699,7 @@ def categoria_bulk_update_acao_view(request, categoria_id):
                 atualizados += 1
         
         if atualizados > 0:
-            mensagem += f' {atualizados} instrumento(s) tiveram suas a��es atualizadas para "{dict(CategoriaInstrumento.ACAO_CHOICES).get(nova_acao)}".'
+            mensagem += f' {atualizados} instrumento(s) tiveram suas aes atualizadas para "{dict(CategoriaInstrumento.ACAO_CHOICES).get(nova_acao)}".'
     
     messages.success(request, mensagem)
     return redirect('metrologia:categoria_update', categoria_id=categoria_id)
