@@ -1217,3 +1217,45 @@ def registrar_historico_massa(request):
         messages.success(request, f"âœ“ {sucesso} registros criados com sucesso!")
         
     return redirect('dashboard')
+
+
+@login_required
+def registrar_ocorrencia(request):
+    from qms.models import OcorrenciaInstrumento
+    from metrologia.models import Instrumento
+    from django.shortcuts import redirect, get_object_or_404
+    from django.contrib import messages
+    from datetime import datetime
+
+    if request.method == 'POST':
+        instrumento_id = request.POST.get('instrumento_id')
+        tipo = request.POST.get('tipo')
+        descricao = request.POST.get('descricao')
+        data_ocorrencia = request.POST.get('data_ocorrencia')
+
+        instrumento = get_object_or_404(Instrumento, pk=instrumento_id)
+        OcorrenciaInstrumento.objects.create(
+            instrumento=instrumento,
+            tipo=tipo,
+            descricao=descricao,
+            data_ocorrencia=data_ocorrencia or datetime.now().date(),
+            status='ABERTA'
+        )
+        messages.success(request, 'Ocorrência registrada com sucesso.')
+    return redirect(request.META.get('HTTP_REFERER', 'metrologia:modulo_metrologia'))
+
+@login_required
+def encerrar_ocorrencia(request, ocorrencia_id):
+    from qms.models import OcorrenciaInstrumento
+    from django.shortcuts import redirect, get_object_or_404
+    from django.contrib import messages
+    from datetime import datetime
+
+    if request.method == 'POST':
+        ocorrencia = get_object_or_404(OcorrenciaInstrumento, pk=ocorrencia_id)
+        ocorrencia.status = 'ENCERRADA'
+        ocorrencia.data_encerramento = datetime.now().date()
+        ocorrencia.save()
+        messages.success(request, 'Ocorrência encerrada com sucesso.')
+    return redirect(request.META.get('HTTP_REFERER', 'metrologia:modulo_metrologia'))
+
