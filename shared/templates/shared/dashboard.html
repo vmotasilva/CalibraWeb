@@ -30,6 +30,13 @@
     .btn-action::after { content: '→'; opacity: 0.5; }
 </style>
 
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="m-0 text-muted">Visão Geral</h5>
+    <a href="{% url 'modulo_metrologia' %}" class="btn btn-primary shadow-sm">
+        <i class="bi bi-list-ul"></i> Listagem de Instrumentos
+    </a>
+</div>
+
 <div class="row mb-4">
     <div class="col-md-3">
         <a href="{% url 'modulo_metrologia' %}?status=vencidos" class="card-counter danger">

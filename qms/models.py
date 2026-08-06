@@ -93,6 +93,12 @@ class OcorrenciaInstrumento(models.Model):
     custo_reparo = models.DecimalField(
         max_digits=10, decimal_places=2, null=True, blank=True
     )
+    STATUS_CHOICES = [
+        ("ABERTA", "Aberta"),
+        ("ENCERRADA", "Encerrada"),
+    ]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="ABERTA")
+    data_encerramento = models.DateField(null=True, blank=True)
 
     def __str__(self):
         return (

@@ -728,8 +728,26 @@
                 selectMaquina.addEventListener('change', function() {
                     if (proximosLotesMap[this.value]) {
                         loteInput.value = proximosLotesMap[this.value];
+                        verificarLote();
                     }
                 });
+            }
+            
+            function verificarLote() {
+                const lote = loteInput.value;
+                if (!lote) return;
+                fetch(`/laboratorio/coating/api/verificar-lote/?lote=${lote}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.exists) {
+                            alert(`Atenção: O lote ${lote} já está registrado no sistema!`);
+                        }
+                    })
+                    .catch(e => console.error(e));
+            }
+
+            if (loteInput) {
+                loteInput.addEventListener('blur', verificarLote);
             }
         }
 

@@ -246,6 +246,25 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- 7. PERÍODO (Próxima Calibração) -->
+                        <div class="filter-group open mb-3">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="form-label small fw-bold text-muted mb-0">PRÓX. CALIBRAÇÃO</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <button class="btn btn-xs btn-link p-0 mb-2 small" onclick="selectAllInCategory('periodo')">Selecionar Todos</button>
+                                <div class="d-flex flex-column gap-1" style="max-height: 180px; overflow-y: auto;">
+                                    {% for p in periodos_filtro %}
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ p.value }}" data-category="periodo">
+                                        <label class="form-check-label small">{{ p.label }}</label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Coluna 2 -->
@@ -361,6 +380,15 @@
                 <span class="badge bg-secondary bg-opacity-10 text-secondary border">
                     <i class="bi bi-list-ul"></i> <span id="countDisplay">{{ instrumentos.count }}</span> instrumentos
                 </span>
+                
+                <!-- PAGINATION CONTROLS -->
+                <div class="d-flex align-items-center gap-3">
+                    <div class="small text-muted" id="paginationInfo">Mostrando 0 a 0 de 0 instrumentos</div>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0" id="paginationControls">
+                        </ul>
+                    </nav>
+                </div>
             </div>
 
             <div class="table-container-scroll shadow-sm">
@@ -387,8 +415,9 @@
                             data-acao="{{ i.acao|default:'' }}"
                             data-setor="{{ i.setor_id|default:'' }}"
                             data-resultado="{% with historico=i.historicos.all|first %}{% if historico %}{{ historico.resultado }}{% else %}SEM_CALIBRACAO{% endif %}{% endwith %}"
+                            data-periodo="{% if i.data_proxima_calibracao %}{{ i.data_proxima_calibracao|date:'Y-m' }}{% endif %}"
                             data-situacao="{% if i.data_proxima_calibracao %}{% if i.data_proxima_calibracao < hoje %}VENCIDO{% elif i.data_proxima_calibracao <= alerta_30d %}AVENCER_30{% elif i.data_proxima_calibracao <= alerta_60d %}AVENCER_60{% elif i.data_proxima_calibracao <= alerta_90d %}AVENCER_90{% elif i.data_proxima_calibracao <= alerta_120d %}AVENCER_120{% else %}EM_DIA{% endif %}{% else %}EM_DIA{% endif %}">
-                            <td class="ps-3"><input type="checkbox" class="row-select" value="{{ i.id }}" data-tag="{{ i.tag }}" /></td>
+                            <td class="ps-3"><input type="checkbox" class="row-select" value="{{ i.id }}" data-tag="{{ i.tag }}" data-frequencia="{% if i.frequencia_meses %}{{ i.frequencia_meses }}{% elif i.categoria and i.categoria.frequencia_calibracao_meses %}{{ i.categoria.frequencia_calibracao_meses }}{% else %}12{% endif %}" /></td>
                             
                             <td class="ps-4 py-2 fw-bold text-primary font-monospace">
                                 {{ i.tag }}
@@ -411,6 +440,13 @@
 
                             <td class="py-2 small text-muted">
                                 {% if i.setor %}{{ i.setor.nome }}{% else %}-{% endif %}
+                                {% with abertas=i.ocorrencias.all|length %}
+                                    {% for oc in i.ocorrencias.all %}
+                                        {% if oc.status == 'ABERTA' %}
+                                            <span class="badge bg-danger ms-1" title="Ocorrência Aberta: {{ oc.get_tipo_display }}">⚠️</span>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endwith %}
                             </td>
 
                             <td class="py-2">
@@ -452,6 +488,12 @@
                             </td>
 
                             <td class="text-end pe-4 py-2">
+                                <button type="button" class="btn btn-sm btn-outline-warning py-0 px-2 rounded-pill me-1" 
+                                        title="Registrar Ocorrência" 
+                                        data-bs-toggle="modal" data-bs-target="#modalNovaOcorrencia" 
+                                        data-id="{{ i.id }}" data-tag="{{ i.tag }}">
+                                    <i class="bi bi-exclamation-triangle"></i>
+                                </button>
                                 <a href="{% url 'visualizar_instrumento' i.id %}" class="btn btn-sm btn-outline-primary py-0 px-3 rounded-pill detail-link" style="font-size: 0.75rem;">
                                     Detalhes
                                 </a>
@@ -464,14 +506,7 @@
                 </table>
             </div>
             
-            <!-- PAGINATION CONTROLS -->
-            <div class="d-flex justify-content-between align-items-center mt-3 pb-2 flex-shrink-0">
-                <div class="small text-muted" id="paginationInfo">Mostrando 0 a 0 de 0 instrumentos</div>
-                <nav>
-                    <ul class="pagination pagination-sm mb-0" id="paginationControls">
-                    </ul>
-                </nav>
-            </div>
+
         </div>
     </div>
 </div>
@@ -539,7 +574,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function getFilterState() {
-    const state = { q: '', st: [], sit: [], cat: [], set: [], res: [], acao: [] };
+    const state = { q: '', st: [], sit: [], cat: [], set: [], res: [], acao: [], per: [] };
     const qEl = document.getElementById('searchInput');
     state.q = (qEl && qEl.value) ? qEl.value : '';
     document.querySelectorAll('.filter-checkbox').forEach(cb => {
@@ -552,6 +587,7 @@ function getFilterState() {
             case 'setor': state.set.push(val); break;
             case 'resultado': state.res.push(val); break;
             case 'acao': state.acao.push(val); break;
+            case 'periodo': state.per.push(val); break;
         }
     });
     return state;
@@ -566,6 +602,7 @@ function buildQueryString(state){
     if (state.set.length) params.push('set=' + encodeURIComponent(state.set.join(',')));
     if (state.res.length) params.push('res=' + encodeURIComponent(state.res.join(',')));
     if (state.acao.length) params.push('acao=' + encodeURIComponent(state.acao.join(',')));
+    if (state.per.length) params.push('per=' + encodeURIComponent(state.per.join(',')));
     return params.join('&');
 }
 
@@ -588,6 +625,7 @@ function applyStateFromQuery(){
     const set = (sp.get('set') || '').split(',').filter(Boolean);
     const res = (sp.get('res') || '').split(',').filter(Boolean);
     const acao = (sp.get('acao') || '').split(',').filter(Boolean);
+    const per = (sp.get('per') || '').split(',').filter(Boolean);
     const qEl = document.getElementById('searchInput');
     if (qEl) qEl.value = q;
     document.querySelectorAll('.filter-checkbox').forEach(cb => {
@@ -599,6 +637,7 @@ function applyStateFromQuery(){
             case 'setor': cb.checked = set.includes(val); break;
             case 'resultado': cb.checked = res.includes(val); break;
             case 'acao': cb.checked = acao.includes(val); break;
+            case 'periodo': cb.checked = per.includes(val); break;
         }
     });
 }
@@ -612,7 +651,7 @@ function filtrar() {
     const countDisplay = document.getElementById('countDisplay');
     const termoBusca = searchInput.value.toLowerCase();
     
-    const filtrosAtivos = { status: [], situacao: [], categoria: [], setor: [], resultado: [], acao: [] };
+    const filtrosAtivos = { status: [], situacao: [], categoria: [], setor: [], resultado: [], acao: [], periodo: [] };
     
     document.querySelectorAll('.filter-checkbox').forEach(cb => {
         if (cb.checked) filtrosAtivos[cb.dataset.category].push(cb.value);
@@ -631,6 +670,7 @@ function filtrar() {
         if (mostrar && filtrosAtivos.setor.length > 0 && !filtrosAtivos.setor.includes(row.dataset.setor)) mostrar = false;
         if (mostrar && filtrosAtivos.resultado.length > 0 && !filtrosAtivos.resultado.includes(row.dataset.resultado)) mostrar = false;
         if (mostrar && filtrosAtivos.acao.length > 0 && !filtrosAtivos.acao.includes(row.dataset.acao)) mostrar = false;
+        if (mostrar && filtrosAtivos.periodo.length > 0 && !filtrosAtivos.periodo.includes(row.dataset.periodo)) mostrar = false;
 
         if (mostrar) {
             filteredRows.push(row);
@@ -965,11 +1005,11 @@ function selectAllInCategory(category) {
                             {{ historico_form.proxima_calibracao|add_class:"form-control form-control-sm" }}
                         </div>
                         <!-- Terceira Linha -->
-                        <div class="col-md-6">
+                        <div class="col-md-6" id="container-fornecedor">
                             <label class="form-label fw-bold mb-1">Fornecedor</label>
                             {{ historico_form.fornecedor|add_class:"form-select form-select-sm" }}
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-6" id="container-resultado">
                             <label class="form-label fw-bold mb-1">Resultado</label>
                             {{ historico_form.resultado|add_class:"form-select form-select-sm" }}
                         </div>
@@ -978,6 +1018,56 @@ function selectAllInCategory(category) {
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-success btn-sm">Salvar Registros</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nova Ocorrência -->
+<div class="modal fade" id="modalNovaOcorrencia" tabindex="-1" aria-labelledby="modalNovaOcorrenciaLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{% url 'metrologia:registrar_ocorrencia' %}">
+                {% csrf_token %}
+                <input type="hidden" name="instrumento_id" id="ocorrencia_instrumento_id" value="">
+                
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title" id="modalNovaOcorrenciaLabel">
+                        <i class="bi bi-exclamation-triangle me-2"></i> Registrar Ocorrência
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning py-2 small mb-3">
+                        <strong>Instrumento:</strong> <span id="ocorrencia_instrumento_tag" class="fw-bold"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold mb-1">Tipo da Ocorrência</label>
+                        <select name="tipo" class="form-select form-select-sm" required>
+                            <option value="">Selecione...</option>
+                            <option value="CALIBRACAO">Calibração</option>
+                            <option value="VERIFICACAO">Verificação</option>
+                            <option value="INSPECAO">Inspeção</option>
+                            <option value="AJUSTE">Ajuste</option>
+                            <option value="MANUTENCAO">Manutenção</option>
+                            <option value="AVARIA">Avaria/Dano</option>
+                            <option value="EXTRAVIO">Extravio/Perda</option>
+                            <option value="OUTRO">Outro</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold mb-1">Descrição Detalhada</label>
+                        <textarea name="descricao" class="form-control form-control-sm" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold mb-1">Data da Ocorrência</label>
+                        <input type="date" name="data_ocorrencia" class="form-control form-control-sm" required value="{{ hoje|date:'Y-m-d' }}">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning btn-sm">Salvar Ocorrência</button>
                 </div>
             </form>
         </div>
@@ -1054,6 +1144,77 @@ document.addEventListener('DOMContentLoaded', function() {
                 col.appendChild(input);
                 container.appendChild(col);
             });
+            
+            // Logica Interno/Externo ocultar Fornecedor
+            const tipoSelect = modalHistoricoMassa.querySelector('select[name="tipo_calibracao"]');
+            const containerFornecedor = document.getElementById('container-fornecedor');
+            const fornecedorSelect = modalHistoricoMassa.querySelector('select[name="fornecedor"]');
+            
+            function toggleFornecedor() {
+                if (!tipoSelect || !containerFornecedor) return;
+                // Ajuste se o value for diferente no backend. "INTERNA" geralmente é o valor.
+                const selectedText = tipoSelect.options[tipoSelect.selectedIndex].text.toLowerCase();
+                const selectedValue = tipoSelect.value;
+                
+                if (selectedText.includes('interna') || selectedValue === 'INTERNA' || selectedValue === 'Interna') {
+                    containerFornecedor.style.display = 'none';
+                    if (fornecedorSelect) fornecedorSelect.value = '';
+                } else {
+                    containerFornecedor.style.display = 'block';
+                }
+            }
+            
+            if (tipoSelect) {
+                tipoSelect.addEventListener('change', toggleFornecedor);
+                toggleFornecedor(); // estado inicial
+            }
+            
+            // Lógica Cálculo Data Próxima Calibração
+            const dataCalInput = modalHistoricoMassa.querySelector('input[name="data_calibracao"]');
+            const dataProxInput = modalHistoricoMassa.querySelector('input[name="proxima_calibracao"]');
+            
+            function calcularProximaData() {
+                if (!dataCalInput || !dataCalInput.value || !dataProxInput) return;
+                
+                // Pegar frequencia do primeiro selecionado, ou 12 se nenhum tiver
+                let frequenciaMeses = 12;
+                if (checkboxes.length > 0) {
+                    const freqAttr = checkboxes[0].getAttribute('data-frequencia');
+                    if (freqAttr && !isNaN(parseInt(freqAttr))) {
+                        frequenciaMeses = parseInt(freqAttr);
+                    }
+                }
+                
+                const dataSelecionada = new Date(dataCalInput.value + 'T12:00:00'); // T12 para evitar erro de timezone
+                if (!isNaN(dataSelecionada.getTime())) {
+                    // Adicionar meses
+                    dataSelecionada.setMonth(dataSelecionada.getMonth() + frequenciaMeses);
+                    
+                    // Formatar para YYYY-MM-DD
+                    const yyyy = dataSelecionada.getFullYear();
+                    const mm = String(dataSelecionada.getMonth() + 1).padStart(2, '0');
+                    const dd = String(dataSelecionada.getDate()).padStart(2, '0');
+                    
+                    dataProxInput.value = `${yyyy}-${mm}-${dd}`;
+                }
+            }
+            
+            if (dataCalInput) {
+                dataCalInput.addEventListener('change', calcularProximaData);
+            }
+        });
+    }
+
+    // Modal Nova Ocorrencia setup
+    const modalNovaOcorrencia = document.getElementById('modalNovaOcorrencia');
+    if (modalNovaOcorrencia) {
+        modalNovaOcorrencia.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const id = button.getAttribute('data-id');
+            const tag = button.getAttribute('data-tag');
+            
+            modalNovaOcorrencia.querySelector('#ocorrencia_instrumento_id').value = id;
+            modalNovaOcorrencia.querySelector('#ocorrencia_instrumento_tag').textContent = tag;
         });
     }
 });

@@ -93,4 +93,5 @@ urlpatterns = [
     path("run-migrate-db/", views.run_migrate_view, name="run_migrate_view"),
     path("coating/api/recalcular-turno/", views.api_recalcular_turno_registro, name="api_recalcular_turno_registro"),
     path("coating/api/recalcular-todos-turnos/", views.api_recalcular_todos_turnos, name="api_recalcular_todos_turnos"),
+    path("coating/api/verificar-lote/", views.api_verificar_lote_coating, name="api_verificar_lote_coating"),
 ]

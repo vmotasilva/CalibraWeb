@@ -2743,3 +2743,18 @@ def importar_lotes_coating(request):
         messages.error(request, f"Erro fatal ao processar o arquivo: {str(e)}")
         
     return redirect('laboratorio:coating_painel')
+
+@login_required
+def api_verificar_lote_coating(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    lote_str = request.GET.get('lote', '').strip()
+    if not lote_str:
+        return JsonResponse({'exists': False})
+    try:
+        lote_num = int(lote_str)
+        exists = RegistroCoating.objects.filter(lote=lote_num).exists()
+        return JsonResponse({'exists': exists})
+    except ValueError:
+        return JsonResponse({'exists': False})

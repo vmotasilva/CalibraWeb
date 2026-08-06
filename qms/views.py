@@ -115,12 +115,24 @@ def modulo_metrologia_view(request):
     categorias_filtro = CategoriaInstrumento.objects.all().order_by(Lower('nome'))
     setores_filtro = Setor.objects.all().order_by(Lower('nome'))
     
+    # Extrair os períodos únicos (Ano-Mês) de próxima calibração
+    from django.utils.formats import date_format
+    periodos_dates = Instrumento.objects.exclude(data_proxima_calibracao__isnull=True).dates('data_proxima_calibracao', 'month', order='ASC')
+    periodos_filtro = []
+    for d in periodos_dates:
+        val = d.strftime('%Y-%m')
+        nome_mes = date_format(d, 'F').lower()
+        label = f"{val}-{nome_mes}"
+        periodos_filtro.append({'value': val, 'label': label})
+
+    
     context = {
         'instrumentos': instrumentos,
         'total_instrumentos': Instrumento.objects.count(),
         'total_calibracoes': HistoricoCalibracao.objects.count(),
         'categorias_filtro': categorias_filtro,
         'setores_filtro': setores_filtro,
+        'periodos_filtro': periodos_filtro,
         'status_filter': status_filter,
         'categoria_filter': categoria_filter,
         'setor_filter': setor_filter,
