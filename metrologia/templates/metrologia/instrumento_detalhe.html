@@ -188,7 +188,10 @@
                 </div>
             </div>
 
-            <div class="d-flex justify-content-end mb-2">
+            <div class="d-flex justify-content-end mb-2 gap-2">
+                <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalNovaOcorrenciaDetalhe">
+                    <i class="bi bi-exclamation-triangle"></i> Nova Ocorrência
+                </button>
                 {% if can_registrar_historico %}
                     <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalNovoHistorico">
                         <i class="bi bi-plus-circle"></i> Registrar novo histórico
