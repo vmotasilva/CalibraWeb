@@ -1492,7 +1492,9 @@
                             <option value="tudo" {% if periodo == 'tudo' or not periodo %}selected{% endif %}>Tudo</option>
                             <option value="hoje" {% if periodo == 'hoje' %}selected{% endif %}>Hoje</option>
                             <option value="semana" {% if periodo == 'semana' %}selected{% endif %}>Esta Semana</option>
+                            <option value="prox_semana" {% if periodo == 'prox_semana' %}selected{% endif %}>Próxima Semana</option>
                             <option value="mes" {% if periodo == 'mes' %}selected{% endif %}>Este Mês</option>
+                            <option value="prox_mes" {% if periodo == 'prox_mes' %}selected{% endif %}>Próximo Mês</option>
                             <option value="ano" {% if periodo == 'ano' %}selected{% endif %}>Este Ano</option>
                         </select>
                     </div>

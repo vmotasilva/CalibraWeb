@@ -257,6 +257,16 @@ def board_detail_view(request, board_id, focus_column_id=None):
     elif periodo == 'ano':
         start_date = datetime.date(today.year, 1, 1)
         end_date = datetime.date(today.year, 12, 31)
+    elif periodo == 'prox_semana':
+        start_date = today + datetime.timedelta(days=7 - today.weekday())
+        end_date = start_date + datetime.timedelta(days=6)
+    elif periodo == 'prox_mes':
+        if today.month == 12:
+            start_date = datetime.date(today.year + 1, 1, 1)
+        else:
+            start_date = datetime.date(today.year, today.month + 1, 1)
+        last_day = calendar.monthrange(start_date.year, start_date.month)[1]
+        end_date = start_date.replace(day=last_day)
 
     # Calcular Métricas de Carga de Trabalho da Equipe (Quadro Padrão)
     

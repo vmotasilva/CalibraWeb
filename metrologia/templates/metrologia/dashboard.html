@@ -102,6 +102,9 @@
                 </ul>
             </div>
             
+            <button type="button" id="btn-historico-massa" class="btn btn-success btn-sm shadow-sm me-2" disabled data-bs-toggle="modal" data-bs-target="#modalNovoHistoricoMassa">
+                <i class="bi bi-calendar-plus"></i> Registrar Histórico
+            </button>
             <a href="{% url 'novo_instrumento' %}" class="btn btn-primary btn-sm shadow-sm">
                 <i class="bi bi-plus-lg"></i> Novo
             </a>
@@ -921,4 +924,108 @@ function selectAllInCategory(category) {
 }
 
 </script>
-{% endblock %}
+{% endblock %}<!-- Modal Novo Histórico em Massa -->
+<div class="modal fade" id="modalNovoHistoricoMassa" tabindex="-1" aria-labelledby="modalNovoHistoricoMassaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="post" action="{% url 'metrologia:registrar_historico_massa' %}">
+                {% csrf_token %}
+                <input type="hidden" name="instrumentos_ids" id="instrumentos_ids_input" value="">
+                
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title" id="modalNovoHistoricoMassaLabel">
+                        <i class="bi bi-calendar-plus me-2"></i> Registrar Histórico em Massa
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info py-2 small mb-3">
+                        <strong>Preenchimento Simplificado:</strong> O histórico será registrado para <strong><span id="qtd-selecionados">0</span></strong> instrumento(s) selecionado(s).
+                    </div>
+                    <div class="row g-3">
+                        <!-- Primeira Linha -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold mb-1">N° do Certificado</label>
+                            {{ historico_form.numero_certificado|add_class:"form-control form-control-sm" }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold mb-1">Interno/Externo</label>
+                            {{ historico_form.tipo_calibracao|add_class:"form-select form-select-sm" }}
+                        </div>
+                        <!-- Segunda Linha -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold mb-1">Data da Calibração</label>
+                            {{ historico_form.data_calibracao|add_class:"form-control form-control-sm" }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold mb-1">Próxima Calibração</label>
+                            {{ historico_form.proxima_calibracao|add_class:"form-control form-control-sm" }}
+                        </div>
+                        <!-- Terceira Linha -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold mb-1">Fornecedor</label>
+                            {{ historico_form.fornecedor|add_class:"form-select form-select-sm" }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold mb-1">Resultado</label>
+                            {{ historico_form.resultado|add_class:"form-select form-select-sm" }}
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success btn-sm">Salvar Registros</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const btnMassa = document.getElementById('btn-historico-massa');
+    const inputIds = document.getElementById('instrumentos_ids_input');
+    const qtdSpan = document.getElementById('qtd-selecionados');
+    
+    function atualizarBotaoMassa() {
+        const checkboxes = document.querySelectorAll('.row-select:checked');
+        const count = checkboxes.length;
+        
+        if (btnMassa) {
+            btnMassa.disabled = count === 0;
+            const ids = Array.from(checkboxes).map(cb => cb.value);
+            if (inputIds) inputIds.value = ids.join(',');
+            if (qtdSpan) qtdSpan.textContent = count;
+        }
+    }
+    
+    // Adiciona listener nos checkboxes individuais
+    document.querySelectorAll('.row-select').forEach(cb => {
+        cb.addEventListener('change', atualizarBotaoMassa);
+    });
+    
+    // Adiciona listener no "Selecionar Todos"
+    const selectAllCheckbox = document.getElementById('selectAll');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            document.querySelectorAll('.row-select').forEach(cb => {
+                // Apenas marcar se a linha estiver visivel (não filtrada)
+                const tr = cb.closest('tr');
+                if (tr && tr.style.display !== 'none') {
+                    cb.checked = this.checked;
+                }
+            });
+            atualizarBotaoMassa();
+        });
+    }
+    
+    // Auto calcular proxima calibracao (Apenas estimativa baseada em meses padrao se for viavel, 
+    // mas em massa a frequencia pode variar. Vamos apenas auto preencher o campo tipo baseado no primeiro)
+    const modalHistoricoMassa = document.getElementById('modalNovoHistoricoMassa');
+    if (modalHistoricoMassa) {
+        modalHistoricoMassa.addEventListener('show.bs.modal', function () {
+            // Pode inserir logica adicional se quiser
+        });
+    }
+});
+</script>

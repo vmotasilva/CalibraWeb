@@ -325,6 +325,7 @@ def modulo_metrologia_view(request):
         "alerta_90d": alerta_90d,
         "alerta_120d": alerta_120d,
         "can_edit": True,
+        "historico_form": HistoricoCalibracaoForm(),
     }
     return render(request, "metrologia/dashboard.html", ctx)
 
@@ -1175,3 +1176,36 @@ def api_faixa_medicao_view(request, faixa_id):
     except Exception as e:
         logger.error(f"Erro ao buscar faixa {faixa_id}: {e}")
         return JsonResponse({'error': str(e)}, status=404)
+
+@login_required
+@require_http_methods(["POST"])
+def registrar_historico_massa(request):
+    """Cria novo histórico de calibração em massa para os instrumentos selecionados."""
+    instrumentos_ids_str = request.POST.get("instrumentos_ids", "")
+    if not instrumentos_ids_str:
+        messages.error(request, "Nenhum instrumento selecionado.")
+        return redirect('dashboard')
+        
+    ids = [int(i.strip()) for i in instrumentos_ids_str.split(",") if i.strip().isdigit()]
+    if not ids:
+        messages.error(request, "Nenhum instrumento válido selecionado.")
+        return redirect('dashboard')
+        
+    form = HistoricoCalibracaoForm(request.POST, request.FILES)
+    if form.is_valid():
+        sucesso = 0
+        instrumentos = Instrumento.objects.filter(id__in=ids)
+        for instrumento in instrumentos:
+            historico = form.save(commit=False)
+            historico.pk = None  # Force insert for each iteration
+            historico.instrumento = instrumento
+            historico.save()
+            sucesso += 1
+            
+        messages.success(request, f"✓ {sucesso} registros criados com sucesso!")
+    else:
+        for field, errors in form.errors.items():
+            for error in errors:
+                messages.error(request, f"{field}: {error}")
+                
+    return redirect('dashboard')

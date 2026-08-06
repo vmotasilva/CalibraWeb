@@ -86,6 +86,7 @@ urlpatterns = [
     path('atendimento/<int:pk>/atualizar-rastreio/', views.atendimento_atualizar_rastreio, name='atendimento_atualizar_rastreio'),
     path('atendimento/<int:atendimento_id>/registrar-historico/', views.atendimento_registrar_historico, name='atendimento_registrar_historico'),
     path('atendimento/<int:atendimento_id>/iniciar-substituicao/', views.atendimento_iniciar_substituicao, name='atendimento_iniciar_substituicao'),
+    path('registrar-historico-massa/', views.registrar_historico_massa, name='registrar_historico_massa'),
 
     # API ENDPOINTS
     path('api/instrumentos-vencendo/', views.api_instrumentos_vencendo, name='api_instrumentos_vencendo'),

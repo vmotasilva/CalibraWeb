@@ -72,9 +72,8 @@ class HistoricoCalibracaoForm(forms.ModelForm):
                 'type': 'date'
             }),
             'tipo_calibracao': forms.Select(attrs={'class': 'form-select'}),
-            'fornecedor': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Nome do laboratório/fornecedor'
+            'fornecedor': forms.Select(attrs={
+                'class': 'form-select',
             }),
             'resultado': forms.Select(attrs={'class': 'form-select'}),
         }
@@ -85,7 +84,14 @@ class HistoricoCalibracaoForm(forms.ModelForm):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         
-        # Removemos a atribuição de responsável pois o campo foi ocultado para simplificação
+        # Populate fornecedor choices from Fornecedor model
+        try:
+            from fornecedores.models import Fornecedor
+            fornecedores = Fornecedor.objects.all().order_by('nome_fantasia')
+            choices = [('', 'Selecione...')] + [(f.nome_fantasia, f.nome_fantasia) for f in fornecedores]
+            self.fields['fornecedor'].widget.choices = choices
+        except ImportError:
+            pass
 
 
 class ImportacaoInstrumentosForm(forms.Form):
