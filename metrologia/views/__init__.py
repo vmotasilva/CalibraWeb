@@ -31,6 +31,10 @@ from .views import (
     aplicar_carimbo_certificado_view,
     visualizar_historico_calibracao_view,
     registrar_historico_massa,
+    
+    # Ocorrências
+    registrar_ocorrencia,
+    encerrar_ocorrencia,
 )
 
 from .novo_fluxo_cotacao import (
@@ -83,6 +87,8 @@ __all__ = [
     'visualizar_historico_calibracao_view',
     'api_faixa_medicao_view',
     'registrar_historico_massa',
+    'registrar_ocorrencia',
+    'encerrar_ocorrencia',
     # NOVO FLUXO
     'solicitacao_list',
     'solicitacao_create',
