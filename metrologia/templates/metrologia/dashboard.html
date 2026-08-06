@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 
 {% load nav_access %}
+{% load widget_tweaks %}
 
 {% can_nav_view user 'exportar_instrumentos' 'metrologia' as can_exportar_instrumentos %}
 {% can_nav_view user 'metrologia:export_etiquetas' 'metrologia' as can_exportar_etiquetas %}
