@@ -678,30 +678,6 @@
                     {% endif %}
                 </div>
 
-                <div class="tab-pane fade" id="ocorr">
-                    <div class="list-group list-group-flush">
-                        {% for oc in ocorrencias %}
-                        <div class="list-group-item">
-                            <div class="d-flex w-100 justify-content-between">
-                                <h6 class="mb-1 text-danger fw-bold">{{ oc.get_tipo_display }}</h6>
-                                <small class="text-muted">{{ oc.data_ocorrencia|date:"d/m/Y" }}</small>
-                            </div>
-                            <p class="mb-1 small">{{ oc.descricao }}</p>
-                            <small class="text-muted" style="font-size: 0.75rem;">Responsável:
-                                {% if oc.responsavel_colab_id %}
-                                    <a href="{% url 'detalhe_colaborador' oc.responsavel_colab_id %}" class="text-decoration-none">
-                                        {{ oc.usuario_responsavel.get_full_name|default:oc.usuario_responsavel.username }}
-                                    </a>
-                                {% else %}
-                                    {{ oc.usuario_responsavel.get_full_name|default:oc.usuario_responsavel.username }}
-                                {% endif %}
-                            </small>
-                        </div>
-                        {% empty %}
-                        <div class="text-center py-4 text-muted">Nenhuma ocorrência registrada.</div>
-                        {% endfor %}
-                    </div>
-                </div>
 
                 <div class="tab-pane fade" id="ocorr">
                     <div class="table-responsive">
