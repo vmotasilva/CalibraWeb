@@ -388,7 +388,7 @@
                             data-setor="{{ i.setor_id|default:'' }}"
                             data-resultado="{% with historico=i.historicos.all|first %}{% if historico %}{{ historico.resultado }}{% else %}SEM_CALIBRACAO{% endif %}{% endwith %}"
                             data-situacao="{% if i.data_proxima_calibracao %}{% if i.data_proxima_calibracao < hoje %}VENCIDO{% elif i.data_proxima_calibracao <= alerta_30d %}AVENCER_30{% elif i.data_proxima_calibracao <= alerta_60d %}AVENCER_60{% elif i.data_proxima_calibracao <= alerta_90d %}AVENCER_90{% elif i.data_proxima_calibracao <= alerta_120d %}AVENCER_120{% else %}EM_DIA{% endif %}{% else %}EM_DIA{% endif %}">
-                            <td class="ps-3"><input type="checkbox" class="row-select" value="{{ i.id }}" /></td>
+                            <td class="ps-3"><input type="checkbox" class="row-select" value="{{ i.id }}" data-tag="{{ i.tag }}" /></td>
                             
                             <td class="ps-4 py-2 fw-bold text-primary font-monospace">
                                 {{ i.tag }}
@@ -943,13 +943,15 @@ function selectAllInCategory(category) {
                     <div class="alert alert-info py-2 small mb-3">
                         <strong>Preenchimento Simplificado:</strong> O histórico será registrado para <strong><span id="qtd-selecionados">0</span></strong> instrumento(s) selecionado(s).
                     </div>
+                    <div class="mb-3 mt-2">
+                        <h6 class="fw-bold border-bottom pb-2 text-primary">N° do Certificado</h6>
+                        <div id="lista-certificados-dinamicos" class="row g-2">
+                            <!-- Injetado via JS -->
+                        </div>
+                    </div>
                     <div class="row g-3">
                         <!-- Primeira Linha -->
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold mb-1">N° do Certificado</label>
-                            {{ historico_form.numero_certificado|add_class:"form-control form-control-sm" }}
-                        </div>
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <label class="form-label fw-bold mb-1">Interno/Externo</label>
                             {{ historico_form.tipo_calibracao|add_class:"form-select form-select-sm" }}
                         </div>
@@ -1025,7 +1027,33 @@ document.addEventListener('DOMContentLoaded', function() {
     const modalHistoricoMassa = document.getElementById('modalNovoHistoricoMassa');
     if (modalHistoricoMassa) {
         modalHistoricoMassa.addEventListener('show.bs.modal', function () {
-            // Pode inserir logica adicional se quiser
+            const container = document.getElementById('lista-certificados-dinamicos');
+            const checkboxes = document.querySelectorAll('.row-select:checked');
+            
+            container.innerHTML = '';
+            
+            checkboxes.forEach(cb => {
+                const tag = cb.getAttribute('data-tag');
+                const id = cb.value;
+                
+                const col = document.createElement('div');
+                col.className = 'col-md-6 mb-2';
+                
+                const label = document.createElement('label');
+                label.className = 'form-label fw-bold mb-1 small';
+                label.textContent = tag;
+                
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'form-control form-control-sm';
+                input.name = `certificado_${id}`;
+                input.required = true;
+                input.placeholder = 'S/N';
+                
+                col.appendChild(label);
+                col.appendChild(input);
+                container.appendChild(col);
+            });
         });
     }
 });

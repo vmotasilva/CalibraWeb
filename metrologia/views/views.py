@@ -1192,21 +1192,28 @@ def registrar_historico_massa(request):
         messages.error(request, "Nenhum instrumento válido selecionado.")
         return redirect('dashboard')
         
-    form = HistoricoCalibracaoForm(request.POST, request.FILES)
-    if form.is_valid():
-        sucesso = 0
-        instrumentos = Instrumento.objects.filter(id__in=ids)
-        for instrumento in instrumentos:
+    instrumentos = Instrumento.objects.filter(id__in=ids)
+    
+    sucesso = 0
+    erros = 0
+    
+    for instrumento in instrumentos:
+        post_data = request.POST.copy()
+        post_data['numero_certificado'] = request.POST.get(f'certificado_{instrumento.id}', 'S/N')
+        
+        form = HistoricoCalibracaoForm(post_data, request.FILES)
+        if form.is_valid():
             historico = form.save(commit=False)
-            historico.pk = None  # Force insert for each iteration
             historico.instrumento = instrumento
             historico.save()
             sucesso += 1
-            
+        else:
+            erros += 1
+            for field, form_errors in form.errors.items():
+                for error in form_errors:
+                    messages.error(request, f"{instrumento.tag} - {field}: {error}")
+                    
+    if sucesso > 0:
         messages.success(request, f"✓ {sucesso} registros criados com sucesso!")
-    else:
-        for field, errors in form.errors.items():
-            for error in errors:
-                messages.error(request, f"{field}: {error}")
-                
+        
     return redirect('dashboard')
