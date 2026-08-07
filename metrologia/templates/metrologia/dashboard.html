@@ -462,12 +462,31 @@
 
                             <td class="py-2 small text-muted">
                                 {% if i.setor %}{{ i.setor.nome }}{% else %}-{% endif %}
-                                {% with abertas=i.ocorrencias.all|length %}
-                                    {% for oc in i.ocorrencias.all %}
-                                        {% if oc.status == 'ABERTA' %}
-                                            <span class="badge bg-danger ms-1" title="Ocorrência Aberta: {{ oc.get_tipo_display }}">⚠️</span>
-                                        {% endif %}
-                                    {% endfor %}
+                                <!-- using simpler logic since we cant do var sets easily inside loops -->
+                                {% with abertas=i.ocorrencias.all %}
+                                    {% if abertas %}
+                                        <button class="btn btn-sm btn-link p-0 text-decoration-none ms-1 btn-ocorrencia-{{ i.id }}" 
+                                                onclick="abrirModalOcorrencias('{{ i.id }}', '{{ i.tag }}')" 
+                                                title="Visualizar Ocorrências" style="display:none;">
+                                            <span class="badge bg-danger">⚠️ Tem Ocorrências</span>
+                                        </button>
+                                        <div id="ocorrencias-data-{{ i.id }}" style="display:none;">
+                                            {% for oc in abertas %}
+                                                {% if oc.status == 'ABERTA' %}
+                                                    <!-- ABERTA -->
+                                                    <div class="border-bottom pb-2 mb-2">
+                                                        <strong>{{ oc.get_tipo_display }}</strong> - {{ oc.data_ocorrencia|date:"d/m/Y" }}<br>
+                                                        <small>{{ oc.descricao }}</small><br>
+                                                        <form method="post" action="{% url 'metrologia:encerrar_ocorrencia' oc.id %}" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja encerrar esta ocorrência?');">
+                                                            {% csrf_token %}
+                                                            <input type="hidden" name="next" value="/metrologia/">
+                                                            <button type="submit" class="btn btn-sm btn-outline-success py-0 px-2 mt-1 rounded-pill"><i class="bi bi-check-circle"></i> Encerrar</button>
+                                                        </form>
+                                                    </div>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
                                 {% endwith %}
                             </td>
 
@@ -584,6 +603,15 @@ document.addEventListener('DOMContentLoaded', function() {
             if (el) el.addEventListener('keyup', function(){ updateEtiquetasLink(); renderEtiquetasSummary(); });
         });
     }
+
+    // Exibir botões de ocorrência apenas se houver alguma em aberto
+    document.querySelectorAll('[id^="ocorrencias-data-"]').forEach(div => {
+        if (div.innerHTML.includes('<!-- ABERTA -->')) {
+            const id = div.id.split('-')[2];
+            const btn = document.querySelector('.btn-ocorrencia-' + id);
+            if(btn) btn.style.display = 'inline-block';
+        }
+    });
 
     // Atualiza o resumo quando o modal abre (Bootstrap)
     const etqModal = document.getElementById('etqModal');

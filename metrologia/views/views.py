@@ -316,6 +316,19 @@ def modulo_metrologia_view(request):
         id__in=categorias_ids
     ).order_by(Lower("nome"))
 
+    # Periodos filtro logic
+    periodos_set = set()
+    for inst in instrumentos:
+        if inst.data_proxima_calibracao:
+            periodos_set.add(inst.data_proxima_calibracao.strftime('%Y-%m'))
+    
+    periodos_filtro = []
+    meses_pt = {'01':'Jan', '02':'Fev', '03':'Mar', '04':'Abr', '05':'Mai', '06':'Jun', '07':'Jul', '08':'Ago', '09':'Set', '10':'Out', '11':'Nov', '12':'Dez'}
+    for p in sorted(list(periodos_set)):
+        ano, mes = p.split('-')
+        label = f"{meses_pt.get(mes, mes)}/{ano}"
+        periodos_filtro.append({'value': p, 'label': label})
+
     ctx = {
         "instrumentos": instrumentos,
         "setores_filtro": setores_filtro,
@@ -327,6 +340,7 @@ def modulo_metrologia_view(request):
         "alerta_120d": alerta_120d,
         "can_edit": True,
         "historico_form": HistoricoCalibracaoForm(),
+        "periodos_filtro": periodos_filtro,
     }
     return render(request, "metrologia/dashboard.html", ctx)
 
