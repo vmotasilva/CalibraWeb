@@ -164,7 +164,7 @@
         
         <!-- Modal Filtros -->
         <div class="modal fade" id="filtrosModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-dialog modal-dialog-centered modal-xl">
                 <div class="modal-content shadow-lg" style="border-radius: 14px;">
                     <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
                         <h5 class="modal-title fw-bold"><i class="bi bi-funnel me-2"></i>Filtros Avançados</h5>
@@ -187,8 +187,9 @@
                         <!-- keep sidebar-col open so sidebar-scroll stays inside -->
             <div class="sidebar-scroll">
                 <div class="row">
+
                     <!-- Coluna 1 -->
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <!-- 1. SITUAÇÃO (Vencimento) -->
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
@@ -246,7 +247,10 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
 
+                    <!-- Coluna 2 -->
+                    <div class="col-md-3">
                         <!-- 7. PERÍODO (Próxima Calibração) -->
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
@@ -265,10 +269,7 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Coluna 2 -->
-                    <div class="col-md-4">
                         <!-- 3. AÇÃO -->
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
@@ -289,7 +290,10 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
 
+                    <!-- Coluna 3 -->
+                    <div class="col-md-3">
                         <!-- 4. CATEGORIA -->
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
@@ -299,7 +303,7 @@
                             <div class="filter-content">
                                 <button class="btn btn-xs btn-link p-0 mb-2 small" onclick="selectAllInCategory('categoria')">Selecionar Todos</button>
                                 <div class="d-flex flex-column gap-1" style="max-height: 180px; overflow-y: auto;">
-                                    {% for cat in categorias %}
+                                    {% for cat in categorias_filtro %}
                                     <div class="form-check">
                                         <input class="form-check-input filter-checkbox" type="checkbox" value="{{ cat.id }}" data-category="categoria">
                                         <label class="form-check-label small">{{ cat.nome }}</label>
@@ -308,10 +312,7 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Coluna 3 -->
-                    <div class="col-md-4">
                         <!-- 5. SETOR -->
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
@@ -321,7 +322,7 @@
                             <div class="filter-content">
                                 <button class="btn btn-xs btn-link p-0 mb-2 small" onclick="selectAllInCategory('setor')">Selecionar Todos</button>
                                 <div class="d-flex flex-column gap-1" style="max-height: 180px; overflow-y: auto;">
-                                    {% for s in setores %}
+                                    {% for s in setores_filtro %}
                                     <div class="form-check">
                                         <input class="form-check-input filter-checkbox" type="checkbox" value="{{ s.id }}" data-category="setor">
                                         <label class="form-check-label small">{{ s.nome }}</label>
@@ -330,7 +331,10 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
 
+                    <!-- Coluna 4 -->
+                    <div class="col-md-3">
                         <!-- 6. RESULTADO -->
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
@@ -359,8 +363,25 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- 8. OCORRÊNCIA -->
+                        <div class="filter-group open mb-3">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="form-label small fw-bold text-muted mb-0">OCORRÊNCIA</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <div class="d-flex flex-column gap-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="COM_ABERTA" data-category="ocorrencia">
+                                        <label class="form-check-label small text-danger fw-bold">Com Ocorrência Aberta</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
+
+</div>
             </div>
                     </div>
                     <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; justify-content: space-between;">
@@ -416,6 +437,7 @@
                             data-setor="{{ i.setor_id|default:'' }}"
                             data-resultado="{% with historico=i.historicos.all|first %}{% if historico %}{{ historico.resultado }}{% else %}SEM_CALIBRACAO{% endif %}{% endwith %}"
                             data-periodo="{% if i.data_proxima_calibracao %}{{ i.data_proxima_calibracao|date:'Y-m' }}{% endif %}"
+                            data-ocorrencia="{% if i.ocorrencias.all %}{% for oc in i.ocorrencias.all %}{% if oc.status == 'ABERTA' %}COM_ABERTA{% endif %}{% endfor %}{% endif %}"
                             data-situacao="{% if i.data_proxima_calibracao %}{% if i.data_proxima_calibracao < hoje %}VENCIDO{% elif i.data_proxima_calibracao <= alerta_30d %}AVENCER_30{% elif i.data_proxima_calibracao <= alerta_60d %}AVENCER_60{% elif i.data_proxima_calibracao <= alerta_90d %}AVENCER_90{% elif i.data_proxima_calibracao <= alerta_120d %}AVENCER_120{% else %}EM_DIA{% endif %}{% else %}EM_DIA{% endif %}">
                             <td class="ps-3"><input type="checkbox" class="row-select" value="{{ i.id }}" data-tag="{{ i.tag }}" data-frequencia="{% if i.frequencia_meses %}{{ i.frequencia_meses }}{% elif i.categoria and i.categoria.frequencia_calibracao_meses %}{{ i.categoria.frequencia_calibracao_meses }}{% else %}12{% endif %}" /></td>
                             
@@ -651,7 +673,7 @@ function filtrar() {
     const countDisplay = document.getElementById('countDisplay');
     const termoBusca = searchInput.value.toLowerCase();
     
-    const filtrosAtivos = { status: [], situacao: [], categoria: [], setor: [], resultado: [], acao: [], periodo: [] };
+    const filtrosAtivos = { status: [], situacao: [], categoria: [], setor: [], resultado: [], acao: [], periodo: [], ocorrencia: [] };
     
     document.querySelectorAll('.filter-checkbox').forEach(cb => {
         if (cb.checked) filtrosAtivos[cb.dataset.category].push(cb.value);
@@ -671,6 +693,9 @@ function filtrar() {
         if (mostrar && filtrosAtivos.resultado.length > 0 && !filtrosAtivos.resultado.includes(row.dataset.resultado)) mostrar = false;
         if (mostrar && filtrosAtivos.acao.length > 0 && !filtrosAtivos.acao.includes(row.dataset.acao)) mostrar = false;
         if (mostrar && filtrosAtivos.periodo.length > 0 && !filtrosAtivos.periodo.includes(row.dataset.periodo)) mostrar = false;
+        if (mostrar && filtrosAtivos.ocorrencia.length > 0) {
+            if (filtrosAtivos.ocorrencia.includes("COM_ABERTA") && !row.dataset.ocorrencia.includes("COM_ABERTA")) mostrar = false;
+        }
 
         if (mostrar) {
             filteredRows.push(row);
