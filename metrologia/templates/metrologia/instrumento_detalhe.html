@@ -715,10 +715,10 @@
                                     </thead>
                                     <tbody>
                                         {% for oc in ocorrencias %}
-                                        <tr class="{% if oc.status == 'ABERTA' %}table-danger bg-opacity-10{% endif %}">
+                                        <tr class="{% if oc.status == 'ABERTA' %}table-danger bg-opacity-10{% endif %}" style="cursor: pointer;" data-bs-toggle="modal" data-bs-target="#modalVerOcorrencia{{ oc.id }}">
                                             <td class="fw-bold small">{{ oc.data_ocorrencia|date:"d/m/Y" }}</td>
                                             <td><span class="badge bg-light text-dark border fw-normal">{{ oc.get_tipo_display }}</span></td>
-                                            <td><small class="text-dark">{{ oc.descricao }}</small></td>
+                                            <td><small class="text-dark">{{ oc.descricao|truncatechars:60 }}</small></td>
                                             <td>
                                                 {% if oc.status == 'ABERTA' %}
                                                     <span class="badge bg-danger"><i class="bi bi-exclamation-circle me-1"></i>Aberta</span>
@@ -733,46 +733,80 @@
                                                     <span class="text-muted">—</span>
                                                 {% endif %}
                                             </td>
-                                            <td class="text-end text-nowrap">
-                                                {% if oc.status == 'ABERTA' %}
-                                                    <form method="post" action="{% url 'metrologia:encerrar_ocorrencia' oc.id %}" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja encerrar esta ocorrência?');">
-                                                        {% csrf_token %}
-                                                        <button type="submit" class="btn btn-sm btn-outline-success py-0 px-2 rounded-pill" title="Encerrar Ocorrência">
-                                                            <i class="bi bi-check-circle"></i> Encerrar
-                                                        </button>
-                                                    </form>
-                                                {% else %}
-                                                    <span class="badge bg-light text-muted border me-1" title="Encerrada em {{ oc.data_encerramento|date:'d/m/Y' }}">
-                                                        <i class="bi bi-check-all"></i> Concluída
-                                                    </span>
-                                                {% endif %}
-
-                                                <!-- Botão Editar -->
-                                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill ms-1" data-bs-toggle="modal" data-bs-target="#modalEditarOcorrencia{{ oc.id }}" title="Editar Ocorrência">
-                                                    <i class="bi bi-pencil"></i>
+                                            <td class="text-end text-nowrap" onclick="event.stopPropagation();">
+                                                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-0" data-bs-toggle="modal" data-bs-target="#modalVerOcorrencia{{ oc.id }}">
+                                                    <i class="bi bi-eye me-1"></i> Ver
                                                 </button>
 
-                                                <!-- Botão Excluir -->
-                                                <form method="post" action="{% url 'metrologia:deletar_ocorrencia' oc.id %}" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja EXCLUIR permanentemente esta ocorrência?');">
-                                                    {% csrf_token %}
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2 rounded-pill ms-1" title="Excluir Ocorrência">
-                                                        <i class="bi bi-trash"></i>
-                                                    </button>
-                                                </form>
-
-                                                <!-- Modal Editar Ocorrência -->
-                                                <div class="modal fade text-start" id="modalEditarOcorrencia{{ oc.id }}" tabindex="-1" aria-hidden="true">
-                                                    <div class="modal-dialog">
-                                                        <div class="modal-content">
-                                                            <div class="modal-header bg-primary text-white">
-                                                                <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square me-2"></i>Editar Ocorrência</h5>
+                                                <!-- Modal Detalhes e Ações da Ocorrência -->
+                                                <div class="modal fade text-start" id="modalVerOcorrencia{{ oc.id }}" tabindex="-1" aria-hidden="true">
+                                                    <div class="modal-dialog modal-dialog-centered">
+                                                        <div class="modal-content shadow">
+                                                            <div class="modal-header {% if oc.status == 'ABERTA' %}bg-danger{% else %}bg-success{% endif %} text-white">
+                                                                <h5 class="modal-title fw-bold">
+                                                                    <i class="bi bi-exclamation-triangle me-2"></i>
+                                                                    Ocorrência: {{ oc.get_tipo_display }}
+                                                                </h5>
                                                                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                                                             </div>
-                                                            <form method="post" action="{% url 'metrologia:editar_ocorrencia' oc.id %}">
-                                                                {% csrf_token %}
-                                                                <div class="modal-body">
+
+                                                            <!-- Visualização (Modo Padrão) -->
+                                                            <div id="viewOcorrenciaBody{{ oc.id }}">
+                                                                <div class="modal-body p-4">
+                                                                    <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
+                                                                        <div>
+                                                                            <small class="text-muted d-block fw-semibold text-uppercase">Data do Registro</small>
+                                                                            <span class="fw-bold fs-6"><i class="bi bi-calendar3 me-1 text-primary"></i>{{ oc.data_ocorrencia|date:"d/m/Y" }}</span>
+                                                                        </div>
+                                                                        <div class="text-end">
+                                                                            <small class="text-muted d-block fw-semibold text-uppercase">Status</small>
+                                                                            {% if oc.status == 'ABERTA' %}
+                                                                                <span class="badge bg-danger fs-6"><i class="bi bi-exclamation-circle me-1"></i>ABERTA</span>
+                                                                            {% else %}
+                                                                                <span class="badge bg-success fs-6"><i class="bi bi-check-circle me-1"></i>ENCERRADA ({% if oc.data_encerramento %}{{ oc.data_encerramento|date:"d/m/Y" }}{% endif %})</span>
+                                                                            {% endif %}
+                                                                        </div>
+                                                                    </div>
+
                                                                     <div class="mb-3">
-                                                                        <label class="form-label fw-bold">Tipo</label>
+                                                                        <label class="form-label fw-bold small text-muted text-uppercase mb-1">Descrição Completa</label>
+                                                                        <div class="p-3 bg-light rounded border text-dark" style="white-space: pre-wrap; font-size: 0.95rem;">{{ oc.descricao }}</div>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="modal-footer bg-light d-flex justify-content-between">
+                                                                    <div class="d-flex gap-1">
+                                                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="toggleEditOcorrencia('{{ oc.id }}')">
+                                                                            <i class="bi bi-pencil me-1"></i>Editar
+                                                                        </button>
+                                                                        <form method="post" action="{% url 'metrologia:deletar_ocorrencia' oc.id %}" class="d-inline" onsubmit="return confirm('Tem certeza que deseja EXCLUIR esta ocorrência?');">
+                                                                            {% csrf_token %}
+                                                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                                                <i class="bi bi-trash me-1"></i>Excluir
+                                                                            </button>
+                                                                        </form>
+                                                                    </div>
+
+                                                                    <div class="d-flex gap-2">
+                                                                        {% if oc.status == 'ABERTA' %}
+                                                                            <form method="post" action="{% url 'metrologia:encerrar_ocorrencia' oc.id %}" class="d-inline" onsubmit="return confirm('Tem certeza que deseja encerrar esta ocorrência?');">
+                                                                                {% csrf_token %}
+                                                                                <button type="submit" class="btn btn-sm btn-success">
+                                                                                    <i class="bi bi-check-circle me-1"></i>Encerrar
+                                                                                </button>
+                                                                            </form>
+                                                                        {% endif %}
+                                                                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <!-- Form de Edição (Escondido inicialmente) -->
+                                                            <form method="post" action="{% url 'metrologia:editar_ocorrencia' oc.id %}" id="editOcorrenciaForm{{ oc.id }}" style="display: none;">
+                                                                {% csrf_token %}
+                                                                <div class="modal-body p-4">
+                                                                    <h6 class="fw-bold mb-3 text-primary"><i class="bi bi-pencil-square me-1"></i>Editar Ocorrência</h6>
+                                                                    <div class="mb-3">
+                                                                        <label class="form-label fw-bold small">Tipo de Ocorrência</label>
                                                                         <select name="tipo" class="form-select form-select-sm" required>
                                                                             <option value="CALIBRACAO" {% if oc.tipo == 'CALIBRACAO' %}selected{% endif %}>Calibração</option>
                                                                             <option value="VERIFICACAO" {% if oc.tipo == 'VERIFICACAO' %}selected{% endif %}>Verificação</option>
@@ -785,19 +819,20 @@
                                                                         </select>
                                                                     </div>
                                                                     <div class="mb-3">
-                                                                        <label class="form-label fw-bold">Data da Ocorrência</label>
+                                                                        <label class="form-label fw-bold small">Data da Ocorrência</label>
                                                                         <input type="date" name="data_ocorrencia" class="form-control form-control-sm" value="{{ oc.data_ocorrencia|date:'Y-m-d' }}" required>
                                                                     </div>
                                                                     <div class="mb-3">
-                                                                        <label class="form-label fw-bold">Descrição</label>
-                                                                        <textarea name="descricao" class="form-control form-control-sm" rows="3" required>{{ oc.descricao }}</textarea>
+                                                                        <label class="form-label fw-bold small">Descrição</label>
+                                                                        <textarea name="descricao" class="form-control form-control-sm" rows="4" required>{{ oc.descricao }}</textarea>
                                                                     </div>
                                                                 </div>
-                                                                <div class="modal-footer">
-                                                                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
-                                                                    <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-check-circle me-1"></i>Salvar Alterações</button>
+                                                                <div class="modal-footer bg-light">
+                                                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleEditOcorrencia('{{ oc.id }}')">Cancelar</button>
+                                                                    <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-check-circle me-1"></i>Salvar Alterações</button>
                                                                 </div>
                                                             </form>
+
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1135,6 +1170,19 @@ function prepareModalIniciarSubstituicao(atendimentoId, instrumento, fornecedor)
     form.action = `/metrologia/atendimento/${atendimentoId}/iniciar-substituicao/`;
     document.getElementById('lbl_substituicao_instrumento').textContent = instrumento;
     document.getElementById('lbl_substituicao_fornecedor').textContent = fornecedor;
+}
+
+function toggleEditOcorrencia(id) {
+    var viewDiv = document.getElementById('viewOcorrenciaBody' + id);
+    var editForm = document.getElementById('editOcorrenciaForm' + id);
+    if (!viewDiv || !editForm) return;
+    if (viewDiv.style.display === 'none') {
+        viewDiv.style.display = 'block';
+        editForm.style.display = 'none';
+    } else {
+        viewDiv.style.display = 'none';
+        editForm.style.display = 'block';
+    }
 }
 </script>
 
