@@ -276,9 +276,18 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = "en-us"  # Você pode mudar para 'pt-br' se quiser
+LANGUAGE_CODE = "pt-br"
 
-TIME_ZONE = os.getenv("TIME_ZONE", "UTC")
+TIME_ZONE = os.getenv("TIME_ZONE", "America/Sao_Paulo")
+
+USE_I18N = True
+USE_TZ = True
+
+DATE_INPUT_FORMATS = [
+    '%d/%m/%Y',
+    '%d/%m/%y',
+    '%Y-%m-%d',
+]
 
 # Celery / Redis configuration - Build URL robustly
 def _build_redis_url():

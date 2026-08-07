@@ -35,6 +35,8 @@ from .views import (
     # Ocorrências
     registrar_ocorrencia,
     encerrar_ocorrencia,
+    editar_ocorrencia,
+    deletar_ocorrencia,
 )
 
 from .novo_fluxo_cotacao import (
@@ -89,6 +91,8 @@ __all__ = [
     'registrar_historico_massa',
     'registrar_ocorrencia',
     'encerrar_ocorrencia',
+    'editar_ocorrencia',
+    'deletar_ocorrencia',
     # NOVO FLUXO
     'solicitacao_list',
     'solicitacao_create',

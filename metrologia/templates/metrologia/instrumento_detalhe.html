@@ -733,19 +733,74 @@
                                                     <span class="text-muted">—</span>
                                                 {% endif %}
                                             </td>
-                                            <td class="text-end">
+                                            <td class="text-end text-nowrap">
                                                 {% if oc.status == 'ABERTA' %}
                                                     <form method="post" action="{% url 'metrologia:encerrar_ocorrencia' oc.id %}" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja encerrar esta ocorrência?');">
                                                         {% csrf_token %}
-                                                        <button type="submit" class="btn btn-sm btn-success py-0 px-2 rounded-pill" title="Encerrar Ocorrência">
+                                                        <button type="submit" class="btn btn-sm btn-outline-success py-0 px-2 rounded-pill" title="Encerrar Ocorrência">
                                                             <i class="bi bi-check-circle"></i> Encerrar
                                                         </button>
                                                     </form>
                                                 {% else %}
-                                                    <span class="badge bg-light text-muted border" title="Encerrada em {{ oc.data_encerramento|date:'d/m/Y' }}">
+                                                    <span class="badge bg-light text-muted border me-1" title="Encerrada em {{ oc.data_encerramento|date:'d/m/Y' }}">
                                                         <i class="bi bi-check-all"></i> Concluída
                                                     </span>
                                                 {% endif %}
+
+                                                <!-- Botão Editar -->
+                                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill ms-1" data-bs-toggle="modal" data-bs-target="#modalEditarOcorrencia{{ oc.id }}" title="Editar Ocorrência">
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
+
+                                                <!-- Botão Excluir -->
+                                                <form method="post" action="{% url 'metrologia:deletar_ocorrencia' oc.id %}" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja EXCLUIR permanentemente esta ocorrência?');">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2 rounded-pill ms-1" title="Excluir Ocorrência">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </form>
+
+                                                <!-- Modal Editar Ocorrência -->
+                                                <div class="modal fade text-start" id="modalEditarOcorrencia{{ oc.id }}" tabindex="-1" aria-hidden="true">
+                                                    <div class="modal-dialog">
+                                                        <div class="modal-content">
+                                                            <div class="modal-header bg-primary text-white">
+                                                                <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square me-2"></i>Editar Ocorrência</h5>
+                                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                                            </div>
+                                                            <form method="post" action="{% url 'metrologia:editar_ocorrencia' oc.id %}">
+                                                                {% csrf_token %}
+                                                                <div class="modal-body">
+                                                                    <div class="mb-3">
+                                                                        <label class="form-label fw-bold">Tipo</label>
+                                                                        <select name="tipo" class="form-select form-select-sm" required>
+                                                                            <option value="CALIBRACAO" {% if oc.tipo == 'CALIBRACAO' %}selected{% endif %}>Calibração</option>
+                                                                            <option value="VERIFICACAO" {% if oc.tipo == 'VERIFICACAO' %}selected{% endif %}>Verificação</option>
+                                                                            <option value="INSPECAO" {% if oc.tipo == 'INSPECAO' %}selected{% endif %}>Inspeção</option>
+                                                                            <option value="AJUSTE" {% if oc.tipo == 'AJUSTE' %}selected{% endif %}>Ajuste</option>
+                                                                            <option value="MANUTENCAO" {% if oc.tipo == 'MANUTENCAO' %}selected{% endif %}>Manutenção</option>
+                                                                            <option value="AVARIA" {% if oc.tipo == 'AVARIA' %}selected{% endif %}>Avaria/Dano</option>
+                                                                            <option value="EXTRAVIO" {% if oc.tipo == 'EXTRAVIO' %}selected{% endif %}>Extravio/Perda</option>
+                                                                            <option value="OUTRO" {% if oc.tipo == 'OUTRO' %}selected{% endif %}>Outro</option>
+                                                                        </select>
+                                                                    </div>
+                                                                    <div class="mb-3">
+                                                                        <label class="form-label fw-bold">Data da Ocorrência</label>
+                                                                        <input type="date" name="data_ocorrencia" class="form-control form-control-sm" value="{{ oc.data_ocorrencia|date:'Y-m-d' }}" required>
+                                                                    </div>
+                                                                    <div class="mb-3">
+                                                                        <label class="form-label fw-bold">Descrição</label>
+                                                                        <textarea name="descricao" class="form-control form-control-sm" rows="3" required>{{ oc.descricao }}</textarea>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="modal-footer">
+                                                                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                                                                    <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-check-circle me-1"></i>Salvar Alterações</button>
+                                                                </div>
+                                                            </form>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </td>
                                         </tr>
                                         {% endfor %}

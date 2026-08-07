@@ -89,6 +89,8 @@ urlpatterns = [
     path('registrar-historico-massa/', views.registrar_historico_massa, name='registrar_historico_massa'),
     path('registrar-ocorrencia/', views.registrar_ocorrencia, name='registrar_ocorrencia'),
     path('encerrar-ocorrencia/<int:ocorrencia_id>/', views.encerrar_ocorrencia, name='encerrar_ocorrencia'),
+    path('editar-ocorrencia/<int:ocorrencia_id>/', views.editar_ocorrencia, name='editar_ocorrencia'),
+    path('deletar-ocorrencia/<int:ocorrencia_id>/', views.deletar_ocorrencia, name='deletar_ocorrencia'),
 
     # API ENDPOINTS
     path('api/instrumentos-vencendo/', views.api_instrumentos_vencendo, name='api_instrumentos_vencendo'),

@@ -1272,3 +1272,39 @@ def encerrar_ocorrencia(request, ocorrencia_id):
         ocorrencia.save()
         messages.success(request, 'Ocorrência encerrada com sucesso.')
     return redirect(request.META.get('HTTP_REFERER', 'metrologia:modulo_metrologia'))
+
+@login_required
+def editar_ocorrencia(request, ocorrencia_id):
+    from qms.models import OcorrenciaInstrumento
+    from django.shortcuts import redirect, get_object_or_404
+    from django.contrib import messages
+
+    if request.method == 'POST':
+        ocorrencia = get_object_or_404(OcorrenciaInstrumento, pk=ocorrencia_id)
+        tipo = request.POST.get('tipo')
+        descricao = request.POST.get('descricao')
+        data_ocorrencia = request.POST.get('data_ocorrencia')
+
+        if tipo:
+            ocorrencia.tipo = tipo
+        if descricao is not None:
+            ocorrencia.descricao = descricao
+        if data_ocorrencia:
+            ocorrencia.data_ocorrencia = data_ocorrencia
+
+        ocorrencia.save()
+        messages.success(request, 'Ocorrência atualizada com sucesso.')
+    return redirect(request.META.get('HTTP_REFERER', 'metrologia:modulo_metrologia'))
+
+@login_required
+def deletar_ocorrencia(request, ocorrencia_id):
+    from qms.models import OcorrenciaInstrumento
+    from django.shortcuts import redirect, get_object_or_404
+    from django.contrib import messages
+
+    if request.method == 'POST':
+        ocorrencia = get_object_or_404(OcorrenciaInstrumento, pk=ocorrencia_id)
+        ocorrencia.delete()
+        messages.success(request, 'Ocorrência excluída com sucesso.')
+    return redirect(request.META.get('HTTP_REFERER', 'metrologia:modulo_metrologia'))
+
