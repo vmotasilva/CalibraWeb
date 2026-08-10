@@ -98,6 +98,14 @@
                                     <em>
                                         {% if alerta.ciclo.criterio == 'DIAS' %}
                                             {{ alerta.lotes_passados }} dias corridos desde a última.
+                                        {% elif alerta.ciclo.criterio == 'SEMANAL' %}
+                                            Semanal (exige 1x na semana: Segunda a Domingo).
+                                        {% elif alerta.ciclo.criterio == 'DIARIO' %}
+                                            Diário (exige 1x ao dia).
+                                        {% elif alerta.ciclo.criterio == 'QUINZENAL' %}
+                                            Quinzenal (exige 1x na quinzena).
+                                        {% elif alerta.ciclo.criterio == 'MENSAL' %}
+                                            Mensal (exige 1x no mês).
                                         {% else %}
                                             {{ alerta.lotes_passados }} lotes processados desde a última.
                                         {% endif %}
@@ -930,6 +938,23 @@
                     `;
                 }
 
+                let criterioText = '';
+                if (item.ciclo.criterio === 'SEMANAL') {
+                    criterioText = `(1x na Semana: Seg - Dom)`;
+                } else if (item.ciclo.criterio === 'DIARIO') {
+                    criterioText = `(1x ao Dia)`;
+                } else if (item.ciclo.criterio === 'QUINZENAL') {
+                    criterioText = `(1x na Quinzena)`;
+                } else if (item.ciclo.criterio === 'MENSAL') {
+                    criterioText = `(1x no Mês)`;
+                } else if (item.ciclo.criterio === 'LIVRE') {
+                    criterioText = `(Sem periodicidade)`;
+                } else if (item.ciclo.criterio === 'DIAS') {
+                    criterioText = `(${item.lotes_passados}/${item.limite} dias)`;
+                } else {
+                    criterioText = `(${item.lotes_passados}/${item.limite} lotes)`;
+                }
+
                                   container.innerHTML += `
                       <div class="card mb-2 shadow-sm border-0 bg-light">
                           <div class="card-body p-2 d-flex flex-column">
@@ -943,7 +968,7 @@
                                               ${estourou}
                                           </div>
                                           <small class="text-muted">
-                                              (${item.lotes_passados}/${item.limite} ${item.ciclo.criterio === 'DIAS' ? 'dias' : item.ciclo.criterio === 'LOTES' ? 'lotes' : ''})
+                                              ${criterioText}
                                           </small>
                                       </div>
                                   </label>
