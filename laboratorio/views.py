@@ -1050,13 +1050,17 @@ def coating_painel(request):
     # Initialize form for GET
     registro_form = NovoLoteCoatingForm()
     
-    # Modo Auditoria
+    # Modo Auditoria e Busca por Lote
     audit_mode = request.GET.get('audit') == 'true'
     anomaly_filter = request.GET.get('anomaly', '')
+    lote_search = request.GET.get('lote_search', '').strip()
     
     base_qs = RegistroCoating.objects.all().select_related(
         'turno_coating', 'maquina', 'tratamento', 'preparacao', 'montagem'
     )
+    
+    if lote_search:
+        base_qs = base_qs.filter(lote__icontains=lote_search)
     
     if audit_mode:
         from django.db.models import F, ExpressionWrapper, DurationField
@@ -1460,6 +1464,7 @@ def coating_painel(request):
         "equipe": EquipeCoating.objects.select_related('colaborador').all().order_by('colaborador__nome_completo'),
         "audit_mode": audit_mode,
         "anomaly_filter": anomaly_filter,
+        "lote_search": lote_search,
     }
     
     return render(request, "laboratorio/coating_painel.html", context)

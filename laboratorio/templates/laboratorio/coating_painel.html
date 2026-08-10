@@ -25,7 +25,36 @@
             <h2 class="mb-1">Painel de Coating {% if audit_mode %}<span class="badge bg-danger ms-2" style="font-size:0.55em;"><i class="bi bi-shield-lock-fill"></i> MODO AUDITORIA</span>{% endif %}</h2>
             <p class="text-muted mb-0">Registro diário de Lotes e Manutenções.</p>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            <!-- Campo de Busca por Número do Lote -->
+            <form method="get" action="." class="d-flex align-items-center" id="searchLoteForm">
+                {% if audit_mode %}<input type="hidden" name="audit" value="true">{% endif %}
+                {% if anomaly_filter %}<input type="hidden" name="anomaly" value="{{ anomaly_filter }}">{% endif %}
+                <div class="input-group input-group-sm shadow-sm" style="max-width: 280px;">
+                    <span class="input-group-text bg-white border-end-0 text-muted">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input type="text" 
+                           name="lote_search" 
+                           id="inputSearchLote"
+                           class="form-control border-start-0 border-end-0 ps-0" 
+                           placeholder="Buscar Nº Lote..." 
+                           value="{{ lote_search|default:'' }}"
+                           autocomplete="off"
+                           oninput="filterLotesLive(this.value)">
+                    {% if lote_search %}
+                    <a href="?{% if audit_mode %}audit=true{% endif %}{% if anomaly_filter %}&anomaly={{ anomaly_filter }}{% endif %}" 
+                       class="btn btn-outline-secondary border-start-0 text-muted" 
+                       title="Limpar busca">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                    {% endif %}
+                    <button type="submit" class="btn btn-primary fw-bold">
+                        Buscar
+                    </button>
+                </div>
+            </form>
+
             {% if not audit_mode %}
             <a href="?audit=true" class="btn btn-outline-danger fw-bold shadow-sm" title="Investigar Anomalias">
                 <i class="bi bi-search"></i> Auditoria
@@ -204,7 +233,7 @@
                             <tbody>
                                 {% with reg_page=registros_por_maquina|get_item:evap.id %}
                                     {% for reg in reg_page %}
-                                        <tr class="align-middle {% if reg.bg_group == 1 %}bg-lote-group{% else %}bg-white{% endif %}" style="cursor:pointer;" onclick="abrirModalEditarLote(this, '{{ reg.id }}', '{{ reg.lote }}', '{{ reg.lado }}', '{{ reg.maquina_id }}', '{{ reg.tratamento_id }}', '{{ reg.hora_entrada|date:'Y-m-d\TH:i'|default:'' }}', '{{ reg.hora_saida|date:'Y-m-d\TH:i'|default:'' }}', '{{ reg.preparacao_id|default:'' }}', '{{ reg.montagem_id|default:'' }}')" data-observacao="{{ reg.observacao|escapejs|default:'' }}">
+                                        <tr class="align-middle {% if reg.bg_group == 1 %}bg-lote-group{% else %}bg-white{% endif %}" style="cursor:pointer;" onclick="abrirModalEditarLote(this, '{{ reg.id }}', '{{ reg.lote }}', '{{ reg.lado }}', '{{ reg.maquina_id }}', '{{ reg.tratamento_id }}', '{{ reg.hora_entrada|date:'Y-m-d\TH:i'|default:'' }}', '{{ reg.hora_saida|date:'Y-m-d\TH:i'|default:'' }}', '{{ reg.preparacao_id|default:'' }}', '{{ reg.montagem_id|default:'' }}')" data-observacao="{{ reg.observacao|escapejs|default:'' }}" data-lote-num="{{ reg.lote }}">
                                             <td>{{ reg.turno_coating.data|date:"d/m/Y" }}</td>
                                             <td>{{ reg.turno_coating.regra.nome }}</td>
                                             <td><strong>{{ reg.lote }}</strong></td>
@@ -379,7 +408,7 @@
                 <ul class="pagination justify-content-center">
                     {% if reg_page.has_previous %}
                     <li class="page-item">
-                        <a class="page-link" href="?page_{{ evap.id }}={{ reg_page.previous_page_number }}" aria-label="Anterior">
+                        <a class="page-link" href="?page_{{ evap.id }}={{ reg_page.previous_page_number }}{% if lote_search %}&lote_search={{ lote_search }}{% endif %}{% if audit_mode %}&audit=true{% endif %}{% if anomaly_filter %}&anomaly={{ anomaly_filter }}{% endif %}" aria-label="Anterior">
                             <span aria-hidden="true">&laquo; Anterior</span>
                         </a>
                     </li>
@@ -391,7 +420,7 @@
                     </li>
                     {% if reg_page.has_next %}
                     <li class="page-item">
-                        <a class="page-link" href="?page_{{ evap.id }}={{ reg_page.next_page_number }}" aria-label="Próxima">
+                        <a class="page-link" href="?page_{{ evap.id }}={{ reg_page.next_page_number }}{% if lote_search %}&lote_search={{ lote_search }}{% endif %}{% if audit_mode %}&audit=true{% endif %}{% if anomaly_filter %}&anomaly={{ anomaly_filter }}{% endif %}" aria-label="Próxima">
                             <span aria-hidden="true">Próxima &raquo;</span>
                         </a>
                     </li>
@@ -1308,6 +1337,20 @@
         .catch(err => {
             console.error(err);
             alert('Erro de rede ao salvar comentários.');
+        });
+    }
+    
+    // Filtragem em tempo real por número de lote no cliente
+    function filterLotesLive(term) {
+        const val = term.trim().toLowerCase();
+        const rows = document.querySelectorAll('tr[data-lote-num]');
+        rows.forEach(row => {
+            const loteNum = row.getAttribute('data-lote-num') || '';
+            if (!val || loteNum.toLowerCase().includes(val)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
         });
     }
     
