@@ -31,6 +31,42 @@
     .mes-vazio .mes-header {
         background: linear-gradient(135deg, #6c757d 0%, #868e96 100%);
     }
+    /* Grupos */
+    .grupo-header {
+        background: #e9f5ef;
+        padding: 5px 12px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: #1a7f4b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 1px solid #d2eadb;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .subgrupo-header {
+        background: #f4faf7;
+        padding: 4px 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #2d8a5f;
+        border-bottom: 1px solid #e4f0e8;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .subsubgrupo-header {
+        background: #fafffe;
+        padding: 3px 28px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: #5aab82;
+        border-bottom: 1px solid #edf5f0;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
     .pessoa-item {
         display: flex;
         align-items: center;
@@ -62,11 +98,14 @@
     .vazio-msg { padding: 18px; text-align: center; color: #adb5bd; font-size: 0.85rem; }
     .filtros-bar { background: #fff; border-radius: 10px; padding: 16px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 24px; }
     .stat-pill { background: linear-gradient(135deg,#1a7f4b,#27ae6d); color: #fff; border-radius: 20px; padding: 4px 16px; font-size: 0.85rem; font-weight: 600; }
+    .grupo-badge { background: rgba(26,127,75,0.12); border-radius: 10px; padding: 1px 7px; font-size: 0.7rem; color: #1a7f4b; font-weight: 700; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
+
+    <!-- Cabecalho -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2 class="mb-1"><i class="bi bi-calendar3 text-success"></i> Projecao Mensal de Ferias</h2>
@@ -78,6 +117,7 @@
         </div>
     </div>
 
+    <!-- Filtros + Agrupamentos -->
     <div class="filtros-bar">
         <form method="get" action="{% url 'rh:projecao_mensal_ferias' %}" class="row g-2 align-items-end">
             <div class="col-md-2">
@@ -119,8 +159,35 @@
                 <a href="{% url 'rh:projecao_mensal_ferias' %}" class="btn btn-sm btn-outline-secondary w-100">Limpar Filtros</a>
             </div>
         </form>
+
+        <!-- Agrupamentos -->
+        <div class="mt-3 pt-3 border-top d-flex gap-4 align-items-center">
+            <span class="small fw-bold text-muted"><i class="bi bi-diagram-3"></i> Agrupar dentro do card por:</span>
+
+            <div class="form-check form-switch">
+                <input class="form-check-input agrupamento-cb" type="checkbox" id="agrupar_lider" value="lider" onchange="updateAgrupamento()" {% if 'lider' in agrupamentos_ativos %}checked{% endif %}>
+                <label class="form-check-label small" for="agrupar_lider">Liderança</label>
+            </div>
+            <div class="form-check form-switch">
+                <input class="form-check-input agrupamento-cb" type="checkbox" id="agrupar_setor" value="setor" onchange="updateAgrupamento()" {% if 'setor' in agrupamentos_ativos %}checked{% endif %}>
+                <label class="form-check-label small" for="agrupar_setor">Setor</label>
+            </div>
+            <div class="form-check form-switch">
+                <input class="form-check-input agrupamento-cb" type="checkbox" id="agrupar_turno" value="turno" onchange="updateAgrupamento()" {% if 'turno' in agrupamentos_ativos %}checked{% endif %}>
+                <label class="form-check-label small" for="agrupar_turno">Turno</label>
+            </div>
+
+            <form id="form_agrupamento" method="get" action="{% url 'rh:projecao_mensal_ferias' %}" class="d-none">
+                <input type="hidden" name="ano" value="{{ ano }}">
+                <input type="hidden" name="setor_id" value="{{ setor_id }}">
+                <input type="hidden" name="lider_id" value="{{ lider_id }}">
+                <input type="hidden" name="turno" value="{{ turno }}">
+                <input type="hidden" name="ordem_agrupamento" id="ordem_agrupamento_input" value="{{ ordem_agrupamento }}">
+            </form>
+        </div>
     </div>
 
+    <!-- Cards por mes -->
     <div class="row g-4">
         {% for card in cards %}
         <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
@@ -130,7 +197,63 @@
                     <span class="mes-badge">{{ card.total }} pessoa{{ card.total|pluralize:"s" }}</span>
                 </div>
                 <div class="card-body p-0">
-                    {% if card.pessoas %}
+                    {% if card.total == 0 %}
+                        <div class="vazio-msg"><i class="bi bi-moon-stars"></i><br>Nenhuma ferias neste mes</div>
+                    {% elif card.grupos %}
+                        {% for g1 in card.grupos %}
+                        <div class="grupo-header">
+                            <i class="bi bi-tag-fill"></i> {{ g1.label }}
+                            <span class="grupo-badge ms-auto">{{ g1.pessoas|length }}</span>
+                        </div>
+                        {% if g1.subgrupos %}
+                            {% for g2 in g1.subgrupos %}
+                            <div class="subgrupo-header">
+                                <i class="bi bi-chevron-right"></i> {{ g2.label }}
+                                <span class="grupo-badge ms-auto">{{ g2.pessoas|length }}</span>
+                            </div>
+                            {% if g2.subgrupos %}
+                                {% for g3 in g2.subgrupos %}
+                                <div class="subsubgrupo-header">
+                                    <i class="bi bi-dot"></i> {{ g3.label }}
+                                </div>
+                                {% for p in g3.pessoas %}
+                                <div class="pessoa-item">
+                                    <div class="pessoa-avatar">{{ p.colaborador_abrev|slice:":2"|upper }}</div>
+                                    <div class="pessoa-info">
+                                        <div class="pessoa-nome" title="{{ p.colaborador }}">{{ p.colaborador }}</div>
+                                        <div class="pessoa-meta">{{ p.setor }}{% if p.lider %} &middot; {{ p.lider }}{% endif %} &middot; {{ p.turno }}</div>
+                                    </div>
+                                    <div class="pessoa-periodo">{{ p.inicio }}<br><small>a</small><br>{{ p.fim }}</div>
+                                </div>
+                                {% endfor %}
+                                {% endfor %}
+                            {% else %}
+                                {% for p in g2.pessoas %}
+                                <div class="pessoa-item">
+                                    <div class="pessoa-avatar">{{ p.colaborador_abrev|slice:":2"|upper }}</div>
+                                    <div class="pessoa-info">
+                                        <div class="pessoa-nome" title="{{ p.colaborador }}">{{ p.colaborador }}</div>
+                                        <div class="pessoa-meta">{{ p.setor }}{% if p.lider %} &middot; {{ p.lider }}{% endif %} &middot; {{ p.turno }}</div>
+                                    </div>
+                                    <div class="pessoa-periodo">{{ p.inicio }}<br><small>a</small><br>{{ p.fim }}</div>
+                                </div>
+                                {% endfor %}
+                            {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            {% for p in g1.pessoas %}
+                            <div class="pessoa-item">
+                                <div class="pessoa-avatar">{{ p.colaborador_abrev|slice:":2"|upper }}</div>
+                                <div class="pessoa-info">
+                                    <div class="pessoa-nome" title="{{ p.colaborador }}">{{ p.colaborador }}</div>
+                                    <div class="pessoa-meta">{{ p.setor }}{% if p.lider %} &middot; {{ p.lider }}{% endif %} &middot; {{ p.turno }}</div>
+                                </div>
+                                <div class="pessoa-periodo">{{ p.inicio }}<br><small>a</small><br>{{ p.fim }}</div>
+                            </div>
+                            {% endfor %}
+                        {% endif %}
+                        {% endfor %}
+                    {% else %}
                         {% for p in card.pessoas %}
                         <div class="pessoa-item">
                             <div class="pessoa-avatar">{{ p.colaborador_abrev|slice:":2"|upper }}</div>
@@ -141,8 +264,6 @@
                             <div class="pessoa-periodo">{{ p.inicio }}<br><small>a</small><br>{{ p.fim }}</div>
                         </div>
                         {% endfor %}
-                    {% else %}
-                        <div class="vazio-msg"><i class="bi bi-moon-stars"></i><br>Nenhuma ferias neste mes</div>
                     {% endif %}
                 </div>
             </div>
@@ -150,4 +271,21 @@
         {% endfor %}
     </div>
 </div>
+
+<script>
+    let ordemAgrupamento = "{{ ordem_agrupamento }}".split(',').filter(x => x);
+
+    function updateAgrupamento() {
+        document.querySelectorAll('.agrupamento-cb').forEach(cb => {
+            const val = cb.value;
+            if (cb.checked && !ordemAgrupamento.includes(val)) {
+                ordemAgrupamento.push(val);
+            } else if (!cb.checked) {
+                ordemAgrupamento = ordemAgrupamento.filter(x => x !== val);
+            }
+        });
+        document.getElementById('ordem_agrupamento_input').value = ordemAgrupamento.join(',');
+        document.getElementById('form_agrupamento').submit();
+    }
+</script>
 {% endblock %}

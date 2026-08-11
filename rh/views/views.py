@@ -1716,17 +1716,53 @@ def projecao_mensal_ferias_view(request):
             'dias': (f.data_fim - f.data_inicio).days + 1,
         })
 
+    # Agrupamentos opcionais dentro de cada card
+    ordem_agrupamento = request.GET.get('ordem_agrupamento', '')
+    agrupamentos_ativos = [x for x in ordem_agrupamento.split(',') if x in ('lider', 'setor', 'turno')]
+    
+    # Mapa de chave de agrupamento para campo do dict de pessoa
+    AGRUPAR_KEY = {'lider': 'lider_grupo', 'setor': 'setor', 'turno': 'turno'}
+
+    # Lider para agrupamento (usa "Sem Líder" se None)
+    for m in mes_map:
+        for p in mes_map[m]:
+            p['lider_grupo'] = p['lider'] if p['lider'] else 'Sem Líder'
+
     # Ordenar cada mês por nome
     for m in mes_map:
         mes_map[m].sort(key=lambda x: x['colaborador'])
 
+    # Função que agrupa recursivamente até 3 níveis
+    def build_groups(pessoas, keys):
+        if not keys:
+            return None
+        key_field = AGRUPAR_KEY.get(keys[0], keys[0])
+        groups = {}
+        order = []
+        for p in pessoas:
+            k = p.get(key_field) or '—'
+            if k not in groups:
+                groups[k] = []
+                order.append(k)
+            groups[k].append(p)
+        result = []
+        for k in sorted(order):
+            result.append({
+                'label': k,
+                'pessoas': groups[k],
+                'subgrupos': build_groups(groups[k], keys[1:]),
+            })
+        return result
+
     cards = []
     for mes_num, mes_nome in meses:
         pessoas = mes_map[mes_num]
+        grupos = build_groups(pessoas, agrupamentos_ativos) if agrupamentos_ativos else None
         cards.append({
             'mes_num': mes_num,
             'mes_nome': mes_nome,
             'pessoas': pessoas,
+            'grupos': grupos,
             'total': len(pessoas),
         })
 
@@ -1741,6 +1777,8 @@ def projecao_mensal_ferias_view(request):
         'setor_id': setor_id,
         'turno': turno,
         'lider_id': lider_id,
+        'ordem_agrupamento': ordem_agrupamento,
+        'agrupamentos_ativos': agrupamentos_ativos,
     }
     return render(request, 'rh/projecao_mensal.html', ctx)
 
