@@ -40,12 +40,12 @@ REPORT_SHARE_SALT = "auditoria.registros_por_modelo.share"
 REPORT_SHARE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30  # 30 dias
 
 
-def _build_registro_report_share_token(modelo_id: int, inicio: str = "", fim: str = "", subcategoria: str = "") -> str:
+def _build_registro_report_share_token(modelo_id: int, inicio: str = "", fim: str = "", topico: str = "") -> str:
     payload = {
         "m": int(modelo_id),
         "i": (inicio or "").strip(),
         "f": (fim or "").strip(),
-        "s": (subcategoria or "").strip(),
+        "s": (topico or "").strip(),
     }
     return signing.dumps(payload, salt=REPORT_SHARE_SALT, compress=True)
 
@@ -71,7 +71,7 @@ def _read_registro_report_share_token(token: str) -> dict | None:
         "modelo_id": modelo_id,
         "inicio": str(payload.get("i") or "").strip(),
         "fim": str(payload.get("f") or "").strip(),
-        "subcategoria": str(payload.get("s") or "").strip(),
+        "topico": str(payload.get("s") or "").strip(),
     }
 
 
@@ -303,7 +303,7 @@ def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
             "comentarios_texto": "\n".join(item["comentarios"]),
             "tem_resposta": bool((item["resposta_geral"] or "").strip() or has_resposta_dia),
         }
-        blocos_map[nome_subcategoria]["linhas"].append(linha)
+        blocos_map[nome_topico]["linhas"].append(linha)
 
     for bloco in blocos_map.values():
         opcoes_meta: "OrderedDict[str, dict]" = OrderedDict()
@@ -383,7 +383,7 @@ def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
     }
 
 
-def _build_subcategoria_chart_from_resumo(blocos: list[dict]) -> dict:
+def _build_topico_chart_from_resumo(blocos: list[dict]) -> dict:
     """Agrega respostas por sub-categoria para gráfico de situações."""
     situations_order = ["Conforme", "Não conforme", "N/A", "Sim", "Não", "Outros"]
 
@@ -823,8 +823,8 @@ def perguntas_bulk_apply_resposta(request):
     if not pergunta_ids:
         messages.error(request, "Selecione pelo menos 1 pergunta.")
         params = {"modelo": modelo_id}
-        if subcategoria:
-            params["subcategoria"] = subcategoria
+        if topico:
+            params["topico"] = topico
         url = reverse("auditoria:perguntas_list")
         return redirect(f"{url}?{urlencode(params)}")
 
@@ -832,8 +832,8 @@ def perguntas_bulk_apply_resposta(request):
     if not preset:
         messages.error(request, "Selecione um conjunto de respostas válido.")
         params = {"modelo": modelo_id}
-        if subcategoria:
-            params["subcategoria"] = subcategoria
+        if topico:
+            params["topico"] = topico
         url = reverse("auditoria:perguntas_list")
         return redirect(f"{url}?{urlencode(params)}")
 
@@ -847,8 +847,8 @@ def perguntas_bulk_apply_resposta(request):
     if not ids_int:
         messages.error(request, "Selecione pelo menos 1 pergunta válida.")
         params = {"modelo": modelo_id}
-        if subcategoria:
-            params["subcategoria"] = subcategoria
+        if topico:
+            params["topico"] = topico
         url = reverse("auditoria:perguntas_list")
         return redirect(f"{url}?{urlencode(params)}")
 
@@ -885,9 +885,9 @@ def pergunta_create(request):
             params = {}
             if modelo_id:
                 params["modelo"] = modelo_id
-            subcategoria = (getattr(form.instance, "subcategoria", "") or "").strip()
-            if subcategoria:
-                params["subcategoria"] = subcategoria
+            topico = (getattr(form.instance, "topico", "") or "").strip()
+            if topico:
+                params["topico"] = topico
             url = reverse("auditoria:perguntas_list")
             if params:
                 url = f"{url}?{urlencode(params)}"
@@ -897,9 +897,9 @@ def pergunta_create(request):
         modelo_id = request.GET.get("modelo")
         if modelo_id:
             initial["modelo"] = modelo_id
-            subcategoria = (request.GET.get("subcategoria") or "").strip()
-            if subcategoria:
-                initial["subcategoria"] = subcategoria
+            topico = (request.GET.get("topico") or "").strip()
+            if topico:
+                initial["topico"] = topico
             if str(modelo_id).isdigit():
                 initial["ordem"] = _get_next_pergunta_ordem(int(modelo_id))
         form = PerguntaAuditoriaForm(initial=initial)
@@ -935,7 +935,7 @@ def pergunta_duplicate(request, pk):
             exibir_grafico=pergunta.exibir_grafico,
             aplicar_no_grid=pergunta.aplicar_no_grid,
             ordem=_get_next_pergunta_ordem(pergunta.modelo_id),
-            subcategoria=pergunta.subcategoria,
+            topico=pergunta.topico,
             obrigatoria=pergunta.obrigatoria,
             ativo=pergunta.ativo,
         )
@@ -945,9 +945,9 @@ def pergunta_duplicate(request, pk):
     params = {}
     if pergunta.modelo_id:
         params["modelo"] = pergunta.modelo_id
-    subcategoria = str(pergunta.subcategoria.id) if pergunta.subcategoria else ""
-    if subcategoria:
-        params["subcategoria"] = subcategoria
+    topico = str(pergunta.topico.id) if pergunta.topico else ""
+    if topico:
+        params["topico"] = topico
     url = reverse("auditoria:perguntas_list")
     if params:
         url = f"{url}?{urlencode(params)}"
@@ -1010,7 +1010,7 @@ def modelo_duplicate(request, pk):
                 exibir_grafico=p.exibir_grafico,
                 aplicar_no_grid=p.aplicar_no_grid,
                 ordem=p.ordem,
-                subcategoria=p.subcategoria,
+                topico=p.topico,
                 obrigatoria=p.obrigatoria,
                 ativo=p.ativo,
             )
@@ -1038,9 +1038,9 @@ def pergunta_edit(request, pk):
             params = {}
             if modelo_id:
                 params["modelo"] = modelo_id
-            subcategoria = (getattr(form.instance, "subcategoria", "") or "").strip()
-            if subcategoria:
-                params["subcategoria"] = subcategoria
+            topico = (getattr(form.instance, "topico", "") or "").strip()
+            if topico:
+                params["topico"] = topico
             url = reverse("auditoria:perguntas_list")
             if params:
                 url = f"{url}?{urlencode(params)}"
@@ -1637,8 +1637,8 @@ def registro_detail(request, pk):
         )
 
 
-    # Gráfico único de distribuição de situações por subcategoria (dashboard style)
-    subcat_chart = _build_subcategoria_chart_from_resumo(resumo["blocos"])
+    # Gráfico único de distribuição de situações por topico (dashboard style)
+    subcat_chart = _build_topico_chart_from_resumo(resumo["blocos"])
 
     context = {
         "registro": registro,
@@ -1678,7 +1678,7 @@ def registro_exportar_pdf(request, pk):
     )
 
     resumo = _build_resumo_respostas_registro(registro)
-    subcat_chart = _build_subcategoria_chart_from_resumo(resumo["blocos"])
+    subcat_chart = _build_topico_chart_from_resumo(resumo["blocos"])
     dia_keys = resumo["dia_keys"]
     dia_labels = resumo["dia_labels"]
     exibir_dias = resumo["exibir_dias"]
@@ -1770,7 +1770,7 @@ def registro_exportar_pdf(request, pk):
 
     # Pagina 2: Grafico por sub-categoria (pagina inteira)
     elements.append(PageBreak())
-    elements.append(Paragraph("Distribuição de Situações por Sub-categoria", style_title))
+    elements.append(Paragraph("Distribuição de Situações por Tópico", style_title))
 
     labels = subcat_chart.get("labels") or []
     datasets = subcat_chart.get("datasets") or []
@@ -1838,11 +1838,11 @@ def registro_exportar_pdf(request, pk):
         "DOMINGO": "Dom",
     }
 
-    elements.append(Paragraph("Respostas por Sub-categoria", style_title))
+    elements.append(Paragraph("Respostas por Tópico", style_title))
     remaining_height = doc.height - 1.0 * cm
 
     for idx_bloco, bloco in enumerate(resumo["blocos"]):
-        heading = Paragraph(f"Sub-categoria: {escape(bloco['nome'])}", style_section)
+        heading = Paragraph(f"Tópico: {escape(bloco['nome'])}", style_section)
 
         headers = ["Ordem", "Pergunta"]
         if exibir_dias:
@@ -2070,7 +2070,7 @@ def registros_por_modelo(request, modelo_id):
                 "modelo_id": targeted_share.modelo_id,
                 "inicio": targeted_share.inicio.isoformat() if targeted_share.inicio else "",
                 "fim": targeted_share.fim.isoformat() if targeted_share.fim else "",
-                "subcategoria": (targeted_share.subcategoria or "").strip(),
+                "topico": (targeted_share.topico or "").strip(),
             }
         else:
             share_data = _read_registro_report_share_token(share_token_raw)
@@ -2103,13 +2103,13 @@ def registros_por_modelo(request, modelo_id):
             else:
                 inicio_tmp = parse_date((request.GET.get("inicio") or "").strip() or "")
                 fim_tmp = parse_date((request.GET.get("fim") or "").strip() or "")
-                subcat_tmp = (request.GET.get("subcategoria") or "").strip()
+                subcat_tmp = (request.GET.get("topico") or "").strip()
                 if subcat_tmp:
                     # Allow filtering if it's an integer ID
                     if subcat_tmp.isdigit():
-                        base_params["subcategoria_id"] = int(subcat_tmp)
+                        base_params["topico_id"] = int(subcat_tmp)
                     else:
-                        base_params["subcategoria__nome"] = subcat_tmp
+                        base_params["topico__nome"] = subcat_tmp
 
                 share_obj = RelatorioCompartilhadoAuditoria.objects.create(
                     modelo=modelo,
@@ -2117,12 +2117,12 @@ def registros_por_modelo(request, modelo_id):
                     destinatario=destinatario,
                     inicio=inicio_tmp,
                     fim=fim_tmp,
-                    subcategoria=subcat_tmp,
+                    topico=subcat_tmp,
                     expira_em=timezone.now() + timedelta(days=30),
                 )
                 redirect_url = reverse("auditoria:registros_por_modelo", args=[modelo.id])
                 preserved = {}
-                for k in ("inicio", "fim", "subcategoria", "page", "per_page"):
+                for k in ("inicio", "fim", "topico", "page", "per_page"):
                     v = (request.GET.get(k) or "").strip()
                     if v:
                         preserved[k] = v
@@ -2134,7 +2134,7 @@ def registros_por_modelo(request, modelo_id):
 
         redirect_url = reverse("auditoria:registros_por_modelo", args=[modelo.id])
         preserved = {}
-        for k in ("inicio", "fim", "subcategoria", "page", "per_page"):
+        for k in ("inicio", "fim", "topico", "page", "per_page"):
             v = (request.GET.get(k) or "").strip()
             if v:
                 preserved[k] = v
@@ -2162,7 +2162,7 @@ def registros_por_modelo(request, modelo_id):
 
         redirect_url = reverse("auditoria:registros_por_modelo", args=[modelo.id])
         preserved = {}
-        for k in ("inicio", "fim", "subcategoria", "page", "per_page"):
+        for k in ("inicio", "fim", "topico", "page", "per_page"):
             v = (request.GET.get(k) or "").strip()
             if v:
                 preserved[k] = v
@@ -2177,7 +2177,7 @@ def registros_por_modelo(request, modelo_id):
 
         redirect_url = reverse("auditoria:registros_por_modelo", args=[modelo.id])
         preserved = {}
-        for k in ("inicio", "fim", "subcategoria", "page", "per_page"):
+        for k in ("inicio", "fim", "topico", "page", "per_page"):
             v = (request.GET.get(k) or "").strip()
             if v:
                 preserved[k] = v
@@ -2279,24 +2279,24 @@ def registros_por_modelo(request, modelo_id):
         inicio_raw = (request.GET.get("inicio") or "").strip()
         fim_raw = (request.GET.get("fim") or "").strip()
 
-    from .models import SubcategoriaAuditoria
-    subs = SubcategoriaAuditoria.objects.filter(categoria__modelo=modelo).order_by("categoria__ordem", "ordem", "nome")
-    subcategorias = [{"id": str(sub.id), "nome": f"{sub.categoria.nome} - {sub.nome}"} for sub in subs]
+    from .models import TopicoAuditoria
+    subs = TopicoAuditoria.objects.filter(categoria__modelo=modelo).order_by("categoria__ordem", "ordem", "nome")
+    topicos = [{"id": str(sub.id), "nome": f"{sub.categoria.nome} - {sub.nome}"} for sub in subs]
 
-    subcategoria = ""
+    topico = ""
     if is_read_only:
-        subcategoria_raw = (share_data.get("subcategoria") or "").strip()
+        topico_raw = (share_data.get("topico") or "").strip()
     else:
-        subcategoria_raw = (request.GET.get("subcategoria") or "").strip()
+        topico_raw = (request.GET.get("topico") or "").strip()
     
-    subcategoria = ""
-    if subcategoria_raw:
-        if any(sc["id"] == subcategoria_raw for sc in subcategorias) or any(sc["nome"] == subcategoria_raw for sc in subcategorias):
-            subcategoria = subcategoria_raw
+    topico = ""
+    if topico_raw:
+        if any(sc["id"] == topico_raw for sc in topicos) or any(sc["nome"] == topico_raw for sc in topicos):
+            topico = topico_raw
     else:
-        subcat_get = (request.GET.get("subcategoria") or "").strip()
-        if any(sc["id"] == subcat_get for sc in subcategorias) or any(sc["nome"] == subcat_get for sc in subcategorias):
-            subcategoria = subcat_get
+        subcat_get = (request.GET.get("topico") or "").strip()
+        if any(sc["id"] == subcat_get for sc in topicos) or any(sc["nome"] == subcat_get for sc in topicos):
+            topico = subcat_get
 
     inicio = parse_date(inicio_raw) if inicio_raw else None
     fim = parse_date(fim_raw) if fim_raw else None
@@ -2326,8 +2326,8 @@ def registros_por_modelo(request, modelo_id):
         base_params["inicio"] = inicio_raw
     if fim_raw:
         base_params["fim"] = fim_raw
-    if subcategoria:
-        base_params["subcategoria"] = subcategoria
+    if topico:
+        base_params["topico"] = topico
     if is_read_only and share_token_raw:
         base_params["share_token"] = share_token_raw
     base_params["per_page"] = str(per_page)
@@ -2346,11 +2346,11 @@ def registros_por_modelo(request, modelo_id):
     comentarios = list(comentarios_qs.order_by("-criado_em", "-id"))
 
     perguntas_qs = PerguntaAuditoria.objects.filter(modelo=modelo, ativo=True)
-    if subcategoria:
-        if subcategoria.isdigit():
-            perguntas_qs = perguntas_qs.filter(subcategoria_id=int(subcategoria))
+    if topico:
+        if topico.isdigit():
+            perguntas_qs = perguntas_qs.filter(topico_id=int(topico))
         else:
-            perguntas_qs = perguntas_qs.filter(subcategoria__nome=subcategoria)
+            perguntas_qs = perguntas_qs.filter(topico__nome=topico)
     perguntas = list(perguntas_qs.order_by("ordem", "id"))
     pergunta_map = {p.id: p for p in perguntas}
 
@@ -2387,10 +2387,10 @@ def registros_por_modelo(request, modelo_id):
             }
         )
 
-    # Gráfico agregado: situações por subcategoria
+    # Gráfico agregado: situações por topico
     subcat_chart: dict | None = None
-    if subcategorias:
-        subcats_to_show = [sc["nome"] for sc in subcategorias if sc["id"] == subcategoria or sc["nome"] == subcategoria] if subcategoria else [sc["nome"] for sc in subcategorias]
+    if topicos:
+        subcats_to_show = [sc["nome"] for sc in topicos if sc["id"] == topico or sc["nome"] == topico] if topico else [sc["nome"] for sc in topicos]
 
         def _normalize_situacao(value: str) -> str:
             if value is None:
@@ -2418,7 +2418,7 @@ def registros_por_modelo(request, modelo_id):
             p = pergunta_map.get(r.pergunta_id)
             if not p:
                 continue
-            sc = f"{p.subcategoria.categoria.nome} - {p.subcategoria.nome}" if p.subcategoria else ""
+            sc = f"{p.topico.categoria.nome} - {p.topico.nome}" if p.topico else ""
             if not sc:
                 continue
             if sc not in counts_by_subcat:
@@ -2833,7 +2833,7 @@ def comentario_edit(request, modelo_id, pk):
     can_manage = _auditoria_is_admin(request.user) or (comentario.autor_id == request.user.id)
 
     preserved = {}
-    for k in ("inicio", "fim", "subcategoria", "page", "per_page"):
+    for k in ("inicio", "fim", "topico", "page", "per_page"):
         v = (request.GET.get(k) or "").strip()
         if v:
             preserved[k] = v
@@ -2876,7 +2876,7 @@ def comentario_delete(request, modelo_id, pk):
     can_manage = _auditoria_is_admin(request.user) or (comentario.autor_id == request.user.id)
 
     preserved = {}
-    for k in ("inicio", "fim", "subcategoria", "page", "per_page"):
+    for k in ("inicio", "fim", "topico", "page", "per_page"):
         v = (request.GET.get(k) or "").strip()
         if v:
             preserved[k] = v
