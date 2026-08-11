@@ -20,8 +20,8 @@ urlpatterns = [
 
     path("perguntas/", views.perguntas_list, name="perguntas_list"),
     path("perguntas/next-ordem/", views.api_next_pergunta_ordem, name="api_next_pergunta_ordem"),
-    path("modelos/subcategorias/", views.api_modelo_subcategorias, name="api_modelo_subcategorias"),
-    path("perguntas/bulk-subcategoria/", views.perguntas_bulk_set_subcategoria, name="perguntas_bulk_set_subcategoria"),
+    path("modelos/topicos/", views.api_modelo_topicos, name="api_modelo_topicos"),
+    path("perguntas/bulk-topico/", views.perguntas_bulk_set_topico, name="perguntas_bulk_set_topico"),
     path("perguntas/bulk-resposta/", views.perguntas_bulk_apply_resposta, name="perguntas_bulk_apply_resposta"),
     path("perguntas/nova/", views.pergunta_create, name="pergunta_create"),
     path("perguntas/<int:pk>/editar/", views.pergunta_edit, name="pergunta_edit"),

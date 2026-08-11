@@ -10,13 +10,13 @@
             {{ form.modelo }}
         </div>
         <div class="mb-3">
-            <label class="form-label">Sub-categoria</label>
-            {{ form.subcategoria }}
-            {% if form.subcategoria.help_text %}
-                <div class="form-text">{{ form.subcategoria.help_text }}</div>
+            <label class="form-label">Tópico</label>
+            {{ form.topico }}
+            {% if form.topico.help_text %}
+                <div class="form-text">{{ form.topico.help_text }}</div>
             {% endif %}
-            {% if form.subcategoria.errors %}
-                <div class="text-danger">{{ form.subcategoria.errors }}</div>
+            {% if form.topico.errors %}
+                <div class="text-danger">{{ form.topico.errors }}</div>
             {% endif %}
         </div>
         <div class="mb-3">
@@ -173,10 +173,10 @@
 <script>
     (function() {
         const modeloSelect = document.getElementById('id_modelo');
-        const subSelect = document.getElementById('id_subcategoria');
+        const subSelect = document.getElementById('id_topico');
         if (!modeloSelect || !subSelect) return;
 
-        const endpoint = '{% url "auditoria:api_modelo_subcategorias" %}';
+        const endpoint = '{% url "auditoria:api_modelo_topicos" %}';
 
         function setOptions(values, current) {
             const cur = (current || '').trim();
@@ -232,7 +232,7 @@
                 const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
                 if (!resp.ok) return;
                 const data = await resp.json();
-                setOptions((data && data.subcategorias) || [], current);
+                setOptions((data && data.topicos) || [], current);
             } catch (e) {
                 // silencioso
             }
@@ -496,3 +496,4 @@
     })();
 </script>
 {% endblock %}
+

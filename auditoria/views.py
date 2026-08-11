@@ -571,29 +571,26 @@ def api_next_pergunta_ordem(request):
 
 
 @login_required
-def api_modelo_subcategorias(request):
-    """API: devolve as sub-categorias cadastradas para o modelo selecionado."""
+def api_modelo_topicos(request):
+    """API: devolve os tópicos cadastrados para o modelo selecionado."""
     modelo_id = (request.GET.get("modelo") or "").strip()
     if not (modelo_id and modelo_id.isdigit()):
-        return JsonResponse({"subcategorias": []})
+        return JsonResponse({"topicos": []})
     try:
         modelo = ModeloAuditoria.objects.get(pk=int(modelo_id))
     except ModeloAuditoria.DoesNotExist:
-        return JsonResponse({"subcategorias": []})
+        return JsonResponse({"topicos": []})
         
-    from .models import SubcategoriaAuditoria
-    subs = SubcategoriaAuditoria.objects.filter(categoria__modelo=modelo).order_by("categoria__ordem", "ordem", "nome")
+    from .models import TopicoAuditoria
+    tps = TopicoAuditoria.objects.filter(modelo=modelo).order_by("parent__ordem", "ordem", "nome")
     
-    # Format for the frontend (value and label)
-    # Some older JS might just expect a list of strings, let's provide objects 
-    # and adapt the frontend if necessary.
     result = []
-    for sub in subs:
+    for t in tps:
         result.append({
-            "id": sub.id,
-            "nome": f"{sub.categoria.nome} - {sub.nome}"
+            "id": t.id,
+            "nome": t.get_full_name()
         })
-    return JsonResponse({"subcategorias": result})
+    return JsonResponse({"topicos": result})
 
 
 @login_required
@@ -775,32 +772,32 @@ def modelo_delete(request, pk):
 @login_required
 def perguntas_list(request):
     modelo_id = request.GET.get("modelo")
-    subcategoria = (request.GET.get("subcategoria") or "").strip()
+    topico_val = (request.GET.get("topico") or "").strip()
     perguntas = PerguntaAuditoria.objects.select_related("modelo")
     if modelo_id:
         perguntas = perguntas.filter(modelo_id=modelo_id)
-    if subcategoria:
-        if subcategoria.isdigit():
-            perguntas = perguntas.filter(subcategoria_id=int(subcategoria))
+    if topico_val:
+        if topico_val.isdigit():
+            perguntas = perguntas.filter(topico_id=int(topico_val))
         else:
-            perguntas = perguntas.filter(subcategoria__nome=subcategoria)
+            perguntas = perguntas.filter(topico__nome=topico_val)
 
-    subcategorias = []
+    topicos = []
     if modelo_id and str(modelo_id).isdigit():
         try:
-            from .models import SubcategoriaAuditoria
-            subs = SubcategoriaAuditoria.objects.filter(categoria__modelo_id=int(modelo_id)).order_by("categoria__ordem", "ordem", "nome")
-            for sub in subs:
-                subcategorias.append({"id": str(sub.id), "nome": f"{sub.categoria.nome} - {sub.nome}"})
+            from .models import TopicoAuditoria
+            tps = TopicoAuditoria.objects.filter(modelo_id=int(modelo_id)).order_by("parent__ordem", "ordem", "nome")
+            for t in tps:
+                topicos.append({"id": str(t.id), "nome": t.get_full_name()})
         except Exception:
-            subcategorias = []
+            topicos = []
 
     context = {
-        "perguntas": perguntas.order_by("modelo__nome", "subcategoria", "ordem", "id"),
+        "perguntas": perguntas.order_by("modelo__nome", "topico_id", "ordem", "id"),
         "modelos": ModeloAuditoria.objects.filter(ativo=True).order_by("nome"),
         "modelo_id": modelo_id,
-        "subcategoria": subcategoria,
-        "subcategorias": subcategorias,
+        "selected_topico": topico_val,
+        "topicos": topicos,
         "resposta_presets": list_pergunta_resposta_presets(),
     }
     return render(request, "auditoria/perguntas_list.html", context)
@@ -815,7 +812,7 @@ def perguntas_bulk_apply_resposta(request):
         return redirect("auditoria:perguntas_list")
 
     modelo_id = (request.POST.get("modelo") or "").strip()
-    subcategoria = (request.POST.get("filtro_subcategoria") or "").strip()
+    topico_val = (request.POST.get("filtro_topico") or "").strip()
     conjunto_resposta_padrao = (request.POST.get("conjunto_resposta_padrao") or "").strip()
     pergunta_ids = request.POST.getlist("pergunta_ids")
 
@@ -868,8 +865,8 @@ def perguntas_bulk_apply_resposta(request):
 
     messages.success(request, f"Conjunto de respostas '{preset['label']}' aplicado em {updated} pergunta(s).")
     params = {"modelo": modelo_id}
-    if subcategoria:
-        params["subcategoria"] = subcategoria
+    if topico_val:
+        params["topico"] = topico_val
     url = reverse("auditoria:perguntas_list")
     return redirect(f"{url}?{urlencode(params)}")
 
@@ -2808,8 +2805,8 @@ def registros_por_modelo(request, modelo_id):
         "estatisticas_perguntas": estatisticas_perguntas,
         "chart_cards": chart_cards,
         "chart_data": chart_data,
-        "subcategorias": subcategorias,
-        "subcategoria": subcategoria,
+        "topicos": topicos,
+        "selected_topico": topico_val,
         "subcat_chart": subcat_chart,
         "inicio": inicio_raw,
         "fim": fim_raw,
