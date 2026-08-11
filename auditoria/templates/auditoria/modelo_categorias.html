@@ -1,0 +1,223 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'auditoria:modelos_list' %}">Modelos</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ modelo.nome }} - Cláusulas e Sub-cláusulas</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Cláusulas / Categorias: <span class="text-primary">{{ modelo.nome }}</span></h2>
+        <div>
+            <a href="{% url 'auditoria:modelo_edit' modelo.id %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar ao Modelo
+            </a>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalAddCategoria">
+                <i class="bi bi-plus-lg"></i> Nova Cláusula (Categoria)
+            </button>
+        </div>
+    </div>
+
+    {% if not categorias %}
+        <div class="alert alert-info">
+            Nenhuma cláusula ou categoria cadastrada. Adicione a primeira cláusula para começar a estruturar sua auditoria.
+        </div>
+    {% else %}
+        <div class="accordion" id="accordionCategorias">
+            {% for cat in categorias %}
+            <div class="accordion-item mb-3 border rounded shadow-sm">
+                <h2 class="accordion-header" id="heading-{{ cat.id }}">
+                    <div class="d-flex align-items-center w-100 bg-light px-3 py-2 rounded-top">
+                        <button class="accordion-button collapsed flex-grow-1 bg-transparent text-dark border-0 shadow-none fw-bold p-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ cat.id }}" aria-expanded="false" aria-controls="collapse-{{ cat.id }}">
+                            {{ cat.nome }}
+                        </button>
+                        
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalAddSubcategoria" data-cat-id="{{ cat.id }}" data-cat-nome="{{ cat.nome }}">
+                                <i class="bi bi-plus"></i> Sub-cláusula
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEditCategoria" data-cat-id="{{ cat.id }}" data-cat-nome="{{ cat.nome }}">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <form method="post" action="{% url 'auditoria:categoria_delete' cat.id %}" style="display: inline;" onsubmit="return confirm('Tem certeza que deseja remover esta cláusula? Isso falhará se houverem perguntas vinculadas a ela.');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </h2>
+                <div id="collapse-{{ cat.id }}" class="accordion-collapse collapse show" aria-labelledby="heading-{{ cat.id }}">
+                    <div class="accordion-body p-0">
+                        <ul class="list-group list-group-flush">
+                            {% for sub in cat.subcategorias.all %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center ps-5">
+                                    <span>{{ sub.nome }}</span>
+                                    <div class="d-flex gap-2">
+                                        <button type="button" class="btn btn-sm btn-link text-secondary p-0" data-bs-toggle="modal" data-bs-target="#modalEditSubcategoria" data-sub-id="{{ sub.id }}" data-sub-nome="{{ sub.nome }}">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <form method="post" action="{% url 'auditoria:subcategoria_delete' sub.id %}" style="display: inline;" onsubmit="return confirm('Tem certeza que deseja remover esta sub-cláusula? Isso falhará se houverem perguntas vinculadas a ela.');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-link text-danger p-0">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </li>
+                            {% empty %}
+                                <li class="list-group-item text-muted text-center ps-5 py-3">
+                                    <em>Nenhuma sub-cláusula cadastrada para esta cláusula.</em>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>
+
+<!-- Modal Add Categoria -->
+<div class="modal fade" id="modalAddCategoria" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="post" class="modal-content">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add_categoria">
+            <div class="modal-header">
+                <h5 class="modal-title">Nova Cláusula (Categoria)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Nome da Cláusula</label>
+                    <input type="text" name="nome" class="form-control" required placeholder="Ex: 4. Contexto da Organização">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Edit Categoria -->
+<div class="modal fade" id="modalEditCategoria" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="post" class="modal-content">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="edit_categoria">
+            <input type="hidden" name="categoria_id" id="editCatId">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Cláusula</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Nome da Cláusula</label>
+                    <input type="text" name="nome" id="editCatNome" class="form-control" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Add Subcategoria -->
+<div class="modal fade" id="modalAddSubcategoria" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="post" class="modal-content">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add_subcategoria">
+            <input type="hidden" name="categoria_id" id="addSubCatId">
+            <div class="modal-header">
+                <h5 class="modal-title">Nova Sub-cláusula em <span id="addSubCatNomeDisplay" class="text-primary"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Nome da Sub-cláusula</label>
+                    <input type="text" name="nome" class="form-control" required placeholder="Ex: 4.1 Entendendo a organização">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Edit Subcategoria -->
+<div class="modal fade" id="modalEditSubcategoria" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="post" class="modal-content">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="edit_subcategoria">
+            <input type="hidden" name="subcategoria_id" id="editSubId">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Sub-cláusula</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Nome da Sub-cláusula</label>
+                    <input type="text" name="nome" id="editSubNome" class="form-control" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var modalEditCat = document.getElementById('modalEditCategoria');
+    if (modalEditCat) {
+        modalEditCat.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            var catId = button.getAttribute('data-cat-id');
+            var catNome = button.getAttribute('data-cat-nome');
+            document.getElementById('editCatId').value = catId;
+            document.getElementById('editCatNome').value = catNome;
+        });
+    }
+
+    var modalAddSub = document.getElementById('modalAddSubcategoria');
+    if (modalAddSub) {
+        modalAddSub.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            var catId = button.getAttribute('data-cat-id');
+            var catNome = button.getAttribute('data-cat-nome');
+            document.getElementById('addSubCatId').value = catId;
+            document.getElementById('addSubCatNomeDisplay').textContent = catNome;
+        });
+    }
+
+    var modalEditSub = document.getElementById('modalEditSubcategoria');
+    if (modalEditSub) {
+        modalEditSub.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            var subId = button.getAttribute('data-sub-id');
+            var subNome = button.getAttribute('data-sub-nome');
+            document.getElementById('editSubId').value = subId;
+            document.getElementById('editSubNome').value = subNome;
+        });
+    }
+});
+</script>
+{% endblock %}

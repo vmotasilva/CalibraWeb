@@ -28,7 +28,6 @@ class ModeloAuditoriaForm(forms.ModelForm):
             "preenchimento_grid",
             "grid_rotulo_item",
             "grid_colunas",
-            "subcategorias",
             "ativo",
         ]
         widgets = {
@@ -47,13 +46,6 @@ class ModeloAuditoriaForm(forms.ModelForm):
                     "class": "form-control",
                     "rows": 3,
                     "placeholder": "Uma coluna por linha (ex.: EQP-001)\nEQP-002\nEQP-003",
-                }
-            ),
-            "subcategorias": forms.Textarea(
-                attrs={
-                    "class": "form-control",
-                    "rows": 3,
-                    "placeholder": "Uma sub-categoria por linha (ex.: Segurança)\nQualidade\n5S",
                 }
             ),
             "ativo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
@@ -176,25 +168,21 @@ class PerguntaAuditoriaForm(forms.ModelForm):
         if not modelo_id and getattr(self.instance, "modelo_id", None):
             modelo_id = str(self.instance.modelo_id)
 
-        current_value = (getattr(self.instance, "subcategoria", "") or "").strip()
+        current_value = getattr(self.instance, "subcategoria_id", None)
 
+        from .models import SubcategoriaAuditoria
         choices = [("", "—")]
         if modelo_id and str(modelo_id).isdigit():
             try:
-                modelo = ModeloAuditoria.objects.get(pk=int(modelo_id))
-                choices += [(c, c) for c in modelo.subcategorias_list]
-            except ModeloAuditoria.DoesNotExist:
+                subs = SubcategoriaAuditoria.objects.filter(categoria__modelo_id=int(modelo_id)).order_by("categoria__ordem", "ordem", "nome")
+                for sub in subs:
+                    choices.append((sub.id, f"{sub.categoria.nome} - {sub.nome}"))
+            except Exception:
                 pass
-
-        # Preserve current value even if it's not in the model list
-        if current_value:
-            existing_lower = {str(v or "").strip().lower() for (v, _label) in choices if v}
-            if current_value.lower() not in existing_lower:
-                choices.insert(1, (current_value, current_value))
 
         # Expose the current value to the template/JS to avoid losing it on dynamic refresh
         try:
-            self.fields["subcategoria"].widget.attrs["data-current"] = current_value
+            self.fields["subcategoria"].widget.attrs["data-current"] = current_value or ""
         except Exception:
             pass
 
@@ -203,7 +191,7 @@ class PerguntaAuditoriaForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
         modelo = cleaned_data.get("modelo")
-        subcategoria = (cleaned_data.get("subcategoria") or "").strip()
+        subcategoria = cleaned_data.get("subcategoria")
         conjunto_resposta_padrao = (cleaned_data.get("conjunto_resposta_padrao") or "").strip()
 
         preset = None
@@ -223,14 +211,11 @@ class PerguntaAuditoriaForm(forms.ModelForm):
         opcoes_resposta_cores_value = cleaned_data.get("opcoes_resposta_cores") or ""
 
         if modelo and subcategoria:
-            allowed = getattr(modelo, "subcategorias_list", []) or []
-            if allowed:
-                allowed_lower = {a.lower() for a in allowed}
-                if subcategoria.lower() not in allowed_lower:
-                    self.add_error(
-                        "subcategoria",
-                        "Sub-categoria inválida para este modelo. Cadastre a sub-categoria no modelo e selecione-a aqui.",
-                    )
+            if subcategoria.categoria.modelo_id != modelo.id:
+                self.add_error(
+                    "subcategoria",
+                    "Sub-cláusula inválida para este modelo.",
+                )
 
         values = [v.strip() for v in opcoes_resposta.replace("\r\n", "\n").split("\n") if v.strip()]
         if tipo_resposta == "LISTA":

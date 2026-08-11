@@ -578,7 +578,20 @@ def api_modelo_subcategorias(request):
         modelo = ModeloAuditoria.objects.get(pk=int(modelo_id))
     except ModeloAuditoria.DoesNotExist:
         return JsonResponse({"subcategorias": []})
-    return JsonResponse({"subcategorias": modelo.subcategorias_list})
+        
+    from .models import SubcategoriaAuditoria
+    subs = SubcategoriaAuditoria.objects.filter(categoria__modelo=modelo).order_by("categoria__ordem", "ordem", "nome")
+    
+    # Format for the frontend (value and label)
+    # Some older JS might just expect a list of strings, let's provide objects 
+    # and adapt the frontend if necessary.
+    result = []
+    for sub in subs:
+        result.append({
+            "id": sub.id,
+            "nome": f"{sub.categoria.nome} - {sub.nome}"
+        })
+    return JsonResponse({"subcategorias": result})
 
 
 @login_required
@@ -765,14 +778,19 @@ def perguntas_list(request):
     if modelo_id:
         perguntas = perguntas.filter(modelo_id=modelo_id)
     if subcategoria:
-        perguntas = perguntas.filter(subcategoria=subcategoria)
+        if subcategoria.isdigit():
+            perguntas = perguntas.filter(subcategoria_id=int(subcategoria))
+        else:
+            perguntas = perguntas.filter(subcategoria__nome=subcategoria)
 
     subcategorias = []
     if modelo_id and str(modelo_id).isdigit():
         try:
-            modelo = ModeloAuditoria.objects.get(pk=int(modelo_id))
-            subcategorias = modelo.subcategorias_list
-        except ModeloAuditoria.DoesNotExist:
+            from .models import SubcategoriaAuditoria
+            subs = SubcategoriaAuditoria.objects.filter(categoria__modelo_id=int(modelo_id)).order_by("categoria__ordem", "ordem", "nome")
+            for sub in subs:
+                subcategorias.append({"id": str(sub.id), "nome": f"{sub.categoria.nome} - {sub.nome}"})
+        except Exception:
             subcategorias = []
 
     context = {
@@ -784,64 +802,6 @@ def perguntas_list(request):
         "resposta_presets": list_pergunta_resposta_presets(),
     }
     return render(request, "auditoria/perguntas_list.html", context)
-
-
-@login_required
-def perguntas_bulk_set_subcategoria(request):
-    if not _auditoria_is_admin(request.user):
-        messages.error(request, "Apenas usuários Staff/Superuser podem gerenciar perguntas.")
-        return redirect("auditoria:perguntas_list")
-    if request.method != "POST":
-        return redirect("auditoria:perguntas_list")
-
-    modelo_id = (request.POST.get("modelo") or "").strip()
-    subcategoria = (request.POST.get("subcategoria") or "").strip()
-    pergunta_ids = request.POST.getlist("pergunta_ids")
-
-    if not (modelo_id and modelo_id.isdigit()):
-        messages.error(request, "Selecione um modelo para aplicar sub-categoria em lote.")
-        return redirect("auditoria:perguntas_list")
-    if not pergunta_ids:
-        messages.error(request, "Selecione pelo menos 1 pergunta.")
-        url = reverse("auditoria:perguntas_list")
-        return redirect(f"{url}?{urlencode({'modelo': modelo_id})}")
-
-    modelo = get_object_or_404(ModeloAuditoria, pk=int(modelo_id))
-
-    # Se o modelo tiver subcategorias cadastradas, validamos a escolha.
-    if subcategoria:
-        allowed = modelo.subcategorias_list
-        if allowed:
-            allowed_lower = {a.lower() for a in allowed}
-            if subcategoria.lower() not in allowed_lower:
-                messages.error(request, "Sub-categoria inválida para este modelo.")
-                url = reverse("auditoria:perguntas_list")
-                return redirect(f"{url}?{urlencode({'modelo': modelo_id})}")
-
-    # Converte IDs e limita atualização apenas às perguntas do modelo.
-    ids_int: list[int] = []
-    for raw in pergunta_ids:
-        s = str(raw).strip()
-        if not s.isdigit():
-            continue
-        ids_int.append(int(s))
-
-    if not ids_int:
-        messages.error(request, "Selecione pelo menos 1 pergunta válida.")
-        url = reverse("auditoria:perguntas_list")
-        return redirect(f"{url}?{urlencode({'modelo': modelo_id})}")
-
-    updated = (
-        PerguntaAuditoria.objects.filter(id__in=ids_int, modelo_id=int(modelo_id))
-        .update(subcategoria=subcategoria)
-    )
-
-    messages.success(request, f"Sub-categoria aplicada em {updated} pergunta(s).")
-    params = {"modelo": modelo_id}
-    if subcategoria:
-        params["subcategoria"] = subcategoria
-    url = reverse("auditoria:perguntas_list")
-    return redirect(f"{url}?{urlencode(params)}")
 
 
 @login_required
@@ -1033,7 +993,6 @@ def modelo_duplicate(request, pk):
             preenchimento_grid=modelo.preenchimento_grid,
             grid_rotulo_item=modelo.grid_rotulo_item,
             grid_colunas=modelo.grid_colunas,
-            subcategorias=modelo.subcategorias,
             ativo=modelo.ativo,
         )
         novo_modelo.save()
@@ -2104,8 +2063,12 @@ def registros_por_modelo(request, modelo_id):
                 inicio_tmp = parse_date((request.GET.get("inicio") or "").strip() or "")
                 fim_tmp = parse_date((request.GET.get("fim") or "").strip() or "")
                 subcat_tmp = (request.GET.get("subcategoria") or "").strip()
-                if subcat_tmp and subcat_tmp not in modelo.subcategorias_list:
-                    subcat_tmp = ""
+                if subcat_tmp:
+                    # Allow filtering if it's an integer ID
+                    if subcat_tmp.isdigit():
+                        base_params["subcategoria_id"] = int(subcat_tmp)
+                    else:
+                        base_params["subcategoria__nome"] = subcat_tmp
 
                 share_obj = RelatorioCompartilhadoAuditoria.objects.create(
                     modelo=modelo,
@@ -2274,12 +2237,26 @@ def registros_por_modelo(request, modelo_id):
     else:
         inicio_raw = (request.GET.get("inicio") or "").strip()
         fim_raw = (request.GET.get("fim") or "").strip()
-    subcategorias = list(modelo.subcategorias_list)
+
+    from .models import SubcategoriaAuditoria
+    subs = SubcategoriaAuditoria.objects.filter(categoria__modelo=modelo).order_by("categoria__ordem", "ordem", "nome")
+    subcategorias = [{"id": str(sub.id), "nome": f"{sub.categoria.nome} - {sub.nome}"} for sub in subs]
+
+    subcategoria = ""
     if is_read_only:
         subcategoria_raw = (share_data.get("subcategoria") or "").strip()
     else:
         subcategoria_raw = (request.GET.get("subcategoria") or "").strip()
-    subcategoria = subcategoria_raw if (subcategoria_raw and subcategoria_raw in subcategorias) else ""
+    
+    subcategoria = ""
+    if subcategoria_raw:
+        if any(sc["id"] == subcategoria_raw for sc in subcategorias) or any(sc["nome"] == subcategoria_raw for sc in subcategorias):
+            subcategoria = subcategoria_raw
+    else:
+        subcat_get = (request.GET.get("subcategoria") or "").strip()
+        if any(sc["id"] == subcat_get for sc in subcategorias) or any(sc["nome"] == subcat_get for sc in subcategorias):
+            subcategoria = subcat_get
+
     inicio = parse_date(inicio_raw) if inicio_raw else None
     fim = parse_date(fim_raw) if fim_raw else None
 
@@ -2329,7 +2306,10 @@ def registros_por_modelo(request, modelo_id):
 
     perguntas_qs = PerguntaAuditoria.objects.filter(modelo=modelo, ativo=True)
     if subcategoria:
-        perguntas_qs = perguntas_qs.filter(subcategoria=subcategoria)
+        if subcategoria.isdigit():
+            perguntas_qs = perguntas_qs.filter(subcategoria_id=int(subcategoria))
+        else:
+            perguntas_qs = perguntas_qs.filter(subcategoria__nome=subcategoria)
     perguntas = list(perguntas_qs.order_by("ordem", "id"))
     pergunta_map = {p.id: p for p in perguntas}
 
@@ -2369,7 +2349,7 @@ def registros_por_modelo(request, modelo_id):
     # Gráfico agregado: situações por subcategoria
     subcat_chart: dict | None = None
     if subcategorias:
-        subcats_to_show = [subcategoria] if subcategoria else subcategorias
+        subcats_to_show = [sc["nome"] for sc in subcategorias if sc["id"] == subcategoria or sc["nome"] == subcategoria] if subcategoria else [sc["nome"] for sc in subcategorias]
 
         def _normalize_situacao(value: str) -> str:
             if value is None:
@@ -2987,3 +2967,124 @@ def exportar_respostas_excel(request, modelo_id):
     )
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
+
+
+@login_required
+def perguntas_bulk_set_subcategoria(request):
+    modelo_id = request.POST.get("modelo")
+    subcategoria_id = (request.POST.get("subcategoria") or "").strip()
+    pergunta_ids = request.POST.getlist("pergunta_ids")
+
+    if not (modelo_id and pergunta_ids):
+        messages.error(request, "Selecione o modelo e pelo menos uma pergunta.")
+        return redirect("auditoria:perguntas_list")
+
+    # Verifica permissão do modelo
+    modelo = get_object_or_404(ModeloAuditoria, pk=modelo_id)
+    if not _auditoria_can_update_modelo(request.user, modelo):
+        messages.error(request, "Você não tem permissão para alterar as perguntas deste modelo.")
+        return redirect(f"{reverse('auditoria:perguntas_list')}?modelo={modelo_id}")
+
+    subcategoria_obj = None
+    if subcategoria_id and subcategoria_id.isdigit():
+        from .models import SubcategoriaAuditoria
+        subcategoria_obj = SubcategoriaAuditoria.objects.filter(id=int(subcategoria_id), categoria__modelo=modelo).first()
+        if not subcategoria_obj:
+            messages.error(request, "Sub-cláusula inválida para este modelo.")
+            return redirect(f"{reverse('auditoria:perguntas_list')}?modelo={modelo_id}")
+
+    count = 0
+    with transaction.atomic():
+        perguntas = PerguntaAuditoria.objects.filter(id__in=pergunta_ids, modelo_id=modelo_id)
+        for pergunta in perguntas:
+            pergunta.subcategoria = subcategoria_obj
+            pergunta.save(update_fields=["subcategoria"])
+            count += 1
+    messages.success(request, f"{count} perguntas atualizadas.")
+    return redirect(f"{reverse('auditoria:perguntas_list')}?modelo={modelo_id}")
+
+
+@login_required
+def modelo_categorias(request, modelo_id):
+    modelo = get_object_or_404(ModeloAuditoria, pk=modelo_id)
+    if not _auditoria_can_update_modelo(request.user, modelo):
+        messages.error(request, "Você não tem permissão para editar as categorias deste modelo.")
+        return redirect("auditoria:modelos_list")
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "add_categoria":
+            nome = request.POST.get("nome")
+            if nome:
+                from .models import CategoriaAuditoria
+                CategoriaAuditoria.objects.create(modelo=modelo, nome=nome)
+                messages.success(request, "Categoria adicionada.")
+        elif action == "add_subcategoria":
+            categoria_id = request.POST.get("categoria_id")
+            nome = request.POST.get("nome")
+            if categoria_id and nome:
+                from .models import CategoriaAuditoria, SubcategoriaAuditoria
+                categoria = get_object_or_404(CategoriaAuditoria, pk=categoria_id, modelo=modelo)
+                SubcategoriaAuditoria.objects.create(categoria=categoria, nome=nome)
+                messages.success(request, "Sub-cláusula adicionada.")
+        elif action == "edit_categoria":
+            categoria_id = request.POST.get("categoria_id")
+            nome = request.POST.get("nome")
+            if categoria_id and nome:
+                from .models import CategoriaAuditoria
+                cat = get_object_or_404(CategoriaAuditoria, pk=categoria_id, modelo=modelo)
+                cat.nome = nome
+                cat.save()
+                messages.success(request, "Categoria atualizada.")
+        elif action == "edit_subcategoria":
+            sub_id = request.POST.get("subcategoria_id")
+            nome = request.POST.get("nome")
+            if sub_id and nome:
+                from .models import SubcategoriaAuditoria
+                sub = get_object_or_404(SubcategoriaAuditoria, pk=sub_id, categoria__modelo=modelo)
+                sub.nome = nome
+                sub.save()
+                messages.success(request, "Sub-cláusula atualizada.")
+        return redirect("auditoria:modelo_categorias", modelo_id=modelo.id)
+
+    from .models import CategoriaAuditoria
+    categorias = CategoriaAuditoria.objects.filter(modelo=modelo).prefetch_related('subcategorias')
+    context = {
+        "modelo": modelo,
+        "categorias": categorias,
+    }
+    return render(request, "auditoria/modelo_categorias.html", context)
+
+
+@login_required
+@require_POST
+def categoria_delete(request, pk):
+    from .models import CategoriaAuditoria
+    categoria = get_object_or_404(CategoriaAuditoria, pk=pk)
+    if not _auditoria_can_update_modelo(request.user, categoria.modelo):
+        return HttpResponseForbidden()
+    
+    modelo_id = categoria.modelo_id
+    try:
+        categoria.delete()
+        messages.success(request, "Categoria removida.")
+    except ProtectedError:
+        messages.error(request, "Não é possível remover a categoria pois ela está vinculada a perguntas.")
+    return redirect("auditoria:modelo_categorias", modelo_id=modelo_id)
+
+
+@login_required
+@require_POST
+def subcategoria_delete(request, pk):
+    from .models import SubcategoriaAuditoria
+    subcategoria = get_object_or_404(SubcategoriaAuditoria, pk=pk)
+    if not _auditoria_can_update_modelo(request.user, subcategoria.categoria.modelo):
+        return HttpResponseForbidden()
+    
+    modelo_id = subcategoria.categoria.modelo_id
+    try:
+        subcategoria.delete()
+        messages.success(request, "Sub-cláusula removida.")
+    except ProtectedError:
+        messages.error(request, "Não é possível remover a sub-cláusula pois ela está vinculada a perguntas.")
+    return redirect("auditoria:modelo_categorias", modelo_id=modelo_id)

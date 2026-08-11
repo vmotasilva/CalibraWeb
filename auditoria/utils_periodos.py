@@ -97,6 +97,12 @@ def calcular_periodos_pendentes(modelo, limit=24):
     pendentes = []
     
     for p_inicio, p_fim in todos_periodos:
+        # Períodos em andamento não devem constar como pendentes/vencidos.
+        # Apenas períodos cujo término já passou (p_fim < hoje) são considerados pendentes.
+        # Exceção para "UNICA", que permanece pendente até ser realizada.
+        if modelo.periodicidade != "UNICA" and p_fim >= hoje:
+            continue
+
         if (p_inicio, p_fim) in just_set:
             continue
             

@@ -117,34 +117,21 @@
             </div>
         </div>
 
-        <div class="mb-3">
-            <label class="form-label">Sub-categorias</label>
-            <div id="subcategorias-native">
-                {{ form.subcategorias }}
+        {% if form.instance.pk %}
+        <div class="card border-0 bg-light p-3 mb-3">
+            <h5 class="card-title">Estrutura da Auditoria (Cláusulas)</h5>
+            <p class="text-muted small mb-2">Gerencie as cláusulas e sub-cláusulas desta auditoria.</p>
+            <div>
+                <a href="{% url 'auditoria:modelo_categorias' form.instance.pk %}" class="btn btn-outline-primary">
+                    <i class="bi bi-diagram-3"></i> Gerenciar Cláusulas e Sub-cláusulas
+                </a>
             </div>
-
-            <div id="subcategorias-enhanced" class="d-none">
-                <div class="row g-2 align-items-end">
-                    <div class="col-md-8">
-                        <label class="form-label">Nova sub-categoria</label>
-                        <input type="text" id="subcategoria-input" class="form-control" placeholder="Digite a sub-categoria...">
-                    </div>
-                    <div class="col-md-4 d-grid">
-                        <button type="button" id="subcategoria-add" class="btn btn-outline-primary">Adicionar</button>
-                    </div>
-                </div>
-
-                <div class="mt-2">
-                    <div class="fw-semibold">Sub-categorias adicionadas</div>
-                    <div id="subcategorias-empty" class="text-muted small">Nenhuma sub-categoria adicionada.</div>
-                    <ul id="subcategorias-list" class="list-group list-group-flush mt-1"></ul>
-                </div>
-            </div>
-            {% if form.subcategorias.errors %}
-                <div class="text-danger">{{ form.subcategorias.errors }}</div>
-            {% endif %}
-            <small class="form-text text-muted">Uma sub-categoria por linha. Essas opções ficam disponíveis para associar nas perguntas.</small>
         </div>
+        {% else %}
+        <div class="alert alert-info">
+            Você poderá gerenciar as Cláusulas e Sub-cláusulas após salvar este modelo pela primeira vez.
+        </div>
+        {% endif %}
         
         <!-- Campos de Referência de Periodicidade -->
         <div id="campo-semanal" class="mb-3" style="display: none;">
@@ -297,95 +284,6 @@
             renderResults();
         })();
 
-        // Enhance subcategorias textarea: input + add + list
-        (function() {
-            const textarea = document.getElementById('id_subcategorias');
-            const nativeWrap = document.getElementById('subcategorias-native');
-            const enhancedWrap = document.getElementById('subcategorias-enhanced');
-            const input = document.getElementById('subcategoria-input');
-            const addBtn = document.getElementById('subcategoria-add');
-            const listEl = document.getElementById('subcategorias-list');
-            const emptyEl = document.getElementById('subcategorias-empty');
-
-            if (!textarea || !nativeWrap || !enhancedWrap || !input || !addBtn || !listEl || !emptyEl) return;
-
-            function parseValue() {
-                const raw = (textarea.value || '').replace(/\r\n/g, '\n');
-                const parts = raw.split('\n').map(s => (s || '').trim()).filter(Boolean);
-                const seen = new Set();
-                const unique = [];
-                parts.forEach(p => {
-                    const key = p.toLowerCase();
-                    if (seen.has(key)) return;
-                    seen.add(key);
-                    unique.push(p);
-                });
-                return unique;
-            }
-
-            function writeValue(values) {
-                textarea.value = (values || []).join('\n');
-            }
-
-            function render() {
-                const values = parseValue();
-                listEl.innerHTML = '';
-
-                if (!values.length) {
-                    emptyEl.classList.remove('d-none');
-                    return;
-                }
-                emptyEl.classList.add('d-none');
-
-                values.forEach((val, idx) => {
-                    const li = document.createElement('li');
-                    li.className = 'list-group-item d-flex justify-content-between align-items-center';
-
-                    const nameSpan = document.createElement('span');
-                    nameSpan.textContent = val;
-
-                    const removeBtn = document.createElement('button');
-                    removeBtn.type = 'button';
-                    removeBtn.className = 'btn btn-sm btn-outline-danger';
-                    removeBtn.textContent = 'Remover';
-                    removeBtn.addEventListener('click', function() {
-                        const next = parseValue().filter((_, i) => i !== idx);
-                        writeValue(next);
-                        render();
-                    });
-
-                    li.appendChild(nameSpan);
-                    li.appendChild(removeBtn);
-                    listEl.appendChild(li);
-                });
-            }
-
-            function addCurrent() {
-                const value = (input.value || '').trim();
-                if (!value) return;
-
-                const existing = parseValue();
-                const exists = existing.some(v => v.toLowerCase() === value.toLowerCase());
-                if (!exists) {
-                    existing.push(value);
-                    writeValue(existing);
-                }
-                input.value = '';
-                render();
-            }
-
-            addBtn.addEventListener('click', addCurrent);
-            input.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addCurrent();
-                }
-            });
-
-            nativeWrap.classList.add('d-none');
-            enhancedWrap.classList.remove('d-none');
-            render();
-        })();
 
         // Enhance grid_colunas textarea: input + add + list (sync to textarea)
         (function() {

@@ -180,16 +180,25 @@
 
         function setOptions(values, current) {
             const cur = (current || '').trim();
-            const normalized = (values || []).map(v => String(v || '').trim()).filter(Boolean);
 
-            // Preserve current value if it's not in the list (to avoid losing legacy data)
-            const lowerSet = new Set(normalized.map(v => v.toLowerCase()));
             const options = [];
             options.push({ value: '', label: '—' });
-            if (cur && !lowerSet.has(cur.toLowerCase())) {
-                options.push({ value: cur, label: cur });
+            
+            // Handle new object format from API
+            (values || []).forEach(v => {
+                if (v && v.id) {
+                    options.push({ value: String(v.id), label: v.nome });
+                } else if (typeof v === 'string') {
+                    options.push({ value: v, label: v });
+                }
+            });
+
+            // Preserve current value if it's not in the list (to avoid losing legacy data)
+            const exists = options.some(o => String(o.value) === cur);
+            if (cur && !exists) {
+                // Se era um ID, não sabemos o label, mostramos o ID. Se era string antiga, mostramos a string.
+                options.splice(1, 0, { value: cur, label: cur });
             }
-            normalized.forEach(v => options.push({ value: v, label: v }));
 
             const selectedBefore = cur || (subSelect.value || '');
             subSelect.innerHTML = '';

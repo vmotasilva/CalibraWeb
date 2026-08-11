@@ -160,12 +160,7 @@ class ModeloAuditoria(models.Model):
         help_text="Uma coluna por linha (ex.: EQP-001). Se vazio, as colunas serão informadas no registro.",
     )
 
-    subcategorias = models.TextField(
-        blank=True,
-        default="",
-        verbose_name="Sub-categorias",
-        help_text="Uma sub-categoria por linha (ex.: Segurança, Qualidade, 5S).",
-    )
+
     
     ativo = models.BooleanField(default=True)
     arquivado = models.BooleanField(default=False)
@@ -194,21 +189,45 @@ class ModeloAuditoria(models.Model):
         
         return base
 
-    @property
-    def subcategorias_list(self) -> list[str]:
-        raw = (self.subcategorias or "").replace("\r\n", "\n")
-        parts = [p.strip() for p in raw.split("\n")]
-        seen: set[str] = set()
-        values: list[str] = []
-        for p in parts:
-            if not p:
-                continue
-            key = p.lower()
-            if key in seen:
-                continue
-            seen.add(key)
-            values.append(p)
-        return values
+
+
+
+class CategoriaAuditoria(models.Model):
+    modelo = models.ForeignKey(
+        ModeloAuditoria,
+        on_delete=models.CASCADE,
+        related_name="categorias",
+        verbose_name="Modelo",
+    )
+    nome = models.CharField(max_length=150)
+    ordem = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        verbose_name = "Categoria de Auditoria"
+        verbose_name_plural = "Categorias de Auditoria"
+        ordering = ["modelo", "ordem", "nome"]
+
+    def __str__(self):
+        return f"{self.modelo.nome} - {self.nome}"
+
+
+class SubcategoriaAuditoria(models.Model):
+    categoria = models.ForeignKey(
+        CategoriaAuditoria,
+        on_delete=models.CASCADE,
+        related_name="subcategorias",
+        verbose_name="Categoria",
+    )
+    nome = models.CharField(max_length=150)
+    ordem = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        verbose_name = "Sub-categoria de Auditoria"
+        verbose_name_plural = "Sub-categorias de Auditoria"
+        ordering = ["categoria__modelo", "categoria__ordem", "ordem", "nome"]
+
+    def __str__(self):
+        return f"{self.categoria.nome} - {self.nome}"
 
 
 class PerguntaAuditoria(models.Model):
@@ -270,12 +289,14 @@ class PerguntaAuditoria(models.Model):
         help_text="Se marcado, esta pergunta aparece no preenchimento em GRID (quando habilitado no modelo).",
     )
     ordem = models.PositiveIntegerField(default=1)
-    subcategoria = models.CharField(
-        max_length=80,
+    subcategoria = models.ForeignKey(
+        SubcategoriaAuditoria,
+        on_delete=models.SET_NULL,
+        null=True,
         blank=True,
-        default="",
-        verbose_name="Sub-categoria",
-        help_text="Opcional. Deve existir nas sub-categorias do modelo (quando definidas).",
+        related_name="perguntas",
+        verbose_name="Sub-cláusula",
+        help_text="Sub-categoria / Sub-cláusula da pergunta",
     )
     obrigatoria = models.BooleanField(default=True)
     ativo = models.BooleanField(default=True)

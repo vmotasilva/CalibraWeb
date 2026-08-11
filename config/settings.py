@@ -139,6 +139,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "shared.middleware.AutoLoginMiddleware",  # Auto login local
     "django_otp.middleware.OTPMiddleware",  # Middleware para 2FA
     "django.contrib.messages.middleware.MessageMiddleware",
     "shared.middleware.AuthNoCacheMiddleware",  # Evita cache de formulários de autenticação/2FA

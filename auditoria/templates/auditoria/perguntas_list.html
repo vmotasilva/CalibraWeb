@@ -22,7 +22,7 @@
             <select name="subcategoria" class="form-select" id="filterSubcategoriaSelect" {% if not modelo_id %}disabled{% endif %}>
                 <option value="">Todas</option>
                 {% for sc in subcategorias %}
-                <option value="{{ sc }}" {% if subcategoria == sc %}selected{% endif %}>{{ sc }}</option>
+                <option value="{{ sc.id }}" {% if subcategoria == sc.id %}selected{% endif %}>{{ sc.nome }}</option>
                 {% endfor %}
             </select>
             {% if not modelo_id %}
@@ -45,7 +45,7 @@
                     <select name="subcategoria" class="form-select" id="bulkSubcategoriaSelect" {% if not modelo_id %}disabled{% endif %}>
                         <option value="">(Limpar sub-categoria)</option>
                         {% for sc in subcategorias %}
-                        <option value="{{ sc }}">{{ sc }}</option>
+                        <option value="{{ sc.id }}">{{ sc.nome }}</option>
                         {% endfor %}
                     </select>
                     {% if not modelo_id %}
@@ -134,7 +134,7 @@
                             <input type="checkbox" class="form-check-input pergunta-checkbox" value="{{ pergunta.id }}" {% if not modelo_id %}disabled{% endif %}>
                         </td>
                         <td>{{ pergunta.modelo.nome }}</td>
-                        <td>{{ pergunta.subcategoria|default:'-' }}</td>
+                        <td>{{ pergunta.subcategoria.nome|default:'-' }}</td>
                         <td>{{ pergunta.ordem }}</td>
                         <td>{{ pergunta.pergunta }}</td>
                         <td>{{ pergunta.get_tipo_resposta_display }}</td>

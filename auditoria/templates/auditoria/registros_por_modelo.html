@@ -145,7 +145,7 @@
                                     <select name="subcategoria" class="form-select">
                                         <option value="">Todas</option>
                                         {% for sc in subcategorias %}
-                                        <option value="{{ sc }}" {% if subcategoria == sc %}selected{% endif %}>{{ sc }}</option>
+                                        <option value="{{ sc.id }}" {% if subcategoria == sc.id %}selected{% endif %}>{{ sc.nome }}</option>
                                         {% endfor %}
                                     </select>
                                 </div>
