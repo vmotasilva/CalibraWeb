@@ -1515,7 +1515,36 @@ def grid_ferias_view(request):
     # Pegar apenas colaboradores que são líderes de alguém
     lideres_filtro = Colaborador.objects.filter(liderados__isnull=False).distinct().order_by('nome_completo')
     
-    # Montar a estrutura usando os paths
+    from datetime import date as date_cls
+    import calendar
+    from collections import defaultdict
+
+    def get_global_predominancia(d_inicio, d_fim):
+        """Retorna (ano, mes) de maior predominancia, calculando em todo o periodo das ferias."""
+        dias_por_mes_ano = defaultdict(int)
+        y, m = d_inicio.year, d_inicio.month
+        while (y, m) <= (d_fim.year, d_fim.month):
+            inicio_mes = date_cls(y, m, 1)
+            ultimo_dia = calendar.monthrange(y, m)[1]
+            fim_mes = date_cls(y, m, ultimo_dia)
+            
+            inicio_periodo = max(d_inicio, inicio_mes)
+            fim_periodo = min(d_fim, fim_mes)
+            dias = (fim_periodo - inicio_periodo).days + 1
+            if dias > 0:
+                dias_por_mes_ano[(y, m)] = dias
+                
+            m += 1
+            if m > 12:
+                m = 1
+                y += 1
+                
+        if not dias_por_mes_ano:
+            return (d_inicio.year, d_inicio.month)
+            
+        return max(dias_por_mes_ano.keys(), key=lambda k: (dias_por_mes_ano[k], -k[0], -k[1]))
+
+    # Mapeamento do grid (linhas e colunas de meses)
     matrix = {mes_num: defaultdict(list) for mes_num, _ in meses}
     paths_com_ferias = set()
     
@@ -1534,31 +1563,14 @@ def grid_ferias_view(request):
         path_tuple = tuple(path)
         paths_com_ferias.add(path_tuple)
         
-        # Calcular qual mês tem mais dias de férias (predominância)
-        import calendar
-        mes_inicio_efetivo = f.data_inicio.month if f.data_inicio.year == ano else 1
-        mes_fim_efetivo = f.data_fim.month if f.data_fim.year == ano else 12
+        # Calcular qual mês e ano tem a predominância global
+        pred_ano, pred_mes = get_global_predominancia(f.data_inicio, f.data_fim)
         
-        # Clampar as datas ao ano selecionado
-        from datetime import date as date_cls
-        data_inicio_efetiva = f.data_inicio if f.data_inicio.year == ano else date_cls(ano, 1, 1)
-        data_fim_efetiva = f.data_fim if f.data_fim.year == ano else date_cls(ano, 12, 31)
+        # Se a predominância global não for neste ano, ignorar a exibição
+        if pred_ano != ano:
+            continue
         
-        # Contar dias por mês
-        dias_por_mes = {}
-        for m in range(mes_inicio_efetivo, mes_fim_efetivo + 1):
-            inicio_mes = date_cls(ano, m, 1)
-            ultimo_dia = calendar.monthrange(ano, m)[1]
-            fim_mes = date_cls(ano, m, ultimo_dia)
-            # Interseção
-            inicio_periodo = max(data_inicio_efetiva, inicio_mes)
-            fim_periodo = min(data_fim_efetiva, fim_mes)
-            dias_no_mes = (fim_periodo - inicio_periodo).days + 1
-            if dias_no_mes > 0:
-                dias_por_mes[m] = dias_no_mes
-        
-        # Mês de maior predominância (empate = primeiro mês)
-        mes_predominante = max(dias_por_mes, key=lambda m: (dias_por_mes[m], -m)) if dias_por_mes else mes_inicio_efetivo
+        mes_predominante = pred_mes
         
         matrix[mes_predominante][path_tuple].append({
                 'colaborador': f.colaborador.nome_abreviado,
@@ -1681,28 +1693,44 @@ def projecao_mensal_ferias_view(request):
     if lider_id:
         ferias_qs = ferias_qs.filter(colaborador__lider_id=lider_id)
 
-    # Distribuir férias por mês predominante (mesma lógica do grid)
+    # Distribuir férias por mês predominante globalmente
+    from collections import defaultdict
     from datetime import date as date_cls
+    import calendar
+    
+    def get_global_predominancia(d_inicio, d_fim):
+        dias_por_mes_ano = defaultdict(int)
+        y, m = d_inicio.year, d_inicio.month
+        while (y, m) <= (d_fim.year, d_fim.month):
+            inicio_mes = date_cls(y, m, 1)
+            ultimo_dia = calendar.monthrange(y, m)[1]
+            fim_mes = date_cls(y, m, ultimo_dia)
+            
+            inicio_periodo = max(d_inicio, inicio_mes)
+            fim_periodo = min(d_fim, fim_mes)
+            dias = (fim_periodo - inicio_periodo).days + 1
+            if dias > 0:
+                dias_por_mes_ano[(y, m)] = dias
+                
+            m += 1
+            if m > 12:
+                m = 1
+                y += 1
+                
+        if not dias_por_mes_ano:
+            return (d_inicio.year, d_inicio.month)
+            
+        return max(dias_por_mes_ano.keys(), key=lambda k: (dias_por_mes_ano[k], -k[0], -k[1]))
+
     mes_map = {m: [] for m, _ in meses}
 
     for f in ferias_qs:
-        mes_inicio_efetivo = f.data_inicio.month if f.data_inicio.year == ano else 1
-        mes_fim_efetivo = f.data_fim.month if f.data_fim.year == ano else 12
-        data_inicio_efetiva = f.data_inicio if f.data_inicio.year == ano else date_cls(ano, 1, 1)
-        data_fim_efetiva = f.data_fim if f.data_fim.year == ano else date_cls(ano, 12, 31)
-
-        dias_por_mes = {}
-        for m in range(mes_inicio_efetivo, mes_fim_efetivo + 1):
-            inicio_mes = date_cls(ano, m, 1)
-            ultimo_dia = calendar.monthrange(ano, m)[1]
-            fim_mes = date_cls(ano, m, ultimo_dia)
-            inicio_periodo = max(data_inicio_efetiva, inicio_mes)
-            fim_periodo = min(data_fim_efetiva, fim_mes)
-            dias_no_mes = (fim_periodo - inicio_periodo).days + 1
-            if dias_no_mes > 0:
-                dias_por_mes[m] = dias_no_mes
-
-        mes_predominante = max(dias_por_mes, key=lambda m: (dias_por_mes[m], -m)) if dias_por_mes else mes_inicio_efetivo
+        pred_ano, pred_mes = get_global_predominancia(f.data_inicio, f.data_fim)
+        
+        if pred_ano != ano:
+            continue
+            
+        mes_predominante = pred_mes
 
         setor_nome = f.colaborador.setor.nome if f.colaborador.setor else 'Sem Setor'
         turno_display = dict(TURNOS_CHOICES).get(f.colaborador.turno, f.colaborador.turno or '—')
