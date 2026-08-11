@@ -17,11 +17,11 @@ class Migration(migrations.Migration):
         ),
         migrations.RemoveField(
             model_name='perguntaauditoria',
-            name='subcategoria_nova',
-        ),
-        migrations.AlterField(
-            model_name='perguntaauditoria',
             name='subcategoria',
-            field=models.ForeignKey(blank=True, help_text='Sub-categoria / Sub-cláusula da pergunta', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='perguntas', to='auditoria.subcategoriaauditoria', verbose_name='Sub-cláusula'),
+        ),
+        migrations.RenameField(
+            model_name='perguntaauditoria',
+            old_name='subcategoria_nova',
+            new_name='subcategoria',
         ),
     ]
