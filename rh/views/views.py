@@ -1487,10 +1487,13 @@ def grid_ferias_view(request):
         (10, 'Outubro'), (11, 'Novembro'), (12, 'Dezembro')
     ]
     
-    # Filtros
+    # Filtros e Agrupamentos
     setor_id = request.GET.get('setor_id', '')
     turno = request.GET.get('turno', '')
     lider_id = request.GET.get('lider_id', '')
+    ordem_agrupamento = request.GET.get('ordem_agrupamento', '')
+    agrupamentos_ativos = [x for x in ordem_agrupamento.split(',') if x in ('lideranca', 'turno')]
+
     
     # Base query for ferias that intersect the selected year
     base_query = Q(data_inicio__year=ano) | Q(data_fim__year=ano)
@@ -1512,47 +1515,86 @@ def grid_ferias_view(request):
     # Pegar apenas colaboradores que são líderes de alguém
     lideres_filtro = Colaborador.objects.filter(liderados__isnull=False).distinct().order_by('nome_completo')
     
-    # Montar a estrutura
+    # Montar a estrutura usando os paths
     matrix = {mes_num: defaultdict(list) for mes_num, _ in meses}
-    setores_com_ferias = set()
+    paths_com_ferias = set()
     
     for f in ferias_do_ano:
-        setor = f.colaborador.setor
-        setor_dict_id = setor.id if setor else 'OUTROS'
-        setor_nome = setor.nome if setor else 'OUTROS'
+        setor_nome = f.colaborador.setor.nome if f.colaborador.setor else 'OUTROS'
+        lider_nome = f.colaborador.lider.nome_abreviado if f.colaborador.lider else 'Sem Líder'
+        turno_nome = dict(turnos_filtro).get(f.colaborador.turno, 'Sem Turno')
+        
+        path = [setor_nome]
+        for agrupar in agrupamentos_ativos:
+            if agrupar == 'lideranca':
+                path.append(lider_nome)
+            elif agrupar == 'turno':
+                path.append(turno_nome)
+                
+        path_tuple = tuple(path)
+        paths_com_ferias.add(path_tuple)
         
         mes_inicio = f.data_inicio.month if f.data_inicio.year == ano else 1
         mes_fim = f.data_fim.month if f.data_fim.year == ano else 12
         
-        setores_com_ferias.add((setor_dict_id, setor_nome))
-        
         for m in range(mes_inicio, mes_fim + 1):
-            matrix[m][setor_dict_id].append({
+            matrix[m][path_tuple].append({
                 'colaborador': f.colaborador.nome_abreviado,
                 'inicio': f.data_inicio.strftime('%d/%m'),
                 'fim': f.data_fim.strftime('%d/%m')
             })
             
-    # Ordenar setores (OUTROS vai pro final)
-    setores_ordenados = sorted(
-        list(setores_com_ferias),
-        key=lambda s: ('Z', 'OUTROS') if s[0] == 'OUTROS' else (s[1], s[1])
-    )
+    # Função de ordenação
+    def sort_key(p):
+        return tuple(('Z', 'OUTROS') if x in ('OUTROS', 'Sem Líder', 'Sem Turno') else ('A', x) for x in p)
+    
+    ordered_paths = sorted(list(paths_com_ferias), key=sort_key)
+    
+    # Construir headers dinâmicos
+    depth = len(agrupamentos_ativos) + 1
+    headers_rows = []
+    
+    if ordered_paths:
+        for level in range(depth):
+            row = []
+            current_val = None
+            colspan = 0
+            
+            for path in ordered_paths:
+                group_key = path[:level+1]
+                if current_val is None:
+                    current_val = group_key
+                    colspan = 1
+                elif current_val == group_key:
+                    colspan += 1
+                else:
+                    row.append({'nome': current_val[-1], 'colspan': colspan})
+                    current_val = group_key
+                    colspan = 1
+                    
+            if current_val is not None:
+                row.append({'nome': current_val[-1], 'colspan': colspan})
+                
+            headers_rows.append(row)
+    else:
+        # Tabela vazia
+        headers_rows = [[{'nome': 'Nenhum registro', 'colspan': 1}]]
+        ordered_paths = [('Nenhum registro',)]
     
     # Pre-calcular grid lines para o template
     grid_lines = []
     for mes_num, mes_nome in meses:
-        setores_row = []
-        for setor_id, _ in setores_ordenados:
-            setores_row.append(matrix[mes_num][setor_id])
+        cells = []
+        for path in ordered_paths:
+            cells.append(matrix[mes_num][path])
         grid_lines.append({
             'mes_nome': mes_nome,
-            'setores': setores_row
+            'setores': cells
         })
     
     ctx = {
         'ano': ano,
-        'setores': setores_ordenados,
+        'headers_rows': headers_rows,
         'grid_lines': grid_lines,
         'anos_disponiveis': range(ano_atual - 2, ano_atual + 3),
         
@@ -1565,6 +1607,8 @@ def grid_ferias_view(request):
         'setor_id': setor_id,
         'turno': turno,
         'lider_id': lider_id,
+        'ordem_agrupamento': ordem_agrupamento,
+        'agrupamentos_ativos': agrupamentos_ativos,
     }
     
     return render(request, 'rh/grid_ferias.html', ctx)

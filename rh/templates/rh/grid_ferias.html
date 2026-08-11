@@ -3,14 +3,17 @@
 
 {% block extra_css %}
 <style>
-    .table-sticky th {
+    .table-sticky thead {
         position: sticky;
         top: 0;
         z-index: 10;
+    }
+    .table-sticky th {
         background-color: #f8f9fa !important;
         box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
     }
     .table-sticky th:first-child {
+        position: sticky;
         left: 0;
         z-index: 11;
         box-shadow: 2px 2px 2px -1px rgba(0, 0, 0, 0.1);
@@ -76,25 +79,53 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <a href="{% url 'rh:grid_ferias' %}" class="btn btn-sm btn-outline-secondary w-100">Limpar Filtros</a>
+                    <a href="{% url 'rh:grid_ferias' %}" class="btn btn-sm btn-outline-secondary w-100 mb-1">Limpar Filtros</a>
                 </div>
             </form>
+            
+            <div class="mt-3 pt-3 border-top d-flex gap-4">
+                <span class="small fw-bold text-muted"><i class="bi bi-diagram-3"></i> Subdividir Colunas por:</span>
+                
+                <div class="form-check form-switch">
+                    <input class="form-check-input agrupamento-cb" type="checkbox" id="agrupar_lideranca" value="lideranca" onchange="updateAgrupamento()" {% if 'lideranca' in agrupamentos_ativos %}checked{% endif %}>
+                    <label class="form-check-label small" for="agrupar_lideranca">Liderança</label>
+                </div>
+                
+                <div class="form-check form-switch">
+                    <input class="form-check-input agrupamento-cb" type="checkbox" id="agrupar_turno" value="turno" onchange="updateAgrupamento()" {% if 'turno' in agrupamentos_ativos %}checked{% endif %}>
+                    <label class="form-check-label small" for="agrupar_turno">Turno</label>
+                </div>
+                
+                <!-- Hidden form to submit the grouping order -->
+                <form id="form_agrupamento" method="get" action="{% url 'rh:grid_ferias' %}" class="d-none">
+                    <input type="hidden" name="ano" value="{{ ano }}">
+                    <input type="hidden" name="setor_id" value="{{ setor_id }}">
+                    <input type="hidden" name="lider_id" value="{{ lider_id }}">
+                    <input type="hidden" name="turno" value="{{ turno }}">
+                    <input type="hidden" name="ordem_agrupamento" id="ordem_agrupamento_input" value="{{ ordem_agrupamento }}">
+                </form>
+            </div>
         </div>
         <div class="card-body">
             <div class="table-responsive" style="max-height: 70vh;">
                 <table class="table table-bordered table-hover align-middle table-sticky">
                     <thead class="table-light text-center">
+                        {% for header_row in headers_rows %}
                         <tr>
-                            <th style="width: 150px; min-width: 150px;">Mês</th>
-                            {% for setor_id, setor_nome in setores %}
-                            <th>{{ setor_nome }}</th>
+                            {% if forloop.first %}
+                            <th style="width: 150px; min-width: 150px;" rowspan="{{ headers_rows|length }}" class="align-middle bg-white">Mês</th>
+                            {% endif %}
+                            
+                            {% for h in header_row %}
+                            <th colspan="{{ h.colspan }}">{{ h.nome }}</th>
                             {% endfor %}
                         </tr>
+                        {% endfor %}
                     </thead>
                     <tbody>
                         {% for row in grid_lines %}
                         <tr>
-                            <td class="text-center fw-bold bg-light">{{ row.mes_nome }}</td>
+                            <td class="text-center fw-bold bg-light" style="z-index: 5;">{{ row.mes_nome }}</td>
                             {% for cell in row.setores %}
                             <td class="text-center align-top p-2" style="min-width: 180px;">
                                 {% for item in cell %}
@@ -115,4 +146,24 @@
         </div>
     </div>
 </div>
+
+<script>
+    let ordemAgrupamento = "{{ ordem_agrupamento }}".split(',').filter(x => x);
+    
+    function updateAgrupamento() {
+        const checkboxes = document.querySelectorAll('.agrupamento-cb');
+        
+        checkboxes.forEach(cb => {
+            const val = cb.value;
+            if (cb.checked && !ordemAgrupamento.includes(val)) {
+                ordemAgrupamento.push(val);
+            } else if (!cb.checked && ordemAgrupamento.includes(val)) {
+                ordemAgrupamento = ordemAgrupamento.filter(x => x !== val);
+            }
+        });
+        
+        document.getElementById('ordem_agrupamento_input').value = ordemAgrupamento.join(',');
+        document.getElementById('form_agrupamento').submit();
+    }
+</script>
 {% endblock %}
