@@ -1534,11 +1534,33 @@ def grid_ferias_view(request):
         path_tuple = tuple(path)
         paths_com_ferias.add(path_tuple)
         
-        mes_inicio = f.data_inicio.month if f.data_inicio.year == ano else 1
-        mes_fim = f.data_fim.month if f.data_fim.year == ano else 12
+        # Calcular qual mês tem mais dias de férias (predominância)
+        import calendar
+        mes_inicio_efetivo = f.data_inicio.month if f.data_inicio.year == ano else 1
+        mes_fim_efetivo = f.data_fim.month if f.data_fim.year == ano else 12
         
-        for m in range(mes_inicio, mes_fim + 1):
-            matrix[m][path_tuple].append({
+        # Clampar as datas ao ano selecionado
+        from datetime import date as date_cls
+        data_inicio_efetiva = f.data_inicio if f.data_inicio.year == ano else date_cls(ano, 1, 1)
+        data_fim_efetiva = f.data_fim if f.data_fim.year == ano else date_cls(ano, 12, 31)
+        
+        # Contar dias por mês
+        dias_por_mes = {}
+        for m in range(mes_inicio_efetivo, mes_fim_efetivo + 1):
+            inicio_mes = date_cls(ano, m, 1)
+            ultimo_dia = calendar.monthrange(ano, m)[1]
+            fim_mes = date_cls(ano, m, ultimo_dia)
+            # Interseção
+            inicio_periodo = max(data_inicio_efetiva, inicio_mes)
+            fim_periodo = min(data_fim_efetiva, fim_mes)
+            dias_no_mes = (fim_periodo - inicio_periodo).days + 1
+            if dias_no_mes > 0:
+                dias_por_mes[m] = dias_no_mes
+        
+        # Mês de maior predominância (empate = primeiro mês)
+        mes_predominante = max(dias_por_mes, key=lambda m: (dias_por_mes[m], -m)) if dias_por_mes else mes_inicio_efetivo
+        
+        matrix[mes_predominante][path_tuple].append({
                 'colaborador': f.colaborador.nome_abreviado,
                 'inicio': f.data_inicio.strftime('%d/%m'),
                 'fim': f.data_fim.strftime('%d/%m')
