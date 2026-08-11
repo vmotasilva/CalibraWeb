@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Registros - {{ modelo.nome }} - Auditoria{% endblock %}
+{% block title %}Ciclos de Auditoria - {{ modelo.nome }} - Auditoria{% endblock %}
 
 {% block content %}
 <div class="container-fluid mt-4">
@@ -17,7 +17,7 @@
             <div class="card shadow-sm">
                 <div class="card-header bg-primary text-white">
                     <h4 class="mb-0">
-                        <i class="bi bi-file-earmark-text"></i> Registros Preenchidos: {{ modelo.nome }}
+                        <i class="bi bi-arrow-repeat"></i> Ciclos de Auditoria: {{ modelo.nome }}
                     </h4>
                 </div>
                 <div class="card-body">
@@ -55,7 +55,7 @@
                                     <i class="bi bi-file-earmark-excel"></i> Exportar Excel
                                 </a>
                                 <a href="{% url 'auditoria:registro_create_modelo' modelo.id %}" class="btn btn-success btn-sm">
-                                    <i class="bi bi-plus-circle"></i> Novo Registro
+                                    <i class="bi bi-plus-circle"></i> Novo Ciclo
                                 </a>
                                 {% endif %}
                             </div>
@@ -63,7 +63,7 @@
                     </div>
 
                     <div class="alert alert-info">
-                        <i class="bi bi-info-circle"></i> Total de registros preenchidos: <strong>{{ registros_count }}</strong>
+                        <i class="bi bi-info-circle"></i> Total de ciclos criados: <strong>{{ registros_count }}</strong>
                     </div>
 
                     <style>
@@ -121,7 +121,7 @@
                     </div>
                     {% endif %}
 
-                    {% if estatisticas_perguntas %}
+                    {% if False and estatisticas_perguntas %} {# TODO: removido temporariamente a pedido do usuario #}
                     <div class="card mb-3 border-primary">
                         <div class="card-header bg-primary text-white">
                             <h5 class="mb-0"><i class="bi bi-bar-chart-fill"></i> Análise das Respostas</h5>
@@ -754,7 +754,7 @@
                     {% if registros_count %}
                     <div class="card shadow-sm">
                         <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
-                            <div class="fw-semibold"><i class="bi bi-list-ul"></i> Registros</div>
+                            <div class="fw-semibold"><i class="bi bi-list-ul"></i> Ciclos (Execuções)</div>
                             <form method="get" class="d-flex flex-wrap gap-2 align-items-center mb-0">
                                 <input type="hidden" name="inicio" value="{{ inicio|default:'' }}">
                                 <input type="hidden" name="fim" value="{{ fim|default:'' }}">
@@ -778,9 +778,10 @@
                                     <thead class="table-dark">
                                         <tr>
                                             <th>Criado em</th>
-                                            <th>Data</th>
-                                            <th>ITEM/O.S.</th>
-                                            <th>Observações</th>
+                                            <th>Nome do Ciclo</th>
+                                            <th>Alvo</th>
+                                            <th>Status</th>
+                                            <th class="text-center" style="width: 150px;">Progresso</th>
                                             <th class="text-center">Ações</th>
                                         </tr>
                                     </thead>
@@ -788,27 +789,32 @@
                                         {% for registro in page_obj %}
                                         <tr>
                                             <td>{{ registro.criado_em|date:"d/m/Y H:i" }}</td>
-                                            <td>{{ registro.data_auditoria|date:"d/m/Y" }}</td>
+                                            <td class="fw-medium">{{ registro.nome }}</td>
                                             <td>
-                                                {% if registro.item_os %}
-                                                    {{ registro.item_os }}
+                                                {% if registro.alvo %}
+                                                    {{ registro.alvo }}
                                                 {% else %}
                                                     <span class="text-muted">-</span>
                                                 {% endif %}
                                             </td>
                                             <td>
-                                                {% if registro.observacoes %}
-                                                    {{ registro.observacoes }}
+                                                {% if registro.status == 'CONCLUIDO' %}
+                                                    <span class="badge bg-success">Concluído</span>
                                                 {% else %}
-                                                    <span class="text-muted">-</span>
+                                                    <span class="badge bg-warning text-dark">Em Andamento</span>
                                                 {% endif %}
+                                            </td>
+                                            <td class="text-center align-middle">
+                                                <div class="progress" style="height: 20px;">
+                                                    <div class="progress-bar {% if registro.progresso == 100 %}bg-success{% endif %}" role="progressbar" style="width: {{ registro.progresso }}%;" aria-valuenow="{{ registro.progresso }}" aria-valuemin="0" aria-valuemax="100">{{ registro.progresso }}%</div>
+                                                </div>
                                             </td>
                                             <td class="text-center">
                                                 {% if not is_read_only %}
-                                                <a href="{% url 'auditoria:registro_detail' registro.pk %}" class="btn btn-sm btn-info" title="Visualizar">
+                                                <a href="{% url 'auditoria:registro_detail' registro.pk %}" class="btn btn-sm btn-info" title="Visualizar / Preencher">
                                                     <i class="bi bi-eye"></i>
                                                 </a>
-                                                <a href="{% url 'auditoria:registro_edit' registro.pk %}" class="btn btn-sm btn-warning" title="Editar">
+                                                <a href="{% url 'auditoria:registro_edit' registro.pk %}" class="btn btn-sm btn-warning" title="Editar Metadados">
                                                     <i class="bi bi-pencil"></i>
                                                 </a>
                                                 {% else %}
@@ -823,7 +829,7 @@
                         </div>
                         <div class="card-footer d-flex flex-wrap gap-2 justify-content-between align-items-center">
                             <div class="text-muted small">
-                                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }} — {{ registros_count }} registro(s)
+                                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }} — {{ registros_count }} ciclo(s)
                             </div>
                             <nav aria-label="Paginação">
                                 <ul class="pagination pagination-sm mb-0">

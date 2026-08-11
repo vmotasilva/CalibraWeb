@@ -379,15 +379,31 @@ class PerguntaAuditoria(models.Model):
 
 
 class RegistroAuditoria(models.Model):
+    STATUS_CHOICES = [
+        ("RASCUNHO", "Em Andamento"),
+        ("CONCLUIDO", "Concluído"),
+    ]
+
     modelo = models.ForeignKey(
         ModeloAuditoria,
         on_delete=models.PROTECT,
         related_name="registros",
         verbose_name="Modelo",
     )
-    data_auditoria = models.DateField(verbose_name="Data da Auditoria")
+    nome = models.CharField(max_length=150, default="Ciclo de Auditoria", verbose_name="Nome do Ciclo")
+    alvo = models.CharField(
+        max_length=150,
+        blank=True,
+        default="",
+        verbose_name="Alvo da Auditoria",
+        help_text="Empresa, setor ou departamento alvo deste ciclo.",
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="RASCUNHO")
+    progresso = models.PositiveIntegerField(default=0, help_text="Progresso do ciclo em % (0 a 100).")
+    
+    data_auditoria = models.DateField(verbose_name="Data da Auditoria", null=True, blank=True)
     periodo_inicio = models.DateField(verbose_name="Período Inicial")
-    periodo_fim = models.DateField(verbose_name="Período Final")
+    periodo_fim = models.DateField(verbose_name="Período Final Previsto")
     avaliador = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -399,7 +415,7 @@ class RegistroAuditoria(models.Model):
         max_length=120,
         blank=True,
         default="",
-        verbose_name="ITEM/O.S.",
+        verbose_name="ITEM/O.S. (Legado)",
         help_text="Preencher se necessário para identificar ordens de serviço ou pontos específicos.",
     )
 
@@ -411,6 +427,51 @@ class RegistroAuditoria(models.Model):
     )
     observacoes = models.TextField(blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    def calcular_progresso(self):
+        """Calcula o progresso do ciclo (0-100%) baseado nas perguntas obrigatórias"""
+        perguntas = self.modelo.perguntas.filter(ativo=True, obrigatoria=True)
+        total_esperado = 0
+        total_respondido = 0
+        
+        # O total esperado e respondido varia de acordo com o formato (GRID, Semanal, etc).
+        # Para simplificar de maneira genérica sem refazer a lógica pesada de views:
+        # Contamos quantas RespostaAuditoria válidas (não vazias) estão vinculadas às perguntas obrigatórias.
+        # Porém, precisamos saber o universo exato (total_esperado).
+        
+        # Uma aproximação genérica para preenchimento progressivo:
+        grid_items = []
+        if self.grid_itens:
+            grid_items = [i.strip() for i in self.grid_itens.split('\n') if i.strip()]
+        
+        is_semanal = self.modelo.periodicidade == 'SEMANAL'
+        
+        for p in perguntas:
+            # Multiplicador (GRID)
+            fator_grid = len(grid_items) if grid_items else 1
+            
+            # Multiplicador (Semanal)
+            fator_semanal = 7 if (is_semanal and getattr(p, 'preenchimento_semanal', 'UNICO') == 'POR_DIA') else 1
+            
+            total_esperado += (fator_grid * fator_semanal)
+            
+            # Conta respostas não vazias
+            respostas_validas = self.respostas.filter(pergunta=p).exclude(valor="")
+            total_respondido += respostas_validas.count()
+            
+        if total_esperado == 0:
+            return 100
+        
+        progresso = int((total_respondido / total_esperado) * 100)
+        return min(progresso, 100)
+
+    def atualizar_progresso(self):
+        prog = self.calcular_progresso()
+        if self.progresso != prog:
+            self.progresso = prog
+            self.save(update_fields=['progresso'])
+
 
     class Meta:
         verbose_name = "Registro de Auditoria"

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Detalhes do Registro - Auditoria{% endblock %}
+{% block title %}Detalhes do Ciclo - Auditoria{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -42,20 +42,26 @@
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="{% url 'auditoria:modulo' %}">Auditoria</a></li>
-            <li class="breadcrumb-item"><a href="{% url 'auditoria:registros_por_modelo' registro.modelo.id %}">Registros</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'auditoria:registros_por_modelo' registro.modelo.id %}">Ciclos</a></li>
             <li class="breadcrumb-item active" aria-current="page">Detalhes</li>
         </ol>
     </nav>
 
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <h2 class="mb-0"><i class="bi bi-file-text"></i> Detalhes do Registro de Auditoria</h2>
+        <h2 class="mb-0"><i class="bi bi-file-text"></i> Detalhes do Ciclo de Auditoria</h2>
         <div class="d-flex flex-wrap gap-2 justify-content-start justify-content-md-end">
             <a href="{% url 'auditoria:registro_create_modelo' registro.modelo.id %}" class="btn btn-primary">
-                <i class="bi bi-plus-circle"></i> Novo Registro
+                <i class="bi bi-plus-circle"></i> Novo Ciclo
             </a>
+            {% if registro.status != 'CONCLUIDO' %}
             <a href="{% url 'auditoria:registro_edit' registro.pk %}" class="btn btn-warning">
-                <i class="bi bi-pencil"></i> Editar
+                <i class="bi bi-pencil"></i> Continuar Preenchimento
             </a>
+            {% else %}
+            <button class="btn btn-outline-secondary" disabled>
+                <i class="bi bi-lock"></i> Concluído (Read-Only)
+            </button>
+            {% endif %}
             <a href="{% url 'auditoria:registro_exportar_pdf' registro.pk %}" class="btn btn-danger">
                 <i class="bi bi-file-earmark-pdf"></i> Exportar PDF
             </a>
@@ -84,10 +90,10 @@
                     <p class="mb-2"><strong>Objeto de Auditoria:</strong> {{ registro.modelo.objeto_auditoria }}</p>
                 </div>
                 <div class="col-md-6">
-                    <p class="mb-2"><strong>Data da Auditoria:</strong> {{ registro.data_auditoria|date:'d/m/Y' }}</p>
+                    <p class="mb-2"><strong>Nome do Ciclo:</strong> {{ registro.nome }}</p>
                     <p class="mb-2"><strong>Avaliador:</strong> {{ registro.avaliador.get_full_name|default:registro.avaliador.username }}</p>
-                    {% if registro.item_os %}
-                    <p class="mb-2"><strong>ITEM/O.S.:</strong> {{ registro.item_os }}</p>
+                    {% if registro.alvo %}
+                    <p class="mb-2"><strong>Alvo:</strong> {{ registro.alvo }}</p>
                     {% endif %}
                 </div>
             </div>

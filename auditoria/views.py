@@ -1202,6 +1202,13 @@ def registro_create(request, modelo_id=None):
             registro = form.save(commit=False)
             registro.modelo = modelo
             registro.avaliador = request.user
+            
+            action = request.POST.get("action", "save_draft")
+            is_draft = action == "save_draft"
+            if not is_draft:
+                registro.status = "CONCLUIDO"
+            else:
+                registro.status = "RASCUNHO"
 
             grid_itens = []
             if grid_enabled:
@@ -1219,7 +1226,7 @@ def registro_create(request, modelo_id=None):
                     for idx, item in enumerate(grid_itens):
                         field_name = f"grid_{pergunta.id}_{idx}"
                         valor = request.POST.get(field_name, "").strip()
-                        if not valor and pergunta.obrigatoria:
+                        if not valor and pergunta.obrigatoria and not is_draft:
                             erros.append(f"A pergunta '{pergunta.pergunta}' é obrigatória para {item}.")
                         RespostaAuditoria.objects.create(
                             registro=registro,
@@ -1231,7 +1238,7 @@ def registro_create(request, modelo_id=None):
             else:
                 for pergunta in grid_perguntas:
                     valor = request.POST.get(f"resposta_{pergunta.id}", "").strip()
-                    if not valor and pergunta.obrigatoria:
+                    if not valor and pergunta.obrigatoria and not is_draft:
                         erros.append(f"A pergunta '{pergunta.pergunta}' é obrigatória.")
                     RespostaAuditoria.objects.create(
                         registro=registro,
@@ -1275,19 +1282,20 @@ def registro_create(request, modelo_id=None):
                             valor=valor,
                         )
             
-            if erros:
+            if erros and not is_draft:
+                registro.delete()
                 for erro in erros:
-                    messages.warning(request, erro)
-
-            _replace_comentarios_resposta(
-                registro=registro,
-                perguntas=perguntas,
-                raw_payload=request.POST.get("comentarios_payload", ""),
-                autor=request.user,
-            )
-            
-            messages.success(request, "Formulário de auditoria preenchido com sucesso!")
-            return redirect("auditoria:registro_detail", pk=registro.pk)
+                    messages.error(request, erro)
+            else:
+                registro.atualizar_progresso()
+                _replace_comentarios_resposta(
+                    registro=registro,
+                    perguntas=perguntas,
+                    raw_payload=request.POST.get("comentarios_payload", ""),
+                    autor=request.user,
+                )
+                messages.success(request, "Formulário de auditoria preenchido com sucesso!")
+                return redirect("auditoria:registro_detail", pk=registro.pk)
         comentarios_atuais = {
             str(k): v for (k, v) in _parse_comentarios_payload(request.POST.get("comentarios_payload", "")).items()
         }
@@ -1350,6 +1358,12 @@ def registro_edit(request, pk):
         ),
         pk=pk,
     )
+    
+    if registro.status == "CONCLUIDO":
+        from django.contrib import messages
+        messages.warning(request, "Este ciclo já foi concluído e encontra-se bloqueado para edição.")
+        return redirect("auditoria:registro_detail", pk=registro.pk)
+        
     perguntas = PerguntaAuditoria.objects.filter(modelo=registro.modelo, ativo=True).order_by("subcategoria", "ordem", "id")
     
     dias_semana_choices = list(ModeloAuditoria.DIA_SEMANA_CHOICES)
@@ -1376,6 +1390,12 @@ def registro_edit(request, pk):
         form = RegistroAuditoriaForm(post_data, instance=registro)
         if form.is_valid():
             registro = form.save(commit=False)
+            action = request.POST.get("action", "save_draft")
+            is_draft = action == "save_draft"
+            if not is_draft:
+                registro.status = "CONCLUIDO"
+            else:
+                registro.status = "RASCUNHO"
 
             grid_itens = []
             if grid_enabled:
@@ -1383,8 +1403,8 @@ def registro_edit(request, pk):
                 registro.grid_itens = "\n".join(grid_itens)
 
             registro.save()
-            grid_item_to_index = {item: idx for idx, item in enumerate(grid_itens)}
 
+            erros = []
             # Atualizar respostas existentes
             for pergunta in perguntas:
                 is_por_dia = is_semanal and getattr(pergunta, "preenchimento_semanal", "UNICO") == "POR_DIA"
@@ -1409,6 +1429,8 @@ def registro_edit(request, pk):
                             for dia_key, _dia_label in dias_semana_choices:
                                 field_name = f"griddia_{pergunta.id}_{idx}_{dia_key}"
                                 valor = request.POST.get(field_name, "").strip()
+                                if not valor and pergunta.obrigatoria and not is_draft:
+                                    erros.append(f"A pergunta '{pergunta.pergunta}' é obrigatória para {item} no dia {_dia_label}.")
                                 RespostaAuditoria.objects.update_or_create(
                                     registro=registro,
                                     pergunta=pergunta,
@@ -1427,6 +1449,8 @@ def registro_edit(request, pk):
                         for dia_key, _dia_label in dias_semana_choices:
                             field_name = f"resposta_{pergunta.id}_{dia_key}"
                             valor = request.POST.get(field_name, "").strip()
+                            if not valor and pergunta.obrigatoria and not is_draft:
+                                erros.append(f"A pergunta '{pergunta.pergunta}' é obrigatória para o dia {_dia_label}.")
                             RespostaAuditoria.objects.update_or_create(
                                 registro=registro,
                                 pergunta=pergunta,
@@ -1454,6 +1478,8 @@ def registro_edit(request, pk):
                         for idx, item in enumerate(grid_itens):
                             field_name = f"grid_{pergunta.id}_{idx}"
                             valor = request.POST.get(field_name, "").strip()
+                            if not valor and pergunta.obrigatoria and not is_draft:
+                                erros.append(f"A pergunta '{pergunta.pergunta}' é obrigatória para {item}.")
                             RespostaAuditoria.objects.update_or_create(
                                 registro=registro,
                                 pergunta=pergunta,
@@ -1470,6 +1496,8 @@ def registro_edit(request, pk):
                         ).exclude(grid_item="").delete()
 
                         valor = request.POST.get(f"resposta_{pergunta.id}", "").strip()
+                        if not valor and pergunta.obrigatoria and not is_draft:
+                            erros.append(f"A pergunta '{pergunta.pergunta}' é obrigatória.")
                         RespostaAuditoria.objects.update_or_create(
                             registro=registro,
                             pergunta=pergunta,
@@ -1485,8 +1513,21 @@ def registro_edit(request, pk):
                 autor=request.user,
             )
             
-            messages.success(request, "Registro de auditoria atualizado com sucesso!")
-            return redirect("auditoria:registro_detail", pk=registro.pk)
+            if erros and not is_draft:
+                for erro in erros:
+                    messages.error(request, erro)
+                # se teve erro no submit, volta para RASCUNHO para não travar
+                registro.status = "RASCUNHO"
+                registro.save(update_fields=['status'])
+            else:
+                registro.atualizar_progresso()
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                    from django.http import JsonResponse
+                    return JsonResponse({"status": "ok", "progresso": registro.progresso})
+                
+                msg = "Rascunho do Ciclo salvo com sucesso!" if is_draft else "Ciclo de auditoria concluído com sucesso!"
+                messages.success(request, msg)
+                return redirect("auditoria:registro_detail", pk=registro.pk)
         else:
             comentarios_atuais = {
                 str(k): v for (k, v) in _parse_comentarios_payload(request.POST.get("comentarios_payload", "")).items()

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}{% if edicao %}Editar{% else %}Novo{% endif %} Registro - Auditoria{% endblock %}
+{% block title %}{% if edicao %}Editar{% else %}Novo{% endif %} Ciclo - Auditoria{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -64,16 +64,16 @@
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="{% url 'auditoria:modulo' %}">Auditoria</a></li>
-            <li class="breadcrumb-item"><a href="{% url 'auditoria:registros_por_modelo' modelo.id %}">Registros</a></li>
-            <li class="breadcrumb-item active" aria-current="page">{% if edicao %}Editar{% else %}Novo{% endif %}</li>
+            <li class="breadcrumb-item"><a href="{% url 'auditoria:registros_por_modelo' modelo.id %}">Ciclos</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{% if edicao %}Editar Ciclo{% else %}Novo Ciclo{% endif %}</li>
         </ol>
     </nav>
 
     <div class="card shadow-sm">
         <div class="card-header bg-primary text-white">
             <h4 class="mb-0">
-                <i class="bi bi-clipboard-data"></i> 
-                {% if edicao %}Editar Registro de Auditoria{% else %}Novo Registro de Auditoria{% endif %}
+                <i class="bi bi-arrow-repeat"></i> 
+                {% if edicao %}Editar Ciclo de Auditoria{% else %}Novo Ciclo de Auditoria{% endif %}
             </h4>
         </div>
         <div class="card-body">
@@ -89,16 +89,27 @@
             </div>
             {% endif %}
 
+            {% if edicao %}
+            <div class="mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="fw-bold">Progresso do Ciclo</span>
+                    <span id="progresso-text">{{ form.instance.progresso }}%</span>
+                </div>
+                <div class="progress" style="height: 10px;">
+                    <div id="progresso-bar" class="progress-bar {% if form.instance.progresso == 100 %}bg-success{% else %}bg-primary{% endif %}" role="progressbar" style="width: {{ form.instance.progresso }}%;" aria-valuenow="{{ form.instance.progresso }}" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+            </div>
+            {% endif %}
             <form method="post" class="needs-validation" novalidate>
                 {% csrf_token %}
                 <input type="hidden" name="comentarios_payload" id="id_comentarios_payload" value="{}">
 
                 <div class="row g-3 mb-4">
                     <div class="col-md-4">
-                        <label class="form-label fw-bold">Data da Auditoria <span class="text-danger">*</span></label>
-                        {{ form.data_auditoria }}
-                        {% if form.data_auditoria.errors %}
-                        <div class="invalid-feedback d-block">{{ form.data_auditoria.errors }}</div>
+                        <label class="form-label fw-bold">Nome do Ciclo <span class="text-danger">*</span></label>
+                        {{ form.nome }}
+                        {% if form.nome.errors %}
+                        <div class="invalid-feedback d-block">{{ form.nome.errors }}</div>
                         {% endif %}
                     </div>
                     <div class="col-md-4">
@@ -118,10 +129,10 @@
                 </div>
 
                 <div class="mb-4">
-                    <label class="form-label fw-bold">ITEM/O.S. <span class="text-muted">(preencher se necessário)</span></label>
-                    {{ form.item_os }}
-                    {% if form.item_os.errors %}
-                    <div class="invalid-feedback d-block">{{ form.item_os.errors }}</div>
+                    <label class="form-label fw-bold">Alvo da Auditoria <span class="text-muted">(Setor, Empresa, Departamento...)</span></label>
+                    {{ form.alvo }}
+                    {% if form.alvo.errors %}
+                    <div class="invalid-feedback d-block">{{ form.alvo.errors }}</div>
                     {% endif %}
                 </div>
 
@@ -504,13 +515,20 @@
                     </div>
                 {% endif %}
 
-                <div class="d-flex gap-2 mt-4">
-                    <button type="submit" class="btn btn-success">
-                        <i class="bi bi-check-circle"></i> {% if edicao %}Atualizar{% else %}Salvar{% endif %} Registro
+                <div class="d-flex flex-wrap gap-2 mt-4 align-items-center">
+                    <button type="submit" name="action" value="save_draft" class="btn btn-primary" id="btn-salvar-rascunho">
+                        <i class="bi bi-save"></i> Salvar Rascunho
+                    </button>
+                    <button type="submit" name="action" value="submit" class="btn btn-success" id="btn-finalizar">
+                        <i class="bi bi-check-circle"></i> Finalizar Ciclo
                     </button>
                     <a href="{% url 'auditoria:registros_por_modelo' modelo.id %}" class="btn btn-secondary">
-                        <i class="bi bi-x-circle"></i> Cancelar
+                        <i class="bi bi-x-circle"></i> Voltar
                     </a>
+                    
+                    <div id="autosave-status" class="ms-auto text-muted small" style="display: none;">
+                        <i class="bi bi-cloud-check"></i> Salvo automaticamente
+                    </div>
                 </div>
             </form>
         </div>
@@ -773,6 +791,63 @@
 
         syncPayload();
         refreshCountButtons();
+    })();
+
+    // AJAX Auto-save feature
+    (function() {
+        {% if edicao %}
+        const form = document.querySelector('form.needs-validation');
+        const statusEl = document.getElementById('autosave-status');
+        let autoSaveTimer = null;
+
+        function doAutoSave() {
+            if(!form.checkValidity()) return; // Don't auto-save if base HTML5 validation fails for fields (though draft ignores required questions, the Cycle name might be required)
+            
+            const formData = new FormData(form);
+            formData.set('action', 'save_draft');
+
+            fetch(window.location.href, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: formData
+            }).then(response => response.json())
+              .then(data => {
+                  if(data.status === 'ok') {
+                      statusEl.style.display = 'block';
+                      statusEl.innerHTML = '<i class="bi bi-cloud-check text-success"></i> Salvo em ' + new Date().toLocaleTimeString();
+                      setTimeout(() => { statusEl.style.display = 'none'; }, 3000);
+                      
+                      if(data.progresso !== undefined) {
+                          const pb = document.getElementById('progresso-bar');
+                          const pt = document.getElementById('progresso-text');
+                          if(pb && pt) {
+                              pb.style.width = data.progresso + '%';
+                              pb.setAttribute('aria-valuenow', data.progresso);
+                              pt.textContent = data.progresso + '%';
+                              if(data.progresso === 100) {
+                                  pb.classList.remove('bg-primary');
+                                  pb.classList.add('bg-success');
+                              } else {
+                                  pb.classList.remove('bg-success');
+                                  pb.classList.add('bg-primary');
+                              }
+                          }
+                      }
+                  }
+              }).catch(err => console.error('Autosave failed', err));
+        }
+
+        // Trigger autosave on input change
+        const inputs = form.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => {
+            input.addEventListener('change', function() {
+                clearTimeout(autoSaveTimer);
+                autoSaveTimer = setTimeout(doAutoSave, 1000);
+            });
+        });
+        {% endif %}
     })();
 </script>
 {% endblock %}
