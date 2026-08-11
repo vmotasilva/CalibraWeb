@@ -2784,6 +2784,10 @@ def registros_por_modelo(request, modelo_id):
                 share_link = request.build_absolute_uri(
                     f"{reverse('auditoria:registros_por_modelo_compartilhado', args=[modelo.id])}?{urlencode({'share_token': share_created.token})}"
                 )
+                
+    # Buscar justificativas
+    from auditoria.models import JustificativaAuditoria
+    justificativas = JustificativaAuditoria.objects.filter(modelo=modelo).order_by("-criado_em")
 
     context = {
         "modelo": modelo,
@@ -2814,6 +2818,7 @@ def registros_por_modelo(request, modelo_id):
         "share_recipients": share_recipients,
         "share_history": share_history,
         "targeted_share": targeted_share,
+        "justificativas": justificativas,
     }
     return render(request, "auditoria/registros_por_modelo.html", context)
 

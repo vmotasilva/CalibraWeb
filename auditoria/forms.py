@@ -324,7 +324,7 @@ class RegistroAuditoriaForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         accepted_formats = ["%d/%m/%Y", "%Y-%m-%d"]
-        for field_name in ("data_auditoria", "periodo_inicio", "periodo_fim"):
+        for field_name in ("periodo_inicio", "periodo_fim"):
             self.fields[field_name].input_formats = accepted_formats
 
     def clean(self):
