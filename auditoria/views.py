@@ -255,7 +255,7 @@ def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
                 "tipo_resposta": pergunta.tipo_resposta,
                 "tipo_resposta_display": pergunta.get_tipo_resposta_display(),
                 "opcoes_resposta_com_cores": list(getattr(pergunta, "opcoes_resposta_com_cores", []) or []),
-                "subcategoria": (pergunta.subcategoria or "").strip(),
+                "subcategoria": f"{pergunta.subcategoria.categoria.nome} - {pergunta.subcategoria.nome}" if pergunta.subcategoria else "",
                 "resposta_geral": "",
                 "resposta_geral_cor": "",
                 "respostas_por_dia": {},
@@ -946,7 +946,7 @@ def pergunta_duplicate(request, pk):
     params = {}
     if pergunta.modelo_id:
         params["modelo"] = pergunta.modelo_id
-    subcategoria = (pergunta.subcategoria or "").strip()
+    subcategoria = str(pergunta.subcategoria.id) if pergunta.subcategoria else ""
     if subcategoria:
         params["subcategoria"] = subcategoria
     url = reverse("auditoria:perguntas_list")
@@ -2377,7 +2377,7 @@ def registros_por_modelo(request, modelo_id):
             p = pergunta_map.get(r.pergunta_id)
             if not p:
                 continue
-            sc = (p.subcategoria or "").strip()
+            sc = f"{p.subcategoria.categoria.nome} - {p.subcategoria.nome}" if p.subcategoria else ""
             if not sc:
                 continue
             if sc not in counts_by_subcat:
