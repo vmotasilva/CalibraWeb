@@ -1487,11 +1487,30 @@ def grid_ferias_view(request):
         (10, 'Outubro'), (11, 'Novembro'), (12, 'Dezembro')
     ]
     
-    # Buscar todas as férias que cruzam o ano selecionado e que estão aprovadas
-    # (ou todas, dependendo da necessidade, mas geralmente apenas as que vão acontecer)
-    ferias_do_ano = Ferias.objects.filter(
-        Q(data_inicio__year=ano) | Q(data_fim__year=ano)
-    ).select_related('colaborador__setor')
+    # Filtros
+    setor_id = request.GET.get('setor_id', '')
+    turno = request.GET.get('turno', '')
+    lider_id = request.GET.get('lider_id', '')
+    
+    # Base query for ferias that intersect the selected year
+    base_query = Q(data_inicio__year=ano) | Q(data_fim__year=ano)
+    ferias_do_ano = Ferias.objects.filter(base_query).select_related('colaborador__setor')
+    
+    if setor_id:
+        ferias_do_ano = ferias_do_ano.filter(colaborador__setor_id=setor_id)
+    if turno:
+        ferias_do_ano = ferias_do_ano.filter(colaborador__turno=turno)
+    if lider_id:
+        ferias_do_ano = ferias_do_ano.filter(colaborador__lider_id=lider_id)
+        
+    # Popular opções dos filtros (semelhante ao gestao_ferias)
+    from organization.models import Setor
+    from core.models import TURNOS_CHOICES
+    
+    setores_filtro = Setor.objects.all().order_by('nome')
+    turnos_filtro = TURNOS_CHOICES
+    # Pegar apenas colaboradores que são líderes de alguém
+    lideres_filtro = Colaborador.objects.filter(liderados__isnull=False).distinct().order_by('nome_completo')
     
     # Montar a estrutura
     matrix = {mes_num: defaultdict(list) for mes_num, _ in meses}
@@ -1499,16 +1518,16 @@ def grid_ferias_view(request):
     
     for f in ferias_do_ano:
         setor = f.colaborador.setor
-        setor_id = setor.id if setor else 'OUTROS'
+        setor_dict_id = setor.id if setor else 'OUTROS'
         setor_nome = setor.nome if setor else 'OUTROS'
         
         mes_inicio = f.data_inicio.month if f.data_inicio.year == ano else 1
         mes_fim = f.data_fim.month if f.data_fim.year == ano else 12
         
-        setores_com_ferias.add((setor_id, setor_nome))
+        setores_com_ferias.add((setor_dict_id, setor_nome))
         
         for m in range(mes_inicio, mes_fim + 1):
-            matrix[m][setor_id].append({
+            matrix[m][setor_dict_id].append({
                 'colaborador': f.colaborador.nome_abreviado,
                 'inicio': f.data_inicio.strftime('%d/%m'),
                 'fim': f.data_fim.strftime('%d/%m')
@@ -1535,7 +1554,17 @@ def grid_ferias_view(request):
         'ano': ano,
         'setores': setores_ordenados,
         'grid_lines': grid_lines,
-        'anos_disponiveis': range(ano_atual - 2, ano_atual + 3)
+        'anos_disponiveis': range(ano_atual - 2, ano_atual + 3),
+        
+        # Filtros options
+        'setores_filtro': setores_filtro,
+        'turnos_filtro': turnos_filtro,
+        'lideres_filtro': lideres_filtro,
+        
+        # Filtros selecionados
+        'setor_id': setor_id,
+        'turno': turno,
+        'lider_id': lider_id,
     }
     
     return render(request, 'rh/grid_ferias.html', ctx)

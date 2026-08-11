@@ -1,6 +1,30 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block extra_css %}
+<style>
+    .table-sticky th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background-color: #f8f9fa !important;
+        box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+    }
+    .table-sticky th:first-child {
+        left: 0;
+        z-index: 11;
+        box-shadow: 2px 2px 2px -1px rgba(0, 0, 0, 0.1);
+    }
+    .table-sticky td:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 5;
+        background-color: #f8f9fa !important;
+        box-shadow: 2px 0 2px -1px rgba(0, 0, 0, 0.1);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -11,19 +35,54 @@
     </div>
 
     <div class="card shadow mb-4">
-        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-            <h6 class="m-0 font-weight-bold text-primary">Férias Programadas - {{ ano }}</h6>
-            <form class="d-flex" method="get" action="{% url 'rh:grid_ferias' %}">
-                <select name="ano" class="form-select me-2" onchange="this.form.submit()">
-                    {% for a in anos_disponiveis %}
-                    <option value="{{ a }}" {% if a == ano %}selected{% endif %}>{{ a }}</option>
-                    {% endfor %}
-                </select>
+        <div class="card-header bg-white py-3">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="m-0 font-weight-bold text-primary">Férias Programadas - {{ ano }}</h6>
+            </div>
+            <form method="get" action="{% url 'rh:grid_ferias' %}" class="row g-2 align-items-end">
+                <div class="col-md-2">
+                    <label class="form-label small">Ano</label>
+                    <select name="ano" class="form-select form-select-sm" onchange="this.form.submit()">
+                        {% for a in anos_disponiveis %}
+                        <option value="{{ a }}" {% if a == ano %}selected{% endif %}>{{ a }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Setor</label>
+                    <select name="setor_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="">Todos os Setores</option>
+                        {% for s in setores_filtro %}
+                        <option value="{{ s.id }}" {% if s.id|stringformat:"s" == setor_id %}selected{% endif %}>{{ s.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Liderança</label>
+                    <select name="lider_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="">Todas as Lideranças</option>
+                        {% for l in lideres_filtro %}
+                        <option value="{{ l.id }}" {% if l.id|stringformat:"s" == lider_id %}selected{% endif %}>{{ l.nome_completo }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">Turno</label>
+                    <select name="turno" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="">Todos os Turnos</option>
+                        {% for t_value, t_name in turnos_filtro %}
+                        <option value="{{ t_value }}" {% if t_value == turno %}selected{% endif %}>{{ t_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <a href="{% url 'rh:grid_ferias' %}" class="btn btn-sm btn-outline-secondary w-100">Limpar Filtros</a>
+                </div>
             </form>
         </div>
         <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-bordered table-hover align-middle">
+            <div class="table-responsive" style="max-height: 70vh;">
+                <table class="table table-bordered table-hover align-middle table-sticky">
                     <thead class="table-light text-center">
                         <tr>
                             <th style="width: 150px; min-width: 150px;">Mês</th>
