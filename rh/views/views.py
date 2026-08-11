@@ -1631,6 +1631,9 @@ def grid_ferias_view(request):
         'lider_id': lider_id,
         'ordem_agrupamento': ordem_agrupamento,
         'agrupamentos_ativos': agrupamentos_ativos,
+        
+        # Para o modal de registro de férias
+        'colaboradores': Colaborador.objects.filter(is_active=True).select_related('setor').order_by('nome_completo'),
     }
     
     return render(request, 'rh/grid_ferias.html', ctx)
@@ -1786,6 +1789,7 @@ def projecao_mensal_ferias_view(request):
         'lider_id': lider_id,
         'ordem_agrupamento': ordem_agrupamento,
         'agrupamentos_ativos': agrupamentos_ativos,
+        'colaboradores': Colaborador.objects.filter(is_active=True).select_related('setor').order_by('nome_completo'),
     }
     return render(request, 'rh/projecao_mensal.html', ctx)
 

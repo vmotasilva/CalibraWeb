@@ -451,7 +451,7 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <button type="button" class="btn btn-sm btn-primary" onclick="selecionarColaborador({{ colab.id }}, '{{ colab.nome_completo }}')">
+                                        <button type="button" class="btn btn-sm btn-primary" onclick="selecionarColaboradorParaFerias({{ colab.id }}, '{{ colab.nome_completo|escapejs }}')">
                                             <i class="fas fa-check"></i> Selecionar
                                         </button>
                                     </td>
@@ -489,26 +489,9 @@ function confirmarExclusaoFerias(feriasId, nomeColaborador, colab_id) {
     modal.show();
 }
 
-// Função para selecionar colaborador e abrir formulário no pop-up
+// Alias mantido por compatibilidade — delega à função do partial
 function selecionarColaborador(colab_id, nome) {
-    // Fechar modal de seleção
-    bootstrap.Modal.getInstance(document.getElementById('modalSelecionarColaborador')).hide();
-    // Configurar modal de registro
-    document.getElementById('registroFeriasTitle').textContent = 'Registrar Férias — ' + nome;
-    document.getElementById('formRegistrarFerias').action =
-        `{% url 'rh:criar_ferias_colab' colab_id=0 %}`.replace('/0/', `/${colab_id}/`);
-    // Limpar campos
-    document.getElementById('reg_data_inicio').value = '';
-    document.getElementById('reg_dias_solicitados').value = '';
-    document.getElementById('reg_data_fim').value = '';
-    document.getElementById('reg_descricao').value = '';
-    document.getElementById('reg_aprovada').checked = false;
-    document.getElementById('reg_status').value = 'PLANEJADO';
-    document.getElementById('msgRegistroFerias').classList.add('d-none');
-    // Abrir modal de registro
-    setTimeout(() => {
-        new bootstrap.Modal(document.getElementById('modalRegistrarFerias')).show();
-    }, 300);
+    selecionarColaboradorParaFerias(colab_id, nome);
 }
 
 // Filtros em tempo real
@@ -555,110 +538,9 @@ function filtrarColaboradores() {
     
     document.getElementById('totalColaboradores').textContent = visivel;
 }
-// ========================
-// Registro Férias — AJAX
-// ========================
-function calcularDataFimReg() {
-    const ini = document.getElementById('reg_data_inicio').value;
-    const dias = parseInt(document.getElementById('reg_dias_solicitados').value, 10);
-    if (ini && dias > 0) {
-        const d = new Date(ini + 'T12:00:00');
-        d.setDate(d.getDate() + dias - 1);
-        const ano = d.getFullYear();
-        const mes = String(d.getMonth() + 1).padStart(2, '0');
-        const dia = String(d.getDate()).padStart(2, '0');
-        document.getElementById('reg_data_fim').value = `${ano}-${mes}-${dia}`;
-    }
-}
-document.getElementById('reg_data_inicio').addEventListener('change', calcularDataFimReg);
-document.getElementById('reg_dias_solicitados').addEventListener('input', calcularDataFimReg);
-
-document.getElementById('formRegistrarFerias').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const btn = document.getElementById('btnRegistrarFerias');
-    const msg = document.getElementById('msgRegistroFerias');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Registrando...';
-    const formData = new FormData(this);
-    try {
-        const resp = await fetch(this.action, {
-            method: 'POST',
-            body: formData,
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        });
-        if (resp.redirected || resp.ok) {
-            msg.className = 'alert alert-success mt-3';
-            msg.textContent = 'Férias registradas com sucesso!';
-            msg.classList.remove('d-none');
-            setTimeout(() => { window.location.reload(); }, 1200);
-        } else {
-            msg.className = 'alert alert-danger mt-3';
-            msg.textContent = 'Erro ao registrar. Verifique os campos.';
-            msg.classList.remove('d-none');
-        }
-    } catch(err) {
-        msg.className = 'alert alert-danger mt-3';
-        msg.textContent = 'Erro de rede. Tente novamente.';
-        msg.classList.remove('d-none');
-    }
-    btn.disabled = false;
-    btn.innerHTML = '<i class="bi bi-calendar-plus"></i> Registrar Férias';
-});
+// Filtros em tempo real do modal de seleção — delegados ao partial
 </script>
 
-<!-- Modal Registrar Férias -->
-<div class="modal fade" id="modalRegistrarFerias" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title" id="registroFeriasTitle"><i class="bi bi-calendar-check"></i> Registrar Férias</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <form id="formRegistrarFerias" method="post">
-                    {% csrf_token %}
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold">Data de Início <span class="text-danger">*</span></label>
-                            <input type="date" id="reg_data_inicio" name="data_inicio" class="form-control" required>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold">Dias Solicitados <span class="text-danger">*</span></label>
-                            <input type="number" id="reg_dias_solicitados" name="dias_solicitados" class="form-control" min="1" required>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold">Data de Término <span class="text-danger">*</span></label>
-                            <input type="date" id="reg_data_fim" name="data_fim" class="form-control" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Status</label>
-                            <select id="reg_status" name="status" class="form-select">
-                                <option value="PLANEJADO">Planejado</option>
-                                <option value="EM_ANDAMENTO">Em andamento</option>
-                                <option value="CONCLUIDO">Concluído</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6 d-flex align-items-end">
-                            <div class="form-check form-switch">
-                                <input type="checkbox" id="reg_aprovada" name="aprovada" class="form-check-input" value="on">
-                                <label class="form-check-label" for="reg_aprovada">Aprovada?</label>
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label fw-semibold">Observações</label>
-                            <textarea id="reg_descricao" name="descricao" class="form-control" rows="3"></textarea>
-                        </div>
-                    </div>
-                    <div id="msgRegistroFerias" class="d-none"></div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="submit" id="btnRegistrarFerias" form="formRegistrarFerias" class="btn btn-success">
-                    <i class="bi bi-calendar-plus"></i> Registrar Férias
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+<!-- Modal Seleção + Registro compartilhado -->
+{% include 'rh/_modal_registrar_ferias.html' %}
 {% endblock %}

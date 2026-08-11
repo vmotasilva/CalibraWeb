@@ -1,0 +1,230 @@
+﻿{% load static %}
+{% comment %}
+Partial template: modais de Seleção de Colaborador + Registro de Férias.
+Requer que a view passe "colaboradores" no contexto.
+{% endcomment %}
+
+<!-- Modal para Selecionar Colaborador -->
+<div class="modal fade" id="modalSelecionarColaborador" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="fas fa-search"></i> Selecionar Colaborador</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Nome ou Matrícula</label>
+                        <input type="text" class="form-control" id="filtroNomeMatricula" placeholder="Buscar...">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Setor</label>
+                        <select class="form-select" id="filtroSetor">
+                            <option value="">Todos os Setores</option>
+                            {% for colab in colaboradores %}
+                                {% if colab.setor %}
+                                    <option value="{{ colab.setor.id }}">{{ colab.setor.nome }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" id="filtroStatus">
+                            <option value="">Todos</option>
+                            <option value="ativo">Ativo</option>
+                            <option value="inativo">Inativo</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
+                    <table class="table table-hover table-sm">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>Nome</th><th>Matrícula</th><th>Setor</th><th>Status</th><th>Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaColaboradores">
+                            {% for colab in colaboradores %}
+                            <tr class="colaborador-row"
+                                data-nome="{{ colab.nome_completo }}"
+                                data-setor-id="{{ colab.setor.id|default:'' }}"
+                                data-status="{% if colab.is_active %}ativo{% else %}inativo{% endif %}">
+                                <td>{{ colab.nome_completo }}</td>
+                                <td>{{ colab.matricula }}</td>
+                                <td>{{ colab.setor.nome|default:"—" }}</td>
+                                <td>
+                                    {% if colab.is_active %}
+                                        <span class="badge bg-success">Ativo</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Inativo</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary"
+                                        onclick="selecionarColaboradorParaFerias({{ colab.id }}, '{{ colab.nome_completo|escapejs }}')">
+                                        <i class="fas fa-check"></i> Selecionar
+                                    </button>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="5" class="text-center text-muted py-3">Nenhum colaborador encontrado</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="text-muted small mt-2">
+                    Total: <span id="totalColaboradores">{{ colaboradores|length }}</span> colaboradores
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Registrar Férias -->
+<div class="modal fade" id="modalRegistrarFerias" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="registroFeriasTitle"><i class="bi bi-calendar-check"></i> Registrar Férias</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formRegistrarFerias" method="post">
+                    {% csrf_token %}
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Data de Início <span class="text-danger">*</span></label>
+                            <input type="date" id="reg_data_inicio" name="data_inicio" class="form-control" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Dias Solicitados <span class="text-danger">*</span></label>
+                            <input type="number" id="reg_dias_solicitados" name="dias_solicitados" class="form-control" min="1" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Data de Término <span class="text-danger">*</span></label>
+                            <input type="date" id="reg_data_fim" name="data_fim" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Status</label>
+                            <select id="reg_status" name="status" class="form-select">
+                                <option value="PLANEJADO">Planejado</option>
+                                <option value="EM_ANDAMENTO">Em andamento</option>
+                                <option value="CONCLUIDO">Concluído</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <div class="form-check form-switch">
+                                <input type="checkbox" id="reg_aprovada" name="aprovada" class="form-check-input" value="on">
+                                <label class="form-check-label" for="reg_aprovada">Aprovada?</label>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Observações</label>
+                            <textarea id="reg_descricao" name="descricao" class="form-control" rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div id="msgRegistroFerias" class="d-none mt-3"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" id="btnRegistrarFerias" form="formRegistrarFerias" class="btn btn-success">
+                    <i class="bi bi-calendar-plus"></i> Registrar Férias
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    // Filtros da tabela de colaboradores
+    function filtrarColaboradores() {
+        const nome = document.getElementById('filtroNomeMatricula').value.toLowerCase();
+        const setor = document.getElementById('filtroSetor').value;
+        const status = document.getElementById('filtroStatus').value;
+        let visivel = 0;
+        document.querySelectorAll('.colaborador-row').forEach(row => {
+            const ok = row.dataset.nome.toLowerCase().includes(nome)
+                && (!setor || row.dataset.setorId === setor)
+                && (!status || row.dataset.status === status);
+            row.style.display = ok ? '' : 'none';
+            if (ok) visivel++;
+        });
+        document.getElementById('totalColaboradores').textContent = visivel;
+    }
+    document.getElementById('filtroNomeMatricula').addEventListener('keyup', filtrarColaboradores);
+    document.getElementById('filtroSetor').addEventListener('change', filtrarColaboradores);
+    document.getElementById('filtroStatus').addEventListener('change', filtrarColaboradores);
+
+    // Selecionar colaborador
+    window.selecionarColaboradorParaFerias = function(colab_id, nome) {
+        bootstrap.Modal.getInstance(document.getElementById('modalSelecionarColaborador')).hide();
+        document.getElementById('registroFeriasTitle').innerHTML = '<i class="bi bi-calendar-check"></i> Registrar Férias — ' + nome;
+        document.getElementById('formRegistrarFerias').action =
+            "{% url 'rh:criar_ferias_colab' colab_id=0 %}".replace('/0/', '/' + colab_id + '/');
+        // Reset form
+        ['reg_data_inicio','reg_dias_solicitados','reg_data_fim','reg_descricao'].forEach(id => {
+            document.getElementById(id).value = '';
+        });
+        document.getElementById('reg_aprovada').checked = false;
+        document.getElementById('reg_status').value = 'PLANEJADO';
+        document.getElementById('msgRegistroFerias').classList.add('d-none');
+        setTimeout(() => new bootstrap.Modal(document.getElementById('modalRegistrarFerias')).show(), 350);
+    };
+
+    // Auto-calcular data fim
+    function calcularDataFimReg() {
+        const ini = document.getElementById('reg_data_inicio').value;
+        const dias = parseInt(document.getElementById('reg_dias_solicitados').value, 10);
+        if (ini && dias > 0) {
+            const d = new Date(ini + 'T12:00:00');
+            d.setDate(d.getDate() + dias - 1);
+            document.getElementById('reg_data_fim').value =
+                d.getFullYear() + '-' +
+                String(d.getMonth()+1).padStart(2,'0') + '-' +
+                String(d.getDate()).padStart(2,'0');
+        }
+    }
+    document.getElementById('reg_data_inicio').addEventListener('change', calcularDataFimReg);
+    document.getElementById('reg_dias_solicitados').addEventListener('input', calcularDataFimReg);
+
+    // Submit AJAX
+    document.getElementById('formRegistrarFerias').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btnRegistrarFerias');
+        const msg = document.getElementById('msgRegistroFerias');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Registrando...';
+        try {
+            const resp = await fetch(this.action, {
+                method: 'POST', body: new FormData(this),
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            if (resp.ok) {
+                msg.className = 'alert alert-success';
+                msg.textContent = 'Férias registradas com sucesso!';
+                msg.classList.remove('d-none');
+                setTimeout(() => window.location.reload(), 1200);
+            } else {
+                msg.className = 'alert alert-danger';
+                msg.textContent = 'Erro ao registrar. Verifique os campos.';
+                msg.classList.remove('d-none');
+            }
+        } catch(err) {
+            msg.className = 'alert alert-danger';
+            msg.textContent = 'Erro de rede. Tente novamente.';
+            msg.classList.remove('d-none');
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-calendar-plus"></i> Registrar Férias';
+    });
+})();
+</script>
