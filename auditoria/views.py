@@ -2280,8 +2280,8 @@ def registros_por_modelo(request, modelo_id):
         fim_raw = (request.GET.get("fim") or "").strip()
 
     from .models import TopicoAuditoria
-    subs = TopicoAuditoria.objects.filter(categoria__modelo=modelo).order_by("categoria__ordem", "ordem", "nome")
-    topicos = [{"id": str(sub.id), "nome": f"{sub.categoria.nome} - {sub.nome}"} for sub in subs]
+    tps = TopicoAuditoria.objects.filter(modelo=modelo).order_by("parent__ordem", "ordem", "nome")
+    topicos = [{"id": str(t.id), "nome": t.get_full_name()} for t in tps]
 
     topico = ""
     if is_read_only:
@@ -2418,7 +2418,7 @@ def registros_por_modelo(request, modelo_id):
             p = pergunta_map.get(r.pergunta_id)
             if not p:
                 continue
-            sc = f"{p.topico.categoria.nome} - {p.topico.nome}" if p.topico else ""
+            sc = p.topico.get_full_name() if p.topico else ""
             if not sc:
                 continue
             if sc not in counts_by_subcat:
