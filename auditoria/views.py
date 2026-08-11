@@ -2806,7 +2806,7 @@ def registros_por_modelo(request, modelo_id):
         "chart_cards": chart_cards,
         "chart_data": chart_data,
         "topicos": topicos,
-        "selected_topico": topico_val,
+        "selected_topico": topico,
         "subcat_chart": subcat_chart,
         "inicio": inicio_raw,
         "fim": fim_raw,
