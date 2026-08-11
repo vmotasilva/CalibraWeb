@@ -11,7 +11,6 @@ class FeriasForm(forms.ModelForm):
             "data_fim",
             "dias_solicitados",
             "aprovada",
-            "vencimento",
             "descricao"
         ]
         widgets = {
@@ -20,9 +19,28 @@ class FeriasForm(forms.ModelForm):
             "data_fim": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "dias_solicitados": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
             "aprovada": forms.CheckboxInput(attrs={"class": "form-check-input"}),
-            "vencimento": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "descricao": forms.Textarea(attrs={"class": "form-control", "rows": 2}),
         }
+
+class VencimentoFeriasForm(forms.ModelForm):
+    class Meta:
+        from rh.models import VencimentoFerias
+        model = VencimentoFerias
+        fields = [
+            "data_inicio_aquisitivo",
+            "data_fim_aquisitivo",
+            "data_limite_gozo",
+            "dias_direito",
+            "observacoes"
+        ]
+        widgets = {
+            "data_inicio_aquisitivo": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "data_fim_aquisitivo": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "data_limite_gozo": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "dias_direito": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
+            "observacoes": forms.Textarea(attrs={"class": "form-control", "rows": 2}),
+        }
+
 # -*- coding: utf-8 -*-
 """
 Forms para RH Module

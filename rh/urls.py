@@ -8,6 +8,9 @@ from rh.views.views import (
     criar_ferias_view,
     editar_ferias_view,
     excluir_ferias_view,
+    grid_ferias_view,
+    criar_vencimento_ferias_view,
+    excluir_vencimento_ferias_view,
     api_colaboradores,
     api_colaboradores_filtrados,
     api_delete_colaborador,
@@ -58,10 +61,13 @@ urlpatterns = [
     
     # Dashboard e gestão
     path('gestao-ferias/', gestao_ferias_view, name='gestao_ferias'),
+    path('gestao-ferias/grid/', grid_ferias_view, name='grid_ferias'),
     path('gestao-ferias/atualizar-status/', atualizar_status_ferias_view, name='atualizar_status_ferias'),
     path('gestao-ferias/importar/', importar_ferias_view, name='importar_ferias'),
     path('gestao-ferias/criar/', criar_ferias_view, name='criar_ferias'),
     path('gestao-ferias/criar/<int:colab_id>/', criar_ferias_view, name='criar_ferias_colab'),
+    path('colaborador/<int:colab_id>/vencimento/criar/', criar_vencimento_ferias_view, name='criar_vencimento_ferias'),
+    path('colaborador/<int:colab_id>/vencimento/<int:venc_id>/excluir/', excluir_vencimento_ferias_view, name='excluir_vencimento_ferias'),
     path('<int:colab_id>/ferias/<int:ferias_id>/editar/', editar_ferias_view, name='editar_ferias'),
     path('<int:colab_id>/ferias/<int:ferias_id>/excluir/', excluir_ferias_view, name='excluir_ferias'),
     

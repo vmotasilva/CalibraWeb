@@ -33,13 +33,6 @@
                             <div class="invalid-feedback d-block">{{ form.data_fim.errors }}</div>
                         {% endif %}
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Vencimento das Férias</label>
-                        {{ form.vencimento }}
-                        {% if form.vencimento.errors %}
-                            <div class="invalid-feedback d-block">{{ form.vencimento.errors }}</div>
-                        {% endif %}
-                    </div>
                     <div class="col-md-4">
                         <label class="form-label">Dias Solicitados <span class="text-danger">*</span></label>
                         {{ form.dias_solicitados }}
@@ -62,10 +55,41 @@
                     <button type="submit" class="btn btn-success btn-lg">
                         <i class="bi bi-calendar-plus"></i> Registrar Férias
                     </button>
-                    <a href="{% url 'detalhe_colaborador' colab_id=colaborador.id %}" class="btn btn-outline-secondary">Cancelar</a>
+                    <a href="{% url 'rh:detalhe_colaborador' colab_id=colaborador.id %}" class="btn btn-outline-secondary">Cancelar</a>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const dataInicioInput = document.getElementById("id_data_inicio");
+    const diasInput = document.getElementById("id_dias_solicitados");
+    const dataFimInput = document.getElementById("id_data_fim");
+
+    function atualizarDataTermino() {
+        if (dataInicioInput.value && diasInput.value) {
+            const dataInicio = new Date(dataInicioInput.value + 'T12:00:00'); // avoid timezone offset issues
+            const dias = parseInt(diasInput.value, 10);
+            
+            if (!isNaN(dias) && dias > 0) {
+                // Adiciona os dias. A conta comum de férias é Data Início + Dias Solicitados - 1
+                const dataFim = new Date(dataInicio);
+                dataFim.setDate(dataInicio.getDate() + dias - 1);
+                
+                // Formatar para YYYY-MM-DD
+                const ano = dataFim.getFullYear();
+                const mes = String(dataFim.getMonth() + 1).padStart(2, '0');
+                const dia = String(dataFim.getDate()).padStart(2, '0');
+                
+                dataFimInput.value = `${ano}-${mes}-${dia}`;
+            }
+        }
+    }
+
+    dataInicioInput.addEventListener("change", atualizarDataTermino);
+    diasInput.addEventListener("input", atualizarDataTermino);
+});
+</script>
 {% endblock %}

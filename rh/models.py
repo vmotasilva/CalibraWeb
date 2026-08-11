@@ -608,5 +608,21 @@ class PlanejamentoHoraExtra(models.Model):
         return self.horas_extras * self.colaboradores.count()
 
 
+class VencimentoFerias(models.Model):
+    colaborador = models.ForeignKey(
+        Colaborador, on_delete=models.CASCADE, related_name="vencimentos_ferias"
+    )
+    data_inicio_aquisitivo = models.DateField(verbose_name="Início do Período Aquisitivo")
+    data_fim_aquisitivo = models.DateField(verbose_name="Fim do Período Aquisitivo")
+    data_limite_gozo = models.DateField(verbose_name="Data Limite para Gozo (Vencimento)")
+    dias_direito = models.IntegerField(default=30, verbose_name="Dias de Direito")
+    observacoes = models.TextField(null=True, blank=True, verbose_name="Observações")
 
+    def __str__(self):
+        return f"{self.colaborador.nome_completo} - Venc: {self.data_limite_gozo.strftime('%d/%m/%Y')}"
+
+    class Meta:
+        verbose_name = "Vencimento de Férias"
+        verbose_name_plural = "Vencimentos de Férias"
+        ordering = ["data_limite_gozo"]
 

@@ -21,12 +21,12 @@ import secrets
 logger = logging.getLogger(__name__)
 
 # Imports dos models
-from rh.models import Colaborador, Ocorrencia, Ferias, PlanejamentoHoraExtra
+from rh.models import Colaborador, Ocorrencia, Ferias, PlanejamentoHoraExtra, VencimentoFerias
 from organization.models import Setor, CentroCusto, HierarquiaSetor
 from procedures.models import ColaboradorPerfil, PerfilTreinamento, RegistroTreinamento
 
 # Imports dos forms
-from rh.forms import ColaboradorForm, OcorrenciaForm, FeriasForm, PlanejamentoHoraExtraForm
+from rh.forms import ColaboradorForm, OcorrenciaForm, FeriasForm, PlanejamentoHoraExtraForm, VencimentoFeriasForm
 
 # Imports dos helpers
 from qms.views_helpers import get_all_subordinates, get_colaborador_for_user
@@ -680,10 +680,14 @@ def detalhe_colaborador_view(request, colab_id):
     except AttributeError:
         ferias_qs = []
 
+    try:
+        vencimentos_qs = alvo.vencimentos_ferias.all().order_by("-data_limite_gozo")
+    except AttributeError:
+        vencimentos_qs = []
+
     ferias_vencidas = 0
     ferias_programadas = 0
     hoje = date.today()
-
 
     for f in ferias_qs:
         dt_vencimento = getattr(f, 'vencimento', None)
@@ -692,6 +696,11 @@ def detalhe_colaborador_view(request, colab_id):
             ferias_vencidas += 1
         if f.data_inicio and f.data_inicio > hoje:
             ferias_programadas += 1
+
+    # Nova lógica para contagem de vencimentos
+    for v in vencimentos_qs:
+        if v.data_limite_gozo and v.data_limite_gozo < hoje:
+            ferias_vencidas += 1
 
     ctx = {
         "colaborador": usuario_logado,
@@ -709,6 +718,8 @@ def detalhe_colaborador_view(request, colab_id):
         "total_pendentes": total_pendentes,
         "documentos": documentos,
         "ferias": ferias_qs,
+        "vencimentos_ferias": vencimentos_qs,
+        "vencimento_ferias_form": VencimentoFeriasForm(),
         "kpi_ferias_vencidas": ferias_vencidas,
         "kpi_ferias_programadas": ferias_programadas,
         "can_edit": True,
@@ -1423,7 +1434,111 @@ def exportar_ferias_view(request):
         logger.error(f"❌ Erro ao exportar férias: {str(e)}", exc_info=True)
         messages.error(request, f"Erro ao exportar férias: {str(e)}")
         return redirect("rh:gestao_ferias")
+@require_POST
+@login_required
+def criar_vencimento_ferias_view(request, colab_id):
+    """Cria um novo registro de Vencimento de Férias (Período Aquisitivo)"""
+    alvo = get_object_or_404(Colaborador, id=colab_id)
+    
+    if not can_user_access_colaborador(request.user, alvo):
+        messages.error(request, "Acesso Negado.")
+        return redirect("rh:detalhe_colaborador", colab_id=alvo.id)
+        
+    form = VencimentoFeriasForm(request.POST)
+    if form.is_valid():
+        vencimento = form.save(commit=False)
+        vencimento.colaborador = alvo
+        vencimento.save()
+        messages.success(request, "Período Aquisitivo cadastrado com sucesso!")
+    else:
+        messages.error(request, "Erro ao cadastrar Período Aquisitivo. Verifique os dados fornecidos.")
+        
+    return redirect("rh:detalhe_colaborador", colab_id=alvo.id)
 
+@login_required
+def excluir_vencimento_ferias_view(request, colab_id, venc_id):
+    alvo = get_object_or_404(Colaborador, id=colab_id)
+    if not can_user_access_colaborador(request.user, alvo):
+        messages.error(request, "Acesso Negado.")
+        return redirect("rh:detalhe_colaborador", colab_id=alvo.id)
+        
+    venc = get_object_or_404(VencimentoFerias, id=venc_id, colaborador=alvo)
+    venc.delete()
+    messages.success(request, "Vencimento de Férias removido com sucesso!")
+    return redirect("rh:detalhe_colaborador", colab_id=alvo.id)
+@login_required
+def grid_ferias_view(request):
+    """Visualização em formato de grid por setor para as férias"""
+    from datetime import date
+    from django.db.models import Q
+    from collections import defaultdict
+    
+    # Obtém o ano atual ou o ano selecionado
+    ano_atual = date.today().year
+    try:
+        ano = int(request.GET.get('ano', ano_atual))
+    except ValueError:
+        ano = ano_atual
+        
+    meses = [
+        (1, 'Janeiro'), (2, 'Fevereiro'), (3, 'Março'),
+        (4, 'Abril'), (5, 'Maio'), (6, 'Junho'),
+        (7, 'Julho'), (8, 'Agosto'), (9, 'Setembro'),
+        (10, 'Outubro'), (11, 'Novembro'), (12, 'Dezembro')
+    ]
+    
+    # Buscar todas as férias que cruzam o ano selecionado e que estão aprovadas
+    # (ou todas, dependendo da necessidade, mas geralmente apenas as que vão acontecer)
+    ferias_do_ano = Ferias.objects.filter(
+        Q(data_inicio__year=ano) | Q(data_fim__year=ano)
+    ).select_related('colaborador__setor')
+    
+    # Montar a estrutura
+    matrix = {mes_num: defaultdict(list) for mes_num, _ in meses}
+    setores_com_ferias = set()
+    
+    for f in ferias_do_ano:
+        setor = f.colaborador.setor
+        setor_id = setor.id if setor else 'OUTROS'
+        setor_nome = setor.nome if setor else 'OUTROS'
+        
+        mes_inicio = f.data_inicio.month if f.data_inicio.year == ano else 1
+        mes_fim = f.data_fim.month if f.data_fim.year == ano else 12
+        
+        setores_com_ferias.add((setor_id, setor_nome))
+        
+        for m in range(mes_inicio, mes_fim + 1):
+            matrix[m][setor_id].append({
+                'colaborador': f.colaborador.nome_abreviado,
+                'inicio': f.data_inicio.strftime('%d/%m'),
+                'fim': f.data_fim.strftime('%d/%m')
+            })
+            
+    # Ordenar setores (OUTROS vai pro final)
+    setores_ordenados = sorted(
+        list(setores_com_ferias),
+        key=lambda s: ('Z', 'OUTROS') if s[0] == 'OUTROS' else (s[1], s[1])
+    )
+    
+    # Pre-calcular grid lines para o template
+    grid_lines = []
+    for mes_num, mes_nome in meses:
+        setores_row = []
+        for setor_id, _ in setores_ordenados:
+            setores_row.append(matrix[mes_num][setor_id])
+        grid_lines.append({
+            'mes_nome': mes_nome,
+            'setores': setores_row
+        })
+    
+    ctx = {
+        'ano': ano,
+        'setores': setores_ordenados,
+        'grid_lines': grid_lines,
+        'anos_disponiveis': range(ano_atual - 2, ano_atual + 3)
+    }
+    
+    return render(request, 'rh/grid_ferias.html', ctx)
 
 # ==================== API ENDPOINTS ====================
 

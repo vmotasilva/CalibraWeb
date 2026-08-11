@@ -147,6 +147,62 @@
         <!-- COLUNA DA DIREITA -->
         <div class="col-12 col-md-8 mt-4 mt-md-0">
             
+            <!-- CARD DE VENCIMENTOS DE FÉRIAS (PERÍODOS AQUISITIVOS) -->
+            <div class="card shadow-sm mb-4 border-0">
+                <div class="card-header bg-warning text-dark">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <span class="fw-bold"><i class="bi bi-clock-history"></i> Períodos Aquisitivos (Vencimentos)</span>
+                        {% if can_register_ferias %}
+                        <button class="btn btn-sm btn-dark fw-bold" data-bs-toggle="modal" data-bs-target="#modalVencimentoFerias">
+                            <i class="bi bi-plus-circle"></i> Novo Vencimento
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 text-center align-middle" style="font-size: 0.9rem;">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Período Aquisitivo</th>
+                                    <th>Data Limite (Gozo)</th>
+                                    <th>Dias de Direito</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for v in vencimentos_ferias %}
+                                <tr>
+                                    <td>{{ v.data_inicio_aquisitivo|date:"d/m/Y" }} a {{ v.data_fim_aquisitivo|date:"d/m/Y" }}</td>
+                                    <td>
+                                        <span class="fw-bold {% if v.data_limite_gozo < today %}text-danger{% endif %}">
+                                            {{ v.data_limite_gozo|date:"d/m/Y" }}
+                                        </span>
+                                    </td>
+                                    <td>{{ v.dias_direito }}</td>
+                                    <td>
+                                        {% if can_register_ferias %}
+                                        <form method="post" action="{% url 'rh:excluir_vencimento_ferias' colab_id=alvo.id venc_id=v.id %}" style="display:inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Tem certeza?');">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-muted py-3">Nenhum período aquisitivo cadastrado.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
             <!-- CARD DE FÉRIAS (ATUALIZADO COM DIAS VENDIDOS) -->
             <div class="card shadow-sm mb-4 border-0">
                 <div class="card-header bg-info text-white">
@@ -741,5 +797,46 @@ function confirmarRemocaoPerfil(perfilCodigo, perfilId, colaboradorId) {
     }
 }
 </script>
+
+<!-- Modal Vencimento Férias -->
+<div class="modal fade" id="modalVencimentoFerias" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title"><i class="bi bi-clock-history"></i> Novo Período Aquisitivo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'rh:criar_vencimento_ferias' colab_id=alvo.id %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Início Aquisitivo</label>
+                        {{ vencimento_ferias_form.data_inicio_aquisitivo }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Fim Aquisitivo</label>
+                        {{ vencimento_ferias_form.data_fim_aquisitivo }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Data Limite (Gozo)</label>
+                        {{ vencimento_ferias_form.data_limite_gozo }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Dias de Direito</label>
+                        {{ vencimento_ferias_form.dias_direito }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Observações</label>
+                        {{ vencimento_ferias_form.observacoes }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning fw-bold">Salvar Vencimento</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 {% endblock %}
