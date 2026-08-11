@@ -117,22 +117,6 @@
             </div>
         </div>
 
-        {% if form.instance.pk %}
-        <div class="card border-0 bg-light p-3 mb-3">
-            <h5 class="card-title">Estrutura da Auditoria (Cláusulas)</h5>
-            <p class="text-muted small mb-2">Gerencie as cláusulas e sub-cláusulas desta auditoria.</p>
-            <div>
-                <a href="{% url 'auditoria:modelo_categorias' form.instance.pk %}" class="btn btn-outline-primary">
-                    <i class="bi bi-diagram-3"></i> Gerenciar Cláusulas e Sub-cláusulas
-                </a>
-            </div>
-        </div>
-        {% else %}
-        <div class="alert alert-info">
-            Você poderá gerenciar as Cláusulas e Sub-cláusulas após salvar este modelo pela primeira vez.
-        </div>
-        {% endif %}
-        
         <!-- Campos de Referência de Periodicidade -->
         <div id="campo-semanal" class="mb-3" style="display: none;">
             <label class="form-label">Dia da Semana <span class="text-danger">*</span></label>

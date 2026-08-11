@@ -192,43 +192,48 @@ class ModeloAuditoria(models.Model):
 
 
 
-class CategoriaAuditoria(models.Model):
+
+
+
+class TopicoAuditoria(models.Model):
     modelo = models.ForeignKey(
         ModeloAuditoria,
         on_delete=models.CASCADE,
-        related_name="categorias",
+        related_name="topicos",
         verbose_name="Modelo",
     )
-    nome = models.CharField(max_length=150)
+    parent = models.ForeignKey(
+        "self",
+        on_delete=models.CASCADE,
+        related_name="subtopicos",
+        null=True,
+        blank=True,
+        verbose_name="Tópico Pai",
+    )
+    nome = models.CharField(max_length=255)
     ordem = models.PositiveIntegerField(default=1)
 
     class Meta:
-        verbose_name = "Categoria de Auditoria"
-        verbose_name_plural = "Categorias de Auditoria"
-        ordering = ["modelo", "ordem", "nome"]
+        verbose_name = "Tópico de Auditoria"
+        verbose_name_plural = "Tópicos de Auditoria"
+        ordering = ["modelo", "parent__ordem", "ordem", "nome"]
 
     def __str__(self):
+        if self.parent:
+            return f"{self.parent} > {self.nome}"
         return f"{self.modelo.nome} - {self.nome}"
 
+    def get_path(self):
+        """Retorna uma lista contendo a hierarquia desde o Tópico raiz até este Tópico."""
+        path = []
+        current = self
+        while current is not None:
+            path.append(current)
+            current = current.parent
+        return path[::-1]
 
-class SubcategoriaAuditoria(models.Model):
-    categoria = models.ForeignKey(
-        CategoriaAuditoria,
-        on_delete=models.CASCADE,
-        related_name="subcategorias",
-        verbose_name="Categoria",
-    )
-    nome = models.CharField(max_length=150)
-    ordem = models.PositiveIntegerField(default=1)
-
-    class Meta:
-        verbose_name = "Sub-categoria de Auditoria"
-        verbose_name_plural = "Sub-categorias de Auditoria"
-        ordering = ["categoria__modelo", "categoria__ordem", "ordem", "nome"]
-
-    def __str__(self):
-        return f"{self.categoria.nome} - {self.nome}"
-
+    def get_full_name(self, separator=" > "):
+        return separator.join([t.nome for t in self.get_path()])
 
 class PerguntaAuditoria(models.Model):
     TIPO_RESPOSTA_CHOICES = [
@@ -289,14 +294,15 @@ class PerguntaAuditoria(models.Model):
         help_text="Se marcado, esta pergunta aparece no preenchimento em GRID (quando habilitado no modelo).",
     )
     ordem = models.PositiveIntegerField(default=1)
-    subcategoria = models.ForeignKey(
-        SubcategoriaAuditoria,
+
+    topico = models.ForeignKey(
+        TopicoAuditoria,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name="perguntas",
-        verbose_name="Sub-cláusula",
-        help_text="Sub-categoria / Sub-cláusula da pergunta",
+        verbose_name="Tópico / Estrutura",
+        help_text="Tópico hierárquico da pergunta",
     )
     obrigatoria = models.BooleanField(default=True)
     ativo = models.BooleanField(default=True)

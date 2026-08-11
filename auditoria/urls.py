@@ -16,8 +16,7 @@ urlpatterns = [
     path("modelos/<int:pk>/justificar-nao-execucao/", views.justificar_nao_execucao, name="justificar_nao_execucao"),
     
     path("modelos/<int:modelo_id>/categorias/", views.modelo_categorias, name="modelo_categorias"),
-    path("modelos/categorias/<int:pk>/remover/", views.categoria_delete, name="categoria_delete"),
-    path("modelos/subcategorias/<int:pk>/remover/", views.subcategoria_delete, name="subcategoria_delete"),
+    path("modelos/topicos/<int:pk>/remover/", views.topico_delete, name="topico_delete"),
 
     path("perguntas/", views.perguntas_list, name="perguntas_list"),
     path("perguntas/next-ordem/", views.api_next_pergunta_ordem, name="api_next_pergunta_ordem"),

@@ -255,7 +255,7 @@ def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
                 "tipo_resposta": pergunta.tipo_resposta,
                 "tipo_resposta_display": pergunta.get_tipo_resposta_display(),
                 "opcoes_resposta_com_cores": list(getattr(pergunta, "opcoes_resposta_com_cores", []) or []),
-                "subcategoria": f"{pergunta.subcategoria.categoria.nome} - {pergunta.subcategoria.nome}" if pergunta.subcategoria else "",
+                "topico": pergunta.topico.get_full_name() if pergunta.topico else "",
                 "resposta_geral": "",
                 "resposta_geral_cor": "",
                 "respostas_por_dia": {},
@@ -279,9 +279,11 @@ def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
 
     blocos_map: "OrderedDict[str, dict]" = OrderedDict()
     for item in perguntas_consolidadas.values():
-        nome_subcategoria = item["subcategoria"] or "Sem sub-categoria"
-        if nome_subcategoria not in blocos_map:
-            blocos_map[nome_subcategoria] = {"nome": nome_subcategoria, "linhas": []}
+        nome_topico = item["topico"] or "Sem tópico"
+        if nome_topico not in blocos_map:
+            blocos_map[nome_topico] = {"nome": nome_topico, "caminho": nome_topico.split(" > "), "linhas": []}
+
+        blocos_map[nome_topico]["linhas"].append(item)
 
         respostas_por_dia = item["respostas_por_dia"]
         has_resposta_dia = any((respostas_por_dia.get(k) or "").strip() for k in dia_keys)
@@ -1171,8 +1173,9 @@ def registro_create(request, modelo_id=None):
             modelo = get_object_or_404(modelos_qs, pk=modelo_id)
         else:
             return redirect("auditoria:selecionar_modelo_preenchimento")
-    
-    perguntas = PerguntaAuditoria.objects.filter(modelo=modelo, ativo=True).order_by("subcategoria", "ordem", "id")
+    perguntas_qs = PerguntaAuditoria.objects.filter(modelo=modelo, ativo=True).select_related('topico').order_by("ordem", "id")
+    # Sort recursively by topic path in python to group correctly
+    perguntas = sorted(list(perguntas_qs), key=lambda p: (p.topico.get_full_name() if p.topico else "", p.ordem, p.id))
     
     dias_semana_choices = list(ModeloAuditoria.DIA_SEMANA_CHOICES)
     is_semanal = modelo.periodicidade == "SEMANAL"
@@ -1363,8 +1366,8 @@ def registro_edit(request, pk):
         from django.contrib import messages
         messages.warning(request, "Este ciclo já foi concluído e encontra-se bloqueado para edição.")
         return redirect("auditoria:registro_detail", pk=registro.pk)
-        
-    perguntas = PerguntaAuditoria.objects.filter(modelo=registro.modelo, ativo=True).order_by("subcategoria", "ordem", "id")
+    perguntas_qs = PerguntaAuditoria.objects.filter(modelo=registro.modelo, ativo=True).select_related('topico').order_by("ordem", "id")
+    perguntas = sorted(list(perguntas_qs), key=lambda p: (p.topico.get_full_name() if p.topico else "", p.ordem, p.id))
     
     dias_semana_choices = list(ModeloAuditoria.DIA_SEMANA_CHOICES)
     is_semanal = registro.modelo.periodicidade == "SEMANAL"
@@ -3016,9 +3019,9 @@ def exportar_respostas_excel(request, modelo_id):
 
 
 @login_required
-def perguntas_bulk_set_subcategoria(request):
+def perguntas_bulk_set_topico(request):
     modelo_id = request.POST.get("modelo")
-    subcategoria_id = (request.POST.get("subcategoria") or "").strip()
+    topico_id = (request.POST.get("topico") or "").strip()
     pergunta_ids = request.POST.getlist("pergunta_ids")
 
     if not (modelo_id and pergunta_ids):
@@ -3031,20 +3034,20 @@ def perguntas_bulk_set_subcategoria(request):
         messages.error(request, "Você não tem permissão para alterar as perguntas deste modelo.")
         return redirect(f"{reverse('auditoria:perguntas_list')}?modelo={modelo_id}")
 
-    subcategoria_obj = None
-    if subcategoria_id and subcategoria_id.isdigit():
-        from .models import SubcategoriaAuditoria
-        subcategoria_obj = SubcategoriaAuditoria.objects.filter(id=int(subcategoria_id), categoria__modelo=modelo).first()
-        if not subcategoria_obj:
-            messages.error(request, "Sub-cláusula inválida para este modelo.")
+    topico_obj = None
+    if topico_id and topico_id.isdigit():
+        from .models import TopicoAuditoria
+        topico_obj = TopicoAuditoria.objects.filter(id=int(topico_id), modelo=modelo).first()
+        if not topico_obj:
+            messages.error(request, "Tópico inválido para este modelo.")
             return redirect(f"{reverse('auditoria:perguntas_list')}?modelo={modelo_id}")
 
     count = 0
     with transaction.atomic():
         perguntas = PerguntaAuditoria.objects.filter(id__in=pergunta_ids, modelo_id=modelo_id)
         for pergunta in perguntas:
-            pergunta.subcategoria = subcategoria_obj
-            pergunta.save(update_fields=["subcategoria"])
+            pergunta.topico = topico_obj
+            pergunta.save(update_fields=["topico"])
             count += 1
     messages.success(request, f"{count} perguntas atualizadas.")
     return redirect(f"{reverse('auditoria:perguntas_list')}?modelo={modelo_id}")
@@ -3059,78 +3062,52 @@ def modelo_categorias(request, modelo_id):
 
     if request.method == "POST":
         action = request.POST.get("action")
-        if action == "add_categoria":
+        if action == "add_topico":
             nome = request.POST.get("nome")
+            parent_id = request.POST.get("parent_id")
             if nome:
-                from .models import CategoriaAuditoria
-                CategoriaAuditoria.objects.create(modelo=modelo, nome=nome)
-                messages.success(request, "Categoria adicionada.")
-        elif action == "add_subcategoria":
-            categoria_id = request.POST.get("categoria_id")
+                from .models import TopicoAuditoria
+                parent = None
+                if parent_id and parent_id.isdigit():
+                    parent = get_object_or_404(TopicoAuditoria, pk=parent_id, modelo=modelo)
+                TopicoAuditoria.objects.create(modelo=modelo, parent=parent, nome=nome)
+                messages.success(request, "Tópico adicionado.")
+        elif action == "edit_topico":
+            topico_id = request.POST.get("topico_id")
             nome = request.POST.get("nome")
-            if categoria_id and nome:
-                from .models import CategoriaAuditoria, SubcategoriaAuditoria
-                categoria = get_object_or_404(CategoriaAuditoria, pk=categoria_id, modelo=modelo)
-                SubcategoriaAuditoria.objects.create(categoria=categoria, nome=nome)
-                messages.success(request, "Sub-cláusula adicionada.")
-        elif action == "edit_categoria":
-            categoria_id = request.POST.get("categoria_id")
-            nome = request.POST.get("nome")
-            if categoria_id and nome:
-                from .models import CategoriaAuditoria
-                cat = get_object_or_404(CategoriaAuditoria, pk=categoria_id, modelo=modelo)
-                cat.nome = nome
-                cat.save()
-                messages.success(request, "Categoria atualizada.")
-        elif action == "edit_subcategoria":
-            sub_id = request.POST.get("subcategoria_id")
-            nome = request.POST.get("nome")
-            if sub_id and nome:
-                from .models import SubcategoriaAuditoria
-                sub = get_object_or_404(SubcategoriaAuditoria, pk=sub_id, categoria__modelo=modelo)
-                sub.nome = nome
-                sub.save()
-                messages.success(request, "Sub-cláusula atualizada.")
+            if topico_id and nome:
+                from .models import TopicoAuditoria
+                topico = get_object_or_404(TopicoAuditoria, pk=topico_id, modelo=modelo)
+                topico.nome = nome
+                topico.save()
+                messages.success(request, "Tópico atualizado.")
         return redirect("auditoria:modelo_categorias", modelo_id=modelo.id)
 
-    from .models import CategoriaAuditoria
-    categorias = CategoriaAuditoria.objects.filter(modelo=modelo).prefetch_related('subcategorias')
+    from .models import TopicoAuditoria
+    topicos_raiz = TopicoAuditoria.objects.filter(modelo=modelo, parent__isnull=True).prefetch_related('subtopicos')
+    
+    # Busca recursiva para montar a arvore no template (usaremos include do template)
+    # A view so precisa mandar os topicos raiz e os topicos irao renderizar seus filhos.
+    
     context = {
         "modelo": modelo,
-        "categorias": categorias,
+        "topicos_raiz": topicos_raiz,
     }
     return render(request, "auditoria/modelo_categorias.html", context)
 
 
 @login_required
 @require_POST
-def categoria_delete(request, pk):
-    from .models import CategoriaAuditoria
-    categoria = get_object_or_404(CategoriaAuditoria, pk=pk)
-    if not _auditoria_can_update_modelo(request.user, categoria.modelo):
+def topico_delete(request, pk):
+    from .models import TopicoAuditoria
+    topico = get_object_or_404(TopicoAuditoria, pk=pk)
+    if not _auditoria_can_update_modelo(request.user, topico.modelo):
         return HttpResponseForbidden()
     
-    modelo_id = categoria.modelo_id
+    modelo_id = topico.modelo_id
     try:
-        categoria.delete()
-        messages.success(request, "Categoria removida.")
+        topico.delete()
+        messages.success(request, "Tópico removido.")
     except ProtectedError:
-        messages.error(request, "Não é possível remover a categoria pois ela está vinculada a perguntas.")
-    return redirect("auditoria:modelo_categorias", modelo_id=modelo_id)
-
-
-@login_required
-@require_POST
-def subcategoria_delete(request, pk):
-    from .models import SubcategoriaAuditoria
-    subcategoria = get_object_or_404(SubcategoriaAuditoria, pk=pk)
-    if not _auditoria_can_update_modelo(request.user, subcategoria.categoria.modelo):
-        return HttpResponseForbidden()
-    
-    modelo_id = subcategoria.categoria.modelo_id
-    try:
-        subcategoria.delete()
-        messages.success(request, "Sub-cláusula removida.")
-    except ProtectedError:
-        messages.error(request, "Não é possível remover a sub-cláusula pois ela está vinculada a perguntas.")
+        messages.error(request, "Não é possível remover o tópico pois ele está vinculado a perguntas ou sub-tópicos vinculados a perguntas.")
     return redirect("auditoria:modelo_categorias", modelo_id=modelo_id)

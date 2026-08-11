@@ -204,12 +204,17 @@
                                     aria-labelledby="tab-grid-{{ forloop.counter0 }}">
 
                                     {% for pergunta in grid_perguntas %}
-                                    {% ifchanged pergunta.subcategoria %}
-                                        {% if pergunta.subcategoria %}
-                                            <div class="alert alert-secondary py-2">
-                                                <strong>{{ pergunta.subcategoria }}</strong>
-                                            </div>
-                                        {% endif %}
+                                    {% ifchanged pergunta.topico %}
+                                        <div class="alert alert-secondary py-2 d-flex flex-wrap align-items-center mb-3">
+                                            {% if pergunta.topico %}
+                                                {% for part in pergunta.topico.get_path %}
+                                                    {% if not forloop.first %}<i class="bi bi-chevron-right text-muted small mx-1"></i>{% endif %}
+                                                    <span class="fw-bold">{{ part.nome }}</span>
+                                                {% endfor %}
+                                            {% else %}
+                                                <strong>Sem Tópico</strong>
+                                            {% endif %}
+                                        </div>
                                     {% endifchanged %}
                                     <div class="card mb-3 {% if pergunta.obrigatoria %}border-primary{% endif %}">
                                         <div class="card-body">
@@ -275,12 +280,17 @@
                                     {% endfor %}
 
                                     {% for pergunta in perguntas_por_dia %}
-                                    {% ifchanged pergunta.subcategoria %}
-                                        {% if pergunta.subcategoria %}
-                                            <div class="alert alert-secondary py-2">
-                                                <strong>{{ pergunta.subcategoria }}</strong>
-                                            </div>
-                                        {% endif %}
+                                    {% ifchanged pergunta.topico %}
+                                        <div class="alert alert-secondary py-2 d-flex flex-wrap align-items-center mb-3">
+                                            {% if pergunta.topico %}
+                                                {% for part in pergunta.topico.get_path %}
+                                                    {% if not forloop.first %}<i class="bi bi-chevron-right text-muted small mx-1"></i>{% endif %}
+                                                    <span class="fw-bold">{{ part.nome }}</span>
+                                                {% endfor %}
+                                            {% else %}
+                                                <strong>Sem Tópico</strong>
+                                            {% endif %}
+                                        </div>
                                     {% endifchanged %}
                                     <div class="card mb-3 {% if pergunta.obrigatoria %}border-primary{% endif %}">
                                         <div class="card-body">
@@ -358,13 +368,18 @@
                     </div>
                     {% else %}
                         {% for pergunta in grid_perguntas %}
-                        {% ifchanged pergunta.subcategoria %}
-                            {% if pergunta.subcategoria %}
-                                <div class="alert alert-secondary py-2">
-                                    <strong>{{ pergunta.subcategoria }}</strong>
-                                </div>
-                            {% endif %}
-                        {% endifchanged %}
+                                    {% ifchanged pergunta.topico %}
+                                        <div class="alert alert-secondary py-2 d-flex flex-wrap align-items-center mb-3">
+                                            {% if pergunta.topico %}
+                                                {% for part in pergunta.topico.get_path %}
+                                                    {% if not forloop.first %}<i class="bi bi-chevron-right text-muted small mx-1"></i>{% endif %}
+                                                    <span class="fw-bold">{{ part.nome }}</span>
+                                                {% endfor %}
+                                            {% else %}
+                                                <strong>Sem Tópico</strong>
+                                            {% endif %}
+                                        </div>
+                                    {% endifchanged %}
                         <div class="card mb-3 {% if pergunta.obrigatoria %}border-primary{% endif %}">
                             <div class="card-body">
                                 <label class="form-label fw-bold mb-2">
@@ -430,13 +445,18 @@
 
                     {% if not grid_enabled or not grid_itens %}
                         {% for pergunta in perguntas_por_dia %}
-                        {% ifchanged pergunta.subcategoria %}
-                            {% if pergunta.subcategoria %}
-                                <div class="alert alert-secondary py-2">
-                                    <strong>{{ pergunta.subcategoria }}</strong>
-                                </div>
-                            {% endif %}
-                        {% endifchanged %}
+                                    {% ifchanged pergunta.topico %}
+                                        <div class="alert alert-secondary py-2 d-flex flex-wrap align-items-center mb-3">
+                                            {% if pergunta.topico %}
+                                                {% for part in pergunta.topico.get_path %}
+                                                    {% if not forloop.first %}<i class="bi bi-chevron-right text-muted small mx-1"></i>{% endif %}
+                                                    <span class="fw-bold">{{ part.nome }}</span>
+                                                {% endfor %}
+                                            {% else %}
+                                                <strong>Sem Tópico</strong>
+                                            {% endif %}
+                                        </div>
+                                    {% endifchanged %}
                         <div class="card mb-3 {% if pergunta.obrigatoria %}border-primary{% endif %}">
                             <div class="card-body">
                                 <label class="form-label fw-bold mb-2">

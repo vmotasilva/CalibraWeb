@@ -95,7 +95,7 @@ class PerguntaAuditoriaForm(forms.ModelForm):
         model = PerguntaAuditoria
         fields = [
             "modelo",
-            "subcategoria",
+            "topico",
             "pergunta",
             "descricao_detalhada",
             "tipo_resposta",
@@ -110,7 +110,7 @@ class PerguntaAuditoriaForm(forms.ModelForm):
         ]
         widgets = {
             "modelo": forms.Select(attrs={"class": "form-select"}),
-            "subcategoria": forms.Select(attrs={"class": "form-select"}),
+            "topico": forms.Select(attrs={"class": "form-select"}),
             "pergunta": forms.TextInput(attrs={"class": "form-control"}),
             "descricao_detalhada": forms.Textarea(
                 attrs={
@@ -168,30 +168,30 @@ class PerguntaAuditoriaForm(forms.ModelForm):
         if not modelo_id and getattr(self.instance, "modelo_id", None):
             modelo_id = str(self.instance.modelo_id)
 
-        current_value = getattr(self.instance, "subcategoria_id", None)
+        current_value = getattr(self.instance, "topico_id", None)
 
-        from .models import SubcategoriaAuditoria
-        choices = [("", "—")]
+        from .models import TopicoAuditoria
+        choices = [("", "-")]
         if modelo_id and str(modelo_id).isdigit():
             try:
-                subs = SubcategoriaAuditoria.objects.filter(categoria__modelo_id=int(modelo_id)).order_by("categoria__ordem", "ordem", "nome")
-                for sub in subs:
-                    choices.append((sub.id, f"{sub.categoria.nome} - {sub.nome}"))
+                topicos = TopicoAuditoria.objects.filter(modelo_id=int(modelo_id)).order_by("parent__ordem", "ordem", "nome")
+                for topico in topicos:
+                    choices.append((topico.id, topico.get_full_name()))
             except Exception:
                 pass
 
         # Expose the current value to the template/JS to avoid losing it on dynamic refresh
         try:
-            self.fields["subcategoria"].widget.attrs["data-current"] = current_value or ""
+            self.fields["topico"].widget.attrs["data-current"] = current_value or ""
         except Exception:
             pass
 
-        self.fields["subcategoria"].choices = choices
+        self.fields["topico"].choices = choices
 
     def clean(self):
         cleaned_data = super().clean()
         modelo = cleaned_data.get("modelo")
-        subcategoria = cleaned_data.get("subcategoria")
+        topico = cleaned_data.get("topico")
         conjunto_resposta_padrao = (cleaned_data.get("conjunto_resposta_padrao") or "").strip()
 
         preset = None
@@ -210,11 +210,11 @@ class PerguntaAuditoriaForm(forms.ModelForm):
         opcoes_resposta = (cleaned_data.get("opcoes_resposta") or "").strip()
         opcoes_resposta_cores_value = cleaned_data.get("opcoes_resposta_cores") or ""
 
-        if modelo and subcategoria:
-            if subcategoria.categoria.modelo_id != modelo.id:
+        if modelo and topico:
+            if topico.modelo_id != modelo.id:
                 self.add_error(
-                    "subcategoria",
-                    "Sub-cláusula inválida para este modelo.",
+                    "topico",
+                    "Tópico inválido para este modelo.",
                 )
 
         values = [v.strip() for v in opcoes_resposta.replace("\r\n", "\n").split("\n") if v.strip()]

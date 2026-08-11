@@ -98,6 +98,9 @@
                                     <span class="visually-hidden">Duplicar</span>
                                 </button>
                             </form>
+                            <a href="{% url 'auditoria:modelo_categorias' modelo.id %}" class="btn btn-sm btn-outline-success" title="Gerenciar cláusulas e tópicos" data-bs-toggle="tooltip" data-bs-placement="top" aria-label="Tópicos">
+                                <i class="bi bi-diagram-3"></i>
+                            </a>
                             <a href="{% url 'auditoria:perguntas_list' %}?modelo={{ modelo.id }}" class="btn btn-sm btn-outline-primary" title="Gerenciar perguntas" data-bs-toggle="tooltip" data-bs-placement="top" aria-label="Perguntas">
                                 <i class="bi bi-question-circle"></i>
                             </a>
