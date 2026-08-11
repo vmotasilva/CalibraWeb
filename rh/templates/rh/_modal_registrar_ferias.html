@@ -1,4 +1,4 @@
-﻿{% load static %}
+{% load static %}
 {% comment %}
 Partial template: modais de Seleção de Colaborador + Registro de Férias.
 Requer que a view passe "colaboradores" no contexto.
@@ -170,6 +170,7 @@ Requer que a view passe "colaboradores" no contexto.
         document.getElementById('registroFeriasTitle').innerHTML = '<i class="bi bi-calendar-check"></i> Registrar Férias — ' + nome;
         document.getElementById('formRegistrarFerias').action =
             "{% url 'rh:criar_ferias_colab' colab_id=0 %}".replace('/0/', '/' + colab_id + '/');
+        document.getElementById('btnRegistrarFerias').innerHTML = '<i class="bi bi-calendar-plus"></i> Registrar Férias';
         // Reset form
         ['reg_data_inicio','reg_dias_solicitados','reg_data_fim','reg_descricao'].forEach(id => {
             document.getElementById(id).value = '';
@@ -178,6 +179,33 @@ Requer que a view passe "colaboradores" no contexto.
         document.getElementById('reg_status').value = 'PLANEJADO';
         document.getElementById('msgRegistroFerias').classList.add('d-none');
         setTimeout(() => new bootstrap.Modal(document.getElementById('modalRegistrarFerias')).show(), 350);
+    };
+
+    window.editarFerias = async function(feriasId, nomeColaborador) {
+        try {
+            const resp = await fetch('/rh/api/ferias/' + feriasId + '/');
+            if (resp.ok) {
+                const data = await resp.json();
+                document.getElementById('registroFeriasTitle').innerHTML = '<i class="bi bi-pencil-square"></i> Editar Férias — ' + nomeColaborador;
+                document.getElementById('formRegistrarFerias').action = '/rh/api/ferias/' + feriasId + '/';
+                document.getElementById('btnRegistrarFerias').innerHTML = '<i class="bi bi-save"></i> Salvar Alterações';
+                
+                document.getElementById('reg_data_inicio').value = data.data_inicio;
+                document.getElementById('reg_dias_solicitados').value = data.dias_solicitados;
+                document.getElementById('reg_data_fim').value = data.data_fim;
+                document.getElementById('reg_descricao').value = data.descricao;
+                document.getElementById('reg_status').value = data.status;
+                document.getElementById('reg_aprovada').checked = data.aprovada;
+                
+                document.getElementById('msgRegistroFerias').classList.add('d-none');
+                new bootstrap.Modal(document.getElementById('modalRegistrarFerias')).show();
+            } else {
+                alert('Erro ao carregar dados das férias.');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Erro de conexão ao carregar férias.');
+        }
     };
 
     // Auto-calcular data fim
@@ -224,7 +252,11 @@ Requer que a view passe "colaboradores" no contexto.
             msg.classList.remove('d-none');
         }
         btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-calendar-plus"></i> Registrar Férias';
+        if (this.action.includes('/api/ferias/')) {
+            btn.innerHTML = '<i class="bi bi-save"></i> Salvar Alterações';
+        } else {
+            btn.innerHTML = '<i class="bi bi-calendar-plus"></i> Registrar Férias';
+        }
     });
 })();
 </script>

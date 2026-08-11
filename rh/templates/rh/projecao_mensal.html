@@ -158,26 +158,35 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-2">
-                <a href="{% url 'rh:projecao_mensal_ferias' %}" class="btn btn-sm btn-outline-secondary w-100">Limpar Filtros</a>
+            <div class="col-md-2 d-flex gap-2">
+                <a href="{% url 'rh:projecao_mensal_ferias' %}" class="btn btn-sm btn-outline-secondary w-100">Limpar</a>
             </div>
         </form>
 
-        <!-- Agrupamentos -->
-        <div class="mt-3 pt-3 border-top d-flex gap-4 align-items-center">
-            <span class="small fw-bold text-muted"><i class="bi bi-diagram-3"></i> Agrupar dentro do card por:</span>
+        <!-- Agrupamentos e Exibição -->
+        <div class="mt-3 pt-3 border-top d-flex flex-wrap gap-4 align-items-center">
+            <div class="d-flex gap-3 align-items-center border-end pe-4">
+                <span class="small fw-bold text-muted"><i class="bi bi-diagram-3"></i> Agrupar por:</span>
+                <div class="form-check form-switch">
+                    <input class="form-check-input agrupamento-cb" type="checkbox" id="agrupar_lider" value="lider" onchange="updateAgrupamento()" {% if 'lider' in agrupamentos_ativos %}checked{% endif %}>
+                    <label class="form-check-label small" for="agrupar_lider">Liderança</label>
+                </div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input agrupamento-cb" type="checkbox" id="agrupar_setor" value="setor" onchange="updateAgrupamento()" {% if 'setor' in agrupamentos_ativos %}checked{% endif %}>
+                    <label class="form-check-label small" for="agrupar_setor">Setor</label>
+                </div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input agrupamento-cb" type="checkbox" id="agrupar_turno" value="turno" onchange="updateAgrupamento()" {% if 'turno' in agrupamentos_ativos %}checked{% endif %}>
+                    <label class="form-check-label small" for="agrupar_turno">Turno</label>
+                </div>
+            </div>
 
-            <div class="form-check form-switch">
-                <input class="form-check-input agrupamento-cb" type="checkbox" id="agrupar_lider" value="lider" onchange="updateAgrupamento()" {% if 'lider' in agrupamentos_ativos %}checked{% endif %}>
-                <label class="form-check-label small" for="agrupar_lider">Liderança</label>
-            </div>
-            <div class="form-check form-switch">
-                <input class="form-check-input agrupamento-cb" type="checkbox" id="agrupar_setor" value="setor" onchange="updateAgrupamento()" {% if 'setor' in agrupamentos_ativos %}checked{% endif %}>
-                <label class="form-check-label small" for="agrupar_setor">Setor</label>
-            </div>
-            <div class="form-check form-switch">
-                <input class="form-check-input agrupamento-cb" type="checkbox" id="agrupar_turno" value="turno" onchange="updateAgrupamento()" {% if 'turno' in agrupamentos_ativos %}checked{% endif %}>
-                <label class="form-check-label small" for="agrupar_turno">Turno</label>
+            <div class="d-flex gap-3 align-items-center">
+                <span class="small fw-bold text-muted"><i class="bi bi-eye"></i> Exibição:</span>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="ocultar_vazios" onchange="toggleMesesVazios()">
+                    <label class="form-check-label small" for="ocultar_vazios">Ocultar meses vazios</label>
+                </div>
             </div>
 
             <form id="form_agrupamento" method="get" action="{% url 'rh:projecao_mensal_ferias' %}" class="d-none">
@@ -220,7 +229,7 @@
                                     <i class="bi bi-dot"></i> {{ g3.label }}
                                 </div>
                                 {% for p in g3.pessoas %}
-                                <div class="pessoa-item">
+                                <div class="pessoa-item" onclick="editarFerias({{ p.ferias_id }}, '{{ p.colaborador|escapejs }}')" style="cursor: pointer;">
                                     <div class="pessoa-avatar">{{ p.colaborador_abrev|slice:":2"|upper }}</div>
                                     <div class="pessoa-info">
                                         <div class="pessoa-nome" title="{{ p.colaborador }}">{{ p.colaborador }}</div>
@@ -232,7 +241,7 @@
                                 {% endfor %}
                             {% else %}
                                 {% for p in g2.pessoas %}
-                                <div class="pessoa-item">
+                                <div class="pessoa-item" onclick="editarFerias({{ p.ferias_id }}, '{{ p.colaborador|escapejs }}')" style="cursor: pointer;">
                                     <div class="pessoa-avatar">{{ p.colaborador_abrev|slice:":2"|upper }}</div>
                                     <div class="pessoa-info">
                                         <div class="pessoa-nome" title="{{ p.colaborador }}">{{ p.colaborador }}</div>
@@ -245,7 +254,7 @@
                             {% endfor %}
                         {% else %}
                             {% for p in g1.pessoas %}
-                            <div class="pessoa-item">
+                            <div class="pessoa-item" onclick="editarFerias({{ p.ferias_id }}, '{{ p.colaborador|escapejs }}')" style="cursor: pointer;">
                                 <div class="pessoa-avatar">{{ p.colaborador_abrev|slice:":2"|upper }}</div>
                                 <div class="pessoa-info">
                                     <div class="pessoa-nome" title="{{ p.colaborador }}">{{ p.colaborador }}</div>
@@ -258,7 +267,7 @@
                         {% endfor %}
                     {% else %}
                         {% for p in card.pessoas %}
-                        <div class="pessoa-item">
+                        <div class="pessoa-item" onclick="editarFerias({{ p.ferias_id }}, '{{ p.colaborador|escapejs }}')" style="cursor: pointer;">
                             <div class="pessoa-avatar">{{ p.colaborador_abrev|slice:":2"|upper }}</div>
                             <div class="pessoa-info">
                                 <div class="pessoa-nome" title="{{ p.colaborador }}">{{ p.colaborador }}</div>
@@ -279,6 +288,7 @@
     let ordemAgrupamento = "{{ ordem_agrupamento }}".split(',').filter(x => x);
 
     function updateAgrupamento() {
+        let ordemAgrupamento = [];
         document.querySelectorAll('.agrupamento-cb').forEach(cb => {
             const val = cb.value;
             if (cb.checked && !ordemAgrupamento.includes(val)) {
@@ -289,6 +299,17 @@
         });
         document.getElementById('ordem_agrupamento_input').value = ordemAgrupamento.join(',');
         document.getElementById('form_agrupamento').submit();
+    }
+
+    function toggleMesesVazios() {
+        const ocultar = document.getElementById('ocultar_vazios').checked;
+        document.querySelectorAll('.mes-vazio').forEach(card => {
+            if (ocultar) {
+                card.closest('.col-12').classList.add('d-none');
+            } else {
+                card.closest('.col-12').classList.remove('d-none');
+            }
+        });
     }
 </script>
 {% include 'rh/_modal_registrar_ferias.html' %}
