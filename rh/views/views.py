@@ -1706,6 +1706,8 @@ def projecao_mensal_ferias_view(request):
         lider_nome = f.colaborador.lider.nome_abreviado if f.colaborador.lider else None
 
         mes_map[mes_predominante].append({
+            'ferias_id': f.id,
+            'colab_id': f.colaborador.id,
             'colaborador': f.colaborador.nome_completo,
             'colaborador_abrev': f.colaborador.nome_abreviado,
             'setor': setor_nome,
@@ -1713,7 +1715,12 @@ def projecao_mensal_ferias_view(request):
             'lider': lider_nome,
             'inicio': f.data_inicio.strftime('%d/%m'),
             'fim': f.data_fim.strftime('%d/%m'),
-            'dias': (f.data_fim - f.data_inicio).days + 1,
+            'data_inicio_iso': f.data_inicio.strftime('%Y-%m-%d'),
+            'data_fim_iso': f.data_fim.strftime('%Y-%m-%d'),
+            'dias': f.dias_solicitados,
+            'status': f.status,
+            'aprovada': f.aprovada,
+            'descricao': f.descricao or '',
         })
 
     # Agrupamentos opcionais dentro de cada card
@@ -1786,6 +1793,51 @@ def projecao_mensal_ferias_view(request):
 # ==================== API ENDPOINTS ====================
 
 from django.http import JsonResponse
+
+
+@login_required
+def api_ferias_detail(request, ferias_id):
+    """GET: retorna dados da férias como JSON. POST: atualiza os campos editáveis."""
+    from django.views.decorators.csrf import csrf_exempt
+    import json
+
+    ferias = get_object_or_404(Ferias, id=ferias_id)
+
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            from datetime import datetime as dt_parse
+            if 'data_inicio' in data and data['data_inicio']:
+                ferias.data_inicio = dt_parse.strptime(data['data_inicio'], '%Y-%m-%d').date()
+            if 'data_fim' in data and data['data_fim']:
+                ferias.data_fim = dt_parse.strptime(data['data_fim'], '%Y-%m-%d').date()
+            if 'dias_solicitados' in data:
+                ferias.dias_solicitados = int(data['dias_solicitados'])
+            if 'aprovada' in data:
+                ferias.aprovada = bool(data['aprovada'])
+            if 'descricao' in data:
+                ferias.descricao = data['descricao']
+            ferias.save()
+            return JsonResponse({'ok': True, 'message': 'Férias atualizadas com sucesso!'})
+        except Exception as e:
+            return JsonResponse({'ok': False, 'message': str(e)}, status=400)
+
+    # GET
+    return JsonResponse({
+        'id': ferias.id,
+        'colaborador': ferias.colaborador.nome_completo,
+        'colab_id': ferias.colaborador.id,
+        'setor': ferias.colaborador.setor.nome if ferias.colaborador.setor else '—',
+        'turno': ferias.colaborador.turno or '—',
+        'lider': ferias.colaborador.lider.nome_abreviado if ferias.colaborador.lider else None,
+        'data_inicio': ferias.data_inicio.strftime('%Y-%m-%d'),
+        'data_fim': ferias.data_fim.strftime('%Y-%m-%d'),
+        'dias_solicitados': ferias.dias_solicitados,
+        'status': ferias.status,
+        'status_display': ferias.get_status_display(),
+        'aprovada': ferias.aprovada,
+        'descricao': ferias.descricao or '',
+    })
 
 
 def api_colaboradores(request):
@@ -1959,9 +2011,15 @@ def criar_ferias_view(request, colab_id=None):
             ferias = form.save(commit=False)
             ferias.colaborador = colaborador
             ferias.save()
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                from django.http import JsonResponse
+                return JsonResponse({'ok': True, 'message': 'Férias registradas com sucesso!'})
             messages.success(request, "Registro de férias criado com sucesso!")
             return redirect('rh:gestao_ferias')
         else:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                from django.http import JsonResponse
+                return JsonResponse({'ok': False, 'message': 'Verifique os dados do formulário.', 'errors': form.errors}, status=400)
             messages.error(request, "Verifique os dados do formulário.")
     else:
         form = FeriasForm()
