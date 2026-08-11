@@ -12,25 +12,12 @@
             <form method="post">
                 {% csrf_token %}
                 <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label">Status das Férias</label>
-                        {{ form.status }}
-                        {% if form.status.errors %}
-                            <div class="invalid-feedback d-block">{{ form.status.errors }}</div>
-                        {% endif %}
-                    </div>
-                    <div class="col-md-6">
+                    <!-- Linha 1 -->
+                    <div class="col-md-4">
                         <label class="form-label">Data de Início <span class="text-danger">*</span></label>
                         {{ form.data_inicio }}
                         {% if form.data_inicio.errors %}
                             <div class="invalid-feedback d-block">{{ form.data_inicio.errors }}</div>
-                        {% endif %}
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Data de Término <span class="text-danger">*</span></label>
-                        {{ form.data_fim }}
-                        {% if form.data_fim.errors %}
-                            <div class="invalid-feedback d-block">{{ form.data_fim.errors }}</div>
                         {% endif %}
                     </div>
                     <div class="col-md-4">
@@ -40,12 +27,30 @@
                             <div class="invalid-feedback d-block">{{ form.dias_solicitados.errors }}</div>
                         {% endif %}
                     </div>
-                    <div class="col-md-4 pt-4">
+                    <div class="col-md-4">
+                        <label class="form-label">Data de Término <span class="text-danger">*</span></label>
+                        {{ form.data_fim }}
+                        {% if form.data_fim.errors %}
+                            <div class="invalid-feedback d-block">{{ form.data_fim.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Linha 2 -->
+                    <div class="col-md-6">
+                        <label class="form-label">Status das Férias</label>
+                        {{ form.status }}
+                        {% if form.status.errors %}
+                            <div class="invalid-feedback d-block">{{ form.status.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6 pt-4 d-flex align-items-center">
                         <div class="form-check form-switch">
                             {{ form.aprovada }}
                             <label class="form-check-label">Aprovada?</label>
                         </div>
                     </div>
+                    
+                    <!-- Linha 3 -->
                     <div class="col-md-12">
                         <label class="form-label">Observações</label>
                         {{ form.descricao }}
