@@ -1635,6 +1635,116 @@ def grid_ferias_view(request):
     
     return render(request, 'rh/grid_ferias.html', ctx)
 
+
+@login_required
+def projecao_mensal_ferias_view(request):
+    """Visualização de Projeção Mensal de férias — cards por mês com todas as pessoas independente de setor."""
+    from datetime import date
+    import calendar
+    from django.db.models import Q
+
+    ano_atual = date.today().year
+    try:
+        ano = int(request.GET.get('ano', ano_atual))
+    except ValueError:
+        ano = ano_atual
+
+    meses = [
+        (1, 'Janeiro'), (2, 'Fevereiro'), (3, 'Março'),
+        (4, 'Abril'), (5, 'Maio'), (6, 'Junho'),
+        (7, 'Julho'), (8, 'Agosto'), (9, 'Setembro'),
+        (10, 'Outubro'), (11, 'Novembro'), (12, 'Dezembro')
+    ]
+
+    # Filtros opcionais
+    from organization.models import Setor
+    from core.models import TURNOS_CHOICES
+
+    setor_id = request.GET.get('setor_id', '')
+    turno = request.GET.get('turno', '')
+    lider_id = request.GET.get('lider_id', '')
+
+    setores_filtro = Setor.objects.all().order_by('nome')
+    turnos_filtro = TURNOS_CHOICES
+    lideres_filtro = Colaborador.objects.filter(liderados__isnull=False).distinct().order_by('nome_completo')
+
+    base_q = Q(data_inicio__year=ano) | Q(data_fim__year=ano)
+    ferias_qs = Ferias.objects.filter(base_q).select_related('colaborador__setor', 'colaborador__lider')
+
+    if setor_id:
+        ferias_qs = ferias_qs.filter(colaborador__setor_id=setor_id)
+    if turno:
+        ferias_qs = ferias_qs.filter(colaborador__turno=turno)
+    if lider_id:
+        ferias_qs = ferias_qs.filter(colaborador__lider_id=lider_id)
+
+    # Distribuir férias por mês predominante (mesma lógica do grid)
+    from datetime import date as date_cls
+    mes_map = {m: [] for m, _ in meses}
+
+    for f in ferias_qs:
+        mes_inicio_efetivo = f.data_inicio.month if f.data_inicio.year == ano else 1
+        mes_fim_efetivo = f.data_fim.month if f.data_fim.year == ano else 12
+        data_inicio_efetiva = f.data_inicio if f.data_inicio.year == ano else date_cls(ano, 1, 1)
+        data_fim_efetiva = f.data_fim if f.data_fim.year == ano else date_cls(ano, 12, 31)
+
+        dias_por_mes = {}
+        for m in range(mes_inicio_efetivo, mes_fim_efetivo + 1):
+            inicio_mes = date_cls(ano, m, 1)
+            ultimo_dia = calendar.monthrange(ano, m)[1]
+            fim_mes = date_cls(ano, m, ultimo_dia)
+            inicio_periodo = max(data_inicio_efetiva, inicio_mes)
+            fim_periodo = min(data_fim_efetiva, fim_mes)
+            dias_no_mes = (fim_periodo - inicio_periodo).days + 1
+            if dias_no_mes > 0:
+                dias_por_mes[m] = dias_no_mes
+
+        mes_predominante = max(dias_por_mes, key=lambda m: (dias_por_mes[m], -m)) if dias_por_mes else mes_inicio_efetivo
+
+        setor_nome = f.colaborador.setor.nome if f.colaborador.setor else 'Sem Setor'
+        turno_display = dict(TURNOS_CHOICES).get(f.colaborador.turno, f.colaborador.turno or '—')
+        lider_nome = f.colaborador.lider.nome_abreviado if f.colaborador.lider else None
+
+        mes_map[mes_predominante].append({
+            'colaborador': f.colaborador.nome_completo,
+            'colaborador_abrev': f.colaborador.nome_abreviado,
+            'setor': setor_nome,
+            'turno': turno_display,
+            'lider': lider_nome,
+            'inicio': f.data_inicio.strftime('%d/%m'),
+            'fim': f.data_fim.strftime('%d/%m'),
+            'dias': (f.data_fim - f.data_inicio).days + 1,
+        })
+
+    # Ordenar cada mês por nome
+    for m in mes_map:
+        mes_map[m].sort(key=lambda x: x['colaborador'])
+
+    cards = []
+    for mes_num, mes_nome in meses:
+        pessoas = mes_map[mes_num]
+        cards.append({
+            'mes_num': mes_num,
+            'mes_nome': mes_nome,
+            'pessoas': pessoas,
+            'total': len(pessoas),
+        })
+
+    ctx = {
+        'ano': ano,
+        'anos_disponiveis': range(ano_atual - 2, ano_atual + 3),
+        'cards': cards,
+        'total_ano': sum(c['total'] for c in cards),
+        'setores_filtro': setores_filtro,
+        'turnos_filtro': turnos_filtro,
+        'lideres_filtro': lideres_filtro,
+        'setor_id': setor_id,
+        'turno': turno,
+        'lider_id': lider_id,
+    }
+    return render(request, 'rh/projecao_mensal.html', ctx)
+
+
 # ==================== API ENDPOINTS ====================
 
 from django.http import JsonResponse

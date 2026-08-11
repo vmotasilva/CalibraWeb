@@ -9,6 +9,7 @@ from rh.views.views import (
     editar_ferias_view,
     excluir_ferias_view,
     grid_ferias_view,
+    projecao_mensal_ferias_view,
     criar_vencimento_ferias_view,
     excluir_vencimento_ferias_view,
     api_colaboradores,
@@ -62,6 +63,7 @@ urlpatterns = [
     # Dashboard e gestão
     path('gestao-ferias/', gestao_ferias_view, name='gestao_ferias'),
     path('gestao-ferias/grid/', grid_ferias_view, name='grid_ferias'),
+    path('gestao-ferias/projecao-mensal/', projecao_mensal_ferias_view, name='projecao_mensal_ferias'),
     path('gestao-ferias/atualizar-status/', atualizar_status_ferias_view, name='atualizar_status_ferias'),
     path('gestao-ferias/importar/', importar_ferias_view, name='importar_ferias'),
     path('gestao-ferias/criar/', criar_ferias_view, name='criar_ferias'),
