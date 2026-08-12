@@ -135,13 +135,13 @@
                     <label class="form-label small fw-bold">Data Fim</label>
                     <input type="date" name="data_fim" value="{{ data_fim|default:'' }}" class="form-select">
                 </div>
-                {% if lideres %}
+                {% if managers %}
                 <div class="col-12 col-md-3">
-                    <label class="form-label small fw-bold">Filtrar por Líder</label>
+                    <label class="form-label small fw-bold">Filtrar por Manager</label>
                     <select name="lider_id" class="form-select">
-                        <option value="">Todos os Líderes</option>
-                        {% for lid in lideres %}
-                            <option value="{{ lid.id }}" {% if request.GET.lider_id == lid.id|stringformat:'s' %}selected{% endif %}>{{ lid.nome_completo }}</option>
+                        <option value="">Todos os Managers</option>
+                        {% for m in managers %}
+                            <option value="{{ m.id }}" {% if request.GET.lider_id == m.id|stringformat:'s' %}selected{% endif %}>{{ m.nome_completo }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -171,10 +171,15 @@
     <!-- Lista Agrupada por MANAGER -->
     {% for manager in managers_agrupados %}
     <div class="mb-4">
-        <!-- FAIXA DE SEPARAÇÃO POR MANAGER -->
-        <div class="card border-0 shadow-sm bg-dark text-white mb-3">
+        <!-- FAIXA DE SEPARAÇÃO POR MANAGER (RECOLHÍVEL) -->
+        <div class="card border-0 shadow-sm bg-dark text-white mb-3 cursor-pointer"
+             data-bs-toggle="collapse"
+             data-bs-target="#collapseManager_{{ forloop.counter }}"
+             aria-expanded="true"
+             style="cursor: pointer;">
             <div class="card-body py-3 px-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
                 <div class="d-flex align-items-center gap-3">
+                    <i class="bi bi-chevron-down fs-5 text-warning icon-collapse"></i>
                     <div class="bg-warning text-dark p-2 rounded-circle">
                         <i class="bi bi-person-badge-fill fs-4"></i>
                     </div>
@@ -194,60 +199,62 @@
             </div>
         </div>
 
-        <!-- FAIXAS RECOLHÍVEIS POR COLABORADOR -->
-        {% for group in manager.colaboradores %}
-        <div class="card shadow-sm border-0 mb-3 overflow-hidden colab-card">
-            <div class="card-header bg-white py-3 border-bottom border-light cursor-pointer"
-                 data-bs-toggle="collapse"
-                 data-bs-target="#collapseColab_{{ forloop.parentloop.counter }}_{{ forloop.counter }}"
-                 aria-expanded="true"
-                 style="cursor: pointer;">
-                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
-                    <div class="d-flex align-items-center gap-3">
-                        <i class="bi bi-chevron-down transition-transform me-1 fs-5 text-primary icon-collapse"></i>
-                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width: 42px; height: 42px; font-size: 1.05rem;">
-                            {{ group.colaborador.nome_completo|slice:":1" }}
-                        </div>
-                        <div>
-                            <h5 class="fw-bold text-dark mb-1 d-inline">{{ group.colaborador.nome_completo }}</h5>
-                            <div class="d-flex flex-wrap gap-2 text-muted small align-items-center mt-1">
-                                <span><i class="bi bi-person-vcard me-1"></i>Matrícula: <code>{{ group.colaborador.matricula }}</code></span>
-                                {% if group.colaborador.matricula_global %}
-                                    <span>| <i class="bi bi-globe me-1"></i>Mat. Global: <code>{{ group.colaborador.matricula_global }}</code></span>
-                                {% endif %}
-                                {% if group.colaborador.setor %}
-                                    <span>| <i class="bi bi-building me-1"></i>Setor: <strong>{{ group.colaborador.setor.nome }}</strong></span>
-                                {% endif %}
-                                {% if group.colaborador.posto_trabalho %}
-                                    <span>| <i class="bi bi-briefcase me-1"></i>Posto: {{ group.colaborador.posto_trabalho }}</span>
-                                {% endif %}
+        <div id="collapseManager_{{ forloop.counter }}" class="collapse show manager-collapse">
+            <!-- FAIXAS RECOLHÍVEIS POR COLABORADOR (PADRÃO RECOLHIDO) -->
+            {% for group in manager.colaboradores %}
+            <div class="card shadow-sm border-0 mb-3 overflow-hidden colab-card">
+                <div class="card-header bg-white py-3 border-bottom border-light cursor-pointer"
+                     data-bs-toggle="collapse"
+                     data-bs-target="#collapseColab_{{ forloop.parentloop.counter }}_{{ forloop.counter }}"
+                     aria-expanded="false"
+                     style="cursor: pointer;">
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+                        <div class="d-flex align-items-center gap-3">
+                            <i class="bi bi-chevron-right transition-transform me-1 fs-5 text-primary icon-collapse"></i>
+                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width: 42px; height: 42px; font-size: 1.05rem;">
+                                {{ group.colaborador.nome_completo|slice:":1" }}
+                            </div>
+                            <div>
+                                <h5 class="fw-bold text-dark mb-1 d-inline">{{ group.colaborador.nome_completo }}</h5>
+                                <div class="d-flex flex-wrap gap-2 text-muted small align-items-center mt-1">
+                                    <span><i class="bi bi-person-vcard me-1"></i>Matrícula: <code>{{ group.colaborador.matricula }}</code></span>
+                                    {% if group.colaborador.matricula_global %}
+                                        <span>| <i class="bi bi-globe me-1"></i>Mat. Global: <code>{{ group.colaborador.matricula_global }}</code></span>
+                                    {% endif %}
+                                    {% if group.colaborador.setor %}
+                                        <span>| <i class="bi bi-building me-1"></i>Setor: <strong>{{ group.colaborador.setor.nome }}</strong></span>
+                                    {% endif %}
+                                    {% if group.colaborador.posto_trabalho %}
+                                        <span>| <i class="bi bi-briefcase me-1"></i>Posto: {{ group.colaborador.posto_trabalho }}</span>
+                                    {% endif %}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="d-flex align-items-center gap-2">
-                        {% if group.pendentes_count > 0 %}
-                            <span class="badge bg-warning text-dark px-3 py-2 rounded-pill shadow-sm">
-                                <i class="bi bi-exclamation-circle me-1"></i>{{ group.pendentes_count }} Pendente(s)
+                        <div class="d-flex align-items-center gap-2">
+                            {% if group.pendentes_count > 0 %}
+                                <span class="badge bg-warning text-dark px-3 py-2 rounded-pill shadow-sm">
+                                    <i class="bi bi-exclamation-circle me-1"></i>{{ group.pendentes_count }} Pendente(s)
+                                </span>
+                            {% else %}
+                                <span class="badge bg-success text-white px-3 py-2 rounded-pill shadow-sm">
+                                    <i class="bi bi-check-circle me-1"></i>100% Justificado
+                                </span>
+                            {% endif %}
+                            <span class="badge bg-light text-dark border px-3 py-2 rounded-pill">
+                                {{ group.total_ocorrencias }} Registro(s)
                             </span>
-                        {% else %}
-                            <span class="badge bg-success text-white px-3 py-2 rounded-pill shadow-sm">
-                                <i class="bi bi-check-circle me-1"></i>100% Justificado
-                            </span>
-                        {% endif %}
-                        <span class="badge bg-light text-dark border px-3 py-2 rounded-pill">
-                            {{ group.total_ocorrencias }} Registro(s)
-                        </span>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Conteúdo recolhível -->
-            <div id="collapseColab_{{ forloop.parentloop.counter }}_{{ forloop.counter }}" class="collapse show colab-collapse">
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-dark">
-                                <tr>
+                <!-- Conteúdo recolhível (SEM classe 'show' = Recolhido por Padrão) -->
+                <div id="collapseColab_{{ forloop.parentloop.counter }}_{{ forloop.counter }}" class="collapse colab-collapse">
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-dark">
+                                    <tr>
+
                                     <th style="width: 12%;">Data</th>
                                     <th style="width: 15%;">Jornada Prev.</th>
                                     <th style="width: 32%;">Batidas Registradas (E1 / S1 / E2 / S2 / E3 / S3)</th>
@@ -378,7 +385,7 @@
 {% block extra_js %}
 <script>
     function toggleAllCollapses(show) {
-        document.querySelectorAll('.colab-collapse').forEach(el => {
+        document.querySelectorAll('.colab-collapse, .manager-collapse').forEach(el => {
             const bsCollapse = bootstrap.Collapse.getOrCreateInstance(el, { toggle: false });
             if (show) {
                 bsCollapse.show();
@@ -387,6 +394,7 @@
             }
         });
     }
+
 
     document.addEventListener('DOMContentLoaded', function() {
 

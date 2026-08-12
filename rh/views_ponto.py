@@ -279,18 +279,25 @@ def tratativa_falhas_ponto_view(request):
                 Q(colaborador=colaborador_logado)
             )
     else:
-        # Se for superuser/staff com filtro por líder específico no GET
-        lider_id = request.GET.get('lider_id')
-        if lider_id:
-            sel_lider = Colaborador.objects.filter(id=lider_id).first()
-            if sel_lider:
+        # Se for superuser/staff com filtro por Manager no GET
+        manager_id = request.GET.get('lider_id') or request.GET.get('manager_id')
+        if manager_id:
+            if str(manager_id).isdigit():
+                sel_lider = Colaborador.objects.filter(id=manager_id).first()
+                if sel_lider:
+                    qs = qs.filter(
+                        Q(lider=sel_lider) |
+                        Q(matricula_lider=sel_lider.matricula) |
+                        Q(matricula_lider=sel_lider.matricula_global) |
+                        Q(nome_lider__iexact=sel_lider.nome_completo) |
+                        Q(colaborador__lider=sel_lider) |
+                        Q(colaborador__supervisor=sel_lider) |
+                        Q(colaborador__gerente=sel_lider)
+                    )
+            else:
                 qs = qs.filter(
-                    Q(lider=sel_lider) |
-                    Q(matricula_lider=sel_lider.matricula) |
-                    Q(matricula_lider=sel_lider.matricula_global) |
-                    Q(colaborador__lider=sel_lider) |
-                    Q(colaborador__supervisor=sel_lider) |
-                    Q(colaborador__gerente=sel_lider)
+                    Q(matricula_lider=manager_id) |
+                    Q(nome_lider__icontains=manager_id)
                 )
 
     if q_colab:
@@ -299,7 +306,6 @@ def tratativa_falhas_ponto_view(request):
             Q(colaborador__matricula__icontains=q_colab) |
             Q(colaborador__matricula_global__icontains=q_colab)
         )
-
 
     # Excluir falsos-positivos (Dias de descanso/domingo/dsr/folga sem nenhuma marcação de batida)
     rest_keywords = ['descanso', 'domingo', 'dsr', 'folga', 'feriado']
@@ -345,23 +351,53 @@ def tratativa_falhas_ponto_view(request):
             )
         else:
             base_counts_qs = JornadaDiariaFalha.objects.none()
-    elif request.GET.get('lider_id'):
-        l_id = request.GET.get('lider_id')
-        sel_l = Colaborador.objects.filter(id=l_id).first()
-        if sel_l:
+    elif request.GET.get('lider_id') or request.GET.get('manager_id'):
+        m_id = request.GET.get('lider_id') or request.GET.get('manager_id')
+        if str(m_id).isdigit():
+            sel_l = Colaborador.objects.filter(id=m_id).first()
+            if sel_l:
+                base_counts_qs = base_counts_qs.filter(
+                    Q(lider=sel_l) | Q(matricula_lider=sel_l.matricula) | Q(colaborador__lider=sel_l)
+                )
+        else:
             base_counts_qs = base_counts_qs.filter(
-                Q(lider=sel_l) | Q(matricula_lider=sel_l.matricula) | Q(colaborador__lider=sel_l)
+                Q(matricula_lider=m_id) | Q(nome_lider__icontains=m_id)
             )
 
     total_pendentes = base_counts_qs.filter(status_tratativa=StatusTratativa.PENDENTE).count()
     total_justificados = base_counts_qs.filter(status_tratativa=StatusTratativa.JUSTIFICADO).count()
 
-    # Líderes para o filtro
-    lideres_ids_planilha = set(JornadaDiariaFalha.objects.exclude(lider__isnull=True).values_list('lider_id', flat=True))
-    lideres = Colaborador.objects.filter(
-        Q(pk__in=lideres_ids_planilha) |
-        Q(posto_lideranca__in=['LIDER', 'SUPERVISOR', 'GERENTE'])
-    ).filter(is_active=True).exclude(posto_lideranca='NAO_APLICA').order_by('nome_completo') if (user.is_superuser or user.is_staff) else []
+    # Lista completa de Managers para o filtro
+    managers = []
+    seen_managers = set()
+
+    relatorio_managers = JornadaDiariaFalha.objects.exclude(
+        Q(lider__isnull=True) & Q(nome_lider__isnull=True) & Q(matricula_lider__isnull=True)
+    ).values('lider_id', 'lider__nome_completo', 'matricula_lider', 'nome_lider').distinct()
+
+    for rm in relatorio_managers:
+        lid_id = rm['lider_id']
+        nome = rm['lider__nome_completo'] or rm['nome_lider'] or 'Gestor'
+        mat = rm['matricula_lider'] or ''
+        key = lid_id if lid_id else (mat or nome)
+        if key not in seen_managers:
+            seen_managers.add(key)
+            label = f"{nome} ({mat})" if mat else nome
+            managers.append({'id': str(key), 'nome_completo': label})
+
+    outros_lideres = Colaborador.objects.filter(
+        is_active=True,
+        posto_lideranca__in=['LIDER', 'SUPERVISOR', 'GERENTE']
+    ).exclude(posto_lideranca='NAO_APLICA').order_by('nome_completo')
+
+    for colab in outros_lideres:
+        if colab.id not in seen_managers:
+            seen_managers.add(colab.id)
+            label = f"{colab.nome_completo} ({colab.matricula})" if colab.matricula else colab.nome_completo
+            managers.append({'id': str(colab.id), 'nome_completo': label})
+
+    managers.sort(key=lambda x: str(x['nome_completo']))
+
 
     # Agrupamento Hierárquico: Manager -> Colaboradores
     jornadas_list = list(jornadas)
@@ -418,10 +454,12 @@ def tratativa_falhas_ponto_view(request):
         'status_choices': StatusTratativa.choices,
         'total_pendentes': total_pendentes,
         'total_justificados': total_justificados,
-        'lideres': lideres
+        'managers': managers,
+        'lideres': managers
     }
 
     return render(request, 'rh/tratativa_falhas_ponto.html', context)
+
 
 
 
