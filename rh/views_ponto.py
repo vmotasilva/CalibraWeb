@@ -287,13 +287,34 @@ def api_confirmar_depara(request):
         return JsonResponse({'status': 'ERRO', 'mensagem': str(e)}, status=400)
 
 
+def migrar_jornadas_orfas_para_demanda():
+    try:
+        orfas = JornadaDiariaFalha.objects.filter(demanda__isnull=True)
+        if orfas.exists():
+            first_orfa = orfas.order_by('criado_em').first()
+            dt_str = first_orfa.criado_em.strftime('%d/%m/%Y %H:%M') if (first_orfa and first_orfa.criado_em) else datetime.now().strftime('%d/%m/%Y %H:%M')
+            
+            demanda_legado = DemandaFalhaPonto.objects.create(
+                titulo=f"Importação Inicial ({dt_str})",
+                arquivo_nome="relatorio_ponto_anterior.xlsx",
+                status=StatusDemanda.ATIVA,
+                observacoes="Demanda gerada automaticamente para os registros importados anteriormente."
+            )
+            orfas.update(demanda=demanda_legado)
+    except Exception:
+        logger.exception("Erro ao migrar jornadas órfãs para Demanda.")
+
+
 @login_required
 def demandas_falhas_ponto_view(request):
     """
     Listagem de todas as Demandas de Falhas de Ponto (Importações).
     """
+    migrar_jornadas_orfas_para_demanda()
+
     status_filtro = request.GET.get('status', 'TODOS')
     search_q = request.GET.get('q', '').strip()
+
 
     qs = DemandaFalhaPonto.objects.all().select_related('importado_por').prefetch_related('jornadas')
 
@@ -364,8 +385,11 @@ def tratativa_falhas_ponto_view(request, demanda_id=None):
     Tela principal de tratativa das falhas de batida de ponto para Líderes/Supervisores/Gerentes.
     Exibe os dados agrupados por Manager e Colaborador para a demanda selecionada.
     """
+    migrar_jornadas_orfas_para_demanda()
+
     user = request.user
     status_filtro = request.GET.get('status', StatusTratativa.PENDENTE)
+
     data_inicio = request.GET.get('data_inicio')
     data_fim = request.GET.get('data_fim')
     q_colab = request.GET.get('q_colab', '').strip()
