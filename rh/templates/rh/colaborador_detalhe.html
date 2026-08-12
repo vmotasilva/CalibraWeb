@@ -10,7 +10,8 @@
             </div>
             <div>
                 <h2 class="fw-bold mb-0">{{ alvo.nome_completo }}</h2>
-                <p class="text-muted mb-0">{{ alvo.cargo }} | {{ alvo.matricula }}</p>
+                <p class="text-muted mb-0">{{ alvo.cargo|default:"Sem cargo" }} | Matrícula: <strong>{{ alvo.matricula }}</strong>{% if alvo.matricula_global %} | Matrícula Global: <strong class="text-primary">{{ alvo.matricula_global }}</strong>{% endif %}</p>
+
             </div>
         </div>
         
@@ -95,10 +96,13 @@
                             <span class="text-muted">Turno:</span>
                             <span class="badge bg-secondary">{{ alvo.get_turno_display }}</span>
                         </li>
-                        <li class="list-group-item d-flex justify-content-between">
-                            <span class="text-muted">Matrícula Global:</span>
-                            <strong>{{ alvo.matricula_global|default:"-" }}</strong>
+                        <li class="list-group-item d-flex justify-content-between align-items-center bg-light-subtle">
+                            <span class="text-muted fw-semibold"><i class="bi bi-globe me-1 text-primary"></i>Matrícula Global:</span>
+                            <span class="badge bg-primary bg-opacity-10 text-primary fw-bold px-2 py-1 border border-primary border-opacity-25" style="font-size: 0.95rem;">
+                                {{ alvo.matricula_global|default:"Não cadastrada" }}
+                            </span>
                         </li>
+
                         <li class="list-group-item d-flex justify-content-between">
                             <span class="text-muted">Posto de Trabalho:</span>
                             <span>{{ alvo.posto_trabalho|default:"-" }}</span>
