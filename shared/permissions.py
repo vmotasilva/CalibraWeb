@@ -644,6 +644,31 @@ NAV_STRUCTURE = [
                 ]
             },
             {
+                "key": "tratativa_ponto",
+                "nome": "TRATATIVA DE FALHAS DE PONTO",
+                "perm": "core.nav_pessoas_tratativa_ponto_bloco",
+                "funcoes": [
+                    {
+                        "nome": "Demandas & Cobranças de Ponto",
+                        "view_name": [
+                            "rh:demandas_falhas_ponto",
+                            "rh:tratativa_falhas_ponto_demanda",
+                            "rh:tratativa_falhas_ponto",
+                            "rh:api_alternar_status_demanda",
+                            "rh:api_excluir_demanda",
+                            "rh:api_tratar_jornada",
+                            "rh:api_confirmar_depara"
+                        ],
+                        "perm": "core.nav_pessoas_demandas_falhas_ponto"
+                    },
+                    {
+                        "nome": "Importar Relatório (.xlsx)",
+                        "view_name": "rh:importar_falhas_ponto",
+                        "perm": "core.nav_pessoas_importar_falhas_ponto"
+                    }
+                ]
+            },
+            {
                 "key": "importacao",
                 "nome": "IMPORTAÇÃO",
                 "perm": "core.nav_pessoas_importacao",
@@ -654,6 +679,7 @@ NAV_STRUCTURE = [
             },
         ],
     },
+
     {
         "key": "fornecedores",
         "nome": "Fornecedores",

@@ -246,6 +246,7 @@ class NavigationPermission(models.Model):
             ("nav_pessoas_equipe", "NAV: Pessoas / Bloco Equipe"),
             ("nav_pessoas_importacao", "NAV: Pessoas / Bloco Importação"),
             ("nav_pessoas_horas_extras", "NAV: Pessoas / Bloco Horas Extras"),
+            ("nav_pessoas_tratativa_ponto_bloco", "NAV: Pessoas / Bloco Tratativa de Batidas de Ponto"),
 
             # --- PESSOAS: funções ---
             ("nav_pessoas_colaboradores", "NAV: Pessoas / Colaboradores"),
@@ -267,6 +268,9 @@ class NavigationPermission(models.Model):
             ("nav_pessoas_importar_pessoas", "NAV: Pessoas / Importar Pessoas"),
             ("nav_pessoas_importar_hierarquia", "NAV: Pessoas / Importar Hierarquia"),
             ("nav_pessoas_horas_extras_list", "NAV: Pessoas / Planejamento de Horas Extras"),
+            ("nav_pessoas_demandas_falhas_ponto", "NAV: Pessoas / Demandas & Cobranças de Ponto"),
+            ("nav_pessoas_importar_falhas_ponto", "NAV: Pessoas / Importar Relatório de Falhas de Ponto"),
+
 
             # --- AÇÕES CORRETIVAS: blocos ---
             ("nav_acoes_registro", "NAV: Ações Corretivas / Bloco Registro e Solução"),

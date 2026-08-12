@@ -390,17 +390,24 @@
                             {% endif %}
                         {% endif %}
 
-                        <li>
-                            <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseTRATATIVADEPONTO" style="cursor: pointer;">
-                                TRATATIVA DE FALHAS DE PONTO <i class="bi bi-chevron-down transition-transform rotate-180"></i>
-                            </h6>
-                            <ul class="list-unstyled collapse show" id="collapseTRATATIVADEPONTO">
-                                <li><a class="dropdown-item" href="{% url 'rh:demandas_falhas_ponto' %}"><i class="bi bi-folder-check text-primary"></i> Demandas & Cobranças</a></li>
-                                <li><a class="dropdown-item" href="{% url 'rh:importar_falhas_ponto' %}"><i class="bi bi-file-earmark-excel text-success"></i> Nova Importação (.xlsx)</a></li>
-                            </ul>
-                        </li>
+                        {% can_nav_block user 'rh' 'tratativa_ponto' as nav_pe_ponto_bloco %}
+                        {% if nav_pe_ponto_bloco %}
+                            {% can_nav_view user 'rh:demandas_falhas_ponto' 'rh' as nav_pe_demandas %}
+                            {% can_nav_view user 'rh:importar_falhas_ponto' 'rh' as nav_pe_imp_falhas %}
+                            {% if nav_pe_demandas or nav_pe_imp_falhas %}
+                                <li>
+                                    <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseTRATATIVADEPONTO" style="cursor: pointer;">
+                                        TRATATIVA DE FALHAS DE PONTO <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+                                    </h6>
+                                    <ul class="list-unstyled collapse show" id="collapseTRATATIVADEPONTO">
+                                        {% if nav_pe_demandas %}<li><a class="dropdown-item" href="{% url 'rh:demandas_falhas_ponto' %}"><i class="bi bi-folder-check text-primary"></i> Demandas & Cobranças</a></li>{% endif %}
+                                        {% if nav_pe_imp_falhas %}<li><a class="dropdown-item" href="{% url 'rh:importar_falhas_ponto' %}"><i class="bi bi-file-earmark-excel text-success"></i> Nova Importação (.xlsx)</a></li>{% endif %}
+                                    </ul>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                            {% endif %}
+                        {% endif %}
 
-                        <li><hr class="dropdown-divider"></li>
 
 
                         {% can_nav_block user 'rh' 'importacao' as nav_pe_import %}
