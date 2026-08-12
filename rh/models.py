@@ -727,8 +727,25 @@ class JornadaDiariaFalha(models.Model):
     s2 = models.CharField(max_length=10, blank=True, null=True, verbose_name="Saída 2")
     e3 = models.CharField(max_length=10, blank=True, null=True, verbose_name="Entrada 3")
     s3 = models.CharField(max_length=10, blank=True, null=True, verbose_name="Saída 3")
+    # Líder/Manager do relatório importado
+
+    lider = models.ForeignKey(
+        Colaborador,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='jornadas_como_lider',
+        verbose_name="Líder (Planilha)"
+    )
+    matricula_lider = models.CharField(
+        max_length=50, blank=True, null=True, verbose_name="Matrícula do Líder (Planilha)"
+    )
+    nome_lider = models.CharField(
+        max_length=150, blank=True, null=True, verbose_name="Nome do Líder (Planilha)"
+    )
 
     status_tratativa = models.CharField(
+
         max_length=20,
         choices=StatusTratativa.choices,
         default=StatusTratativa.PENDENTE,

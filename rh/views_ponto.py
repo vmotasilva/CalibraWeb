@@ -63,11 +63,14 @@ def importar_falhas_ponto_view(request):
             elif 'notifica' in c_lower:
                 col_map[col] = 'Notificacoes'
             elif 'manager' in c_lower and '.1' not in c_lower:
-                col_map[col] = 'Manager'
+                col_map[col] = 'Manager_Matricula'
+            elif 'manager' in c_lower and '.1' in c_lower:
+                col_map[col] = 'Manager_Nome'
             elif 'trabdi' in c_lower or 'jornada' in c_lower:
                 col_map[col] = 'Jornada'
             elif c_str.upper() in ['E1', 'S1', 'E2', 'S2', 'E3', 'S3']:
                 col_map[col] = c_str.upper()
+
 
 
         df.rename(columns=col_map, inplace=True)
@@ -143,26 +146,38 @@ def importar_falhas_ponto_view(request):
                     else:
                         data_obj = pd.to_datetime(data_val).date()
 
-                    def get_batida(field_name):
-                        val = first_row.get(field_name)
-                        if pd.notna(val) and str(val).strip() != '' and str(val).strip() != 'nan':
-                            return str(val).strip()[:10]
-                        return None
+                    e1_val, s1_val, e2_val, s2_val, e3_val, s3_val = (
+                        get_batida('E1'), get_batida('S1'), get_batida('E2'),
+                        get_batida('S2'), get_batida('E3'), get_batida('S3')
+                    )
+
+                    jornada_prev_str = str(first_row.get('Jornada', '')).strip() if pd.notna(first_row.get('Jornada')) else ""
+
+                    # Regra de Negócio: Ignorar dias de descanso/domingo/dsr/folga/feriado sem nenhuma batida registrada
+                    jp_lower = jornada_prev_str.lower()
+                    tem_batida = any(v and str(v).strip() not in ['', 'None', 'nan', '--:--'] for v in [e1_val, s1_val, e2_val, s2_val, e3_val, s3_val])
+                    is_descanso = any(k in jp_lower for k in ['descanso', 'domingo', 'dsr', 'folga', 'feriado'])
+
+                    if is_descanso and not tem_batida:
+                        # Exclui registro prévio no banco se for um falso positivo
+                        JornadaDiariaFalha.objects.filter(colaborador=colaborador, data=data_obj).delete()
+                        continue
 
                     jornada, _ = JornadaDiariaFalha.objects.update_or_create(
                         colaborador=colaborador,
                         data=data_obj,
                         defaults={
-                            'jornada_prevista': str(first_row.get('Jornada', '')) if pd.notna(first_row.get('Jornada')) else None,
-                            'e1': get_batida('E1'),
-                            's1': get_batida('S1'),
-                            'e2': get_batida('E2'),
-                            's2': get_batida('S2'),
-                            'e3': get_batida('E3'),
-                            's3': get_batida('S3'),
+                            'jornada_prevista': jornada_prev_str if jornada_prev_str else None,
+                            'e1': e1_val,
+                            's1': s1_val,
+                            'e2': e2_val,
+                            's2': s2_val,
+                            'e3': e3_val,
+                            's3': s3_val,
                             'status_tratativa': StatusTratativa.PENDENTE
                         }
                     )
+
 
                     # Atualiza os itens de erro consolidados do dia
                     jornada.erros.all().delete()
@@ -230,6 +245,7 @@ def tratativa_falhas_ponto_view(request):
     status_filtro = request.GET.get('status', StatusTratativa.PENDENTE)
     data_inicio = request.GET.get('data_inicio')
     data_fim = request.GET.get('data_fim')
+    q_colab = request.GET.get('q_colab', '').strip()
 
     # Identificar perfil de colaborador do usuário logado
     colaborador_logado = get_colaborador_for_user(user)
@@ -241,21 +257,54 @@ def tratativa_falhas_ponto_view(request):
         if not colaborador_logado:
             qs = JornadaDiariaFalha.objects.none()
         else:
-            equipe_ids = Colaborador.objects.filter(
+            qs = qs.filter(
                 Q(lider=colaborador_logado) |
-                Q(supervisor=colaborador_logado) |
-                Q(gerente=colaborador_logado) |
-                Q(pk=colaborador_logado.pk)
-            ).values_list('id', flat=True)
-            qs = qs.filter(colaborador_id__in=equipe_ids)
+                Q(matricula_lider=colaborador_logado.matricula) |
+                Q(matricula_lider=colaborador_logado.matricula_global) |
+                Q(colaborador__lider=colaborador_logado) |
+                Q(colaborador__supervisor=colaborador_logado) |
+                Q(colaborador__gerente=colaborador_logado) |
+                Q(colaborador=colaborador_logado)
+            )
     else:
         # Se for superuser/staff com filtro por líder específico no GET
         lider_id = request.GET.get('lider_id')
         if lider_id:
-            equipe_ids = Colaborador.objects.filter(
-                Q(lider_id=lider_id) | Q(supervisor_id=lider_id) | Q(gerente_id=lider_id)
-            ).values_list('id', flat=True)
-            qs = qs.filter(colaborador_id__in=equipe_ids)
+            sel_lider = Colaborador.objects.filter(id=lider_id).first()
+            if sel_lider:
+                qs = qs.filter(
+                    Q(lider=sel_lider) |
+                    Q(matricula_lider=sel_lider.matricula) |
+                    Q(matricula_lider=sel_lider.matricula_global) |
+                    Q(colaborador__lider=sel_lider) |
+                    Q(colaborador__supervisor=sel_lider) |
+                    Q(colaborador__gerente=sel_lider)
+                )
+
+    if q_colab:
+        qs = qs.filter(
+            Q(colaborador__nome_completo__icontains=q_colab) |
+            Q(colaborador__matricula__icontains=q_colab) |
+            Q(colaborador__matricula_global__icontains=q_colab)
+        )
+
+
+    # Excluir falsos-positivos (Dias de descanso/domingo/dsr/folga sem nenhuma marcação de batida)
+    rest_keywords = ['descanso', 'domingo', 'dsr', 'folga', 'feriado']
+    filter_rest = Q()
+    for kw in rest_keywords:
+        filter_rest.add(Q(jornada_prevista__icontains=kw), Q.OR)
+
+    empty_batidas = (
+        (Q(e1__isnull=True) | Q(e1='') | Q(e1='nan') | Q(e1='--:--')) &
+        (Q(s1__isnull=True) | Q(s1='') | Q(s1='nan') | Q(s1='--:--')) &
+        (Q(e2__isnull=True) | Q(e2='') | Q(e2='nan') | Q(e2='--:--')) &
+        (Q(s2__isnull=True) | Q(s2='') | Q(s2='nan') | Q(s2='--:--')) &
+        (Q(e3__isnull=True) | Q(e3='') | Q(e3='nan') | Q(e3='--:--')) &
+        (Q(s3__isnull=True) | Q(s3='') | Q(s3='nan') | Q(s3='--:--'))
+    )
+
+    qs = qs.exclude(filter_rest & empty_batidas)
 
     if status_filtro and status_filtro != 'TODOS':
         qs = qs.filter(status_tratativa=status_filtro)
@@ -268,40 +317,92 @@ def tratativa_falhas_ponto_view(request):
     jornadas = qs.select_related(
         'colaborador',
         'colaborador__setor',
+        'lider',
         'tratado_por'
-    ).prefetch_related('erros').order_by('colaborador__nome_completo', '-data')
+    ).prefetch_related('erros').order_by('colaborador__nome_completo', 'data')
 
-    # Contadores para os cards do dashboard
-    total_pendentes = JornadaDiariaFalha.objects.filter(status_tratativa=StatusTratativa.PENDENTE).count()
-    total_justificados = JornadaDiariaFalha.objects.filter(status_tratativa=StatusTratativa.JUSTIFICADO).count()
+    # Queryset base para contadores gerais
+    base_counts_qs = JornadaDiariaFalha.objects.all().exclude(filter_rest & empty_batidas)
+    if not (user.is_superuser or user.is_staff):
+        if colaborador_logado:
+            base_counts_qs = base_counts_qs.filter(
+                Q(lider=colaborador_logado) |
+                Q(matricula_lider=colaborador_logado.matricula) |
+                Q(colaborador__lider=colaborador_logado) |
+                Q(colaborador=colaborador_logado)
+            )
+        else:
+            base_counts_qs = JornadaDiariaFalha.objects.none()
+    elif request.GET.get('lider_id'):
+        l_id = request.GET.get('lider_id')
+        sel_l = Colaborador.objects.filter(id=l_id).first()
+        if sel_l:
+            base_counts_qs = base_counts_qs.filter(
+                Q(lider=sel_l) | Q(matricula_lider=sel_l.matricula) | Q(colaborador__lider=sel_l)
+            )
 
-    # Filtrar líderes (Apenas colaboradores ativos com Posto de Liderança preenchido)
+    total_pendentes = base_counts_qs.filter(status_tratativa=StatusTratativa.PENDENTE).count()
+    total_justificados = base_counts_qs.filter(status_tratativa=StatusTratativa.JUSTIFICADO).count()
+
+    # Líderes para o filtro
+    lideres_ids_planilha = set(JornadaDiariaFalha.objects.exclude(lider__isnull=True).values_list('lider_id', flat=True))
     lideres = Colaborador.objects.filter(
-        is_active=True,
-        posto_lideranca__in=['LIDER', 'SUPERVISOR', 'GERENTE']
-    ).exclude(
-        posto_lideranca='NAO_APLICA'
-    ).order_by('nome_completo') if (user.is_superuser or user.is_staff) else []
+        Q(pk__in=lideres_ids_planilha) |
+        Q(posto_lideranca__in=['LIDER', 'SUPERVISOR', 'GERENTE'])
+    ).filter(is_active=True).exclude(posto_lideranca='NAO_APLICA').order_by('nome_completo') if (user.is_superuser or user.is_staff) else []
 
-    # Agrupar as ocorrências por Colaborador
-    colaboradores_agrupados = []
+    # Agrupamento Hierárquico: Manager -> Colaboradores
     jornadas_list = list(jornadas)
     
+    def get_lider_key(j):
+        if j.lider:
+            return (j.lider.id, j.lider.nome_completo, j.lider.matricula)
+        elif j.nome_lider:
+            return (0, j.nome_lider, j.matricula_lider or '')
+        elif j.colaborador.lider:
+            return (j.colaborador.lider.id, j.colaborador.lider.nome_completo, j.colaborador.lider.matricula)
+        return (-1, 'Sem Gestor Definido', '')
+
+    jornadas_list.sort(key=lambda j: (get_lider_key(j)[1], j.colaborador.nome_completo, j.data))
+
+    managers_agrupados = []
     from itertools import groupby
-    for colab_obj, items in groupby(jornadas_list, key=lambda j: j.colaborador):
-        items_list = list(items)
-        pendentes_count = sum(1 for i in items_list if i.status_tratativa == StatusTratativa.PENDENTE)
-        colaboradores_agrupados.append({
-            'colaborador': colab_obj,
-            'jornadas': items_list,
-            'total_ocorrencias': len(items_list),
-            'pendentes_count': pendentes_count
+
+    for lider_key, j_group in groupby(jornadas_list, key=get_lider_key):
+        lider_id_val, lider_nome_val, lider_mat_val = lider_key
+        lider_items = list(j_group)
+
+        colabs_list = []
+        lider_items.sort(key=lambda j: (j.colaborador.nome_completo, j.data))
+        for colab_obj, colab_items in groupby(lider_items, key=lambda j: j.colaborador):
+            items_list = list(colab_items)
+            pendentes_c = sum(1 for i in items_list if i.status_tratativa == StatusTratativa.PENDENTE)
+            colabs_list.append({
+                'colaborador': colab_obj,
+                'jornadas': items_list,
+                'total_ocorrencias': len(items_list),
+                'pendentes_count': pendentes_c
+            })
+
+        manager_pendentes = sum(c['pendentes_count'] for c in colabs_list)
+        manager_total = sum(c['total_ocorrencias'] for c in colabs_list)
+
+        managers_agrupados.append({
+            'lider_nome': lider_nome_val,
+            'lider_matricula': lider_mat_val,
+            'colaboradores': colabs_list,
+            'total_colaboradores': len(colabs_list),
+            'pendentes_count': manager_pendentes,
+            'total_ocorrencias': manager_total
         })
 
     context = {
-        'colaboradores_agrupados': colaboradores_agrupados,
+        'managers_agrupados': managers_agrupados,
         'jornadas': jornadas,
         'status_filtro': status_filtro,
+        'data_inicio': data_inicio,
+        'data_fim': data_fim,
+        'q_colab': q_colab,
         'status_choices': StatusTratativa.choices,
         'total_pendentes': total_pendentes,
         'total_justificados': total_justificados,
@@ -309,6 +410,7 @@ def tratativa_falhas_ponto_view(request):
     }
 
     return render(request, 'rh/tratativa_falhas_ponto.html', context)
+
 
 
 

@@ -112,7 +112,14 @@
         <div class="card-body py-3">
             <form method="GET" class="row g-3 align-items-end">
                 <div class="col-12 col-md-3">
-                    <label class="form-label small fw-bold">Status da Tratativa</label>
+                    <label class="form-label small fw-bold">Buscar Colaborador</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+                        <input type="text" name="q_colab" value="{{ q_colab|default:'' }}" class="form-control" placeholder="Nome ou Matrícula...">
+                    </div>
+                </div>
+                <div class="col-12 col-md-2">
+                    <label class="form-label small fw-bold">Status</label>
                     <select name="status" class="form-select">
                         <option value="TODOS" {% if status_filtro == 'TODOS' %}selected{% endif %}>Todos os Status</option>
                         {% for st_val, st_lbl in status_choices %}
@@ -120,13 +127,13 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-12 col-md-3">
+                <div class="col-12 col-md-2">
                     <label class="form-label small fw-bold">Data Início</label>
-                    <input type="date" name="data_inicio" value="{{ request.GET.data_inicio }}" class="form-select">
+                    <input type="date" name="data_inicio" value="{{ data_inicio|default:'' }}" class="form-select">
                 </div>
-                <div class="col-12 col-md-3">
+                <div class="col-12 col-md-2">
                     <label class="form-label small fw-bold">Data Fim</label>
-                    <input type="date" name="data_fim" value="{{ request.GET.data_fim }}" class="form-select">
+                    <input type="date" name="data_fim" value="{{ data_fim|default:'' }}" class="form-select">
                 </div>
                 {% if lideres %}
                 <div class="col-12 col-md-3">
@@ -139,127 +146,174 @@
                     </select>
                 </div>
                 {% endif %}
-                <div class="col-12 col-md-3 d-flex gap-2">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-filter me-1"></i>Filtrar
-                    </button>
-                    <a href="{% url 'rh:tratativa_falhas_ponto' %}" class="btn btn-outline-secondary">
-                        <i class="bi bi-x-circle"></i>
-                    </a>
+                <div class="col-12 col-md-12 d-flex justify-content-between align-items-center mt-3">
+                    <div>
+                        <button type="button" class="btn btn-sm btn-outline-primary me-2" onclick="toggleAllCollapses(true)">
+                            <i class="bi bi-arrows-expand me-1"></i>Expandir Todos
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleAllCollapses(false)">
+                            <i class="bi bi-arrows-collapse me-1"></i>Recolher Todos
+                        </button>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary px-4">
+                            <i class="bi bi-filter me-1"></i>Filtrar
+                        </button>
+                        <a href="{% url 'rh:tratativa_falhas_ponto' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i>
+                        </a>
+                    </div>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Lista Agrupada por Colaborador -->
-    {% for group in colaboradores_agrupados %}
-    <div class="card shadow-sm border-0 mb-4 overflow-hidden">
-        <div class="card-header bg-white py-3 border-bottom border-light">
-            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+    <!-- Lista Agrupada por MANAGER -->
+    {% for manager in managers_agrupados %}
+    <div class="mb-4">
+        <!-- FAIXA DE SEPARAÇÃO POR MANAGER -->
+        <div class="card border-0 shadow-sm bg-dark text-white mb-3">
+            <div class="card-body py-3 px-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
                 <div class="d-flex align-items-center gap-3">
-                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width: 45px; height: 45px; font-size: 1.1rem;">
-                        {{ group.colaborador.nome_completo|slice:":1" }}
+                    <div class="bg-warning text-dark p-2 rounded-circle">
+                        <i class="bi bi-person-badge-fill fs-4"></i>
                     </div>
                     <div>
-                        <h5 class="fw-bold text-dark mb-1">{{ group.colaborador.nome_completo }}</h5>
-                        <div class="d-flex flex-wrap gap-2 text-muted small align-items-center">
-                            <span><i class="bi bi-person-vcard me-1"></i>Matrícula: <code>{{ group.colaborador.matricula }}</code></span>
-                            {% if group.colaborador.matricula_global %}
-                                <span>| <i class="bi bi-globe me-1"></i>Mat. Global: <code>{{ group.colaborador.matricula_global }}</code></span>
-                            {% endif %}
-                            {% if group.colaborador.setor %}
-                                <span>| <i class="bi bi-building me-1"></i>Setor: <strong>{{ group.colaborador.setor.nome }}</strong></span>
-                            {% endif %}
-                            {% if group.colaborador.posto_trabalho %}
-                                <span>| <i class="bi bi-briefcase me-1"></i>Posto: {{ group.colaborador.posto_trabalho }}</span>
-                            {% endif %}
-                        </div>
+                        <span class="text-warning text-uppercase fw-bold small">Gestor / Manager (Relatório)</span>
+                        <h4 class="fw-bold mb-0 text-white">{{ manager.lider_nome }} {% if manager.lider_matricula %}<small class="text-white-50 fs-6">({{ manager.lider_matricula }})</small>{% endif %}</h4>
                     </div>
                 </div>
-                <div class="d-flex align-items-center gap-2">
-                    {% if group.pendentes_count > 0 %}
-                        <span class="badge bg-warning text-dark px-3 py-2 rounded-pill shadow-sm">
-                            <i class="bi bi-exclamation-circle me-1"></i>{{ group.pendentes_count }} Pendente(s)
-                        </span>
-                    {% else %}
-                        <span class="badge bg-success text-white px-3 py-2 rounded-pill shadow-sm">
-                            <i class="bi bi-check-circle me-1"></i>100% Justificado
-                        </span>
-                    {% endif %}
-                    <span class="badge bg-light text-dark border px-3 py-2 rounded-pill">
-                        {{ group.total_ocorrencias }} Registro(s)
+                <div class="d-flex gap-2">
+                    <span class="badge bg-warning text-dark fs-6 px-3 py-2">
+                        <i class="bi bi-people-fill me-1"></i>{{ manager.total_colaboradores }} Colaborador(es)
+                    </span>
+                    <span class="badge bg-danger fs-6 px-3 py-2">
+                        <i class="bi bi-exclamation-circle-fill me-1"></i>{{ manager.pendentes_count }} Pendência(s)
                     </span>
                 </div>
             </div>
         </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-dark">
-                        <tr>
-                            <th style="width: 12%;">Data</th>
-                            <th style="width: 15%;">Jornada Prev.</th>
-                            <th style="width: 32%;">Batidas Registradas (E1 / S1 / E2 / S2 / E3 / S3)</th>
-                            <th style="width: 25%;">Erros do Dia</th>
-                            <th style="width: 10%;">Status</th>
-                            <th style="width: 6%; text-align: center;">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for j in group.jornadas %}
-                        <tr>
-                            <td class="fw-bold text-primary">
-                                <i class="bi bi-calendar-event me-1"></i>{{ j.data|date:"d/m/Y" }}
-                            </td>
-                            <td>
-                                <span class="badge bg-light text-dark border">{{ j.jornada_prevista|default:"--:--" }}</span>
-                            </td>
-                            <td>
-                                <div class="d-flex flex-wrap gap-1">
-                                    <span class="time-slot {% if j.e1 %}time-slot-has-value{% endif %}" title="Entrada 1">{{ j.e1|default:"--:--" }}</span>
-                                    <span class="time-slot {% if j.s1 %}time-slot-has-value{% endif %}" title="Saída 1">{{ j.s1|default:"--:--" }}</span>
-                                    <span class="time-slot {% if j.e2 %}time-slot-has-value{% endif %}" title="Entrada 2">{{ j.e2|default:"--:--" }}</span>
-                                    <span class="time-slot {% if j.s2 %}time-slot-has-value{% endif %}" title="Saída 2">{{ j.s2|default:"--:--" }}</span>
-                                    <span class="time-slot {% if j.e3 %}time-slot-has-value{% endif %}" title="Entrada 3">{{ j.e3|default:"--:--" }}</span>
-                                    <span class="time-slot {% if j.s3 %}time-slot-has-value{% endif %}" title="Saída 3">{{ j.s3|default:"--:--" }}</span>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="d-flex flex-column gap-1">
-                                    {% for err in j.erros.all %}
-                                        <div class="error-tag">
-                                            <strong>[{{ err.codigo_erro }}]</strong> {{ err.descricao_notificacao }}
+
+        <!-- FAIXAS RECOLHÍVEIS POR COLABORADOR -->
+        {% for group in manager.colaboradores %}
+        <div class="card shadow-sm border-0 mb-3 overflow-hidden colab-card">
+            <div class="card-header bg-white py-3 border-bottom border-light cursor-pointer"
+                 data-bs-toggle="collapse"
+                 data-bs-target="#collapseColab_{{ forloop.parentloop.counter }}_{{ forloop.counter }}"
+                 aria-expanded="true"
+                 style="cursor: pointer;">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+                    <div class="d-flex align-items-center gap-3">
+                        <i class="bi bi-chevron-down transition-transform me-1 fs-5 text-primary icon-collapse"></i>
+                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width: 42px; height: 42px; font-size: 1.05rem;">
+                            {{ group.colaborador.nome_completo|slice:":1" }}
+                        </div>
+                        <div>
+                            <h5 class="fw-bold text-dark mb-1 d-inline">{{ group.colaborador.nome_completo }}</h5>
+                            <div class="d-flex flex-wrap gap-2 text-muted small align-items-center mt-1">
+                                <span><i class="bi bi-person-vcard me-1"></i>Matrícula: <code>{{ group.colaborador.matricula }}</code></span>
+                                {% if group.colaborador.matricula_global %}
+                                    <span>| <i class="bi bi-globe me-1"></i>Mat. Global: <code>{{ group.colaborador.matricula_global }}</code></span>
+                                {% endif %}
+                                {% if group.colaborador.setor %}
+                                    <span>| <i class="bi bi-building me-1"></i>Setor: <strong>{{ group.colaborador.setor.nome }}</strong></span>
+                                {% endif %}
+                                {% if group.colaborador.posto_trabalho %}
+                                    <span>| <i class="bi bi-briefcase me-1"></i>Posto: {{ group.colaborador.posto_trabalho }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        {% if group.pendentes_count > 0 %}
+                            <span class="badge bg-warning text-dark px-3 py-2 rounded-pill shadow-sm">
+                                <i class="bi bi-exclamation-circle me-1"></i>{{ group.pendentes_count }} Pendente(s)
+                            </span>
+                        {% else %}
+                            <span class="badge bg-success text-white px-3 py-2 rounded-pill shadow-sm">
+                                <i class="bi bi-check-circle me-1"></i>100% Justificado
+                            </span>
+                        {% endif %}
+                        <span class="badge bg-light text-dark border px-3 py-2 rounded-pill">
+                            {{ group.total_ocorrencias }} Registro(s)
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Conteúdo recolhível -->
+            <div id="collapseColab_{{ forloop.parentloop.counter }}_{{ forloop.counter }}" class="collapse show colab-collapse">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th style="width: 12%;">Data</th>
+                                    <th style="width: 15%;">Jornada Prev.</th>
+                                    <th style="width: 32%;">Batidas Registradas (E1 / S1 / E2 / S2 / E3 / S3)</th>
+                                    <th style="width: 25%;">Erros do Dia</th>
+                                    <th style="width: 10%;">Status</th>
+                                    <th style="width: 6%; text-align: center;">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for j in group.jornadas %}
+                                <tr>
+                                    <td class="fw-bold text-primary">
+                                        <i class="bi bi-calendar-event me-1"></i>{{ j.data|date:"d/m/Y" }}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark border">{{ j.jornada_prevista|default:"--:--" }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            <span class="time-slot {% if j.e1 %}time-slot-has-value{% endif %}" title="Entrada 1">{{ j.e1|default:"--:--" }}</span>
+                                            <span class="time-slot {% if j.s1 %}time-slot-has-value{% endif %}" title="Saída 1">{{ j.s1|default:"--:--" }}</span>
+                                            <span class="time-slot {% if j.e2 %}time-slot-has-value{% endif %}" title="Entrada 2">{{ j.e2|default:"--:--" }}</span>
+                                            <span class="time-slot {% if j.s2 %}time-slot-has-value{% endif %}" title="Saída 2">{{ j.s2|default:"--:--" }}</span>
+                                            <span class="time-slot {% if j.e3 %}time-slot-has-value{% endif %}" title="Entrada 3">{{ j.e3|default:"--:--" }}</span>
+                                            <span class="time-slot {% if j.s3 %}time-slot-has-value{% endif %}" title="Saída 3">{{ j.s3|default:"--:--" }}</span>
                                         </div>
-                                    {% empty %}
-                                        <span class="text-muted small">Nenhum erro detalhado.</span>
-                                    {% endfor %}
-                                </div>
-                            </td>
-                            <td>
-                                <span class="badge badge-status-{{ j.status_tratativa }} px-2 py-1">
-                                    {{ j.get_status_tratativa_display }}
-                                </span>
-                            </td>
-                            <td class="text-center">
-                                <button type="button" class="btn btn-sm btn-primary rounded-circle shadow-sm btn-tratar"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#modalTratativa"
-                                        data-id="{{ j.id }}"
-                                        data-colab="{{ j.colaborador.nome_completo }}"
-                                        data-data="{{ j.data|date:'d/m/Y' }}"
-                                        data-status="{{ j.status_tratativa }}"
-                                        data-justificativa="{{ j.justificativa|default:'' }}"
-                                        data-obs="{{ j.observacao_lider|default:'' }}"
-                                        title="Tratar Pendência">
-                                    <i class="bi bi-pencil-square"></i>
-                                </button>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex flex-column gap-1">
+                                            {% for err in j.erros.all %}
+                                                <div class="error-tag">
+                                                    <strong>[{{ err.codigo_erro }}]</strong> {{ err.descricao_notificacao }}
+                                                </div>
+                                            {% empty %}
+                                                <span class="text-muted small">Nenhum erro detalhado.</span>
+                                            {% endfor %}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-status-{{ j.status_tratativa }} px-2 py-1">
+                                            {{ j.get_status_tratativa_display }}
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-sm btn-primary rounded-circle shadow-sm btn-tratar"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#modalTratativa"
+                                                data-id="{{ j.id }}"
+                                                data-colab="{{ j.colaborador.nome_completo }}"
+                                                data-data="{{ j.data|date:'d/m/Y' }}"
+                                                data-status="{{ j.status_tratativa }}"
+                                                data-justificativa="{{ j.justificativa|default:'' }}"
+                                                data-obs="{{ j.observacao_lider|default:'' }}"
+                                                title="Tratar Pendência">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
+        {% endfor %}
     </div>
     {% empty %}
     <div class="card shadow-sm border-0">
@@ -269,6 +323,7 @@
         </div>
     </div>
     {% endfor %}
+
 
 </div>
 
@@ -322,7 +377,19 @@
 
 {% block extra_js %}
 <script>
+    function toggleAllCollapses(show) {
+        document.querySelectorAll('.colab-collapse').forEach(el => {
+            const bsCollapse = bootstrap.Collapse.getOrCreateInstance(el, { toggle: false });
+            if (show) {
+                bsCollapse.show();
+            } else {
+                bsCollapse.hide();
+            }
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
+
         const modalElement = document.getElementById('modalTratativa');
         const formTratativa = document.getElementById('formTratativa');
         const modalJornadaId = document.getElementById('modalJornadaId');
