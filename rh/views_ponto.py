@@ -423,7 +423,7 @@ def tratativa_falhas_ponto_view(request, demanda_id=None):
         qs = JornadaDiariaFalha.objects.none()
 
 
-    # Se não for superusuario/staff sem equipe, restringe aos liderados
+    # Se não for superusuario/staff sem equipe, restringe aos liderados conforme o relatório importado
     if not (user.is_superuser or user.is_staff):
         if not colaborador_logado:
             qs = JornadaDiariaFalha.objects.none()
@@ -432,13 +432,11 @@ def tratativa_falhas_ponto_view(request, demanda_id=None):
                 Q(lider=colaborador_logado) |
                 Q(matricula_lider=colaborador_logado.matricula) |
                 Q(matricula_lider=colaborador_logado.matricula_global) |
-                Q(colaborador__lider=colaborador_logado) |
-                Q(colaborador__supervisor=colaborador_logado) |
-                Q(colaborador__gerente=colaborador_logado) |
+                Q(nome_lider__iexact=colaborador_logado.nome_completo) |
                 Q(colaborador=colaborador_logado)
             )
     else:
-        # Se for superuser/staff com filtro por Manager no GET
+        # Se for superuser/staff com filtro por Manager no GET (estritamente pelo relatório importado)
         manager_id = request.GET.get('lider_id') or request.GET.get('manager_id')
         if manager_id:
             if str(manager_id).isdigit():
@@ -448,16 +446,14 @@ def tratativa_falhas_ponto_view(request, demanda_id=None):
                         Q(lider=sel_lider) |
                         Q(matricula_lider=sel_lider.matricula) |
                         Q(matricula_lider=sel_lider.matricula_global) |
-                        Q(nome_lider__iexact=sel_lider.nome_completo) |
-                        Q(colaborador__lider=sel_lider) |
-                        Q(colaborador__supervisor=sel_lider) |
-                        Q(colaborador__gerente=sel_lider)
+                        Q(nome_lider__iexact=sel_lider.nome_completo)
                     )
             else:
                 qs = qs.filter(
                     Q(matricula_lider=manager_id) |
                     Q(nome_lider__icontains=manager_id)
                 )
+
 
     if q_colab:
         qs = qs.filter(
