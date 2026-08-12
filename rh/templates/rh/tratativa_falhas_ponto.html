@@ -128,7 +128,7 @@
                     <label class="form-label small fw-bold">Data Fim</label>
                     <input type="date" name="data_fim" value="{{ request.GET.data_fim }}" class="form-select">
                 </div>
-                {% if request.user.is_superuser and lideres %}
+                {% if lideres %}
                 <div class="col-12 col-md-3">
                     <label class="form-label small fw-bold">Filtrar por Líder</label>
                     <select name="lider_id" class="form-select">
@@ -151,33 +151,65 @@
         </div>
     </div>
 
-    <!-- Tabela Agrupada por Dia e Colaborador -->
-    <div class="card shadow-sm border-0">
+    <!-- Lista Agrupada por Colaborador -->
+    {% for group in colaboradores_agrupados %}
+    <div class="card shadow-sm border-0 mb-4 overflow-hidden">
+        <div class="card-header bg-white py-3 border-bottom border-light">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width: 45px; height: 45px; font-size: 1.1rem;">
+                        {{ group.colaborador.nome_completo|slice:":1" }}
+                    </div>
+                    <div>
+                        <h5 class="fw-bold text-dark mb-1">{{ group.colaborador.nome_completo }}</h5>
+                        <div class="d-flex flex-wrap gap-2 text-muted small align-items-center">
+                            <span><i class="bi bi-person-vcard me-1"></i>Matrícula: <code>{{ group.colaborador.matricula }}</code></span>
+                            {% if group.colaborador.matricula_global %}
+                                <span>| <i class="bi bi-globe me-1"></i>Mat. Global: <code>{{ group.colaborador.matricula_global }}</code></span>
+                            {% endif %}
+                            {% if group.colaborador.setor %}
+                                <span>| <i class="bi bi-building me-1"></i>Setor: <strong>{{ group.colaborador.setor.nome }}</strong></span>
+                            {% endif %}
+                            {% if group.colaborador.posto_trabalho %}
+                                <span>| <i class="bi bi-briefcase me-1"></i>Posto: {{ group.colaborador.posto_trabalho }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    {% if group.pendentes_count > 0 %}
+                        <span class="badge bg-warning text-dark px-3 py-2 rounded-pill shadow-sm">
+                            <i class="bi bi-exclamation-circle me-1"></i>{{ group.pendentes_count }} Pendente(s)
+                        </span>
+                    {% else %}
+                        <span class="badge bg-success text-white px-3 py-2 rounded-pill shadow-sm">
+                            <i class="bi bi-check-circle me-1"></i>100% Justificado
+                        </span>
+                    {% endif %}
+                    <span class="badge bg-light text-dark border px-3 py-2 rounded-pill">
+                        {{ group.total_ocorrencias }} Registro(s)
+                    </span>
+                </div>
+            </div>
+        </div>
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-dark">
                         <tr>
-                            <th style="width: 10%;">Data</th>
-                            <th style="width: 20%;">Colaborador</th>
-                            <th style="width: 12%;">Jornada Prev.</th>
-                            <th style="width: 25%;">Batidas Registradas (E1 / S1 / E2 / S2 / E3 / S3)</th>
-                            <th style="width: 18%;">Erros do Dia</th>
-                            <th style="width: 8%;">Status</th>
-                            <th style="width: 7%; text-align: center;">Ações</th>
+                            <th style="width: 12%;">Data</th>
+                            <th style="width: 15%;">Jornada Prev.</th>
+                            <th style="width: 32%;">Batidas Registradas (E1 / S1 / E2 / S2 / E3 / S3)</th>
+                            <th style="width: 25%;">Erros do Dia</th>
+                            <th style="width: 10%;">Status</th>
+                            <th style="width: 6%; text-align: center;">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for j in jornadas %}
+                        {% for j in group.jornadas %}
                         <tr>
                             <td class="fw-bold text-primary">
                                 <i class="bi bi-calendar-event me-1"></i>{{ j.data|date:"d/m/Y" }}
-                            </td>
-                            <td>
-                                <div class="fw-bold text-dark">{{ j.colaborador.nome_completo }}</div>
-                                <div class="text-muted small">
-                                    Matrícula: <code>{{ j.colaborador.matricula }}</code> | Setor: {{ j.colaborador.setor.nome|default:"N/A" }}
-                                </div>
                             </td>
                             <td>
                                 <span class="badge bg-light text-dark border">{{ j.jornada_prevista|default:"--:--" }}</span>
@@ -223,19 +255,21 @@
                                 </button>
                             </td>
                         </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="7" class="text-center py-5 text-muted">
-                                <i class="bi bi-check-circle display-4 text-success d-block mb-2"></i>
-                                <h5>Nenhuma falha de ponto pendente encontrada para os filtros selecionados!</h5>
-                            </td>
-                        </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
+    {% empty %}
+    <div class="card shadow-sm border-0">
+        <div class="card-body text-center py-5 text-muted">
+            <i class="bi bi-check-circle display-4 text-success d-block mb-2"></i>
+            <h5>Nenhuma falha de ponto pendente encontrada para os filtros selecionados!</h5>
+        </div>
+    </div>
+    {% endfor %}
+
 </div>
 
 <!-- Modal de Tratativa -->

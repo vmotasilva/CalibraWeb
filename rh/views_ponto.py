@@ -62,10 +62,13 @@ def importar_falhas_ponto_view(request):
                 col_map[col] = 'Err'
             elif 'notifica' in c_lower:
                 col_map[col] = 'Notificacoes'
+            elif 'manager' in c_lower and '.1' not in c_lower:
+                col_map[col] = 'Manager'
             elif 'trabdi' in c_lower or 'jornada' in c_lower:
                 col_map[col] = 'Jornada'
             elif c_str.upper() in ['E1', 'S1', 'E2', 'S2', 'E3', 'S3']:
                 col_map[col] = c_str.upper()
+
 
         df.rename(columns=col_map, inplace=True)
 
@@ -266,22 +269,47 @@ def tratativa_falhas_ponto_view(request):
         'colaborador',
         'colaborador__setor',
         'tratado_por'
-    ).prefetch_related('erros').order_by('-data', 'colaborador__nome_completo')
+    ).prefetch_related('erros').order_by('colaborador__nome_completo', '-data')
 
     # Contadores para os cards do dashboard
     total_pendentes = JornadaDiariaFalha.objects.filter(status_tratativa=StatusTratativa.PENDENTE).count()
     total_justificados = JornadaDiariaFalha.objects.filter(status_tratativa=StatusTratativa.JUSTIFICADO).count()
 
+    # Filtrar líderes (Apenas colaboradores ativos com Posto de Liderança preenchido)
+    lideres = Colaborador.objects.filter(
+        is_active=True,
+        posto_lideranca__in=['LIDER', 'SUPERVISOR', 'GERENTE']
+    ).exclude(
+        posto_lideranca='NAO_APLICA'
+    ).order_by('nome_completo') if (user.is_superuser or user.is_staff) else []
+
+    # Agrupar as ocorrências por Colaborador
+    colaboradores_agrupados = []
+    jornadas_list = list(jornadas)
+    
+    from itertools import groupby
+    for colab_obj, items in groupby(jornadas_list, key=lambda j: j.colaborador):
+        items_list = list(items)
+        pendentes_count = sum(1 for i in items_list if i.status_tratativa == StatusTratativa.PENDENTE)
+        colaboradores_agrupados.append({
+            'colaborador': colab_obj,
+            'jornadas': items_list,
+            'total_ocorrencias': len(items_list),
+            'pendentes_count': pendentes_count
+        })
+
     context = {
+        'colaboradores_agrupados': colaboradores_agrupados,
         'jornadas': jornadas,
         'status_filtro': status_filtro,
         'status_choices': StatusTratativa.choices,
         'total_pendentes': total_pendentes,
         'total_justificados': total_justificados,
-        'lideres': Colaborador.objects.filter(is_active=True).order_by('nome_completo') if user.is_superuser else []
+        'lideres': lideres
     }
 
     return render(request, 'rh/tratativa_falhas_ponto.html', context)
+
 
 
 @login_required
