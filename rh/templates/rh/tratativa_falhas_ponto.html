@@ -288,7 +288,7 @@
                                     <th style="width: 32%;">Batidas Registradas (E1 / S1 / E2 / S2 / E3 / S3)</th>
                                     <th style="width: 25%;">Erros do Dia</th>
                                     <th style="width: 10%;">Status</th>
-                                    <th style="width: 8%; text-align: center;">Tratado / Ações</th>
+                                    <th style="width: 8%; text-align: center;">Tratado</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -327,32 +327,19 @@
                                         </span>
                                     </td>
                                     <td class="text-center">
-                                        <div class="d-flex align-items-center justify-content-center gap-2">
-                                            <div class="form-check form-switch m-0" title="Alternar Status: Marcar como Justificado/Ajustado">
-                                                <input class="form-check-input chk-toggle-tratativa"
-                                                       type="checkbox"
-                                                       role="switch"
-                                                       data-id="{{ j.id }}"
-                                                       data-manager-index="{{ forloop.parentloop.parentloop.counter }}"
-                                                       data-colab-index="{{ forloop.parentloop.counter }}"
-                                                       {% if j.status_tratativa == 'JUSTIFICADO' %}checked{% endif %}
-                                                       style="cursor: pointer; width: 2.2em; height: 1.25em;">
-                                            </div>
-                                            <button type="button" class="btn btn-sm btn-outline-primary rounded-circle shadow-sm btn-tratar"
-                                                    data-bs-toggle="modal"
-                                                    data-bs-target="#modalTratativa"
-                                                    data-id="{{ j.id }}"
-                                                    data-colab="{{ j.colaborador.nome_completo }}"
-                                                    data-data="{{ j.data|date:'d/m/Y' }}"
-                                                    data-status="{{ j.status_tratativa }}"
-                                                    data-justificativa="{{ j.justificativa|default:'' }}"
-                                                    data-obs="{{ j.observacao_lider|default:'' }}"
-                                                    title="Tratar com Justificativa">
-                                                <i class="bi bi-pencil-square"></i>
-                                            </button>
+                                        <div class="form-check form-switch d-inline-block m-0" title="Alternar Status: Marcar como Justificado/Ajustado">
+                                            <input class="form-check-input chk-toggle-tratativa"
+                                                   type="checkbox"
+                                                   role="switch"
+                                                   data-id="{{ j.id }}"
+                                                   data-manager-index="{{ forloop.parentloop.parentloop.counter }}"
+                                                   data-colab-index="{{ forloop.parentloop.counter }}"
+                                                   {% if j.status_tratativa == 'JUSTIFICADO' %}checked{% endif %}
+                                                   style="cursor: pointer; width: 2.5em; height: 1.3em;">
                                         </div>
                                     </td>
                                 </tr>
+
 
                                 {% endfor %}
                             </tbody>
