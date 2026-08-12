@@ -21,7 +21,7 @@ import secrets
 logger = logging.getLogger(__name__)
 
 # Imports dos models
-from rh.models import Colaborador, Ocorrencia, Ferias, PlanejamentoHoraExtra, VencimentoFerias
+from rh.models import Colaborador, Ocorrencia, Ferias, PlanejamentoHoraExtra, VencimentoFerias, ConfiguracaoFerias
 from organization.models import Setor, CentroCusto, HierarquiaSetor
 from procedures.models import ColaboradorPerfil, PerfilTreinamento, RegistroTreinamento
 
@@ -1316,6 +1316,7 @@ def gestao_ferias_view(request):
             "status_filtro": status,
             "aprovada_filtro": aprovada,
             "colaborador_filtro": colaborador_id,
+            "config_ferias": ConfiguracaoFerias.get_config(),
         }
         
         return render(request, "rh/gestao_ferias.html", ctx)
@@ -1818,6 +1819,7 @@ def projecao_mensal_ferias_view(request):
         'ordem_agrupamento': ordem_agrupamento,
         'agrupamentos_ativos': agrupamentos_ativos,
         'colaboradores': Colaborador.objects.filter(is_active=True).select_related('setor').order_by('nome_completo'),
+        'config_ferias': ConfiguracaoFerias.get_config(),
     }
     return render(request, 'rh/projecao_mensal.html', ctx)
 
@@ -1830,28 +1832,74 @@ from django.http import JsonResponse
 @login_required
 def api_ferias_detail(request, ferias_id):
     """GET: retorna dados da férias como JSON. POST: atualiza os campos editáveis."""
-    from django.views.decorators.csrf import csrf_exempt
     import json
+    from datetime import datetime as dt_parse
 
     ferias = get_object_or_404(Ferias, id=ferias_id)
 
     if request.method == 'POST':
         try:
-            data = json.loads(request.body)
-            from datetime import datetime as dt_parse
-            if 'data_inicio' in data and data['data_inicio']:
-                ferias.data_inicio = dt_parse.strptime(data['data_inicio'], '%Y-%m-%d').date()
-            if 'data_fim' in data and data['data_fim']:
-                ferias.data_fim = dt_parse.strptime(data['data_fim'], '%Y-%m-%d').date()
-            if 'dias_solicitados' in data:
-                ferias.dias_solicitados = int(data['dias_solicitados'])
+            is_json = (request.content_type and 'application/json' in request.content_type.lower())
+            if is_json:
+                data = json.loads(request.body.decode('utf-8') if isinstance(request.body, bytes) else request.body)
+            else:
+                data = request.POST
+
+            if data.get('data_inicio'):
+                d_ini_val = data.get('data_inicio')
+                if isinstance(d_ini_val, str):
+                    ferias.data_inicio = dt_parse.strptime(d_ini_val, '%Y-%m-%d').date()
+                else:
+                    ferias.data_inicio = d_ini_val
+
+            if data.get('data_fim'):
+                d_fim_val = data.get('data_fim')
+                if isinstance(d_fim_val, str):
+                    ferias.data_fim = dt_parse.strptime(d_fim_val, '%Y-%m-%d').date()
+                else:
+                    ferias.data_fim = d_fim_val
+
+            if data.get('dias_solicitados'):
+                ferias.dias_solicitados = int(data.get('dias_solicitados'))
+
+            if 'status' in data and data.get('status'):
+                ferias.status = data.get('status')
+
             if 'aprovada' in data:
-                ferias.aprovada = bool(data['aprovada'])
+                val = data.get('aprovada')
+                ferias.aprovada = val in [True, 'true', 'on', '1', 1]
+            else:
+                ferias.aprovada = False
+
+            # Validação de regras de mês para abono e 13º
+            config = ConfiguracaoFerias.get_config()
+            mes = ferias.data_inicio.month if ferias.data_inicio else 1
+
+            if 'abono_salarial' in data:
+                val = data.get('abono_salarial')
+                quer_abono = val in [True, 'true', 'on', '1', 1]
+                if quer_abono and not config.permite_abono(mes):
+                    return JsonResponse({'ok': False, 'message': f'Abono Salarial não é permitido para o mês {mes}.'}, status=400)
+                ferias.abono_salarial = quer_abono
+            else:
+                ferias.abono_salarial = False
+
+            if 'adiantamento_13' in data:
+                val = data.get('adiantamento_13')
+                quer_adiantamento = val in [True, 'true', 'on', '1', 1]
+                if quer_adiantamento and not config.permite_adiantamento_13(mes):
+                    return JsonResponse({'ok': False, 'message': f'Adiantamento de 13º Salário não é permitido para o mês {mes}.'}, status=400)
+                ferias.adiantamento_13 = quer_adiantamento
+            else:
+                ferias.adiantamento_13 = False
+
             if 'descricao' in data:
-                ferias.descricao = data['descricao']
+                ferias.descricao = data.get('descricao')
+
             ferias.save()
             return JsonResponse({'ok': True, 'message': 'Férias atualizadas com sucesso!'})
         except Exception as e:
+            logger.error(f"Erro ao salvar férias API: {e}", exc_info=True)
             return JsonResponse({'ok': False, 'message': str(e)}, status=400)
 
     # GET
@@ -1868,7 +1916,41 @@ def api_ferias_detail(request, ferias_id):
         'status': ferias.status,
         'status_display': ferias.get_status_display(),
         'aprovada': ferias.aprovada,
+        'abono_salarial': ferias.abono_salarial,
+        'adiantamento_13': ferias.adiantamento_13,
         'descricao': ferias.descricao or '',
+    })
+
+
+@login_required
+def api_configuracao_ferias(request):
+    """GET: Retorna os meses permitidos. POST: Atualiza os meses permitidos para Abono e 13º."""
+    import json
+    config = ConfiguracaoFerias.get_config()
+
+    if request.method == 'POST':
+        if not (request.user.is_superuser or request.user.is_staff or request.user.has_perm('rh.change_ferias')):
+            return JsonResponse({'ok': False, 'message': 'Sem permissão para alterar configurações.'}, status=403)
+        try:
+            is_json = (request.content_type and 'application/json' in request.content_type.lower())
+            if is_json:
+                data = json.loads(request.body.decode('utf-8') if isinstance(request.body, bytes) else request.body)
+                meses_abono = data.get('meses_abono_salarial', [])
+                meses_13 = data.get('meses_adiantamento_13', [])
+            else:
+                meses_abono = request.POST.getlist('meses_abono_salarial')
+                meses_13 = request.POST.getlist('meses_adiantamento_13')
+
+            config.meses_abono_salarial = [int(m) for m in meses_abono if str(m).isdigit()]
+            config.meses_adiantamento_13 = [int(m) for m in meses_13 if str(m).isdigit()]
+            config.save()
+            return JsonResponse({'ok': True, 'message': 'Configurações de férias atualizadas!'})
+        except Exception as e:
+            return JsonResponse({'ok': False, 'message': str(e)}, status=400)
+
+    return JsonResponse({
+        'meses_abono_salarial': config.meses_abono_salarial or [],
+        'meses_adiantamento_13': config.meses_adiantamento_13 or [],
     })
 
 

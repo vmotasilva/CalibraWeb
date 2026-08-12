@@ -11,6 +11,8 @@ class FeriasForm(forms.ModelForm):
             "data_fim",
             "dias_solicitados",
             "aprovada",
+            "abono_salarial",
+            "adiantamento_13",
             "descricao"
         ]
         widgets = {
@@ -19,8 +21,29 @@ class FeriasForm(forms.ModelForm):
             "data_fim": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "dias_solicitados": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
             "aprovada": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "abono_salarial": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "adiantamento_13": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "descricao": forms.Textarea(attrs={"class": "form-control", "rows": 2}),
         }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        data_inicio = cleaned_data.get('data_inicio')
+        abono = cleaned_data.get('abono_salarial')
+        adiantamento = cleaned_data.get('adiantamento_13')
+
+        if data_inicio:
+            from rh.models import ConfiguracaoFerias
+            config = ConfiguracaoFerias.get_config()
+            mes = data_inicio.month
+            if abono and not config.permite_abono(mes):
+                self.add_error('abono_salarial', f'Abono Salarial não é permitido para o mês {mes}.')
+                cleaned_data['abono_salarial'] = False
+            if adiantamento and not config.permite_adiantamento_13(mes):
+                self.add_error('adiantamento_13', f'Adiantamento de 13º Salário não é permitido para o mês {mes}.')
+                cleaned_data['adiantamento_13'] = False
+
+        return cleaned_data
 
 class VencimentoFeriasForm(forms.ModelForm):
     class Meta:

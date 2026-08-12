@@ -186,6 +186,8 @@ class Ferias(models.Model):
     data_fim = models.DateField(verbose_name="Data de Término")
     dias_solicitados = models.IntegerField(verbose_name="Dias Solicitados")
     aprovada = models.BooleanField(default=False, verbose_name="Aprovada?")
+    abono_salarial = models.BooleanField(default=False, verbose_name="Abono Salarial (10 dias)")
+    adiantamento_13 = models.BooleanField(default=False, verbose_name="Adiantamento de 13º Salário")
     vencimento = models.DateField(verbose_name="Vencimento das Férias", null=True, blank=True)
     descricao = models.TextField(null=True, blank=True, verbose_name="Observações")
 
@@ -233,6 +235,45 @@ class Ferias(models.Model):
             models.Index(fields=['status', '-data_inicio']),
             models.Index(fields=['aprovada', 'data_inicio', 'data_fim']),
         ]
+
+
+class ConfiguracaoFerias(models.Model):
+    """
+    Configuração global de permissões para Abono Salarial e Adiantamento de 13º Salário por mês.
+    """
+    meses_abono_salarial = models.JSONField(
+        default=list,
+        verbose_name="Meses permitidos para Abono Salarial",
+        help_text="Lista dos meses (1 a 12) onde Abono Salarial é permitido."
+    )
+    meses_adiantamento_13 = models.JSONField(
+        default=list,
+        verbose_name="Meses permitidos para Adiantamento de 13º",
+        help_text="Lista dos meses (1 a 12) onde Adiantamento de 13º é permitido."
+    )
+
+    class Meta:
+        verbose_name = "Configuração de Férias"
+        verbose_name_plural = "Configurações de Férias"
+
+    @classmethod
+    def get_config(cls):
+        """Retorna a instância única de configuração. Inicializa com todos os meses (1 a 12) se não existir."""
+        config, _ = cls.objects.get_or_create(id=1, defaults={
+            'meses_abono_salarial': list(range(1, 13)),
+            'meses_adiantamento_13': list(range(1, 13)),
+        })
+        return config
+
+    def permite_abono(self, mes: int) -> bool:
+        if not self.meses_abono_salarial:
+            return False
+        return int(mes) in [int(m) for m in self.meses_abono_salarial]
+
+    def permite_adiantamento_13(self, mes: int) -> bool:
+        if not self.meses_adiantamento_13:
+            return False
+        return int(mes) in [int(m) for m in self.meses_adiantamento_13]
 
 
 class Ocorrencia(models.Model):

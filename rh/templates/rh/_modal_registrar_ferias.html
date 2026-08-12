@@ -119,10 +119,24 @@ Requer que a view passe "colaboradores" no contexto.
                                 <option value="CONCLUIDO">Concluído</option>
                             </select>
                         </div>
-                        <div class="col-md-6 d-flex align-items-end">
+                        <div class="col-md-4 d-flex align-items-end">
                             <div class="form-check form-switch">
                                 <input type="checkbox" id="reg_aprovada" name="aprovada" class="form-check-input" value="on">
-                                <label class="form-check-label" for="reg_aprovada">Aprovada?</label>
+                                <label class="form-check-label fw-semibold" for="reg_aprovada">Aprovada?</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <div class="form-check form-switch">
+                                <input type="checkbox" id="reg_abono_salarial" name="abono_salarial" class="form-check-input" value="on">
+                                <label class="form-check-label fw-semibold" for="reg_abono_salarial">Abono Salarial (10 dias)</label>
+                                <small id="hint_abono" class="text-danger d-block" style="display:none; font-size: 0.75rem;"></small>
+                            </div>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <div class="form-check form-switch">
+                                <input type="checkbox" id="reg_adiantamento_13" name="adiantamento_13" class="form-check-input" value="on">
+                                <label class="form-check-label fw-semibold" for="reg_adiantamento_13">Adiantamento 13º Salário</label>
+                                <small id="hint_13" class="text-danger d-block" style="display:none; font-size: 0.75rem;"></small>
                             </div>
                         </div>
                         <div class="col-12">
@@ -145,6 +159,65 @@ Requer que a view passe "colaboradores" no contexto.
 
 <script>
 (function() {
+    let configFeriasCache = {
+        meses_abono_salarial: {{ config_ferias.meses_abono_salarial|default:"[1,2,3,4,5,6,7,8,9,10,11,12]"|safe }},
+        meses_adiantamento_13: {{ config_ferias.meses_adiantamento_13|default:"[1,2,3,4,5,6,7,8,9,10,11,12]"|safe }}
+    };
+
+    window.atualizarConfigFeriasCache = function(newConfig) {
+        if (newConfig) {
+            configFeriasCache = newConfig;
+            atualizarFlagsMesPermitidos();
+        }
+    };
+
+    function atualizarFlagsMesPermitidos() {
+        const dataIni = document.getElementById('reg_data_inicio').value;
+        const abonoInput = document.getElementById('reg_abono_salarial');
+        const adiantamentoInput = document.getElementById('reg_adiantamento_13');
+        const hintAbono = document.getElementById('hint_abono');
+        const hint13 = document.getElementById('hint_13');
+
+        if (!dataIni) {
+            abonoInput.disabled = false;
+            adiantamentoInput.disabled = false;
+            if (hintAbono) hintAbono.style.display = 'none';
+            if (hint13) hint13.style.display = 'none';
+            return;
+        }
+
+        const partes = dataIni.split('-');
+        const mes = parseInt(partes[1], 10);
+
+        // Abono Salarial
+        const podeAbono = configFeriasCache.meses_abono_salarial.includes(mes);
+        if (!podeAbono) {
+            abonoInput.checked = false;
+            abonoInput.disabled = true;
+            if (hintAbono) {
+                hintAbono.textContent = 'Indisponível neste mês';
+                hintAbono.style.display = 'block';
+            }
+        } else {
+            abonoInput.disabled = false;
+            if (hintAbono) hintAbono.style.display = 'none';
+        }
+
+        // Adiantamento 13º
+        const pode13 = configFeriasCache.meses_adiantamento_13.includes(mes);
+        if (!pode13) {
+            adiantamentoInput.checked = false;
+            adiantamentoInput.disabled = true;
+            if (hint13) {
+                hint13.textContent = 'Indisponível neste mês';
+                hint13.style.display = 'block';
+            }
+        } else {
+            adiantamentoInput.disabled = false;
+            if (hint13) hint13.style.display = 'none';
+        }
+    }
+
     // Filtros da tabela de colaboradores
     function filtrarColaboradores() {
         const nome = document.getElementById('filtroNomeMatricula').value.toLowerCase();
@@ -160,13 +233,17 @@ Requer que a view passe "colaboradores" no contexto.
         });
         document.getElementById('totalColaboradores').textContent = visivel;
     }
-    document.getElementById('filtroNomeMatricula').addEventListener('keyup', filtrarColaboradores);
-    document.getElementById('filtroSetor').addEventListener('change', filtrarColaboradores);
-    document.getElementById('filtroStatus').addEventListener('change', filtrarColaboradores);
+    const elFiltroNome = document.getElementById('filtroNomeMatricula');
+    if (elFiltroNome) elFiltroNome.addEventListener('keyup', filtrarColaboradores);
+    const elFiltroSetor = document.getElementById('filtroSetor');
+    if (elFiltroSetor) elFiltroSetor.addEventListener('change', filtrarColaboradores);
+    const elFiltroStatus = document.getElementById('filtroStatus');
+    if (elFiltroStatus) elFiltroStatus.addEventListener('change', filtrarColaboradores);
 
     // Selecionar colaborador
     window.selecionarColaboradorParaFerias = function(colab_id, nome) {
-        bootstrap.Modal.getInstance(document.getElementById('modalSelecionarColaborador')).hide();
+        const modalSel = document.getElementById('modalSelecionarColaborador');
+        if (modalSel) bootstrap.Modal.getInstance(modalSel).hide();
         document.getElementById('registroFeriasTitle').innerHTML = '<i class="bi bi-calendar-check"></i> Registrar Férias — ' + nome;
         document.getElementById('formRegistrarFerias').action =
             "{% url 'rh:criar_ferias_colab' colab_id=0 %}".replace('/0/', '/' + colab_id + '/');
@@ -176,8 +253,11 @@ Requer que a view passe "colaboradores" no contexto.
             document.getElementById(id).value = '';
         });
         document.getElementById('reg_aprovada').checked = false;
+        document.getElementById('reg_abono_salarial').checked = false;
+        document.getElementById('reg_adiantamento_13').checked = false;
         document.getElementById('reg_status').value = 'PLANEJADO';
         document.getElementById('msgRegistroFerias').classList.add('d-none');
+        atualizarFlagsMesPermitidos();
         setTimeout(() => new bootstrap.Modal(document.getElementById('modalRegistrarFerias')).show(), 350);
     };
 
@@ -195,8 +275,11 @@ Requer que a view passe "colaboradores" no contexto.
                 document.getElementById('reg_data_fim').value = data.data_fim;
                 document.getElementById('reg_descricao').value = data.descricao;
                 document.getElementById('reg_status').value = data.status;
-                document.getElementById('reg_aprovada').checked = data.aprovada;
+                document.getElementById('reg_aprovada').checked = !!data.aprovada;
+                document.getElementById('reg_abono_salarial').checked = !!data.abono_salarial;
+                document.getElementById('reg_adiantamento_13').checked = !!data.adiantamento_13;
                 
+                atualizarFlagsMesPermitidos();
                 document.getElementById('msgRegistroFerias').classList.add('d-none');
                 new bootstrap.Modal(document.getElementById('modalRegistrarFerias')).show();
             } else {
@@ -208,7 +291,7 @@ Requer que a view passe "colaboradores" no contexto.
         }
     };
 
-    // Auto-calcular data fim
+    // Auto-calcular data fim & atualizar flags por mês
     function calcularDataFimReg() {
         const ini = document.getElementById('reg_data_inicio').value;
         const dias = parseInt(document.getElementById('reg_dias_solicitados').value, 10);
@@ -220,6 +303,7 @@ Requer que a view passe "colaboradores" no contexto.
                 String(d.getMonth()+1).padStart(2,'0') + '-' +
                 String(d.getDate()).padStart(2,'0');
         }
+        atualizarFlagsMesPermitidos();
     }
     document.getElementById('reg_data_inicio').addEventListener('change', calcularDataFimReg);
     document.getElementById('reg_dias_solicitados').addEventListener('input', calcularDataFimReg);
@@ -236,14 +320,15 @@ Requer que a view passe "colaboradores" no contexto.
                 method: 'POST', body: new FormData(this),
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
-            if (resp.ok) {
+            const data = await resp.json();
+            if (resp.ok && data.ok) {
                 msg.className = 'alert alert-success';
-                msg.textContent = 'Férias registradas com sucesso!';
+                msg.textContent = data.message || 'Férias salvas com sucesso!';
                 msg.classList.remove('d-none');
-                setTimeout(() => window.location.reload(), 1200);
+                setTimeout(() => window.location.reload(), 1000);
             } else {
                 msg.className = 'alert alert-danger';
-                msg.textContent = 'Erro ao registrar. Verifique os campos.';
+                msg.textContent = data.message || 'Erro ao registrar. Verifique os campos.';
                 msg.classList.remove('d-none');
             }
         } catch(err) {

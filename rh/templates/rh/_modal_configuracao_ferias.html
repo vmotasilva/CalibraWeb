@@ -1,0 +1,152 @@
+{% load static %}
+<!-- Modal Configuração de Regras de Férias (Meses Permitidos para Abono e 13º) -->
+<div class="modal fade" id="modalConfiguracaoFerias" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title"><i class="bi bi-gear-fill text-warning me-2"></i> Configurar Regras de Férias por Mês</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">
+                    Selecione em quais meses do ano é permitido solicitar <strong>Abono Salarial (10 dias)</strong> e <strong>Adiantamento de 13º Salário</strong>.
+                    Nos meses desmarcados, os flags ficarão desativados nos formulários de férias.
+                </p>
+                <form id="formConfiguracaoFerias">
+                    {% csrf_token %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Mês</th>
+                                    <th class="text-center">Abono Salarial</th>
+                                    <th class="text-center">Adiantamento 13º</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% with meses_nomes="Janeiro,Fevereiro,Março,Abril,Maio,Junho,Julho,Agosto,Setembro,Outubro,Novembro,Dezembro" %}
+                                {% for m_nome in meses_nomes|make_list %}
+                                {% comment %} Loop auxiliar via JS {% endcomment %}
+                                {% endfor %}
+                                {% endwith %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="msgConfigFerias" class="d-none mt-2"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" id="btnSalvarConfigFerias" class="btn btn-success">
+                    <i class="bi bi-check-lg"></i> Salvar Regras
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const mesesNomes = [
+        'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    ];
+
+    const modalConfig = document.getElementById('modalConfiguracaoFerias');
+    if (!modalConfig) return;
+
+    const tbody = modalConfig.querySelector('tbody');
+
+    // Preenche a tabela dinamicamente
+    function renderTabelaConfig(mesesAbono, meses13) {
+        tbody.innerHTML = '';
+        mesesNomes.forEach((nome, idx) => {
+            const mesNum = idx + 1;
+            const checkedAbono = mesesAbono.includes(mesNum) ? 'checked' : '';
+            const checked13 = meses13.includes(mesNum) ? 'checked' : '';
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="fw-bold">${mesNum}. ${nome}</td>
+                <td class="text-center">
+                    <div class="form-check form-switch d-inline-block">
+                        <input class="form-check-input cfg-abono" type="checkbox" value="${mesNum}" ${checkedAbono}>
+                    </div>
+                </td>
+                <td class="text-center">
+                    <div class="form-check form-switch d-inline-block">
+                        <input class="form-check-input cfg-13" type="checkbox" value="${mesNum}" ${checked13}>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Ao abrir o modal, busca a configuração atual via API
+    modalConfig.addEventListener('show.bs.modal', async function() {
+        try {
+            const resp = await fetch('{% url "rh:api_configuracao_ferias" %}');
+            if (resp.ok) {
+                const data = await resp.json();
+                renderTabelaConfig(data.meses_abono_salarial || [], data.meses_adiantamento_13 || []);
+            }
+        } catch (err) {
+            console.error('Erro ao carregar configurações de férias:', err);
+        }
+    });
+
+    // Salvar configurações
+    document.getElementById('btnSalvarConfigFerias').addEventListener('click', async function() {
+        const btn = this;
+        const msg = document.getElementById('msgConfigFerias');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Salvando...';
+
+        const mesesAbono = Array.from(tbody.querySelectorAll('.cfg-abono:checked')).map(el => parseInt(el.value, 10));
+        const meses13 = Array.from(tbody.querySelectorAll('.cfg-13:checked')).map(el => parseInt(el.value, 10));
+
+        try {
+            const resp = await fetch('{% url "rh:api_configuracao_ferias" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({
+                    meses_abono_salarial: mesesAbono,
+                    meses_adiantamento_13: meses13
+                })
+            });
+            const data = await resp.json();
+            if (resp.ok && data.ok) {
+                msg.className = 'alert alert-success';
+                msg.textContent = data.message || 'Configurações salvas!';
+                msg.classList.remove('d-none');
+                if (window.atualizarConfigFeriasCache) {
+                    window.atualizarConfigFeriasCache({
+                        meses_abono_salarial: mesesAbono,
+                        meses_adiantamento_13: meses13
+                    });
+                }
+                setTimeout(() => {
+                    bootstrap.Modal.getInstance(modalConfig).hide();
+                    msg.classList.add('d-none');
+                }, 1000);
+            } else {
+                msg.className = 'alert alert-danger';
+                msg.textContent = data.message || 'Erro ao salvar configurações.';
+                msg.classList.remove('d-none');
+            }
+        } catch(err) {
+            console.error(err);
+            msg.className = 'alert alert-danger';
+            msg.textContent = 'Erro de conexão ao salvar.';
+            msg.classList.remove('d-none');
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-lg"></i> Salvar Regras';
+    });
+})();
+</script>

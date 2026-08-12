@@ -65,6 +65,11 @@
                                 <i class="fas fa-file-excel text-success me-2"></i> Exportar
                             </a>
                         </li>
+                        <li>
+                            <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#modalConfiguracaoFerias">
+                                <i class="fas fa-cog text-dark me-2"></i> Regras por Mês (Abono / 13º)
+                            </button>
+                        </li>
                         <li><hr class="dropdown-divider"></li>
                         <li>
                             <a href="{% url 'modulo_rh' %}" class="dropdown-item">
@@ -543,4 +548,5 @@ function filtrarColaboradores() {
 
 <!-- Modal Seleção + Registro compartilhado -->
 {% include 'rh/_modal_registrar_ferias.html' %}
+{% include 'rh/_modal_configuracao_ferias.html' %}
 {% endblock %}

@@ -113,6 +113,9 @@
         </div>
         <div class="d-flex gap-2 align-items-center">
             <span class="stat-pill"><i class="bi bi-people-fill"></i> {{ total_ano }} registro{{ total_ano|pluralize:"s" }} no ano</span>
+            <button class="btn btn-outline-dark btn-sm" data-bs-toggle="modal" data-bs-target="#modalConfiguracaoFerias">
+                <i class="bi bi-gear-fill"></i> Regras por Mês
+            </button>
             <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalSelecionarColaborador">
                 <i class="bi bi-calendar-plus"></i> Registrar Férias
             </button>
@@ -313,4 +316,5 @@
     }
 </script>
 {% include 'rh/_modal_registrar_ferias.html' %}
+{% include 'rh/_modal_configuracao_ferias.html' %}
 {% endblock %}
