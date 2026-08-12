@@ -411,6 +411,18 @@
                             {% endif %}
                         {% endif %}
 
+                        <li>
+                            <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseTRATATIVADEPONTOMOBILE" style="cursor: pointer;">
+                                TRATATIVA DE FALHAS DE PONTO <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+                            </h6>
+                            <ul class="list-unstyled collapse show" id="collapseTRATATIVADEPONTOMOBILE">
+                                <li><a class="dropdown-item" href="{% url 'rh:tratativa_falhas_ponto' %}"><i class="bi bi-exclamation-triangle text-warning"></i> Pendências de Batida de Ponto</a></li>
+                                <li><a class="dropdown-item" href="{% url 'rh:importar_falhas_ponto' %}"><i class="bi bi-file-earmark-excel text-success"></i> Importar Relatório (.xlsx)</a></li>
+                            </ul>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+
+
                         {% can_nav_block user 'rh' 'importacao' as nav_pe_import %}
                         {% if nav_pe_import %}
                             {% can_nav_view user 'qms:importar_colaboradores' 'rh' as nav_pe_imp_p %}

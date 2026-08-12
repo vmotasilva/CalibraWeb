@@ -53,9 +53,15 @@ from rh.views.views import (
     api_totp_remover,
     api_totp_toggle_isencao,
 )
-
+from rh.views_ponto import (
+    tratativa_falhas_ponto_view,
+    importar_falhas_ponto_view,
+    api_confirmar_depara,
+    api_tratar_jornada,
+)
 
 app_name = 'rh'
+
 
 urlpatterns = [
     # Detalhe do colaborador
@@ -123,4 +129,11 @@ urlpatterns = [
     path('horas-extras/motivos/<int:pk>/editar/', motivo_planejamento_update_view, name='motivo_planejamento_edit'),
     path('horas-extras/motivos/<int:pk>/excluir/', motivo_planejamento_delete_view, name='motivo_planejamento_delete'),
     path('api/horas-extras/motivos/criar/', api_create_motivo, name='api_create_motivo'),
+    
+    # Falhas de Batida de Ponto
+    path('ponto/tratativa/', tratativa_falhas_ponto_view, name='tratativa_falhas_ponto'),
+    path('ponto/importar/', importar_falhas_ponto_view, name='importar_falhas_ponto'),
+    path('api/ponto/confirmar-depara/', api_confirmar_depara, name='api_confirmar_depara'),
+    path('api/ponto/jornada/<int:jornada_id>/tratar/', api_tratar_jornada, name='api_tratar_jornada'),
 ]
+

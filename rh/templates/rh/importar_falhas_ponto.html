@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+{% load static %}
+
+
+{% block title %}Importar Relatório de Falhas de Ponto - CalibraWeb{% endblock %}
+
+{% block extra_css %}
+<style>
+    .upload-card {
+        border: 2px dashed #0d6efd;
+        border-radius: 12px;
+        background: rgba(13, 110, 253, 0.02);
+        transition: all 0.3s ease;
+    }
+    .upload-card:hover, .upload-card.dragover {
+        background: rgba(13, 110, 253, 0.08);
+        border-color: #0b5ed7;
+        transform: translateY(-2px);
+    }
+    .badge-score {
+        font-size: 0.78rem;
+        padding: 0.3em 0.6em;
+        border-radius: 20px;
+    }
+    .suggestion-item:hover {
+        background-color: #f8f9fa;
+        cursor: pointer;
+    }
+    .table-orfaos td {
+        vertical-align: middle;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header Page -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold text-dark mb-1">
+                <i class="bi bi-file-earmark-excel text-success me-2"></i>Importação de Relatório de Falhas de Ponto
+            </h3>
+            <p class="text-muted mb-0">Envie o arquivo <code>.xlsx</code> contendo os erros de batida de ponto para processamento e agrupamento diário.</p>
+        </div>
+        <div>
+            <a href="{% url 'rh:tratativa_falhas_ponto' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Ir para Painel de Tratativa
+            </a>
+        </div>
+    </div>
+
+    <!-- Alert Container -->
+    <div id="alertContainer"></div>
+
+    <!-- Dropzone Area -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body p-5">
+            <form id="formUpload" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="upload-card text-center p-5 cursor-pointer" id="dropzone">
+                    <i class="bi bi-cloud-arrow-up display-3 text-primary mb-3"></i>
+                    <h5 class="fw-bold mb-2">Arraste seu arquivo Excel (.xlsx) aqui</h5>
+                    <p class="text-muted mb-3">ou clique para selecionar do seu computador</p>
+                    <input type="file" id="fileInput" name="file" accept=".xlsx, .xls" class="d-none">
+                    <button type="button" class="btn btn-primary px-4 shadow-sm" onclick="document.getElementById('fileInput').click()">
+                        <i class="bi bi-folder2-open me-2"></i>Selecionar Arquivo
+                    </button>
+                    <div id="selectedFileInfo" class="mt-3 text-success fw-bold d-none">
+                        <i class="bi bi-file-earmark-check me-1"></i><span id="fileName"></span>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end mt-4">
+                    <button type="submit" id="btnEnviar" class="btn btn-success px-4 d-none">
+                        <i class="bi bi-check-circle me-1"></i>Processar Importação
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Resolução de Órfãos (Aparece se houver pendências de De-Para) -->
+    <div id="cardOrfaos" class="card shadow-lg border-warning d-none">
+        <div class="card-header bg-warning bg-opacity-15 border-warning py-3">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-exclamation-triangle-fill text-warning fs-3 me-3"></i>
+                <div>
+                    <h5 class="fw-bold text-dark mb-0">Pendência de Vínculo de Matrícula (De-Para)</h5>
+                    <small class="text-muted">A importação foi pausada pois foram encontrados colaboradores na planilha não vinculados à matrícula global do sistema.</small>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <p class="mb-3">Confirme abaixo as sugestões automáticas baseadas em similaridade de nomes para salvar a regra "De-Para" e concluir a importação:</p>
+            
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered table-orfaos align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th style="width: 15%;">Matrícula (Planilha)</th>
+                            <th style="width: 25%;">Nome (Planilha)</th>
+                            <th style="width: 45%;">Sugestão Inteligente (Sistema)</th>
+                            <th style="width: 15%; text-align: center;">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyOrfaos">
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mt-3">
+                <span class="text-muted small">* Após confirmar os vínculos acima, os dados serão salvos e a planilha será processada.</span>
+                <button type="button" id="btnSalvarDePara" class="btn btn-warning text-dark fw-bold px-4">
+                    <i class="bi bi-save me-1"></i>Salvar Vínculos e Reprocessar Planilha
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const fileInput = document.getElementById('fileInput');
+        const dropzone = document.getElementById('dropzone');
+        const fileNameSpan = document.getElementById('fileName');
+        const selectedFileInfo = document.getElementById('selectedFileInfo');
+        const btnEnviar = document.getElementById('btnEnviar');
+        const formUpload = document.getElementById('formUpload');
+        const alertContainer = document.getElementById('alertContainer');
+        const cardOrfaos = document.getElementById('cardOrfaos');
+        const tbodyOrfaos = document.getElementById('tbodyOrfaos');
+        const btnSalvarDePara = document.getElementById('btnSalvarDePara');
+
+        let pendingOrfaosData = [];
+
+        fileInput.addEventListener('change', function(e) {
+            if (this.files.length > 0) {
+                fileNameSpan.textContent = this.files[0].name;
+                selectedFileInfo.classList.remove('d-none');
+                btnEnviar.classList.remove('d-none');
+                cardOrfaos.classList.add('d-none');
+                alertContainer.innerHTML = '';
+            }
+        });
+
+        // Drag and Drop
+        dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+        dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                fileInput.files = e.dataTransfer.files;
+                fileNameSpan.textContent = e.dataTransfer.files[0].name;
+                selectedFileInfo.classList.remove('d-none');
+                btnEnviar.classList.remove('d-none');
+                cardOrfaos.classList.add('d-none');
+                alertContainer.innerHTML = '';
+            }
+        });
+
+        function showAlert(message, type = 'success') {
+            alertContainer.innerHTML = `
+                <div class="alert alert-${type} alert-dismissible fade show shadow-sm" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+        }
+
+        formUpload.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (!fileInput.files.length) return;
+
+            const formData = new FormData(formUpload);
+            btnEnviar.disabled = true;
+            btnEnviar.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Processando...`;
+
+            fetch('{% url "rh:importar_falhas_ponto" %}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(res => res.json().then(data => ({ status: res.status, body: data })))
+            .then(res => {
+                btnEnviar.disabled = false;
+                btnEnviar.innerHTML = `<i class="bi bi-check-circle me-1"></i>Processar Importação`;
+
+                if (res.status === 200 && res.body.status === 'SUCESSO') {
+                    showAlert(`<i class="bi bi-check-circle-fill me-2"></i>${res.body.mensagem}`, 'success');
+                    cardOrfaos.classList.add('d-none');
+                    setTimeout(() => {
+                        window.location.href = '{% url "rh:tratativa_falhas_ponto" %}';
+                    }, 1800);
+                } else if (res.status === 422 && res.body.status === 'PENDENTE_RESOLUCAO') {
+                    showAlert(`<i class="bi bi-exclamation-triangle-fill me-2"></i>${res.body.mensagem}`, 'warning');
+                    renderOrfaosTable(res.body.orfaos);
+                } else {
+                    showAlert(`<i class="bi bi-exclamation-octagon-fill me-2"></i>${res.body.mensagem || 'Erro ao processar.'}`, 'danger');
+                }
+            })
+            .catch(err => {
+                btnEnviar.disabled = false;
+                btnEnviar.innerHTML = `<i class="bi bi-check-circle me-1"></i>Processar Importação`;
+                showAlert(`Erro de conexão com o servidor.`, 'danger');
+            });
+        });
+
+        function renderOrfaosTable(orfaos) {
+            pendingOrfaosData = orfaos;
+            tbodyOrfaos.innerHTML = '';
+            cardOrfaos.classList.remove('d-none');
+
+            orfaos.forEach((orfao, idx) => {
+                let sugestoesHtml = '';
+                if (orfao.sugestoes && orfao.sugestoes.length > 0) {
+                    sugestoesHtml = `<select class="form-select select-depara" data-reg="${orfao.registro_planilha}">`;
+                    orfao.sugestoes.forEach((sug, sIdx) => {
+                        const isBest = sIdx === 0 ? 'selected' : '';
+                        sugestoesHtml += `<option value="${sug.id}" ${isBest}>
+                            [Mat: ${sug.matricula}] ${sug.nome_completo} (${sug.score}% de similaridade)
+                        </option>`;
+                    });
+                    sugestoesHtml += `</select>`;
+                } else {
+                    sugestoesHtml = `<span class="text-danger small">Nenhuma sugestão encontrada acima de 35%</span>`;
+                }
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><span class="badge bg-secondary font-monospace fs-6">${orfao.registro_planilha}</span></td>
+                    <td class="fw-bold text-dark">${orfao.nome_planilha}</td>
+                    <td>${sugestoesHtml}</td>
+                    <td class="text-center">
+                        <span class="badge bg-warning text-dark"><i class="bi bi-link-45deg me-1"></i>Pendente</span>
+                    </td>
+                `;
+                tbodyOrfaos.appendChild(tr);
+            });
+
+            cardOrfaos.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        btnSalvarDePara.addEventListener('click', function() {
+            const selects = document.querySelectorAll('.select-depara');
+            const vinculos = [];
+
+            selects.forEach(sel => {
+                const regPlanilha = sel.getAttribute('data-reg');
+                const colabId = sel.value;
+                if (regPlanilha && colabId) {
+                    vinculos.push({
+                        registro_planilha: regPlanilha,
+                        colaborador_id: parseInt(colabId)
+                    });
+                }
+            });
+
+            if (!vinculos.length) {
+                alert('Nenhum vínculo selecionado.');
+                return;
+            }
+
+            btnSalvarDePara.disabled = true;
+            btnSalvarDePara.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Salvando De-Para...`;
+
+            fetch('{% url "rh:api_confirmar_depara" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ vinculos: vinculos })
+            })
+            .then(res => res.json())
+            .then(data => {
+                btnSalvarDePara.disabled = false;
+                btnSalvarDePara.innerHTML = `<i class="bi bi-save me-1"></i>Salvar Vínculos e Reprocessar Planilha`;
+
+                if (data.status === 'SUCESSO') {
+                    showAlert(`<i class="bi bi-check-circle-fill me-2"></i>Vínculos salvos com sucesso! Reprocessando a planilha...`, 'info');
+                    // Reprocessar a planilha automaticamente
+                    formUpload.dispatchEvent(new Event('submit'));
+                } else {
+                    showAlert(data.mensagem, 'danger');
+                }
+            })
+            .catch(err => {
+                btnSalvarDePara.disabled = false;
+                btnSalvarDePara.innerHTML = `<i class="bi bi-save me-1"></i>Salvar Vínculos e Reprocessar Planilha`;
+                showAlert('Erro ao salvar vínculos.', 'danger');
+            });
+        });
+    });
+</script>
+{% endblock %}

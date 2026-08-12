@@ -1,0 +1,356 @@
+{% extends "base.html" %}
+{% load static %}
+
+
+{% block title %}Tratativa de Falhas de Ponto - CalibraWeb{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card-metric {
+        border: none;
+        border-radius: 12px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .card-metric:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.08) !important;
+    }
+    .badge-status-PENDENTE { background-color: #ffc107; color: #000; }
+    .badge-status-EM_ANALISE { background-color: #0dcaf0; color: #000; }
+    .badge-status-JUSTIFICADO { background-color: #198754; color: #fff; }
+    .badge-status-REJEITADO { background-color: #dc3545; color: #fff; }
+    
+    .time-slot {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 4px 8px;
+        font-family: monospace;
+        font-size: 0.85rem;
+        text-align: center;
+        min-width: 65px;
+    }
+    .time-slot-has-value {
+        background-color: #e7f1ff;
+        border-color: #9ec5fe;
+        color: #084298;
+        font-weight: 600;
+    }
+    .error-tag {
+        background-color: #fff3cd;
+        border: 1px solid #ffe69c;
+        color: #664d03;
+        font-size: 0.78rem;
+        padding: 4px 8px;
+        border-radius: 4px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header Page -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h3 class="fw-bold text-dark mb-1">
+                <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>Tratativa de Falhas de Batida de Ponto
+            </h3>
+            <p class="text-muted mb-0">Gestão e justificativa de inconsistências da jornada diária dos colaboradores da sua equipe.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'rh:importar_falhas_ponto' %}" class="btn btn-success shadow-sm">
+                <i class="bi bi-file-earmark-excel me-1"></i>Importar Planilha (.xlsx)
+            </a>
+        </div>
+    </div>
+
+    <!-- Cards de Métricas -->
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-6 col-lg-4">
+            <div class="card card-metric bg-warning bg-opacity-10 border-start border-warning border-4 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="text-uppercase fw-bold text-warning small">Pendentes de Tratativa</span>
+                        <h2 class="fw-bold text-dark mb-0 mt-1">{{ total_pendentes }}</h2>
+                    </div>
+                    <div class="bg-warning text-dark p-3 rounded-circle bg-opacity-25">
+                        <i class="bi bi-clock-history fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-6 col-lg-4">
+            <div class="card card-metric bg-success bg-opacity-10 border-start border-success border-4 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="text-uppercase fw-bold text-success small">Tratados / Justificados</span>
+                        <h2 class="fw-bold text-dark mb-0 mt-1">{{ total_justificados }}</h2>
+                    </div>
+                    <div class="bg-success text-white p-3 rounded-circle bg-opacity-25">
+                        <i class="bi bi-check-circle fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-12 col-lg-4">
+            <div class="card card-metric bg-primary bg-opacity-10 border-start border-primary border-4 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="text-uppercase fw-bold text-primary small">Exibidos na Lista</span>
+                        <h2 class="fw-bold text-dark mb-0 mt-1">{{ jornadas|length }}</h2>
+                    </div>
+                    <div class="bg-primary text-white p-3 rounded-circle bg-opacity-25">
+                        <i class="bi bi-list-check fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros de Busca -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body py-3">
+            <form method="GET" class="row g-3 align-items-end">
+                <div class="col-12 col-md-3">
+                    <label class="form-label small fw-bold">Status da Tratativa</label>
+                    <select name="status" class="form-select">
+                        <option value="TODOS" {% if status_filtro == 'TODOS' %}selected{% endif %}>Todos os Status</option>
+                        {% for st_val, st_lbl in status_choices %}
+                            <option value="{{ st_val }}" {% if status_filtro == st_val %}selected{% endif %}>{{ st_lbl }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label small fw-bold">Data Início</label>
+                    <input type="date" name="data_inicio" value="{{ request.GET.data_inicio }}" class="form-select">
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label small fw-bold">Data Fim</label>
+                    <input type="date" name="data_fim" value="{{ request.GET.data_fim }}" class="form-select">
+                </div>
+                {% if request.user.is_superuser and lideres %}
+                <div class="col-12 col-md-3">
+                    <label class="form-label small fw-bold">Filtrar por Líder</label>
+                    <select name="lider_id" class="form-select">
+                        <option value="">Todos os Líderes</option>
+                        {% for lid in lideres %}
+                            <option value="{{ lid.id }}" {% if request.GET.lider_id == lid.id|stringformat:'s' %}selected{% endif %}>{{ lid.nome_completo }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+                <div class="col-12 col-md-3 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-filter me-1"></i>Filtrar
+                    </button>
+                    <a href="{% url 'rh:tratativa_falhas_ponto' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-x-circle"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabela Agrupada por Dia e Colaborador -->
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th style="width: 10%;">Data</th>
+                            <th style="width: 20%;">Colaborador</th>
+                            <th style="width: 12%;">Jornada Prev.</th>
+                            <th style="width: 25%;">Batidas Registradas (E1 / S1 / E2 / S2 / E3 / S3)</th>
+                            <th style="width: 18%;">Erros do Dia</th>
+                            <th style="width: 8%;">Status</th>
+                            <th style="width: 7%; text-align: center;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for j in jornadas %}
+                        <tr>
+                            <td class="fw-bold text-primary">
+                                <i class="bi bi-calendar-event me-1"></i>{{ j.data|date:"d/m/Y" }}
+                            </td>
+                            <td>
+                                <div class="fw-bold text-dark">{{ j.colaborador.nome_completo }}</div>
+                                <div class="text-muted small">
+                                    Matrícula: <code>{{ j.colaborador.matricula }}</code> | Setor: {{ j.colaborador.setor.nome|default:"N/A" }}
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border">{{ j.jornada_prevista|default:"--:--" }}</span>
+                            </td>
+                            <td>
+                                <div class="d-flex flex-wrap gap-1">
+                                    <span class="time-slot {% if j.e1 %}time-slot-has-value{% endif %}" title="Entrada 1">{{ j.e1|default:"--:--" }}</span>
+                                    <span class="time-slot {% if j.s1 %}time-slot-has-value{% endif %}" title="Saída 1">{{ j.s1|default:"--:--" }}</span>
+                                    <span class="time-slot {% if j.e2 %}time-slot-has-value{% endif %}" title="Entrada 2">{{ j.e2|default:"--:--" }}</span>
+                                    <span class="time-slot {% if j.s2 %}time-slot-has-value{% endif %}" title="Saída 2">{{ j.s2|default:"--:--" }}</span>
+                                    <span class="time-slot {% if j.e3 %}time-slot-has-value{% endif %}" title="Entrada 3">{{ j.e3|default:"--:--" }}</span>
+                                    <span class="time-slot {% if j.s3 %}time-slot-has-value{% endif %}" title="Saída 3">{{ j.s3|default:"--:--" }}</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="d-flex flex-column gap-1">
+                                    {% for err in j.erros.all %}
+                                        <div class="error-tag">
+                                            <strong>[{{ err.codigo_erro }}]</strong> {{ err.descricao_notificacao }}
+                                        </div>
+                                    {% empty %}
+                                        <span class="text-muted small">Nenhum erro detalhado.</span>
+                                    {% endfor %}
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge badge-status-{{ j.status_tratativa }} px-2 py-1">
+                                    {{ j.get_status_tratativa_display }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-sm btn-primary rounded-circle shadow-sm btn-tratar"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#modalTratativa"
+                                        data-id="{{ j.id }}"
+                                        data-colab="{{ j.colaborador.nome_completo }}"
+                                        data-data="{{ j.data|date:'d/m/Y' }}"
+                                        data-status="{{ j.status_tratativa }}"
+                                        data-justificativa="{{ j.justificativa|default:'' }}"
+                                        data-obs="{{ j.observacao_lider|default:'' }}"
+                                        title="Tratar Pendência">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center py-5 text-muted">
+                                <i class="bi bi-check-circle display-4 text-success d-block mb-2"></i>
+                                <h5>Nenhuma falha de ponto pendente encontrada para os filtros selecionados!</h5>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Tratativa -->
+<div class="modal fade" id="modalTratativa" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold" id="modalTitle">Tratar Ocorrência de Ponto</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formTratativa">
+                {% csrf_token %}
+                <input type="hidden" id="modalJornadaId">
+                <div class="modal-body">
+                    <div class="bg-light p-3 rounded mb-3 border">
+                        <div class="fw-bold text-dark" id="modalColabNome">--</div>
+                        <div class="text-muted small">Data da Falha: <span id="modalDataFalha" class="fw-bold">--</span></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Novo Status da Ocorrência</label>
+                        <select id="modalStatusSelect" class="form-select" required>
+                            {% for st_val, st_lbl in status_choices %}
+                                <option value="{{ st_val }}">{{ st_lbl }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Justificativa (Motivo / Motivo do Ajuste)</label>
+                        <textarea id="modalJustificativa" class="form-textarea form-control" rows="3" placeholder="Ex: Esqueceu de registrar a saída do almoço. Autorizado pelo líder."></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Observação Interna do Líder</label>
+                        <textarea id="modalObsLider" class="form-control" rows="2" placeholder="Observações adicionais do gestor..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" id="btnSalvarTratativa" class="btn btn-success fw-bold px-4">
+                        <i class="bi bi-check-circle me-1"></i>Salvar Tratativa
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const modalElement = document.getElementById('modalTratativa');
+        const formTratativa = document.getElementById('formTratativa');
+        const modalJornadaId = document.getElementById('modalJornadaId');
+        const modalColabNome = document.getElementById('modalColabNome');
+        const modalDataFalha = document.getElementById('modalDataFalha');
+        const modalStatusSelect = document.getElementById('modalStatusSelect');
+        const modalJustificativa = document.getElementById('modalJustificativa');
+        const modalObsLider = document.getElementById('modalObsLider');
+        const btnSalvarTratativa = document.getElementById('btnSalvarTratativa');
+
+        document.querySelectorAll('.btn-tratar').forEach(btn => {
+            btn.addEventListener('click', function() {
+                modalJornadaId.value = this.getAttribute('data-id');
+                modalColabNome.textContent = this.getAttribute('data-colab');
+                modalDataFalha.textContent = this.getAttribute('data-data');
+                modalStatusSelect.value = this.getAttribute('data-status');
+                modalJustificativa.value = this.getAttribute('data-justificativa');
+                modalObsLider.value = this.getAttribute('data-obs');
+            });
+        });
+
+        formTratativa.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const jornadaId = modalJornadaId.value;
+            if (!jornadaId) return;
+
+            btnSalvarTratativa.disabled = true;
+            btnSalvarTratativa.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Salvando...`;
+
+            const payload = {
+                status_tratativa: modalStatusSelect.value,
+                justificativa: modalJustificativa.value,
+                observacao_lider: modalObsLider.value
+            };
+
+            fetch(`/rh/api/ponto/jornada/${jornadaId}/tratar/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(data => {
+                btnSalvarTratativa.disabled = false;
+                btnSalvarTratativa.innerHTML = `<i class="bi bi-check-circle me-1"></i>Salvar Tratativa`;
+
+                if (data.status === 'SUCESSO') {
+                    const bsModal = bootstrap.Modal.getInstance(modalElement);
+                    if (bsModal) bsModal.hide();
+                    location.reload();
+                } else {
+                    alert(data.mensagem || 'Erro ao salvar tratativa.');
+                }
+            })
+            .catch(err => {
+                btnSalvarTratativa.disabled = false;
+                btnSalvarTratativa.innerHTML = `<i class="bi bi-check-circle me-1"></i>Salvar Tratativa`;
+                alert('Erro de comunicação ao salvar tratativa.');
+            });
+        });
+    });
+</script>
+{% endblock %}

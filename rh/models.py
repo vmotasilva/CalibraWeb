@@ -667,3 +667,109 @@ class VencimentoFerias(models.Model):
         verbose_name_plural = "Vencimentos de Férias"
         ordering = ["data_limite_gozo"]
 
+
+class MapeamentoMatricula(models.Model):
+    matricula_planilha = models.CharField(
+        max_length=50, 
+        unique=True, 
+        db_index=True,
+        verbose_name="Matrícula na Planilha/Relatório"
+    )
+    colaborador = models.ForeignKey(
+        Colaborador,
+        on_delete=models.CASCADE,
+        related_name='mapeamentos_matricula',
+        verbose_name="Colaborador Global"
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Mapeamento de Matrícula (De-Para)"
+        verbose_name_plural = "Mapeamentos de Matrículas"
+
+    def __str__(self):
+        return f"{self.matricula_planilha} -> {self.colaborador.matricula} ({self.colaborador.nome_completo})"
+
+
+class StatusTratativa(models.TextChoices):
+    PENDENTE = 'PENDENTE', 'Pendente de Tratativa'
+    EM_ANALISE = 'EM_ANALISE', 'Em Análise pelo Gestor'
+    JUSTIFICADO = 'JUSTIFICADO', 'Justificado / Ajustado'
+    REJEITADO = 'REJEITADO', 'Rejeitado / Invalidadas'
+
+
+class JornadaDiariaFalha(models.Model):
+    colaborador = models.ForeignKey(
+        Colaborador,
+        on_delete=models.CASCADE,
+        related_name='falhas_ponto',
+        verbose_name="Colaborador"
+    )
+    data = models.DateField(verbose_name="Data da Ocorrência", db_index=True)
+    jornada_prevista = models.CharField(
+        max_length=50, 
+        blank=True, 
+        null=True, 
+        verbose_name="Jornada Prevista (TxtPL.hrs.TrabDiário)"
+    )
+    
+    # Batidas de Ponto do dia (E1 a S3)
+    e1 = models.CharField(max_length=10, blank=True, null=True, verbose_name="Entrada 1")
+    s1 = models.CharField(max_length=10, blank=True, null=True, verbose_name="Saída 1")
+    e2 = models.CharField(max_length=10, blank=True, null=True, verbose_name="Entrada 2")
+    s2 = models.CharField(max_length=10, blank=True, null=True, verbose_name="Saída 2")
+    e3 = models.CharField(max_length=10, blank=True, null=True, verbose_name="Entrada 3")
+    s3 = models.CharField(max_length=10, blank=True, null=True, verbose_name="Saída 3")
+
+    status_tratativa = models.CharField(
+        max_length=20,
+        choices=StatusTratativa.choices,
+        default=StatusTratativa.PENDENTE,
+        db_index=True,
+        verbose_name="Status da Tratativa"
+    )
+    justificativa = models.TextField(blank=True, null=True, verbose_name="Justificativa do Colaborador/Líder")
+    observacao_lider = models.TextField(blank=True, null=True, verbose_name="Observações do Líder")
+    tratado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Tratado Por"
+    )
+    tratado_em = models.DateTimeField(null=True, blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Jornada Diária com Falha"
+        verbose_name_plural = "Jornadas Diárias com Falhas"
+        unique_together = ('colaborador', 'data')
+        indexes = [
+            models.Index(fields=['colaborador', 'data']),
+            models.Index(fields=['status_tratativa', 'data']),
+        ]
+
+    def __str__(self):
+        return f"{self.colaborador.nome_completo} - {self.data.strftime('%d/%m/%Y')} ({self.status_tratativa})"
+
+
+class ItemFalhaPonto(models.Model):
+    jornada = models.ForeignKey(
+        JornadaDiariaFalha,
+        on_delete=models.CASCADE,
+        related_name='erros',
+        verbose_name="Jornada Diária"
+    )
+    codigo_erro = models.CharField(max_length=50, verbose_name="Código do Erro (Err)")
+    descricao_notificacao = models.TextField(verbose_name="Descrição da Notificação")
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Item de Falha de Ponto"
+        verbose_name_plural = "Itens de Falha de Ponto"
+
+    def __str__(self):
+        return f"[{self.codigo_erro}] {self.descricao_notificacao}"
+
+
