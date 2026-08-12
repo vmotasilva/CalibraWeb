@@ -65,14 +65,15 @@ def importar_falhas_ponto_view(request):
                 col_map[col] = 'Err'
             elif 'notifica' in c_lower:
                 col_map[col] = 'Notificacoes'
-            elif 'manager' in c_lower and '.1' not in c_lower:
+            elif ('manager' in c_lower or 'gestor' in c_lower or 'lider' in c_lower) and '.1' not in c_lower:
                 col_map[col] = 'Manager_Matricula'
-            elif 'manager' in c_lower and '.1' in c_lower:
+            elif ('manager' in c_lower or 'gestor' in c_lower or 'lider' in c_lower) and '.1' in c_lower:
                 col_map[col] = 'Manager_Nome'
             elif 'trabdi' in c_lower or 'jornada' in c_lower:
                 col_map[col] = 'Jornada'
             elif c_str.upper() in ['E1', 'S1', 'E2', 'S2', 'E3', 'S3']:
                 col_map[col] = c_str.upper()
+
 
 
 
