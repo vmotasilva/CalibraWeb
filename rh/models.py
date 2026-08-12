@@ -698,6 +698,52 @@ class MapeamentoMatricula(models.Model):
         return f"{self.matricula_planilha} -> {self.colaborador.matricula} ({self.colaborador.nome_completo})"
 
 
+class StatusDemanda(models.TextChoices):
+    ATIVA = 'ATIVA', 'Ativa / Em Tratativa'
+    ARQUIVADA = 'ARQUIVADA', 'Arquivada'
+
+
+class DemandaFalhaPonto(models.Model):
+    titulo = models.CharField(max_length=200, verbose_name="Título da Demanda")
+    arquivo_nome = models.CharField(max_length=255, verbose_name="Nome do Arquivo Importado")
+    data_importacao = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name="Data/Hora da Importação")
+    importado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Importado Por"
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=StatusDemanda.choices,
+        default=StatusDemanda.ATIVA,
+        db_index=True,
+        verbose_name="Status da Demanda"
+    )
+    observacoes = models.TextField(blank=True, null=True, verbose_name="Observações / Anotações")
+
+    class Meta:
+        verbose_name = "Demanda de Falha de Ponto"
+        verbose_name_plural = "Demandas de Falhas de Ponto"
+        ordering = ['-data_importacao']
+
+    def __str__(self):
+        return f"{self.titulo} ({self.get_status_display()})"
+
+    @property
+    def total_jornadas(self):
+        return self.jornadas.count()
+
+    @property
+    def pendentes_count(self):
+        return self.jornadas.filter(status_tratativa=StatusTratativa.PENDENTE).count()
+
+    @property
+    def justificados_count(self):
+        return self.jornadas.filter(status_tratativa=StatusTratativa.JUSTIFICADO).count()
+
+
 class StatusTratativa(models.TextChoices):
     PENDENTE = 'PENDENTE', 'Pendente de Tratativa'
     EM_ANALISE = 'EM_ANALISE', 'Em Análise pelo Gestor'
@@ -706,6 +752,14 @@ class StatusTratativa(models.TextChoices):
 
 
 class JornadaDiariaFalha(models.Model):
+    demanda = models.ForeignKey(
+        DemandaFalhaPonto,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='jornadas',
+        verbose_name="Demanda de Origem"
+    )
     colaborador = models.ForeignKey(
         Colaborador,
         on_delete=models.CASCADE,
@@ -727,8 +781,8 @@ class JornadaDiariaFalha(models.Model):
     s2 = models.CharField(max_length=10, blank=True, null=True, verbose_name="Saída 2")
     e3 = models.CharField(max_length=10, blank=True, null=True, verbose_name="Entrada 3")
     s3 = models.CharField(max_length=10, blank=True, null=True, verbose_name="Saída 3")
-    # Líder/Manager do relatório importado
 
+    # Líder/Manager do relatório importado
     lider = models.ForeignKey(
         Colaborador,
         on_delete=models.SET_NULL,
@@ -745,7 +799,6 @@ class JornadaDiariaFalha(models.Model):
     )
 
     status_tratativa = models.CharField(
-
         max_length=20,
         choices=StatusTratativa.choices,
         default=StatusTratativa.PENDENTE,
@@ -768,11 +821,12 @@ class JornadaDiariaFalha(models.Model):
     class Meta:
         verbose_name = "Jornada Diária com Falha"
         verbose_name_plural = "Jornadas Diárias com Falhas"
-        unique_together = ('colaborador', 'data')
+        unique_together = ('demanda', 'colaborador', 'data')
         indexes = [
-            models.Index(fields=['colaborador', 'data']),
+            models.Index(fields=['demanda', 'colaborador', 'data']),
             models.Index(fields=['status_tratativa', 'data']),
         ]
+
 
     def __str__(self):
         return f"{self.colaborador.nome_completo} - {self.data.strftime('%d/%m/%Y')} ({self.status_tratativa})"

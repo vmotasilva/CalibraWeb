@@ -54,10 +54,13 @@ from rh.views.views import (
     api_totp_toggle_isencao,
 )
 from rh.views_ponto import (
+    demandas_falhas_ponto_view,
     tratativa_falhas_ponto_view,
     importar_falhas_ponto_view,
     api_confirmar_depara,
     api_tratar_jornada,
+    api_alternar_status_demanda,
+    api_excluir_demanda,
 )
 
 app_name = 'rh'
@@ -130,10 +133,15 @@ urlpatterns = [
     path('horas-extras/motivos/<int:pk>/excluir/', motivo_planejamento_delete_view, name='motivo_planejamento_delete'),
     path('api/horas-extras/motivos/criar/', api_create_motivo, name='api_create_motivo'),
     
-    # Falhas de Batida de Ponto
+    # Demandas e Falhas de Batida de Ponto
+    path('ponto/demandas/', demandas_falhas_ponto_view, name='demandas_falhas_ponto'),
+    path('ponto/demanda/<int:demanda_id>/tratativa/', tratativa_falhas_ponto_view, name='tratativa_falhas_ponto_demanda'),
     path('ponto/tratativa/', tratativa_falhas_ponto_view, name='tratativa_falhas_ponto'),
     path('ponto/importar/', importar_falhas_ponto_view, name='importar_falhas_ponto'),
     path('api/ponto/confirmar-depara/', api_confirmar_depara, name='api_confirmar_depara'),
     path('api/ponto/jornada/<int:jornada_id>/tratar/', api_tratar_jornada, name='api_tratar_jornada'),
+    path('api/ponto/demanda/<int:demanda_id>/status/', api_alternar_status_demanda, name='api_alternar_status_demanda'),
+    path('api/ponto/demanda/<int:demanda_id>/excluir/', api_excluir_demanda, name='api_excluir_demanda'),
 ]
+
 

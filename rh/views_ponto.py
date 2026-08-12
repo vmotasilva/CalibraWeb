@@ -17,10 +17,13 @@ from django.utils import timezone
 from rh.models import (
     Colaborador,
     MapeamentoMatricula,
+    DemandaFalhaPonto,
+    StatusDemanda,
     JornadaDiariaFalha,
     ItemFalhaPonto,
     StatusTratativa
 )
+
 from rh.services.ponto_matcher import sugerir_colaboradores_similares
 from qms.views_helpers import get_colaborador_for_user
 
@@ -139,6 +142,17 @@ def importar_falhas_ponto_view(request):
         jornadas_processadas = 0
         try:
             with transaction.atomic():
+                nome_arq = uploaded_file.name if hasattr(uploaded_file, 'name') else "relatorio_ponto.xlsx"
+                data_str = datetime.now().strftime('%d/%m/%Y %H:%M')
+                titulo_demanda = f"Importação de {data_str}"
+
+                demanda = DemandaFalhaPonto.objects.create(
+                    titulo=titulo_demanda,
+                    arquivo_nome=nome_arq,
+                    importado_por=request.user if request.user.is_authenticated else None,
+                    status=StatusDemanda.ATIVA
+                )
+
                 grouped = df.groupby(['Registro_Str', 'Data'])
 
                 for (reg_planilha, data_val), group_df in grouped:
@@ -158,6 +172,27 @@ def importar_falhas_ponto_view(request):
                         get_batida('S2'), get_batida('E3'), get_batida('S3')
                     )
 
+                    # Obter dados do Manager/Líder do relatório
+                    manager_reg = str(first_row.get('Manager_Matricula', '')).strip().replace(r'\.0$', '') if pd.notna(first_row.get('Manager_Matricula')) else None
+                    if manager_reg in ['nan', 'None', '', '0']:
+                        manager_reg = None
+
+                    manager_nome = str(first_row.get('Manager_Nome', '')).strip() if pd.notna(first_row.get('Manager_Nome')) else None
+                    if manager_nome in ['nan', 'None', '']:
+                        manager_nome = None
+
+                    lider_obj = None
+                    if manager_reg:
+                        lider_obj = Colaborador.objects.filter(
+                            Q(matricula=manager_reg) | Q(matricula_global=manager_reg)
+                        ).first()
+                    if not lider_obj and manager_nome:
+                        lider_obj = Colaborador.objects.filter(nome_completo__iexact=manager_nome).first()
+
+                    if lider_obj and lider_obj.posto_lideranca in [None, '', 'NAO_APLICA']:
+                        lider_obj.posto_lideranca = 'LIDER'
+                        lider_obj.save(update_fields=['posto_lideranca'])
+
                     jornada_prev_str = str(first_row.get('Jornada', '')).strip() if pd.notna(first_row.get('Jornada')) else ""
 
                     # Regra de Negócio: Ignorar dias de descanso/domingo/dsr/folga/feriado sem nenhuma batida registrada
@@ -166,14 +201,16 @@ def importar_falhas_ponto_view(request):
                     is_descanso = any(k in jp_lower for k in ['descanso', 'domingo', 'dsr', 'folga', 'feriado'])
 
                     if is_descanso and not tem_batida:
-                        # Exclui registro prévio no banco se for um falso positivo
-                        JornadaDiariaFalha.objects.filter(colaborador=colaborador, data=data_obj).delete()
                         continue
 
                     jornada, _ = JornadaDiariaFalha.objects.update_or_create(
+                        demanda=demanda,
                         colaborador=colaborador,
                         data=data_obj,
                         defaults={
+                            'lider': lider_obj,
+                            'matricula_lider': manager_reg,
+                            'nome_lider': manager_nome,
                             'jornada_prevista': jornada_prev_str if jornada_prev_str else None,
                             'e1': e1_val,
                             's1': s1_val,
@@ -184,7 +221,6 @@ def importar_falhas_ponto_view(request):
                             'status_tratativa': StatusTratativa.PENDENTE
                         }
                     )
-
 
                     # Atualiza os itens de erro consolidados do dia
                     jornada.erros.all().delete()
@@ -206,8 +242,10 @@ def importar_falhas_ponto_view(request):
 
         return JsonResponse({
             'status': 'SUCESSO',
-            'mensagem': f'Importação realizada com sucesso! {jornadas_processadas} jornadas diárias registradas/atualizadas.'
+            'demanda_id': demanda.id,
+            'mensagem': f'Demanda "#{demanda.id} - {demanda.titulo}" gerada com sucesso! {jornadas_processadas} falhas de ponto registradas.'
         })
+
 
 
 @login_required
@@ -248,10 +286,81 @@ def api_confirmar_depara(request):
 
 
 @login_required
-def tratativa_falhas_ponto_view(request):
+def demandas_falhas_ponto_view(request):
+    """
+    Listagem de todas as Demandas de Falhas de Ponto (Importações).
+    """
+    status_filtro = request.GET.get('status', 'TODOS')
+    search_q = request.GET.get('q', '').strip()
+
+    qs = DemandaFalhaPonto.objects.all().select_related('importado_por').prefetch_related('jornadas')
+
+    if status_filtro != 'TODOS':
+        qs = qs.filter(status=status_filtro)
+
+    if search_q:
+        qs = qs.filter(
+            Q(titulo__icontains=search_q) |
+            Q(arquivo_nome__icontains=search_q) |
+            Q(observacoes__icontains=search_q)
+        )
+
+    total_demandas = DemandaFalhaPonto.objects.count()
+    demandas_ativas = DemandaFalhaPonto.objects.filter(status=StatusDemanda.ATIVA).count()
+    demandas_arquivadas = DemandaFalhaPonto.objects.filter(status=StatusDemanda.ARQUIVADA).count()
+
+    context = {
+        'demandas': qs,
+        'status_filtro': status_filtro,
+        'search_q': search_q,
+        'total_demandas': total_demandas,
+        'demandas_ativas': demandas_ativas,
+        'demandas_arquivadas': demandas_arquivadas,
+        'status_choices': StatusDemanda.choices
+    }
+
+    return render(request, 'rh/demandas_falhas_ponto.html', context)
+
+
+@login_required
+@require_POST
+def api_alternar_status_demanda(request, demanda_id):
+    """
+    Alterna o status de uma demanda entre ATIVA e ARQUIVADA.
+    """
+    demanda = get_object_or_404(DemandaFalhaPonto, id=demanda_id)
+    if demanda.status == StatusDemanda.ATIVA:
+        demanda.status = StatusDemanda.ARQUIVADA
+    else:
+        demanda.status = StatusDemanda.ATIVA
+    demanda.save(update_fields=['status'])
+    return JsonResponse({
+        'status': 'SUCESSO',
+        'novo_status': demanda.status,
+        'novo_status_display': demanda.get_status_display()
+    })
+
+
+@login_required
+@require_POST
+def api_excluir_demanda(request, demanda_id):
+    """
+    Exclui uma demanda e todas as suas jornadas registradas (com delete em cascata).
+    """
+    demanda = get_object_or_404(DemandaFalhaPonto, id=demanda_id)
+    titulo = demanda.titulo
+    demanda.delete()
+    return JsonResponse({
+        'status': 'SUCESSO',
+        'mensagem': f'Demanda "{titulo}" e todos os seus registros de batidas foram excluídos com sucesso!'
+    })
+
+
+@login_required
+def tratativa_falhas_ponto_view(request, demanda_id=None):
     """
     Tela principal de tratativa das falhas de batida de ponto para Líderes/Supervisores/Gerentes.
-    Exibe os dados agrupados por Dia e Colaborador da equipe do usuário logado.
+    Exibe os dados agrupados por Manager e Colaborador para a demanda selecionada.
     """
     user = request.user
     status_filtro = request.GET.get('status', StatusTratativa.PENDENTE)
@@ -259,10 +368,24 @@ def tratativa_falhas_ponto_view(request):
     data_fim = request.GET.get('data_fim')
     q_colab = request.GET.get('q_colab', '').strip()
 
-    # Identificar perfil de colaborador do usuário logado
+    if not demanda_id:
+        demanda_id = request.GET.get('demanda_id')
+
+    demanda = None
+    if demanda_id:
+        demanda = get_object_or_404(DemandaFalhaPonto, id=demanda_id)
+    else:
+        demanda = DemandaFalhaPonto.objects.filter(status=StatusDemanda.ATIVA).first()
+        if not demanda:
+            demanda = DemandaFalhaPonto.objects.first()
+
     colaborador_logado = get_colaborador_for_user(user)
 
-    qs = JornadaDiariaFalha.objects.all()
+    if demanda:
+        qs = JornadaDiariaFalha.objects.filter(demanda=demanda)
+    else:
+        qs = JornadaDiariaFalha.objects.none()
+
 
     # Se não for superusuario/staff sem equipe, restringe aos liderados
     if not (user.is_superuser or user.is_staff):
@@ -445,6 +568,7 @@ def tratativa_falhas_ponto_view(request):
         })
 
     context = {
+        'demanda': demanda,
         'managers_agrupados': managers_agrupados,
         'jornadas': jornadas,
         'status_filtro': status_filtro,
@@ -459,6 +583,7 @@ def tratativa_falhas_ponto_view(request):
     }
 
     return render(request, 'rh/tratativa_falhas_ponto.html', context)
+
 
 
 
