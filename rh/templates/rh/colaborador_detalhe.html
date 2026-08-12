@@ -96,9 +96,18 @@
                             <span class="badge bg-secondary">{{ alvo.get_turno_display }}</span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between">
+                            <span class="text-muted">Matrícula Global:</span>
+                            <strong>{{ alvo.matricula_global|default:"-" }}</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span class="text-muted">Posto de Trabalho:</span>
+                            <span>{{ alvo.posto_trabalho|default:"-" }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
                             <span class="text-muted">Grupo:</span>
                             <span>{{ alvo.grupo|default:"-" }}</span>
                         </li>
+
                         <li class="list-group-item d-flex justify-content-between">
                             <span class="text-muted">CPF:</span>
                             {% if can_see_salary and alvo.cpf %}

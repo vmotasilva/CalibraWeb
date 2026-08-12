@@ -46,29 +46,42 @@
                                 {% endif %}
                             </div>
                             <div class="col-md-4">
+                                <label class="form-label">Matrícula Global</label>
+                                {{ form.matricula_global }}
+                                {% if form.matricula_global.errors %}
+                                    <div class="text-danger small mt-1">{{ form.matricula_global.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4">
                                 <label class="form-label">Cargo</label>
                                 {{ form.cargo }}
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">Posto de Trabalho</label>
+                                {{ form.posto_trabalho }}
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Grupo</label>
                                 {{ form.grupo }}
                             </div>
-
                             <div class="col-md-4">
                                 <label class="form-label">Setor</label>
                                 {{ form.setor }}
                             </div>
-                            <div class="col-md-4">
+
+                            <div class="col-md-6">
                                 <label class="form-label">Turno</label>
                                 {{ form.turno }}
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label class="form-label">Posto de Liderança</label>
                                 {{ form.posto_lideranca }}
                                 {% if form.posto_lideranca.errors %}
                                     <div class="text-danger small mt-1">{{ form.posto_lideranca.errors.0 }}</div>
                                 {% endif %}
                             </div>
+
 
                             <div class="col-md-12 mt-4"><h6 class="text-success border-bottom pb-2">Hierarquia</h6></div>
 

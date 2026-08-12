@@ -26,12 +26,19 @@ class Colaborador(models.Model):
         verbose_name="Usuário de Acesso (Login)",
     )
     matricula = models.CharField(max_length=20, unique=True, verbose_name="Matrícula")
+    matricula_global = models.CharField(
+        max_length=50, null=True, blank=True, db_index=True, verbose_name="Matrícula Global"
+    )
     cpf = models.CharField(
         max_length=14, unique=True, null=True, blank=True, verbose_name="CPF"
     )
     nome_completo = models.CharField(max_length=100, verbose_name="Nome Completo")
     cargo = models.CharField(max_length=100, null=True, blank=True)
+    posto_trabalho = models.CharField(
+        max_length=100, null=True, blank=True, verbose_name="Posto de Trabalho"
+    )
     grupo = models.CharField(max_length=50, verbose_name="Grupo (Macro)")
+
     setor = models.ForeignKey(
         'organization.Setor', on_delete=models.SET_NULL, null=True, verbose_name="Setor"
     )

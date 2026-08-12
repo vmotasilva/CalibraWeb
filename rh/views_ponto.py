@@ -97,11 +97,14 @@ def importar_falhas_ponto_view(request):
                     de_para_map[reg_planilha] = colab
                     continue
 
-            # Caso 2: Matrícula da planilha é exatamente a matrícula global
-            colab_direto = Colaborador.objects.filter(matricula=reg_planilha).first()
+            # Caso 2: Matrícula da planilha é exatamente a matrícula ou matrícula global cadastrada no banco
+            colab_direto = Colaborador.objects.filter(
+                Q(matricula=reg_planilha) | Q(matricula_global=reg_planilha)
+            ).first()
             if colab_direto:
                 de_para_map[reg_planilha] = colab_direto
                 continue
+
 
             # Caso 3: Não encontrado -> Órfão que necessita de vínculo
             sugestoes = sugerir_colaboradores_similares(nome_planilha)

@@ -83,12 +83,15 @@ class ColaboradorForm(forms.ModelForm):
         widgets = {
             "nome_completo": forms.TextInput(attrs={"class": "form-control"}),
             "matricula": forms.TextInput(attrs={"class": "form-control"}),
+            "matricula_global": forms.TextInput(attrs={"class": "form-control"}),
             "cpf": forms.TextInput(attrs={
                 "class": "form-control",
                 "placeholder": "000.000.000-00"
             }),
             "cargo": forms.TextInput(attrs={"class": "form-control"}),
+            "posto_trabalho": forms.TextInput(attrs={"class": "form-control"}),
             "grupo": forms.TextInput(attrs={"class": "form-control"}),
+
             "setor": forms.Select(attrs={"class": "form-select"}),
             "turno": forms.Select(attrs={"class": "form-select"}),
             "posto_lideranca": forms.Select(attrs={"class": "form-select"}),

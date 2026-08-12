@@ -79,6 +79,13 @@
                             {% endif %}
                         </div>
                         <div class="col-md-3">
+                            <label class="form-label fw-bold text-dark">Matrícula Global</label>
+                            {{ form.matricula_global }}
+                            {% if form.matricula_global.errors %}
+                                <div class="invalid-feedback d-block">{{ form.matricula_global.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3">
                             <label class="form-label fw-bold text-dark">Cargo <span class="text-danger">*</span></label>
                             {{ form.cargo }}
                             {% if form.cargo.errors %}
@@ -92,14 +99,21 @@
                                 <div class="invalid-feedback d-block">{{ form.grupo.errors }}</div>
                             {% endif %}
                         </div>
-                        <div class="col-md-3">
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-dark">Posto de Trabalho</label>
+                            {{ form.posto_trabalho }}
+                            {% if form.posto_trabalho.errors %}
+                                <div class="invalid-feedback d-block">{{ form.posto_trabalho.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
                             <label class="form-label fw-bold text-dark">Turno <span class="text-danger">*</span></label>
                             {{ form.turno }}
                             {% if form.turno.errors %}
                                 <div class="invalid-feedback d-block">{{ form.turno.errors }}</div>
                             {% endif %}
                         </div>
-                        
                         <div class="col-md-4">
                             <label class="form-label fw-bold text-dark">Setor</label>
                             {{ form.setor }}
@@ -107,14 +121,15 @@
                                 <div class="invalid-feedback d-block">{{ form.setor.errors }}</div>
                             {% endif %}
                         </div>
-                        <div class="col-md-4">
+
+                        <div class="col-md-6">
                             <label class="form-label fw-bold text-dark">Centro de Custo</label>
                             {{ form.centro_custo }}
                             {% if form.centro_custo.errors %}
                                 <div class="invalid-feedback d-block">{{ form.centro_custo.errors }}</div>
                             {% endif %}
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label fw-bold text-dark">Posto de Liderança</label>
                             {{ form.posto_lideranca }}
                             {% if form.posto_lideranca.errors %}
@@ -122,6 +137,7 @@
                             {% endif %}
                         </div>
                     </div>
+
                 </div>
             </div>
 
