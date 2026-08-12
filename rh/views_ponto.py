@@ -169,10 +169,20 @@ def importar_falhas_ponto_view(request):
                     else:
                         data_obj = pd.to_datetime(data_val).date()
 
+                    def get_batida(col_name):
+                        if col_name in group_df.columns:
+                            val = group_df[col_name].dropna()
+                            if not val.empty:
+                                v_str = str(val.iloc[0]).strip()
+                                if v_str and v_str not in ['', 'nan', 'None', '00:00:00', '--:--']:
+                                    return v_str[:10]
+                        return None
+
                     e1_val, s1_val, e2_val, s2_val, e3_val, s3_val = (
                         get_batida('E1'), get_batida('S1'), get_batida('E2'),
                         get_batida('S2'), get_batida('E3'), get_batida('S3')
                     )
+
 
                     # Obter dados do Manager/Líder do relatório
                     manager_reg = str(first_row.get('Manager_Matricula', '')).strip().replace(r'\.0$', '') if pd.notna(first_row.get('Manager_Matricula')) else None
