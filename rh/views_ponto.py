@@ -143,7 +143,8 @@ def importar_falhas_ponto_view(request):
         jornadas_processadas = 0
         try:
             with transaction.atomic():
-                nome_arq = uploaded_file.name if hasattr(uploaded_file, 'name') else "relatorio_ponto.xlsx"
+                nome_arq = excel_file.name if (excel_file and hasattr(excel_file, 'name')) else "relatorio_ponto.xlsx"
+
                 data_str = datetime.now().strftime('%d/%m/%Y %H:%M')
                 titulo_demanda = f"Importação de {data_str}"
 
