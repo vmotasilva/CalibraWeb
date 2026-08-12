@@ -100,7 +100,7 @@
                 <div class="card-body d-flex align-items-center justify-content-between">
                     <div>
                         <span class="text-uppercase fw-bold text-warning small">Pendentes de Tratativa</span>
-                        <h2 class="fw-bold text-dark mb-0 mt-1">{{ total_pendentes }}</h2>
+                        <h2 class="fw-bold text-dark mb-0 mt-1" id="total-pendentes-counter">{{ total_pendentes }}</h2>
                     </div>
                     <div class="bg-warning text-dark p-3 rounded-circle bg-opacity-25">
                         <i class="bi bi-clock-history fs-3"></i>
@@ -113,7 +113,7 @@
                 <div class="card-body d-flex align-items-center justify-content-between">
                     <div>
                         <span class="text-uppercase fw-bold text-success small">Tratados / Justificados</span>
-                        <h2 class="fw-bold text-dark mb-0 mt-1">{{ total_justificados }}</h2>
+                        <h2 class="fw-bold text-dark mb-0 mt-1" id="total-justificados-counter">{{ total_justificados }}</h2>
                     </div>
                     <div class="bg-success text-white p-3 rounded-circle bg-opacity-25">
                         <i class="bi bi-check-circle fs-3"></i>
@@ -121,6 +121,7 @@
                 </div>
             </div>
         </div>
+
         <div class="col-12 col-md-12 col-lg-4">
             <div class="card card-metric bg-primary bg-opacity-10 border-start border-primary border-4 shadow-sm h-100">
                 <div class="card-body d-flex align-items-center justify-content-between">
@@ -221,8 +222,8 @@
                     <span class="badge bg-warning text-dark fs-6 px-3 py-2">
                         <i class="bi bi-people-fill me-1"></i>{{ manager.total_colaboradores }} Colaborador(es)
                     </span>
-                    <span class="badge bg-danger fs-6 px-3 py-2">
-                        <i class="bi bi-exclamation-circle-fill me-1"></i>{{ manager.pendentes_count }} Pendência(s)
+                    <span class="badge bg-danger fs-6 px-3 py-2" id="manager-pendentes-badge-{{ forloop.counter }}">
+                        <i class="bi bi-exclamation-circle-fill me-1"></i><span class="count-num">{{ manager.pendentes_count }}</span> Pendência(s)
                     </span>
                 </div>
             </div>
@@ -260,15 +261,14 @@
                             </div>
                         </div>
                         <div class="d-flex align-items-center gap-2">
-                            {% if group.pendentes_count > 0 %}
-                                <span class="badge bg-warning text-dark px-3 py-2 rounded-pill shadow-sm">
-                                    <i class="bi bi-exclamation-circle me-1"></i>{{ group.pendentes_count }} Pendente(s)
-                                </span>
-                            {% else %}
-                                <span class="badge bg-success text-white px-3 py-2 rounded-pill shadow-sm">
-                                    <i class="bi bi-check-circle me-1"></i>100% Justificado
-                                </span>
-                            {% endif %}
+                            <span id="colab-status-badge-{{ forloop.parentloop.counter }}-{{ forloop.counter }}"
+                                  class="badge {% if group.pendentes_count > 0 %}bg-warning text-dark{% else %}bg-success text-white{% endif %} px-3 py-2 rounded-pill shadow-sm">
+                                {% if group.pendentes_count > 0 %}
+                                    <i class="bi bi-exclamation-circle me-1"></i><span class="count-num">{{ group.pendentes_count }}</span> Pendente(s)
+                                {% else %}
+                                    <i class="bi bi-check-circle me-1"></i><span class="count-num">0</span> (100% Justificado)
+                                {% endif %}
+                            </span>
                             <span class="badge bg-light text-dark border px-3 py-2 rounded-pill">
                                 {{ group.total_ocorrencias }} Registro(s)
                             </span>
@@ -283,18 +283,17 @@
                             <table class="table table-hover align-middle mb-0">
                                 <thead class="table-dark">
                                     <tr>
-
                                     <th style="width: 12%;">Data</th>
-                                    <th style="width: 15%;">Jornada Prev.</th>
+                                    <th style="width: 13%;">Jornada Prev.</th>
                                     <th style="width: 32%;">Batidas Registradas (E1 / S1 / E2 / S2 / E3 / S3)</th>
                                     <th style="width: 25%;">Erros do Dia</th>
                                     <th style="width: 10%;">Status</th>
-                                    <th style="width: 6%; text-align: center;">Ações</th>
+                                    <th style="width: 8%; text-align: center;">Tratado / Ações</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for j in group.jornadas %}
-                                <tr>
+                                <tr id="jornada-row-{{ j.id }}">
                                     <td class="fw-bold text-primary">
                                         <i class="bi bi-calendar-event me-1"></i>{{ j.data|date:"d/m/Y" }}
                                     </td>
@@ -322,26 +321,39 @@
                                             {% endfor %}
                                         </div>
                                     </td>
-                                    <td>
+                                    <td id="status-cell-{{ j.id }}">
                                         <span class="badge badge-status-{{ j.status_tratativa }} px-2 py-1">
                                             {{ j.get_status_tratativa_display }}
                                         </span>
                                     </td>
                                     <td class="text-center">
-                                        <button type="button" class="btn btn-sm btn-primary rounded-circle shadow-sm btn-tratar"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#modalTratativa"
-                                                data-id="{{ j.id }}"
-                                                data-colab="{{ j.colaborador.nome_completo }}"
-                                                data-data="{{ j.data|date:'d/m/Y' }}"
-                                                data-status="{{ j.status_tratativa }}"
-                                                data-justificativa="{{ j.justificativa|default:'' }}"
-                                                data-obs="{{ j.observacao_lider|default:'' }}"
-                                                title="Tratar Pendência">
-                                            <i class="bi bi-pencil-square"></i>
-                                        </button>
+                                        <div class="d-flex align-items-center justify-content-center gap-2">
+                                            <div class="form-check form-switch m-0" title="Alternar Status: Marcar como Justificado/Ajustado">
+                                                <input class="form-check-input chk-toggle-tratativa"
+                                                       type="checkbox"
+                                                       role="switch"
+                                                       data-id="{{ j.id }}"
+                                                       data-manager-index="{{ forloop.parentloop.parentloop.counter }}"
+                                                       data-colab-index="{{ forloop.parentloop.counter }}"
+                                                       {% if j.status_tratativa == 'JUSTIFICADO' %}checked{% endif %}
+                                                       style="cursor: pointer; width: 2.2em; height: 1.25em;">
+                                            </div>
+                                            <button type="button" class="btn btn-sm btn-outline-primary rounded-circle shadow-sm btn-tratar"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#modalTratativa"
+                                                    data-id="{{ j.id }}"
+                                                    data-colab="{{ j.colaborador.nome_completo }}"
+                                                    data-data="{{ j.data|date:'d/m/Y' }}"
+                                                    data-status="{{ j.status_tratativa }}"
+                                                    data-justificativa="{{ j.justificativa|default:'' }}"
+                                                    data-obs="{{ j.observacao_lider|default:'' }}"
+                                                    title="Tratar com Justificativa">
+                                                <i class="bi bi-pencil-square"></i>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
+
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -426,6 +438,94 @@
 
 
     document.addEventListener('DOMContentLoaded', function() {
+        const getCsrfToken = () => document.querySelector('[name=csrfmiddlewaretoken]')?.value || '{{ csrf_token }}';
+
+        function updateCounters(managerIdx, colabIdx, delta) {
+            const pendCounter = document.getElementById('total-pendentes-counter');
+            const justCounter = document.getElementById('total-justificados-counter');
+            if (pendCounter) {
+                let cur = parseInt(pendCounter.textContent) || 0;
+                pendCounter.textContent = Math.max(0, cur + delta);
+            }
+            if (justCounter) {
+                let cur = parseInt(justCounter.textContent) || 0;
+                justCounter.textContent = Math.max(0, cur - delta);
+            }
+
+            const managerBadge = document.getElementById(`manager-pendentes-badge-${managerIdx}`);
+            if (managerBadge) {
+                const numEl = managerBadge.querySelector('.count-num');
+                if (numEl) {
+                    let cur = parseInt(numEl.textContent) || 0;
+                    numEl.textContent = Math.max(0, cur + delta);
+                }
+            }
+
+            const colabBadge = document.getElementById(`colab-status-badge-${managerIdx}-${colabIdx}`);
+            if (colabBadge) {
+                const numEl = colabBadge.querySelector('.count-num');
+                if (numEl) {
+                    let cur = parseInt(numEl.textContent) || 0;
+                    let n = Math.max(0, cur + delta);
+                    numEl.textContent = n;
+                    if (n === 0) {
+                        colabBadge.className = 'badge bg-success text-white px-3 py-2 rounded-pill shadow-sm';
+                        colabBadge.innerHTML = '<i class="bi bi-check-circle me-1"></i><span class="count-num">0</span> (100% Justificado)';
+                    } else {
+                        colabBadge.className = 'badge bg-warning text-dark px-3 py-2 rounded-pill shadow-sm';
+                        colabBadge.innerHTML = `<i class="bi bi-exclamation-circle me-1"></i><span class="count-num">${n}</span> Pendente(s)`;
+                    }
+                }
+            }
+        }
+
+        // Listener do Switch Flag de Tratamento Rápido
+        document.querySelectorAll('.chk-toggle-tratativa').forEach(chk => {
+            chk.addEventListener('change', function() {
+                const id = this.getAttribute('data-id');
+                const isChecked = this.checked;
+                const newStatus = isChecked ? 'JUSTIFICADO' : 'PENDENTE';
+                const managerIdx = this.getAttribute('data-manager-index');
+                const colabIdx = this.getAttribute('data-colab-index');
+
+                const statusCell = document.getElementById(`status-cell-${id}`);
+                if (statusCell) {
+                    statusCell.innerHTML = isChecked 
+                        ? '<span class="badge badge-status-JUSTIFICADO px-2 py-1"><i class="bi bi-check-circle me-1"></i>Justificado / Ajustado</span>'
+                        : '<span class="badge badge-status-PENDENTE px-2 py-1"><i class="bi bi-clock me-1"></i>Pendente de Tratativa</span>';
+                }
+
+                const rowBtn = this.closest('tr')?.querySelector('.btn-tratar');
+                if (rowBtn) rowBtn.setAttribute('data-status', newStatus);
+
+                fetch(`/rh/api/ponto/jornada/${id}/tratar/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify({
+                        status_tratativa: newStatus,
+                        justificativa: isChecked ? 'Tratado via flag rápida' : '',
+                        observacao_lider: ''
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'SUCESSO') {
+                        updateCounters(managerIdx, colabIdx, isChecked ? -1 : 1);
+                    } else {
+                        this.checked = !isChecked;
+                        alert(data.mensagem || 'Erro ao atualizar tratativa.');
+                    }
+                })
+                .catch(err => {
+                    this.checked = !isChecked;
+                    console.error(err);
+                    alert('Erro de conexão ao salvar flag de tratativa.');
+                });
+            });
+        });
 
         const modalElement = document.getElementById('modalTratativa');
         const formTratativa = document.getElementById('formTratativa');
@@ -466,7 +566,7 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
+                    'X-CSRFToken': getCsrfToken()
                 },
                 body: JSON.stringify(payload)
             })
@@ -492,3 +592,4 @@
     });
 </script>
 {% endblock %}
+
