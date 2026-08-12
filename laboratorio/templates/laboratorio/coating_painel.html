@@ -443,8 +443,9 @@
 <div class="modal fade" id="novoLoteModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form method="post">
+            <form method="post" id="formNovoLote">
                 {% csrf_token %}
+                <input type="hidden" name="btn_salvar_registro" value="1">
                 <div class="modal-header">
                     <h5 class="modal-title">Registrar Lote (CC e CX)</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -478,7 +479,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" name="btn_salvar_registro" class="btn btn-success">Salvar Lotes</button>
+                    <button type="submit" name="btn_salvar_registro" id="btnSalvarLotes" class="btn btn-success">Salvar Lotes</button>
                 </div>
             </form>
         </div>
@@ -786,6 +787,34 @@
             if (loteInput) {
                 loteInput.addEventListener('blur', verificarLote);
             }
+
+            const formNovoLote = document.getElementById('formNovoLote');
+            if (formNovoLote) {
+                formNovoLote.addEventListener('submit', function (e) {
+                    if (this.dataset.submitting === 'true') {
+                        e.preventDefault();
+                        return false;
+                    }
+                    this.dataset.submitting = 'true';
+
+                    const btnSalvar = document.getElementById('btnSalvarLotes');
+                    if (btnSalvar) {
+                        btnSalvar.disabled = true;
+                        btnSalvar.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Salvando...';
+                    }
+                });
+            }
+
+            novoLoteModalEl.addEventListener('hidden.bs.modal', function () {
+                if (formNovoLote) {
+                    delete formNovoLote.dataset.submitting;
+                }
+                const btnSalvar = document.getElementById('btnSalvarLotes');
+                if (btnSalvar) {
+                    btnSalvar.disabled = false;
+                    btnSalvar.innerHTML = 'Salvar Lotes';
+                }
+            });
         }
 
         modalEdicaoRapida = new bootstrap.Modal(document.getElementById('modalEdicaoRapida'));
