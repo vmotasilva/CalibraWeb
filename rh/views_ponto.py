@@ -100,6 +100,9 @@ def importar_falhas_ponto_view(request):
             if reg_planilha in mapeamentos:
                 colab = Colaborador.objects.filter(id=mapeamentos[reg_planilha]).first()
                 if colab:
+                    if not colab.matricula_global or str(colab.matricula_global).strip() == '':
+                        colab.matricula_global = reg_planilha
+                        colab.save(update_fields=['matricula_global'])
                     de_para_map[reg_planilha] = colab
                     continue
 
@@ -108,8 +111,12 @@ def importar_falhas_ponto_view(request):
                 Q(matricula=reg_planilha) | Q(matricula_global=reg_planilha)
             ).first()
             if colab_direto:
+                if not colab_direto.matricula_global or str(colab_direto.matricula_global).strip() == '':
+                    colab_direto.matricula_global = reg_planilha
+                    colab_direto.save(update_fields=['matricula_global'])
                 de_para_map[reg_planilha] = colab_direto
                 continue
+
 
 
             # Caso 3: Não encontrado -> Órfão que necessita de vínculo
@@ -224,7 +231,12 @@ def api_confirmar_depara(request):
                         matricula_planilha=reg_planilha,
                         defaults={'colaborador_id': colab_id}
                     )
+                    colab = Colaborador.objects.filter(id=colab_id).first()
+                    if colab and (not colab.matricula_global or str(colab.matricula_global).strip() == ''):
+                        colab.matricula_global = reg_planilha
+                        colab.save(update_fields=['matricula_global'])
                     salvos += 1
+
 
         return JsonResponse({
             'status': 'SUCESSO',
