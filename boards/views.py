@@ -1825,7 +1825,7 @@ def public_calendar_view(request, token):
     
     for col in colunas:
         col.subsecoes_list = list(col.subsecoes.all())
-        col.cartoes_list = [c for c in col.cartoes.all()]
+        col.cartoes_list = [c for c in col.cartoes.all() if not c.arquivado]
         
     context = {
         'board': board,
