@@ -5082,12 +5082,38 @@
                     evtItem.style.background = evt.backgroundColor || '#0d6efd';
                     evtItem.style.borderColor = evt.borderColor || '#0d6efd';
                     
+                    const textContainer = document.createElement('div');
+                    textContainer.className = 'd-flex flex-column align-items-start';
+                    textContainer.style.minWidth = '0';
+                    textContainer.style.overflow = 'hidden';
+
                     const titleSpan = document.createElement('span');
                     titleSpan.style.whiteSpace = 'nowrap';
                     titleSpan.style.overflow = 'hidden';
                     titleSpan.style.textOverflow = 'ellipsis';
+                    titleSpan.style.width = '100%';
                     titleSpan.textContent = evt.title;
-                    evtItem.appendChild(titleSpan);
+                    textContainer.appendChild(titleSpan);
+
+                    if (!evt.allDay && evt.start.includes('T')) {
+                        const dateObj = new Date(evt.start);
+                        const timeStr = dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                        let timeText = timeStr;
+                        if (evt.end && evt.end.includes('T')) {
+                            const endDateObj = new Date(evt.end);
+                            const endTimeStr = endDateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                            timeText += ' - ' + endTimeStr;
+                        }
+                        const timeSpan = document.createElement('span');
+                        timeSpan.style.fontSize = '0.6rem';
+                        timeSpan.style.opacity = '0.9';
+                        timeSpan.style.whiteSpace = 'nowrap';
+                        timeSpan.style.marginTop = '1px';
+                        timeSpan.innerHTML = '<i class="bi bi-clock" style="font-size:0.55rem;"></i> ' + timeText;
+                        textContainer.appendChild(timeSpan);
+                    }
+
+                    evtItem.appendChild(textContainer);
                     
                     if (evt.extendedProps && evt.extendedProps.responsaveis) {
                         const responsaveisArr = evt.extendedProps.responsaveis.split(';').filter(r => r.trim() !== '');
