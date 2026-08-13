@@ -55,31 +55,80 @@
                 </div>
             </form>
 
-            {% if not audit_mode %}
-            <a href="?audit=true" class="btn btn-outline-danger fw-bold shadow-sm" title="Investigar Anomalias">
-                <i class="bi bi-search"></i> Auditoria
-            </a>
-            {% else %}
-            <a href="?" class="btn btn-danger fw-bold shadow-sm">
-                <i class="bi bi-x-circle"></i> Sair da Auditoria
-            </a>
-            {% endif %}
-            
-            <a href="{% url 'laboratorio:dashboard_coating' %}" class="btn btn-outline-secondary fw-bold shadow-sm">
-                <i class="bi bi-bar-chart-line"></i> Dashboard
-            </a>
-            
-            {% if request.user.is_staff or request.user.is_superuser %}
-            <button class="btn btn-outline-warning fw-bold shadow-sm" id="btnRecalcularTodos" onclick="recalcularTodosTurnos()" title="Recalcula o turno de todos os registros com hora de entrada preenchida">
-                <i class="bi bi-arrow-clockwise"></i> Recalcular Turnos
-            </button>
-            {% endif %}
+            <!-- Botões Individuais em Desktop (>= 768px) -->
+            <div class="d-none d-md-flex gap-2 align-items-center">
+                {% if not audit_mode %}
+                <a href="?audit=true" class="btn btn-outline-danger fw-bold shadow-sm" title="Investigar Anomalias">
+                    <i class="bi bi-search"></i> Auditoria
+                </a>
+                {% else %}
+                <a href="?" class="btn btn-danger fw-bold shadow-sm">
+                    <i class="bi bi-x-circle"></i> Sair da Auditoria
+                </a>
+                {% endif %}
+                
+                <a href="{% url 'laboratorio:dashboard_coating' %}" class="btn btn-outline-secondary fw-bold shadow-sm">
+                    <i class="bi bi-bar-chart-line"></i> Dashboard
+                </a>
+                
+                {% if request.user.is_staff or request.user.is_superuser %}
+                <button class="btn btn-outline-warning fw-bold shadow-sm" id="btnRecalcularTodos" onclick="recalcularTodosTurnos()" title="Recalcula o turno de todos os registros com hora de entrada preenchida">
+                    <i class="bi bi-arrow-clockwise"></i> Recalcular Turnos
+                </button>
+                {% endif %}
 
-            {% if not audit_mode %}
-            <button class="btn btn-primary fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#novoLoteModal">
-                <i class="bi bi-plus-circle"></i> Adicionar Lote
-            </button>
-            {% endif %}
+                {% if not audit_mode %}
+                <button class="btn btn-primary fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#novoLoteModal">
+                    <i class="bi bi-plus-circle"></i> Adicionar Lote
+                </button>
+                {% endif %}
+            </div>
+
+            <!-- Botão Único Agrupado no Mobile (< 768px) com Ícone -->
+            <div class="d-md-none dropdown">
+                <button class="btn btn-primary shadow-sm p-2 px-3" type="button" id="dropdownMobileMenu" data-bs-toggle="dropdown" aria-expanded="false" title="Menu de Ações">
+                    <i class="bi bi-three-dots-vertical fs-5"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-1" aria-labelledby="dropdownMobileMenu" style="z-index: 1060;">
+                    {% if not audit_mode %}
+                    <li>
+                        <button class="dropdown-item py-2 px-3 fw-bold text-primary" data-bs-toggle="modal" data-bs-target="#novoLoteModal">
+                            <i class="bi bi-plus-circle me-2"></i> Adicionar Lote
+                        </button>
+                    </li>
+                    <li><hr class="dropdown-divider my-1"></li>
+                    {% endif %}
+
+                    {% if not audit_mode %}
+                    <li>
+                        <a href="?audit=true" class="dropdown-item py-2 px-3 fw-bold text-danger">
+                            <i class="bi bi-shield-lock me-2"></i> Auditoria
+                        </a>
+                    </li>
+                    {% else %}
+                    <li>
+                        <a href="?" class="dropdown-item py-2 px-3 fw-bold text-danger">
+                            <i class="bi bi-x-circle me-2"></i> Sair da Auditoria
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    <li>
+                        <a href="{% url 'laboratorio:dashboard_coating' %}" class="dropdown-item py-2 px-3 fw-bold text-secondary">
+                            <i class="bi bi-bar-chart-line me-2"></i> Dashboard
+                        </a>
+                    </li>
+
+                    {% if request.user.is_staff or request.user.is_superuser %}
+                    <li><hr class="dropdown-divider my-1"></li>
+                    <li>
+                        <button class="dropdown-item py-2 px-3 fw-bold text-warning" onclick="recalcularTodosTurnos()">
+                            <i class="bi bi-arrow-clockwise me-2"></i> Recalcular Turnos
+                        </button>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
         </div>
     </div>
     
@@ -103,13 +152,31 @@
     </div>
     {% endif %}
     
-    <!-- Alertas de Manutencao -->
+    <!-- Alertas de Manutencao em Pop-up Flutuante com Fecho (X) -->
+    <style>
+        #alertasContainer {
+            position: fixed;
+            top: 75px;
+            right: 15px;
+            z-index: 1065;
+            width: calc(100% - 30px);
+            max-width: 480px;
+            pointer-events: none;
+        }
+        #alertasContainer .alerta-maquina {
+            pointer-events: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.25) !important;
+            border-radius: 10px;
+            border-left: 6px solid #ffc107;
+            background-color: #fffdf5;
+        }
+    </style>
     <div id="alertasContainer">
         {% if alertas_ciclos %}
             {% for maq_id, info in alertas_ciclos.items %}
-                <div class="alert alerta-maquina alert-dismissible d-none fade show shadow-sm {% if info.maquina.em_alerta %}alert-warning{% else %}alert-info{% endif %}" data-maquina-id="{{ maq_id }}" role="alert">
+                <div class="alert alerta-maquina alert-dismissible d-none fade show shadow-lg {% if info.maquina.em_alerta %}alert-warning{% else %}alert-info{% endif %}" data-maquina-id="{{ maq_id }}" role="alert">
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    <strong><i class="bi bi-exclamation-triangle-fill"></i> Atenção (Manutenção Pendente ou Próxima):</strong> A máquina {{ info.maquina.codigo }} precisa de atenção:
+                    <strong><i class="bi bi-exclamation-triangle-fill me-1"></i> Atenção (Manutenção Pendente ou Próxima):</strong> A máquina {{ info.maquina.codigo }} precisa de atenção:
                     <ul class="mb-0 mt-2">
                     {% for alerta in info.alertas %}
                         <li>
