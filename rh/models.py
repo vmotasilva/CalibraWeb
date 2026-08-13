@@ -855,8 +855,16 @@ class JornadaDiariaFalha(models.Model):
                 gross = end_m - start_m
                 if gross < 0:
                     gross += 24 * 60
-                return max(0, gross - 60) if gross >= 360 else gross
+                # Jornadas de 10h (600 min) consideram 1h12 (72 min) de almoco -> 8h48 (528 min) de trabalho
+                if gross >= 570:
+                    break_min = 72
+                elif gross >= 360:
+                    break_min = 60
+                else:
+                    break_min = 0
+                return max(0, gross - break_min)
         return 0
+
 
     @property
     def minutos_realizados(self):
