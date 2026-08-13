@@ -381,7 +381,14 @@ def board_detail_view(request, board_id, focus_column_id=None):
     if focus_column_id:
         focus_column = get_object_or_404(BoardColumn, id=focus_column_id, quadro_id=board.id)
 
+    from django.urls import reverse
+    from django.core.signing import Signer
+    signer = Signer()
+    public_token = signer.sign(str(board.id))
+    public_calendar_url = request.build_absolute_uri(reverse('boards:public_calendar', args=[public_token]))
+
     context = {
+        'public_calendar_url': public_calendar_url,
         'board': board,
         'colunas': colunas,
         'focus_column': focus_column,
