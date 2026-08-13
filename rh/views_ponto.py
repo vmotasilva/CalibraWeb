@@ -507,13 +507,15 @@ def tratativa_falhas_ponto_view(request, demanda_id=None):
 
     qs = qs.exclude(filter_rest & empty_batidas)
 
-    if status_filtro and status_filtro != 'TODOS':
-        qs = qs.filter(status_tratativa=status_filtro)
-
     if data_inicio:
         qs = qs.filter(data__gte=data_inicio)
     if data_fim:
         qs = qs.filter(data__lte=data_fim)
+
+    base_counts_qs = qs
+
+    if status_filtro and status_filtro != 'TODOS':
+        qs = qs.filter(status_tratativa=status_filtro)
 
     jornadas = qs.select_related(
         'colaborador',
@@ -521,35 +523,6 @@ def tratativa_falhas_ponto_view(request, demanda_id=None):
         'lider',
         'tratado_por'
     ).prefetch_related('erros').order_by('colaborador__nome_completo', 'data')
-
-    # Queryset base para contadores gerais
-    base_counts_qs = JornadaDiariaFalha.objects.all().exclude(filter_rest & empty_batidas)
-    if not can_ver_todos:
-        if colaborador_logado:
-            base_counts_qs = base_counts_qs.filter(
-                Q(lider=colaborador_logado) |
-                Q(matricula_lider=colaborador_logado.matricula) |
-                Q(colaborador__lider=colaborador_logado) |
-                Q(colaborador=colaborador_logado)
-            )
-        else:
-            base_counts_qs = JornadaDiariaFalha.objects.none()
-    elif request.GET.get('lider_id') or request.GET.get('manager_id'):
-        m_id = request.GET.get('lider_id') or request.GET.get('manager_id')
-
-        if str(m_id).isdigit():
-            sel_l = Colaborador.objects.filter(id=m_id).first()
-            if sel_l:
-                base_counts_qs = base_counts_qs.filter(
-                    Q(lider=sel_l) | Q(matricula_lider=sel_l.matricula) | Q(colaborador__lider=sel_l)
-                )
-        else:
-            base_counts_qs = base_counts_qs.filter(
-                Q(matricula_lider=m_id) | Q(nome_lider__icontains=m_id)
-            )
-
-    if lider_calibra_id:
-        base_counts_qs = base_counts_qs.filter(colaborador__lider_id=lider_calibra_id)
 
     total_pendentes = base_counts_qs.filter(status_tratativa=StatusTratativa.PENDENTE).count()
     total_justificados = base_counts_qs.filter(status_tratativa=StatusTratativa.JUSTIFICADO).count()
