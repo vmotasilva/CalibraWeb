@@ -208,8 +208,7 @@
         {% for evap in evaporadoras %}
         <div class="tab-pane fade {% if forloop.first %}show active{% endif %}" id="evap-{{ evap.id }}-pane" data-maquina-id="{{ evap.id }}" role="tabpanel">
             <div class="card shadow-sm border" style="border-top-left-radius: 0; border-top-right-radius: 0;">
-                <div class="card-body p-0">
-                    <div class="table-responsive">
+                                <div class="table-responsive d-none d-md-block">
                         <table class="table table-hover align-middle mb-0 text-center text-nowrap w-100">
                             <thead class="table-dark">
                                 <tr>
@@ -397,6 +396,128 @@
                                 {% endwith %}
                             </tbody>
                         </table>
+                    </div>
+
+                    <!-- Modo Cards para Telas Mobile (<768px) -->
+                    <div class="d-md-none p-2">
+                        {% with reg_page=registros_por_maquina|get_item:evap.id %}
+                            {% for reg in reg_page %}
+                                <div class="card mb-2 shadow-sm border {% if reg.bg_group == 1 %}bg-lote-group{% else %}bg-white{% endif %}"
+                                     style="cursor:pointer;" 
+                                     onclick="abrirModalEditarLote(this, '{{ reg.id }}', '{{ reg.lote }}', '{{ reg.lado }}', '{{ reg.maquina_id }}', '{{ reg.tratamento_id }}', '{{ reg.hora_entrada|date:'Y-m-d\TH:i'|default:'' }}', '{{ reg.hora_saida|date:'Y-m-d\TH:i'|default:'' }}', '{{ reg.preparacao_id|default:'' }}', '{{ reg.montagem_id|default:'' }}')" 
+                                     data-observacao="{{ reg.observacao|escapejs|default:'' }}" 
+                                     data-lote-num="{{ reg.lote }}">
+                                    <div class="card-body p-2 position-relative">
+                                        <!-- Top Header: Lote, Lado, Tratamento e Turno -->
+                                        <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
+                                            <div class="d-flex align-items-center gap-1 flex-wrap">
+                                                <span class="fw-bold fs-6 text-dark">Lote {{ reg.lote }}</span>
+                                                <span class="badge bg-dark">{{ reg.lado }}</span>
+                                                <span class="badge rounded-pill" style="background-color: {{ reg.tratamento.cor|default:'#0d6efd' }}; color: #fff;">{{ reg.tratamento.nome }}</span>
+                                            </div>
+                                            <div class="text-end text-muted small ms-2" style="font-size: 0.75rem;">
+                                                <div class="fw-bold">{{ reg.turno_coating.data|date:"d/m/Y" }}</div>
+                                                <div>{{ reg.turno_coating.regra.nome }}</div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Detail Grid -->
+                                        <div class="row g-1 small mb-2 text-dark" style="font-size: 0.8rem;">
+                                            <div class="col-6">
+                                                <span class="text-muted">Entrada:</span> <strong>{{ reg.hora_entrada|time:"H:i"|default:"-" }}</strong>
+                                            </div>
+                                            <div class="col-6">
+                                                <span class="text-muted">Saída:</span> <strong>{{ reg.hora_saida|time:"H:i"|default:"-" }}</strong>
+                                            </div>
+                                            <div class="col-6">
+                                                <span class="text-muted">T. Rodando:</span> <strong>{{ reg.tempo_rodando|time:"H:i"|default:"-" }}</strong>
+                                            </div>
+                                            <div class="col-6">
+                                                <span class="text-muted">T. Parado:</span> <strong>{{ reg.tempo_parado|time:"H:i"|default:"-" }}</strong>
+                                            </div>
+                                            <div class="col-6">
+                                                <span class="text-muted">Prep:</span> <strong>{{ reg.preparacao.nome_abreviado|default:"-" }}</strong>
+                                            </div>
+                                            <div class="col-6">
+                                                <span class="text-muted">Mont:</span> <strong>{{ reg.montagem.nome_abreviado|default:"-" }}</strong>
+                                            </div>
+                                        </div>
+
+                                        <!-- Footer: Manutenções + Ações -->
+                                        <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                                            <div class="d-flex gap-2 align-items-center flex-wrap">
+                                                <!-- Limpezas -->
+                                                <div class="d-flex align-items-center gap-1">
+                                                    <span class="text-muted small" style="font-size:0.75rem;">Limp:</span>
+                                                    {% if reg.limpezas_ok > 0 %}
+                                                    <span class="badge bg-success" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'LIMPEZA', '{{ reg.ciclos_status_json_lote|safe }}')">{{ reg.limpezas_ok }} <i class="bi bi-check-circle-fill"></i></span>
+                                                    {% endif %}
+                                                    {% if reg.limpezas_pendentes > 0 %}
+                                                    <span class="badge bg-danger pulse-danger" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'LIMPEZA', '{{ reg.ciclos_status_json_lote|safe }}')">{{ reg.limpezas_pendentes }} <i class="bi bi-exclamation-circle-fill"></i></span>
+                                                    {% endif %}
+                                                    {% if reg.limpezas_ok == 0 and reg.limpezas_pendentes == 0 %}
+                                                    <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'LIMPEZA', '{{ reg.ciclos_status_json_lote|safe }}')"><i class="bi bi-plus-lg"></i></span>
+                                                    {% endif %}
+                                                </div>
+
+                                                <!-- Trocas -->
+                                                <div class="d-flex align-items-center gap-1">
+                                                    <span class="text-muted small" style="font-size:0.75rem;">Trocas:</span>
+                                                    {% if reg.trocas_ok > 0 %}
+                                                    <span class="badge bg-success" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'TROCA', '{{ reg.ciclos_status_json_lote|safe }}')">{{ reg.trocas_ok }} <i class="bi bi-check-circle-fill"></i></span>
+                                                    {% endif %}
+                                                    {% if reg.trocas_pendentes > 0 %}
+                                                    <span class="badge bg-danger pulse-danger" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'TROCA', '{{ reg.ciclos_status_json_lote|safe }}')">{{ reg.trocas_pendentes }} <i class="bi bi-exclamation-circle-fill"></i></span>
+                                                    {% endif %}
+                                                    {% if reg.trocas_ok == 0 and reg.trocas_pendentes == 0 %}
+                                                    <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'TROCA', '{{ reg.ciclos_status_json_lote|safe }}')"><i class="bi bi-plus-lg"></i></span>
+                                                    {% endif %}
+                                                </div>
+
+                                                <!-- Verificações -->
+                                                <div class="d-flex align-items-center gap-1">
+                                                    <span class="text-muted small" style="font-size:0.75rem;">Verif:</span>
+                                                    {% if reg.verificacoes_ok > 0 %}
+                                                    <span class="badge bg-success" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'VERIFICACAO', '{{ reg.ciclos_status_json_lote|safe }}')">{{ reg.verificacoes_ok }} <i class="bi bi-check-circle-fill"></i></span>
+                                                    {% endif %}
+                                                    {% if reg.verificacoes_pendentes > 0 %}
+                                                    <span class="badge bg-danger pulse-danger" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'VERIFICACAO', '{{ reg.ciclos_status_json_lote|safe }}')">{{ reg.verificacoes_pendentes }} <i class="bi bi-exclamation-circle-fill"></i></span>
+                                                    {% endif %}
+                                                    {% if reg.verificacoes_alerta > 0 %}
+                                                    <span class="badge bg-warning text-dark" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'VERIFICACAO', '{{ reg.ciclos_status_json_lote|safe }}')">{{ reg.verificacoes_alerta }} <i class="bi bi-exclamation-triangle-fill"></i></span>
+                                                    {% endif %}
+                                                    {% if reg.verificacoes_ok == 0 and reg.verificacoes_pendentes == 0 and reg.verificacoes_alerta == 0 %}
+                                                    <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'VERIFICACAO', '{{ reg.ciclos_status_json_lote|safe }}')"><i class="bi bi-plus-lg"></i></span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+
+                                            <div class="dropdown">
+                                                <button class="btn btn-sm btn-light border p-1 px-2" type="button" data-bs-toggle="dropdown" onclick="event.stopPropagation();" aria-expanded="false" title="Mais opções">
+                                                    <i class="bi bi-three-dots-vertical"></i>
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="min-width: auto; padding: 0.25rem 0;">
+                                                    <li>
+                                                        <button class="dropdown-item py-2 px-3 small text-info" type="button" onclick="event.stopPropagation(); recalcularTurnoLinha({{ reg.id }})">
+                                                            <i class="bi bi-arrow-clockwise me-2"></i> Recalcular Turno
+                                                        </button>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider my-1"></li>
+                                                    <li>
+                                                        <button class="dropdown-item py-2 px-3 small text-danger" type="button" onclick="event.stopPropagation(); abrirModalDelete('{% url 'laboratorio:registro_coating_delete' reg.id %}', '{{ reg.lote }}')">
+                                                            <i class="bi bi-trash me-2"></i> Excluir Lote
+                                                        </button>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% empty %}
+                                <div class="text-center text-muted py-4 small">Nenhum lote registrado nesta máquina para as datas em exibição.</div>
+                            {% endfor %}
+                        {% endwith %}
+                    </div>          </table>
                     </div>
                 </div>
             </div>
@@ -1372,7 +1493,7 @@
     // Filtragem em tempo real por número de lote no cliente
     function filterLotesLive(term) {
         const val = term.trim().toLowerCase();
-        const rows = document.querySelectorAll('tr[data-lote-num]');
+        const rows = document.querySelectorAll('tr[data-lote-num], div[data-lote-num]');
         rows.forEach(row => {
             const loteNum = row.getAttribute('data-lote-num') || '';
             if (!val || loteNum.toLowerCase().includes(val)) {
