@@ -303,14 +303,28 @@
                                             <span class="badge bg-light text-dark border">{{ j.jornada_prevista|default:"--:--" }}</span>
                                         </td>
                                         <td>
-                                            <div class="d-flex flex-wrap gap-1">
-                                                <span class="time-slot {% if j.e1 %}time-slot-has-value{% endif %}" title="Entrada 1">{{ j.e1|default:"--:--" }}</span>
-                                                <span class="time-slot {% if j.s1 %}time-slot-has-value{% endif %}" title="Saída 1">{{ j.s1|default:"--:--" }}</span>
-                                                <span class="time-slot {% if j.e2 %}time-slot-has-value{% endif %}" title="Entrada 2">{{ j.e2|default:"--:--" }}</span>
-                                                <span class="time-slot {% if j.s2 %}time-slot-has-value{% endif %}" title="Saída 2">{{ j.s2|default:"--:--" }}</span>
-                                                <span class="time-slot {% if j.e3 %}time-slot-has-value{% endif %}" title="Entrada 3">{{ j.e3|default:"--:--" }}</span>
-                                                <span class="time-slot {% if j.s3 %}time-slot-has-value{% endif %}" title="Saída 3">{{ j.s3|default:"--:--" }}</span>
+                                            <div class="d-flex flex-column gap-1">
+                                                <div class="d-flex align-items-center gap-1">
+                                                    <span class="time-slot {% if j.e1 %}time-slot-has-value{% endif %}" title="Entrada 1">E1: {{ j.e1|default:"--:--" }}</span>
+                                                    {% if j.duracao_t1_str %}<span class="badge bg-light text-muted border px-1" title="Duração Período 1" style="font-size:0.65rem;"><i class="bi bi-clock-history"></i> {{ j.duracao_t1_str }}</span>{% endif %}
+                                                    <span class="time-slot {% if j.s1 %}time-slot-has-value{% endif %}" title="Saída 1">S1: {{ j.s1|default:"--:--" }}</span>
+                                                    {% if j.duracao_i1_str %}<span class="badge bg-secondary text-white px-1 ms-2" title="Intervalo 1" style="font-size:0.65rem;"><i class="bi bi-cup-hot"></i> Intervalo: {{ j.duracao_i1_str }}</span>{% endif %}
+                                                </div>
+                                                
+                                                <div class="d-flex align-items-center gap-1">
+                                                    <span class="time-slot {% if j.e2 %}time-slot-has-value{% endif %}" title="Entrada 2">E2: {{ j.e2|default:"--:--" }}</span>
+                                                    {% if j.duracao_t2_str %}<span class="badge bg-light text-muted border px-1" title="Duração Período 2" style="font-size:0.65rem;"><i class="bi bi-clock-history"></i> {{ j.duracao_t2_str }}</span>{% endif %}
+                                                    <span class="time-slot {% if j.s2 %}time-slot-has-value{% endif %}" title="Saída 2">S2: {{ j.s2|default:"--:--" }}</span>
+                                                    {% if j.duracao_i2_str %}<span class="badge bg-secondary text-white px-1 ms-2" title="Intervalo 2" style="font-size:0.65rem;"><i class="bi bi-cup-hot"></i> Intervalo: {{ j.duracao_i2_str }}</span>{% endif %}
+                                                </div>
+
+                                                <div class="d-flex align-items-center gap-1">
+                                                    <span class="time-slot {% if j.e3 %}time-slot-has-value{% endif %}" title="Entrada 3">E3: {{ j.e3|default:"--:--" }}</span>
+                                                    {% if j.duracao_t3_str %}<span class="badge bg-light text-muted border px-1" title="Duração Período 3" style="font-size:0.65rem;"><i class="bi bi-clock-history"></i> {{ j.duracao_t3_str }}</span>{% endif %}
+                                                    <span class="time-slot {% if j.s3 %}time-slot-has-value{% endif %}" title="Saída 3">S3: {{ j.s3|default:"--:--" }}</span>
+                                                </div>
                                             </div>
+
                                         </td>
                                         <td>
                                             <div class="d-flex flex-column gap-1 small">
@@ -421,13 +435,24 @@
 
                                     <div class="mb-2">
                                         <span class="small text-muted d-block mb-1 fw-bold">Batidas Registradas:</span>
-                                        <div class="d-flex flex-wrap gap-1">
-                                            <span class="time-slot {% if j.e1 %}time-slot-has-value{% endif %}" title="Entrada 1">E1: {{ j.e1|default:"--:--" }}</span>
-                                            <span class="time-slot {% if j.s1 %}time-slot-has-value{% endif %}" title="Saída 1">S1: {{ j.s1|default:"--:--" }}</span>
-                                            <span class="time-slot {% if j.e2 %}time-slot-has-value{% endif %}" title="Entrada 2">E2: {{ j.e2|default:"--:--" }}</span>
-                                            <span class="time-slot {% if j.s2 %}time-slot-has-value{% endif %}" title="Saída 2">S2: {{ j.s2|default:"--:--" }}</span>
-                                            <span class="time-slot {% if j.e3 %}time-slot-has-value{% endif %}" title="Entrada 3">E3: {{ j.e3|default:"--:--" }}</span>
-                                            <span class="time-slot {% if j.s3 %}time-slot-has-value{% endif %}" title="Saída 3">S3: {{ j.s3|default:"--:--" }}</span>
+                                        <div class="d-flex flex-column gap-2">
+                                            <div class="d-flex align-items-center gap-1 flex-wrap">
+                                                <span class="time-slot {% if j.e1 %}time-slot-has-value{% endif %}" title="Entrada 1">E1: {{ j.e1|default:"--:--" }}</span>
+                                                {% if j.duracao_t1_str %}<span class="badge bg-light text-muted border px-1" title="Duração Período 1" style="font-size:0.65rem;"><i class="bi bi-clock-history"></i> {{ j.duracao_t1_str }}</span>{% endif %}
+                                                <span class="time-slot {% if j.s1 %}time-slot-has-value{% endif %}" title="Saída 1">S1: {{ j.s1|default:"--:--" }}</span>
+                                                {% if j.duracao_i1_str %}<span class="badge bg-secondary text-white px-1" title="Intervalo 1" style="font-size:0.65rem;"><i class="bi bi-cup-hot"></i> Int: {{ j.duracao_i1_str }}</span>{% endif %}
+                                            </div>
+                                            <div class="d-flex align-items-center gap-1 flex-wrap">
+                                                <span class="time-slot {% if j.e2 %}time-slot-has-value{% endif %}" title="Entrada 2">E2: {{ j.e2|default:"--:--" }}</span>
+                                                {% if j.duracao_t2_str %}<span class="badge bg-light text-muted border px-1" title="Duração Período 2" style="font-size:0.65rem;"><i class="bi bi-clock-history"></i> {{ j.duracao_t2_str }}</span>{% endif %}
+                                                <span class="time-slot {% if j.s2 %}time-slot-has-value{% endif %}" title="Saída 2">S2: {{ j.s2|default:"--:--" }}</span>
+                                                {% if j.duracao_i2_str %}<span class="badge bg-secondary text-white px-1" title="Intervalo 2" style="font-size:0.65rem;"><i class="bi bi-cup-hot"></i> Int: {{ j.duracao_i2_str }}</span>{% endif %}
+                                            </div>
+                                            <div class="d-flex align-items-center gap-1 flex-wrap">
+                                                <span class="time-slot {% if j.e3 %}time-slot-has-value{% endif %}" title="Entrada 3">E3: {{ j.e3|default:"--:--" }}</span>
+                                                {% if j.duracao_t3_str %}<span class="badge bg-light text-muted border px-1" title="Duração Período 3" style="font-size:0.65rem;"><i class="bi bi-clock-history"></i> {{ j.duracao_t3_str }}</span>{% endif %}
+                                                <span class="time-slot {% if j.s3 %}time-slot-has-value{% endif %}" title="Saída 3">S3: {{ j.s3|default:"--:--" }}</span>
+                                            </div>
                                         </div>
                                     </div>
 

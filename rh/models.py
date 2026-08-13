@@ -928,6 +928,53 @@ class JornadaDiariaFalha(models.Model):
         m = self.minutos_faltantes
         return f"{m//60:02d}:{m%60:02d}"
 
+    def _parse_m(self, val):
+        if not val:
+            return None
+        import re
+        val_str = str(val).strip().replace(':', '')
+        m = re.search(r'(\d{1,2})(\d{2})', val_str)
+        if m:
+            hh, mm = int(m.group(1)), int(m.group(2))
+            if 0 <= hh <= 23 and 0 <= mm <= 59:
+                return hh * 60 + mm
+        return None
+
+    def _calc_pair(self, e, s):
+        em = self._parse_m(e)
+        sm = self._parse_m(s)
+        if em is not None and sm is not None:
+            diff = sm - em
+            if diff < 0:
+                diff += 24 * 60
+            return diff
+        return None
+        
+    def _fmt(self, m):
+        if m is None:
+            return None
+        return f"{m//60:02d}h{m%60:02d}m"
+
+    @property
+    def duracao_t1_str(self):
+        return self._fmt(self._calc_pair(self.e1, self.s1))
+
+    @property
+    def duracao_i1_str(self):
+        return self._fmt(self._calc_pair(self.s1, self.e2))
+
+    @property
+    def duracao_t2_str(self):
+        return self._fmt(self._calc_pair(self.e2, self.s2))
+
+    @property
+    def duracao_i2_str(self):
+        return self._fmt(self._calc_pair(self.s2, self.e3))
+
+    @property
+    def duracao_t3_str(self):
+        return self._fmt(self._calc_pair(self.e3, self.s3))
+
 
 
 class ItemFalhaPonto(models.Model):
