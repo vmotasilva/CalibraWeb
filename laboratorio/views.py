@@ -1174,11 +1174,14 @@ def coating_painel(request):
         counters = {c.id: 0 for c in ciclos}
         never_done = {c.id: True for c in ciclos}
         last_period = {c.id: None for c in ciclos}
+        last_maint_date = {c.id: None for c in ciclos}
         registro_status = {}
         
         # Pre-fetch tratamentos_especificos for cycles
         ciclos_tratamentos_map = {c.id: set(c.tratamentos_especificos.values_list('id', flat=True)) for c in ciclos}
         
+        first_lote_date = lotes_historico[0]['turno_coating__data'] if lotes_historico else None
+
         for lote_key, lote_data in lotes_agrupados.items():
             data_lote = lote_key[0]
             rids = lote_data['rids']
@@ -1213,16 +1216,34 @@ def coating_painel(request):
                     counters[c.id] = 0
                     never_done[c.id] = False
                     last_period[c.id] = curr_period
+                    last_maint_date[c.id] = data_lote
+                    lotes_passados_val = 0
                 else:
-                    if c.criterio in ['LOTES', 'DIAS']:
+                    if c.criterio == 'LOTES':
+                        lotes_passados_val = counters[c.id]
                         if counters[c.id] >= c.limite_lotes:
+                            status = 'PENDENTE'
+                            estourou = True
+                        else:
+                            status = 'S_FAROL'
+                    elif c.criterio == 'DIAS':
+                        if last_maint_date[c.id] is not None:
+                            dias_passados = (data_lote - last_maint_date[c.id]).days
+                        elif first_lote_date is not None:
+                            dias_passados = (data_lote - first_lote_date).days
+                        else:
+                            dias_passados = 0
+                        lotes_passados_val = dias_passados
+                        if dias_passados >= c.limite_lotes:
                             status = 'PENDENTE'
                             estourou = True
                         else:
                             status = 'S_FAROL'
                     elif c.criterio == 'LIVRE':
                         status = 'S_FAROL'
+                        lotes_passados_val = 0
                     else: # Criterio Calendário
+                        lotes_passados_val = 0
                         if last_period[c.id] == curr_period:
                             status = 'S_FAROL'
                         else:
@@ -1232,13 +1253,13 @@ def coating_painel(request):
                 ciclos_status_lote[c.id] = {
                     'status': status,
                     'estourou': estourou,
-                    'lotes_passados': counters[c.id]
+                    'lotes_passados': lotes_passados_val
                 }
                 
             for rid in rids:
                 registro_status[rid] = ciclos_status_lote
                 
-        # Anexa o status calculado a cada registro renderizado na pagina
+        # Anexa o status calculated a cada registro renderizado na pagina
         import json
         for reg in registros:
             if reg.maquina_id == maquina.id:
@@ -1297,18 +1318,31 @@ def coating_painel(request):
         # Prepara o status global atual da maquina
         hoje = timezone.now().date()
         for ciclo in ciclos:
-            count = counters.get(ciclo.id, 0)
             itens = list(ciclo.itens_checklist.all().values('id', 'texto', 'ordem'))
             
-            if ciclo.criterio in ['LOTES', 'DIAS']:
+            if ciclo.criterio == 'LOTES':
+                count = counters.get(ciclo.id, 0)
                 estourou_agora = count >= ciclo.limite_lotes
                 estourou_proximo = count == (ciclo.limite_lotes - 1)
                 lotes_passados = count
+            elif ciclo.criterio == 'DIAS':
+                if last_maint_date[ciclo.id] is not None:
+                    dias_passados = (hoje - last_maint_date[ciclo.id]).days
+                elif first_lote_date is not None:
+                    dias_passados = (hoje - first_lote_date).days
+                else:
+                    dias_passados = 0
+                count = dias_passados
+                estourou_agora = dias_passados >= ciclo.limite_lotes
+                estourou_proximo = dias_passados == (ciclo.limite_lotes - 1)
+                lotes_passados = dias_passados
             elif ciclo.criterio == 'LIVRE':
+                count = 0
                 estourou_agora = False
                 estourou_proximo = False
                 lotes_passados = 0
             else:
+                count = 0
                 if ciclo.criterio == 'DIARIO':
                     curr_period = f"{hoje.year}-{hoje.month:02d}-{hoje.day:02d}"
                 elif ciclo.criterio == 'SEMANAL':
@@ -1349,7 +1383,7 @@ def coating_painel(request):
                     "ciclo": ciclo,
                     "lotes_passados": lotes_passados,
                     "ultimo_lote": lotes_historico[-1]['lote'] if lotes_historico else "N/A",
-                    "data": lotes_historico[-1]['turno_coating__data'] if lotes_historico else None,
+                    "data": last_maint_date[ciclo.id] if last_maint_date[ciclo.id] else (lotes_historico[-1]['turno_coating__data'] if lotes_historico else None),
                     "estourou_agora": estourou_agora,
                     "nunca_feito": never_done[ciclo.id]
                 })
