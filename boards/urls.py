@@ -1,4 +1,4 @@
-from django.urls import path
+﻿from django.urls import path
 from boards import views
 
 app_name = 'boards'
@@ -6,6 +6,7 @@ app_name = 'boards'
 urlpatterns = [
     path('', views.dashboard_view, name='dashboard'),
     path('<int:board_id>/', views.board_detail_view, name='board_detail'),
+    path('calendario-publico/<str:token>/', views.public_calendar_view, name='public_calendar'),
     path('<int:board_id>/exportar-pdf/', views.export_board_pdf_view, name='export_board_pdf'),
     path('<int:board_id>/editar/', views.edit_board_view, name='edit_board'),
     path('<int:board_id>/excluir/', views.delete_board_view, name='delete_board'),
@@ -39,4 +40,5 @@ urlpatterns = [
     path('<int:board_id>/links/novo/', views.api_add_board_link_view, name='api_add_board_link'),
     path('links/<int:link_id>/excluir/', views.api_delete_board_link_view, name='api_delete_board_link'),
 ]
+
 

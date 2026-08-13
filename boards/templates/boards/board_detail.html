@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends base_template|default:"base.html" %}
 {% load boards_tags %}
 
 {% block title %}Quadro: {{ board.nome }} - Calibra QMS{% endblock %}
@@ -445,12 +445,41 @@
 {% endblock %}
 
 {% block content %}
+{% if is_public %}
+<style>
+    #boardTabs,
+    #board-view, #metrics-view, #activities-view, #table-view,
+    .btn-outline-info[title="Compartilhar calendÃ¡rio"] {
+        display: none !important;
+    }
+    #calendar-view {
+        display: block !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        height: auto !important;
+    }
+    .add-task-btn { display: none !important; }
+</style>
+<script>
+    window.addEventListener('DOMContentLoaded', function() {
+        window.openAddCardModal = function() {};
+        window.openCardDetailModal = function() {};
+        // Desativar ponteiro de cursor
+        const style = document.createElement('style');
+        style.innerHTML = '.custom-calendar-event-item, .custom-calendar-day, .custom-calendar-week-slot-cell { cursor: default !important; pointer-events: none !important; }';
+        const bView = document.getElementById('board-view'); if(bView) { bView.classList.remove('show', 'active'); }
+        const cView = document.getElementById('calendar-view'); if(cView) { cView.classList.add('show', 'active'); }
+        document.head.appendChild(style);
+    });
+</script>
+{% endif %}
+
 <div class="container-fluid py-3">
-    <!-- Topo / Título do Quadro e Abas -->
-    <!-- Topo / Título do Quadro e Abas -->
+    <!-- Topo / TÃƒÂ­tulo do Quadro e Abas -->
+    <!-- Topo / TÃƒÂ­tulo do Quadro e Abas -->
     <div class="card mb-3 shadow-sm border-0">
         <div class="card-body py-3">
-            <!-- Linha 1: Título, Abas e Ações -->
+            <!-- Linha 1: TÃƒÂ­tulo, Abas e AÃƒÂ§ÃƒÂµes -->
             <div class="d-flex flex-column flex-xl-row justify-content-between align-items-xl-center gap-3">
                 <div>
                     <nav aria-label="breadcrumb">
@@ -474,18 +503,18 @@
                 
                 <div class="d-flex flex-wrap align-items-center gap-2">
                     {% if focus_column %}
-                    <!-- Botão de Voltar do Modo Foco -->
+                    <!-- BotÃƒÂ£o de Voltar do Modo Foco -->
                     <a href="{% url 'boards:board_detail' board.id %}" class="btn btn-primary btn-sm me-2">
                         <i class="bi bi-arrow-left me-1"></i>Voltar ao Quadro
                     </a>
                     {% else %}
-                    <!-- Abas Customizadas (Navegação interna) -->
+                    <!-- Abas Customizadas (NavegaÃƒÂ§ÃƒÂ£o interna) -->
                     <ul class="nav nav-pills" id="boardTab" role="tablist">
                         <li class="nav-item" role="presentation">
                             <button class="nav-link active px-3" id="kanban-tab" data-bs-toggle="tab" data-bs-target="#kanban" type="button" role="tab"><i class="bi bi-kanban me-2"></i>Quadro</button>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link px-3" id="metrics-tab" data-bs-toggle="tab" data-bs-target="#metrics" type="button" role="tab"><i class="bi bi-pie-chart me-2"></i>Métricas da Equipe</button>
+                            <button class="nav-link px-3" id="metrics-tab" data-bs-toggle="tab" data-bs-target="#metrics" type="button" role="tab"><i class="bi bi-pie-chart me-2"></i>MÃƒÂ©tricas da Equipe</button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link px-3" id="activities-tab" data-bs-toggle="tab" data-bs-target="#activities" type="button" role="tab"><i class="bi bi-clock-history me-2"></i>Atividades</button>
@@ -494,23 +523,23 @@
                             <button class="nav-link px-3" id="table-view-tab" data-bs-toggle="tab" data-bs-target="#table-view" type="button" role="tab"><i class="bi bi-table me-2"></i>Tabela</button>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link px-3" id="calendar-view-tab" data-bs-toggle="tab" data-bs-target="#calendar-view" type="button" role="tab"><i class="bi bi-calendar3 me-2"></i>Calendário</button>
+                            <button class="nav-link px-3" id="calendar-view-tab" data-bs-toggle="tab" data-bs-target="#calendar-view" type="button" role="tab"><i class="bi bi-calendar3 me-2"></i>CalendÃƒÂ¡rio</button>
                         </li>
                     </ul>
                     {% endif %}
                     
                     <div class="vr mx-2"></div>
                     
-                    <!-- Botões de Ações do Quadro -->
+                    <!-- BotÃƒÂµes de AÃƒÂ§ÃƒÂµes do Quadro -->
                     {% if colunas %}
                     <button type="button" class="btn btn-primary btn-sm me-1" onclick="openAddCardModal('{{ colunas.0.id }}', '{{ colunas.0.nome|escapejs }}')" data-bs-toggle="modal" data-bs-target="#addCardModal" title="Adicionar Nova Tarefa">
                         <i class="bi bi-plus-lg me-1"></i>Nova Tarefa
                     </button>
                     {% endif %}
-                    <!-- Menu Dropdown de Ações -->
+                    <!-- Menu Dropdown de AÃƒÂ§ÃƒÂµes -->
                     <div class="dropdown">
                         <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="boardActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-three-dots-vertical"></i> Ações
+                            <i class="bi bi-three-dots-vertical"></i> AÃƒÂ§ÃƒÂµes
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="boardActionsDropdown">
                             <li>
@@ -520,7 +549,7 @@
                             </li>
                             <li>
                                 <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#boardLinksModal">
-                                    <i class="bi bi-link-45deg me-2 text-info"></i>Links Úteis
+                                    <i class="bi bi-link-45deg me-2 text-info"></i>Links ÃƒÅ¡teis
                                 </button>
                             </li>
                             <li>
@@ -552,7 +581,7 @@
                                 </li>
                                 {% else %}
                                 <li>
-                                    <form action="{% url 'boards:archive_board' board.id %}" method="POST" class="d-inline w-100" onsubmit="return confirm('Tem certeza que deseja encerrar e arquivar este quadro? Ele não aparecerá mais na visão principal do painel.');">
+                                    <form action="{% url 'boards:archive_board' board.id %}" method="POST" class="d-inline w-100" onsubmit="return confirm('Tem certeza que deseja encerrar e arquivar este quadro? Ele nÃƒÂ£o aparecerÃƒÂ¡ mais na visÃƒÂ£o principal do painel.');">
                                         {% csrf_token %}
                                         <button type="submit" class="dropdown-item text-warning">
                                             <i class="bi bi-archive me-2"></i>Encerrar Quadro
@@ -569,8 +598,8 @@
             <!-- Linha 2: Barra de Filtros Globais (Top) -->
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mt-3 pt-3 border-top">
                 <div class="d-flex flex-wrap gap-2 align-items-center">
-                    <!-- Botão Filtros -->
-                    <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#advancedFiltersModal" title="Filtros Avançados">
+                    <!-- BotÃƒÂ£o Filtros -->
+                    <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#advancedFiltersModal" title="Filtros AvanÃƒÂ§ados">
                         <i class="bi bi-funnel"></i> Filtros
                     </button>
                 </div>
@@ -584,18 +613,18 @@
         </div>
     </div>
 
-    <!-- Conteúdo das Abas -->
+    <!-- ConteÃƒÂºdo das Abas -->
     <div class="tab-content" id="boardTab">
         <!-- ABA 1: KANBAN BOARD -->
         <div class="tab-pane fade show active" id="kanban" role="tabpanel">
-            <!-- Seção 1: Atividades em Andamento -->
+            <!-- SeÃƒÂ§ÃƒÂ£o 1: Atividades em Andamento -->
             <div class="mb-5" id="kanbanAndamentoSection">
                 <h5 class="fw-bold text-dark mb-3"><i class="bi bi-play-circle text-primary me-2"></i>Atividades em Andamento</h5>
                 <div class="kanban-container" id="kanban-andamento-container">
                     {% for col in colunas_andamento %}
                     {% if not focus_column or focus_column.id == col.id %}
                     <div class="kanban-column {% if focus_column %}flex-grow-1 w-100{% endif %}" id="col-{{ col.id }}" data-column-name="{{ col.nome }}">
-                        <!-- Cabeçalho da Coluna -->
+                        <!-- CabeÃƒÂ§alho da Coluna -->
                         <div class="column-header" draggable="true" ondragstart="dragColumn(event)" ondragover="allowDropColumn(event)" ondrop="dropColumn(event, {{ col.id }})" style="cursor: move;">
                             <span class="text-truncate fw-bold"><i class="bi bi-grip-vertical text-muted me-1"></i>{{ col.nome }}</span>
                             <div class="dropdown">
@@ -605,7 +634,7 @@
                                 <ul class="dropdown-menu dropdown-menu-end shadow">
                                     <li>
                                         <button class="dropdown-item" type="button" onclick="openCreateSubSectionModal({{ col.id }})">
-                                            <i class="bi bi-folder-plus me-2"></i>Nova Sub-sessão
+                                            <i class="bi bi-folder-plus me-2"></i>Nova Sub-sessÃƒÂ£o
                                         </button>
                                     </li>
                                     <li>
@@ -615,7 +644,7 @@
                                     </li>
                                     <li>
                                         <button class="dropdown-item" type="button" onclick="openColumnDescriptionModal({{ col.id }}, '{{ col.nome|escapejs }}')">
-                                            <i class="bi bi-card-text me-2"></i>Descrição da Coluna
+                                            <i class="bi bi-card-text me-2"></i>DescriÃƒÂ§ÃƒÂ£o da Coluna
                                         </button>
                                     </li>
                                     <li>
@@ -629,7 +658,7 @@
                                         </a>
                                     </li>
                                     <li>
-                                        <form action="{% url 'boards:archive_column' col.id %}" method="POST" onsubmit="return confirm('Deseja arquivar esta coluna? Ela não aparecerá mais no quadro ativo, mas os cartões serão preservados.');">
+                                        <form action="{% url 'boards:archive_column' col.id %}" method="POST" onsubmit="return confirm('Deseja arquivar esta coluna? Ela nÃƒÂ£o aparecerÃƒÂ¡ mais no quadro ativo, mas os cartÃƒÂµes serÃƒÂ£o preservados.');">
                                             {% csrf_token %}
                                             <button type="submit" class="dropdown-item text-warning"><i class="bi bi-archive me-2"></i>Arquivar Coluna</button>
                                         </form>
@@ -645,23 +674,23 @@
                             </div>
                         </div>
                         
-                        <!-- Container dos Cartões -->
+                        <!-- Container dos CartÃƒÂµes -->
                         <div class="card-container" id="cards-col-{{ col.id }}-pending" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }}, null)" data-is-concluida="false">
                             {% if col.subsecoes_list %}
-                                <!-- Sub-sessões -->
+                                <!-- Sub-sessÃƒÂµes -->
                                 {% for sub in col.subsecoes_list %}
                                 <div class="subsection-group mb-2 border rounded p-1 bg-white shadow-xs" style="background-color: #fcfcfc !important;">
                                     <div class="subsection-header d-flex justify-content-between align-items-center px-2 py-1 mb-1 border-bottom bg-light rounded-top" style="font-size: 0.75rem; font-weight: 600; color: #495057;">
                                         <span><i class="bi bi-folder2-open text-primary me-1"></i>{{ sub.nome }}</span>
                                         <div class="dropdown">
-                                            <button class="btn btn-sm btn-link text-muted p-0 border-0" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="line-height: 1;" title="Opções da sub-sessão">
+                                            <button class="btn btn-sm btn-link text-muted p-0 border-0" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="line-height: 1;" title="OpÃƒÂ§ÃƒÂµes da sub-sessÃƒÂ£o">
                                                 <i class="bi bi-three-dots"></i>
                                             </button>
                                             <ul class="dropdown-menu dropdown-menu-end shadow" style="min-width: 160px;">
                                                 <li>
-                                                    <form action="{% url 'boards:delete_subsection' sub.id %}" method="POST" onsubmit="return confirm('Deseja excluir esta sub-sessão? As tarefas nela contidas serão mantidas na coluna.');">
+                                                    <form action="{% url 'boards:delete_subsection' sub.id %}" method="POST" onsubmit="return confirm('Deseja excluir esta sub-sessÃƒÂ£o? As tarefas nela contidas serÃƒÂ£o mantidas na coluna.');">
                                                         {% csrf_token %}
-                                                        <button type="submit" class="dropdown-item text-danger"><i class="bi bi-trash me-2"></i>Excluir Sub-sessão</button>
+                                                        <button type="submit" class="dropdown-item text-danger"><i class="bi bi-trash me-2"></i>Excluir Sub-sessÃƒÂ£o</button>
                                                     </form>
                                                 </li>
                                             </ul>
@@ -675,9 +704,9 @@
                                 </div>
                                 {% endfor %}
                                 
-                                <!-- Geral / Sem Sub-sessão -->
+                                <!-- Geral / Sem Sub-sessÃƒÂ£o -->
                                 <div class="card-container-subsection mt-2" id="cards-col-{{ col.id }}-unclassified-pending" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }}, null)" data-column-id="{{ col.id }}" data-subsection-id="null" style="min-height: 50px; display: flex; flex-direction: column; gap: 0.5rem; border: 1px dashed rgba(0,0,0,0.1); border-radius: 6px; padding: 6px; background-color: rgba(0,0,0,0.01);">
-                                    <div class="text-muted text-center" style="font-size: 0.65rem; font-weight: 600; pointer-events: none;">Geral / Sem Sub-sessão</div>
+                                    <div class="text-muted text-center" style="font-size: 0.65rem; font-weight: 600; pointer-events: none;">Geral / Sem Sub-sessÃƒÂ£o</div>
                                     {% for card in col.cartoes_sem_subsecao_andamento %}
                                         {% include "boards/card_render.html" with card=card %}
                                     {% endfor %}
@@ -690,7 +719,7 @@
                             {% endif %}
                         </div>
                         
-                        <!-- Adicionar Cartão -->
+                        <!-- Adicionar CartÃƒÂ£o -->
                         <button class="btn-add-card" onclick="openAddCardModal({{ col.id }}, '{{ col.nome }}')">
                             <i class="bi bi-plus-lg me-1"></i>Adicionar tarefa
                         </button>
@@ -721,21 +750,21 @@
                 </div>
             </div>
 
-            <!-- Seção 2: Atividades Concluídas (apenas quadros normais) -->
+            <!-- SeÃƒÂ§ÃƒÂ£o 2: Atividades ConcluÃƒÂ­das (apenas quadros normais) -->
             <div id="kanbanConcluidoSection">
-                <h5 class="fw-bold text-dark mb-3"><i class="bi bi-check-circle text-success me-2"></i>Atividades Concluídas</h5>
+                <h5 class="fw-bold text-dark mb-3"><i class="bi bi-check-circle text-success me-2"></i>Atividades ConcluÃƒÂ­das</h5>
                 <div class="kanban-container" id="kanban-concluido-container">
                     {% for col in colunas_concluidas %}
                     {% if not focus_column or focus_column.id == col.id %}
                     <div class="kanban-column opacity-75 {% if focus_column %}flex-grow-1 w-100{% endif %}" id="col-{{ col.id }}-completed" data-column-name="{{ col.nome }}">
-                        <!-- Cabeçalho da Coluna -->
+                        <!-- CabeÃƒÂ§alho da Coluna -->
                         <div class="column-header">
                             <span class="text-truncate fw-bold">{{ col.nome }}</span>
                         </div>
-                        <!-- Container dos Cartões -->
+                        <!-- Container dos CartÃƒÂµes -->
                         <div class="card-container" id="cards-col-{{ col.id }}-completed" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }}, null)" data-is-concluida="true">
                             {% if col.subsecoes_list %}
-                                <!-- Sub-sessões -->
+                                <!-- Sub-sessÃƒÂµes -->
                                 {% for sub in col.subsecoes_list %}
                                 <div class="subsection-group mb-2 border rounded p-1 bg-white shadow-xs" style="background-color: #fcfcfc !important;">
                                     <div class="subsection-header d-flex justify-content-between align-items-center px-2 py-1 mb-1 border-bottom bg-light rounded-top" style="font-size: 0.75rem; font-weight: 600; color: #495057;">
@@ -748,9 +777,9 @@
                                     </div>
                                 </div>
                                 {% endfor %}
-                                <!-- Geral / Sem Sub-sessão -->
+                                <!-- Geral / Sem Sub-sessÃƒÂ£o -->
                                 <div class="card-container-subsection mt-2" id="cards-col-{{ col.id }}-unclassified-completed" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }}, null)" data-column-id="{{ col.id }}" data-subsection-id="null" style="min-height: 50px; display: flex; flex-direction: column; gap: 0.5rem; border: 1px dashed rgba(0,0,0,0.1); border-radius: 6px; padding: 6px; background-color: rgba(0,0,0,0.01);">
-                                    <div class="text-muted text-center" style="font-size: 0.65rem; font-weight: 600; pointer-events: none;">Geral / Sem Sub-sessão</div>
+                                    <div class="text-muted text-center" style="font-size: 0.65rem; font-weight: 600; pointer-events: none;">Geral / Sem Sub-sessÃƒÂ£o</div>
                                     {% for card in col.cartoes_sem_subsecao_concluido %}
                                         {% include "boards/card_render.html" with card=card %}
                                     {% endfor %}
@@ -777,13 +806,13 @@
                     <div class="card border-0 shadow-sm p-3" style="border-radius: 12px; background: linear-gradient(135deg, #198754 0%, #157347 100%); color:white;">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
-                                <h6 class="text-white-50 mb-1 fw-bold">TAXA DE CONCLUSÃO</h6>
+                                <h6 class="text-white-50 mb-1 fw-bold">TAXA DE CONCLUSÃƒÆ’O</h6>
                                 <h2 id="kpiCompletionRate" class="fw-bold mb-0">{{ porcentagem_concluida }}%</h2>
                             </div>
                             <i class="bi bi-check2-circle fs-1 text-white-50"></i>
                         </div>
                         <div id="kpiCompletionText" class="mt-3 text-white-50 small">
-                            {{ cartoes_concluidos }} de {{ total_cartoes }} tarefas concluídas.
+                            {{ cartoes_concluidos }} de {{ total_cartoes }} tarefas concluÃƒÂ­das.
                         </div>
                     </div>
                 </div>
@@ -798,7 +827,7 @@
                             <i class="bi bi-exclamation-triangle fs-1 text-white-50"></i>
                         </div>
                         <div class="mt-3 text-white-50 small">
-                            Tarefas com prazo vencido e não concluídas.
+                            Tarefas com prazo vencido e nÃƒÂ£o concluÃƒÂ­das.
                         </div>
                     </div>
                 </div>
@@ -818,7 +847,7 @@
                     </div>
                 </div>
                 
-                <!-- Gráficos -->
+                <!-- GrÃƒÂ¡ficos -->
                 <div class="col-md-8">
                     <div class="card border-0 shadow-sm" style="border-radius: 12px;">
                         <div class="card-header bg-white border-0 pt-3 fw-bold"><i class="bi bi-bar-chart-fill text-primary me-2"></i>Carga de Trabalho da Equipe (Atividades Ativas)</div>
@@ -832,7 +861,7 @@
                 
                 <div class="col-md-4">
                     <div class="card border-0 shadow-sm" style="border-radius: 12px;">
-                        <div class="card-header bg-white border-0 pt-3 fw-bold"><i class="bi bi-pie-chart-fill text-info me-2"></i>Distribuição por Colunas</div>
+                        <div class="card-header bg-white border-0 pt-3 fw-bold"><i class="bi bi-pie-chart-fill text-info me-2"></i>DistribuiÃƒÂ§ÃƒÂ£o por Colunas</div>
                         <div class="card-body d-flex justify-content-center">
                             <div style="height: 300px; width: 100%; position: relative;">
                                 <canvas id="distributionChart"></canvas>
@@ -883,14 +912,14 @@
                             <tr>
                                 <th>Tarefa</th>
                                 <th>Coluna</th>
-                                <th>Sub-sessão</th>
-                                <th>Responsáveis</th>
+                                <th>Sub-sessÃƒÂ£o</th>
+                                <th>ResponsÃƒÂ¡veis</th>
                                 <th>Prazo</th>
-                                <th>Conclusão</th>
-                                <th>Execução</th>
+                                <th>ConclusÃƒÂ£o</th>
+                                <th>ExecuÃƒÂ§ÃƒÂ£o</th>
                                 <th>Prioridade</th>
                                 <th>Etiquetas</th>
-                                <th class="text-end">Ações</th>
+                                <th class="text-end">AÃƒÂ§ÃƒÂµes</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -948,7 +977,7 @@
                                             {% if card.data_inicio or card.hora_inicio or card.data_conclusao or card.hora_fim %}
                                                 <span class="text-dark small">
                                                     <i class="bi bi-clock me-1 text-primary"></i>
-                                                    {% if card.data_inicio %}{{ card.data_inicio|date:"d/m/Y" }} {% endif %}{{ card.hora_inicio|time:"H:i"|default:"--" }} às 
+                                                    {% if card.data_inicio %}{{ card.data_inicio|date:"d/m/Y" }} {% endif %}{{ card.hora_inicio|time:"H:i"|default:"--" }} ÃƒÂ s 
                                                     {% if card.data_conclusao %}{{ card.data_conclusao|date:"d/m/Y" }} {% endif %}{{ card.hora_fim|time:"H:i"|default:"--" }}
                                                 </span>
                                             {% else %}
@@ -957,7 +986,7 @@
                                         </td>
                                         <td>
                                             {% if card.prioridade == 'ALTA' %}
-                                                <span class="badge bg-danger">⚠ Alta</span>
+                                                <span class="badge bg-danger">Ã¢Å¡Â  Alta</span>
                                             {% else %}
                                                 <span class="badge bg-success">Baixa</span>
                                             {% endif %}
@@ -985,30 +1014,33 @@
             </div>
         </div>
         
-        <!-- ABA 5: CALENDÁRIO VIEW -->
+        <!-- ABA 5: CALENDÃƒÂRIO VIEW -->
         <div class="tab-pane fade" id="calendar-view" role="tabpanel">
             <div class="card border-0 shadow-sm p-4" style="border-radius: 12px;">
-                <!-- Cabeçalho do Calendário Customizado -->
+                <!-- CabeÃƒÂ§alho do CalendÃƒÂ¡rio Customizado -->
                 <div class="custom-calendar-header d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
                     <div class="d-flex align-items-center gap-2">
                         <button class="btn btn-outline-secondary btn-sm px-2" id="customCalPrevBtn" title="Anterior"><i class="bi bi-chevron-left"></i></button>
-                        <h5 class="fw-bold mb-0 text-dark" id="customCalTitle" style="min-width: 155px; text-align: center;">Mês Ano</h5>
-                        <button class="btn btn-outline-secondary btn-sm px-2" id="customCalNextBtn" title="Próximo"><i class="bi bi-chevron-right"></i></button>
+                        <h5 class="fw-bold mb-0 text-dark" id="customCalTitle" style="min-width: 155px; text-align: center;">MÃƒÂªs Ano</h5>
+                        <button class="btn btn-outline-secondary btn-sm px-2" id="customCalNextBtn" title="PrÃƒÂ³ximo"><i class="bi bi-chevron-right"></i></button>
                         <button class="btn btn-primary btn-sm px-3 ms-2" id="customCalTodayBtn">Hoje</button>
                     </div>
                     
                     <div class="d-flex align-items-center gap-3">
+                        <button class="btn btn-outline-info btn-sm" onclick="navigator.clipboard.writeText('{{ public_calendar_url }}'); alert('Link de compartilhamento copiado! Qualquer pessoa com este link poderÃƒÂ¡ ver o calendÃƒÂ¡rio.');" title="Compartilhar calendÃƒÂ¡rio">
+                            <i class="bi bi-share"></i> Compartilhar
+                        </button>
                         <button class="btn btn-outline-success btn-sm" onclick="copyCalendarImage(this)" title="Copiar como imagem para colar">
                             <i class="bi bi-camera"></i> Copiar Imagem
                         </button>
                         <div class="d-flex align-items-center gap-2 me-2" id="customCalHourRangeControls" style="display: none !important;">
-                            <span class="small text-muted fw-semibold">Horário:</span>
+                            <span class="small text-muted fw-semibold">HorÃƒÂ¡rio:</span>
                             <select id="customCalStartHour" class="form-select form-select-sm py-1" style="width: 75px; font-size: 0.75rem;"></select>
-                            <span class="small text-muted">às</span>
+                            <span class="small text-muted">ÃƒÂ s</span>
                             <select id="customCalEndHour" class="form-select form-select-sm py-1" style="width: 75px; font-size: 0.75rem;"></select>
                         </div>
                         <div class="btn-group btn-group-sm" role="group">
-                            <button class="btn btn-outline-secondary active" id="customCalViewMonthBtn">Mês</button>
+                            <button class="btn btn-outline-secondary active" id="customCalViewMonthBtn">MÃƒÂªs</button>
                             <button class="btn btn-outline-secondary" id="customCalViewWeekBtn">Semana</button>
                             <button class="btn btn-outline-secondary" id="customCalViewDayBtn">Dia</button>
                             <button class="btn btn-outline-secondary" id="customCalViewAgendaBtn">Agenda</button>
@@ -1016,13 +1048,13 @@
                     </div>
                 </div>
 
-                <!-- Visão Grid Mensal -->
+                <!-- VisÃƒÂ£o Grid Mensal -->
                 <div id="customCalMonthView" class="custom-calendar-month-grid"></div>
 
-                <!-- Visão Grid Semanal -->
+                <!-- VisÃƒÂ£o Grid Semanal -->
                 <div id="customCalWeekView" class="custom-calendar-week-grid" style="display: none;"></div>
 
-                <!-- Visão Dia Detalhe -->
+                <!-- VisÃƒÂ£o Dia Detalhe -->
                 <div id="customCalDayView" style="display: none;">
                     <div class="custom-calendar-day-container">
                         <div class="custom-calendar-day-header-info">
@@ -1035,7 +1067,7 @@
                     </div>
                 </div>
 
-                <!-- Visão Agenda Lista -->
+                <!-- VisÃƒÂ£o Agenda Lista -->
                 <div id="customCalAgendaView" style="display: none;">
                     <div class="list-group shadow-sm" id="customCalAgendaList" style="border-radius: 8px; overflow: hidden;"></div>
                 </div>
@@ -1065,7 +1097,7 @@
     </div>
 </div>
 
-<!-- Modal Criação de Cartão -->
+<!-- Modal CriaÃƒÂ§ÃƒÂ£o de CartÃƒÂ£o -->
 <div class="modal fade" id="addCardModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="border-radius: 14px;">
@@ -1085,25 +1117,25 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Título da Tarefa</label>
+                        <label class="form-label fw-bold">TÃƒÂ­tulo da Tarefa</label>
                         {{ card_form.titulo }}
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Descrição</label>
+                        <label class="form-label fw-bold">DescriÃƒÂ§ÃƒÂ£o</label>
                         {{ card_form.descricao }}
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold"><i class="bi bi-link-45deg me-1"></i>Link / Anexo Externo</label>
                         {{ card_form.link_anexo }}
-                        <div class="form-text">Opcional. Cole aqui uma URL ou caminho para arquivo relacionado à tarefa.</div>
+                        <div class="form-text">Opcional. Cole aqui uma URL ou caminho para arquivo relacionado ÃƒÂ  tarefa.</div>
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Responsáveis</label>
+                            <label class="form-label fw-bold">ResponsÃƒÂ¡veis</label>
                             <div class="position-relative mb-2">
                                 <div class="input-group input-group-sm">
                                     <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                                    <input type="search" id="addCardMemberSearchInput" class="form-control" placeholder="Buscar responsável..." readonly onfocus="this.removeAttribute('readonly');" autocomplete="off">
+                                    <input type="search" id="addCardMemberSearchInput" class="form-control" placeholder="Buscar responsÃƒÂ¡vel..." readonly onfocus="this.removeAttribute('readonly');" autocomplete="off">
                                 </div>
                                 <div id="addCardSearchSuggestions" class="list-group position-absolute w-100 shadow-lg mt-1 overflow-auto" style="max-height: 150px; z-index: 1050; display: none;"></div>
                             </div>
@@ -1131,7 +1163,7 @@
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" id="addCardCheckRecorrencia" onchange="toggleAddCardRecurrence(this.checked)">
                                 <label class="form-check-label fw-bold text-dark" for="addCardCheckRecorrencia">
-                                    <i class="bi bi-arrow-repeat me-1 text-primary"></i>Ativar modo de recorrência
+                                    <i class="bi bi-arrow-repeat me-1 text-primary"></i>Ativar modo de recorrÃƒÂªncia
                                 </label>
                             </div>
                         </div>
@@ -1143,21 +1175,21 @@
                             {{ card_form.periodicidade }}
                         </div>
                     </div>
-                    <!-- Switch para planejar horário -->
+                    <!-- Switch para planejar horÃƒÂ¡rio -->
                     <div class="row mt-3">
                         <div class="col-md-12 mb-0">
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" id="addCardCheckPlanejar" onchange="toggleAddCardPlanning(this.checked)">
                                 <label class="form-check-label fw-bold text-dark" for="addCardCheckPlanejar">
-                                    <i class="bi bi-clock-history me-1 text-primary"></i>Planejar atividade com início/fim
+                                    <i class="bi bi-clock-history me-1 text-primary"></i>Planejar atividade com inÃƒÂ­cio/fim
                                 </label>
                             </div>
                         </div>
                     </div>
-                    <!-- Campos de Planejamento (Início/Fim) -->
+                    <!-- Campos de Planejamento (InÃƒÂ­cio/Fim) -->
                     <div class="row mt-3" id="addCardPlanningFields" style="display: none;">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Data/Hora de Início</label>
+                            <label class="form-label fw-bold">Data/Hora de InÃƒÂ­cio</label>
                             {{ card_form.datetime_inicio }}
                         </div>
                         <div class="col-md-6 mb-3">
@@ -1167,7 +1199,7 @@
                     </div>
                     <div class="row mt-3" id="addCardSubsecaoRow" style="display: none;">
                         <div class="col-md-12 mb-0">
-                            <label class="form-label fw-bold">Sub-sessão</label>
+                            <label class="form-label fw-bold">Sub-sessÃƒÂ£o</label>
                             {{ card_form.subsecao }}
                         </div>
                     </div>
@@ -1211,21 +1243,21 @@
     }
 </script>
 
-<!-- Modal Detalhado do Cartão -->
+<!-- Modal Detalhado do CartÃƒÂ£o -->
 <div class="modal fade" id="cardDetailModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content" style="border-radius: 14px;">
             <div class="modal-header border-bottom-0 pb-0">
-                <h5 class="modal-title fw-bold flex-grow-1 me-3" id="cardDetailTitle" contenteditable="true" style="outline: none; border: 1px dashed transparent; border-radius: 4px; padding: 2px 6px; cursor: text; transition: all 0.2s;" onfocus="this.style.borderColor='#ccc'; this.style.backgroundColor='#f8f9fa';" onblur="this.style.borderColor='transparent'; this.style.backgroundColor='transparent'; if(typeof saveCardResponsiblesSilently === 'function') saveCardResponsiblesSilently();" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" title="Clique para editar o título">Título da Tarefa</h5>
+                <h5 class="modal-title fw-bold flex-grow-1 me-3" id="cardDetailTitle" contenteditable="true" style="outline: none; border: 1px dashed transparent; border-radius: 4px; padding: 2px 6px; cursor: text; transition: all 0.2s;" onfocus="this.style.borderColor='#ccc'; this.style.backgroundColor='#f8f9fa';" onblur="this.style.borderColor='transparent'; this.style.backgroundColor='transparent'; if(typeof saveCardResponsiblesSilently === 'function') saveCardResponsiblesSilently();" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" title="Clique para editar o tÃƒÂ­tulo">TÃƒÂ­tulo da Tarefa</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body pt-2 px-4">
                 <div class="row g-4">
-                    <!-- Detalhes do Cartão (Lado Esquerdo) -->
+                    <!-- Detalhes do CartÃƒÂ£o (Lado Esquerdo) -->
                     <div class="col-md-8">
                         <div class="mb-3">
-                            <label class="form-label fw-bold text-muted small text-uppercase">Descrição</label>
-                            <textarea id="cardDetailDesc" class="form-control" rows="3" placeholder="Insira uma descrição..."></textarea>
+                            <label class="form-label fw-bold text-muted small text-uppercase">DescriÃƒÂ§ÃƒÂ£o</label>
+                            <textarea id="cardDetailDesc" class="form-control" rows="3" placeholder="Insira uma descriÃƒÂ§ÃƒÂ£o..."></textarea>
                         </div>
                         
                         <div class="mb-3">
@@ -1252,12 +1284,12 @@
                             </div>
                         </div>
                         
-                        <!-- Comentários -->
+                        <!-- ComentÃƒÂ¡rios -->
                         <div>
-                            <label class="form-label fw-bold text-muted small">Comentários</label>
+                            <label class="form-label fw-bold text-muted small">ComentÃƒÂ¡rios</label>
                             <div class="position-relative w-100 mb-3">
                                 <div class="input-group">
-                                    <textarea id="newCommentInput" class="form-control" placeholder="Escreva um comentário... (Ctrl+Enter para enviar)" rows="2" style="resize: vertical; font-size: 0.875rem;"></textarea>
+                                    <textarea id="newCommentInput" class="form-control" placeholder="Escreva um comentÃƒÂ¡rio... (Ctrl+Enter para enviar)" rows="2" style="resize: vertical; font-size: 0.875rem;"></textarea>
                                     <button class="btn btn-success d-flex align-items-center justify-content-center px-3" type="button" id="btnPostComment"><i class="bi bi-chat-left-text me-1"></i> Enviar</button>
                                 </div>
                                 <div id="newCommentMentionsDropdown" class="list-group position-absolute w-100 shadow-lg mt-1 overflow-auto" style="max-height: 150px; z-index: 1060; display: none; bottom: 100%; margin-bottom: 5px;"></div>
@@ -1265,9 +1297,9 @@
                             <div id="commentsContainer" class="d-flex flex-column gap-2" style="max-height: 250px; overflow-y: auto;"></div>
                         </div>
                         
-                        <!-- Histórico de Repetições -->
+                        <!-- HistÃƒÂ³rico de RepetiÃƒÂ§ÃƒÂµes -->
                         <div class="mt-4 pt-3 border-top" id="detailCardHistoryContainer" style="display: none;">
-                            <label class="form-label fw-bold text-muted small mb-2"><i class="bi bi-clock-history me-1 text-primary"></i>Histórico de Repetições</label>
+                            <label class="form-label fw-bold text-muted small mb-2"><i class="bi bi-clock-history me-1 text-primary"></i>HistÃƒÂ³rico de RepetiÃƒÂ§ÃƒÂµes</label>
                             <div class="position-relative ps-1 mt-2" id="detailCardHistoryList" style="font-size: 0.85rem;">
                                 <!-- Linha do tempo inserida via JS -->
                             </div>
@@ -1279,13 +1311,13 @@
                         <div class="card bg-light border-0 p-3" style="border-radius: 8px;">
                             <div class="mb-3">
                                 <div class="d-flex align-items-center justify-content-between mb-1">
-                                    <label class="form-label fw-bold text-muted small mb-0">Responsáveis</label>
+                                    <label class="form-label fw-bold text-muted small mb-0">ResponsÃƒÂ¡veis</label>
                                     <span id="responsiblesSaveStatus" class="text-success small fw-semibold" style="font-size: 0.72rem; display: none;"><i class="bi bi-check2-circle me-1"></i>Salvo automaticamente</span>
                                 </div>
                                 <div class="position-relative mb-2">
                                     <div class="input-group input-group-sm">
                                         <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                                        <input type="search" id="detailCardMemberSearchInput" class="form-control form-control-sm" placeholder="Buscar responsável..." readonly onfocus="this.removeAttribute('readonly');" autocomplete="off">
+                                        <input type="search" id="detailCardMemberSearchInput" class="form-control form-control-sm" placeholder="Buscar responsÃƒÂ¡vel..." readonly onfocus="this.removeAttribute('readonly');" autocomplete="off">
                                     </div>
                                     <div id="detailCardSearchSuggestions" class="list-group position-absolute w-100 shadow-lg mt-1 overflow-auto" style="max-height: 150px; z-index: 1050; display: none;"></div>
                                 </div>
@@ -1333,7 +1365,7 @@
                                 </select>
                             </div>
                             <div class="mb-3" id="detailCardSubsecaoContainer" style="display: none;">
-                                <label class="form-label fw-bold text-muted small d-block">Sub-sessão</label>
+                                <label class="form-label fw-bold text-muted small d-block">Sub-sessÃƒÂ£o</label>
                                 <select id="cardDetailSubsecao" class="form-select form-select-sm">
                                     <option value="">Nenhuma (Geral)</option>
                                 </select>
@@ -1342,18 +1374,18 @@
                                 <label class="form-label fw-bold text-muted small d-block">Prioridade</label>
                                 <select id="cardDetailPriority" class="form-select form-select-sm">
                                     <option value="BAIXA">Baixa</option>
-                                    <option value="ALTA">Alta ⚠</option>
+                                    <option value="ALTA">Alta Ã¢Å¡Â </option>
                                 </select>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label fw-bold text-muted small d-block">Prazo de Entrega</label>
                                 <input type="text" id="cardDetailDueDate" class="form-control form-control-sm js-week-datepicker" placeholder="aaaa-mm-dd" autocomplete="off">
                             </div>
-                            <!-- Switch para planejar horário -->
+                            <!-- Switch para planejar horÃƒÂ¡rio -->
                             <div class="form-check form-switch mb-3">
                                 <input class="form-check-input" type="checkbox" id="cardDetailCheckPlanejar" onchange="toggleDetailCardPlanning(this.checked)">
                                 <label class="form-check-label fw-bold text-muted small" for="cardDetailCheckPlanejar">
-                                    <i class="bi bi-clock me-1 text-primary"></i>Planejar horário (início/fim)
+                                    <i class="bi bi-clock me-1 text-primary"></i>Planejar horÃƒÂ¡rio (inÃƒÂ­cio/fim)
                                 </label>
                             </div>
 
@@ -1361,7 +1393,7 @@
                             <div id="cardDetailPlanningFields" style="display: none;">
                                  <label class="form-label fw-bold text-muted small mb-2">Planejamento de Datas/Horas</label>
                                  <div id="cardDetailPlanningList" class="mb-2">
-                                     <!-- Linhas dinâmicas de data e hora serão inseridas aqui -->
+                                     <!-- Linhas dinÃƒÂ¢micas de data e hora serÃƒÂ£o inseridas aqui -->
                                  </div>
                                  <button type="button" class="btn btn-sm btn-outline-primary w-100 mb-3" id="btnAddPlanningRow">
                                      <i class="bi bi-plus-circle me-1"></i>Adicionar Data/Hora
@@ -1371,11 +1403,11 @@
                                  <input type="hidden" id="cardDetailHoraFim">
                              </div>
 
-                            <!-- Seção de Conclusão -->
+                            <!-- SeÃƒÂ§ÃƒÂ£o de ConclusÃƒÂ£o -->
                             <div id="cardDetailConclusaoFields" style="display: none;">
                                 <div class="row g-2 mb-3">
                                     <div class="col-12">
-                                        <label class="form-label fw-bold text-muted small d-block">Data de Conclusão</label>
+                                        <label class="form-label fw-bold text-muted small d-block">Data de ConclusÃƒÂ£o</label>
                                         <input type="text" id="cardDetailConcludedDate" class="form-control form-control-sm js-week-datepicker" placeholder="aaaa-mm-dd" autocomplete="off">
                                     </div>
                                 </div>
@@ -1384,7 +1416,7 @@
                                 <label class="form-label fw-bold text-muted small d-block">Periodicidade</label>
                                 <select id="cardDetailPeriodicidade" class="form-select form-select-sm">
                                     <option value="AVULSA">Nenhuma (Avulsa)</option>
-                                    <option value="DIARIA">Diária</option>
+                                    <option value="DIARIA">DiÃƒÂ¡ria</option>
                                     <option value="SEMANAL">Semanal</option>
                                     <option value="QUINZENAL">Quinzenal</option>
                                     <option value="MENSAL">Mensal</option>
@@ -1400,7 +1432,7 @@
                             <div class="d-flex flex-column gap-2 mt-3">
                                 <button type="button" id="btnCompleteCard" class="btn btn-success btn-sm"><i class="bi bi-check2-circle me-1"></i>Concluir Atividade</button>
                                 <button type="button" id="btnReopenCard" class="btn btn-warning btn-sm"><i class="bi bi-arrow-counterclockwise me-1"></i>Reabrir Atividade</button>
-                                <button type="button" id="btnSaveCardDetails" class="btn btn-primary btn-sm"><i class="bi bi-save me-1"></i>Salvar Alterações</button>
+                                <button type="button" id="btnSaveCardDetails" class="btn btn-primary btn-sm"><i class="bi bi-save me-1"></i>Salvar AlteraÃƒÂ§ÃƒÂµes</button>
                                 <form id="deleteCardForm" method="POST" action="" onsubmit="return confirm('Deseja excluir esta tarefa definitivamente?');">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-outline-danger btn-sm w-100"><i class="bi bi-trash me-1"></i>Excluir Tarefa</button>
@@ -1414,12 +1446,12 @@
     </div>
 </div>
 
-<!-- Modal Configurações do Quadro -->
+<!-- Modal ConfiguraÃƒÂ§ÃƒÂµes do Quadro -->
 <div class="modal fade" id="boardConfigModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content shadow-lg" style="border-radius: 14px;">
             <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
-                <h5 class="modal-title fw-bold"><i class="bi bi-gear me-2"></i>Configurações do Quadro</h5>
+                <h5 class="modal-title fw-bold"><i class="bi bi-gear me-2"></i>ConfiguraÃƒÂ§ÃƒÂµes do Quadro</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST" action="{% url 'boards:edit_board' board.id %}">
@@ -1430,7 +1462,7 @@
                         <input type="text" name="nome" value="{{ board.nome }}" class="form-control" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Descrição</label>
+                        <label class="form-label fw-bold">DescriÃƒÂ§ÃƒÂ£o</label>
                         <textarea name="descricao" class="form-control" rows="3">{{ board.descricao|default:'' }}</textarea>
                     </div>
                     
@@ -1439,7 +1471,7 @@
                         <label class="form-check-label fw-bold text-dark" for="flexSwitchTodosColab" style="cursor: pointer; padding-top: 3px;">
                             Permitir acesso a todos os colaboradores da empresa
                             <small class="d-block text-muted fw-normal mt-1" style="font-size: 0.8rem;">
-                                Ao ativar, todos os funcionários poderão ver este quadro, não sendo necessário adicioná-los individualmente abaixo.
+                                Ao ativar, todos os funcionÃƒÂ¡rios poderÃƒÂ£o ver este quadro, nÃƒÂ£o sendo necessÃƒÂ¡rio adicionÃƒÂ¡-los individualmente abaixo.
                             </small>
                         </label>
                     </div>
@@ -1450,7 +1482,7 @@
                             <input type="search" id="configMemberSearchInput" class="form-control border-start-0" placeholder="Digite o nome para buscar..." readonly onfocus="this.removeAttribute('readonly');" autocomplete="off">
                         </div>
                         <div id="configSearchSuggestions" class="list-group position-absolute w-100 shadow-lg mt-1 overflow-auto" style="max-height: 200px; z-index: 1050; display: none;">
-                            <!-- Sugestões carregadas via JS -->
+                            <!-- SugestÃƒÂµes carregadas via JS -->
                         </div>
                     </div>
                     
@@ -1472,32 +1504,32 @@
                 </div>
                 <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                    <button type="submit" class="btn btn-primary px-4">Salvar Configurações</button>
+                    <button type="submit" class="btn btn-primary px-4">Salvar ConfiguraÃƒÂ§ÃƒÂµes</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<!-- Modal Filtros Avançados -->
+<!-- Modal Filtros AvanÃƒÂ§ados -->
 <div class="modal fade" id="advancedFiltersModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content shadow-lg" style="border-radius: 14px;">
             <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
-                <h5 class="modal-title fw-bold"><i class="bi bi-funnel me-2"></i>Filtros Avançados</h5>
+                <h5 class="modal-title fw-bold"><i class="bi bi-funnel me-2"></i>Filtros AvanÃƒÂ§ados</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
                 <div class="row g-3">
                     <div class="col-md-6">
-                        <label class="form-label text-muted small mb-1 fw-bold">Período</label>
+                        <label class="form-label text-muted small mb-1 fw-bold">PerÃƒÂ­odo</label>
                         <select class="form-select form-select-sm" id="periodFilter" onchange="filterByPeriod(this.value)">
                             <option value="tudo" {% if periodo == 'tudo' or not periodo %}selected{% endif %}>Tudo</option>
                             <option value="hoje" {% if periodo == 'hoje' %}selected{% endif %}>Hoje</option>
                             <option value="semana" {% if periodo == 'semana' %}selected{% endif %}>Esta Semana</option>
-                            <option value="prox_semana" {% if periodo == 'prox_semana' %}selected{% endif %}>Próxima Semana</option>
-                            <option value="mes" {% if periodo == 'mes' %}selected{% endif %}>Este Mês</option>
-                            <option value="prox_mes" {% if periodo == 'prox_mes' %}selected{% endif %}>Próximo Mês</option>
+                            <option value="prox_semana" {% if periodo == 'prox_semana' %}selected{% endif %}>PrÃƒÂ³xima Semana</option>
+                            <option value="mes" {% if periodo == 'mes' %}selected{% endif %}>Este MÃƒÂªs</option>
+                            <option value="prox_mes" {% if periodo == 'prox_mes' %}selected{% endif %}>PrÃƒÂ³ximo MÃƒÂªs</option>
                             <option value="ano" {% if periodo == 'ano' %}selected{% endif %}>Este Ano</option>
                         </select>
                     </div>
@@ -1515,15 +1547,15 @@
                         <select id="globalFilterPrior" class="form-select form-select-sm" onchange="applyGlobalFilters()">
                             <option value="">Prioridade: Todas</option>
                             <option value="Alta">Alta</option>
-                            <option value="Média">Média</option>
+                            <option value="MÃƒÂ©dia">MÃƒÂ©dia</option>
                             <option value="Baixa">Baixa</option>
                         </select>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label text-muted small mb-1 fw-bold">Responsável</label>
+                        <label class="form-label text-muted small mb-1 fw-bold">ResponsÃƒÂ¡vel</label>
                         <select id="globalFilterResp" class="form-select form-select-sm" onchange="applyGlobalFilters()">
-                            <option value="">Responsável: Todos</option>
-                            <option value="__sem_responsavel__">Sem Responsável</option>
+                            <option value="">ResponsÃƒÂ¡vel: Todos</option>
+                            <option value="__sem_responsavel__">Sem ResponsÃƒÂ¡vel</option>
                             {% for c in colaboradores_com_tarefas %}
                             <option value="{{ c.nome_completo }}">{{ c.nome_completo }}</option>
                             {% endfor %}
@@ -1539,10 +1571,10 @@
                         </select>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label text-muted small mb-1 fw-bold">Sub-sessão</label>
+                        <label class="form-label text-muted small mb-1 fw-bold">Sub-sessÃƒÂ£o</label>
                         <select id="globalFilterSub" class="form-select form-select-sm" onchange="applyGlobalFilters()">
-                            <option value="">Sub-sessão: Todas</option>
-                            <option value="__sem_subsecao__">Sem Sub-sessão</option>
+                            <option value="">Sub-sessÃƒÂ£o: Todas</option>
+                            <option value="__sem_subsecao__">Sem Sub-sessÃƒÂ£o</option>
                             {% for nome in subsecoes_unicas %}
                             <option value="{{ nome }}">{{ nome }}</option>
                             {% endfor %}
@@ -1553,11 +1585,11 @@
                         <select id="globalFilterStatus" class="form-select form-select-sm" onchange="applyGlobalFilters()">
                             <option value="">Status: Todos</option>
                             <option value="andamento">Status: Em Andamento</option>
-                            <option value="concluido">Status: Concluídas</option>
+                            <option value="concluido">Status: ConcluÃƒÂ­das</option>
                         </select>
                     </div>
                     <div class="col-12 mt-4 d-flex flex-column flex-sm-row gap-3">
-                        <div class="form-check form-switch bg-light p-2 rounded border" title="Ocultar colunas que ficarem sem cartões visíveis">
+                        <div class="form-check form-switch bg-light p-2 rounded border" title="Ocultar colunas que ficarem sem cartÃƒÂµes visÃƒÂ­veis">
                             <input class="form-check-input ms-0 me-3" type="checkbox" id="hideEmptyColumnsFlag" onchange="applyGlobalFilters()">
                             <label class="form-check-label text-muted small fw-bold" style="user-select: none; cursor: pointer; padding-top: 2px;" for="hideEmptyColumnsFlag">Ocultar colunas vazias</label>
                         </div>
@@ -1577,7 +1609,7 @@
                         <i class="bi bi-arrow-clockwise me-1"></i>Atualizar
                     </button>
                     <button type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal">
-                        Concluído
+                        ConcluÃƒÂ­do
                     </button>
                 </div>
             </div>
@@ -1585,25 +1617,25 @@
     </div>
 </div>
 
-<!-- Modal Criação de Sub-sessão -->
+<!-- Modal CriaÃƒÂ§ÃƒÂ£o de Sub-sessÃƒÂ£o -->
 <div class="modal fade" id="addSubSectionModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content shadow-lg" style="border-radius: 14px;">
             <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
-                <h5 class="modal-title fw-bold"><i class="bi bi-folder-plus me-2"></i>Nova Sub-sessão</h5>
+                <h5 class="modal-title fw-bold"><i class="bi bi-folder-plus me-2"></i>Nova Sub-sessÃƒÂ£o</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form id="addSubSectionForm" method="POST" action="">
                 {% csrf_token %}
                 <div class="modal-body p-4">
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Nome da Sub-sessão</label>
+                        <label class="form-label fw-bold">Nome da Sub-sessÃƒÂ£o</label>
                         <input type="text" name="nome" class="form-control" placeholder="Digite o nome..." required autocomplete="off">
                     </div>
                 </div>
                 <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary px-4">Criar Sub-sessão</button>
+                    <button type="submit" class="btn btn-primary px-4">Criar Sub-sessÃƒÂ£o</button>
                 </div>
             </form>
         </div>
@@ -1621,57 +1653,57 @@
             <form id="copyColumnForm" method="POST" action="">
                 {% csrf_token %}
                 <div class="modal-body p-4">
-                    <p class="text-muted small mb-3">Criando cópia de: <strong id="copyColumnSourceName"></strong></p>
+                    <p class="text-muted small mb-3">Criando cÃƒÂ³pia de: <strong id="copyColumnSourceName"></strong></p>
                     <div class="mb-3">
                         <label class="form-label fw-bold">Nome da Nova Coluna</label>
-                        <input type="text" name="nome" id="copyColumnNameInput" class="form-control" placeholder="Digite o nome da cópia..." required autocomplete="off">
+                        <input type="text" name="nome" id="copyColumnNameInput" class="form-control" placeholder="Digite o nome da cÃƒÂ³pia..." required autocomplete="off">
                     </div>
                 </div>
                 <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary px-4"><i class="bi bi-copy me-1"></i>Criar Cópia</button>
+                    <button type="submit" class="btn btn-primary px-4"><i class="bi bi-copy me-1"></i>Criar CÃƒÂ³pia</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<!-- Modal Descrição da Coluna -->
+<!-- Modal DescriÃƒÂ§ÃƒÂ£o da Coluna -->
 <div class="modal fade" id="columnDescriptionModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content shadow-lg" style="border-radius: 14px;">
             <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
                 <div>
-                    <h5 class="modal-title fw-bold"><i class="bi bi-card-text me-2"></i>Descrição da Coluna</h5>
+                    <h5 class="modal-title fw-bold"><i class="bi bi-card-text me-2"></i>DescriÃƒÂ§ÃƒÂ£o da Coluna</h5>
                     <small class="text-white-50" id="columnDescriptionModalSubtitle"></small>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
                 <div class="mb-3">
-                    <label class="form-label fw-bold">Descrição</label>
-                    <textarea id="columnDescriptionInput" class="form-control" rows="5" placeholder="Adicione uma descrição para esta coluna (opcional)..."></textarea>
-                    <div class="form-text">A descrição é visível apenas através das opções <strong>(⋯)</strong> da coluna.</div>
+                    <label class="form-label fw-bold">DescriÃƒÂ§ÃƒÂ£o</label>
+                    <textarea id="columnDescriptionInput" class="form-control" rows="5" placeholder="Adicione uma descriÃƒÂ§ÃƒÂ£o para esta coluna (opcional)..."></textarea>
+                    <div class="form-text">A descriÃƒÂ§ÃƒÂ£o ÃƒÂ© visÃƒÂ­vel apenas atravÃƒÂ©s das opÃƒÂ§ÃƒÂµes <strong>(Ã¢â€¹Â¯)</strong> da coluna.</div>
                 </div>
-                <div id="columnDescriptionSaveStatus" class="text-success small fw-semibold d-none"><i class="bi bi-check2-circle me-1"></i>Descrição salva!</div>
+                <div id="columnDescriptionSaveStatus" class="text-success small fw-semibold d-none"><i class="bi bi-check2-circle me-1"></i>DescriÃƒÂ§ÃƒÂ£o salva!</div>
             </div>
             <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                <button type="button" class="btn btn-primary px-4" id="btnSaveColumnDescription"><i class="bi bi-save me-1"></i>Salvar Descrição</button>
+                <button type="button" class="btn btn-primary px-4" id="btnSaveColumnDescription"><i class="bi bi-save me-1"></i>Salvar DescriÃƒÂ§ÃƒÂ£o</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal Detalhes da Linha de Ação (Quadro de Planos de Ação) -->
+<!-- Modal Detalhes da Linha de AÃƒÂ§ÃƒÂ£o (Quadro de Planos de AÃƒÂ§ÃƒÂ£o) -->
 <div class="modal fade" id="linhaAcaoDetailModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content shadow-lg" style="border-radius: 14px;">
-            <!-- Cabeçalho -->
+            <!-- CabeÃƒÂ§alho -->
             <div class="modal-header text-white" id="linhaAcaoModalHeader" style="border-top-left-radius: 12px; border-top-right-radius: 12px; background: #1e3a5f;">
                 <div>
                     <h5 class="modal-title fw-bold mb-0" id="linhaAcaoModalTitle">
-                        <i class="bi bi-check2-square me-2"></i>Ação #<span id="linhaAcaoNumero">—</span>
+                        <i class="bi bi-check2-square me-2"></i>AÃƒÂ§ÃƒÂ£o #<span id="linhaAcaoNumero">Ã¢â‚¬â€</span>
                     </h5>
                     <small class="text-white-50" id="linhaAcaoPlanoRef"></small>
                 </div>
@@ -1686,33 +1718,33 @@
                     <div class="placeholder-glow"><span class="placeholder col-10 rounded" style="height:12px;"></span></div>
                 </div>
 
-                <!-- Conteúdo carregado -->
+                <!-- ConteÃƒÂºdo carregado -->
                 <div id="linhaAcaoContent" style="display:none;">
                     <!-- Status badge -->
                     <div class="mb-3">
-                        <span class="badge rounded-pill fs-6 px-3 py-2" id="linhaAcaoStatusBadge" style="font-size:0.85rem!important;">—</span>
+                        <span class="badge rounded-pill fs-6 px-3 py-2" id="linhaAcaoStatusBadge" style="font-size:0.85rem!important;">Ã¢â‚¬â€</span>
                     </div>
 
-                    <!-- Descrição -->
+                    <!-- DescriÃƒÂ§ÃƒÂ£o -->
                     <div class="mb-4">
                         <label class="form-label fw-bold text-muted small text-uppercase letter-spacing-1">
-                            <i class="bi bi-card-text me-1"></i>Descrição / Ação
+                            <i class="bi bi-card-text me-1"></i>DescriÃƒÂ§ÃƒÂ£o / AÃƒÂ§ÃƒÂ£o
                         </label>
                         <p class="text-dark" id="linhaAcaoDesc" style="white-space: pre-wrap; line-height: 1.6;"></p>
                     </div>
 
                     <div class="row g-3 mb-3">
-                        <!-- Responsáveis -->
+                        <!-- ResponsÃƒÂ¡veis -->
                         <div class="col-md-6">
                             <label class="form-label fw-bold text-muted small text-uppercase">
-                                <i class="bi bi-people me-1"></i>Responsáveis
+                                <i class="bi bi-people me-1"></i>ResponsÃƒÂ¡veis
                             </label>
                             <div id="linhaAcaoResps" class="d-flex flex-wrap gap-2"></div>
                         </div>
-                        <!-- Classificação + Prioridade -->
+                        <!-- ClassificaÃƒÂ§ÃƒÂ£o + Prioridade -->
                         <div class="col-md-3">
                             <label class="form-label fw-bold text-muted small text-uppercase">
-                                <i class="bi bi-tag me-1"></i>Classificação
+                                <i class="bi bi-tag me-1"></i>ClassificaÃƒÂ§ÃƒÂ£o
                             </label>
                             <div id="linhaAcaoClassif" class="text-dark fw-semibold"></div>
                         </div>
@@ -1725,10 +1757,10 @@
                     </div>
 
                     <div class="row g-3 mb-3">
-                        <!-- 1ª Deadline -->
+                        <!-- 1Ã‚Âª Deadline -->
                         <div class="col-md-4">
                             <label class="form-label fw-bold text-muted small text-uppercase">
-                                <i class="bi bi-calendar-event me-1"></i>1ª Deadline
+                                <i class="bi bi-calendar-event me-1"></i>1Ã‚Âª Deadline
                             </label>
                             <div id="linhaAcaoPrimeiraDeadline" class="text-dark"></div>
                         </div>
@@ -1739,10 +1771,10 @@
                             </label>
                             <div id="linhaAcaoDeadline" class="text-dark"></div>
                         </div>
-                        <!-- Data Conclusão -->
+                        <!-- Data ConclusÃƒÂ£o -->
                         <div class="col-md-4" id="linhaAcaoConclusaoBlock">
                             <label class="form-label fw-bold text-muted small text-uppercase">
-                                <i class="bi bi-check2-circle me-1"></i>Conclusão
+                                <i class="bi bi-check2-circle me-1"></i>ConclusÃƒÂ£o
                             </label>
                             <div id="linhaAcaoConclusao" class="text-success fw-semibold"></div>
                         </div>
@@ -1756,20 +1788,20 @@
                         <p class="text-dark" id="linhaAcaoProblema" style="white-space: pre-wrap;"></p>
                     </div>
 
-                    <!-- Comentários -->
+                    <!-- ComentÃƒÂ¡rios -->
                     <div class="mb-3" id="linhaAcaoComentariosBlock">
                         <label class="form-label fw-bold text-muted small text-uppercase">
-                            <i class="bi bi-chat-left-text me-1"></i>Comentários / Observações
+                            <i class="bi bi-chat-left-text me-1"></i>ComentÃƒÂ¡rios / ObservaÃƒÂ§ÃƒÂµes
                         </label>
                         <p class="text-dark" id="linhaAcaoComentarios" style="white-space: pre-wrap;"></p>
                     </div>
                 </div>
             </div>
 
-            <!-- Rodapé -->
+            <!-- RodapÃƒÂ© -->
             <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
                 <a id="linhaAcaoPlanoLink" href="#" target="_blank" class="btn btn-outline-primary">
-                    <i class="bi bi-box-arrow-up-right me-1"></i>Abrir Plano de Ação
+                    <i class="bi bi-box-arrow-up-right me-1"></i>Abrir Plano de AÃƒÂ§ÃƒÂ£o
                 </a>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
             </div>
@@ -1796,7 +1828,7 @@
                                     {{ label.nome }}
                                 </span>
                             </div>
-                            <form action="{% url 'boards:delete_label' label.id %}" method="POST" class="d-inline" onsubmit="return confirm('Deseja excluir esta etiqueta? Ela será removida de todos os cartões.');">
+                            <form action="{% url 'boards:delete_label' label.id %}" method="POST" class="d-inline" onsubmit="return confirm('Deseja excluir esta etiqueta? Ela serÃƒÂ¡ removida de todos os cartÃƒÂµes.');">
                                 {% csrf_token %}
                                 <button type="submit" class="btn btn-sm btn-outline-danger border-0"><i class="bi bi-trash"></i></button>
                             </form>
@@ -1814,12 +1846,12 @@
                     <label class="form-label fw-bold mb-2">Nova Etiqueta</label>
                     <div class="mb-3">
                         <label class="form-label small text-muted">Nome da Etiqueta</label>
-                        <input type="text" name="nome" class="form-control form-control-sm" placeholder="Ex: Urgente, Revisão, Financeiro..." required autocomplete="off">
+                        <input type="text" name="nome" class="form-control form-control-sm" placeholder="Ex: Urgente, RevisÃƒÂ£o, Financeiro..." required autocomplete="off">
                     </div>
                     <div class="mb-3">
                         <label class="form-label small text-muted">Cor da Etiqueta</label>
                         <div class="d-flex align-items-center gap-2">
-                            <!-- Paleta rápida de cores HSL modernas -->
+                            <!-- Paleta rÃƒÂ¡pida de cores HSL modernas -->
                             <div class="d-flex flex-wrap gap-1" id="quickColorPalette">
                                 <button type="button" class="btn p-0 rounded-circle border border-2 border-white shadow-sm" style="width: 26px; height: 26px; background-color: #dc3545;" onclick="selectQuickColor('#dc3545')" title="Vermelho"></button>
                                 <button type="button" class="btn p-0 rounded-circle border border-2 border-white shadow-sm" style="width: 26px; height: 26px; background-color: #fd7e14;" onclick="selectQuickColor('#fd7e14')" title="Laranja"></button>
@@ -1845,7 +1877,7 @@
     </div>
 </div>
 
-<!-- Modal de Confirmação de Data de Conclusão -->
+<!-- Modal de ConfirmaÃƒÂ§ÃƒÂ£o de Data de ConclusÃƒÂ£o -->
 <div class="modal fade" id="confirmConclusionDateModal" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content">
@@ -1854,7 +1886,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p class="mb-2 text-muted small">Confirme a data de conclusão desta atividade:</p>
+                <p class="mb-2 text-muted small">Confirme a data de conclusÃƒÂ£o desta atividade:</p>
                 <input type="date" id="confirmConclusionDateInput" class="form-control">
             </div>
             <div class="modal-footer py-1">
@@ -1896,7 +1928,7 @@
                 {% else %}
                 <div class="text-center py-4 text-muted">
                     <i class="bi bi-archive d-block fs-1 mb-3 opacity-50"></i>
-                    <p class="mb-0">Não há colunas arquivadas neste quadro.</p>
+                    <p class="mb-0">NÃƒÂ£o hÃƒÂ¡ colunas arquivadas neste quadro.</p>
                 </div>
                 {% endif %}
             </div>
@@ -1904,23 +1936,23 @@
     </div>
 </div>
 
-<!-- Modal Links Úteis -->
+<!-- Modal Links ÃƒÅ¡teis -->
 <div class="modal fade" id="boardLinksModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow">
             <div class="modal-header bg-info text-white border-0">
-                <h5 class="modal-title fw-bold"><i class="bi bi-link-45deg me-2"></i>Links Úteis do Quadro</h5>
+                <h5 class="modal-title fw-bold"><i class="bi bi-link-45deg me-2"></i>Links ÃƒÅ¡teis do Quadro</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body bg-light p-4">
-                <!-- Formulário para adicionar novo link -->
+                <!-- FormulÃƒÂ¡rio para adicionar novo link -->
                 <div class="card border-0 shadow-sm mb-4">
                     <div class="card-body bg-white rounded">
                         <h6 class="fw-bold mb-3 text-dark"><i class="bi bi-plus-circle text-primary me-2"></i>Registrar Novo Link</h6>
                         <form id="addBoardLinkForm" onsubmit="event.preventDefault(); addBoardLink();">
                             <div class="row g-2 align-items-end">
                                 <div class="col-md-4">
-                                    <label class="form-label small text-muted fw-bold">Título / Descrição</label>
+                                    <label class="form-label small text-muted fw-bold">TÃƒÂ­tulo / DescriÃƒÂ§ÃƒÂ£o</label>
                                     <input type="text" id="newLinkTitle" class="form-control form-control-sm" placeholder="Ex: Planilha de Custos" required>
                                 </div>
                                 <div class="col-md-6">
@@ -1990,7 +2022,7 @@
     });
 </script>
 {% endif %}
-<!-- Chart.js para gráficos -->
+<!-- Chart.js para grÃƒÂ¡ficos -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
 
 
@@ -2197,22 +2229,22 @@
         modal.show();
     }
 
-    // ── Duplicar Coluna ──────────────────────────────────────────────────────
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Duplicar Coluna Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     function openCopyColumnModal(columnId, columnName) {
         const form = document.getElementById('copyColumnForm');
         form.action = `/boards/colunas/${columnId}/copiar/`;
         document.getElementById('copyColumnSourceName').textContent = columnName;
-        document.getElementById('copyColumnNameInput').value = columnName + ' (Cópia)';
+        document.getElementById('copyColumnNameInput').value = columnName + ' (CÃƒÂ³pia)';
         const modal = new bootstrap.Modal(document.getElementById('copyColumnModal'));
         modal.show();
-        // Selecionar texto para facilitar edição
+        // Selecionar texto para facilitar ediÃƒÂ§ÃƒÂ£o
         setTimeout(() => {
             const input = document.getElementById('copyColumnNameInput');
             input.select();
         }, 350);
     }
 
-    // ── Descrição da Coluna ──────────────────────────────────────────────────
+    // Ã¢â€â‚¬Ã¢â€â‚¬ DescriÃƒÂ§ÃƒÂ£o da Coluna Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     let _columnDescriptionActiveId = null;
 
     function openColumnDescriptionModal(columnId, columnName) {
@@ -2221,7 +2253,7 @@
         document.getElementById('columnDescriptionInput').value = '';
         document.getElementById('columnDescriptionSaveStatus').classList.add('d-none');
 
-        // Buscar descrição atual via API
+        // Buscar descriÃƒÂ§ÃƒÂ£o atual via API
         fetch(`/boards/colunas/${columnId}/descricao/`, {
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
@@ -2385,12 +2417,12 @@
             .then(data => {
                 if (!data.success) {
                     console.error("Erro ao mover coluna:", data.error);
-                    alert("Não foi possível salvar a ordenação das colunas.");
+                    alert("NÃƒÂ£o foi possÃƒÂ­vel salvar a ordenaÃƒÂ§ÃƒÂ£o das colunas.");
                     location.reload();
                 }
             })
             .catch(err => {
-                console.error("Erro de conexão ao reordenar colunas:", err);
+                console.error("Erro de conexÃƒÂ£o ao reordenar colunas:", err);
                 location.reload();
             });
         }
@@ -2455,7 +2487,7 @@
     let detailCardCollaborators = [];
     let detailCardSearchInitialized = false;
     
-    // Função reutilizável para inicializar a busca de responsáveis no modal de detalhes.
+    // FunÃƒÂ§ÃƒÂ£o reutilizÃƒÂ¡vel para inicializar a busca de responsÃƒÂ¡veis no modal de detalhes.
     // Pode ser chamada tanto do DOMContentLoaded quanto do openCardModal (lazy-init).
     function initDetailCardSearch() {
         if (detailCardSearchInitialized) return;
@@ -2603,20 +2635,20 @@
             let recreate = false;
             const wasCompleted = cardEl.closest('.card-container') ? cardEl.closest('.card-container').getAttribute('data-is-concluida') === 'true' : false;
             if (isConcluida && !wasCompleted && periodicidade && periodicidade !== 'AVULSA') {
-                recreate = confirm(`Esta atividade possui periodicidade (${periodicidadeLabel}). Gostaria de reaplicar a atividade de acordo com o período e recriá-la?`);
+                recreate = confirm(`Esta atividade possui periodicidade (${periodicidadeLabel}). Gostaria de reaplicar a atividade de acordo com o perÃƒÂ­odo e recriÃƒÂ¡-la?`);
             }
 
-            // Adiciona o cartão ao container da coluna/subsection destino
+            // Adiciona o cartÃƒÂ£o ao container da coluna/subsection destino
             targetContainer.appendChild(cardEl);
             
-            // Pega a lista ordenada de cartões no container destino
+            // Pega a lista ordenada de cartÃƒÂµes no container destino
             const cardOrderIds = Array.from(targetContainer.querySelectorAll('.kanban-card')).map(card => {
                 return parseInt(card.id.replace('card-', ''));
             });
             
             const cardId = parseInt(cardIdStr.replace('card-', ''));
             
-            // Função para enviar a requisição de mover
+            // FunÃƒÂ§ÃƒÂ£o para enviar a requisiÃƒÂ§ÃƒÂ£o de mover
             function sendMoveRequest(dataConclusao) {
                 const payload = {
                     card_id: cardId,
@@ -2641,25 +2673,25 @@
                 .then(res => res.json())
                 .then(data => {
                     if (!data.success) {
-                        console.error("Erro ao mover cartão:", data.error);
-                        alert("Não foi possível salvar a movimentação da tarefa.");
+                        console.error("Erro ao mover cartÃƒÂ£o:", data.error);
+                        alert("NÃƒÂ£o foi possÃƒÂ­vel salvar a movimentaÃƒÂ§ÃƒÂ£o da tarefa.");
                     }
                     location.reload();
                 })
                 .catch(err => {
-                    console.error("Erro de conexão AJAX:", err);
+                    console.error("Erro de conexÃƒÂ£o AJAX:", err);
                     location.reload();
                 });
             }
             
-            // Se está concluindo (movendo para coluna concluída pela primeira vez), pedir data
+            // Se estÃƒÂ¡ concluindo (movendo para coluna concluÃƒÂ­da pela primeira vez), pedir data
             if (isConcluida && !wasCompleted) {
                 const today = new Date().toISOString().split('T')[0];
                 document.getElementById('confirmConclusionDateInput').value = today;
                 const modal = new bootstrap.Modal(document.getElementById('confirmConclusionDateModal'));
                 modal.show();
                 
-                // Configurar o botão confirmar
+                // Configurar o botÃƒÂ£o confirmar
                 const confirmBtn = document.getElementById('confirmConclusionDateBtn');
                 const newConfirmBtn = confirmBtn.cloneNode(true);
                 confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
@@ -2672,7 +2704,7 @@
                 // Se fechar o modal sem confirmar, desfazer o drag
                 document.getElementById('confirmConclusionDateModal').addEventListener('hidden.bs.modal', function handler() {
                     document.getElementById('confirmConclusionDateModal').removeEventListener('hidden.bs.modal', handler);
-                    // Se não clicou em confirmar, recarrega para desfazer
+                    // Se nÃƒÂ£o clicou em confirmar, recarrega para desfazer
                 }, { once: true });
             } else {
                 sendMoveRequest(null);
@@ -2682,7 +2714,7 @@
 
 
     // ============================================
-    // MODAL DE CRIAÇÃO E DETALHE DO CARTÃO
+    // MODAL DE CRIAÃƒâ€¡ÃƒÆ’O E DETALHE DO CARTÃƒÆ’O
     // ============================================
     function updateAddCardSubsections(columnId) {
         const form = document.getElementById('addCardForm');
@@ -2842,7 +2874,7 @@
     }
 
     // ============================================================
-    // Modal de detalhes da Linha de Ação (Quadro de Planos de Ação)
+    // Modal de detalhes da Linha de AÃƒÂ§ÃƒÂ£o (Quadro de Planos de AÃƒÂ§ÃƒÂ£o)
     // ============================================================
     function openLinhaAcaoModal(linhaId) {
         const modal = new bootstrap.Modal(document.getElementById('linhaAcaoDetailModal'));
@@ -2850,7 +2882,7 @@
         // Reset UI
         document.getElementById('linhaAcaoSkeleton').style.display = '';
         document.getElementById('linhaAcaoContent').style.display = 'none';
-        document.getElementById('linhaAcaoNumero').textContent = '…';
+        document.getElementById('linhaAcaoNumero').textContent = 'Ã¢â‚¬Â¦';
         document.getElementById('linhaAcaoPlanoRef').textContent = '';
 
         modal.show();
@@ -2859,7 +2891,7 @@
         fetch(`/boards/linhas-acao/${linhaId}/detalhes/`)
         .then(res => res.json())
         .then(data => {
-            // Cabeçalho
+            // CabeÃƒÂ§alho
             document.getElementById('linhaAcaoNumero').textContent = data.numero_acao;
             document.getElementById('linhaAcaoPlanoRef').textContent = 'Plano: ' + data.plano_ref;
 
@@ -2869,10 +2901,10 @@
             badge.style.backgroundColor = data.status_color;
             badge.style.color = '#fff';
 
-            // Descrição
-            document.getElementById('linhaAcaoDesc').textContent = data.descricao || '—';
+            // DescriÃƒÂ§ÃƒÂ£o
+            document.getElementById('linhaAcaoDesc').textContent = data.descricao || 'Ã¢â‚¬â€';
 
-            // Responsáveis
+            // ResponsÃƒÂ¡veis
             const respsEl = document.getElementById('linhaAcaoResps');
             respsEl.innerHTML = '';
             if (data.responsaveis && data.responsaveis.length > 0) {
@@ -2885,20 +2917,20 @@
                         </div>`;
                 });
             } else {
-                respsEl.innerHTML = '<span class="text-muted small">Sem responsável atribuído</span>';
+                respsEl.innerHTML = '<span class="text-muted small">Sem responsÃƒÂ¡vel atribuÃƒÂ­do</span>';
             }
 
-            // Classificação e prioridade
-            document.getElementById('linhaAcaoClassif').textContent = data.classificacao || '—';
+            // ClassificaÃƒÂ§ÃƒÂ£o e prioridade
+            document.getElementById('linhaAcaoClassif').textContent = data.classificacao || 'Ã¢â‚¬â€';
             const priorEl = document.getElementById('linhaAcaoPrioridade');
             priorEl.innerHTML = data.prioridade === 'Alta'
                 ? '<span class="badge bg-danger"><i class="bi bi-exclamation-triangle me-1"></i>Alta</span>'
                 : '<span class="badge bg-secondary">Normal</span>';
 
             // Datas
-            document.getElementById('linhaAcaoPrimeiraDeadline').textContent = data.data_primeira_deadline || '—';
-            document.getElementById('linhaAcaoDeadline').textContent = data.data_deadline || '—';
-            document.getElementById('linhaAcaoConclusao').textContent = data.data_conclusao || '—';
+            document.getElementById('linhaAcaoPrimeiraDeadline').textContent = data.data_primeira_deadline || 'Ã¢â‚¬â€';
+            document.getElementById('linhaAcaoDeadline').textContent = data.data_deadline || 'Ã¢â‚¬â€';
+            document.getElementById('linhaAcaoConclusao').textContent = data.data_conclusao || 'Ã¢â‚¬â€';
             document.getElementById('linhaAcaoConclusaoBlock').style.display = data.data_conclusao ? '' : 'none';
 
             // Problema
@@ -2911,7 +2943,7 @@
                 problemaBlock.style.display = 'none';
             }
 
-            // Comentários
+            // ComentÃƒÂ¡rios
             const comentariosBlock = document.getElementById('linhaAcaoComentariosBlock');
             const comentariosEl = document.getElementById('linhaAcaoComentarios');
             if (data.comentarios_texto) {
@@ -2924,13 +2956,13 @@
             // Link do plano
             document.getElementById('linhaAcaoPlanoLink').href = data.plano_url;
 
-            // Mostrar conteúdo
+            // Mostrar conteÃƒÂºdo
             document.getElementById('linhaAcaoSkeleton').style.display = 'none';
             document.getElementById('linhaAcaoContent').style.display = '';
         })
         .catch(err => {
             document.getElementById('linhaAcaoSkeleton').innerHTML =
-                '<div class="alert alert-danger"><i class="bi bi-exclamation-circle me-2"></i>Erro ao carregar os detalhes da ação.</div>';
+                '<div class="alert alert-danger"><i class="bi bi-exclamation-circle me-2"></i>Erro ao carregar os detalhes da aÃƒÂ§ÃƒÂ£o.</div>';
             console.error('Erro ao buscar LinhaAcao:', err);
         });
     }
@@ -2939,7 +2971,7 @@
 
         activeCardId = cardId;
         
-        // Define a rota de exclusão no form do modal
+        // Define a rota de exclusÃƒÂ£o no form do modal
         document.getElementById('deleteCardForm').action = `/boards/cartoes/${cardId}/excluir/`;
         
         // Carrega os dados via API JSON
@@ -2955,8 +2987,8 @@
             
             const respSelect = document.getElementById('cardDetailResp');
             
-            // Lazy-init: se detailCardCollaborators não foi populado (ex: erro no DOMContentLoaded),
-            // inicializa agora a partir das opções do select oculto
+            // Lazy-init: se detailCardCollaborators nÃƒÂ£o foi populado (ex: erro no DOMContentLoaded),
+            // inicializa agora a partir das opÃƒÂ§ÃƒÂµes do select oculto
             if (!detailCardSelect) {
                 detailCardSelect = respSelect;
             }
@@ -2970,7 +3002,7 @@
                 });
             }
             
-            // Se ainda vazio e a API retornou responsáveis, popula a partir dos dados da API
+            // Se ainda vazio e a API retornou responsÃƒÂ¡veis, popula a partir dos dados da API
             if (detailCardCollaborators.length === 0 && card.responsaveis && card.responsaveis.length > 0) {
                 card.responsaveis.forEach(r => {
                     detailCardCollaborators.push({
@@ -3019,7 +3051,7 @@
                 }
             }
             
-            // Garante que o listener de busca de responsáveis está ativo
+            // Garante que o listener de busca de responsÃƒÂ¡veis estÃƒÂ¡ ativo
             initDetailCardSearch();
             
             // Populate and select sub-section dropdown
@@ -3093,10 +3125,10 @@
             // Renderiza checklist
             renderChecklist(card.checklist);
             
-            // Renderiza comentários
+            // Renderiza comentÃƒÂ¡rios
             renderComments(card.comentarios);
             
-            // Controle de exibição dos botões Concluir e Reabrir
+            // Controle de exibiÃƒÂ§ÃƒÂ£o dos botÃƒÂµes Concluir e Reabrir
             const cardEl = document.getElementById(`card-${cardId}`);
             if (cardEl) {
                 const isCompleted = cardEl.closest('.card-container').getAttribute('data-is-concluida') === 'true';
@@ -3186,7 +3218,7 @@
             const modal = new bootstrap.Modal(document.getElementById('cardDetailModal'));
             modal.show();
         })
-        .catch(err => console.error("Erro ao carregar detalhes do cartão:", err));
+        .catch(err => console.error("Erro ao carregar detalhes do cartÃƒÂ£o:", err));
     }
     
     let openedLabelsFromDetail = false;
@@ -3354,7 +3386,7 @@
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                // Atualizar detalhes recarregando dados do cartão
+                // Atualizar detalhes recarregando dados do cartÃƒÂ£o
                 fetch(`/boards/cartoes/${activeCardId}/detalhes/`)
                 .then(res => res.json())
                 .then(card => renderChecklist(card.checklist));
@@ -3551,7 +3583,7 @@
     
     // Delete Comment
     function deleteComment(commentId) {
-        if (!confirm('Deseja excluir este comentário?')) return;
+        if (!confirm('Deseja excluir este comentÃƒÂ¡rio?')) return;
         
         fetch(`/boards/comentarios/${commentId}/excluir/`, {
             method: 'POST',
@@ -3564,7 +3596,7 @@
                 .then(res => res.json())
                 .then(card => renderComments(card.comentarios));
             } else {
-                alert("Você não tem permissão para excluir este comentário.");
+                alert("VocÃƒÂª nÃƒÂ£o tem permissÃƒÂ£o para excluir este comentÃƒÂ¡rio.");
             }
         });
     }
@@ -3594,14 +3626,14 @@
         let recreate = false;
         const destOpt = colSelect.options[colSelect.selectedIndex];
         const destName = destOpt ? destOpt.text.toLowerCase() : '';
-        const isCompletedDest = destName.includes("concluido") || destName.includes("concluído") || destName.includes("done") || destName.includes("terminado") || destName.includes("pronto");
+        const isCompletedDest = destName.includes("concluido") || destName.includes("concluÃƒÂ­do") || destName.includes("done") || destName.includes("terminado") || destName.includes("pronto");
         
         const cardEl = document.getElementById(`card-${activeCardId}`);
         const wasCompleted = cardEl ? cardEl.closest('.card-container').getAttribute('data-is-concluida') === 'true' : false;
         const periodicidadeLabel = document.getElementById('cardDetailPeriodicidade').options[document.getElementById('cardDetailPeriodicidade').selectedIndex].text;
         
         if (isCompletedDest && !wasCompleted && periodicidade && periodicidade !== 'AVULSA') {
-            recreate = confirm(`Esta atividade possui periodicidade (${periodicidadeLabel}). Gostaria de reaplicar a atividade de acordo com o período e recriá-la?`);
+            recreate = confirm(`Esta atividade possui periodicidade (${periodicidadeLabel}). Gostaria de reaplicar a atividade de acordo com o perÃƒÂ­odo e recriÃƒÂ¡-la?`);
         }
         
         fetch(`/boards/cartoes/${activeCardId}/detalhes/`, {
@@ -3641,11 +3673,11 @@
             if (data && data.success) {
                 location.reload();
             } else {
-                alert("Erro ao salvar: " + (data ? data.error : "Resposta inválida"));
+                alert("Erro ao salvar: " + (data ? data.error : "Resposta invÃƒÂ¡lida"));
             }
         })
         .catch(err => {
-            console.error("Erro na requisição:", err);
+            console.error("Erro na requisiÃƒÂ§ÃƒÂ£o:", err);
             alert("Erro ao salvar: " + err.message);
         });
         });
@@ -3665,14 +3697,14 @@
         
         let recreate = false;
         if (periodicidade && periodicidade !== 'AVULSA') {
-            recreate = confirm(`Esta atividade possui periodicidade (${periodicidadeLabel}). Gostaria de reaplicar a atividade de acordo com o período e recriá-la?`);
+            recreate = confirm(`Esta atividade possui periodicidade (${periodicidadeLabel}). Gostaria de reaplicar a atividade de acordo com o perÃƒÂ­odo e recriÃƒÂ¡-la?`);
         }
         
         // Fechar o modal de detalhes primeiro
         const detailModal = bootstrap.Modal.getInstance(document.getElementById('cardDetailModal'));
         if (detailModal) detailModal.hide();
         
-        // Mostrar popup de confirmação de data de conclusão
+        // Mostrar popup de confirmaÃƒÂ§ÃƒÂ£o de data de conclusÃƒÂ£o
         setTimeout(() => {
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('confirmConclusionDateInput').value = today;
@@ -3710,7 +3742,7 @@
                 })
                 .catch(err => {
                     console.error("Erro ao concluir atividade:", err);
-                    alert("Erro de conexão.");
+                    alert("Erro de conexÃƒÂ£o.");
                 });
             });
         }, 300);
@@ -3786,7 +3818,7 @@
             });
         }
         
-        // Grafico de distribuição por colunas
+        // Grafico de distribuiÃƒÂ§ÃƒÂ£o por colunas
         const ctxDistribution = document.getElementById('distributionChart');
         if (ctxDistribution) {
             const rawData = {{ distribuicao_colunas|safe }};
@@ -3818,10 +3850,10 @@
             });
         }
         } catch (chartError) {
-            console.warn('Erro ao inicializar gráficos (não impede o funcionamento):', chartError);
+            console.warn('Erro ao inicializar grÃƒÂ¡ficos (nÃƒÂ£o impede o funcionamento):', chartError);
         }
         
-        // Forçar redimensionamento dos gráficos quando a aba "Métricas da Equipe" for exibida
+        // ForÃƒÂ§ar redimensionamento dos grÃƒÂ¡ficos quando a aba "MÃƒÂ©tricas da Equipe" for exibida
         const metricsTabTrigger = document.getElementById('metrics-tab');
         if (metricsTabTrigger) {
             metricsTabTrigger.addEventListener('shown.bs.tab', function () {
@@ -3911,7 +3943,7 @@
             updateAddCardDisplay();
         }
         } catch (addCardError) {
-            console.warn('Erro ao inicializar seleção de membros (adicionar cartão):', addCardError);
+            console.warn('Erro ao inicializar seleÃƒÂ§ÃƒÂ£o de membros (adicionar cartÃƒÂ£o):', addCardError);
         }
 
         // ============================================
@@ -3934,7 +3966,7 @@
             updateDetailCardDisplay();
         }
         } catch (detailCardError) {
-            console.warn('Erro ao inicializar seleção de membros (detalhes cartão):', detailCardError);
+            console.warn('Erro ao inicializar seleÃƒÂ§ÃƒÂ£o de membros (detalhes cartÃƒÂ£o):', detailCardError);
         }
 
         // Event listener for detail modal column select to sync sub-sections
@@ -4116,7 +4148,7 @@
         if (kpiCompletionRate) kpiCompletionRate.textContent = pct + '%';
 
         const kpiCompletionText = document.getElementById('kpiCompletionText');
-        if (kpiCompletionText) kpiCompletionText.textContent = `${completed} de ${total} tarefas concluídas.`;
+        if (kpiCompletionText) kpiCompletionText.textContent = `${completed} de ${total} tarefas concluÃƒÂ­das.`;
 
         const kpiOverdueCount = document.getElementById('kpiOverdueCount');
         if (kpiOverdueCount) kpiOverdueCount.textContent = overdue;
@@ -4258,14 +4290,14 @@
                                 const initials = getConfigInitials(c.name);
                                 const avatarDiv = document.createElement('div');
                                 avatarDiv.className = 'avatar-circle';
-                                avatarDiv.title = `Responsável: ${c.name}`;
+                                avatarDiv.title = `ResponsÃƒÂ¡vel: ${c.name}`;
                                 avatarDiv.textContent = initials;
                                 avatarContainer.appendChild(avatarDiv);
                             });
                         } else {
                             const emptyAvatar = document.createElement('div');
                             emptyAvatar.className = 'avatar-circle bg-light text-muted';
-                            emptyAvatar.title = 'Sem responsável';
+                            emptyAvatar.title = 'Sem responsÃƒÂ¡vel';
                             emptyAvatar.innerHTML = '<i class="bi bi-person"></i>';
                             avatarContainer.appendChild(emptyAvatar);
                         }
@@ -4319,7 +4351,7 @@
                         });
                     }
                 } catch (calErr) {
-                    console.warn("Erro ao atualizar evento no calendário:", calErr);
+                    console.warn("Erro ao atualizar evento no calendÃƒÂ¡rio:", calErr);
                 }
 
                 // 4. Update filters and metrics
@@ -4340,11 +4372,11 @@
                     }, 1500);
                 }
             } else {
-                alert("Erro ao salvar: " + (data ? data.error : "Resposta inválida"));
+                alert("Erro ao salvar: " + (data ? data.error : "Resposta invÃƒÂ¡lida"));
             }
         })
         .catch(err => {
-            console.error("Erro na requisição:", err);
+            console.error("Erro na requisiÃƒÂ§ÃƒÂ£o:", err);
             alert("Erro ao salvar: " + err.message);
         });
     }
@@ -4457,7 +4489,7 @@
         sessionStorage.setItem('boardHideEmpty_' + '{{ board.id }}', hideEmpty ? 'true' : 'false');
         
         columns.forEach(col => {
-            // Se já foi ocultada pelo filtro de coluna específica, mantém
+            // Se jÃƒÂ¡ foi ocultada pelo filtro de coluna especÃƒÂ­fica, mantÃƒÂ©m
             if (col.style.display === 'none') return;
             
             if (hideEmpty) {
@@ -4572,7 +4604,7 @@
             customCalendar.render();
         }
 
-        // Atualizar as métricas e gráficos da aba "Métricas da Equipe"
+        // Atualizar as mÃƒÂ©tricas e grÃƒÂ¡ficos da aba "MÃƒÂ©tricas da Equipe"
         updateMetricsAndCharts();
     }
 
@@ -4599,10 +4631,10 @@
         const row = document.createElement('div');
         row.className = 'planning-row row g-2 align-items-end mb-2';
         
-        // Formatar para exibição no input datetime-local (YYYY-MM-DDThh:mm)
+        // Formatar para exibiÃƒÂ§ÃƒÂ£o no input datetime-local (YYYY-MM-DDThh:mm)
         const formatForInput = (val) => {
             if (!val) return '';
-            // Se já tiver T e for no formato ISO curto, retorna direto
+            // Se jÃƒÂ¡ tiver T e for no formato ISO curto, retorna direto
             if (val.includes('T') && val.length === 16) return val;
             // Se vier do banco de dados DRF com Z
             if (val.includes('Z')) return val.substring(0, 16);
@@ -4611,7 +4643,7 @@
 
         row.innerHTML = `
             <div class="col-12 mb-2">
-                <label class="form-label text-muted small mb-1">Início</label>
+                <label class="form-label text-muted small mb-1">InÃƒÂ­cio</label>
                 <div class="d-flex">
                     <input type="datetime-local" class="form-control form-control-sm planning-datetime-inicio me-2" value="${formatForInput(datetimeInicioVal)}" autocomplete="off">
                 </div>
@@ -4690,7 +4722,7 @@
                         {% if p.datetime_inicio %}
                         {
                             id: "{{ card.id }}_{{ p.id }}",
-                            title: "{% if card.data_conclusao %}✅ {% elif card.data_entrega and card.data_entrega < hoje %}🔴 {% else %}🟢 {% endif %}{% if card.prioridade == 'ALTA' %}⚠ {% endif %}{{ card.titulo|escapejs }}",
+                            title: "{% if card.data_conclusao %}Ã¢Å“â€¦ {% elif card.data_entrega and card.data_entrega < hoje %}Ã°Å¸â€Â´ {% else %}Ã°Å¸Å¸Â¢ {% endif %}{% if card.prioridade == 'ALTA' %}Ã¢Å¡Â  {% endif %}{{ card.titulo|escapejs }}",
                             start: "{{ p.datetime_inicio|date:'Y-m-d' }}T{{ p.datetime_inicio|time:'H:i:s' }}",
                             {% if p.datetime_fim %}
                                 end: "{{ p.datetime_fim|date:'Y-m-d' }}T{{ p.datetime_fim|time:'H:i:s' }}",
@@ -4741,7 +4773,7 @@
                     {% if card.datetime_inicio or card.data_entrega or card.criado_em %}
                     {
                         id: "{{ card.id }}",
-                        title: "{% if card.data_conclusao %}✅ {% elif card.data_entrega and card.data_entrega < hoje %}🔴 {% else %}🟢 {% endif %}{% if card.prioridade == 'ALTA' %}⚠ {% endif %}{{ card.titulo|escapejs }}",
+                        title: "{% if card.data_conclusao %}Ã¢Å“â€¦ {% elif card.data_entrega and card.data_entrega < hoje %}Ã°Å¸â€Â´ {% else %}Ã°Å¸Å¸Â¢ {% endif %}{% if card.prioridade == 'ALTA' %}Ã¢Å¡Â  {% endif %}{{ card.titulo|escapejs }}",
                         {% if card.datetime_inicio %}
                             start: "{{ card.datetime_inicio|date:'Y-m-d' }}T{{ card.datetime_inicio|time:'H:i:s' }}",
                         {% elif card.data_entrega %}
@@ -4819,7 +4851,7 @@
             this.currentDate = new Date();
             this.currentView = 'month'; // 'month', 'week', 'day', 'agenda'
             this.monthNames = [
-                "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+                "Janeiro", "Fevereiro", "MarÃƒÂ§o", "Abril", "Maio", "Junho",
                 "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
             ];
             
@@ -4982,7 +5014,7 @@
                         this.titleEl.textContent = `Semana de ${startDay} de ${startMonth} a ${endDay} de ${endMonth} de ${year}`;
                     }
                 } else if (this.currentView === 'day') {
-                    const dayNames = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
+                    const dayNames = ["Domingo", "Segunda-feira", "TerÃƒÂ§a-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "SÃƒÂ¡bado"];
                     const dayOfWeek = dayNames[this.currentDate.getDay()];
                     this.titleEl.textContent = `${dayOfWeek}, ${this.currentDate.getDate()} de ${this.monthNames[month]} de ${year}`;
                 }
@@ -5003,7 +5035,7 @@
             if (!this.monthViewEl) return;
             this.monthViewEl.innerHTML = '';
             
-            const weekDayNames = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+            const weekDayNames = ["Seg", "Ter", "Qua", "Qui", "Sex", "SÃƒÂ¡b", "Dom"];
             weekDayNames.forEach(name => {
                 const headerCell = document.createElement('div');
                 headerCell.className = 'custom-calendar-header-cell';
@@ -5120,7 +5152,7 @@
                         if (responsaveisArr.length > 0) {
                             const respContainer = document.createElement('div');
                             respContainer.className = 'd-flex align-items-center flex-shrink-0';
-                            respContainer.title = "Responsáveis: " + responsaveisArr.join(', ');
+                            respContainer.title = "ResponsÃƒÂ¡veis: " + responsaveisArr.join(', ');
                             
                             if (responsaveisArr.length === 1) {
                                 const nomeParts = responsaveisArr[0].trim().split(' ');
@@ -5276,7 +5308,7 @@
             hourHeader.textContent = 'Hora';
             this.weekViewEl.appendChild(hourHeader);
             
-            const weekDayNames = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+            const weekDayNames = ["Seg", "Ter", "Qua", "Qui", "Sex", "SÃƒÂ¡b", "Dom"];
             const today = new Date();
             for (let i = 0; i < 7; i++) {
                 const dayDate = new Date(Monday);
@@ -5474,7 +5506,7 @@
             if (monthEvents.length === 0) {
                 this.agendaListEl.innerHTML = `<div class="list-group-item text-center py-4 text-muted border-0">
                                                     <i class="bi bi-calendar-x d-block fs-3 mb-2"></i>
-                                                    Nenhuma atividade programada para este mês.
+                                                    Nenhuma atividade programada para este mÃƒÂªs.
                                                </div>`;
                 return;
             }
@@ -5491,7 +5523,7 @@
                 
                 agendaItem.innerHTML = `
                     <div>
-                        <span class="badge bg-light text-dark border me-2">${dateStr}${timeStr ? ' às ' + timeStr : ''}</span>
+                        <span class="badge bg-light text-dark border me-2">${dateStr}${timeStr ? ' ÃƒÂ s ' + timeStr : ''}</span>
                         <strong class="text-dark">${evt.title}</strong>
                         <div class="text-muted small mt-1">
                             <i class="bi bi-columns-gap me-1"></i>Coluna: ${evt.extendedProps?.coluna || ''} 
@@ -5595,7 +5627,7 @@
                     alert('Erro ao renomear: ' + data.error);
                 }
             }).catch(error => {
-                alert('Erro de conexão ao renomear a coluna.');
+                alert('Erro de conexÃƒÂ£o ao renomear a coluna.');
             });
         }
     }
@@ -5621,7 +5653,7 @@
                 alert('Erro ao registrar link: ' + data.error);
             }
         }).catch(error => {
-            alert('Erro de conexão.');
+            alert('Erro de conexÃƒÂ£o.');
         });
     }
 
@@ -5641,14 +5673,14 @@
                 alert('Erro ao remover link: ' + data.error);
             }
         }).catch(error => {
-            alert('Erro de conexão.');
+            alert('Erro de conexÃƒÂ£o.');
         });
     }
 
     function exportFilteredTasksPDF() {
         const visibleCards = document.querySelectorAll('.kanban-card:not(.d-none)');
         if (visibleCards.length === 0) {
-            alert('Nenhuma tarefa visível para exportar.');
+            alert('Nenhuma tarefa visÃƒÂ­vel para exportar.');
             return;
         }
         const cardIds = Array.from(visibleCards).map(card => card.id.replace('card-', ''));
@@ -5680,16 +5712,16 @@
                 },
                 pageLength: 20,
                 lengthMenu: [10, 20, 50, 100],
-                order: [], // Mantém a ordem inicial
+                order: [], // MantÃƒÂ©m a ordem inicial
                 columnDefs: [
-                    { orderable: false, targets: -1 } // Desativa ordenação na coluna de ações
+                    { orderable: false, targets: -1 } // Desativa ordenaÃƒÂ§ÃƒÂ£o na coluna de aÃƒÂ§ÃƒÂµes
                 ]
             });
         }
     });
 </script>
 
-<!-- html2canvas para copiar calendário como imagem -->
+<!-- html2canvas para copiar calendÃƒÂ¡rio como imagem -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlQA/bWs901m1Uu+a21qg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script>
     function copyCalendarImage(btn) {
@@ -5700,14 +5732,14 @@
         const calendarElement = document.getElementById('calendar-view');
         
         if (!calendarElement) {
-            alert('Calendário não encontrado!');
+            alert('CalendÃƒÂ¡rio nÃƒÂ£o encontrado!');
             btn.innerHTML = originalHtml;
             btn.disabled = false;
             return;
         }
 
         html2canvas(calendarElement, {
-            scale: 2, // Melhor resolução
+            scale: 2, // Melhor resoluÃƒÂ§ÃƒÂ£o
             useCORS: true,
             backgroundColor: '#ffffff'
         }).then(canvas => {
@@ -5726,24 +5758,26 @@
                             btn.disabled = false;
                         }, 2000);
                     }).catch(err => {
-                        console.error('Erro ao copiar para a área de transferência:', err);
-                        alert('Seu navegador bloqueou a cópia para a área de transferência.');
+                        console.error('Erro ao copiar para a ÃƒÂ¡rea de transferÃƒÂªncia:', err);
+                        alert('Seu navegador bloqueou a cÃƒÂ³pia para a ÃƒÂ¡rea de transferÃƒÂªncia.');
                         btn.innerHTML = originalHtml;
                         btn.disabled = false;
                     });
                 } catch (e) {
                     console.error('Erro ClipboardItem:', e);
-                    alert('Seu navegador não suporta a cópia direta de imagens.');
+                    alert('Seu navegador nÃƒÂ£o suporta a cÃƒÂ³pia direta de imagens.');
                     btn.innerHTML = originalHtml;
                     btn.disabled = false;
                 }
             }, 'image/png');
         }).catch(err => {
             console.error('Erro ao gerar imagem:', err);
-            alert('Erro ao gerar a imagem do calendário.');
+            alert('Erro ao gerar a imagem do calendÃƒÂ¡rio.');
             btn.innerHTML = originalHtml;
             btn.disabled = false;
         });
     }
 </script>
 {% endblock %}
+
+

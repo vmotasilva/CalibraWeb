@@ -1,3 +1,4 @@
+﻿from django.core.signing import Signer, BadSignature
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
@@ -31,9 +32,9 @@ def get_user_colaborador(user):
 
 def can_edit_board(board, colab, user):
     """
-    Retorna True se o usuário pode alterar estrutura (configurações, colunas, tags) do quadro.
-    Somente superuser, criador e membros explícitos têm permissão de edição.
-    Usuários que acessam via 'todos_colaboradores=True' são apenas leitores/associados.
+    Retorna True se o usuÃ¡rio pode alterar estrutura (configuraÃ§Ãµes, colunas, tags) do quadro.
+    Somente superuser, criador e membros explÃ­citos tÃªm permissÃ£o de ediÃ§Ã£o.
+    UsuÃ¡rios que acessam via 'todos_colaboradores=True' sÃ£o apenas leitores/associados.
     """
     if user.is_superuser:
         return True
@@ -110,21 +111,21 @@ from rh.views.views import _has_nav_view_access
 @login_required
 def dashboard_view(request):
     if not _has_nav_view_access(request.user, 'boards:dashboard'):
-        messages.error(request, 'Acesso Negado. Você não tem permissão para acessar os Quadros.')
+        messages.error(request, 'Acesso Negado. VocÃª nÃ£o tem permissÃ£o para acessar os Quadros.')
         return redirect('home')
     
-    """Exibe todos os quadros que o usuário gerencia ou participa"""
+    """Exibe todos os quadros que o usuÃ¡rio gerencia ou participa"""
     colab = get_user_colaborador(request.user)
     
-    # Superusuários vêm todos os quadros, colaboradores comuns vêm apenas os seus, onde são membros
+    # SuperusuÃ¡rios vÃªm todos os quadros, colaboradores comuns vÃªm apenas os seus, onde sÃ£o membros
     if request.user.is_superuser:
-        quadros_base = Board.objects.exclude(nome="Ações Corretivas e Preventivas").distinct()
+        quadros_base = Board.objects.exclude(nome="AÃ§Ãµes Corretivas e Preventivas").distinct()
     elif colab:
         quadros_base = Board.objects.filter(
             Q(criado_por=colab) | Q(membros=colab) | Q(todos_colaboradores=True)
-        ).exclude(nome="Ações Corretivas e Preventivas").distinct()
+        ).exclude(nome="AÃ§Ãµes Corretivas e Preventivas").distinct()
     else:
-        quadros_base = Board.objects.filter(todos_colaboradores=True).exclude(nome="Ações Corretivas e Preventivas").distinct()
+        quadros_base = Board.objects.filter(todos_colaboradores=True).exclude(nome="AÃ§Ãµes Corretivas e Preventivas").distinct()
 
     quadros = quadros_base.filter(arquivado=False)
     quadros_arquivados = quadros_base.filter(arquivado=True)
@@ -133,7 +134,7 @@ def dashboard_view(request):
 
     if request.method == 'POST':
         if not request.user.has_perm('core.nav_boards_create') and not request.user.is_superuser:
-            messages.error(request, 'Acesso Negado. Você não tem permissão para criar Quadros.')
+            messages.error(request, 'Acesso Negado. VocÃª nÃ£o tem permissÃ£o para criar Quadros.')
             return redirect('boards:dashboard')
 
         form = BoardForm(request.POST)
@@ -145,8 +146,8 @@ def dashboard_view(request):
             # M2M precisa salvar depois de salvar o objeto base
             form.save_m2m()
             
-            # Criar colunas padrão
-            colunas_padrao = ["A Fazer", "Em Andamento", "Concluído"]
+            # Criar colunas padrÃ£o
+            colunas_padrao = ["A Fazer", "Em Andamento", "ConcluÃ­do"]
             for idx, nome_col in enumerate(colunas_padrao):
                 BoardColumn.objects.create(quadro=board, nome=nome_col, ordem=idx)
                 
@@ -157,12 +158,12 @@ def dashboard_view(request):
                 descricao="criou o quadro de atividades."
             )
             
-            messages.success(request, f"Quadro '{board.nome}' criado com sucesso com as colunas padrão!")
+            messages.success(request, f"Quadro '{board.nome}' criado com sucesso com as colunas padrÃ£o!")
             return redirect('boards:board_detail', board_id=board.id)
     else:
         form = BoardForm()
         
-    # Coletar todas as tarefas/ações de todos os quadros acessíveis
+    # Coletar todas as tarefas/aÃ§Ãµes de todos os quadros acessÃ­veis
     from boards.models import Card
     cartoes_qs = Card.objects.filter(coluna__quadro__in=quadros).select_related('coluna__quadro', 'subsecao', 'criado_por').prefetch_related('responsaveis', 'etiquetas')
     
@@ -184,7 +185,7 @@ def dashboard_view(request):
             'is_virtual': False
         })
         
-    # Ordenar as ações: as que têm prazo mais próximo primeiro, e as sem prazo por último
+    # Ordenar as aÃ§Ãµes: as que tÃªm prazo mais prÃ³ximo primeiro, e as sem prazo por Ãºltimo
     todas_acoes.sort(key=lambda x: x['data_entrega'] or datetime.date.max)
     
     # Mapear cada quadro
@@ -212,32 +213,32 @@ def dashboard_view(request):
 
 @login_required
 def board_detail_view(request, board_id, focus_column_id=None):
-    """Visualização Kanban do quadro"""
+    """VisualizaÃ§Ã£o Kanban do quadro"""
     colab = get_user_colaborador(request.user)
     
-    # Permissão de acesso
+    # PermissÃ£o de acesso
     if request.user.is_superuser:
-        board = get_object_or_404(Board.objects.exclude(nome="Ações Corretivas e Preventivas"), id=board_id)
+        board = get_object_or_404(Board.objects.exclude(nome="AÃ§Ãµes Corretivas e Preventivas"), id=board_id)
     elif colab:
         board = get_object_or_404(
             Board.objects.filter(Q(criado_por=colab) | Q(membros=colab) | Q(todos_colaboradores=True))
-            .exclude(nome="Ações Corretivas e Preventivas")
+            .exclude(nome="AÃ§Ãµes Corretivas e Preventivas")
             .distinct(), 
             id=board_id
         )
     else:
         board = get_object_or_404(
             Board.objects.filter(todos_colaboradores=True)
-            .exclude(nome="Ações Corretivas e Preventivas")
+            .exclude(nome="AÃ§Ãµes Corretivas e Preventivas")
             .distinct(), 
             id=board_id
         )        
-    # Colunas, sub-sessões e cartões pré-carregados
+    # Colunas, sub-sessÃµes e cartÃµes prÃ©-carregados
     todas_colunas = list(board.colunas.prefetch_related('subsecoes', 'cartoes__responsaveis', 'cartoes__checklist_itens', 'cartoes__planejamentos').all())
     colunas = [col for col in todas_colunas if not col.arquivada]
     colunas_arquivadas = [col for col in todas_colunas if col.arquivada]
     
-    # Pegar o filtro de período
+    # Pegar o filtro de perÃ­odo
     periodo = request.GET.get('periodo', 'tudo')
     
     start_date = None
@@ -268,20 +269,20 @@ def board_detail_view(request, board_id, focus_column_id=None):
         last_day = calendar.monthrange(start_date.year, start_date.month)[1]
         end_date = start_date.replace(day=last_day)
 
-    # Calcular Métricas de Carga de Trabalho da Equipe (Quadro Padrão)
+    # Calcular MÃ©tricas de Carga de Trabalho da Equipe (Quadro PadrÃ£o)
     
-    # Identificar coluna de conclusão (última coluna por ordem ou contendo "concluido/concluído/done" no nome)
+    # Identificar coluna de conclusÃ£o (Ãºltima coluna por ordem ou contendo "concluido/concluÃ­do/done" no nome)
     concluido_colunas_ids = []
     for col in colunas:
         nome_low = col.nome.lower()
-        if "concluido" in nome_low or "concluído" in nome_low or "done" in nome_low or "terminado" in nome_low or "pronto" in nome_low:
+        if "concluido" in nome_low or "concluÃ­do" in nome_low or "done" in nome_low or "terminado" in nome_low or "pronto" in nome_low:
             concluido_colunas_ids.append(col.id)
             
-    # Se não achar nenhuma pelo nome, assume a última
+    # Se nÃ£o achar nenhuma pelo nome, assume a Ãºltima
     if not concluido_colunas_ids and colunas:
         concluido_colunas_ids.append(colunas[-1].id)
         
-    # Migração automática de cartões orfãos na coluna concluído para a primeira coluna ativa
+    # MigraÃ§Ã£o automÃ¡tica de cartÃµes orfÃ£os na coluna concluÃ­do para a primeira coluna ativa
     colunas_ativas = [col for col in colunas if col.id not in concluido_colunas_ids]
     if colunas_ativas and concluido_colunas_ids:
         primeira_coluna = colunas_ativas[0]
@@ -294,7 +295,7 @@ def board_detail_view(request, board_id, focus_column_id=None):
                         card.data_conclusao = card.criado_em.date() if card.criado_em else timezone.now().date()
                     card.save()
 
-    # Definir funções auxiliares de filtro de período para tarefas normais
+    # Definir funÃ§Ãµes auxiliares de filtro de perÃ­odo para tarefas normais
     def matches_period_andamento(c):
         if not start_date:
             return True
@@ -305,7 +306,7 @@ def board_detail_view(request, board_id, focus_column_id=None):
             return True
         return c.data_conclusao is not None and start_date <= c.data_conclusao <= end_date
 
-    # Distribuição por colunas e agrupamento por sub-sessões
+    # DistribuiÃ§Ã£o por colunas e agrupamento por sub-sessÃµes
     distribuicao_colunas = []
     for col in colunas:
         col.subsecoes_list = list(col.subsecoes.all())
@@ -337,7 +338,7 @@ def board_detail_view(request, board_id, focus_column_id=None):
             if c.data_entrega and c.data_entrega < today:
                 cartoes_atrasados += 1
 
-    # Carga de trabalho por colaborador (exclui concluídos para focar no trabalho pendente)
+    # Carga de trabalho por colaborador (exclui concluÃ­dos para focar no trabalho pendente)
     carga_membros_dict = {}
     for col in colunas:
         for c in col.cartoes_list_andamento:
@@ -351,23 +352,23 @@ def board_detail_view(request, board_id, focus_column_id=None):
     # Atividades recentes do quadro (limita a 20)
     atividades = board.atividades.select_related('colaborador')[:20]
     
-    # Formulários para criação rápida
+    # FormulÃ¡rios para criaÃ§Ã£o rÃ¡pida
     card_form = CardForm(board=board)
     
-    # Lista de colaboradores para o dropdown de transferência de responsável (todos os colaboradores, ativos ou não)
+    # Lista de colaboradores para o dropdown de transferÃªncia de responsÃ¡vel (todos os colaboradores, ativos ou nÃ£o)
     responsaveis_atuais_ids = list(Card.objects.filter(coluna__quadro=board).values_list('responsaveis__id', flat=True))
     responsaveis_atuais_ids = [r_id for r_id in responsaveis_atuais_ids if r_id is not None]
     
-    # Para o filtro global, apenas os que têm tarefa associada a eles neste quadro
+    # Para o filtro global, apenas os que tÃªm tarefa associada a eles neste quadro
     colaboradores_com_tarefas = Colaborador.objects.filter(id__in=responsaveis_atuais_ids).distinct().order_by('nome_completo')
     
-    # Para dropdown de atribuição (nova tarefa / edição)
+    # Para dropdown de atribuiÃ§Ã£o (nova tarefa / ediÃ§Ã£o)
     todos_colaboradores = Colaborador.objects.all().order_by('nome_completo')
         
     colunas_andamento = [col for col in colunas if col.id not in concluido_colunas_ids]
     colunas_concluidas = colunas_andamento
 
-    # Nomes de sub-sessões únicos (deduplicados) para o filtro
+    # Nomes de sub-sessÃµes Ãºnicos (deduplicados) para o filtro
     _seen_subs = set()
     subsecoes_unicas = []
     for col in colunas:
@@ -434,7 +435,7 @@ def create_column_view(request, board_id):
         )
         messages.success(request, f"Coluna '{nome}' criada!")
     else:
-        messages.error(request, "O nome da coluna é obrigatório!")
+        messages.error(request, "O nome da coluna Ã© obrigatÃ³rio!")
         
     return redirect('boards:board_detail', board_id=board.id)
 
@@ -443,7 +444,7 @@ def create_column_view(request, board_id):
 @require_POST
 @require_board_edit_permission
 def archive_column_view(request, column_id):
-    """Arquiva uma coluna (oculta do quadro ativo, preserva cartões)"""
+    """Arquiva uma coluna (oculta do quadro ativo, preserva cartÃµes)"""
     colab = get_user_colaborador(request.user)
     coluna = get_object_or_404(BoardColumn, id=column_id)
     board = coluna.quadro
@@ -481,7 +482,7 @@ def unarchive_column_view(request, column_id):
 @require_POST
 @require_board_edit_permission
 def delete_column_view(request, column_id):
-    """Remove uma coluna do quadro e seus cartões"""
+    """Remove uma coluna do quadro e seus cartÃµes"""
     colab = get_user_colaborador(request.user)
     coluna = get_object_or_404(BoardColumn, id=column_id)
     board = coluna.quadro
@@ -494,7 +495,7 @@ def delete_column_view(request, column_id):
         colaborador=colab,
         descricao=f"excluiu a coluna '{nome_coluna}'."
     )
-    messages.success(request, f"Coluna '{nome_coluna}' excluída.")
+    messages.success(request, f"Coluna '{nome_coluna}' excluÃ­da.")
     return redirect('boards:board_detail', board_id=board.id)
 
 
@@ -505,14 +506,14 @@ from django.urls import reverse
 @require_POST
 @require_board_edit_permission
 def copy_column_view(request, column_id):
-    """Cria uma cópia de uma coluna (com novo nome) no mesmo quadro"""
+    """Cria uma cÃ³pia de uma coluna (com novo nome) no mesmo quadro"""
     colab = get_user_colaborador(request.user)
     coluna = get_object_or_404(BoardColumn, id=column_id)
     board = coluna.quadro
 
     novo_nome = request.POST.get('nome', '').strip()
     if not novo_nome:
-        novo_nome = f"{coluna.nome} (Cópia)"
+        novo_nome = f"{coluna.nome} (CÃ³pia)"
 
     maior_ordem = board.colunas.aggregate(Max('ordem'))['ordem__max']
     nova_ordem = (maior_ordem + 1) if maior_ordem is not None else 0
@@ -524,7 +525,7 @@ def copy_column_view(request, column_id):
         ordem=nova_ordem
     )
 
-    # Copiar sub-sessões
+    # Copiar sub-sessÃµes
     for sub in coluna.subsecoes.all():
         from boards.models import BoardSubSection
         BoardSubSection.objects.create(coluna=nova_coluna, nome=sub.nome, ordem=sub.ordem)
@@ -532,16 +533,16 @@ def copy_column_view(request, column_id):
     BoardActivity.objects.create(
         quadro=board,
         colaborador=colab,
-        descricao=f"criou uma cópia da coluna '{coluna.nome}' como '{novo_nome}'."
+        descricao=f"criou uma cÃ³pia da coluna '{coluna.nome}' como '{novo_nome}'."
     )
-    messages.success(request, f"Coluna '{novo_nome}' criada como cópia de '{coluna.nome}'.")
+    messages.success(request, f"Coluna '{novo_nome}' criada como cÃ³pia de '{coluna.nome}'.")
     return redirect('boards:board_detail', board_id=board.id)
 
 
 @login_required
 @require_board_edit_permission
 def api_column_description_view(request, column_id):
-    """GET: retorna descrição da coluna. POST: atualiza descrição."""
+    """GET: retorna descriÃ§Ã£o da coluna. POST: atualiza descriÃ§Ã£o."""
     coluna = get_object_or_404(BoardColumn, id=column_id)
 
     if request.method == 'GET':
@@ -556,7 +557,7 @@ def api_column_description_view(request, column_id):
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
-    return JsonResponse({'error': 'Método não permitido.'}, status=405)
+    return JsonResponse({'error': 'MÃ©todo nÃ£o permitido.'}, status=405)
 
 
 @login_required
@@ -570,7 +571,7 @@ def api_rename_column_view(request, column_id):
             data = json.loads(request.body)
             novo_nome = data.get('nome', '').strip()
             if not novo_nome:
-                return JsonResponse({'success': False, 'error': 'O nome da coluna não pode ficar vazio.'}, status=400)
+                return JsonResponse({'success': False, 'error': 'O nome da coluna nÃ£o pode ficar vazio.'}, status=400)
             
             colab = get_user_colaborador(request.user)
             nome_antigo = coluna.nome
@@ -587,14 +588,14 @@ def api_rename_column_view(request, column_id):
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
-    return JsonResponse({'error': 'Método não permitido.'}, status=405)
+    return JsonResponse({'error': 'MÃ©todo nÃ£o permitido.'}, status=405)
 
 
 @login_required
 @require_POST
 @require_board_edit_permission
 def create_card_view(request, column_id):
-    """Cria um novo cartão em uma coluna"""
+    """Cria um novo cartÃ£o em uma coluna"""
     colab = get_user_colaborador(request.user)
     coluna = get_object_or_404(BoardColumn, id=column_id)
     board = coluna.quadro
@@ -622,7 +623,7 @@ def create_card_view(request, column_id):
         BoardActivity.objects.create(
             quadro=board,
             colaborador=colab,
-            descricao=f"criou o cartão '{card.titulo}' na coluna '{coluna.nome}'."
+            descricao=f"criou o cartÃ£o '{card.titulo}' na coluna '{coluna.nome}'."
         )
         messages.success(request, f"Tarefa '{card.titulo}' criada com sucesso!")
     else:
@@ -643,7 +644,7 @@ def spawn_recurring_card(card, origin_column=None, origin_subsection=None):
     elif card.periodicidade == 'SEMANAL':
         next_date = base_date + datetime.timedelta(weeks=1)
     elif card.periodicidade == 'QUINZENAL':
-        # 14 dias mantém o mesmo dia da semana (equivalente a 10 dias úteis)
+        # 14 dias mantÃ©m o mesmo dia da semana (equivalente a 10 dias Ãºteis)
         next_date = base_date + datetime.timedelta(days=14)
     elif card.periodicidade in ('MENSAL', 'BIMESTRAL', 'TRIMESTRAL', 'SEMESTRAL'):
         months_to_add = {
@@ -653,8 +654,8 @@ def spawn_recurring_card(card, origin_column=None, origin_subsection=None):
             'SEMESTRAL': 6
         }[card.periodicidade]
         
-        # Recuperar o dia original da primeira tarefa da série para evitar 
-        # perda do dia final do mês (ex: 31 -> 28 -> 28 em vez de 31 -> 28 -> 31)
+        # Recuperar o dia original da primeira tarefa da sÃ©rie para evitar 
+        # perda do dia final do mÃªs (ex: 31 -> 28 -> 28 em vez de 31 -> 28 -> 31)
         original_day = base_date.day
         current_ancestor = card
         loop_guard = 0
@@ -674,7 +675,7 @@ def spawn_recurring_card(card, origin_column=None, origin_subsection=None):
         day = min(original_day, last_day)
         next_date = datetime.date(year, month, day)
     elif card.periodicidade == 'ANUAL':
-        # Para anual também buscamos o dia/mês original para tratar anos bissextos (29 Fev)
+        # Para anual tambÃ©m buscamos o dia/mÃªs original para tratar anos bissextos (29 Fev)
         original_day = base_date.day
         original_month = base_date.month
         current_ancestor = card
@@ -718,7 +719,7 @@ def spawn_recurring_card(card, origin_column=None, origin_subsection=None):
     new_card.etiquetas.set(card.etiquetas.all())
 
     
-    # Copia os itens do checklist (como não concluídos)
+    # Copia os itens do checklist (como nÃ£o concluÃ­dos)
     for item in card.checklist_itens.all():
         ChecklistItem.objects.create(
             cartao=new_card,
@@ -729,10 +730,10 @@ def spawn_recurring_card(card, origin_column=None, origin_subsection=None):
     BoardActivity.objects.create(
         quadro=coluna_destino.quadro,
         colaborador=None,
-        descricao=f"Criada tarefa recorrente automática '{new_card.titulo}' para {new_card.data_entrega.strftime('%d/%m/%Y')}."
+        descricao=f"Criada tarefa recorrente automÃ¡tica '{new_card.titulo}' para {new_card.data_entrega.strftime('%d/%m/%Y')}."
     )
     
-    # O cartão original deixa de ser recorrente para não gerar duplicatas
+    # O cartÃ£o original deixa de ser recorrente para nÃ£o gerar duplicatas
     card.periodicidade = 'AVULSA'
     card.save()
     
@@ -743,7 +744,7 @@ def spawn_recurring_card(card, origin_column=None, origin_subsection=None):
 @require_POST
 @require_board_edit_permission
 def api_move_card_view(request):
-    """Endpoint API para mover cartão de coluna/posição via Drag and Drop"""
+    """Endpoint API para mover cartÃ£o de coluna/posiÃ§Ã£o via Drag and Drop"""
     try:
         colab = get_user_colaborador(request.user)
         data = json.loads(request.body)
@@ -758,7 +759,7 @@ def api_move_card_view(request):
         old_coluna = card.coluna
         old_subsecao = card.subsecao
         
-        # Obter a subsessão se fornecida
+        # Obter a subsessÃ£o se fornecida
         to_subsection_id = data.get('to_subsection_id')
         if to_subsection_id and to_subsection_id != 'null':
             subsecao = get_object_or_404(BoardSubSection, id=to_subsection_id, coluna=nova_coluna)
@@ -766,24 +767,24 @@ def api_move_card_view(request):
         else:
             card.subsecao = None
             
-        # Verificar se é coluna de conclusão
+        # Verificar se Ã© coluna de conclusÃ£o
         concluido = data.get('concluido')
         if concluido is not None:
             is_concluida = concluido
         else:
             nome_low = nova_coluna.nome.lower()
-            is_concluida = "concluido" in nome_low or "concluído" in nome_low or "done" in nome_low or "terminado" in nome_low or "pronto" in nome_low
+            is_concluida = "concluido" in nome_low or "concluÃ­do" in nome_low or "done" in nome_low or "terminado" in nome_low or "pronto" in nome_low
             if not is_concluida:
-                # Fallback: se for a última coluna do quadro
+                # Fallback: se for a Ãºltima coluna do quadro
                 last_col = nova_coluna.quadro.colunas.order_by('ordem', 'criado_em').last()
                 if last_col and last_col.id == nova_coluna.id:
                     is_concluida = True
 
-        # Verificar se é a primeira coluna (backlog / a fazer)
+        # Verificar se Ã© a primeira coluna (backlog / a fazer)
         first_col = nova_coluna.quadro.colunas.order_by('ordem', 'criado_em').first()
         is_first_col = (first_col and first_col.id == nova_coluna.id)
 
-        # Atualizar a data de conclusão e horários baseado no destino
+        # Atualizar a data de conclusÃ£o e horÃ¡rios baseado no destino
         now_date = timezone.now().date()
         now_time = timezone.now().time()
         now_dt = timezone.now()
@@ -825,7 +826,7 @@ def api_move_card_view(request):
             card.hora_fim = None
             card.datetime_fim = None
 
-        # Atualizar a coluna do cartão movido
+        # Atualizar a coluna do cartÃ£o movido
         card.coluna = nova_coluna
         card.save()
 
@@ -834,7 +835,7 @@ def api_move_card_view(request):
             spawn_recurring_card(card, origin_column=old_coluna, origin_subsection=old_subsecao)
 
             
-        # Atualizar a ordem de todos os cartões na coluna destino
+        # Atualizar a ordem de todos os cartÃµes na coluna destino
         with transaction.atomic():
             for idx, c_id in enumerate(card_order_ids):
                 Card.objects.filter(id=c_id).update(ordem=idx)
@@ -844,7 +845,7 @@ def api_move_card_view(request):
             BoardActivity.objects.create(
                 quadro=nova_coluna.quadro,
                 colaborador=colab,
-                descricao=f"moveu o cartão '{card.titulo}' de '{old_col_nome}' para '{nova_coluna.nome}'."
+                descricao=f"moveu o cartÃ£o '{card.titulo}' de '{old_col_nome}' para '{nova_coluna.nome}'."
             )
             notify_card_update(card, colab, f"foi movido para a coluna '{nova_coluna.nome}'")
             
@@ -855,7 +856,7 @@ def api_move_card_view(request):
 
 @login_required
 def api_linha_acao_detail_view(request, linha_id):
-    """Endpoint API para buscar detalhes de uma LinhaAcao (cartão virtual do quadro de Planos de Ação)"""
+    """Endpoint API para buscar detalhes de uma LinhaAcao (cartÃ£o virtual do quadro de Planos de AÃ§Ã£o)"""
     from acoes.models import LinhaAcao
     linha = get_object_or_404(LinhaAcao, id=linha_id)
     
@@ -863,7 +864,7 @@ def api_linha_acao_detail_view(request, linha_id):
         'planejada': 'Planejada',
         'em_curso':  'Em Curso/Andamento',
         'retardo':   'Retardo/Atrasada',
-        'completa':  'Completa/Concluído',
+        'completa':  'Completa/ConcluÃ­do',
         'cancelada': 'Cancelada',
     }
     STATUS_COLOR = {
@@ -888,7 +889,7 @@ def api_linha_acao_detail_view(request, linha_id):
     data = {
         'id': linha.id,
         'numero_acao': linha.numero_acao,
-        'titulo': f'Ação #{linha.numero_acao}',
+        'titulo': f'AÃ§Ã£o #{linha.numero_acao}',
         'descricao': linha.descricao or '',
         'classificacao': linha.get_classificacao_display() if linha.classificacao else 'N/A',
         'status': linha.status,
@@ -913,7 +914,7 @@ def api_linha_acao_detail_view(request, linha_id):
 
 @login_required
 def api_card_detail_view(request, card_id):
-    """Endpoint API para buscar detalhes e atualizar informações de um cartão"""
+    """Endpoint API para buscar detalhes e atualizar informaÃ§Ãµes de um cartÃ£o"""
 
     colab = get_user_colaborador(request.user)
     card = get_object_or_404(Card, id=card_id)
@@ -936,7 +937,7 @@ def api_card_detail_view(request, card_id):
             
         etiquetas = [{'id': et.id, 'nome': et.nome, 'cor': et.cor} for et in card.etiquetas.all()]
         
-        # Encontrar raiz do histórico
+        # Encontrar raiz do histÃ³rico
         raiz = card
         while raiz.antecessora is not None:
             raiz = raiz.antecessora
@@ -945,13 +946,13 @@ def api_card_detail_view(request, card_id):
         curr = raiz
         while curr is not None:
             nome_col_low = curr.coluna.nome.lower()
-            is_concluida = "concluido" in nome_col_low or "concluído" in nome_col_low or "done" in nome_col_low or "terminado" in nome_col_low or "pronto" in nome_col_low
+            is_concluida = "concluido" in nome_col_low or "concluÃ­do" in nome_col_low or "done" in nome_col_low or "terminado" in nome_col_low or "pronto" in nome_col_low
             if not is_concluida:
                 last_col = curr.coluna.quadro.colunas.order_by('ordem', 'criado_em').last()
                 if last_col and last_col.id == curr.coluna_id:
                     is_concluida = True
                     
-            status_str = f"Concluída ({curr.coluna.nome})" if is_concluida else f"Ativa ({curr.coluna.nome})"
+            status_str = f"ConcluÃ­da ({curr.coluna.nome})" if is_concluida else f"Ativa ({curr.coluna.nome})"
             historia.append({
                 'id': curr.id,
                 'titulo': curr.titulo,
@@ -979,7 +980,7 @@ def api_card_detail_view(request, card_id):
             'descricao': card.descricao or '',
             'link_anexo': card.link_anexo or '',
             'responsaveis_ids': list(card.responsaveis.values_list('id', flat=True)),
-            'responsaveis_nomes': ", ".join([r.nome_completo for r in card.responsaveis.all()]) or 'Não atribuído',
+            'responsaveis_nomes': ", ".join([r.nome_completo for r in card.responsaveis.all()]) or 'NÃ£o atribuÃ­do',
             'responsaveis': [{'id': r.id, 'nome': r.nome_completo} for r in card.responsaveis.all()],
             'prioridade': card.prioridade,
             'prioridade_label': card.get_prioridade_display(),
@@ -1000,7 +1001,7 @@ def api_card_detail_view(request, card_id):
     elif request.method == 'POST':
         try:
             data = json.loads(request.body)
-            # Atualizar os dados do cartão
+            # Atualizar os dados do cartÃ£o
             card.titulo = data.get('titulo', card.titulo).strip()
             card.descricao = data.get('descricao', card.descricao)
             
@@ -1014,9 +1015,9 @@ def api_card_detail_view(request, card_id):
                 if card.coluna != nova_coluna:
                     old_col_nome = card.coluna.nome
                     
-                    # Automático se mudou de coluna e a destino é de conclusão
+                    # AutomÃ¡tico se mudou de coluna e a destino Ã© de conclusÃ£o
                     nome_low = nova_coluna.nome.lower()
-                    is_dest_concluida = "concluido" in nome_low or "concluído" in nome_low or "done" in nome_low or "terminado" in nome_low or "pronto" in nome_low
+                    is_dest_concluida = "concluido" in nome_low or "concluÃ­do" in nome_low or "done" in nome_low or "terminado" in nome_low or "pronto" in nome_low
                     if not is_dest_concluida:
                         last_col = nova_coluna.quadro.colunas.order_by('ordem', 'criado_em').last()
                         if last_col and last_col.id == nova_coluna.id:
@@ -1075,7 +1076,7 @@ def api_card_detail_view(request, card_id):
                     BoardActivity.objects.create(
                         quadro=board,
                         colaborador=colab,
-                        descricao=f"moveu o cartão '{card.titulo}' de '{old_col_nome}' para '{nova_coluna.nome}'."
+                        descricao=f"moveu o cartÃ£o '{card.titulo}' de '{old_col_nome}' para '{nova_coluna.nome}'."
                     )
             
             if 'subsecao_id' in data:
@@ -1086,7 +1087,7 @@ def api_card_detail_view(request, card_id):
                 else:
                     card.subsecao = None
                 
-            # Trata conclusão via parâmetro explícito 'concluido'
+            # Trata conclusÃ£o via parÃ¢metro explÃ­cito 'concluido'
             concluido = data.get('concluido')
             if concluido is not None:
                 is_concluida = concluido
@@ -1156,9 +1157,9 @@ def api_card_detail_view(request, card_id):
                             if timezone.is_naive(dt_ini):
                                 dt_ini = timezone.make_aware(dt_ini)
                         except ValueError:
-                            return JsonResponse({'success': False, 'error': f'Data/Hora de início inválida na linha {idx}.'}, status=400)
+                            return JsonResponse({'success': False, 'error': f'Data/Hora de inÃ­cio invÃ¡lida na linha {idx}.'}, status=400)
                     else:
-                        return JsonResponse({'success': False, 'error': f'Data/Hora de início é obrigatória na linha {idx}.'}, status=400)
+                        return JsonResponse({'success': False, 'error': f'Data/Hora de inÃ­cio Ã© obrigatÃ³ria na linha {idx}.'}, status=400)
                         
                     if dt_fim_raw:
                         try:
@@ -1166,10 +1167,10 @@ def api_card_detail_view(request, card_id):
                             if timezone.is_naive(dt_fim):
                                 dt_fim = timezone.make_aware(dt_fim)
                         except ValueError:
-                            return JsonResponse({'success': False, 'error': f'Data/Hora de fim inválida na linha {idx}.'}, status=400)
+                            return JsonResponse({'success': False, 'error': f'Data/Hora de fim invÃ¡lida na linha {idx}.'}, status=400)
                             
                         if dt_fim < dt_ini:
-                            return JsonResponse({'success': False, 'error': f'A Data/Hora de fim deve ser posterior à Data/Hora de início na linha {idx}.'}, status=400)
+                            return JsonResponse({'success': False, 'error': f'A Data/Hora de fim deve ser posterior Ã  Data/Hora de inÃ­cio na linha {idx}.'}, status=400)
                     
                     parsed_items.append((dt_ini, dt_fim))
                 
@@ -1181,7 +1182,7 @@ def api_card_detail_view(request, card_id):
                         datetime_fim=dt_fim
                     )
                 
-                # Sincroniza com o campo principal do cartão
+                # Sincroniza com o campo principal do cartÃ£o
                 primeiro_p = card.planejamentos.order_by('datetime_inicio').first()
                 if primeiro_p:
                     card.datetime_inicio = primeiro_p.datetime_inicio
@@ -1245,17 +1246,17 @@ def api_card_detail_view(request, card_id):
                 val_et_ids = [int(i) for i in etiquetas_ids if i]
                 card.etiquetas.set(BoardLabel.objects.filter(id__in=val_et_ids, quadro=board))
             
-            # Validação da relação de data e hora para início e fim
+            # ValidaÃ§Ã£o da relaÃ§Ã£o de data e hora para inÃ­cio e fim
             if card.datetime_inicio and card.datetime_fim:
                 if card.datetime_fim < card.datetime_inicio:
-                    return JsonResponse({'success': False, 'error': 'A data/hora de fim deve ser posterior à data/hora de início.'}, status=400)
+                    return JsonResponse({'success': False, 'error': 'A data/hora de fim deve ser posterior Ã  data/hora de inÃ­cio.'}, status=400)
 
             card.save()
             
             BoardActivity.objects.create(
                 quadro=board,
                 colaborador=colab,
-                descricao=f"editou o cartão '{card.titulo}'."
+                descricao=f"editou o cartÃ£o '{card.titulo}'."
             )
             notify_card_update(card, colab, "teve seus detalhes editados")
             return JsonResponse({'success': True})
@@ -1267,7 +1268,7 @@ def api_card_detail_view(request, card_id):
 @require_POST
 @require_board_edit_permission
 def api_add_checklist_item_view(request, card_id):
-    """Cria um item de checklist no cartão"""
+    """Cria um item de checklist no cartÃ£o"""
     colab = get_user_colaborador(request.user)
     card = get_object_or_404(Card, id=card_id)
     
@@ -1285,14 +1286,14 @@ def api_add_checklist_item_view(request, card_id):
             'success': True, 
             'item': {'id': item.id, 'descricao': item.descricao, 'concluido': item.concluido}
         })
-    return JsonResponse({'success': False, 'error': 'Descrição é obrigatória'}, status=400)
+    return JsonResponse({'success': False, 'error': 'DescriÃ§Ã£o Ã© obrigatÃ³ria'}, status=400)
 
 
 @login_required
 @require_POST
 @require_board_edit_permission
 def api_toggle_checklist_item_view(request, item_id):
-    """Inverte o status de concluído do item do checklist"""
+    """Inverte o status de concluÃ­do do item do checklist"""
     colab = get_user_colaborador(request.user)
     item = get_object_or_404(ChecklistItem, id=item_id)
     card = item.cartao
@@ -1332,7 +1333,7 @@ def api_delete_checklist_item_view(request, item_id):
 @login_required
 @require_POST
 def api_add_comment_view(request, card_id):
-    """Adiciona comentário no cartão"""
+    """Adiciona comentÃ¡rio no cartÃ£o"""
     colab = get_user_colaborador(request.user)
     card = get_object_or_404(Card, id=card_id)
     
@@ -1365,7 +1366,7 @@ def api_add_comment_view(request, card_id):
         BoardActivity.objects.create(
             quadro=card.coluna.quadro,
             colaborador=colab,
-            descricao=f"comentou no cartão '{card.titulo}'."
+            descricao=f"comentou no cartÃ£o '{card.titulo}'."
         )
         return JsonResponse({
             'success': True, 
@@ -1376,17 +1377,17 @@ def api_add_comment_view(request, card_id):
                 'data': comment.criado_em.strftime('%d/%m/%Y %H:%M')
             }
         })
-    return JsonResponse({'success': False, 'error': 'Texto é obrigatório'}, status=400)
+    return JsonResponse({'success': False, 'error': 'Texto Ã© obrigatÃ³rio'}, status=400)
 
 
 @login_required
 @require_POST
 def api_delete_comment_view(request, comment_id):
-    """Exclui um comentário do cartão"""
+    """Exclui um comentÃ¡rio do cartÃ£o"""
     colab = get_user_colaborador(request.user)
     comment = get_object_or_404(CardComment, id=comment_id)
     
-    # Permissão: apenas o autor ou administrador pode deletar o comentário
+    # PermissÃ£o: apenas o autor ou administrador pode deletar o comentÃ¡rio
     if comment.autor != colab and not (request.user.is_superuser or request.user.is_staff):
         return JsonResponse({'success': False, 'error': 'Acesso negado'}, status=403)
         
@@ -1398,7 +1399,7 @@ def api_delete_comment_view(request, comment_id):
 @require_POST
 @require_board_edit_permission
 def delete_card_view(request, card_id):
-    """Exclui um cartão"""
+    """Exclui um cartÃ£o"""
     colab = get_user_colaborador(request.user)
     card = get_object_or_404(Card, id=card_id)
     board = card.coluna.quadro
@@ -1409,9 +1410,9 @@ def delete_card_view(request, card_id):
     BoardActivity.objects.create(
         quadro=board,
         colaborador=colab,
-        descricao=f"excluiu o cartão '{titulo_card}'."
+        descricao=f"excluiu o cartÃ£o '{titulo_card}'."
     )
-    messages.success(request, f"Tarefa '{titulo_card}' excluída.")
+    messages.success(request, f"Tarefa '{titulo_card}' excluÃ­da.")
     return redirect('boards:board_detail', board_id=board.id)
 
 
@@ -1429,9 +1430,9 @@ def edit_board_view(request, board_id):
         BoardActivity.objects.create(
             quadro=board,
             colaborador=colab,
-            descricao="atualizou as configurações do quadro."
+            descricao="atualizou as configuraÃ§Ãµes do quadro."
         )
-        messages.success(request, "Configurações do quadro atualizadas!")
+        messages.success(request, "ConfiguraÃ§Ãµes do quadro atualizadas!")
     else:
         messages.error(request, "Erro ao atualizar o quadro. Verifique os campos.")
         
@@ -1446,8 +1447,8 @@ def delete_board_view(request, board_id):
     colab = get_user_colaborador(request.user)
     board = get_object_or_404(Board, id=board_id)
     
-    # Quadros não podem mais ser excluídos, apenas arquivados
-    messages.error(request, "Quadros não podem ser excluídos, apenas arquivados.")
+    # Quadros nÃ£o podem mais ser excluÃ­dos, apenas arquivados
+    messages.error(request, "Quadros nÃ£o podem ser excluÃ­dos, apenas arquivados.")
     return redirect('boards:board_detail', board_id=board.id)
 
 
@@ -1460,7 +1461,7 @@ def archive_board_view(request, board_id):
     board = get_object_or_404(Board, id=board_id)
     
     if board.criado_por != colab and not request.user.is_superuser:
-        messages.error(request, "Apenas o criador do quadro pode arquivá-lo.")
+        messages.error(request, "Apenas o criador do quadro pode arquivÃ¡-lo.")
         return redirect('boards:dashboard')
         
     board.arquivado = True
@@ -1484,7 +1485,7 @@ def unarchive_board_view(request, board_id):
     board = get_object_or_404(Board, id=board_id)
     
     if board.criado_por != colab and not request.user.is_superuser:
-        messages.error(request, "Apenas o criador do quadro pode desarquivá-lo.")
+        messages.error(request, "Apenas o criador do quadro pode desarquivÃ¡-lo.")
         return redirect('boards:dashboard')
         
     board.arquivado = False
@@ -1532,9 +1533,9 @@ def create_subsection_view(request, column_id):
             nome=nome,
             ordem=ordem
         )
-        messages.success(request, f"Sub-sessão '{nome}' criada com sucesso!")
+        messages.success(request, f"Sub-sessÃ£o '{nome}' criada com sucesso!")
     else:
-        messages.error(request, "O nome da sub-sessão não pode ser vazio.")
+        messages.error(request, "O nome da sub-sessÃ£o nÃ£o pode ser vazio.")
     return redirect('boards:board_detail', board_id=column.quadro.id)
 
 
@@ -1546,7 +1547,7 @@ def delete_subsection_view(request, subsection_id):
     board_id = subsecao.coluna.quadro.id
     nome = subsecao.nome
     subsecao.delete()
-    messages.success(request, f"Sub-sessão '{nome}' excluída com sucesso!")
+    messages.success(request, f"Sub-sessÃ£o '{nome}' excluÃ­da com sucesso!")
     return redirect('boards:board_detail', board_id=board_id)
 
 
@@ -1565,12 +1566,12 @@ def create_label_view(request, board_id):
     cor = request.POST.get('cor', '#0d6efd').strip()
     if nome:
         if BoardLabel.objects.filter(quadro=board, nome__iexact=nome).exists():
-            messages.error(request, f"Já existe uma etiqueta chamada '{nome}' neste quadro.")
+            messages.error(request, f"JÃ¡ existe uma etiqueta chamada '{nome}' neste quadro.")
         else:
             BoardLabel.objects.create(quadro=board, nome=nome, cor=cor)
             messages.success(request, f"Etiqueta '{nome}' criada!")
     else:
-        messages.error(request, "O nome da etiqueta é obrigatório.")
+        messages.error(request, "O nome da etiqueta Ã© obrigatÃ³rio.")
     return redirect('boards:board_detail', board_id=board.id)
 
 
@@ -1588,13 +1589,13 @@ def delete_label_view(request, label_id):
             
     nome = label.nome
     label.delete()
-    messages.success(request, f"Etiqueta '{nome}' excluída.")
+    messages.success(request, f"Etiqueta '{nome}' excluÃ­da.")
     return redirect('boards:board_detail', board_id=board.id)
 
 
 @login_required
 def read_mention_view(request, mention_id):
-    """Marca uma menção como lida e redireciona para o detalhe do cartão"""
+    """Marca uma menÃ§Ã£o como lida e redireciona para o detalhe do cartÃ£o"""
     mention = get_object_or_404(BoardMention, id=mention_id, mencionado=get_user_colaborador(request.user))
     mention.visualizada = True
     mention.save(update_fields=['visualizada'])
@@ -1613,7 +1614,7 @@ def api_add_board_link_view(request, board_id):
         titulo = data.get('titulo', '').strip()
         url = data.get('url', '').strip()
         if not titulo or not url:
-            return JsonResponse({'success': False, 'error': 'Título e URL são obrigatórios.'})
+            return JsonResponse({'success': False, 'error': 'TÃ­tulo e URL sÃ£o obrigatÃ³rios.'})
             
         link = BoardLink.objects.create(
             quadro=board,
@@ -1637,7 +1638,7 @@ def api_add_board_link_view(request, board_id):
 def api_delete_board_link_view(request, link_id):
     link = get_object_or_404(BoardLink, id=link_id)
     if not request.user.is_superuser and link.criado_por != get_user_colaborador(request.user) and link.quadro.criado_por != get_user_colaborador(request.user):
-        return JsonResponse({'success': False, 'error': 'Permissão negada.'})
+        return JsonResponse({'success': False, 'error': 'PermissÃ£o negada.'})
         
     try:
         link.delete()
@@ -1647,7 +1648,7 @@ def api_delete_board_link_view(request, link_id):
 
 @login_required
 def read_board_notification_view(request, notif_id):
-    """Marca uma notificação passiva como lida e redireciona para o cartão"""
+    """Marca uma notificaÃ§Ã£o passiva como lida e redireciona para o cartÃ£o"""
     colab = get_user_colaborador(request.user)
     notif = get_object_or_404(BoardNotification, id=notif_id, colaborador=colab)
     notif.lida = True
@@ -1668,15 +1669,15 @@ def export_board_pdf_view(request, board_id):
     colab = get_user_colaborador(request.user)
     
     if request.user.is_superuser:
-        board = get_object_or_404(Board.objects.exclude(nome="Ações Corretivas e Preventivas"), id=board_id)
+        board = get_object_or_404(Board.objects.exclude(nome="AÃ§Ãµes Corretivas e Preventivas"), id=board_id)
     elif colab:
         board = get_object_or_404(
-            Board.objects.filter(Q(criado_por=colab) | Q(membros=colab) | Q(todos_colaboradores=True)).exclude(nome="Ações Corretivas e Preventivas"), 
+            Board.objects.filter(Q(criado_por=colab) | Q(membros=colab) | Q(todos_colaboradores=True)).exclude(nome="AÃ§Ãµes Corretivas e Preventivas"), 
             id=board_id
         )
     else:
         board = get_object_or_404(
-            Board.objects.filter(todos_colaboradores=True).exclude(nome="Ações Corretivas e Preventivas"), 
+            Board.objects.filter(todos_colaboradores=True).exclude(nome="AÃ§Ãµes Corretivas e Preventivas"), 
             id=board_id
         )
     cartoes_param = request.GET.get('cartoes', '')
@@ -1763,14 +1764,14 @@ def export_board_pdf_view(request, board_id):
         
         meta_info = f"<b>Coluna:</b> {card.coluna.nome}"
         if card.subsecao:
-            meta_info += f" | <b>Sub-sessão:</b> {card.subsecao.nome}"
+            meta_info += f" | <b>Sub-sessÃ£o:</b> {card.subsecao.nome}"
             
         prioridade_label = dict(Card.PRIORIDADE_CHOICES).get(card.prioridade, card.prioridade)
         meta_info += f" | <b>Prioridade:</b> {prioridade_label}"
         
         resp_nomes = [r.nome_completo for r in card.responsaveis.all()]
         if resp_nomes:
-            meta_info += f"<br/><b>Responsáveis:</b> {', '.join(resp_nomes)}"
+            meta_info += f"<br/><b>ResponsÃ¡veis:</b> {', '.join(resp_nomes)}"
             
         if card.data_entrega:
             meta_info += f" | <b>Prazo:</b> {card.data_entrega.strftime('%d/%m/%Y')}"
@@ -1779,11 +1780,11 @@ def export_board_pdf_view(request, board_id):
         
         if card.descricao:
             desc_text = card.descricao.replace('\n', '<br/>')
-            story.append(Paragraph(f"<b>Descrição:</b><br/>{desc_text}", desc_style))
+            story.append(Paragraph(f"<b>DescriÃ§Ã£o:</b><br/>{desc_text}", desc_style))
         
         comentarios = card.comentarios.all().order_by('criado_em')
         if comentarios:
-            story.append(Paragraph("<b>Comentários:</b>", meta_style))
+            story.append(Paragraph("<b>ComentÃ¡rios:</b>", meta_style))
             for comment in comentarios:
                 autor = comment.autor.nome_completo if comment.autor else "Sistema"
                 data_str = comment.criado_em.strftime('%d/%m/%Y %H:%M')
@@ -1795,3 +1796,39 @@ def export_board_pdf_view(request, board_id):
 
     doc.build(story)
     return response
+
+def public_calendar_view(request, token):
+    signer = Signer()
+    try:
+        board_id = signer.unsign(token)
+    except BadSignature:
+        from django.http import Http404
+        raise Http404("Link de calendário público inválido ou expirado.")
+
+    board = get_object_or_404(
+        Board.objects.exclude(nome="Ações Corretivas e Preventivas"), 
+        id=board_id
+    )
+    
+    todas_colunas = list(board.colunas.prefetch_related('subsecoes', 'cartoes__responsaveis', 'cartoes__etiquetas', 'cartoes__planejamentos').all())
+    colunas = [col for col in todas_colunas if not col.arquivada]
+    
+    today = timezone.now().date()
+    
+    # Calculate cartoes_list same as board_detail_view for all colunas
+    for col in colunas:
+        col.subsecoes_list = list(col.subsecoes.all())
+        col.cartoes_list = [c for c in col.cartoes.all()]
+        
+    context = {
+        'board': board,
+        'colunas': colunas,
+        'hoje': today,
+        'titulo': f"Calendário: {board.nome}",
+        'base_template': 'base_public_calendar.html',
+        'is_public': True,
+    }
+    return render(request, 'boards/board_detail.html', context)
+
+
+
