@@ -140,58 +140,91 @@
     <!-- Filtros de Busca -->
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-body py-3">
-            <form method="GET" class="row g-3 align-items-end">
-                <div class="col-12 col-md-3">
+            <form method="GET" class="row g-3 align-items-end" id="formFiltrosPonto">
+                <div class="col-12 col-md-4">
                     <label class="form-label small fw-bold">Buscar Colaborador</label>
                     <div class="input-group">
                         <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
                         <input type="text" name="q_colab" value="{{ q_colab|default:'' }}" class="form-control" placeholder="Nome ou Matrícula...">
                     </div>
                 </div>
-                <div class="col-12 col-md-2">
-                    <label class="form-label small fw-bold">Status</label>
-                    <select name="status" class="form-select">
-                        <option value="TODOS" {% if status_filtro == 'TODOS' %}selected{% endif %}>Todos os Status</option>
-                        {% for st_val, st_lbl in status_choices %}
-                            <option value="{{ st_val }}" {% if status_filtro == st_val %}selected{% endif %}>{{ st_lbl }}</option>
-                        {% endfor %}
-                    </select>
+                <div class="col-12 col-md-8 d-flex flex-wrap justify-content-end align-items-center gap-2">
+                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalFiltrosPonto">
+                        <i class="bi bi-sliders me-1"></i>Filtros Avançados
+                    </button>
+                    <button type="submit" class="btn btn-primary px-4">
+                        <i class="bi bi-search me-1"></i>Buscar
+                    </button>
+                    <a href="{% url 'rh:tratativa_falhas_ponto' %}" class="btn btn-outline-secondary" title="Limpar Filtros">
+                        <i class="bi bi-x-circle"></i>
+                    </a>
                 </div>
-                <div class="col-12 col-md-2">
-                    <label class="form-label small fw-bold">Data Início</label>
-                    <input type="date" name="data_inicio" value="{{ data_inicio|default:'' }}" class="form-select">
+
+                <div class="col-12 mt-3">
+                    <button type="button" class="btn btn-sm btn-outline-primary me-2" onclick="toggleAllCollapses(true)">
+                        <i class="bi bi-arrows-expand me-1"></i>Expandir Todos
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleAllCollapses(false)">
+                        <i class="bi bi-arrows-collapse me-1"></i>Recolher Todos
+                    </button>
                 </div>
-                <div class="col-12 col-md-2">
-                    <label class="form-label small fw-bold">Data Fim</label>
-                    <input type="date" name="data_fim" value="{{ data_fim|default:'' }}" class="form-select">
-                </div>
-                {% if managers %}
-                <div class="col-12 col-md-3">
-                    <label class="form-label small fw-bold">Filtrar por Manager</label>
-                    <select name="lider_id" class="form-select">
-                        <option value="">Todos os Managers</option>
-                        {% for m in managers %}
-                            <option value="{{ m.id }}" {% if request.GET.lider_id == m.id|stringformat:'s' %}selected{% endif %}>{{ m.nome_completo }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                {% endif %}
-                <div class="col-12 col-md-12 d-flex justify-content-between align-items-center mt-3">
-                    <div>
-                        <button type="button" class="btn btn-sm btn-outline-primary me-2" onclick="toggleAllCollapses(true)">
-                            <i class="bi bi-arrows-expand me-1"></i>Expandir Todos
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleAllCollapses(false)">
-                            <i class="bi bi-arrows-collapse me-1"></i>Recolher Todos
-                        </button>
-                    </div>
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary px-4">
-                            <i class="bi bi-filter me-1"></i>Filtrar
-                        </button>
-                        <a href="{% url 'rh:tratativa_falhas_ponto' %}" class="btn btn-outline-secondary">
-                            <i class="bi bi-x-circle"></i>
-                        </a>
+
+                <!-- Modal Filtros Avançados -->
+                <div class="modal fade" id="modalFiltrosPonto" tabindex="-1" aria-labelledby="modalFiltrosPontoLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="modalFiltrosPontoLabel"><i class="bi bi-funnel me-2"></i>Filtros Avançados</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row g-3">
+                                    <div class="col-12 col-md-4">
+                                        <label class="form-label small fw-bold">Status</label>
+                                        <select name="status" class="form-select">
+                                            <option value="TODOS" {% if status_filtro == 'TODOS' %}selected{% endif %}>Todos os Status</option>
+                                            {% for st_val, st_lbl in status_choices %}
+                                                <option value="{{ st_val }}" {% if status_filtro == st_val %}selected{% endif %}>{{ st_lbl }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-12 col-md-4">
+                                        <label class="form-label small fw-bold">Data Início</label>
+                                        <input type="date" name="data_inicio" value="{{ data_inicio|default:'' }}" class="form-select">
+                                    </div>
+                                    <div class="col-12 col-md-4">
+                                        <label class="form-label small fw-bold">Data Fim</label>
+                                        <input type="date" name="data_fim" value="{{ data_fim|default:'' }}" class="form-select">
+                                    </div>
+                                    
+                                    <div class="col-12 col-md-6">
+                                        <label class="form-label small fw-bold">Liderança (Elenco Calibra)</label>
+                                        <select name="lider_calibra_id" class="form-select">
+                                            <option value="">Todos os Líderes (Elenco)</option>
+                                            {% for l in lideres_calibra %}
+                                                <option value="{{ l.id }}" {% if request.GET.lider_calibra_id == l.id|stringformat:'s' %}selected{% endif %}>{{ l.nome_completo }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+
+                                    {% if managers %}
+                                    <div class="col-12 col-md-6">
+                                        <label class="form-label small fw-bold">Manager (Relatório do Ponto)</label>
+                                        <select name="lider_id" class="form-select">
+                                            <option value="">Todos os Managers (Relatório)</option>
+                                            {% for m in managers %}
+                                                <option value="{{ m.id }}" {% if request.GET.lider_id == m.id|stringformat:'s' %}selected{% endif %}>{{ m.nome_completo }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                                <button type="submit" class="btn btn-primary" onclick="document.getElementById('formFiltrosPonto').submit();">Aplicar Filtros</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </form>

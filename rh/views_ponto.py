@@ -427,6 +427,7 @@ def tratativa_falhas_ponto_view(request, demanda_id=None):
     data_inicio = request.GET.get('data_inicio')
     data_fim = request.GET.get('data_fim')
     q_colab = request.GET.get('q_colab', '').strip()
+    lider_calibra_id = request.GET.get('lider_calibra_id')
 
     if not demanda_id:
         demanda_id = request.GET.get('demanda_id')
@@ -485,6 +486,9 @@ def tratativa_falhas_ponto_view(request, demanda_id=None):
             Q(colaborador__matricula__icontains=q_colab) |
             Q(colaborador__matricula_global__icontains=q_colab)
         )
+
+    if lider_calibra_id:
+        qs = qs.filter(colaborador__lider_id=lider_calibra_id)
 
     # Excluir falsos-positivos (Dias de descanso/domingo/dsr/folga sem nenhuma marcação de batida)
     rest_keywords = ['descanso', 'domingo', 'dsr', 'folga', 'feriado']
@@ -578,6 +582,11 @@ def tratativa_falhas_ponto_view(request, demanda_id=None):
 
     managers.sort(key=lambda x: str(x['nome_completo']))
 
+    lideres_calibra = Colaborador.objects.filter(
+        is_active=True,
+        posto_lideranca__in=['LIDER', 'SUPERVISOR', 'GERENTE']
+    ).order_by('nome_completo')
+
 
     # Agrupamento Hierárquico: Manager -> Colaboradores
     jornadas_list = list(jornadas)
@@ -636,7 +645,8 @@ def tratativa_falhas_ponto_view(request, demanda_id=None):
         'total_pendentes': total_pendentes,
         'total_justificados': total_justificados,
         'managers': managers,
-        'lideres': managers
+        'lideres': managers,
+        'lideres_calibra': lideres_calibra
     }
 
     return render(request, 'rh/tratativa_falhas_ponto.html', context)
