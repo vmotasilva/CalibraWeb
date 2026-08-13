@@ -141,21 +141,21 @@
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-body py-3">
             <form method="GET" class="row g-3 align-items-end" id="formFiltrosPonto">
-                <div class="col-12 col-md-4">
+                <div class="col-12 col-md-6">
                     <label class="form-label small fw-bold">Buscar Colaborador</label>
-                    <div class="input-group">
-                        <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
-                        <input type="text" name="q_colab" value="{{ q_colab|default:'' }}" class="form-control" placeholder="Nome ou Matrícula...">
+                    <div class="input-group shadow-sm">
+                        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                        <input type="text" name="q_colab" value="{{ q_colab|default:'' }}" class="form-control border-start-0 border-end-0" placeholder="Nome ou Matrícula...">
+                        <button class="btn btn-primary px-3" type="submit" title="Buscar">
+                            <i class="bi bi-search"></i>
+                        </button>
                     </div>
                 </div>
-                <div class="col-12 col-md-8 d-flex flex-wrap justify-content-end align-items-center gap-2">
-                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalFiltrosPonto">
+                <div class="col-12 col-md-6 d-flex flex-wrap justify-content-end align-items-end gap-2" style="height: 100%;">
+                    <button type="button" class="btn btn-outline-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalFiltrosPonto">
                         <i class="bi bi-sliders me-1"></i>Filtros Avançados
                     </button>
-                    <button type="submit" class="btn btn-primary px-4">
-                        <i class="bi bi-search me-1"></i>Buscar
-                    </button>
-                    <a href="{% url 'rh:tratativa_falhas_ponto' %}" class="btn btn-outline-secondary" title="Limpar Filtros">
+                    <a href="{% url 'rh:tratativa_falhas_ponto' %}" class="btn btn-outline-secondary shadow-sm" title="Limpar Filtros">
                         <i class="bi bi-x-circle"></i>
                     </a>
                 </div>

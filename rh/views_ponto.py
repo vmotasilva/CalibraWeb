@@ -548,6 +548,9 @@ def tratativa_falhas_ponto_view(request, demanda_id=None):
                 Q(matricula_lider=m_id) | Q(nome_lider__icontains=m_id)
             )
 
+    if lider_calibra_id:
+        base_counts_qs = base_counts_qs.filter(colaborador__lider_id=lider_calibra_id)
+
     total_pendentes = base_counts_qs.filter(status_tratativa=StatusTratativa.PENDENTE).count()
     total_justificados = base_counts_qs.filter(status_tratativa=StatusTratativa.JUSTIFICADO).count()
 
