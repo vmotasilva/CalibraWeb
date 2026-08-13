@@ -107,10 +107,16 @@
                         <div class="d-none d-md-block" style="height: 400px; position: relative;">
                             <canvas id="lotesChart"></canvas>
                         </div>
-                        <div class="mt-2 table-responsive">
+                        <!-- Tabela Desktop (>= 768px) -->
+                        <div class="mt-2 table-responsive d-none d-md-block">
                             <table id="chartDataTable" class="table table-sm table-bordered text-center align-middle mb-0" style="font-size: 0.85rem; table-layout: fixed; width: 100%;">
                                 <!-- Gerado via JS -->
                             </table>
+                        </div>
+
+                        <!-- Cards Mobile (< 768px) -->
+                        <div id="chartDataCards" class="d-md-none row g-2 mt-2 px-1">
+                            <!-- Gerado via JS -->
                         </div>
                     </div>
                 </div>
@@ -254,27 +260,90 @@
         // Tabelas de Lotes
         const table = document.getElementById('chartDataTable');
         function renderTable(labels, datasets) {
-            if (!table) return;
-            let tableHTML = '<thead class="table-light"><tr><th class="text-start" style="width: 150px; min-width: 150px; max-width: 150px;">Tratamento \ Data</th>';
-            labels.forEach(label => { tableHTML += `<th>${label}</th>`; });
-            tableHTML += '</tr></thead><tbody>';
-            
-            datasets.forEach(dataset => {
-                tableHTML += `<tr><td class="text-start fw-bold" style="width: 150px; min-width: 150px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="display:inline-block;width:12px;height:12px;background-color:${dataset.backgroundColor};margin-right:8px;border-radius:2px;"></span>${dataset.label}</td>`;
-                dataset.data.forEach(val => {
-                    tableHTML += `<td>${val > 0 ? val : '-'}</td>`;
+            if (table) {
+                let tableHTML = '<thead class="table-light"><tr><th class="text-start" style="width: 150px; min-width: 150px; max-width: 150px;">Tratamento \ Data</th>';
+                labels.forEach(label => { tableHTML += `<th>${label}</th>`; });
+                tableHTML += '</tr></thead><tbody>';
+                
+                datasets.forEach(dataset => {
+                    tableHTML += `<tr><td class="text-start fw-bold" style="width: 150px; min-width: 150px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="display:inline-block;width:12px;height:12px;background-color:${dataset.backgroundColor};margin-right:8px;border-radius:2px;"></span>${dataset.label}</td>`;
+                    dataset.data.forEach(val => {
+                        tableHTML += `<td>${val > 0 ? val : '-'}</td>`;
+                    });
+                    tableHTML += '</tr>';
                 });
-                tableHTML += '</tr>';
-            });
-            
-            tableHTML += '<tr class="table-secondary fw-bold"><td class="text-start fw-bold" style="width: 150px; min-width: 150px; max-width: 150px;">TOTAL DE LOTES</td>';
-            for(let i=0; i<labels.length; i++) {
-                let colTotal = 0;
-                datasets.forEach(dataset => { colTotal += dataset.data[i]; });
-                tableHTML += `<td>${colTotal > 0 ? colTotal : '-'}</td>`;
+                
+                tableHTML += '<tr class="table-secondary fw-bold"><td class="text-start fw-bold" style="width: 150px; min-width: 150px; max-width: 150px;">TOTAL DE LOTES</td>';
+                for(let i=0; i<labels.length; i++) {
+                    let colTotal = 0;
+                    datasets.forEach(dataset => { colTotal += dataset.data[i]; });
+                    tableHTML += `<td>${colTotal > 0 ? colTotal : '-'}</td>`;
+                }
+                tableHTML += '</tr></tbody>';
+                table.innerHTML = tableHTML;
             }
-            tableHTML += '</tr></tbody>';
-            table.innerHTML = tableHTML;
+            
+            renderCards(labels, datasets);
+        }
+
+        function renderCards(labels, datasets) {
+            const container = document.getElementById('chartDataCards');
+            if (!container) return;
+            
+            let html = '';
+            let grandTotal = 0;
+            datasets.forEach(ds => {
+                grandTotal += ds.data.reduce((sum, v) => sum + (parseFloat(v) || 0), 0);
+            });
+
+            html += `
+            <div class="col-12 mb-1">
+                <div class="card border-0 shadow-sm bg-primary text-white">
+                    <div class="card-body p-2 px-3 d-flex justify-content-between align-items-center">
+                        <span class="fw-bold text-uppercase small" style="font-size:0.8rem;"><i class="bi bi-layers-fill me-2"></i>Total no Período</span>
+                        <span class="fs-6 fw-bold bg-white text-primary px-2 py-1 rounded">${grandTotal} Lotes</span>
+                    </div>
+                </div>
+            </div>`;
+
+            let countActive = 0;
+            datasets.forEach(ds => {
+                let totalTrat = ds.data.reduce((sum, v) => sum + (parseFloat(v) || 0), 0);
+                if (totalTrat > 0) {
+                    countActive++;
+                    let breakdownPills = '';
+                    labels.forEach((lbl, idx) => {
+                        let val = ds.data[idx];
+                        if (val > 0) {
+                            breakdownPills += `<span class="badge bg-light text-dark border me-1 mb-1" style="font-size: 0.72rem; font-weight: 500;">${lbl}: <strong>${val}</strong></span>`;
+                        }
+                    });
+
+                    html += `
+                    <div class="col-12">
+                        <div class="card shadow-sm border bg-white mb-1">
+                            <div class="card-body p-2 px-3">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <div class="d-flex align-items-center">
+                                        <span style="display:inline-block; width:12px; height:12px; background-color:${ds.backgroundColor}; margin-right:8px; border-radius:3px;"></span>
+                                        <strong class="text-dark small">${ds.label}</strong>
+                                    </div>
+                                    <span class="badge bg-secondary" style="font-size:0.8rem;">${totalTrat} Lote${totalTrat !== 1 ? 's' : ''}</span>
+                                </div>
+                                <div class="mt-1 pt-1 border-top">
+                                    ${breakdownPills}
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                }
+            });
+
+            if (countActive === 0) {
+                html = '<div class="col-12 text-center text-muted py-3 small">Nenhum lote produzido no período.</div>';
+            }
+
+            container.innerHTML = html;
         }
         
         try {
