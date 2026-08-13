@@ -4698,22 +4698,31 @@
                                 end: null,
                             {% endif %}
                             allDay: false,
-                            {% if card.etiquetas.all %}
+                            {% if card.etiquetas.all|length > 1 %}
+                                backgroundColor: 'linear-gradient(90deg{% for e in card.etiquetas.all %}, {{ e.cor }}{% endfor %})',
+                                borderColor: '{{ card.etiquetas.first.cor }}',
+                                textColor: '#ffffff',
+                                fallbackColor: '{{ card.etiquetas.first.cor }}',
+                            {% elif card.etiquetas.all %}
                                 backgroundColor: '{% for e in card.etiquetas.all|slice:":1" %}{{ e.cor }}{% endfor %}',
                                 borderColor: '{% for e in card.etiquetas.all|slice:":1" %}{{ e.cor }}{% endfor %}',
                                 textColor: '#ffffff',
+                                fallbackColor: '{% for e in card.etiquetas.all|slice:":1" %}{{ e.cor }}{% endfor %}',
                             {% elif card.data_conclusao %}
                                 backgroundColor: '#6c757d',
                                 borderColor: '#5a6268',
                                 textColor: '#ffffff',
+                                fallbackColor: '#6c757d',
                             {% elif card.data_entrega and card.data_entrega < hoje %}
                                 backgroundColor: '#dc3545',
                                 borderColor: '#c82333',
                                 textColor: '#ffffff',
+                                fallbackColor: '#dc3545',
                             {% else %}
                                 backgroundColor: '#198754',
                                 borderColor: '#157347',
                                 textColor: '#ffffff',
+                                fallbackColor: '#198754',
                             {% endif %}
                             extendedProps: {
                                 real_card_id: "{{ card.id }}",
@@ -4751,22 +4760,31 @@
                         
                         allDay: {% if card.datetime_inicio or card.datetime_fim %}false{% else %}true{% endif %},
                         
-                        {% if card.etiquetas.all %}
+                        {% if card.etiquetas.all|length > 1 %}
+                            backgroundColor: 'linear-gradient(90deg{% for e in card.etiquetas.all %}, {{ e.cor }}{% endfor %})',
+                            borderColor: '{{ card.etiquetas.first.cor }}',
+                            textColor: '#ffffff',
+                            fallbackColor: '{{ card.etiquetas.first.cor }}',
+                        {% elif card.etiquetas.all %}
                             backgroundColor: '{% for e in card.etiquetas.all|slice:":1" %}{{ e.cor }}{% endfor %}',
                             borderColor: '{% for e in card.etiquetas.all|slice:":1" %}{{ e.cor }}{% endfor %}',
                             textColor: '#ffffff',
+                            fallbackColor: '{% for e in card.etiquetas.all|slice:":1" %}{{ e.cor }}{% endfor %}',
                         {% elif card.data_conclusao %}
                             backgroundColor: '#6c757d',
                             borderColor: '#5a6268',
                             textColor: '#ffffff',
+                            fallbackColor: '#6c757d',
                         {% elif card.data_entrega and card.data_entrega < hoje %}
                             backgroundColor: '#dc3545',
                             borderColor: '#c82333',
                             textColor: '#ffffff',
+                            fallbackColor: '#dc3545',
                         {% else %}
                             backgroundColor: '#198754',
                             borderColor: '#157347',
                             textColor: '#ffffff',
+                            fallbackColor: '#198754',
                         {% endif %}
                         extendedProps: {
                             real_card_id: "{{ card.id }}",
@@ -5061,7 +5079,7 @@
                 dayEvents.forEach(evt => {
                     const evtItem = document.createElement('div');
                     evtItem.className = 'custom-calendar-event-item d-flex align-items-center justify-content-between gap-1';
-                    evtItem.style.backgroundColor = evt.backgroundColor || '#0d6efd';
+                    evtItem.style.background = evt.backgroundColor || '#0d6efd';
                     evtItem.style.borderColor = evt.borderColor || '#0d6efd';
                     
                     const titleSpan = document.createElement('span');
@@ -5187,7 +5205,7 @@
                     
                     const card = document.createElement('div');
                     card.className = 'custom-calendar-day-event-card mb-2';
-                    card.style.borderLeftColor = evt.backgroundColor || '#0d6efd';
+                    card.style.borderLeftColor = evt.fallbackColor || evt.backgroundColor || '#0d6efd';
                     
                     card.innerHTML = `
                         <div>
@@ -5287,7 +5305,7 @@
                 allDayEvents.forEach(evt => {
                     const evtItem = document.createElement('div');
                     evtItem.className = 'custom-calendar-event-item';
-                    evtItem.style.backgroundColor = evt.backgroundColor || '#0d6efd';
+                    evtItem.style.background = evt.backgroundColor || '#0d6efd';
                     evtItem.style.borderColor = evt.borderColor || '#0d6efd';
                     evtItem.textContent = evt.title;
                     evtItem.title = `${evt.title} (${evt.extendedProps?.coluna || ''})`;
@@ -5338,7 +5356,7 @@
                     hourEvents.forEach(evt => {
                         const evtItem = document.createElement('div');
                         evtItem.className = 'custom-calendar-event-item';
-                        evtItem.style.backgroundColor = evt.backgroundColor || '#0d6efd';
+                        evtItem.style.background = evt.backgroundColor || '#0d6efd';
                         evtItem.style.borderColor = evt.borderColor || '#0d6efd';
                         evtItem.textContent = evt.title;
                         evtItem.title = `${evt.title} (${evt.extendedProps?.coluna || ''})`;
@@ -5399,7 +5417,7 @@
                 
                 const card = document.createElement('div');
                 card.className = 'custom-calendar-day-event-card';
-                card.style.borderLeftColor = evt.backgroundColor || '#0d6efd';
+                card.style.borderLeftColor = evt.fallbackColor || evt.backgroundColor || '#0d6efd';
                 
                 card.innerHTML = `
                     <div>
@@ -5442,7 +5460,7 @@
                 
                 const agendaItem = document.createElement('div');
                 agendaItem.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3 custom-calendar-agenda-item';
-                agendaItem.style.borderLeftColor = evt.backgroundColor || '#0d6efd';
+                agendaItem.style.borderLeftColor = evt.fallbackColor || evt.backgroundColor || '#0d6efd';
                 agendaItem.style.cursor = 'pointer';
                 
                 agendaItem.innerHTML = `
