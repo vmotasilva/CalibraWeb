@@ -4687,7 +4687,7 @@
                         {% if p.datetime_inicio %}
                         {
                             id: "{{ card.id }}_{{ p.id }}",
-                            title: "{% if card.prioridade == 'ALTA' %}⚠ {% endif %}{{ card.titulo|escapejs }}",
+                            title: "{% if card.data_conclusao %}✅ {% elif card.data_entrega and card.data_entrega < hoje %}🔴 {% else %}🟢 {% endif %}{% if card.prioridade == 'ALTA' %}⚠ {% endif %}{{ card.titulo|escapejs }}",
                             start: "{{ p.datetime_inicio|date:'Y-m-d' }}T{{ p.datetime_inicio|time:'H:i:s' }}",
                             {% if p.datetime_fim %}
                                 end: "{{ p.datetime_fim|date:'Y-m-d' }}T{{ p.datetime_fim|time:'H:i:s' }}",
@@ -4695,7 +4695,11 @@
                                 end: null,
                             {% endif %}
                             allDay: false,
-                            {% if card.data_conclusao %}
+                            {% if card.etiquetas.all %}
+                                backgroundColor: '{% for e in card.etiquetas.all|slice:":1" %}{{ e.cor }}{% endfor %}',
+                                borderColor: '{% for e in card.etiquetas.all|slice:":1" %}{{ e.cor }}{% endfor %}',
+                                textColor: '#ffffff',
+                            {% elif card.data_conclusao %}
                                 backgroundColor: '#6c757d',
                                 borderColor: '#5a6268',
                                 textColor: '#ffffff',
@@ -4725,7 +4729,7 @@
                     {% if card.datetime_inicio or card.data_entrega or card.criado_em %}
                     {
                         id: "{{ card.id }}",
-                        title: "{% if card.prioridade == 'ALTA' %}⚠ {% endif %}{{ card.titulo|escapejs }}",
+                        title: "{% if card.data_conclusao %}✅ {% elif card.data_entrega and card.data_entrega < hoje %}🔴 {% else %}🟢 {% endif %}{% if card.prioridade == 'ALTA' %}⚠ {% endif %}{{ card.titulo|escapejs }}",
                         {% if card.datetime_inicio %}
                             start: "{{ card.datetime_inicio|date:'Y-m-d' }}T{{ card.datetime_inicio|time:'H:i:s' }}",
                         {% elif card.data_entrega %}
@@ -4744,7 +4748,11 @@
                         
                         allDay: {% if card.datetime_inicio or card.datetime_fim %}false{% else %}true{% endif %},
                         
-                        {% if card.data_conclusao %}
+                        {% if card.etiquetas.all %}
+                            backgroundColor: '{% for e in card.etiquetas.all|slice:":1" %}{{ e.cor }}{% endfor %}',
+                            borderColor: '{% for e in card.etiquetas.all|slice:":1" %}{{ e.cor }}{% endfor %}',
+                            textColor: '#ffffff',
+                        {% elif card.data_conclusao %}
                             backgroundColor: '#6c757d',
                             borderColor: '#5a6268',
                             textColor: '#ffffff',
