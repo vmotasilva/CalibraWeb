@@ -449,8 +449,7 @@
 <style>
     #boardTabs,
     #boardTopHeader,
-    #board-view, #metrics-view, #activities-view, #table-view,
-    .btn-outline-info[title="Compartilhar calendário"] {
+    #kanban, #metrics, #activities, #table-view {
         display: none !important;
     }
     #calendar-view {
@@ -468,7 +467,7 @@
         // Desativar ponteiro de cursor
         const style = document.createElement('style');
         style.innerHTML = '.custom-calendar-event-item, .custom-calendar-day, .custom-calendar-week-slot-cell { cursor: default !important; pointer-events: none !important; }';
-        const bView = document.getElementById('board-view'); if(bView) { bView.classList.remove('show', 'active'); }
+        const bView = document.getElementById('kanban'); if(bView) { bView.classList.remove('show', 'active'); }
         const cView = document.getElementById('calendar-view'); if(cView) { cView.classList.add('show', 'active'); }
         document.head.appendChild(style);
     });
