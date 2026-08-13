@@ -13,6 +13,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
+from django.contrib import messages
 
 from rh.models import (
     Colaborador,
@@ -26,6 +27,7 @@ from rh.models import (
 
 from rh.services.ponto_matcher import sugerir_colaboradores_similares
 from qms.views_helpers import get_colaborador_for_user
+from shared.permissions import _user_has_nav_perm
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +37,12 @@ def importar_falhas_ponto_view(request):
     """
     Renderiza a tela de upload ou processa o arquivo Excel de batidas de ponto.
     """
+    if not (request.user.is_superuser or request.user.is_staff or _user_has_nav_perm(request.user, "core.nav_pessoas_importar_falhas_ponto")):
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.method == 'POST':
+            return JsonResponse({'status': 'ERRO', 'mensagem': 'Você não tem permissão para importar relatórios de falhas de ponto.'}, status=403)
+        messages.error(request, "Você não tem permissão para importar relatórios de falhas de ponto.")
+        return redirect("rh:demandas_falhas_ponto")
+
     if request.method == 'GET':
         return render(request, 'rh/importar_falhas_ponto.html')
 
@@ -320,6 +328,10 @@ def demandas_falhas_ponto_view(request):
     """
     Listagem de todas as Demandas de Falhas de Ponto (Importações).
     """
+    if not (request.user.is_superuser or request.user.is_staff or _user_has_nav_perm(request.user, "core.nav_pessoas_demandas_falhas_ponto")):
+        messages.error(request, "Você não tem permissão para acessar o módulo de Demandas de Falhas de Ponto.")
+        return redirect("modulo_rh")
+
     migrar_jornadas_orfas_para_demanda()
 
     status_filtro = request.GET.get('status', 'TODOS')
@@ -361,6 +373,9 @@ def api_alternar_status_demanda(request, demanda_id):
     """
     Alterna o status de uma demanda entre ATIVA e ARQUIVADA.
     """
+    if not (request.user.is_superuser or request.user.is_staff or _user_has_nav_perm(request.user, "core.nav_pessoas_arquivar_demanda")):
+        return JsonResponse({'status': 'ERRO', 'mensagem': 'Você não tem permissão para arquivar ou desarquivar demandas.'}, status=403)
+
     demanda = get_object_or_404(DemandaFalhaPonto, id=demanda_id)
     if demanda.status == StatusDemanda.ATIVA:
         demanda.status = StatusDemanda.ARQUIVADA
@@ -380,6 +395,9 @@ def api_excluir_demanda(request, demanda_id):
     """
     Exclui uma demanda e todas as suas jornadas registradas (com delete em cascata).
     """
+    if not (request.user.is_superuser or request.user.is_staff or _user_has_nav_perm(request.user, "core.nav_pessoas_excluir_demanda")):
+        return JsonResponse({'status': 'ERRO', 'mensagem': 'Você não tem permissão para excluir demandas.'}, status=403)
+
     demanda = get_object_or_404(DemandaFalhaPonto, id=demanda_id)
     titulo = demanda.titulo
     demanda.delete()
@@ -395,9 +413,15 @@ def tratativa_falhas_ponto_view(request, demanda_id=None):
     Tela principal de tratativa das falhas de batida de ponto para Líderes/Supervisores/Gerentes.
     Exibe os dados agrupados por Manager e Colaborador para a demanda selecionada.
     """
+    if not (request.user.is_superuser or request.user.is_staff or _user_has_nav_perm(request.user, "core.nav_pessoas_demandas_falhas_ponto")):
+        messages.error(request, "Você não tem permissão para acessar a tratativa de falhas de ponto.")
+        return redirect("modulo_rh")
+
     migrar_jornadas_orfas_para_demanda()
 
     user = request.user
+    can_ver_todos = user.is_superuser or user.is_staff or _user_has_nav_perm(user, "core.nav_pessoas_ponto_ver_todos")
+
     status_filtro = request.GET.get('status', StatusTratativa.PENDENTE)
 
     data_inicio = request.GET.get('data_inicio')
@@ -423,8 +447,8 @@ def tratativa_falhas_ponto_view(request, demanda_id=None):
         qs = JornadaDiariaFalha.objects.none()
 
 
-    # Se não for superusuario/staff sem equipe, restringe aos liderados conforme o relatório importado
-    if not (user.is_superuser or user.is_staff):
+    # Se não puder ver todos os colaboradores em ponto, restringe aos liderados conforme o relatório importado
+    if not can_ver_todos:
         if not colaborador_logado:
             qs = JornadaDiariaFalha.objects.none()
         else:
@@ -436,7 +460,7 @@ def tratativa_falhas_ponto_view(request, demanda_id=None):
                 Q(colaborador=colaborador_logado)
             )
     else:
-        # Se for superuser/staff com filtro por Manager no GET (estritamente pelo relatório importado)
+        # Se puder ver todos e houver filtro por Manager no GET (estritamente pelo relatório importado)
         manager_id = request.GET.get('lider_id') or request.GET.get('manager_id')
         if manager_id:
             if str(manager_id).isdigit():
@@ -496,7 +520,7 @@ def tratativa_falhas_ponto_view(request, demanda_id=None):
 
     # Queryset base para contadores gerais
     base_counts_qs = JornadaDiariaFalha.objects.all().exclude(filter_rest & empty_batidas)
-    if not (user.is_superuser or user.is_staff):
+    if not can_ver_todos:
         if colaborador_logado:
             base_counts_qs = base_counts_qs.filter(
                 Q(lider=colaborador_logado) |
@@ -508,6 +532,7 @@ def tratativa_falhas_ponto_view(request, demanda_id=None):
             base_counts_qs = JornadaDiariaFalha.objects.none()
     elif request.GET.get('lider_id') or request.GET.get('manager_id'):
         m_id = request.GET.get('lider_id') or request.GET.get('manager_id')
+
         if str(m_id).isdigit():
             sel_l = Colaborador.objects.filter(id=m_id).first()
             if sel_l:

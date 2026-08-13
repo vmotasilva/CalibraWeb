@@ -269,7 +269,11 @@ class NavigationPermission(models.Model):
             ("nav_pessoas_importar_hierarquia", "NAV: Pessoas / Importar Hierarquia"),
             ("nav_pessoas_horas_extras_list", "NAV: Pessoas / Planejamento de Horas Extras"),
             ("nav_pessoas_demandas_falhas_ponto", "NAV: Pessoas / Demandas & Cobranças de Ponto"),
+            ("nav_pessoas_ponto_ver_todos", "NAV: Pessoas / Permissão Especial: Ver Todos os Colaboradores (Ponto)"),
             ("nav_pessoas_importar_falhas_ponto", "NAV: Pessoas / Importar Relatório de Falhas de Ponto"),
+            ("nav_pessoas_arquivar_demanda", "NAV: Pessoas / Arquivar/Desarquivar Demanda de Ponto"),
+            ("nav_pessoas_excluir_demanda", "NAV: Pessoas / Excluir Demanda de Ponto (Permanente)"),
+
 
 
             # --- AÇÕES CORRETIVAS: blocos ---

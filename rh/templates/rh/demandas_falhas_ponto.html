@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load nav_access %}
 
 {% block title %}Demandas de Falhas de Ponto - CalibraWEB{% endblock %}
 
@@ -30,6 +31,10 @@
 
 {% block content %}
 <div class="container-fluid py-4">
+    {% can_nav_view user 'rh:importar_falhas_ponto' 'rh' as can_import_ponto %}
+    {% can_nav_view user 'rh:api_alternar_status_demanda' 'rh' as can_archive_ponto %}
+    {% can_nav_view user 'rh:api_excluir_demanda' 'rh' as can_delete_ponto %}
+
     <!-- Cabeçalho Principal -->
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
         <div>
@@ -38,12 +43,15 @@
             </h2>
             <p class="text-muted mb-0">Gerencie lotes de importação de relatórios de ponto, acompanhe pendências e cobranças da equipe.</p>
         </div>
+        {% if can_import_ponto %}
         <div class="d-flex gap-2">
             <a href="{% url 'rh:importar_falhas_ponto' %}" class="btn btn-primary fw-bold shadow-sm px-4">
                 <i class="bi bi-cloud-arrow-up-fill me-2"></i>Nova Importação
             </a>
         </div>
+        {% endif %}
     </div>
+
 
     <!-- Cards de Métricas Gerais -->
     <div class="row g-3 mb-4">
@@ -162,19 +170,24 @@
                         <i class="bi bi-box-arrow-in-right me-1"></i>Tratar Batidas
                     </a>
                     <div class="d-flex gap-1">
+                        {% if can_archive_ponto %}
                         <button type="button" class="btn btn-sm btn-outline-secondary btn-status-demanda"
                                 data-id="{{ d.id }}"
                                 title="{% if d.status == 'ATIVA' %}Arquivar Demanda{% else %}Desarquivar Demanda{% endif %}">
                             <i class="bi {% if d.status == 'ATIVA' %}bi-archive{% else %}bi-arrow-counterclockwise{% endif %}"></i>
                         </button>
+                        {% endif %}
+                        {% if can_delete_ponto %}
                         <button type="button" class="btn btn-sm btn-outline-danger btn-excluir-demanda"
                                 data-id="{{ d.id }}"
                                 data-titulo="{{ d.titulo }}"
                                 title="Excluir Demanda">
                             <i class="bi bi-trash"></i>
                         </button>
+                        {% endif %}
                     </div>
                 </div>
+
             </div>
         </div>
         {% empty %}

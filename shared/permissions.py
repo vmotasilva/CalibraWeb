@@ -654,20 +654,33 @@ NAV_STRUCTURE = [
                             "rh:demandas_falhas_ponto",
                             "rh:tratativa_falhas_ponto_demanda",
                             "rh:tratativa_falhas_ponto",
-                            "rh:api_alternar_status_demanda",
-                            "rh:api_excluir_demanda",
                             "rh:api_tratar_jornada",
                             "rh:api_confirmar_depara"
                         ],
                         "perm": "core.nav_pessoas_demandas_falhas_ponto"
                     },
                     {
-                        "nome": "Importar Relatório (.xlsx)",
+                        "nome": "Permissão Especial: Ver Todos os Colaboradores (Ponto)",
+                        "perm": "core.nav_pessoas_ponto_ver_todos"
+                    },
+                    {
+                        "nome": "Importar Relatório de Falhas (.xlsx)",
                         "view_name": "rh:importar_falhas_ponto",
                         "perm": "core.nav_pessoas_importar_falhas_ponto"
+                    },
+                    {
+                        "nome": "Arquivar / Desarquivar Demanda",
+                        "view_name": "rh:api_alternar_status_demanda",
+                        "perm": "core.nav_pessoas_arquivar_demanda"
+                    },
+                    {
+                        "nome": "Excluir Demanda (Permanente)",
+                        "view_name": "rh:api_excluir_demanda",
+                        "perm": "core.nav_pessoas_excluir_demanda"
                     }
                 ]
             },
+
             {
                 "key": "importacao",
                 "nome": "IMPORTAÇÃO",
