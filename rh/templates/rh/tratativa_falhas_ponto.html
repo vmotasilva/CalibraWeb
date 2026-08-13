@@ -279,73 +279,138 @@
                 <!-- Conteúdo recolhível (SEM classe 'show' = Recolhido por Padrão) -->
                 <div id="collapseColab_{{ forloop.parentloop.counter }}_{{ forloop.counter }}" class="collapse colab-collapse">
                     <div class="card-body p-0">
-                        <div class="table-responsive">
+                        <!-- Tabela para Desktop (d-none d-md-block) -->
+                        <div class="table-responsive d-none d-md-block">
                             <table class="table table-hover align-middle mb-0">
                                 <thead class="table-dark">
                                     <tr>
-                                    <th style="width: 12%;">Data</th>
-                                    <th style="width: 13%;">Jornada Prev.</th>
-                                    <th style="width: 32%;">Batidas Registradas (E1 / S1 / E2 / S2 / E3 / S3)</th>
-                                    <th style="width: 25%;">Erros do Dia</th>
-                                    <th style="width: 10%;">Status</th>
-                                    <th style="width: 8%; text-align: center;">Tratado</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for j in group.jornadas %}
-                                <tr id="jornada-row-{{ j.id }}">
-                                    <td class="fw-bold text-primary">
-                                        <i class="bi bi-calendar-event me-1"></i>{{ j.data|date:"d/m/Y" }}
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-light text-dark border">{{ j.jornada_prevista|default:"--:--" }}</span>
-                                    </td>
-                                    <td>
-                                        <div class="d-flex flex-wrap gap-1">
-                                            <span class="time-slot {% if j.e1 %}time-slot-has-value{% endif %}" title="Entrada 1">{{ j.e1|default:"--:--" }}</span>
-                                            <span class="time-slot {% if j.s1 %}time-slot-has-value{% endif %}" title="Saída 1">{{ j.s1|default:"--:--" }}</span>
-                                            <span class="time-slot {% if j.e2 %}time-slot-has-value{% endif %}" title="Entrada 2">{{ j.e2|default:"--:--" }}</span>
-                                            <span class="time-slot {% if j.s2 %}time-slot-has-value{% endif %}" title="Saída 2">{{ j.s2|default:"--:--" }}</span>
-                                            <span class="time-slot {% if j.e3 %}time-slot-has-value{% endif %}" title="Entrada 3">{{ j.e3|default:"--:--" }}</span>
-                                            <span class="time-slot {% if j.s3 %}time-slot-has-value{% endif %}" title="Saída 3">{{ j.s3|default:"--:--" }}</span>
+                                        <th style="width: 12%;">Data</th>
+                                        <th style="width: 13%;">Jornada Prev.</th>
+                                        <th style="width: 32%;">Batidas Registradas (E1 / S1 / E2 / S2 / E3 / S3)</th>
+                                        <th style="width: 25%;">Erros do Dia</th>
+                                        <th style="width: 10%;">Status</th>
+                                        <th style="width: 8%; text-align: center;">Tratado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for j in group.jornadas %}
+                                    <tr id="jornada-row-{{ j.id }}">
+                                        <td class="fw-bold text-primary">
+                                            <i class="bi bi-calendar-event me-1"></i>{{ j.data|date:"d/m/Y" }}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-light text-dark border">{{ j.jornada_prevista|default:"--:--" }}</span>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex flex-wrap gap-1">
+                                                <span class="time-slot {% if j.e1 %}time-slot-has-value{% endif %}" title="Entrada 1">{{ j.e1|default:"--:--" }}</span>
+                                                <span class="time-slot {% if j.s1 %}time-slot-has-value{% endif %}" title="Saída 1">{{ j.s1|default:"--:--" }}</span>
+                                                <span class="time-slot {% if j.e2 %}time-slot-has-value{% endif %}" title="Entrada 2">{{ j.e2|default:"--:--" }}</span>
+                                                <span class="time-slot {% if j.s2 %}time-slot-has-value{% endif %}" title="Saída 2">{{ j.s2|default:"--:--" }}</span>
+                                                <span class="time-slot {% if j.e3 %}time-slot-has-value{% endif %}" title="Entrada 3">{{ j.e3|default:"--:--" }}</span>
+                                                <span class="time-slot {% if j.s3 %}time-slot-has-value{% endif %}" title="Saída 3">{{ j.s3|default:"--:--" }}</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex flex-column gap-1">
+                                                {% for err in j.erros.all %}
+                                                    <div class="error-tag">
+                                                        <strong>[{{ err.codigo_erro }}]</strong> {{ err.descricao_notificacao }}
+                                                    </div>
+                                                {% empty %}
+                                                    <span class="text-muted small">Nenhum erro detalhado.</span>
+                                                {% endfor %}
+                                            </div>
+                                        </td>
+                                        <td class="status-cell-container-{{ j.id }}">
+                                            <span class="badge badge-status-{{ j.status_tratativa }} px-2 py-1">
+                                                {{ j.get_status_tratativa_display }}
+                                            </span>
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="form-check form-switch d-inline-block m-0" title="Alternar Status: Marcar como Justificado/Ajustado">
+                                                <input class="form-check-input chk-toggle-tratativa"
+                                                       type="checkbox"
+                                                       role="switch"
+                                                       data-id="{{ j.id }}"
+                                                       data-manager-index="{{ forloop.parentloop.parentloop.counter }}"
+                                                       data-colab-index="{{ forloop.parentloop.counter }}"
+                                                       {% if j.status_tratativa == 'JUSTIFICADO' %}checked{% endif %}
+                                                       style="cursor: pointer; width: 2.5em; height: 1.3em;">
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Cards Responsivos para Mobile (d-block d-md-none) -->
+                        <div class="d-block d-md-none p-3 bg-light border-top">
+                            {% for j in group.jornadas %}
+                            <div class="card shadow-sm border mb-3 rounded-3" id="jornada-card-mobile-{{ j.id }}">
+                                <div class="card-body p-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                                        <div>
+                                            <span class="fw-bold text-primary fs-6">
+                                                <i class="bi bi-calendar-event me-1"></i>{{ j.data|date:"d/m/Y" }}
+                                            </span>
+                                            <span class="badge bg-light text-dark border ms-1">{{ j.jornada_prevista|default:"--:--" }}</span>
                                         </div>
-                                    </td>
-                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="small fw-bold text-muted">Tratado:</span>
+                                            <div class="form-check form-switch m-0" title="Alternar Status">
+                                                <input class="form-check-input chk-toggle-tratativa"
+                                                       type="checkbox"
+                                                       role="switch"
+                                                       data-id="{{ j.id }}"
+                                                       data-manager-index="{{ forloop.parentloop.parentloop.counter }}"
+                                                       data-colab-index="{{ forloop.parentloop.counter }}"
+                                                       {% if j.status_tratativa == 'JUSTIFICADO' %}checked{% endif %}
+                                                       style="cursor: pointer; width: 2.5em; height: 1.3em;">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-2 status-cell-container-{{ j.id }}">
+                                        <span class="badge badge-status-{{ j.status_tratativa }} px-2 py-1">
+                                            {{ j.get_status_tratativa_display }}
+                                        </span>
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <span class="small text-muted d-block mb-1 fw-bold">Batidas Registradas:</span>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            <span class="time-slot {% if j.e1 %}time-slot-has-value{% endif %}" title="Entrada 1">E1: {{ j.e1|default:"--:--" }}</span>
+                                            <span class="time-slot {% if j.s1 %}time-slot-has-value{% endif %}" title="Saída 1">S1: {{ j.s1|default:"--:--" }}</span>
+                                            <span class="time-slot {% if j.e2 %}time-slot-has-value{% endif %}" title="Entrada 2">E2: {{ j.e2|default:"--:--" }}</span>
+                                            <span class="time-slot {% if j.s2 %}time-slot-has-value{% endif %}" title="Saída 2">S2: {{ j.s2|default:"--:--" }}</span>
+                                            <span class="time-slot {% if j.e3 %}time-slot-has-value{% endif %}" title="Entrada 3">E3: {{ j.e3|default:"--:--" }}</span>
+                                            <span class="time-slot {% if j.s3 %}time-slot-has-value{% endif %}" title="Saída 3">S3: {{ j.s3|default:"--:--" }}</span>
+                                        </div>
+                                    </div>
+
+                                    {% if j.erros.all %}
+                                    <div>
+                                        <span class="small text-muted d-block mb-1 fw-bold">Erros do Dia / Notificações:</span>
                                         <div class="d-flex flex-column gap-1">
                                             {% for err in j.erros.all %}
                                                 <div class="error-tag">
                                                     <strong>[{{ err.codigo_erro }}]</strong> {{ err.descricao_notificacao }}
                                                 </div>
-                                            {% empty %}
-                                                <span class="text-muted small">Nenhum erro detalhado.</span>
                                             {% endfor %}
                                         </div>
-                                    </td>
-                                    <td id="status-cell-{{ j.id }}">
-                                        <span class="badge badge-status-{{ j.status_tratativa }} px-2 py-1">
-                                            {{ j.get_status_tratativa_display }}
-                                        </span>
-                                    </td>
-                                    <td class="text-center">
-                                        <div class="form-check form-switch d-inline-block m-0" title="Alternar Status: Marcar como Justificado/Ajustado">
-                                            <input class="form-check-input chk-toggle-tratativa"
-                                                   type="checkbox"
-                                                   role="switch"
-                                                   data-id="{{ j.id }}"
-                                                   data-manager-index="{{ forloop.parentloop.parentloop.counter }}"
-                                                   data-colab-index="{{ forloop.parentloop.counter }}"
-                                                   {% if j.status_tratativa == 'JUSTIFICADO' %}checked{% endif %}
-                                                   style="cursor: pointer; width: 2.5em; height: 1.3em;">
-                                        </div>
-                                    </td>
-                                </tr>
-
-
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                                    </div>
+                                    {% else %}
+                                        <span class="text-muted small">Nenhum erro detalhado.</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
                     </div>
                 </div>
+
             </div>
         </div>
         {% endfor %}
@@ -475,15 +540,17 @@
                 const managerIdx = this.getAttribute('data-manager-index');
                 const colabIdx = this.getAttribute('data-colab-index');
 
-                const statusCell = document.getElementById(`status-cell-${id}`);
-                if (statusCell) {
+                // Sincronizar todos os switches com o mesmo ID (desktop e mobile)
+                document.querySelectorAll(`.chk-toggle-tratativa[data-id="${id}"]`).forEach(sw => {
+                    sw.checked = isChecked;
+                });
+
+                // Atualizar badges de status no desktop e mobile
+                document.querySelectorAll(`.status-cell-container-${id}`).forEach(statusCell => {
                     statusCell.innerHTML = isChecked 
                         ? '<span class="badge badge-status-JUSTIFICADO px-2 py-1"><i class="bi bi-check-circle me-1"></i>Justificado / Ajustado</span>'
                         : '<span class="badge badge-status-PENDENTE px-2 py-1"><i class="bi bi-clock me-1"></i>Pendente de Tratativa</span>';
-                }
-
-                const rowBtn = this.closest('tr')?.querySelector('.btn-tratar');
-                if (rowBtn) rowBtn.setAttribute('data-status', newStatus);
+                });
 
                 fetch(`/rh/api/ponto/jornada/${id}/tratar/`, {
                     method: 'POST',
@@ -502,17 +569,22 @@
                     if (data.status === 'SUCESSO') {
                         updateCounters(managerIdx, colabIdx, isChecked ? -1 : 1);
                     } else {
-                        this.checked = !isChecked;
+                        document.querySelectorAll(`.chk-toggle-tratativa[data-id="${id}"]`).forEach(sw => {
+                            sw.checked = !isChecked;
+                        });
                         alert(data.mensagem || 'Erro ao atualizar tratativa.');
                     }
                 })
                 .catch(err => {
-                    this.checked = !isChecked;
+                    document.querySelectorAll(`.chk-toggle-tratativa[data-id="${id}"]`).forEach(sw => {
+                        sw.checked = !isChecked;
+                    });
                     console.error(err);
                     alert('Erro de conexão ao salvar flag de tratativa.');
                 });
             });
         });
+
 
         const modalElement = document.getElementById('modalTratativa');
         const formTratativa = document.getElementById('formTratativa');
