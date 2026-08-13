@@ -251,23 +251,10 @@
 
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        
-        // Dados do Backend
-        const labels_dia = JSON.parse('{{ labels_dia|safe }}');
-        const labels_sem = JSON.parse('{{ labels_sem|safe }}');
-        const labels_mes = JSON.parse('{{ labels_mes|safe }}');
-        
-        const datasets_dia = JSON.parse('{{ datasets_dia|safe }}');
-        const datasets_sem = JSON.parse('{{ datasets_sem|safe }}');
-        const datasets_mes = JSON.parse('{{ datasets_mes|safe }}');
-        
-        const manut_datasets_dia = JSON.parse('{{ manut_datasets_dia|safe }}');
-        const manut_datasets_sem = JSON.parse('{{ manut_datasets_sem|safe }}');
-        const manut_datasets_mes = JSON.parse('{{ manut_datasets_mes|safe }}');
-        
         // Tabelas de Lotes
         const table = document.getElementById('chartDataTable');
         function renderTable(labels, datasets) {
+            if (!table) return;
             let tableHTML = '<thead class="table-light"><tr><th class="text-start" style="width: 150px; min-width: 150px; max-width: 150px;">Tratamento \ Data</th>';
             labels.forEach(label => { tableHTML += `<th>${label}</th>`; });
             tableHTML += '</tr></thead><tbody>';
@@ -290,79 +277,97 @@
             table.innerHTML = tableHTML;
         }
         
-        renderTable(labels_dia, datasets_dia);
+        try {
+            // Dados do Backend
+            const labels_dia = JSON.parse('{{ labels_dia|default:"[]"|safe }}');
+            const labels_sem = JSON.parse('{{ labels_sem|default:"[]"|safe }}');
+            const labels_mes = JSON.parse('{{ labels_mes|default:"[]"|safe }}');
+            
+            const datasets_dia = JSON.parse('{{ datasets_dia|default:"[]"|safe }}');
+            const datasets_sem = JSON.parse('{{ datasets_sem|default:"[]"|safe }}');
+            const datasets_mes = JSON.parse('{{ datasets_mes|default:"[]"|safe }}');
+            
+            renderTable(labels_dia, datasets_dia);
 
-        // Chart 1: Lotes
-        const ctxLotes = document.getElementById('lotesChart').getContext('2d');
-        let lotesChart = new Chart(ctxLotes, {
-            type: 'bar',
-            data: { labels: labels_dia, datasets: datasets_dia },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                layout: { padding: { right: 0, left: 0, top: 10, bottom: 0 } },
-                scales: {
-                    x: { stacked: true, display: false },
-                    y: {
-                        afterFit: function(scaleInstance) { scaleInstance.width = 150; },
-                        stacked: true, beginAtZero: true, ticks: { precision: 0 },
+            // Chart 1: Lotes
+            const canvasLotes = document.getElementById('lotesChart');
+            if (canvasLotes) {
+                const ctxLotes = canvasLotes.getContext('2d');
+                let lotesChart = new Chart(ctxLotes, {
+                    type: 'bar',
+                    data: { labels: labels_dia, datasets: datasets_dia },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        layout: { padding: { right: 0, left: 0, top: 10, bottom: 0 } },
+                        scales: {
+                            x: { stacked: true, display: false },
+                            y: {
+                                afterFit: function(scaleInstance) { scaleInstance.width = 150; },
+                                stacked: true, beginAtZero: true, ticks: { precision: 0 },
+                            }
+                        },
+                        plugins: { legend: { display: false } }
                     }
-                },
-                plugins: { legend: { display: false } }
+                });
+                
+                // Handle Lotes Tabs
+                document.querySelectorAll('#lotesTabs button').forEach(btn => {
+                    btn.addEventListener('click', function(e) {
+                        document.querySelectorAll('#lotesTabs button').forEach(b => b.classList.remove('active'));
+                        this.classList.add('active');
+                        let period = this.getAttribute('data-period');
+                        if (period === 'dia') {
+                            lotesChart.data.labels = labels_dia;
+                            lotesChart.data.datasets = datasets_dia;
+                            lotesChart.config.type = 'bar';
+                            lotesChart.options.scales.x.display = false;
+                            renderTable(labels_dia, datasets_dia);
+                        } else if (period === 'sem') {
+                            lotesChart.data.labels = labels_sem;
+                            lotesChart.data.datasets = datasets_sem.map(ds => ({...ds, type: 'bar'}));
+                            lotesChart.config.type = 'bar';
+                            lotesChart.options.scales.x.display = false;
+                            renderTable(labels_sem, datasets_sem);
+                        } else if (period === 'mes') {
+                            lotesChart.data.labels = labels_mes;
+                            lotesChart.data.datasets = datasets_mes.map(ds => ({...ds, type: 'bar'}));
+                            lotesChart.config.type = 'bar';
+                            lotesChart.options.scales.x.display = false;
+                            renderTable(labels_mes, datasets_mes);
+                        }
+                        lotesChart.update();
+                    });
+                });
             }
-        });
-        
-        // Handle Lotes Tabs
-        document.querySelectorAll('#lotesTabs button').forEach(btn => {
-            btn.addEventListener('click', function(e) {
-                document.querySelectorAll('#lotesTabs button').forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-                let period = this.getAttribute('data-period');
-                if (period === 'dia') {
-                    lotesChart.data.labels = labels_dia;
-                    lotesChart.data.datasets = datasets_dia;
-                    lotesChart.config.type = 'bar';
-                    lotesChart.options.scales.x.display = false; // Hide x-axis for daily (it's in the table)
-                    renderTable(labels_dia, datasets_dia);
-                } else if (period === 'sem') {
-                    lotesChart.data.labels = labels_sem;
-                    // Force datasets to stack if any wasn't
-                    lotesChart.data.datasets = datasets_sem.map(ds => ({...ds, type: 'bar'}));
-                    lotesChart.config.type = 'bar';
-                    lotesChart.options.scales.x.display = false;
-                    renderTable(labels_sem, datasets_sem);
-                } else if (period === 'mes') {
-                    lotesChart.data.labels = labels_mes;
-                    lotesChart.data.datasets = datasets_mes.map(ds => ({...ds, type: 'bar'}));
-                    lotesChart.config.type = 'bar';
-                    lotesChart.options.scales.x.display = false;
-                    renderTable(labels_mes, datasets_mes);
-                }
-                lotesChart.update();
-            });
-        });
-        
-        // Chart 2: Manutenções
-        const ctxManut = document.getElementById('manutChart').getContext('2d');
-        let manutChart = new Chart(ctxManut, {
-            type: 'doughnut',
-            data: { labels: ['Realizadas no Prazo', 'Pendentes / Atrasadas'], datasets: manut_datasets_dia },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    }
-                }
-            }
-        });
 
+            // Chart 2: Manutenções (se houver)
+            const canvasManut = document.getElementById('manutChart');
+            if (canvasManut) {
+                const manut_datasets_dia = JSON.parse('{{ manut_datasets_dia|default:"[]"|safe }}');
+                const ctxManut = canvasManut.getContext('2d');
+                let manutChart = new Chart(ctxManut, {
+                    type: 'doughnut',
+                    data: { labels: ['Realizadas no Prazo', 'Pendentes / Atrasadas'], datasets: manut_datasets_dia },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom'
+                            }
+                        }
+                    }
+                });
+            }
+        } catch (err) {
+            console.error("Erro ao inicializar gráficos:", err);
+        }
     });
 </script>
 
 <!-- Modal Detalhes Grid -->
-<div class="modal fade" id="modalDetalhesGrid" tabindex="-1" aria-labelledby="modalDetalhesGridLabel" aria-hidden="true">
+<div class="modal fade" id="modalDetalhesGrid" tabindex="-1" aria-labelledby="modalDetalhesGridLabel">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content border-0 shadow-lg rounded-4">
       <div class="modal-header bg-light border-bottom-0 rounded-top-4">
@@ -469,8 +474,10 @@ function openDetalhesModal(trElement) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
     
-    var modal = new bootstrap.Modal(document.getElementById('modalDetalhesGrid'));
-    modal.show();
+    const modalEl = document.getElementById('modalDetalhesGrid');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
 }
 </script>
 
