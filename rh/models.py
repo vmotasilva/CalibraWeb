@@ -831,6 +831,96 @@ class JornadaDiariaFalha(models.Model):
     def __str__(self):
         return f"{self.colaborador.nome_completo} - {self.data.strftime('%d/%m/%Y')} ({self.status_tratativa})"
 
+    @property
+    def minutos_previstos(self):
+        if not self.jornada_prevista:
+            return 0
+        import re
+        matches = re.findall(r'\b\d{1,2}:?\d{2}\b', str(self.jornada_prevista))
+        if len(matches) >= 2:
+            def parse_m(val):
+                if not val:
+                    return None
+                val_str = str(val).strip().replace(':', '')
+                m = re.search(r'(\d{1,2})(\d{2})', val_str)
+                if m:
+                    hh, mm = int(m.group(1)), int(m.group(2))
+                    if 0 <= hh <= 23 and 0 <= mm <= 59:
+                        return hh * 60 + mm
+                return None
+            
+            start_m = parse_m(matches[0])
+            end_m = parse_m(matches[1])
+            if start_m is not None and end_m is not None:
+                gross = end_m - start_m
+                if gross < 0:
+                    gross += 24 * 60
+                return max(0, gross - 60) if gross >= 360 else gross
+        return 0
+
+    @property
+    def minutos_realizados(self):
+        import re
+        def parse_m(val):
+            if not val:
+                return None
+            val_str = str(val).strip().replace(':', '')
+            m = re.search(r'(\d{1,2})(\d{2})', val_str)
+            if m:
+                hh, mm = int(m.group(1)), int(m.group(2))
+                if 0 <= hh <= 23 and 0 <= mm <= 59:
+                    return hh * 60 + mm
+            return None
+
+        def calc_pair(e, s):
+            em = parse_m(e)
+            sm = parse_m(s)
+            if em is not None and sm is not None:
+                diff = sm - em
+                if diff < 0:
+                    diff += 24 * 60
+                return diff
+            return 0
+
+        return calc_pair(self.e1, self.s1) + calc_pair(self.e2, self.s2) + calc_pair(self.e3, self.s3)
+
+    @property
+    def minutos_extra(self):
+        prev = self.minutos_previstos
+        real = self.minutos_realizados
+        if real > prev:
+            return real - prev
+        return 0
+
+    @property
+    def minutos_faltantes(self):
+        prev = self.minutos_previstos
+        real = self.minutos_realizados
+        if prev > real:
+            return prev - real
+        return 0
+
+    @property
+    def hora_prevista_str(self):
+        m = self.minutos_previstos
+        return f"{m//60:02d}:{m%60:02d}"
+
+    @property
+    def hora_realizada_str(self):
+        m = self.minutos_realizados
+        return f"{m//60:02d}:{m%60:02d}"
+
+    @property
+    def hora_extra_str(self):
+        m = self.minutos_extra
+        return f"{m//60:02d}:{m%60:02d}"
+
+    @property
+    def hora_faltante_str(self):
+        m = self.minutos_faltantes
+        return f"{m//60:02d}:{m%60:02d}"
+
+
 
 class ItemFalhaPonto(models.Model):
     jornada = models.ForeignKey(

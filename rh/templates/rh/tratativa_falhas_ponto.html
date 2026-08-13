@@ -284,12 +284,13 @@
                             <table class="table table-hover align-middle mb-0">
                                 <thead class="table-dark">
                                     <tr>
-                                        <th style="width: 12%;">Data</th>
-                                        <th style="width: 13%;">Jornada Prev.</th>
-                                        <th style="width: 32%;">Batidas Registradas (E1 / S1 / E2 / S2 / E3 / S3)</th>
-                                        <th style="width: 25%;">Erros do Dia</th>
-                                        <th style="width: 10%;">Status</th>
-                                        <th style="width: 8%; text-align: center;">Tratado</th>
+                                        <th style="width: 10%;">Data</th>
+                                        <th style="width: 11%;">Jornada Prev.</th>
+                                        <th style="width: 28%;">Batidas Registradas (E1 / S1 / E2 / S2 / E3 / S3)</th>
+                                        <th style="width: 16%;">Horas (Prev / Real / Extra / Falta)</th>
+                                        <th style="width: 20%;">Erros do Dia</th>
+                                        <th style="width: 9%;">Status</th>
+                                        <th style="width: 6%; text-align: center;">Tratado</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -309,6 +310,20 @@
                                                 <span class="time-slot {% if j.s2 %}time-slot-has-value{% endif %}" title="Saída 2">{{ j.s2|default:"--:--" }}</span>
                                                 <span class="time-slot {% if j.e3 %}time-slot-has-value{% endif %}" title="Entrada 3">{{ j.e3|default:"--:--" }}</span>
                                                 <span class="time-slot {% if j.s3 %}time-slot-has-value{% endif %}" title="Saída 3">{{ j.s3|default:"--:--" }}</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex flex-column gap-1 small">
+                                                <div><span class="text-muted">Prev:</span> <strong>{{ j.hora_prevista_str }}</strong> | <span class="text-muted">Real:</span> <strong class="text-primary">{{ j.hora_realizada_str }}</strong></div>
+                                                {% if j.minutos_extra > 0 %}
+                                                    <div><span class="badge bg-success text-white px-2 py-1"><i class="bi bi-arrow-up-right me-1"></i>Extra: {{ j.hora_extra_str }}</span></div>
+                                                {% endif %}
+                                                {% if j.minutos_faltantes > 0 %}
+                                                    <div><span class="badge bg-danger text-white px-2 py-1"><i class="bi bi-arrow-down-right me-1"></i>Falta: {{ j.hora_faltante_str }}</span></div>
+                                                {% endif %}
+                                                {% if j.minutos_extra == 0 and j.minutos_faltantes == 0 %}
+                                                    <div><span class="badge bg-light text-secondary border px-2 py-1"><i class="bi bi-check-all me-1"></i>OK</span></div>
+                                                {% endif %}
                                             </div>
                                         </td>
                                         <td>
@@ -378,6 +393,32 @@
                                         </span>
                                     </div>
 
+                                    <!-- Cálculo de Horas no Card Mobile -->
+                                    <div class="bg-white border rounded p-2 mb-2 shadow-sm">
+                                        <div class="row g-1 text-center align-items-center">
+                                            <div class="col-3 border-end">
+                                                <span class="text-muted d-block small" style="font-size: 0.72rem;">Prevista</span>
+                                                <strong class="text-dark small">{{ j.hora_prevista_str }}</strong>
+                                            </div>
+                                            <div class="col-3 border-end">
+                                                <span class="text-muted d-block small" style="font-size: 0.72rem;">Realizada</span>
+                                                <strong class="text-primary small">{{ j.hora_realizada_str }}</strong>
+                                            </div>
+                                            <div class="col-3 border-end">
+                                                <span class="text-muted d-block small" style="font-size: 0.72rem;">H. Extra</span>
+                                                <span class="badge {% if j.minutos_extra > 0 %}bg-success text-white{% else %}bg-light text-muted border{% endif %} px-1 py-1 small">
+                                                    {{ j.hora_extra_str }}
+                                                </span>
+                                            </div>
+                                            <div class="col-3">
+                                                <span class="text-muted d-block small" style="font-size: 0.72rem;">Faltante</span>
+                                                <span class="badge {% if j.minutos_faltantes > 0 %}bg-danger text-white{% else %}bg-light text-muted border{% endif %} px-1 py-1 small">
+                                                    {{ j.hora_faltante_str }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <div class="mb-2">
                                         <span class="small text-muted d-block mb-1 fw-bold">Batidas Registradas:</span>
                                         <div class="d-flex flex-wrap gap-1">
@@ -389,6 +430,7 @@
                                             <span class="time-slot {% if j.s3 %}time-slot-has-value{% endif %}" title="Saída 3">S3: {{ j.s3|default:"--:--" }}</span>
                                         </div>
                                     </div>
+
 
                                     {% if j.erros.all %}
                                     <div>
