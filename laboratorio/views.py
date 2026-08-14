@@ -1065,7 +1065,6 @@ def coating_painel(request):
         
     if date_search:
         try:
-            from datetime import datetime
             filter_date = datetime.strptime(date_search, '%Y-%m-%d').date()
             base_qs = base_qs.filter(turno_coating__data=filter_date)
         except ValueError:
