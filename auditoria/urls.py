@@ -60,4 +60,22 @@ urlpatterns = [
     path("iso/<int:auditoria_id>/entrevista/", views.iso_entrevista_view, name="iso_entrevista_view"),
     path("iso/<int:auditoria_id>/matriz/", views.iso_matriz_view, name="iso_matriz_view"),
     path("iso/api/autosave/", views.api_iso_autosave_resposta, name="api_iso_autosave_resposta"),
+    # ISO 13485 (Setup CRUD)
+    path("iso/setup/", views.iso_setup_dashboard, name="iso_setup_dashboard"),
+    
+    path("iso/setup/normas/nova/", views.iso_norma_create, name="iso_norma_create"),
+    path("iso/setup/normas/<int:pk>/editar/", views.iso_norma_edit, name="iso_norma_edit"),
+    path("iso/setup/normas/<int:pk>/remover/", views.iso_norma_delete, name="iso_norma_delete"),
+    
+    path("iso/setup/itens/novo/", views.iso_item_create, name="iso_item_create"),
+    path("iso/setup/itens/<int:pk>/editar/", views.iso_item_edit, name="iso_item_edit"),
+    path("iso/setup/itens/<int:pk>/remover/", views.iso_item_delete, name="iso_item_delete"),
+    
+    path("iso/setup/perguntas/nova/", views.iso_pergunta_create, name="iso_pergunta_create"),
+    path("iso/setup/perguntas/<int:pk>/editar/", views.iso_pergunta_edit, name="iso_pergunta_edit"),
+    path("iso/setup/perguntas/<int:pk>/remover/", views.iso_pergunta_delete, name="iso_pergunta_delete"),
+    
+    path("iso/setup/auditorias/nova/", views.iso_auditoria_create, name="iso_auditoria_create"),
+    path("iso/setup/auditorias/<int:pk>/editar/", views.iso_auditoria_edit, name="iso_auditoria_edit"),
+    path("iso/setup/auditorias/<int:pk>/remover/", views.iso_auditoria_delete, name="iso_auditoria_delete"),
 ]

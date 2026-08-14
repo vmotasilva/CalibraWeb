@@ -21,7 +21,16 @@ import unicodedata
 from urllib.parse import urlencode
 from shared.permissions import has_view_access
 
-from .forms import ComentarioAuditoriaForm, ModeloAuditoriaForm, PerguntaAuditoriaForm, RegistroAuditoriaForm
+from .forms import (
+    ComentarioAuditoriaForm, 
+    ModeloAuditoriaForm, 
+    PerguntaAuditoriaForm, 
+    RegistroAuditoriaForm,
+    NormaIsoForm,
+    ItemNormaIsoForm,
+    BancoPerguntaIsoForm,
+    AuditoriaIsoForm,
+)
 from .models import (
     ComentarioAuditoria,
     ComentarioRespostaAuditoria,
@@ -3291,3 +3300,159 @@ def iso_matriz_view(request, auditoria_id):
     
     return render(request, "auditoria/iso_matriz.html", context)
 
+
+# ==========================================
+# VIEWS SETUP ISO 13485 (CRUD FRONTEND)
+# ==========================================
+
+@login_required
+def iso_setup_dashboard(request):
+    """Dashboard unificado com abas para gerenciamento do Setup da ISO."""
+    normas = Norma.objects.all()
+    itens = ItemNorma.objects.all().order_by('norma', 'ordem')
+    perguntas = BancoPergunta.objects.all()
+    auditorias = AuditoriaIso.objects.all().order_by('-data_criacao')
+    
+    return render(request, "auditoria/iso/setup/dashboard.html", {
+        "normas": normas,
+        "itens": itens,
+        "perguntas": perguntas,
+        "auditorias": auditorias,
+        "active_tab": request.GET.get('tab', 'normas')
+    })
+
+# --- Norma CRUD ---
+@login_required
+def iso_norma_create(request):
+    if request.method == "POST":
+        form = NormaIsoForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Norma cadastrada com sucesso!")
+            return redirect(reverse('auditoria:iso_setup_dashboard') + "?tab=normas")
+    else:
+        form = NormaIsoForm()
+    return render(request, "auditoria/iso/setup/form_generico.html", {"form": form, "title": "Nova Norma", "back_url": reverse('auditoria:iso_setup_dashboard') + "?tab=normas"})
+
+@login_required
+def iso_norma_edit(request, pk):
+    norma = get_object_or_404(Norma, pk=pk)
+    if request.method == "POST":
+        form = NormaIsoForm(request.POST, instance=norma)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Norma atualizada!")
+            return redirect(reverse('auditoria:iso_setup_dashboard') + "?tab=normas")
+    else:
+        form = NormaIsoForm(instance=norma)
+    return render(request, "auditoria/iso/setup/form_generico.html", {"form": form, "title": f"Editar Norma: {norma.codigo}", "back_url": reverse('auditoria:iso_setup_dashboard') + "?tab=normas"})
+
+@login_required
+@require_POST
+def iso_norma_delete(request, pk):
+    norma = get_object_or_404(Norma, pk=pk)
+    norma.delete()
+    messages.success(request, "Norma removida com sucesso!")
+    return redirect(reverse('auditoria:iso_setup_dashboard') + "?tab=normas")
+
+# --- ItemNorma CRUD ---
+@login_required
+def iso_item_create(request):
+    if request.method == "POST":
+        form = ItemNormaIsoForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Item da norma cadastrado com sucesso!")
+            return redirect(reverse('auditoria:iso_setup_dashboard') + "?tab=itens")
+    else:
+        form = ItemNormaIsoForm()
+    return render(request, "auditoria/iso/setup/form_generico.html", {"form": form, "title": "Novo Item da Norma", "back_url": reverse('auditoria:iso_setup_dashboard') + "?tab=itens"})
+
+@login_required
+def iso_item_edit(request, pk):
+    item = get_object_or_404(ItemNorma, pk=pk)
+    if request.method == "POST":
+        form = ItemNormaIsoForm(request.POST, instance=item)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Item atualizado!")
+            return redirect(reverse('auditoria:iso_setup_dashboard') + "?tab=itens")
+    else:
+        form = ItemNormaIsoForm(instance=item)
+    return render(request, "auditoria/iso/setup/form_generico.html", {"form": form, "title": f"Editar Item: {item.referencia}", "back_url": reverse('auditoria:iso_setup_dashboard') + "?tab=itens"})
+
+@login_required
+@require_POST
+def iso_item_delete(request, pk):
+    item = get_object_or_404(ItemNorma, pk=pk)
+    item.delete()
+    messages.success(request, "Item removido com sucesso!")
+    return redirect(reverse('auditoria:iso_setup_dashboard') + "?tab=itens")
+
+# --- BancoPergunta CRUD ---
+@login_required
+def iso_pergunta_create(request):
+    if request.method == "POST":
+        form = BancoPerguntaIsoForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Pergunta adicionada ao banco!")
+            return redirect(reverse('auditoria:iso_setup_dashboard') + "?tab=perguntas")
+    else:
+        form = BancoPerguntaIsoForm()
+    return render(request, "auditoria/iso/setup/form_generico.html", {"form": form, "title": "Nova Pergunta de Auditoria", "back_url": reverse('auditoria:iso_setup_dashboard') + "?tab=perguntas"})
+
+@login_required
+def iso_pergunta_edit(request, pk):
+    pergunta = get_object_or_404(BancoPergunta, pk=pk)
+    if request.method == "POST":
+        form = BancoPerguntaIsoForm(request.POST, instance=pergunta)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Pergunta atualizada!")
+            return redirect(reverse('auditoria:iso_setup_dashboard') + "?tab=perguntas")
+    else:
+        form = BancoPerguntaIsoForm(instance=pergunta)
+    return render(request, "auditoria/iso/setup/form_generico.html", {"form": form, "title": "Editar Pergunta", "back_url": reverse('auditoria:iso_setup_dashboard') + "?tab=perguntas"})
+
+@login_required
+@require_POST
+def iso_pergunta_delete(request, pk):
+    pergunta = get_object_or_404(BancoPergunta, pk=pk)
+    pergunta.delete()
+    messages.success(request, "Pergunta removida com sucesso!")
+    return redirect(reverse('auditoria:iso_setup_dashboard') + "?tab=perguntas")
+
+# --- AuditoriaIso CRUD ---
+@login_required
+def iso_auditoria_create(request):
+    if request.method == "POST":
+        form = AuditoriaIsoForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Auditoria planejada com sucesso!")
+            return redirect(reverse('auditoria:iso_setup_dashboard') + "?tab=auditorias")
+    else:
+        form = AuditoriaIsoForm()
+    return render(request, "auditoria/iso/setup/form_generico.html", {"form": form, "title": "Planejar Nova Auditoria", "back_url": reverse('auditoria:iso_setup_dashboard') + "?tab=auditorias"})
+
+@login_required
+def iso_auditoria_edit(request, pk):
+    auditoria = get_object_or_404(AuditoriaIso, pk=pk)
+    if request.method == "POST":
+        form = AuditoriaIsoForm(request.POST, instance=auditoria)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Planejamento de auditoria atualizado!")
+            return redirect(reverse('auditoria:iso_setup_dashboard') + "?tab=auditorias")
+    else:
+        form = AuditoriaIsoForm(instance=auditoria)
+    return render(request, "auditoria/iso/setup/form_generico.html", {"form": form, "title": f"Editar Auditoria: {auditoria.id}", "back_url": reverse('auditoria:iso_setup_dashboard') + "?tab=auditorias"})
+
+@login_required
+@require_POST
+def iso_auditoria_delete(request, pk):
+    auditoria = get_object_or_404(AuditoriaIso, pk=pk)
+    auditoria.delete()
+    messages.success(request, "Auditoria cancelada/removida com sucesso!")
+    return redirect(reverse('auditoria:iso_setup_dashboard') + "?tab=auditorias")

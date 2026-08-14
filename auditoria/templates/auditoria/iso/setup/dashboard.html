@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Setup ISO 13485</h2>
+        <a href="{% url 'auditoria:iso_auditoria_list' %}" class="btn btn-outline-primary">
+            <i class="bi bi-arrow-left"></i> Voltar para Entrevistas
+        </a>
+    </div>
+
+    {% if messages %}
+    <div class="mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-4" id="setupTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link {% if active_tab == 'normas' %}active{% endif %}" id="normas-tab" data-bs-toggle="tab" data-bs-target="#normas" type="button" role="tab" aria-controls="normas" aria-selected="{% if active_tab == 'normas' %}true{% else %}false{% endif %}">
+                <i class="bi bi-journal-bookmark"></i> Normas
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link {% if active_tab == 'itens' %}active{% endif %}" id="itens-tab" data-bs-toggle="tab" data-bs-target="#itens" type="button" role="tab" aria-controls="itens" aria-selected="{% if active_tab == 'itens' %}true{% else %}false{% endif %}">
+                <i class="bi bi-list-ol"></i> Itens da Norma
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link {% if active_tab == 'perguntas' %}active{% endif %}" id="perguntas-tab" data-bs-toggle="tab" data-bs-target="#perguntas" type="button" role="tab" aria-controls="perguntas" aria-selected="{% if active_tab == 'perguntas' %}true{% else %}false{% endif %}">
+                <i class="bi bi-question-square"></i> Banco de Perguntas
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link {% if active_tab == 'auditorias' %}active{% endif %}" id="auditorias-tab" data-bs-toggle="tab" data-bs-target="#auditorias" type="button" role="tab" aria-controls="auditorias" aria-selected="{% if active_tab == 'auditorias' %}true{% else %}false{% endif %}">
+                <i class="bi bi-calendar-check"></i> Auditorias Planejadas
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="setupTabsContent">
+        <!-- NORMAS TAB -->
+        <div class="tab-pane fade {% if active_tab == 'normas' %}show active{% endif %}" id="normas" role="tabpanel" aria-labelledby="normas-tab">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                    <h5 class="mb-0">Normas Cadastradas</h5>
+                    <a href="{% url 'auditoria:iso_norma_create' %}" class="btn btn-primary btn-sm">
+                        <i class="bi bi-plus-lg"></i> Nova Norma
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Título</th>
+                                    <th class="text-end">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for norma in normas %}
+                                <tr>
+                                    <td class="fw-bold">{{ norma.codigo }}</td>
+                                    <td>{{ norma.titulo }}</td>
+                                    <td class="text-end">
+                                        <a href="{% url 'auditoria:iso_norma_edit' norma.id %}" class="btn btn-sm btn-outline-secondary">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <form method="POST" action="{% url 'auditoria:iso_norma_delete' norma.id %}" style="display:inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Tem certeza que deseja excluir esta norma?');">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted py-4">Nenhuma norma cadastrada.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ITENS TAB -->
+        <div class="tab-pane fade {% if active_tab == 'itens' %}show active{% endif %}" id="itens" role="tabpanel" aria-labelledby="itens-tab">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                    <h5 class="mb-0">Itens / Requisitos da Norma</h5>
+                    <a href="{% url 'auditoria:iso_item_create' %}" class="btn btn-primary btn-sm">
+                        <i class="bi bi-plus-lg"></i> Novo Item
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Norma</th>
+                                    <th>Referência</th>
+                                    <th>Título do Item</th>
+                                    <th class="text-end">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in itens %}
+                                <tr>
+                                    <td><span class="badge bg-secondary">{{ item.norma.codigo }}</span></td>
+                                    <td class="fw-bold">{{ item.referencia }}</td>
+                                    <td>{{ item.titulo }}</td>
+                                    <td class="text-end">
+                                        <a href="{% url 'auditoria:iso_item_edit' item.id %}" class="btn btn-sm btn-outline-secondary">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <form method="POST" action="{% url 'auditoria:iso_item_delete' item.id %}" style="display:inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Tem certeza que deseja excluir este item?');">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">Nenhum item cadastrado.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PERGUNTAS TAB -->
+        <div class="tab-pane fade {% if active_tab == 'perguntas' %}show active{% endif %}" id="perguntas" role="tabpanel" aria-labelledby="perguntas-tab">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                    <h5 class="mb-0">Banco de Perguntas</h5>
+                    <a href="{% url 'auditoria:iso_pergunta_create' %}" class="btn btn-primary btn-sm">
+                        <i class="bi bi-plus-lg"></i> Nova Pergunta
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Pergunta</th>
+                                    <th>Itens Vinculados</th>
+                                    <th class="text-end">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pergunta in perguntas %}
+                                <tr>
+                                    <td>
+                                        <div class="text-truncate" style="max-width: 400px;" title="{{ pergunta.texto_pergunta }}">
+                                            {{ pergunta.texto_pergunta }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% for item in pergunta.itens_norma.all %}
+                                            <span class="badge bg-info text-dark mb-1">{{ item.referencia }}</span>
+                                        {% empty %}
+                                            <span class="text-muted small">Sem vínculo</span>
+                                        {% endfor %}
+                                    </td>
+                                    <td class="text-end">
+                                        <a href="{% url 'auditoria:iso_pergunta_edit' pergunta.id %}" class="btn btn-sm btn-outline-secondary">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <form method="POST" action="{% url 'auditoria:iso_pergunta_delete' pergunta.id %}" style="display:inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Tem certeza?');">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted py-4">Nenhuma pergunta no banco.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AUDITORIAS TAB -->
+        <div class="tab-pane fade {% if active_tab == 'auditorias' %}show active{% endif %}" id="auditorias" role="tabpanel" aria-labelledby="auditorias-tab">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                    <h5 class="mb-0">Planejamento de Auditorias</h5>
+                    <a href="{% url 'auditoria:iso_auditoria_create' %}" class="btn btn-primary btn-sm">
+                        <i class="bi bi-plus-lg"></i> Planejar Auditoria
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Norma</th>
+                                    <th>Data de Início</th>
+                                    <th>Auditores</th>
+                                    <th>Status</th>
+                                    <th class="text-end">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for aud in auditorias %}
+                                <tr>
+                                    <td class="fw-bold">{{ aud.norma.codigo }}</td>
+                                    <td>{{ aud.data_inicio|date:"d/m/Y" }}</td>
+                                    <td>
+                                        {% for aut in aud.auditores.all %}
+                                            <span class="badge bg-light text-dark border">{{ aut.get_full_name|default:aut.username }}</span>
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        {% if aud.status == 'PLANEJADA' %}
+                                            <span class="badge bg-secondary">Planejada</span>
+                                        {% elif aud.status == 'EM_ANDAMENTO' %}
+                                            <span class="badge bg-primary">Em Andamento</span>
+                                        {% else %}
+                                            <span class="badge bg-success">Concluída</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <a href="{% url 'auditoria:iso_auditoria_edit' aud.id %}" class="btn btn-sm btn-outline-secondary">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <form method="POST" action="{% url 'auditoria:iso_auditoria_delete' aud.id %}" style="display:inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Tem certeza?');">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-4">Nenhuma auditoria planejada.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

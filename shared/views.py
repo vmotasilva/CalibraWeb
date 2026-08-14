@@ -31,6 +31,36 @@ def access_denied_view(request, module=''):
     return render(request, 'shared/access_denied.html', context, status=403)
 
 
+from django.conf import settings
+from django.contrib.auth import login
+
+def api_dev_users(request):
+    """Retorna lista de usuários apenas em ambiente de desenvolvimento (DEBUG=True)."""
+    if not settings.DEBUG:
+        return JsonResponse({'error': 'Not available in production'}, status=403)
+    User = get_user_model()
+    users = list(User.objects.filter(is_active=True).values('id', 'username'))
+    return JsonResponse({'users': users})
+
+@require_POST
+@csrf_exempt
+def dev_auto_login(request):
+    """Loga automaticamente com o usuário selecionado em dev."""
+    if not settings.DEBUG:
+        return JsonResponse({'error': 'Not available in production'}, status=403)
+    
+    try:
+        data = json.loads(request.body)
+        username = data.get('username')
+        User = get_user_model()
+        user = User.objects.get(username=username)
+        user.backend = 'django.contrib.auth.backends.ModelBackend'
+        login(request, user)
+        return JsonResponse({'success': True, 'redirect_url': '/'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
 @login_required
 @require_POST
 def api_change_password(request):

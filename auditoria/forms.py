@@ -351,3 +351,61 @@ class ComentarioAuditoriaForm(forms.ModelForm):
         if len(texto) > 8000:
             raise forms.ValidationError("Coment√°rio muito longo (m√°x. 8000 caracteres).")
         return texto
+from django.urls import path
+from .models import (
+    Norma,
+    ItemNorma,
+    BancoPergunta,
+    AuditoriaIso,
+)
+
+# ==========================================
+# FORMS ISO 13485
+# ==========================================
+
+class NormaIsoForm(forms.ModelForm):
+    class Meta:
+        model = Norma
+        fields = ['codigo', 'descricao']
+        widgets = {
+            'codigo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: ISO 13485:2016'}),
+            'descricao': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Sistemas de Gest„o da Qualidade'}),
+        }
+
+
+class ItemNormaIsoForm(forms.ModelForm):
+    class Meta:
+        model = ItemNorma
+        fields = ['norma', 'referencia', 'titulo', 'descricao', 'ordem']
+        widgets = {
+            'norma': forms.Select(attrs={'class': 'form-select'}),
+            'referencia': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: 4.1.1'}),
+            'titulo': forms.TextInput(attrs={'class': 'form-control'}),
+            'descricao': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'ordem': forms.NumberInput(attrs={'class': 'form-control'}),
+        }
+
+
+class BancoPerguntaIsoForm(forms.ModelForm):
+    class Meta:
+        model = BancoPergunta
+        fields = ['texto_pergunta', 'dica_auditor', 'itens_norma']
+        widgets = {
+            'texto_pergunta': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Como a organizaÁ„o...?'}),
+            'dica_auditor': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Verifique o documento X...'}),
+            'itens_norma': forms.SelectMultiple(attrs={'class': 'form-select', 'size': 6}),
+        }
+
+
+class AuditoriaIsoForm(forms.ModelForm):
+    class Meta:
+        model = AuditoriaIso
+        fields = ['norma', 'auditores', 'data_inicio', 'data_fim', 'status', 'escopo_itens']
+        widgets = {
+            'norma': forms.Select(attrs={'class': 'form-select'}),
+            'auditores': forms.SelectMultiple(attrs={'class': 'form-select', 'size': 4}),
+            'data_inicio': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'data_fim': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'status': forms.Select(attrs={'class': 'form-select'}),
+            'escopo_itens': forms.SelectMultiple(attrs={'class': 'form-select', 'size': 8}),
+        }
