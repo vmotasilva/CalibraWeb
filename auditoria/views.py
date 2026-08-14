@@ -3059,6 +3059,8 @@ def modelo_categorias(request, modelo_id):
 
     if request.method == "POST":
         action = request.POST.get("action")
+        is_ajax = request.headers.get("x-requested-with") == "XMLHttpRequest" or request.headers.get("Accept", "").startswith("application/json")
+        
         if action == "add_topico":
             nome = request.POST.get("nome")
             parent_id = request.POST.get("parent_id")
@@ -3067,7 +3069,14 @@ def modelo_categorias(request, modelo_id):
                 parent = None
                 if parent_id and parent_id.isdigit():
                     parent = get_object_or_404(TopicoAuditoria, pk=parent_id, modelo=modelo)
-                TopicoAuditoria.objects.create(modelo=modelo, parent=parent, nome=nome)
+                topico = TopicoAuditoria.objects.create(modelo=modelo, parent=parent, nome=nome)
+                
+                if is_ajax:
+                    from django.template.loader import render_to_string
+                    from django.http import JsonResponse
+                    html = render_to_string("auditoria/_topico_node.html", {"topico": topico}, request=request)
+                    return JsonResponse({"status": "success", "html": html, "parent_id": parent_id or ""})
+                    
                 messages.success(request, "Tópico adicionado.")
         elif action == "edit_topico":
             topico_id = request.POST.get("topico_id")
@@ -3077,7 +3086,17 @@ def modelo_categorias(request, modelo_id):
                 topico = get_object_or_404(TopicoAuditoria, pk=topico_id, modelo=modelo)
                 topico.nome = nome
                 topico.save()
+                
+                if is_ajax:
+                    from django.http import JsonResponse
+                    return JsonResponse({"status": "success", "nome": nome, "topico_id": topico_id})
+                    
                 messages.success(request, "Tópico atualizado.")
+        
+        if is_ajax:
+            from django.http import JsonResponse
+            return JsonResponse({"status": "error", "message": "Ação inválida ou dados incompletos"}, status=400)
+            
         return redirect("auditoria:modelo_categorias", modelo_id=modelo.id)
 
     from .models import TopicoAuditoria

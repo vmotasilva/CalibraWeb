@@ -113,8 +113,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    const sortableContainers = document.querySelectorAll('.sortable-container');
-    sortableContainers.forEach(container => {
+    function initSortable(container) {
         new Sortable(container, {
             animation: 150,
             handle: '.drag-handle',
@@ -140,7 +139,103 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
         });
-    });
+    }
+
+    const sortableContainers = document.querySelectorAll('.sortable-container');
+    sortableContainers.forEach(container => initSortable(container));
+
+    const formAdd = document.querySelector('#modalAddTopico form');
+    if (formAdd) {
+        formAdd.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            fetch(window.location.href, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    let container;
+                    if (data.parent_id) {
+                        const parentCollapse = document.getElementById('collapse-' + data.parent_id);
+                        if(parentCollapse) {
+                            const bsCollapse = new bootstrap.Collapse(parentCollapse, { toggle: false });
+                            bsCollapse.show();
+                            
+                            const body = parentCollapse.querySelector('.accordion-body');
+                            let sortableCont = body.querySelector('.sortable-container');
+                            if (!sortableCont) {
+                                body.innerHTML = '<div class="accordion ms-4 mt-2 sortable-container"></div>';
+                                sortableCont = body.querySelector('.sortable-container');
+                                initSortable(sortableCont);
+                            }
+                            container = sortableCont;
+                        }
+                    } else {
+                        container = document.getElementById('accordionTopicos');
+                    }
+                    
+                    if(container) {
+                        container.insertAdjacentHTML('beforeend', data.html);
+                    }
+                    
+                    formAdd.reset();
+                    const modalInstance = bootstrap.Modal.getInstance(document.getElementById('modalAddTopico'));
+                    modalInstance.hide();
+                } else {
+                    alert('Erro: ' + (data.message || 'Falha ao adicionar tópico.'));
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Ocorreu um erro inesperado.');
+            });
+        });
+    }
+
+    const formEdit = document.querySelector('#modalEditTopico form');
+    if (formEdit) {
+        formEdit.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            fetch(window.location.href, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const btn = document.querySelector('button[aria-controls="collapse-' + data.topico_id + '"]');
+                    if (btn) {
+                        btn.textContent = data.nome;
+                    }
+                    const editBtn = document.querySelector('button[data-bs-target="#modalEditTopico"][data-topico-id="' + data.topico_id + '"]');
+                    if(editBtn) editBtn.setAttribute('data-topico-nome', data.nome);
+                    
+                    const addBtn = document.querySelector('button[data-bs-target="#modalAddTopico"][data-parent-id="' + data.topico_id + '"]');
+                    if(addBtn) addBtn.setAttribute('data-parent-nome', data.nome);
+                    
+                    const modalInstance = bootstrap.Modal.getInstance(document.getElementById('modalEditTopico'));
+                    modalInstance.hide();
+                } else {
+                    alert('Erro: ' + (data.message || 'Falha ao editar tópico.'));
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Ocorreu um erro inesperado.');
+            });
+        });
+    }
 });
 </script>
 {% endblock %}
