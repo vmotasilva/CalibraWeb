@@ -3108,3 +3108,28 @@ def topico_delete(request, pk):
     except ProtectedError:
         messages.error(request, "Não é possível remover o tópico pois ele está vinculado a perguntas ou sub-tópicos vinculados a perguntas.")
     return redirect("auditoria:modelo_categorias", modelo_id=modelo_id)
+
+@login_required
+@require_POST
+def reorder_topicos(request):
+    import json
+    from django.http import JsonResponse
+    from .models import TopicoAuditoria
+    
+    try:
+        data = json.loads(request.body)
+        topicos_ids = data.get("topicos", [])
+        
+        if not topicos_ids:
+            return JsonResponse({"status": "success"})
+            
+        primeiro_topico = TopicoAuditoria.objects.filter(id=topicos_ids[0]).first()
+        if not primeiro_topico or not _auditoria_can_update_modelo(request.user, primeiro_topico.modelo):
+            return JsonResponse({"status": "error", "message": "Sem permissão"}, status=403)
+            
+        for index, topico_id in enumerate(topicos_ids, start=1):
+            TopicoAuditoria.objects.filter(id=topico_id).update(ordem=index)
+            
+        return JsonResponse({"status": "success"})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=400)

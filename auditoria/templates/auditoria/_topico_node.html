@@ -1,6 +1,7 @@
-<div class="accordion-item mb-3 border rounded shadow-sm">
+<div class="accordion-item mb-3 border rounded shadow-sm" data-id="{{ topico.id }}">
     <h2 class="accordion-header" id="heading-{{ topico.id }}">
         <div class="d-flex align-items-center w-100 bg-light px-3 py-2 rounded-top">
+            <i class="bi bi-grip-vertical text-muted drag-handle me-2" style="cursor: grab;"></i>
             <button class="accordion-button collapsed flex-grow-1 bg-transparent text-dark border-0 shadow-none fw-bold p-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ topico.id }}" aria-expanded="false" aria-controls="collapse-{{ topico.id }}">
                 {{ topico.nome }}
             </button>
@@ -24,7 +25,7 @@
     <div id="collapse-{{ topico.id }}" class="accordion-collapse collapse" aria-labelledby="heading-{{ topico.id }}">
         <div class="accordion-body p-2">
             {% if topico.subtopicos.all %}
-                <div class="accordion ms-4 mt-2">
+                <div class="accordion ms-4 mt-2 sortable-container">
                     {% for subtopico in topico.subtopicos.all %}
                         {% include 'auditoria/_topico_node.html' with topico=subtopico %}
                     {% endfor %}

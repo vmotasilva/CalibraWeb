@@ -26,7 +26,7 @@
             Nenhum tópico cadastrado. Adicione o primeiro tópico raiz para começar a estruturar sua auditoria.
         </div>
     {% else %}
-        <div class="accordion" id="accordionTopicos">
+        <div class="accordion sortable-container" id="accordionTopicos">
             {% for topico in topicos_raiz %}
                 {% include 'auditoria/_topico_node.html' with topico=topico %}
             {% endfor %}
@@ -86,6 +86,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     var modalAddTopico = document.getElementById('modalAddTopico');
@@ -111,6 +112,35 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('editTopicoNome').value = topicoNome;
         });
     }
+
+    const sortableContainers = document.querySelectorAll('.sortable-container');
+    sortableContainers.forEach(container => {
+        new Sortable(container, {
+            animation: 150,
+            handle: '.drag-handle',
+            onEnd: function (evt) {
+                const itemEl = evt.item;
+                const parentContainer = itemEl.parentElement;
+                const items = parentContainer.querySelectorAll(':scope > .accordion-item');
+                const topicosOrder = Array.from(items).map(item => item.getAttribute('data-id'));
+                
+                fetch("{% url 'auditoria:reorder_topicos' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: JSON.stringify({ topicos: topicosOrder })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status !== 'success') {
+                        alert('Erro ao ordenar: ' + data.message);
+                    }
+                });
+            }
+        });
+    });
 });
 </script>
 {% endblock %}
