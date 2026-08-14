@@ -3315,7 +3315,7 @@ def iso_setup_dashboard(request):
     normas = Norma.objects.all()
     itens = ItemNorma.objects.all().order_by('norma', 'ordem')
     perguntas = BancoPergunta.objects.all()
-    auditorias = AuditoriaIso.objects.all().order_by('-data_criacao')
+    auditorias = AuditoriaIso.objects.all().order_by('-criado_em')
     
     return render(request, "auditoria/iso/setup/dashboard.html", {
         "normas": normas,
