@@ -54,4 +54,82 @@
         </div>
     </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('.iso-item-checkbox');
+    if (checkboxes.length > 0) {
+        // Envolve container de escopo_itens num scroll e background
+        const container = checkboxes[0].closest('div').parentElement;
+        if (container) {
+            container.style.maxHeight = '400px';
+            container.style.overflowY = 'auto';
+            container.style.border = '1px solid #dee2e6';
+            container.style.borderRadius = '0.375rem';
+            container.style.padding = '0.5rem';
+            container.style.backgroundColor = '#f8f9fa';
+            
+            // Organiza cada item e adiciona JS de click
+            const wrapperDivs = container.querySelectorAll('div');
+            wrapperDivs.forEach(div => {
+                const cb = div.querySelector('input[type="checkbox"]');
+                const label = div.querySelector('label');
+                if (cb && label) {
+                    const text = label.textContent.trim();
+                    // Extrair a referência (ex: "4.1" ou "4.1.1")
+                    const refMatch = text.match(/^(\d+(?:\.\d+)*)/);
+                    let ref = "";
+                    let level = 0;
+                    if (refMatch) {
+                        ref = refMatch[1];
+                        level = (ref.match(/\./g) || []).length;
+                        cb.dataset.ref = ref;
+                    }
+                    
+                    // Stylize the row as a list item or card line
+                    div.style.padding = '8px 12px';
+                    div.style.marginBottom = '6px';
+                    div.style.backgroundColor = '#fff';
+                    div.style.border = '1px solid #e9ecef';
+                    div.style.borderRadius = '6px';
+                    div.style.marginLeft = (level * 24) + 'px';
+                    div.style.transition = 'all 0.2s';
+                    div.style.cursor = 'pointer';
+                    
+                    // Clique na div inteira (card) também marca o checkbox
+                    div.addEventListener('click', function(e) {
+                        if(e.target !== cb && e.target !== label) {
+                            cb.checked = !cb.checked;
+                            cb.dispatchEvent(new Event('change'));
+                        }
+                    });
+
+                    // Hover effect
+                    div.addEventListener('mouseenter', () => div.style.borderColor = '#b8daff');
+                    div.addEventListener('mouseleave', () => div.style.borderColor = '#e9ecef');
+                    
+                    if (level === 0) {
+                        div.style.fontWeight = 'bold';
+                        div.style.borderLeft = '4px solid #0d6efd';
+                    }
+                    
+                    // JS Logic for auto-selecting children
+                    cb.addEventListener('change', function() {
+                        const isChecked = this.checked;
+                        const myRef = this.dataset.ref;
+                        if (!myRef) return;
+                        
+                        // Select all children
+                        checkboxes.forEach(otherCb => {
+                            const otherRef = otherCb.dataset.ref;
+                            if (otherRef && otherRef !== myRef && otherRef.startsWith(myRef + '.')) {
+                                otherCb.checked = isChecked;
+                            }
+                        });
+                    });
+                }
+            });
+        }
+    }
+});
+</script>
 {% endblock %}

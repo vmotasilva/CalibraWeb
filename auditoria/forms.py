@@ -407,5 +407,5 @@ class AuditoriaIsoForm(forms.ModelForm):
             'data_inicio': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'data_fim': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'status': forms.Select(attrs={'class': 'form-select'}),
-            'escopo_itens': forms.SelectMultiple(attrs={'class': 'form-select', 'size': 8}),
+            'escopo_itens': forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input iso-item-checkbox'}),
         }
