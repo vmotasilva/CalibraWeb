@@ -41,6 +41,10 @@ from .models import (
     RespostaAuditoria,
     get_pergunta_resposta_preset,
     list_pergunta_resposta_presets,
+    Norma,
+    ItemNorma,
+    BancoPergunta,
+    AuditoriaIso,
 )
 
 
