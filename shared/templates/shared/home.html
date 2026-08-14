@@ -16,6 +16,18 @@
             <hr class="my-4">
             <p class="text-muted">Aqui você encontrará avisos, informações e artigos importantes para o seu dia a dia.<br>
             Use o menu acima para navegar pelas funcionalidades do sistema.</p>
+
+            <div class="position-relative mx-auto mt-4 mb-4" style="max-width: 600px;">
+                <div class="input-group input-group-lg shadow-sm rounded-pill overflow-hidden border">
+                    <span class="input-group-text bg-white border-0 text-muted ps-4">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input type="text" id="menuSearchInput" class="form-control border-0 shadow-none" placeholder="Buscar telas e funcionalidades..." autocomplete="off" style="font-size: 1rem;">
+                </div>
+                <div id="menuSearchResults" class="list-group position-absolute w-100 shadow-lg mt-2 text-start d-none" style="z-index: 1050; max-height: 350px; overflow-y: auto; border-radius: 1rem;">
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -149,4 +161,62 @@
                     </div>
                 </div>
             </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('menuSearchInput');
+        const searchResults = document.getElementById('menuSearchResults');
+        
+        const menuLinks = [];
+        const navbar = document.getElementById('navbarContent');
+        if (navbar) {
+            const links = navbar.querySelectorAll('a.dropdown-item, a.nav-link');
+            links.forEach(link => {
+                const text = link.innerText.trim();
+                const url = link.getAttribute('href');
+                if (url && url !== '#' && text && !text.includes('Sair') && !text.includes('Minha Conta')) {
+                    menuLinks.push({ text: text, url: url });
+                }
+            });
+        }
+
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                const query = this.value.toLowerCase().trim();
+                searchResults.innerHTML = '';
+                
+                if (query.length < 2) {
+                    searchResults.classList.add('d-none');
+                    return;
+                }
+
+                const filteredLinks = menuLinks.filter(link => 
+                    link.text.toLowerCase().includes(query)
+                );
+                
+                if (filteredLinks.length > 0) {
+                    filteredLinks.forEach(link => {
+                        const a = document.createElement('a');
+                        a.href = link.url;
+                        a.className = 'list-group-item list-group-item-action py-3 d-flex align-items-center gap-3 border-0 border-bottom';
+                        a.innerHTML = `<div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;"><i class="bi bi-arrow-right-short fs-5"></i></div> <span class="fw-medium text-dark">${link.text}</span>`;
+                        searchResults.appendChild(a);
+                    });
+                    searchResults.classList.remove('d-none');
+                } else {
+                    searchResults.innerHTML = '<div class="list-group-item text-muted py-4 text-center border-0"><i class="bi bi-emoji-frown fs-4 d-block mb-2 text-muted"></i>Nenhuma funcionalidade encontrada.</div>';
+                    searchResults.classList.remove('d-none');
+                }
+            });
+
+            document.addEventListener('click', function(e) {
+                if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+                    searchResults.classList.add('d-none');
+                }
+            });
+        }
+    });
+</script>
 {% endblock %}
