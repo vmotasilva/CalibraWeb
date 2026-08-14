@@ -157,6 +157,165 @@
                                 </tr>
                                 {% endfor %}
                             </tbody>
+{% extends 'base.html' %}
+
+{% block title %}Bem-vindo ao CalibraWeb{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <h1 class="display-4 mb-4">Bem-vindo ao CalibraWeb!</h1>
+            <p class="lead">Sua plataforma de gestão de calibração, instrumentos e qualidade.</p>
+            <div class="d-flex justify-content-center align-items-center gap-2 mb-3">
+                <a href="{% url 'changelog' %}" class="btn btn-sm btn-secondary px-3 py-2 border-0 shadow-sm rounded-pill text-decoration-none" style="font-size: 0.9rem; font-weight: 500;">
+                    <i class="bi bi-info-circle me-1"></i> Versão {{ system_version }}
+                </a>
+            </div>
+            <hr class="my-4">
+            <p class="text-muted">Aqui você encontrará avisos, informações e artigos importantes para o seu dia a dia.<br>
+            Use o menu acima para navegar pelas funcionalidades do sistema.</p>
+
+            <div class="position-relative mx-auto mt-4 mb-4" style="max-width: 600px;">
+                <div class="input-group input-group-lg shadow-sm rounded-pill overflow-hidden border">
+                    <span class="input-group-text bg-white border-0 text-muted ps-4">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input type="text" id="menuSearchInput" class="form-control border-0 shadow-none" placeholder="Buscar telas e funcionalidades..." autocomplete="off" style="font-size: 1rem;">
+                </div>
+                <div id="menuSearchResults" class="list-group position-absolute w-100 shadow-lg mt-2 text-start d-none" style="z-index: 1050; max-height: 350px; overflow-y: auto; border-radius: 1rem;">
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    {% if cobrancas_items %}
+    <div class="row justify-content-center mt-4" id="cobrancas">
+        <div class="col-lg-10">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <div class="fw-semibold d-flex align-items-center gap-2">
+                        <i class="bi bi-bell"></i>
+                        <span>Cobranças por módulo</span>
+                        {% if total_cobrancas %}
+                            <span class="badge bg-danger">{{ total_cobrancas }}</span>
+                        {% else %}
+                            <span class="badge bg-secondary">0</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Módulo</th>
+                                    <th style="width: 140px;" class="text-center">Pendências</th>
+                                    <th style="width: 140px;" class="text-center">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in cobrancas_items %}
+                                {% ifchanged item.section %}
+                                <tr class="table-secondary">
+                                    <td colspan="3" class="fw-semibold text-uppercase small py-2">{{ item.section }}</td>
+                                </tr>
+                                {% endifchanged %}
+                                <tr>
+                                    <td class="fw-semibold">{{ item.label }}</td>
+                                    <td class="text-center">
+                                        {% if item.count %}
+                                            <span class="badge bg-danger">{{ item.count }}</span>
+                                        {% else %}
+                                            <span class="text-muted">0</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        <a class="btn btn-sm btn-outline-primary" href="{{ item.url }}">
+                                            Abrir
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted py-3">Sem cobranças para exibir.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row justify-content-center mt-4" id="relatorios-compartilhados">
+        <div class="col-lg-10">
+            <div class="card shadow-sm border-primary">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <div class="fw-semibold d-flex align-items-center gap-2">
+                        <i class="bi bi-share"></i>
+                        <span>Relatórios Compartilhados Comigo</span>
+                        {% if pendentes_compartilhamento %}
+                            <span class="badge bg-danger">{{ pendentes_compartilhamento }}</span>
+                        {% else %}
+                            <span class="badge bg-secondary">0</span>
+                        {% endif %}
+                    </div>
+                    <div class="small text-muted">Somente leitura</div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Modelo</th>
+                                    <th>Remetente</th>
+                                    <th>Período</th>
+                                    <th class="text-center">Status</th>
+                                    <th style="width: 120px;" class="text-center">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in recebidos_relatorios %}
+                                <tr>
+                                    <td class="fw-semibold">{{ item.modelo_nome }}</td>
+                                    <td>{{ item.remetente.get_full_name|default:item.remetente.username }}</td>
+                                    <td>
+                                        {% if item.inicio or item.fim %}
+                                            {{ item.inicio|date:"d/m/Y"|default:"-" }} a {{ item.fim|date:"d/m/Y"|default:"-" }}
+                                        {% else %}
+                                            <span class="text-muted">Sem filtro de período</span>
+                                        {% endif %}
+                                        {% if item.subcategoria %}
+                                            <div class="small text-muted">Sub-categoria: {{ item.subcategoria }}</div>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        {% if item.expirado %}
+                                            <span class="badge bg-secondary">Expirado</span>
+                                        {% elif item.recebido_em %}
+                                            <span class="badge bg-success">Recebido</span>
+                                        {% else %}
+                                            <span class="badge bg-warning text-dark">Novo</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        {% if item.expirado %}
+                                            <span class="text-muted small">Indisponível</span>
+                                        {% else %}
+                                            <a class="btn btn-sm btn-outline-primary" href="{{ item.url }}">Abrir</a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-3">Nenhum relatório compartilhado recebido.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
                         </table>
                     </div>
                 </div>
@@ -177,7 +336,34 @@
                 const text = link.innerText.trim();
                 const url = link.getAttribute('href');
                 if (url && url !== '#' && text && !text.includes('Sair') && !text.includes('Minha Conta')) {
-                    menuLinks.push({ text: text, url: url });
+                    let breadcrumb = [];
+                    let searchString = text.toLowerCase();
+                    
+                    // Seção (h6.dropdown-header) se estiver dentro de uma ul collapse
+                    const parentUl = link.closest('ul.list-unstyled.collapse');
+                    if (parentUl && parentUl.previousElementSibling && parentUl.previousElementSibling.classList.contains('dropdown-header')) {
+                        const sectionName = parentUl.previousElementSibling.innerText.replace(/[\n\r]+|[\s]{2,}/g, ' ').trim();
+                        breadcrumb.push(sectionName);
+                        searchString += ' ' + sectionName.toLowerCase();
+                    }
+                    
+                    // Módulo principal
+                    const liDropdown = link.closest('li.nav-item.dropdown');
+                    if (liDropdown) {
+                        const moduleEl = liDropdown.querySelector('a.nav-link span.nav-text');
+                        if (moduleEl) {
+                            const moduleName = moduleEl.innerText.trim();
+                            breadcrumb.unshift(moduleName);
+                            searchString += ' ' + moduleName.toLowerCase();
+                        }
+                    }
+
+                    menuLinks.push({ 
+                        text: text, 
+                        url: url,
+                        breadcrumbText: breadcrumb.join(' > '),
+                        searchString: searchString
+                    });
                 }
             });
         }
@@ -193,7 +379,7 @@
                 }
 
                 const filteredLinks = menuLinks.filter(link => 
-                    link.text.toLowerCase().includes(query)
+                    link.searchString.includes(query)
                 );
                 
                 if (filteredLinks.length > 0) {
@@ -201,7 +387,17 @@
                         const a = document.createElement('a');
                         a.href = link.url;
                         a.className = 'list-group-item list-group-item-action py-3 d-flex align-items-center gap-3 border-0 border-bottom';
-                        a.innerHTML = `<div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;"><i class="bi bi-arrow-right-short fs-5"></i></div> <span class="fw-medium text-dark">${link.text}</span>`;
+                        
+                        let breadcrumbHtml = '';
+                        if (link.breadcrumbText) {
+                            breadcrumbHtml = `<div class="small text-muted" style="font-size: 0.75rem;">${link.breadcrumbText}</div>`;
+                        }
+                        
+                        a.innerHTML = `<div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 32px; height: 32px;"><i class="bi bi-arrow-right-short fs-5"></i></div> 
+                                       <div>
+                                            <span class="fw-medium text-dark d-block">${link.text}</span>
+                                            ${breadcrumbHtml}
+                                       </div>`;
                         searchResults.appendChild(a);
                     });
                     searchResults.classList.remove('d-none');
