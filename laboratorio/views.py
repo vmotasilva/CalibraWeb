@@ -1054,6 +1054,7 @@ def coating_painel(request):
     audit_mode = request.GET.get('audit') == 'true'
     anomaly_filter = request.GET.get('anomaly', '')
     lote_search = request.GET.get('lote_search', '').strip()
+    date_search = request.GET.get('date_search', '').strip()
     
     base_qs = RegistroCoating.objects.all().select_related(
         'turno_coating', 'maquina', 'tratamento', 'preparacao', 'montagem'
@@ -1061,6 +1062,14 @@ def coating_painel(request):
     
     if lote_search:
         base_qs = base_qs.filter(lote__icontains=lote_search)
+        
+    if date_search:
+        try:
+            from datetime import datetime
+            filter_date = datetime.strptime(date_search, '%Y-%m-%d').date()
+            base_qs = base_qs.filter(turno_coating__data=filter_date)
+        except ValueError:
+            pass
     
     if audit_mode:
         from django.db.models import F, ExpressionWrapper, DurationField
@@ -1089,7 +1098,7 @@ def coating_painel(request):
         todos_registros = base_qs.order_by('-lote', 'lado', '-id')
     
     # --- Paginação por máquina (cada aba tem sua própria página) ---
-    # Identificar máquinas antes para poder paginar por elas
+    # Identificar máquinas antes para poder paginar por ellas
     evaporadoras = Maquina.objects.filter(
         Q(categoria__nome__icontains='evaporadora') | 
         Q(nome__icontains='evaporadora')
@@ -1499,6 +1508,7 @@ def coating_painel(request):
         "audit_mode": audit_mode,
         "anomaly_filter": anomaly_filter,
         "lote_search": lote_search,
+        "date_search": date_search,
     }
     
     return render(request, "laboratorio/coating_painel.html", context)

@@ -27,9 +27,18 @@
         </div>
         <div class="d-flex gap-2 align-items-center flex-wrap">
             <!-- Campo de Busca por Número do Lote -->
-            <form method="get" action="." class="d-flex align-items-center" id="searchLoteForm">
+            <form method="get" action="." class="d-flex align-items-center gap-2" id="searchLoteForm">
                 {% if audit_mode %}<input type="hidden" name="audit" value="true">{% endif %}
                 {% if anomaly_filter %}<input type="hidden" name="anomaly" value="{{ anomaly_filter }}">{% endif %}
+                
+                <div class="input-group input-group-sm shadow-sm" style="max-width: 130px;">
+                    <input type="date" 
+                           name="date_search" 
+                           class="form-control text-muted" 
+                           value="{{ date_search|default:'' }}"
+                           onchange="this.form.submit()">
+                </div>
+
                 <div class="input-group input-group-sm shadow-sm" style="max-width: 280px;">
                     <span class="input-group-text bg-white border-end-0 text-muted">
                         <i class="bi bi-search"></i>
@@ -42,7 +51,7 @@
                            value="{{ lote_search|default:'' }}"
                            autocomplete="off"
                            oninput="filterLotesLive(this.value)">
-                    {% if lote_search %}
+                    {% if lote_search or date_search %}
                     <a href="?{% if audit_mode %}audit=true{% endif %}{% if anomaly_filter %}&anomaly={{ anomaly_filter }}{% endif %}" 
                        class="btn btn-outline-secondary border-start-0 text-muted" 
                        title="Limpar busca">
