@@ -29,7 +29,6 @@ from .forms import (
     NormaIsoForm,
     ItemNormaIsoForm,
     BancoPerguntaIsoForm,
-    AuditoriaIsoForm,
 )
 from .models import (
     ComentarioAuditoria,
