@@ -238,6 +238,48 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+
+    document.addEventListener('submit', function(e) {
+        if (e.target && e.target.classList.contains('form-delete-topico')) {
+            e.preventDefault();
+            if (!confirm('Tem certeza que deseja remover este tópico? Isso removerá a árvore de itens abaixo dele se houver.')) {
+                return;
+            }
+            
+            const form = e.target;
+            const formData = new FormData(form);
+            fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const item = form.closest('.accordion-item');
+                    if (item) {
+                        // Se for o último item da lista, opcionalmente recolocar a mensagem de vazio,
+                        // mas a remoção dinâmica simples já é suficiente na maioria das vezes.
+                        const parentContainer = item.parentElement;
+                        item.remove();
+                        if (parentContainer.querySelectorAll(':scope > .accordion-item').length === 0 && !parentContainer.id.includes('accordionTopicos')) {
+                            parentContainer.innerHTML = '<div class="text-muted small p-2 ms-4"><em>Nenhum sub-tópico cadastrado.</em></div>';
+                            parentContainer.classList.remove('accordion', 'sortable-container');
+                        }
+                    }
+                } else {
+                    alert('Erro ao remover: ' + (data.message || 'Desconhecido'));
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Ocorreu um erro inesperado.');
+            });
+        }
+    });
 });
 </script>
 {% endblock %}

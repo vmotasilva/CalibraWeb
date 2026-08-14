@@ -13,7 +13,7 @@
                 <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEditTopico" data-topico-id="{{ topico.id }}" data-topico-nome="{{ topico.nome }}">
                     <i class="bi bi-pencil"></i>
                 </button>
-                <form method="post" action="{% url 'auditoria:topico_delete' topico.id %}" style="display: inline;" onsubmit="return confirm('Tem certeza que deseja remover este tópico? Isso removerá a árvore de itens abaixo dele se houver.');">
+                <form method="post" action="{% url 'auditoria:topico_delete' topico.id %}" style="display: inline;" class="form-delete-topico">
                     {% csrf_token %}
                     <button type="submit" class="btn btn-sm btn-outline-danger">
                         <i class="bi bi-trash"></i>

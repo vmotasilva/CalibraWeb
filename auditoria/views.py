@@ -3116,16 +3116,30 @@ def modelo_categorias(request, modelo_id):
 @require_POST
 def topico_delete(request, pk):
     from .models import TopicoAuditoria
+    from django.http import JsonResponse
+    
+    is_ajax = request.headers.get("x-requested-with") == "XMLHttpRequest" or request.headers.get("Accept", "").startswith("application/json")
+    
     topico = get_object_or_404(TopicoAuditoria, pk=pk)
     if not _auditoria_can_update_modelo(request.user, topico.modelo):
+        if is_ajax:
+            return JsonResponse({"status": "error", "message": "Acesso negado."}, status=403)
         return HttpResponseForbidden()
     
     modelo_id = topico.modelo_id
     try:
         topico.delete()
+        if is_ajax:
+            return JsonResponse({"status": "success", "topico_id": pk})
         messages.success(request, "Tópico removido.")
     except ProtectedError:
-        messages.error(request, "Não é possível remover o tópico pois ele está vinculado a perguntas ou sub-tópicos vinculados a perguntas.")
+        msg = "Não é possível remover o tópico pois ele está vinculado a perguntas ou sub-tópicos vinculados a perguntas."
+        if is_ajax:
+            return JsonResponse({"status": "error", "message": msg}, status=400)
+        messages.error(request, msg)
+        
+    if is_ajax:
+        return JsonResponse({"status": "error", "message": "Erro desconhecido."}, status=400)
     return redirect("auditoria:modelo_categorias", modelo_id=modelo_id)
 
 @login_required
