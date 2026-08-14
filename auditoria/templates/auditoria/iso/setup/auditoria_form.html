@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<style>
+    /* Estilos para o Card expansivel do escopo */
+    .iso-card {
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        margin-bottom: 6px;
+        background-color: #fff;
+    }
+    .iso-card-header {
+        padding: 8px 12px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+        transition: background-color 0.2s;
+    }
+    .iso-card-header:hover {
+        background-color: #e9ecef;
+    }
+    .iso-card-body {
+        padding: 8px 12px 8px 30px;
+        border-top: 1px solid #dee2e6;
+        background-color: #fff;
+        display: none;
+        border-radius: 0 0 6px 6px;
+    }
+    .iso-card.expanded > .iso-card-body {
+        display: block;
+    }
+    .iso-chevron {
+        margin-right: 10px;
+        transition: transform 0.2s;
+        font-size: 0.9em;
+        color: #6c757d;
+    }
+    .iso-card.expanded > .iso-card-header .iso-chevron {
+        transform: rotate(90deg);
+    }
+    .iso-card-level-0 { border-left: 4px solid #0d6efd; }
+    
+    .form-check-label { margin-left: 6px; cursor: pointer; user-select: none; flex-grow: 1; }
+    
+    .escopo-container {
+        max-height: 500px;
+        overflow-y: auto;
+        padding: 10px;
+        background: #fdfdfd;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-5">
+    <div class="row justify-content-center">
+        <div class="col-md-9">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                    <h5 class="mb-0">{{ title }}</h5>
+                    <a href="{{ back_url }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-x-lg"></i> Cancelar
+                    </a>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        {% csrf_token %}
+                        
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {% for error in form.non_field_errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        
+                        <!-- Norma -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">{{ form.norma.label }} <span class="text-danger">*</span></label>
+                            {{ form.norma }}
+                            {{ form.norma.errors }}
+                        </div>
+                        
+                        <!-- Auditores com Select2 -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">{{ form.auditores.label }} <span class="text-danger">*</span></label>
+                            {{ form.auditores }}
+                            {{ form.auditores.errors }}
+                        </div>
+                        
+                        <!-- Datas lado a lado -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">{{ form.data_inicio.label }} <span class="text-danger">*</span></label>
+                                {{ form.data_inicio }}
+                                {{ form.data_inicio.errors }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">{{ form.data_fim.label }} <span class="text-danger">*</span></label>
+                                {{ form.data_fim }}
+                                {{ form.data_fim.errors }}
+                            </div>
+                        </div>
+                        
+                        <!-- Escopo (Itens Aplicaveis) -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">{{ form.escopo_itens.label }} <span class="text-danger">*</span></label>
+                            <div class="text-muted small mb-2">Selecione os itens e sub-itens que serão auditados. Clique na seta para expandir.</div>
+                            
+                            <!-- Esconde os checkboxes padroes do django -->
+                            <div id="escopo_wrapper_hidden" style="display:none;">
+                                {{ form.escopo_itens }}
+                            </div>
+                            
+                            <!-- Mostra a nova arvore renderizada via JS -->
+                            <div class="escopo-container" id="custom_escopo_tree">
+                                <!-- Preenchido via JS -->
+                            </div>
+                            {{ form.escopo_itens.errors }}
+                        </div>
+                        
+                        <div class="d-grid mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-check2-circle"></i> Salvar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    // 1. Inicializa o Select2
+    $('.select2-multiple').select2({
+        theme: 'bootstrap-5',
+        placeholder: 'Busque e adicione auditores...',
+        allowClear: true,
+        width: '100%'
+    });
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    // 2. Transforma o CheckboxSelectMultiple em uma Árvore de Cards Colapsável
+    const hiddenWrapper = document.getElementById('escopo_wrapper_hidden');
+    const customTree = document.getElementById('custom_escopo_tree');
+    
+    if (!hiddenWrapper || !customTree) return;
+    
+    // Pega todos os checkboxes originais gerados pelo Django
+    const originalDivs = hiddenWrapper.querySelectorAll('div');
+    const items = [];
+    
+    originalDivs.forEach(div => {
+        const cb = div.querySelector('input[type="checkbox"]');
+        const label = div.querySelector('label');
+        if (cb && label) {
+            const text = label.textContent.trim();
+            const refMatch = text.match(/^(\d+(?:\.\d+)*)/);
+            let ref = "";
+            let level = 0;
+            if (refMatch) {
+                ref = refMatch[1];
+                level = (ref.match(/\./g) || []).length;
+                cb.dataset.ref = ref;
+            }
+            items.push({ cb, label, text, ref, level });
+        }
+    });
+    
+    // Função para montar a árvore hierárquica
+    function buildTree(parentContainer, currentLevel, parentRef) {
+        const children = items.filter(item => item.level === currentLevel && (currentLevel === 0 || item.ref.startsWith(parentRef + '.')));
+        
+        children.forEach(item => {
+            // Cria o card principal
+            const card = document.createElement('div');
+            card.className = 'iso-card';
+            if (item.level === 0) card.classList.add('iso-card-level-0');
+            
+            // Header do card
+            const header = document.createElement('div');
+            header.className = 'iso-card-header';
+            
+            // Verifica se tem filhos (próximo level)
+            const hasChildren = items.some(child => child.level === currentLevel + 1 && child.ref.startsWith(item.ref + '.'));
+            
+            if (hasChildren) {
+                const chevron = document.createElement('i');
+                chevron.className = 'bi bi-chevron-right iso-chevron';
+                // Click no chevron ou espaco em branco para expandir
+                header.addEventListener('click', function(e) {
+                    if (e.target.tagName !== 'INPUT') {
+                        card.classList.toggle('expanded');
+                    }
+                });
+                header.appendChild(chevron);
+            } else {
+                // Spacer para alinhar com quem tem chevron
+                const spacer = document.createElement('span');
+                spacer.style.width = '24px';
+                spacer.style.display = 'inline-block';
+                header.appendChild(spacer);
+            }
+            
+            // Movemos o checkbox e o label originais pro novo header
+            item.cb.className = 'form-check-input iso-item-checkbox';
+            item.label.className = 'form-check-label';
+            if (item.level === 0) item.label.style.fontWeight = 'bold';
+            
+            header.appendChild(item.cb);
+            header.appendChild(item.label);
+            card.appendChild(header);
+            
+            // Se tiver filhos, criamos o body
+            if (hasChildren) {
+                const body = document.createElement('div');
+                body.className = 'iso-card-body';
+                card.appendChild(body);
+                buildTree(body, currentLevel + 1, item.ref);
+            }
+            
+            parentContainer.appendChild(card);
+            
+            // Lógica de click do checkbox para marcar filhos em cascata
+            item.cb.addEventListener('change', function(e) {
+                const isChecked = this.checked;
+                // Pega todos os checkboxes filhos *neste card*
+                const childrenCbs = card.querySelectorAll('.iso-card-body input[type="checkbox"]');
+                childrenCbs.forEach(childCb => {
+                    childCb.checked = isChecked;
+                    // opcional: disparar change se a lógica precisasse encadear infinitamente,
+                    // mas aqui todos os filhos estao dentro do card atual entao o querySelectorAll já pega todos
+                });
+            });
+        });
+    }
+    
+    // Inicia a construção da árvore no container
+    buildTree(customTree, 0, "");
+    
+});
+</script>
+{% endblock %}

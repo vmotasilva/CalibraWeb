@@ -3442,7 +3442,7 @@ def iso_auditoria_create(request):
             return redirect(reverse('auditoria:iso_setup_dashboard') + "?tab=auditorias")
     else:
         form = AuditoriaIsoForm()
-    return render(request, "auditoria/iso/setup/form_generico.html", {"form": form, "title": "Planejar Nova Auditoria", "back_url": reverse('auditoria:iso_setup_dashboard') + "?tab=auditorias"})
+    return render(request, "auditoria/iso/setup/auditoria_form.html", {"form": form, "title": "Planejar Nova Auditoria", "back_url": reverse('auditoria:iso_setup_dashboard') + "?tab=auditorias"})
 
 @login_required
 def iso_auditoria_edit(request, pk):
@@ -3455,7 +3455,7 @@ def iso_auditoria_edit(request, pk):
             return redirect(reverse('auditoria:iso_setup_dashboard') + "?tab=auditorias")
     else:
         form = AuditoriaIsoForm(instance=auditoria)
-    return render(request, "auditoria/iso/setup/form_generico.html", {"form": form, "title": f"Editar Auditoria: {auditoria.id}", "back_url": reverse('auditoria:iso_setup_dashboard') + "?tab=auditorias"})
+    return render(request, "auditoria/iso/setup/auditoria_form.html", {"form": form, "title": f"Editar Auditoria: {auditoria.id}", "back_url": reverse('auditoria:iso_setup_dashboard') + "?tab=auditorias"})
 
 @login_required
 @require_POST

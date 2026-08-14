@@ -400,12 +400,11 @@ class BancoPerguntaIsoForm(forms.ModelForm):
 class AuditoriaIsoForm(forms.ModelForm):
     class Meta:
         model = AuditoriaIso
-        fields = ['norma', 'auditores', 'data_inicio', 'data_fim', 'status', 'escopo_itens']
+        fields = ['norma', 'auditores', 'data_inicio', 'data_fim', 'escopo_itens']
         widgets = {
             'norma': forms.Select(attrs={'class': 'form-select'}),
-            'auditores': forms.SelectMultiple(attrs={'class': 'form-select', 'size': 4}),
+            'auditores': forms.SelectMultiple(attrs={'class': 'form-select select2-multiple'}),
             'data_inicio': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'data_fim': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-            'status': forms.Select(attrs={'class': 'form-select'}),
             'escopo_itens': forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input iso-item-checkbox'}),
         }
