@@ -2654,9 +2654,50 @@ def dashboard_coating(request):
             'lotes': grid_lotes if not grid_lotes.is_integer() else int(grid_lotes),
             'horas_rodando': format_timedelta(timedelta(seconds=rodando_sec_total)),
             'horas_parada': format_timedelta(timedelta(seconds=parada_sec_total)),
+            'raw_sec_rodando': rodando_sec_total,
+            'raw_sec_parada': parada_sec_total,
             'detalhes_json': detalhes_json
         })
 
+    # Agrupar para o Grid Analítico de KPI (Substituindo os cards)
+    kpi_agrupados = {}
+    for row in grid_rows:
+        key = (row['maquina'].codigo if hasattr(row['maquina'], 'codigo') else str(row['maquina']), row['turno'])
+        if key not in kpi_agrupados:
+            kpi_agrupados[key] = {
+                'maquina': key[0],
+                'turno': key[1],
+                'dias_operados': 0,
+                'total_lotes': 0,
+                'total_sec_rodando': 0,
+                'total_sec_parada': 0,
+            }
+        
+        kpi_agrupados[key]['dias_operados'] += 1
+        kpi_agrupados[key]['total_lotes'] += row['lotes']
+        kpi_agrupados[key]['total_sec_rodando'] += row['raw_sec_rodando']
+        kpi_agrupados[key]['total_sec_parada'] += row['raw_sec_parada']
+
+    kpi_grid_rows = []
+    for kpi in kpi_agrupados.values():
+        total_lotes = kpi['total_lotes']
+        dias = kpi['dias_operados']
+        
+        media_dia_rodando_sec = kpi['total_sec_rodando'] / dias if dias > 0 else 0
+        media_lote_rodando_sec = kpi['total_sec_rodando'] / total_lotes if total_lotes > 0 else 0
+        media_lote_parada_sec = kpi['total_sec_parada'] / total_lotes if total_lotes > 0 else 0
+        
+        kpi_grid_rows.append({
+            'maquina': kpi['maquina'],
+            'turno': kpi['turno'],
+            'total_lotes': total_lotes if not isinstance(total_lotes, float) or not total_lotes.is_integer() else int(total_lotes),
+            'media_dia_rodando': format_timedelta(timedelta(seconds=media_dia_rodando_sec)),
+            'media_lote_rodando': format_timedelta(timedelta(seconds=media_lote_rodando_sec)),
+            'media_lote_parada': format_timedelta(timedelta(seconds=media_lote_parada_sec)),
+        })
+
+    # Ordenar por maquina e turno
+    kpi_grid_rows = sorted(kpi_grid_rows, key=lambda x: (x['maquina'], x['turno']))
 
     return render(request, "laboratorio/dashboard_coating.html", {
         "maquinas": maquinas,
@@ -2678,6 +2719,7 @@ def dashboard_coating(request):
         "manut_datasets_sem": json.dumps(manut_datasets_sem),
         "manut_datasets_mes": json.dumps(manut_datasets_mes),
         "grid_rows": grid_rows,
+        "kpi_grid_rows": kpi_grid_rows,
     })
 
 @login_required
