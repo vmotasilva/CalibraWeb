@@ -26,10 +26,12 @@
             Nenhum tópico cadastrado. Adicione o primeiro tópico raiz para começar a estruturar sua auditoria.
         </div>
     {% else %}
-        <div class="accordion sortable-container" id="accordionTopicos">
-            {% for topico in topicos_raiz %}
-                {% include 'auditoria/_topico_node.html' with topico=topico %}
-            {% endfor %}
+        <div style="max-height: calc(100vh - 200px); overflow-y: auto; padding-right: 5px;">
+            <div class="accordion sortable-container" id="accordionTopicos">
+                {% for topico in topicos_raiz %}
+                    {% include 'auditoria/_topico_node.html' with topico=topico %}
+                {% endfor %}
+            </div>
         </div>
     {% endif %}
 </div>
