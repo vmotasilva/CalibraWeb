@@ -18,14 +18,20 @@
             Use o menu acima para navegar pelas funcionalidades do sistema.</p>
 
             <div class="position-relative mx-auto mt-4 mb-4" style="max-width: 600px;">
-                <div class="input-group input-group-lg shadow-sm rounded-pill overflow-hidden border">
-                    <span class="input-group-text bg-white border-0 text-muted ps-4">
-                        <i class="bi bi-search"></i>
-                    </span>
-                    <input style="display:none" type="text" name="fakeusernameremembered"/>
-                    <input style="display:none" type="password" name="fakepasswordremembered"/>
-                    <input type="search" name="sys_menu_search" id="menuSearchInput" class="form-control border-0 shadow-none" placeholder="Buscar telas e funcionalidades..." autocomplete="off" data-lpignore="true" data-1p-ignore style="font-size: 1rem;" readonly onfocus="this.removeAttribute('readonly');">
-                </div>
+                <form autocomplete="off" onsubmit="event.preventDefault();">
+                    <!-- Fake fields to trick Chrome password manager -->
+                    <div style="width: 0; height: 0; overflow: hidden; position: absolute; z-index: -1;">
+                        <input type="text" name="fake_username" id="fake_username" tabindex="-1" autocomplete="username">
+                        <input type="password" name="fake_password" id="fake_password" tabindex="-1" autocomplete="current-password">
+                    </div>
+
+                    <div class="input-group input-group-lg shadow-sm rounded-pill overflow-hidden border">
+                        <span class="input-group-text bg-white border-0 text-muted ps-4">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="text" role="presentation" name="search_menu_query" id="menuSearchInput" class="form-control border-0 shadow-none" placeholder="Buscar telas e funcionalidades..." autocomplete="off" spellcheck="false" data-lpignore="true" data-1p-ignore style="font-size: 1rem;">
+                    </div>
+                </form>
                 <div id="menuSearchResults" class="list-group position-absolute w-100 shadow-lg mt-2 text-start d-none" style="z-index: 1050; max-height: 350px; overflow-y: auto; border-radius: 1rem;">
                 </div>
             </div>
