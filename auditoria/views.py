@@ -3313,7 +3313,11 @@ def iso_matriz_view(request, auditoria_id):
 def iso_setup_dashboard(request):
     """Dashboard unificado com abas para gerenciamento do Setup da ISO."""
     normas = Norma.objects.all()
-    itens = ItemNorma.objects.all().order_by('norma', 'ordem')
+    itens_qs = ItemNorma.objects.all().order_by('norma', 'ordem')
+    itens = []
+    for item in itens_qs:
+        item.nivel = item.referencia.count('.')
+        itens.append(item)
     perguntas = BancoPergunta.objects.all()
     auditorias = AuditoriaIso.objects.all().order_by('-criado_em')
     

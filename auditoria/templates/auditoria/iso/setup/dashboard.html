@@ -118,8 +118,23 @@
                                 {% for item in itens %}
                                 <tr>
                                     <td><span class="badge bg-secondary">{{ item.norma.codigo }}</span></td>
-                                    <td class="fw-bold">{{ item.referencia }}</td>
-                                    <td>{{ item.titulo }}</td>
+                                    <td style="padding-left: calc(0.5rem + {{ item.nivel }} * 1.5rem);">
+                                        {% if item.nivel == 0 %}
+                                            <span class="fw-bold text-primary">{{ item.referencia }}</span>
+                                        {% else %}
+                                            <span class="fw-bold">{{ item.referencia }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td style="{% if item.nivel == 0 %}font-weight: 600;{% elif item.nivel == 1 %}font-weight: 500;{% endif %}">
+                                        {% if item.nivel == 0 %}
+                                            <i class="bi bi-folder2-open text-primary me-1"></i>
+                                        {% elif item.nivel == 1 %}
+                                            <i class="bi bi-folder me-1 text-muted"></i>
+                                        {% else %}
+                                            <i class="bi bi-file-earmark-text text-muted me-1" style="font-size: 0.9em;"></i>
+                                        {% endif %}
+                                        {{ item.titulo }}
+                                    </td>
                                     <td class="text-end">
                                         <a href="{% url 'auditoria:iso_item_edit' item.id %}" class="btn btn-sm btn-outline-secondary">
                                             <i class="bi bi-pencil"></i>
