@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    .interview-container {
+        max-width: 800px;
+        margin: 0 auto;
+        min-height: 70vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    .question-card {
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        padding: 40px;
+        background: white;
+    }
+    .question-text {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: #2c3e50;
+    }
+    .question-meta {
+        font-size: 0.9rem;
+        color: #7f8c8d;
+        margin-bottom: 2rem;
+    }
+    .textarea-response {
+        font-size: 1.1rem;
+        border-radius: 8px;
+        min-height: 150px;
+        resize: vertical;
+    }
+    .btn-classificacao {
+        border-radius: 30px;
+        padding: 10px 20px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    .btn-classificacao.active {
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    #save-indicator {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        padding: 10px 20px;
+        border-radius: 20px;
+        background: #27ae60;
+        color: white;
+        font-weight: bold;
+        opacity: 0;
+        transition: opacity 0.3s;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="mb-0">Auditoria ISO: {{ auditoria.norma.codigo }}</h4>
+            <small class="text-muted">Modo Entrevista</small>
+        </div>
+        <div>
+            <a href="{% url 'auditoria:iso_auditoria_list' %}" class="btn btn-outline-secondary">Sair</a>
+        </div>
+    </div>
+
+    <div class="interview-container" id="app">
+        <!-- JS irá renderizar aqui -->
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Carregando...</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="save-indicator">
+        <i class="bi bi-check-circle"></i> Salvo
+    </div>
+</div>
+
+{% csrf_token %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const perguntas = {{ perguntas_json|safe }};
+    const auditoriaId = {{ auditoria.id }};
+    let currentIndex = 0;
+    let saveTimeout = null;
+
+    const app = document.getElementById('app');
+    const saveIndicator = document.getElementById('save-indicator');
+
+    function renderQuestion() {
+        if (perguntas.length === 0) {
+            app.innerHTML = `<div class="alert alert-warning text-center">Nenhuma pergunta encontrada para o escopo desta auditoria.</div>`;
+            return;
+        }
+
+        const p = perguntas[currentIndex];
+        
+        let html = `
+            <div class="question-card">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="badge bg-secondary">Pergunta ${currentIndex + 1} de ${perguntas.length}</span>
+                    <span class="text-muted small">Itens: ${p.itens}</span>
+                </div>
+                
+                <div class="question-text">${p.texto_pergunta}</div>
+                ${p.dica_auditor ? `<div class="question-meta"><i class="bi bi-info-circle"></i> Dica: ${p.dica_auditor}</div>` : ''}
+                
+                <div class="mb-4">
+                    <textarea id="resposta-text" class="form-control textarea-response" placeholder="Digite a resposta ou anotações do auditor...">${p.texto_resposta}</textarea>
+                </div>
+
+                <div class="d-flex justify-content-center gap-3 mb-4">
+                    <button class="btn btn-outline-success btn-classificacao ${p.classificacao === 'C' ? 'active btn-success text-white' : ''}" onclick="setClassificacao('C')">Conforme</button>
+                    <button class="btn btn-outline-danger btn-classificacao ${p.classificacao === 'NC' ? 'active btn-danger text-white' : ''}" onclick="setClassificacao('NC')">Não Conforme</button>
+                    <button class="btn btn-outline-warning btn-classificacao ${p.classificacao === 'OM' ? 'active btn-warning text-dark' : ''}" onclick="setClassificacao('OM')">Oportunidade</button>
+                    <button class="btn btn-outline-secondary btn-classificacao ${p.classificacao === 'NA' ? 'active btn-secondary text-white' : ''}" onclick="setClassificacao('NA')">N/A</button>
+                </div>
+
+                <div class="d-flex justify-content-between mt-5">
+                    <button class="btn btn-light" onclick="prevQuestion()" ${currentIndex === 0 ? 'disabled' : ''}><i class="bi bi-arrow-left"></i> Anterior</button>
+                    <button class="btn btn-primary" onclick="nextQuestion()">${currentIndex === perguntas.length - 1 ? 'Finalizar <i class="bi bi-check2-all"></i>' : 'Próxima <i class="bi bi-arrow-right"></i>'}</button>
+                </div>
+            </div>
+        `;
+        
+        app.innerHTML = html;
+
+        // Adiciona evento de digitação para Autosave (Debounce)
+        const textarea = document.getElementById('resposta-text');
+        textarea.addEventListener('input', () => {
+            p.texto_resposta = textarea.value;
+            triggerAutosave();
+        });
+    }
+
+    function setClassificacao(val) {
+        perguntas[currentIndex].classificacao = val;
+        renderQuestion(); // Re-render para atualizar os botões
+        triggerAutosave(true); // Força save imediato
+    }
+
+    function triggerAutosave(immediate = false) {
+        if (saveTimeout) clearTimeout(saveTimeout);
+        if (immediate) {
+            doSave();
+        } else {
+            saveTimeout = setTimeout(doSave, 1000); // 1 segundo de debounce
+        }
+    }
+
+    function doSave() {
+        const p = perguntas[currentIndex];
+        
+        fetch("{% url 'auditoria:api_iso_autosave_resposta' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                auditoria_id: auditoriaId,
+                pergunta_id: p.id,
+                texto_resposta: p.texto_resposta,
+                classificacao: p.classificacao
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                showSaveIndicator();
+            }
+        });
+    }
+
+    function showSaveIndicator() {
+        saveIndicator.style.opacity = '1';
+        setTimeout(() => {
+            saveIndicator.style.opacity = '0';
+        }, 2000);
+    }
+
+    function nextQuestion() {
+        if (currentIndex < perguntas.length - 1) {
+            currentIndex++;
+            renderQuestion();
+        } else {
+            window.location.href = "{% url 'auditoria:iso_auditoria_list' %}";
+        }
+    }
+
+    function prevQuestion() {
+        if (currentIndex > 0) {
+            currentIndex--;
+            renderQuestion();
+        }
+    }
+
+    // Inicializa a primeira renderização
+    document.addEventListener('DOMContentLoaded', () => {
+        renderQuestion();
+    });
+</script>
+{% endblock %}

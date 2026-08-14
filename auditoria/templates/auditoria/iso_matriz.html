@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    .status-C { background-color: #198754; color: white; }
+    .status-NC { background-color: #dc3545; color: white; }
+    .status-OM { background-color: #fd7e14; color: white; }
+    .status-P { background-color: #6c757d; color: white; }
+    .status-NA { background-color: #dee2e6; color: #495057; }
+    
+    .status-badge {
+        display: inline-block;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="mb-0">Matriz de Conformidade: {{ auditoria.norma.codigo }}</h4>
+            <small class="text-muted">Resultado Automático da Entrevista</small>
+        </div>
+        <div>
+            <a href="{% url 'auditoria:iso_auditoria_list' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Voltar</a>
+            <button class="btn btn-primary" onclick="window.print()"><i class="bi bi-printer"></i> Imprimir PDF</button>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 15%">Referência</th>
+                            <th style="width: 45%">Item da Norma</th>
+                            <th style="width: 15%" class="text-center">Perguntas Vinculadas</th>
+                            <th style="width: 25%" class="text-center">Status Calculado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in matriz_data %}
+                        <tr>
+                            <td><strong>{{ row.referencia }}</strong></td>
+                            <td>
+                                <div><strong>{{ row.titulo }}</strong></div>
+                                <div class="small text-muted text-truncate" style="max-width: 400px;" title="{{ row.descricao }}">{{ row.descricao }}</div>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-secondary">{{ row.qtd_perguntas }}</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="status-badge status-{{ row.status }}">
+                                    {% if row.status == 'C' %} Conforme
+                                    {% elif row.status == 'NC' %} Não Conforme
+                                    {% elif row.status == 'OM' %} Oportunidade
+                                    {% elif row.status == 'P' %} Pendente
+                                    {% else %} Não Aplicável {% endif %}
+                                </span>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-4">Nenhum item avaliado nesta auditoria.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

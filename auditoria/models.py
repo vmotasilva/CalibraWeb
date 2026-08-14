@@ -676,3 +676,98 @@ class JustificativaAuditoria(models.Model):
 
     def __str__(self):
         return f"Justificativa para {self.modelo.nome} ({self.periodo_inicio} a {self.periodo_fim})"
+
+
+# ==========================================
+# MODELOS PARA AUDITORIA MODO ENTREVISTA (ISO)
+# ==========================================
+
+class Norma(models.Model):
+    codigo = models.CharField(max_length=50, unique=True, verbose_name="Código da Norma (ex: ISO 13485:2016)")
+    descricao = models.TextField(blank=True, verbose_name="Descrição")
+    ativa = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "Norma"
+        verbose_name_plural = "Normas"
+
+    def __str__(self):
+        return self.codigo
+
+
+class ItemNorma(models.Model):
+    norma = models.ForeignKey(Norma, on_delete=models.CASCADE, related_name="itens")
+    parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name="subitens")
+    referencia = models.CharField(max_length=50, verbose_name="Referência (ex: 4.1.6)")
+    titulo = models.CharField(max_length=255, verbose_name="Título do Item")
+    descricao = models.TextField(blank=True, verbose_name="Descrição / Requisito")
+    ordem = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        verbose_name = "Item da Norma"
+        verbose_name_plural = "Itens da Norma"
+        ordering = ['norma', 'referencia']
+
+    def __str__(self):
+        return f"{self.referencia} - {self.titulo}"
+
+
+class BancoPergunta(models.Model):
+    texto_pergunta = models.TextField(verbose_name="Pergunta (Linguagem Natural)")
+    dica_auditor = models.TextField(blank=True, verbose_name="Dicas / O que procurar")
+    itens_norma = models.ManyToManyField(ItemNorma, related_name="perguntas_vinculadas", verbose_name="Itens da Norma Avaliados")
+    ativa = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "Banco de Pergunta (ISO)"
+        verbose_name_plural = "Banco de Perguntas (ISO)"
+
+    def __str__(self):
+        return self.texto_pergunta[:80]
+
+
+class AuditoriaIso(models.Model):
+    STATUS_CHOICES = [
+        ("PLANEJADA", "Planejada"),
+        ("EM_ANDAMENTO", "Em Andamento"),
+        ("CONCLUIDA", "Concluída"),
+    ]
+    norma = models.ForeignKey(Norma, on_delete=models.PROTECT, related_name="auditorias")
+    data_inicio = models.DateField(verbose_name="Data de Início")
+    data_fim = models.DateField(verbose_name="Data de Fim Prevista")
+    auditores = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="auditorias_iso_realizadas", verbose_name="Auditores")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="PLANEJADA")
+    escopo_itens = models.ManyToManyField(ItemNorma, related_name="auditorias_escopo", verbose_name="Escopo (Itens Aplicáveis)", help_text="Itens da norma que serão avaliados nesta auditoria")
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Auditoria (Modo Entrevista)"
+        verbose_name_plural = "Auditorias (Modo Entrevista)"
+
+    def __str__(self):
+        return f"Auditoria {self.norma.codigo} - {self.data_inicio:%d/%m/%Y}"
+
+
+class RespostaEntrevistaIso(models.Model):
+    CLASSIFICACAO_CHOICES = [
+        ("C", "Conforme"),
+        ("NC", "Não Conforme"),
+        ("NA", "Não Aplicável"),
+        ("OM", "Oportunidade de Melhoria"),
+        ("P", "Pendente"),
+    ]
+    auditoria = models.ForeignKey(AuditoriaIso, on_delete=models.CASCADE, related_name="respostas")
+    pergunta = models.ForeignKey(BancoPergunta, on_delete=models.PROTECT, related_name="respostas")
+    texto_resposta = models.TextField(blank=True, verbose_name="Resposta do Auditado / Anotações")
+    classificacao = models.CharField(max_length=2, choices=CLASSIFICACAO_CHOICES, default="P")
+    respondida_em = models.DateTimeField(auto_now=True)
+    respondida_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+
+    class Meta:
+        verbose_name = "Resposta Entrevista ISO"
+        verbose_name_plural = "Respostas Entrevista ISO"
+        unique_together = ('auditoria', 'pergunta')
+
+    def __str__(self):
+        return f"{self.auditoria} - {self.pergunta.texto_pergunta[:30]}"
+

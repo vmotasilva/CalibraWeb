@@ -3166,3 +3166,128 @@ def reorder_topicos(request):
         return JsonResponse({"status": "success"})
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+# ==========================================
+# VIEWS PARA AUDITORIA MODO ENTREVISTA (ISO)
+# ==========================================
+
+from .models import AuditoriaIso, RespostaEntrevistaIso, BancoPergunta
+
+@login_required
+def iso_auditoria_list(request):
+    auditorias = AuditoriaIso.objects.all().order_by("-data_inicio")
+    return render(request, "auditoria/iso_auditoria_list.html", {"auditorias": auditorias})
+
+@login_required
+def iso_entrevista_view(request, auditoria_id):
+    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+    
+    # Obter perguntas vinculadas ao escopo da auditoria
+    perguntas = BancoPergunta.objects.filter(ativa=True, itens_norma__in=auditoria.escopo_itens.all()).distinct().prefetch_related('itens_norma')
+    # Fallback se escopo estiver vazio (para facilitar testes do MVP)
+    if not perguntas.exists():
+        perguntas = BancoPergunta.objects.filter(ativa=True).prefetch_related('itens_norma')
+    
+    # Obter respostas já existentes
+    respostas_dict = {}
+    for r in RespostaEntrevistaIso.objects.filter(auditoria=auditoria):
+        respostas_dict[r.pergunta_id] = {
+            "classificacao": r.classificacao,
+            "texto_resposta": r.texto_resposta
+        }
+        
+    perguntas_data = []
+    for p in perguntas:
+        r = respostas_dict.get(p.id, {})
+        perguntas_data.append({
+            "id": p.id,
+            "texto_pergunta": p.texto_pergunta,
+            "dica_auditor": p.dica_auditor,
+            "itens": ", ".join([item.referencia for item in p.itens_norma.all()]),
+            "classificacao": r.get("classificacao", "P"),
+            "texto_resposta": r.get("texto_resposta", "")
+        })
+        
+    context = {
+        "auditoria": auditoria,
+        "perguntas_json": json.dumps(perguntas_data)
+    }
+    return render(request, "auditoria/iso_entrevista.html", context)
+
+@login_required
+@require_POST
+def api_iso_autosave_resposta(request):
+    try:
+        data = json.loads(request.body)
+        auditoria_id = data.get("auditoria_id")
+        pergunta_id = data.get("pergunta_id")
+        texto_resposta = data.get("texto_resposta", "")
+        classificacao = data.get("classificacao", "P")
+        
+        auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+        pergunta = get_object_or_404(BancoPergunta, pk=pergunta_id)
+        
+        resposta, created = RespostaEntrevistaIso.objects.update_or_create(
+            auditoria=auditoria,
+            pergunta=pergunta,
+            defaults={
+                "texto_resposta": texto_resposta,
+                "classificacao": classificacao,
+                "respondida_por": request.user
+            }
+        )
+        return JsonResponse({"status": "success", "resposta_id": resposta.id})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+@login_required
+def iso_matriz_view(request, auditoria_id):
+    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+    
+    # 1. Obter todos os itens do escopo da auditoria
+    itens_escopo = auditoria.escopo_itens.all().prefetch_related('perguntas_vinculadas')
+    if not itens_escopo.exists():
+        # Fallback para MVP: pega todos os itens da norma
+        from .models import ItemNorma
+        itens_escopo = ItemNorma.objects.filter(norma=auditoria.norma).prefetch_related('perguntas_vinculadas')
+        
+    # 2. Obter respostas desta auditoria
+    respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria)
+    respostas_por_pergunta = {r.pergunta_id: r.classificacao for r in respostas}
+    
+    # 3. Hierarquia de pior caso
+    # NC (Não Conforme) > P (Pendente) > OM (Oportunidade) > C (Conforme) > NA (Não Aplicável)
+    # Se não houver perguntas, consideramos NA ou P.
+    hierarchy = {"NC": 5, "P": 4, "OM": 3, "C": 2, "NA": 1}
+    reverse_hierarchy = {v: k for k, v in hierarchy.items()}
+    
+    matriz_data = []
+    
+    for item in itens_escopo:
+        perguntas = item.perguntas_vinculadas.filter(ativa=True)
+        if not perguntas.exists():
+            status_item = "NA"
+        else:
+            pior_peso = 0
+            for p in perguntas:
+                classificacao = respostas_por_pergunta.get(p.id, "P") # Se não tem resposta, é Pendente
+                peso = hierarchy.get(classificacao, 4)
+                if peso > pior_peso:
+                    pior_peso = peso
+            status_item = reverse_hierarchy.get(pior_peso, "P")
+            
+        matriz_data.append({
+            "referencia": item.referencia,
+            "titulo": item.titulo,
+            "descricao": item.descricao,
+            "status": status_item,
+            "qtd_perguntas": perguntas.count()
+        })
+        
+    context = {
+        "auditoria": auditoria,
+        "matriz_data": sorted(matriz_data, key=lambda x: x['referencia'])
+    }
+    
+    return render(request, "auditoria/iso_matriz.html", context)
+

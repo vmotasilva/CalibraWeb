@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Auditorias ISO 13485 (Modo Entrevista)</h2>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Norma</th>
+                            <th>Data Prevista</th>
+                            <th>Status</th>
+                            <th class="text-end">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for aud in auditorias %}
+                        <tr>
+                            <td><strong>{{ aud.norma.codigo }}</strong></td>
+                            <td>{{ aud.data_inicio|date:"d/m/Y" }} a {{ aud.data_fim|date:"d/m/Y" }}</td>
+                            <td>
+                                {% if aud.status == 'PLANEJADA' %}
+                                    <span class="badge bg-secondary">Planejada</span>
+                                {% elif aud.status == 'EM_ANDAMENTO' %}
+                                    <span class="badge bg-primary">Em Andamento</span>
+                                {% else %}
+                                    <span class="badge bg-success">Concluída</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <a href="{% url 'auditoria:iso_entrevista_view' aud.id %}" class="btn btn-sm btn-outline-primary" title="Continuar Entrevista">
+                                    <i class="bi bi-play-circle"></i> Entrevista
+                                </a>
+                                <a href="{% url 'auditoria:iso_matriz_view' aud.id %}" class="btn btn-sm btn-outline-info" title="Ver Matriz Consolidada">
+                                    <i class="bi bi-grid-3x3"></i> Matriz
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-4">Nenhuma auditoria cadastrada. Cadastre através do Admin.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
