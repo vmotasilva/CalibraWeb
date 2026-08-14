@@ -128,6 +128,16 @@
                             {% endif %}
                         {% endif %}
 
+                        <li>
+                            <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseISO" style="cursor: pointer;">
+                                ISO 13485 <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+                            </h6>
+                            <ul class="list-unstyled collapse show" id="collapseISO">
+                                <li><a class="dropdown-item" href="{% url 'auditoria:iso_auditoria_list' %}">Modo Entrevista</a></li>
+                            </ul>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+
                         {% can_nav_block user 'auditoria' 'analise' as nav_aud_an %}
                         {% if nav_aud_an %}
                             {% can_nav_view user 'auditoria:dashboard' 'auditoria' as nav_aud_dash %}
