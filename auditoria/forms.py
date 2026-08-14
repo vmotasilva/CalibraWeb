@@ -37,7 +37,7 @@ class ModeloAuditoriaForm(forms.ModelForm):
             "periodicidade": forms.Select(attrs={"class": "form-select", "id": "id_periodicidade"}),
             "dia_semana": forms.Select(attrs={"class": "form-select", "id": "id_dia_semana"}),
             "dias_quinzenal": forms.TextInput(attrs={"class": "form-control", "id": "id_dias_quinzenal", "placeholder": "Ex: 1,16 ou 5,20"}),
-            "dia_mes": forms.NumberInput(attrs={"class": "form-control", "id": "id_dia_mes", "min": "1", "max": "31", "placeholder": "Dia do mês (1-31)"}),
+            "dia_mes": forms.NumberInput(attrs={"class": "form-control", "id": "id_dia_mes", "min": "1", "max": "31", "placeholder": "Dia do mÃªs (1-31)"}),
             "link_sharepoint": forms.URLInput(attrs={"class": "form-control", "placeholder": "https://..."}),
             "preenchimento_grid": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "grid_rotulo_item": forms.TextInput(attrs={"class": "form-control", "placeholder": "Ex.: Equipamento"}),
@@ -58,27 +58,27 @@ class ModeloAuditoriaForm(forms.ModelForm):
         dias_quinzenal = cleaned_data.get('dias_quinzenal')
         dia_mes = cleaned_data.get('dia_mes')
         
-        # Validar campos obrigatórios baseados na periodicidade
+        # Validar campos obrigatÃ³rios baseados na periodicidade
         if periodicidade == 'SEMANAL' and not dia_semana:
-            self.add_error('dia_semana', 'Este campo é obrigatório para periodicidade semanal.')
+            self.add_error('dia_semana', 'Este campo Ã© obrigatÃ³rio para periodicidade semanal.')
         
         if periodicidade == 'QUINZENAL' and not dias_quinzenal:
-            self.add_error('dias_quinzenal', 'Este campo é obrigatório para periodicidade quinzenal.')
+            self.add_error('dias_quinzenal', 'Este campo Ã© obrigatÃ³rio para periodicidade quinzenal.')
         elif periodicidade == 'QUINZENAL' and dias_quinzenal:
             # Validar formato dos dias quinzenais
             try:
                 dias = [int(d.strip()) for d in dias_quinzenal.split(',')]
                 if len(dias) != 2:
-                    self.add_error('dias_quinzenal', 'Informe exatamente 2 dias separados por vírgula.')
+                    self.add_error('dias_quinzenal', 'Informe exatamente 2 dias separados por vÃ­rgula.')
                 elif any(d < 1 or d > 31 for d in dias):
                     self.add_error('dias_quinzenal', 'Os dias devem estar entre 1 e 31.')
                 elif abs(dias[0] - dias[1]) < 10:
-                    self.add_error('dias_quinzenal', 'Os dias devem estar espaçados em pelo menos 10 dias.')
+                    self.add_error('dias_quinzenal', 'Os dias devem estar espaÃ§ados em pelo menos 10 dias.')
             except ValueError:
-                self.add_error('dias_quinzenal', 'Formato inválido. Use números separados por vírgula (ex: 1,16).')
+                self.add_error('dias_quinzenal', 'Formato invÃ¡lido. Use nÃºmeros separados por vÃ­rgula (ex: 1,16).')
         
         if periodicidade in ['MENSAL', 'TRIMESTRAL', 'SEMESTRAL', 'ANUAL'] and not dia_mes:
-            self.add_error('dia_mes', f'Este campo é obrigatório para periodicidade {periodicidade.lower()}.')
+            self.add_error('dia_mes', f'Este campo Ã© obrigatÃ³rio para periodicidade {periodicidade.lower()}.')
         
         return cleaned_data
 
@@ -86,7 +86,7 @@ class ModeloAuditoriaForm(forms.ModelForm):
 class PerguntaAuditoriaForm(forms.ModelForm):
     conjunto_resposta_padrao = forms.ChoiceField(
         required=False,
-        choices=[("", "—")] + get_pergunta_resposta_preset_choices(),
+        choices=[("", "â")] + get_pergunta_resposta_preset_choices(),
         widget=forms.Select(attrs={"class": "form-select"}),
     )
     opcoes_resposta_cores = forms.CharField(required=False, widget=forms.HiddenInput())
@@ -125,7 +125,7 @@ class PerguntaAuditoriaForm(forms.ModelForm):
                 attrs={
                     "class": "form-control",
                     "rows": 4,
-                    "placeholder": "Uma opção por linha (ex.: Conforme)\nNão conforme\nN/A",
+                    "placeholder": "Uma opÃ§Ã£o por linha (ex.: Conforme)\nNÃ£o conforme\nN/A",
                 }
             ),
             "exibir_grafico": forms.CheckboxInput(attrs={"class": "form-check-input"}),
@@ -198,7 +198,7 @@ class PerguntaAuditoriaForm(forms.ModelForm):
         if conjunto_resposta_padrao:
             preset = get_pergunta_resposta_preset(conjunto_resposta_padrao)
             if not preset:
-                self.add_error("conjunto_resposta_padrao", "Conjunto padrão inválido.")
+                self.add_error("conjunto_resposta_padrao", "Conjunto padrÃ£o invÃ¡lido.")
             else:
                 cleaned_data["tipo_resposta"] = preset["tipo_resposta"]
                 cleaned_data["opcoes_resposta"] = preset["opcoes_resposta_texto"]
@@ -214,13 +214,13 @@ class PerguntaAuditoriaForm(forms.ModelForm):
             if topico.modelo_id != modelo.id:
                 self.add_error(
                     "topico",
-                    "Tópico inválido para este modelo.",
+                    "TÃ³pico invÃ¡lido para este modelo.",
                 )
 
         values = [v.strip() for v in opcoes_resposta.replace("\r\n", "\n").split("\n") if v.strip()]
         if tipo_resposta == "LISTA":
             if not values:
-                self.add_error("opcoes_resposta", "Informe pelo menos 1 opção para o tipo 'Lista (opções)'.")
+                self.add_error("opcoes_resposta", "Informe pelo menos 1 opÃ§Ã£o para o tipo 'Lista (opÃ§Ãµes)'.")
 
         parsed_colors = {}
         if isinstance(opcoes_resposta_cores_value, dict):
@@ -233,12 +233,12 @@ class PerguntaAuditoriaForm(forms.ModelForm):
                     if isinstance(raw_map, dict):
                         parsed_colors = raw_map
                 except Exception:
-                    self.add_error("opcoes_resposta", "Falha ao processar as cores das opções.")
+                    self.add_error("opcoes_resposta", "Falha ao processar as cores das opÃ§Ãµes.")
 
         if tipo_resposta == "SIM_NAO":
             cleaned_data["opcoes_resposta_cores"] = {
                 "Sim": "#198754",
-                "Não": "#dc3545",
+                "NÃ£o": "#dc3545",
             }
             return cleaned_data
 
@@ -256,7 +256,7 @@ class PerguntaAuditoriaForm(forms.ModelForm):
                 if key not in values_by_key:
                     continue
                 if not PerguntaAuditoria._is_hex_color(color):
-                    self.add_error("opcoes_resposta", f"Cor inválida para a opção '{values_by_key[key]}'.")
+                    self.add_error("opcoes_resposta", f"Cor invÃ¡lida para a opÃ§Ã£o '{values_by_key[key]}'.")
                     continue
                 cleaned_map[values_by_key[key]] = color
             cleaned_data["opcoes_resposta_cores"] = cleaned_map
@@ -332,7 +332,7 @@ class RegistroAuditoriaForm(forms.ModelForm):
         periodo_inicio = cleaned_data.get("periodo_inicio")
         periodo_fim = cleaned_data.get("periodo_fim")
         if periodo_inicio and periodo_fim and periodo_fim < periodo_inicio:
-            self.add_error("periodo_fim", "O período final deve ser maior ou igual ao período inicial.")
+            self.add_error("periodo_fim", "O perÃ­odo final deve ser maior ou igual ao perÃ­odo inicial.")
         return cleaned_data
 
 
@@ -347,9 +347,9 @@ class ComentarioAuditoriaForm(forms.ModelForm):
     def clean_texto(self):
         texto = (self.cleaned_data.get("texto") or "").strip()
         if not texto:
-            raise forms.ValidationError("Informe um comentário.")
+            raise forms.ValidationError("Informe um comentÃ¡rio.")
         if len(texto) > 8000:
-            raise forms.ValidationError("Comentário muito longo (máx. 8000 caracteres).")
+            raise forms.ValidationError("ComentÃ¡rio muito longo (mÃ¡x. 8000 caracteres).")
         return texto
 from django.urls import path
 from .models import (
@@ -369,7 +369,7 @@ class NormaIsoForm(forms.ModelForm):
         fields = ['codigo', 'descricao']
         widgets = {
             'codigo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: ISO 13485:2016'}),
-            'descricao': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Sistemas de Gest�o da Qualidade'}),
+            'descricao': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Sistemas de Gestão da Qualidade'}),
         }
 
 
@@ -391,7 +391,7 @@ class BancoPerguntaIsoForm(forms.ModelForm):
         model = BancoPergunta
         fields = ['texto_pergunta', 'dica_auditor', 'itens_norma']
         widgets = {
-            'texto_pergunta': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Como a organiza��o...?'}),
+            'texto_pergunta': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Como a organização...?'}),
             'dica_auditor': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Verifique o documento X...'}),
             'itens_norma': forms.SelectMultiple(attrs={'class': 'form-select', 'size': 6}),
         }
