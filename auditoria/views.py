@@ -3434,27 +3434,29 @@ def iso_pergunta_delete(request, pk):
 # --- AuditoriaIso CRUD ---
 @login_required
 def iso_auditoria_create(request):
+    from .forms import AuditoriaIsoCreateForm
     if request.method == "POST":
-        form = AuditoriaIsoForm(request.POST)
+        form = AuditoriaIsoCreateForm(request.POST)
         if form.is_valid():
             form.save()
             messages.success(request, "Auditoria planejada com sucesso!")
             return redirect(reverse('auditoria:iso_setup_dashboard') + "?tab=auditorias")
     else:
-        form = AuditoriaIsoForm()
+        form = AuditoriaIsoCreateForm()
     return render(request, "auditoria/iso/setup/auditoria_form.html", {"form": form, "title": "Planejar Nova Auditoria", "back_url": reverse('auditoria:iso_setup_dashboard') + "?tab=auditorias"})
 
 @login_required
 def iso_auditoria_edit(request, pk):
+    from .forms import AuditoriaIsoEditForm
     auditoria = get_object_or_404(AuditoriaIso, pk=pk)
     if request.method == "POST":
-        form = AuditoriaIsoForm(request.POST, instance=auditoria)
+        form = AuditoriaIsoEditForm(request.POST, instance=auditoria)
         if form.is_valid():
             form.save()
             messages.success(request, "Planejamento de auditoria atualizado!")
             return redirect(reverse('auditoria:iso_setup_dashboard') + "?tab=auditorias")
     else:
-        form = AuditoriaIsoForm(instance=auditoria)
+        form = AuditoriaIsoEditForm(instance=auditoria)
     return render(request, "auditoria/iso/setup/auditoria_form.html", {"form": form, "title": f"Editar Auditoria: {auditoria.id}", "back_url": reverse('auditoria:iso_setup_dashboard') + "?tab=auditorias"})
 
 @login_required
