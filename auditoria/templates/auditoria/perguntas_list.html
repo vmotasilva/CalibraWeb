@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 
 {% block content %}
 <div class="container mt-4">
@@ -18,7 +18,7 @@
             </select>
         </div>
         <div class="col-md-4">
-            <label class="form-label">Filtrar por T�pico</label>
+            <label class="form-label">Filtrar por Tópico</label>
             <select name="topico" class="form-select" id="filtertopicoSelect" {% if not modelo_id %}disabled{% endif %}>
                 <option value="">Todas</option>
                 {% for sc in topicos %}
@@ -26,7 +26,7 @@
                 {% endfor %}
             </select>
             {% if not modelo_id %}
-                <div class="form-text">Selecione um modelo para ver as T�picos.</div>
+                <div class="form-text">Selecione um modelo para ver as Tópicos.</div>
             {% endif %}
         </div>
         <div class="col-md-3 d-flex flex-wrap align-items-end gap-2">
@@ -40,10 +40,10 @@
         <div class="card-body">
             <div class="row g-2 align-items-end">
                 <div class="col-md-4">
-                    <label class="form-label mb-0">Aplicar T�pico (selecionadas)</label>
+                    <label class="form-label mb-0">Aplicar Tópico (selecionadas)</label>
                     <input type="hidden" name="modelo" value="{{ modelo_id|default:'' }}" id="bulkModeloId">
                     <select name="topico" class="form-select" id="bulktopicoSelect" {% if not modelo_id %}disabled{% endif %}>
-                        <option value="">(Limpar T�pico)</option>
+                        <option value="">(Limpar Tópico)</option>
                         {% for sc in topicos %}
                         <option value="{{ sc.id }}">{{ sc.nome }}</option>
                         {% endfor %}
@@ -55,10 +55,10 @@
                 <div class="col-md-4 d-flex flex-wrap gap-2">
                     <button type="submit" class="btn btn-outline-primary" id="bulkApplyBtn" {% if not modelo_id %}disabled{% endif %}>Aplicar</button>
                     <button type="button" class="btn btn-primary" id="bulkRespostaOpenBtn" data-bs-toggle="modal" data-bs-target="#bulkRespostaModal" {% if not modelo_id %}disabled{% endif %}>Aplicar tipo de resposta</button>
-                    <button type="button" class="btn btn-outline-secondary" id="bulkClearSelectionBtn">Limpar seleção</button>
+                    <button type="button" class="btn btn-outline-secondary" id="bulkClearSelectionBtn">Limpar seleÃ§Ã£o</button>
                 </div>
             </div>
-            <div class="form-text mt-2">Marque as perguntas na tabela abaixo e clique em “Aplicar”.</div>
+            <div class="form-text mt-2">Marque as perguntas na tabela abaixo e clique em âAplicarâ.</div>
         </div>
     </form>
 
@@ -86,17 +86,17 @@
                             <option value="{{ preset.key }}">{{ preset.label }}</option>
                             {% endfor %}
                         </select>
-                        <div class="form-text">O conjunto oficial ISO aplica automaticamente o tipo, as opções, as cores e as flags de gráfico/GRID.</div>
+                        <div class="form-text">O conjunto oficial ISO aplica automaticamente o tipo, as opÃ§Ãµes, as cores e as flags de grÃ¡fico/GRID.</div>
                     </div>
 
                     <div class="border rounded p-3 bg-light-subtle">
-                        <div class="fw-semibold mb-2">Prévia do conjunto</div>
-                        <div id="bulkRespostaPreviewEmpty" class="text-muted">Selecione um conjunto para ver as opções que serão aplicadas.</div>
+                        <div class="fw-semibold mb-2">PrÃ©via do conjunto</div>
+                        <div id="bulkRespostaPreviewEmpty" class="text-muted">Selecione um conjunto para ver as opÃ§Ãµes que serÃ£o aplicadas.</div>
                         <div id="bulkRespostaPreview" class="d-none">
                             <div class="mb-2"><strong>Tipo:</strong> <span id="bulkRespostaPreviewTipo"></span></div>
-                            <div class="mb-2"><strong>Exibir gráfico:</strong> <span id="bulkRespostaPreviewGrafico"></span></div>
+                            <div class="mb-2"><strong>Exibir grÃ¡fico:</strong> <span id="bulkRespostaPreviewGrafico"></span></div>
                             <div class="mb-3"><strong>Aplicar no GRID:</strong> <span id="bulkRespostaPreviewGrid"></span></div>
-                            <div class="fw-semibold mb-1">Opções</div>
+                            <div class="fw-semibold mb-1">OpÃ§Ãµes</div>
                             <ul class="list-group" id="bulkRespostaPreviewList"></ul>
                         </div>
                     </div>
@@ -119,12 +119,12 @@
                             <input type="checkbox" class="form-check-input" id="selectAllPerguntas" {% if not modelo_id %}disabled{% endif %}>
                         </th>
                         <th>Modelo</th>
-                        <th>T�pico</th>
+                        <th>Tópico</th>
                         <th>Ordem</th>
                         <th>Pergunta</th>
                         <th>Tipo de Resposta</th>
-                        <th>Obrigatória</th>
-                        <th>Ações</th>
+                        <th>ObrigatÃ³ria</th>
+                        <th>AÃ§Ãµes</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -138,7 +138,7 @@
                         <td>{{ pergunta.ordem }}</td>
                         <td>{{ pergunta.pergunta }}</td>
                         <td>{{ pergunta.get_tipo_resposta_display }}</td>
-                        <td>{% if pergunta.obrigatoria %}Sim{% else %}Não{% endif %}</td>
+                        <td>{% if pergunta.obrigatoria %}Sim{% else %}NÃ£o{% endif %}</td>
                         <td>
                             <a
                                 href="{% url 'auditoria:pergunta_edit' pergunta.id %}"
@@ -283,9 +283,9 @@
                 return;
             }
 
-            bulkRespostaPreviewTipo.textContent = preset.tipo_resposta === 'LISTA' ? 'Lista (opções)' : preset.tipo_resposta;
-            bulkRespostaPreviewGrafico.textContent = preset.exibir_grafico ? 'Sim' : 'Não';
-            bulkRespostaPreviewGrid.textContent = preset.aplicar_no_grid ? 'Sim' : 'Não';
+            bulkRespostaPreviewTipo.textContent = preset.tipo_resposta === 'LISTA' ? 'Lista (opÃ§Ãµes)' : preset.tipo_resposta;
+            bulkRespostaPreviewGrafico.textContent = preset.exibir_grafico ? 'Sim' : 'NÃ£o';
+            bulkRespostaPreviewGrid.textContent = preset.aplicar_no_grid ? 'Sim' : 'NÃ£o';
 
             (preset.opcoes_resposta || []).forEach(function(opcao) {
                 const item = document.createElement('li');
