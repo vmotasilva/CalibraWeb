@@ -768,7 +768,7 @@ class AgendaAuditoriaIso(models.Model):
 
     def itens_cobertos(self):
         # Retorna os itens da norma associados através das perguntas
-        return ItemNorma.objects.filter(perguntas_banco__agendas_vinculadas=self).distinct()
+        return ItemNorma.objects.filter(perguntas_vinculadas__agendas_vinculadas=self).distinct()
 
     def progresso(self):
         perguntas_ids = self.perguntas.values_list('id', flat=True)
