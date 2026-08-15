@@ -47,25 +47,17 @@
                         <a href="{% url 'auditoria:iso_agenda_detail' auditoria.id obj.agenda.id %}" class="text-decoration-none text-dark stretched-link">
                             {{ obj.agenda.titulo }}
                         </a>
-                        <div class="dropdown" style="position: relative; z-index: 2;">
-                            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="dropdown">
-                                <i class="bi bi-three-dots-vertical"></i>
-                            </button>
-                            <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="{% url 'auditoria:iso_agenda_detail' auditoria.id obj.agenda.id %}"><i class="bi bi-gear-fill me-1"></i> Gestão de Perguntas</a></li>
-                                <li><a class="dropdown-item" href="{% url 'auditoria:iso_agenda_perguntas_edit' auditoria.id obj.agenda.id %}"><i class="bi bi-list-check"></i> Vincular do Banco</a></li>
-                                <li><a class="dropdown-item edit-agenda-btn" href="{% url 'auditoria:iso_agenda_edit' auditoria.id obj.agenda.id %}"><i class="bi bi-pencil"></i> Editar Bloco</a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li>
-                                    <form action="{% url 'auditoria:iso_agenda_delete' auditoria.id obj.agenda.id %}" method="POST" class="d-inline">
-                                        {% csrf_token %}
-                                        <button type="submit" class="dropdown-item text-danger" onclick="return confirm('Tem certeza?');">
-                                            <i class="bi bi-trash"></i> Remover
-                                        </button>
-                                    </form>
-                                </li>
-                            </ul>
-                        </div>
+                        <button class="btn btn-sm btn-light open-gestao-modal-btn" 
+                                type="button" 
+                                data-id="{{ obj.agenda.id }}"
+                                data-titulo="{{ obj.agenda.titulo }}"
+                                data-detail-url="{% url 'auditoria:iso_agenda_detail' auditoria.id obj.agenda.id %}"
+                                data-vincular-url="{% url 'auditoria:iso_agenda_perguntas_edit' auditoria.id obj.agenda.id %}"
+                                data-edit-url="{% url 'auditoria:iso_agenda_edit' auditoria.id obj.agenda.id %}"
+                                data-delete-url="{% url 'auditoria:iso_agenda_delete' auditoria.id obj.agenda.id %}"
+                                style="position: relative; z-index: 2;">
+                            <i class="bi bi-three-dots-vertical"></i>
+                        </button>
                     </h5>
                     
                     <p class="text-muted small mb-3 mt-2">
@@ -187,6 +179,65 @@
     </div>
   </div>
 </div>
+
+<!-- Modal Opções / Gestão da Agenda -->
+<div class="modal fade" id="gestaoAgendaModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow border-0 rounded-4">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold text-primary" id="gestaoModalTitulo">Gestão da Agenda</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body py-3">
+        <p class="text-muted small mb-3">Escolha a ação desejada para este bloco de auditoria:</p>
+        <div class="d-grid gap-2">
+            <a href="#" id="gestaoLinkDetalhes" class="btn btn-outline-primary text-start p-3 rounded-3 shadow-sm">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-gear-fill fs-3 me-3 text-primary"></i>
+                    <div>
+                        <strong class="d-block text-dark fs-6">Gestão de Perguntas</strong>
+                        <small class="text-muted">Cadastrar, visualizar e organizar o checklist deste bloco</small>
+                    </div>
+                </div>
+            </a>
+            
+            <a href="#" id="gestaoLinkVincular" class="btn btn-outline-secondary text-start p-3 rounded-3 shadow-sm">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-box-arrow-in-down fs-3 me-3 text-secondary"></i>
+                    <div>
+                        <strong class="d-block text-dark fs-6">Vincular do Banco</strong>
+                        <small class="text-muted">Selecionar perguntas prontas do Banco Geral de Perguntas</small>
+                    </div>
+                </div>
+            </a>
+
+            <button type="button" id="gestaoBtnEditar" class="btn btn-outline-secondary text-start p-3 rounded-3 shadow-sm">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-pencil-square fs-3 me-3 text-secondary"></i>
+                    <div>
+                        <strong class="d-block text-dark fs-6">Editar Data e Horários</strong>
+                        <small class="text-muted">Ajustar título, data e horários da agenda</small>
+                    </div>
+                </div>
+            </button>
+
+            <form id="gestaoFormDelete" action="" method="POST" class="mt-2">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-danger w-100 text-start p-3 rounded-3 shadow-sm" onclick="return confirm('Tem certeza que deseja remover esta agenda?');">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-trash fs-3 me-3 text-danger"></i>
+                        <div>
+                            <strong class="d-block text-danger fs-6">Excluir Bloco</strong>
+                            <small class="text-muted">Remover esta agenda permanentemente</small>
+                        </div>
+                    </div>
+                </button>
+            </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -238,25 +289,17 @@ document.addEventListener('DOMContentLoaded', function() {
                                         <a href="${data.detail_url}" class="text-decoration-none text-dark stretched-link">
                                             ${data.titulo}
                                         </a>
-                                        <div class="dropdown" style="position: relative; z-index: 2;">
-                                            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="dropdown">
-                                                <i class="bi bi-three-dots-vertical"></i>
-                                            </button>
-                                            <ul class="dropdown-menu">
-                                                <li><a class="dropdown-item" href="${data.detail_url}"><i class="bi bi-gear-fill me-1"></i> Gestão de Perguntas</a></li>
-                                                <li><a class="dropdown-item" href="${data.vincular_url}"><i class="bi bi-list-check"></i> Vincular do Banco</a></li>
-                                                <li><a class="dropdown-item edit-agenda-btn" href="${data.edit_url}"><i class="bi bi-pencil"></i> Editar Bloco</a></li>
-                                                <li><hr class="dropdown-divider"></li>
-                                                <li>
-                                                    <form action="${data.delete_url}" method="POST" class="d-inline">
-                                                        <input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">
-                                                        <button type="submit" class="dropdown-item text-danger" onclick="return confirm('Tem certeza?');">
-                                                            <i class="bi bi-trash"></i> Remover
-                                                        </button>
-                                                    </form>
-                                                </li>
-                                            </ul>
-                                        </div>
+                                        <button class="btn btn-sm btn-light open-gestao-modal-btn" 
+                                                type="button" 
+                                                data-id="${data.id}"
+                                                data-titulo="${data.titulo}"
+                                                data-detail-url="${data.detail_url}"
+                                                data-vincular-url="${data.vincular_url}"
+                                                data-edit-url="${data.edit_url}"
+                                                data-delete-url="${data.delete_url}"
+                                                style="position: relative; z-index: 2;">
+                                            <i class="bi bi-three-dots-vertical"></i>
+                                        </button>
                                     </h5>
                                     
                                     <p class="text-muted small mb-3 mt-2">
@@ -420,6 +463,72 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('Erro de comunicação.');
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = 'Salvar Alterações';
+            });
+        });
+    }
+
+    // Lógica para abrir o modal de Gestão da Agenda (3 pontinhos)
+    const gestaoModalEl = document.getElementById('gestaoAgendaModal');
+    if (gestaoModalEl) {
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest('.open-gestao-modal-btn');
+            if (btn) {
+                e.preventDefault();
+                const titulo = btn.dataset.titulo;
+                const detailUrl = btn.dataset.detailUrl;
+                const vincularUrl = btn.dataset.vincularUrl;
+                const editUrl = btn.dataset.editUrl;
+                const deleteUrl = btn.dataset.deleteUrl;
+
+                document.getElementById('gestaoModalTitulo').textContent = titulo || 'Gestão da Agenda';
+                document.getElementById('gestaoLinkDetalhes').setAttribute('href', detailUrl);
+                document.getElementById('gestaoLinkVincular').setAttribute('href', vincularUrl);
+                
+                const editBtnInModal = document.getElementById('gestaoBtnEditar');
+                editBtnInModal.dataset.editUrl = editUrl;
+                
+                const cardEl = btn.closest('.card-body');
+                if (cardEl) {
+                    editBtnInModal.dataset.targetCardId = cardEl.closest('.col').id || '';
+                }
+
+                document.getElementById('gestaoFormDelete').setAttribute('action', deleteUrl);
+
+                const modal = new bootstrap.Modal(gestaoModalEl);
+                modal.show();
+            }
+        });
+
+        // Clique no botão "Editar Data e Horários" dentro do modal de Gestão
+        document.getElementById('gestaoBtnEditar').addEventListener('click', function() {
+            const editUrl = this.dataset.editUrl;
+            const targetCardId = this.dataset.targetCardId;
+
+            // Fechar modal de gestão
+            const modalGestaoInstance = bootstrap.Modal.getInstance(gestaoModalEl);
+            if (modalGestaoInstance) modalGestaoInstance.hide();
+
+            // Abrir formulário de edição
+            document.getElementById('editAgendaForm').dataset.targetCardId = targetCardId;
+
+            fetch(editUrl, {
+                headers: {'X-Requested-With': 'XMLHttpRequest'}
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('edit_titulo').value = data.titulo || '';
+                document.getElementById('edit_data').value = data.data || '';
+                document.getElementById('edit_hora_inicio').value = data.hora_inicio || '';
+                document.getElementById('edit_hora_fim').value = data.hora_fim || '';
+                document.getElementById('editAgendaForm').action = data.action_url;
+                
+                const editModalEl = document.getElementById('editAgendaModal');
+                const editModal = new bootstrap.Modal(editModalEl);
+                editModal.show();
+            })
+            .catch(err => {
+                console.error('Erro ao carregar edição:', err);
+                alert('Erro ao carregar o formulário.');
             });
         });
     }
