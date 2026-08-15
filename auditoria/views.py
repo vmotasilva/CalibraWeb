@@ -3596,13 +3596,40 @@ def iso_agenda_detail(request, auditoria_id, pk):
     if not itens_norma_todos.exists():
         itens_norma_todos = ItemNorma.objects.all().order_by('referencia')
     
+    # Análise de Cobertura de Escopo (Itens Alvo vs Itens Cobertos)
+    itens_alvo = agenda.itens_norma.all()
+    itens_cobertos_qs = agenda.itens_cobertos()
+    itens_cobertos_ids = set(itens_cobertos_qs.values_list('id', flat=True))
+    
+    total_alvo = itens_alvo.count()
+    total_coberto = sum(1 for item in itens_alvo if item.id in itens_cobertos_ids)
+    porcentagem_cobertura = round((total_coberto / total_alvo * 100)) if total_alvo > 0 else 0
+    
     return render(request, "auditoria/iso/setup/agenda_detail.html", {
         "auditoria": auditoria,
         "agenda": agenda,
         "perguntas": agenda.perguntas.all().prefetch_related('itens_norma'),
         "form_nova_pergunta": form_nova_pergunta,
         "itens_norma_todos": itens_norma_todos,
+        "itens_alvo": itens_alvo,
+        "itens_cobertos_ids": itens_cobertos_ids,
+        "total_alvo": total_alvo,
+        "total_coberto": total_coberto,
+        "porcentagem_cobertura": porcentagem_cobertura,
     })
+
+@login_required
+@require_POST
+def iso_agenda_alvo_update(request, auditoria_id, pk):
+    from .models import AgendaAuditoriaIso, AuditoriaIso
+    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+    agenda = get_object_or_404(AgendaAuditoriaIso, pk=pk, auditoria=auditoria)
+    
+    item_ids = request.POST.getlist("itens_alvo")
+    agenda.itens_norma.set(item_ids)
+    
+    messages.success(request, "Itens alvo do escopo planejados com sucesso!")
+    return redirect("auditoria:iso_agenda_detail", auditoria_id=auditoria_id, pk=pk)
 
 @login_required
 @require_POST
