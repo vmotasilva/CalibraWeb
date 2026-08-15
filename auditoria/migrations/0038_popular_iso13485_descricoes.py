@@ -1,0 +1,317 @@
+# Generated manually to populate ISO 13485:2016 requirement descriptions
+from django.db import migrations
+
+DESCRICOES_DATA = [
+    {
+        "referencia": "4.1.1",
+        "descricao": "A organização deve documentar um sistema de gestão da qualidade e manter sua eficácia de acordo com os requisitos desta Norma e com os requisitos regulatórios aplicáveis.\n\nA organização deve estabelecer, implementar e manter qualquer requisito, procedimento, atividade ou acordo requerido documentado por esta Norma ou por requisitos regulatórios aplicáveis.\n\nA organização deve documentar o(s) papel(éis) assumido(s) pela organização sob os requisitos regulatórios aplicáveis.\n\nNOTA Entre os papéis assumidos pela organização, pode-se incluir o papel de fabricante, representante autorizado, importador ou distribuidor."
+    },
+    {
+        "referencia": "4.1.2",
+        "descricao": "A organização deve:\n\na)\t determinar os processos necessários para o sistema de gestão da qualidade e a aplicação destes processos em toda a organização, levando em consideração os papéis assumidos pela organização;\n\nb)\t aplicar uma abordagem baseada em risco no controle dos processos apropriados necessários ao sistema de gestão da qualidade;\n\nc) determinar a sequência e a interação destes processos."
+    },
+    {
+        "referencia": "4.1.3",
+        "descricao": "Para cada processo do sistema de gestão da qualidade, a organização deve:\n\na)\t determinar os critérios e os métodos necessários para assegurar que a operação e o controle destes processos sejam eficazes;\n\nb)\t assegurar a disponibilidade de recursos e informações necessárias para dar suporte à operação e ao monitoramento destes processos;\n\nc) implementar ações necessárias para alcançar os resultados planejados e manter a eficácia destes processos;\n\nd)\t monitorar, medir, conforme apropriado, e analisar estes processos;\n\ne)\t estabelecer e manter os registros necessários para demonstrar conformidade com esta Norma e com os requisitos regulatórios aplicáveis (ver 4.2.5)."
+    },
+    {
+        "referencia": "4.1.4",
+        "descricao": "A organização deve gerenciar estes processos do sistema de gestão da qualidade de acordo com os requisitos desta Norma e com os requisitos regulatórios aplicáveis. As alterações feitas nestes processos devem ser:\n\na)\t avaliadas com relação ao seu impacto no sistema de gestão da qualidade;\n\nb)\t avaliadas com relação ao seu impacto nos produtos para saúde produzidos com base neste sistema de gestão da qualidade;\n\nc) controladas de acordo com os requisitos desta Norma e com os requisitos regulatórios aplicáveis.\n\nExemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)"
+    },
+    {
+        "referencia": "4.1.5",
+        "descricao": "Quando uma organização optar por terceirizar algum processo que afete a conformidade do produto em relação aos requisitos, ela deve monitorar e assegurar o controle de tais processos.\n\nA organização deve reter responsabilidade de conformidade com esta Norma e com os requisitos do cliente e os requisitos regulatórios aplicáveis aos processos terceirizados. Os controles devem ser proporcionais ao risco envolvido e à habilidade da entidade externa em atender aos requisitos de acordo com 7.4. Os controles devem incluir acordos de qualidade escritos."
+    },
+    {
+        "referencia": "4.1.6",
+        "descricao": "A organização deve documentar procedimentos para validação da aplicação de software de computador usado no sistema de gestão da qualidade. Tais aplicações de software devem ser validadas antes do uso inicial e, conforme apropriado, após alterações de tal software ou em sua aplicação.\n\nA abordagem e as atividades específicas associadas à validação e revalidação de software devem ser proporcionais ao risco associado ao uso do software.\n\nRegistros de tais atividades devem ser mantidos (ver 4.2.5)."
+    },
+    {
+        "referencia": "4.2.1",
+        "descricao": "A documentação do sistema de gestão da qualidade (ver 4.2.4) deve incluir:\n\na)\t declarações documentadas de uma política da qualidade e dos objetivos da qualidade;\n\nb)\t um manual da qualidade;\n\nc) procedimentos documentados e registros requeridos por esta Norma;\n\nd)\t documentos, incluindo registros, determinados pela organização como necessários para assegu- rar os eficazes planejamento, operação e controle de seus processos;\n\ne)\t outras documentações especificadas por requisitos regulatórios aplicáveis."
+    },
+    {
+        "referencia": "4.2.2",
+        "descricao": "A organização deve documentar um manual da qualidade que inclua:\n\na)\t o escopo do sistema de gestão da qualidade, incluindo detalhes e justificativas para qualquer exclusão ou não aplicação;\n\nb)\t os procedimentos documentados para o sistema de gestão da qualidade ou referência a eles;\n\nc) a descrição da interação entre os processos do sistema de gestão da qualidade.\n\nO manual da qualidade deve definir a estrutura da documentação usada no sistema de gestão da qualidade."
+    },
+    {
+        "referencia": "4.2.3",
+        "descricao": "Para cada tipo ou família de produtos para saúde, a organização deve estabelecer e manter um ou mais arquivos que contenham ou que façam referência a documentos gerados para demonstrar conformidade com os requisitos desta Norma e com os requisitos regulatórios aplicáveis.\n\nExemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020) O conteúdo deste(s) arquivo(s) deve incluir, mas não estar limitado a:\n\na)\t descrição geral do produto para saúde, do uso/propósito destinado e da rotulagem, incluindo quaisquer instruções de uso;\n\nb)\t especificações do produto;\n\nc) especificações ou procedimentos para fabricação, embalagem, armazenamento, manuseio e distribuição;\n\nd)\t procedimentos para medição e monitoramento;\n\ne)\t conforme apropriado, requisitos para instalação;\n\nf) conforme apropriado, procedimentos para assistência técnica."
+    },
+    {
+        "referencia": "4.2.4",
+        "descricao": "Documentos requeridos pelo sistema de gestão da qualidade devem ser controlados. Registros são um tipo especial de documento e devem ser controlados de acordo com os requisitos fornecidos em"
+    },
+    {
+        "referencia": "4.2.5",
+        "descricao": ".\n\nUm procedimento documentado deve definir os controles necessários para:\n\na)\t analisar criticamente e aprovar os documentos para adequação antes da emissão;\n\nb)\t analisar criticamente, atualizar conforme necessário e reaprovar os documentos;\n\nc) assegurar que a situação da revisão atual e as alterações dos documentos sejam identificadas;\n\nd)\t assegurar que as versões pertinentes de documentos aplicáveis estejam disponíveis nos locais de uso;\n\ne)\t assegurar que os documentos permaneçam legíveis e prontamente identificáveis;\n\nf) assegurar que documentos de origem externa, determinados pela organização como necessários ao planejamento e à operação do sistema de gestão da qualidade, sejam identificados e que sua distribuição seja controlada;\n\ng)\t prevenir a deterioração ou a perda de documentos;\n\nh)\t prevenir o uso não intencional de documentos obsoletos e aplicar a eles identificação adequada.\n\nA organização deve assegurar que alterações nos documentos sejam analisadas criticamente e apro- vadas pela função aprovadora original ou outra função designada que tenha acesso às informações antecedentes pertinentes nas quais possa basear suas decisões.\n\nA organização deve definir o período pelo qual pelo menos uma cópia dos documentos controlados obsoletos deve ser retida. Este período deve assegurar que os documentos relativos à fabricação e ensaios de produtos para saúde estejam disponíveis pelo menos durante a vida útil do produto para saúde, como definido pela organização, mas não inferior ao período de retenção de qualquer registro resultante (ver 4.2.5), ou conforme especificado pelos requisitos regulatórios aplicáveis.\n\nExemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)"
+    },
+    {
+        "referencia": "4.2.5",
+        "descricao": "Registros devem ser mantidos para fornecer evidência de conformidade com requisitos e da operação eficaz do sistema de gestão da qualidade.\n\nA organização deve documentar procedimentos para definir os controles necessários para identificação, armazenamento, segurança e integridade, recuperação, tempo de retenção e disposição dos registros.\n\nA organização deve definir e implementar métodos para proteger informações confidenciais relacionadas à saúde contidas nos registros, de acordo com os requisitos regulatórios aplicáveis.\n\nOs registros devem ser mantidos legíveis, prontamente identificáveis e recuperáveis. Alterações nos registros devem permanecer identificáveis.\n\nA organização deve manter os registros por um período de tempo pelo menos equivalente ao da vida útil do produto para saúde, como definido pela organização ou especificado pelos requisitos regulatórios aplicáveis, mas não inferior a dois anos a partir da data de liberação do produto pela organização.\n\n5\t Responsabilidade da direção"
+    },
+    {
+        "referencia": "5.1",
+        "descricao": "A alta direção deve fornecer evidência de seu comprometimento com o desenvolvimento e a imple- mentação do sistema de gestão da qualidade e manter sua eficácia ao:\n\na)\t comunicar à organização a importância em atender aos requisitos do cliente, assim como aos requisitos regulatórios aplicáveis;\n\nb)\t estabelecer a política da qualidade;\n\nc) assegurar que sejam estabelecidos os objetivos da qualidade;\n\nd)\t conduzir análises críticas pela direção;\n\ne)\t assegurar a disponibilidade de recursos."
+    },
+    {
+        "referencia": "5.2",
+        "descricao": "A alta direção deve assegurar que os requisitos do cliente e os requisitos regulatórios aplicáveis sejam determinados e atendidos."
+    },
+    {
+        "referencia": "5.3",
+        "descricao": "A alta direção deve assegurar que a política da qualidade:\n\na)\t seja aplicável ao propósito da organização;\n\nb)\t inclua um comprometimento com o cumprimento dos requisitos e com a manutenção da eficácia do sistema de gestão da qualidade;\n\nc) proporcione uma estrutura para estabelecimento e análise crítica dos objetivos da qualidade; Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)\n\nd)\t seja comunicada e compreendida por toda a organização;\n\ne)\t seja analisada criticamente para sua contínua adequação."
+    },
+    {
+        "referencia": "5.4.1",
+        "descricao": "A alta direção deve assegurar que os objetivos da qualidade, incluindo aqueles necessários para atender aos requisitos regulatórios aplicáveis e aos requisitos do produto, sejam estabelecidos em funções e níveis relevantes dentro da organização. Os objetivos da qualidade devem ser mensuráveis e coerentes com a política da qualidade."
+    },
+    {
+        "referencia": "5.4.2",
+        "descricao": "A alta direção deve assegurar que:\n\na)\t o planejamento do sistema de gestão da qualidade seja realizado de forma a satisfazer os requi- sitos fornecidos em 4.1, assim como os objetivos da qualidade;\n\nb)\t a integridade do sistema de gestão da qualidade seja mantida quando alterações no sistema de gestão da qualidade forem planejadas e implementadas."
+    },
+    {
+        "referencia": "5.5.1",
+        "descricao": "A alta direção deve assegurar que responsabilidades e autoridades sejam definidas, documentadas e comunicadas dentro da organização.\n\nA alta direção deve documentar a inter-relação de todo o pessoal que gerencia, desempenha e verifica o trabalho que afeta a qualidade, e deve assegurar a independência e a autoridade necessárias para desempenhar estas tarefas."
+    },
+    {
+        "referencia": "5.5.2",
+        "descricao": "A alta direção deve indicar um membro da direção que, independentemente de outras responsabilida- des, tenha responsabilidade e autoridade que incluam:\n\na)\t assegurar que os processos necessários para o sistema de gestão da qualidade sejam documentados;\n\nb)\t relatar à alta direção sobre a eficácia do sistema de gestão da qualidade e qualquer necessidade de melhoria;\n\nc) assegurar a promoção da conscientização dos requisitos regulatórios aplicáveis e dos requisitos do sistema de gestão da qualidade por toda a organização."
+    },
+    {
+        "referencia": "5.5.3",
+        "descricao": "A alta direção deve assegurar que sejam estabelecidos na organização processos de comunicação apropriados e que seja realizada comunicação relativa à eficácia do sistema de gestão da qualidade.\n\nExemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)"
+    },
+    {
+        "referencia": "5.6.1",
+        "descricao": "A organização deve documentar procedimentos para a análise crítica pela direção. A alta direção deve analisar criticamente o sistema de gestão da qualidade da organização em intervalos planejados documentados, de modo a assegurar sua pertinência, adequação e eficácia contínuas. A análise crítica deve incluir a avaliação de oportunidades para a melhoria e a necessidade de alterações no sistema de gestão da qualidade, incluindo a política da qualidade e os objetivos da qualidade.\n\nRegistros das análises críticas pela direção devem ser mantidos (ver 4.2.5)."
+    },
+    {
+        "referencia": "5.6.2",
+        "descricao": "As entradas para a análise crítica pela direção devem incluir, mas não estar limitadas a, informações provenientes de:\n\na)\t realimentação (feedback);\n\nb)\t tratamento de reclamações;\n\nc) comunicação às autoridades regulatórias;\n\nd)\t auditorias;\n\ne)\t monitoramento e medição de processos;\n\nf) monitoramento e medição do produto;\n\ng)\t ação corretiva;\n\nh)\t ação preventiva;\n\ni) ações de acompanhamento provenientes de análises críticas pela direção anterior;\n\nj) alterações que poderiam afetar o sistema de gestão da qualidade;\n\nk) recomendações para melhoria;\n\nl) requisitos regulatórios aplicáveis, novos ou revisados."
+    },
+    {
+        "referencia": "5.6.3",
+        "descricao": "As saídas da análise crítica devem ser registradas (ver 4.2.5) e incluir as entradas analisadas critica- mente, bemo como quaisquer decisões e ações relacionadas à(s):\n\na)\t melhoria necessária para manter a pertinência, a adequação e a eficácia do sistema de gestão da qualidade e seus processos;\n\nb)\t melhoria do produto relacionada aos requisitos do cliente;\n\nc) alterações necessárias para responder aos requisitos regulatórios aplicáveis, novos ou revisados;\n\nd)\t necessidades de recursos.\n\nExemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020) 6\t Gestão de recursos"
+    },
+    {
+        "referencia": "6.1",
+        "descricao": "A organização deve determinar e prover recursos necessários para:\n\na)\t implementar o sistema de gestão da qualidade e manter a sua eficácia;\n\nb)\t atender aos requisitos regulatórios aplicáveis e aos requisitos do cliente."
+    },
+    {
+        "referencia": "6.2",
+        "descricao": "Pessoal que executa trabalho que afeta a qualidade do produto deve ser competente, com base em educação, treinamento, habilidades e experiência apropriados.\n\nA organização deve documentar o(s) processo(s) para estabelecer as competências, fornecer treina- mento necessário e assegurar a conscientização do pessoal de serviço.\n\nA organização deve:\n\na)\t determinar as competências necessárias para o pessoal que executa trabalho que afeta a quali- dade do produto;\n\nb)\t fornecer treinamento ou adotar outras ações para obtenção ou manutenção das competências necessárias;\n\nc) avaliar a eficácia das ações executadas;\n\nd)\t assegurar que o seu pessoal tenha consciência quanto à relevância e à importância de suas atividades e sobre como elas contribuem para alcançar os objetivos da qualidade;\n\ne)\t manter registros apropriados de educação, treinamento, habilidades e experiência (ver 4.2.5).\n\nNOTA A metodologia usada para a verificação da eficácia é proporcional ao risco associado ao trabalho para o qual o treinamento ou outra ação está sendo fornecida."
+    },
+    {
+        "referencia": "6.3",
+        "descricao": "A organização deve documentar os requisitos para a infraestrutura necessária para alcançar a confor- midade com os requisitos do produto, prevenir a mistura de produtos e assegurar o manuseio ordenado do produto. A infraestrutura inclui, conforme apropriado:\n\na)\t edifícios, espaço de trabalho e instalações associadas;\n\nb)\t equipamentos de processo (tanto hardware quanto software);\n\nc) serviços de apoio (como transporte, comunicação ou sistemas de informação).\n\nA organização deve documentar os requisitos para as atividades de manutenção, incluindo o intervalo de execução das atividades de manutenção, quando tais atividades de manutenção, ou a falta delas, puderem afetar a qualidade do produto. Conforme apropriado, os requisitos devem se aplicar aos equipamentos usados na produção, no controle do ambiente de trabalho, no monitoramento e na medição.\n\nRegistros de tais manutenções devem ser mantidos (ver 4.2.5).\n\nExemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)"
+    },
+    {
+        "referencia": "6.4.1",
+        "descricao": "A organização deve documentar os requisitos para o ambiente de trabalho necessário para alcançar a conformidade com os requisitos do produto.\n\nSe as condições para o ambiente de trabalho puderem apresentar um efeito adverso na qualidade do produto, a organização deve documentar os requisitos para o ambiente de trabalho e os procedi- mentos para monitorar e controlar este ambiente.\n\nA organização deve:\n\na)\t documentar os requisitos para saúde, limpeza e vestuário do pessoal, se o contato entre estes e o produto ou o ambiente de trabalho puder afetar a segurança ou o desempenho do produto para saúde;\n\nb)\t assegurar que todo o pessoal requisitado a trabalhar temporariamente sob condições ambientais especiais dentro do ambiente de trabalho seja competente ou supervisionado por uma pessoa competente.\n\nNOTA Informações adicionais podem ser encontradas nas ISO 14644 e ISO 14698."
+    },
+    {
+        "referencia": "6.4.2",
+        "descricao": "Conforme apropriado, a organização deve planejar e documentar arranjos para o controle de produtos contaminados ou potencialmente contaminados, de modo a prevenir a contaminação do ambiente de trabalho, pessoal ou produto.\n\nPara produtos para saúde estéreis, a organização deve documentar os requisitos para o controle de contaminação com micro-organismos ou material particulado, e manter a limpeza requerida durante os processos de montagem ou embalagem.\n\n7\t Realização de produto"
+    },
+    {
+        "referencia": "7.1",
+        "descricao": "A organização deve planejar e desenvolver os processos necessários para a realização do produto.\n\nO planejamento da realização do produto deve ser coerente com os requisitos de outros processos do sistema de gestão da qualidade.\n\nA organização deve documentar um ou mais processos para o gerenciamento de risco na realização do produto. Registros das atividades de gerenciamento de risco devem ser mantidos (ver 4.2.5).\n\nAo planejar a realização do produto, a organização deve determinar, conforme apropriado:\n\na)\t os objetivos da qualidade e os requisitos para o produto;\n\nb)\t a necessidade de estabelecer processos e documentos (ver 4.2.4) e prover recursos específicos para o produto, incluindo infraestrutura e ambiente de trabalho; Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)\n\nc) as atividades requeridas de verificação, validação, monitoramento, medição, inspeção e ensaio, manuseio, armazenamento, distribuição e rastreabilidade específicas ao produto, juntamente com os critérios de aceitação do produto;\n\nd)\t os registros necessários para fornecer evidência de que os processos de realização e o produto resultante atendem aos requisitos (ver 4.2.5).\n\nA saída deste planejamento deve ser documentada de forma adequada aos métodos de operação da organização.\n\nNOTA Informações adicionais podem ser encontradas na ABNT NBR ISO 14971."
+    },
+    {
+        "referencia": "7.2.1",
+        "descricao": "A organização deve determinar:\n\na)\t os requisitos especificados pelo cliente, incluindo os requisitos para atividades de entrega e pós-entrega;\n\nb)\t os requisitos não declarados pelo cliente, mas necessários para o uso pretendido ou especificado, quando conhecidos;\n\nc) os requisitos regulatórios aplicáveis relacionados ao produto;\n\nd)\t qualquer treinamento de usuário necessário para assegurar o desempenho especificado e o uso seguro do produto para saúde;\n\ne)\t quaisquer requisitos adicionais determinados pela organização."
+    },
+    {
+        "referencia": "7.2.2",
+        "descricao": "A organização deve analisar criticamente os requisitos relacionados ao produto. Esta análise crítica deve ser realizada antes que a organização assuma o compromisso de fornecer um produto para o cliente (por exemplo, apresentação de propostas, aceitação de contratos ou pedidos, aceitação de alterações em contratos ou pedidos) e deve assegurar que:\n\na)\t os requisitos do produto estejam definidos e documentados;\n\nb)\t os requisitos de contrato ou do pedido que diferem daqueles previamente expressos sejam determinados;\n\nc) os requisitos regulatórios aplicáveis sejam atendidos;\n\nd)\t qualquer treinamento de usuário identificado de acordo com 7.2.1, esteja disponível ou tenha sua disponibilidade planejada;\n\ne)\t a organização tenha a habilidade de atender aos requisitos definidos.\n\nRegistros dos resultados da análise crítica e das ações decorrentes da análise crítica devem ser mantidos (ver 4.2.5).\n\nExemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020) Quando o cliente não fornecer uma declaração documentada dos requisitos, a organização deve con- firmar os requisitos do cliente antes da aceitação.\n\nQuando os requisitos do produto forem alterados, a organização deve assegurar que os documentos relevantes sejam alterados e que o pessoal relevante esteja ciente dos requisitos alterados."
+    },
+    {
+        "referencia": "7.2.3",
+        "descricao": "A organização deve planejar e documentar arranjos para comunicação com os clientes com relação a:\n\na)\t informações do produto;\n\nb)\t tratamento de solicitações, contratos ou pedidos, incluindo emendas;\n\nc) realimentação do cliente, incluindo reclamações;\n\nd)\t notas de aviso.\n\nA organização deve manter comunicação com as autoridades regulatórias, de acordo com os requisi- tos regulatórios aplicáveis."
+    },
+    {
+        "referencia": "7.3.1",
+        "descricao": "A organização deve documentar procedimentos para o projeto e o desenvolvimento."
+    },
+    {
+        "referencia": "7.3.2",
+        "descricao": "A organização deve planejar e controlar o projeto e o desenvolvimento do produto. Conforme apro- priado, os documentos do planejamento de projeto e desenvolvimento devem ser mantidos e atuali- zados à medida que o projeto e o desenvolvimento avançam.\n\nDurante o planejamento de projeto e desenvolvimento, a organização deve documentar:\n\na)\t os estágios do projeto e do desenvolvimento;\n\nb)\t a(s) análise(s) crítica(s) necessária(s) a cada estágio do projeto e do desenvolvimento;\n\nc) as atividades de verificação, validação e transferência de projeto que são apropriadas a cada estágio do projeto e do desenvolvimento;\n\nd)\t as responsabilidades e as autoridades para o projeto e o desenvolvimento;\n\ne)\t os métodos para assegurar a rastreabilidade tanto das saídas do projeto e do desenvolvimento quanto das entradas do projeto e do desenvolvimento;\n\nf) os recursos necessários, incluindo as competências necessárias do pessoal de serviço."
+    },
+    {
+        "referencia": "7.3.3",
+        "descricao": "Entradas relativas aos requisitos do produto devem ser determinadas, e registros devem ser mantidos (ver 4.2.5). Estas entradas devem incluir:\n\na)\t requisitos de funcionamento, desempenho, usabilidade e segurança e de acordo com o uso pretendido; Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)\n\nb)\t requisitos regulatórios e normas aplicáveis;\n\nc) a(s) saída(s) aplicável(is) do gerenciamento de risco;\n\nd)\t conforme apropriado, as informações provenientes de projetos similares anteriores;\n\ne)\t outros requisitos essenciais para o projeto e o desenvolvimento do produto e dos processos.\n\nEstas entradas devem ser analisadas criticamente quanto à adequação e aprovadas.\n\nOs requisitos devem ser completos, sem ambiguidade, capazes de serem verificados ou validados e não conflitantes entre si.\n\nNOTA Informações adicionais podem ser encontradas na IEC 62366-1."
+    },
+    {
+        "referencia": "7.3.4",
+        "descricao": "Saídas de projeto e desenvolvimento devem:\n\na)\t atender aos requisitos de entrada para projeto e desenvolvimento;\n\nb)\t fornecer informações apropriadas para aquisição, produção e fornecimento de serviços;\n\nc) conter ou fazer referência a critérios de aceitação do produto;\n\nd)\t especificar as características do produto que são essenciais para seu uso seguro e adequado.\n\nSaídas de projeto e desenvolvimento devem ser apresentadas de uma forma que possibilite a veri- ficação em relação às entradas de projeto e desenvolvimento e devem ser aprovadas antes de sua liberação.\n\nRegistros das saídas de projeto e desenvolvimento devem ser mantidos (ver 4.2.5)."
+    },
+    {
+        "referencia": "7.3.5",
+        "descricao": "Devem ser realizadas, em fases apropriadas, análises críticas sistemáticas de projeto e desenvolvi- mento, de acordo com arranjos planejados e documentados para:\n\na)\t avaliar a habilidade dos resultados de projeto e desenvolvimento em atender aos requisitos;\n\nb)\t identificar e propor ações necessárias.\n\nEntre os participantes destas análises críticas, devem estar incluídos representantes de funções envol- vidas com o estágio de projeto e desenvolvimento que está sendo analisado criticamente, bem como outro pessoal especializado.\n\nRegistros dos resultados das análises críticas e de quaisquer ações necessárias devem ser mantidos e devem incluir a identificação do projeto em análise crítica, os participantes envolvidos e a data da análise crítica (ver 4.2.5)."
+    },
+    {
+        "referencia": "7.3.6",
+        "descricao": "A verificação de projeto e desenvolvimento deve ser executada de acordo com arranjos planejados e documentados, de modo a assegurar que as saídas de projeto e desenvolvimento atendam aos requisitos de entrada de projeto e desenvolvimento.\n\nExemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020) A organização deve documentar planos de verificação que incluam métodos, critérios de aceitação e, conforme apropriado, técnicas estatísticas com justificativas para tamanho de amostra.\n\nSe o uso pretendido requerer que o produto para saúde seja conectado ou possua uma interface com outro(s) produto(s) para saúde, a verificação deve incluir a confirmação de que as saídas de projeto atendem às entradas do projeto, quando estes produtos estiverem conectados ou em interface.\n\nRegistros dos resultados e das conclusões da verificação, bem como das ações necessárias, devem ser mantidos (ver 4.2.4 e 4.2.5)."
+    },
+    {
+        "referencia": "7.3.7",
+        "descricao": "A validação de projeto e  desenvolvimento deve ser executada de acordo com arranjos planejados e documentados, de modo a assegurar que o produto resultante seja capaz de atender aos requisitos para aplicação especificada ou uso pretendido.\n\nA organização deve documentar planos de validação que incluam métodos, critérios de aceitação e, conforme apropriado, técnicas estatísticas com justificativas para o tamanho de amostra.\n\nA validação do projeto deve ser conduzida em produto representativo. Produto representativo inclui unidades iniciais de produção, lotes iniciais de produção ou seus equivalentes. As justificativas para a escolha de produto usado para a validação devem ser registradas (ver 4.2.5).\n\nComo parte da validação de projeto e desenvolvimento, a organização deve realizar avaliações clínicas ou avaliações de desempenho do produto para saúde de acordo com os requisitos regulatórios aplicáveis. Um produto para saúde usado para avaliação clínica ou avaliação de desempenho não é considerado liberado para uso do cliente.\n\nSe o uso pretendido requerer que o produto para saúde seja conectado ou possua uma interface com outro(s) produto(s) para saúde, a validação deve incluir a confirmação de que os requisitos para a aplicação especificada ou o uso pretendido são atendidos quando estes produtos estiverem conectados ou em interface.\n\nA validação deve ser finalizada antes da liberação do produto para uso do cliente.\n\nDevem ser mantidos registros dos resultados e das conclusões da validação, bem como das ações necessárias (ver 4.2.4 e 4.2.5)."
+    },
+    {
+        "referencia": "7.3.8",
+        "descricao": "A organização deve documentar procedimentos para a transferência das saídas de projeto e desenvol- vimento para a fabricação. Estes procedimentos devem assegurar que as saídas de projeto e desen- volvimento sejam verificadas como adequadas à fabricação antes de se tornarem especificações finais de produção, e que a capacidade de produção possa atender aos requisitos do produto.\n\nResultados e conclusões da transferência devem ser registrados (ver 4.2.5)."
+    },
+    {
+        "referencia": "7.3.9",
+        "descricao": "A organização deve documentar procedimentos para controlar alterações de projeto e desenvol- vimento. A organização deve determinar a significância da alteração com relação aos requisitos de função, desempenho, usabilidade, segurança e requisitos regulatórios aplicáveis para o produto para saúde e seu uso pretendido.\n\nExemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020) Alterações de projeto e desenvolvimento devem ser identificadas. Antes da implementação, as alte- rações devem ser:\n\na)\t analisadas criticamente;\n\nb)\t verificadas;\n\nc) validadas, conforme apropriado;\n\nd)\t aprovadas.\n\nA análise crítica de alterações de projeto e desenvolvimento deve incluir a avaliação dos efeitos das alterações nas partes constituintes e no produto em processo ou já entregue, nas entradas ou saídas do gerenciamento de risco e nos processos de realização do produto.\n\nDevem ser mantidos registros das alterações, de sua análise crítica e de quaisquer ações necessárias (ver 4.2.5)."
+    },
+    {
+        "referencia": "7.3.10",
+        "descricao": "A organização deve manter um arquivo de projeto e desenvolvimento para cada tipo de produto para saúde ou família de produto para saúde. Este arquivo deve incluir ou fazer referência aos registros gerados para demonstrar conformidade com os requisitos para projeto e desenvolvimento e aos registros das alterações de projeto e desenvolvimento."
+    },
+    {
+        "referencia": "7.4.1",
+        "descricao": "A organização deve documentar procedimentos (ver 4.2.4) para assegurar que o produto adquirido esteja em conformidade com informações de aquisição especificadas.\n\nA organização deve estabelecer os critérios de avaliação e seleção de fornecedores. Os critérios devem ser:\n\na)\t baseados na habilidade do fornecedor de fornecer um produto que atenda aos requisitos da organização;\n\nb)\t baseados no desempenho do fornecedor;\n\nc) baseados no efeito do produto adquirido sobre a qualidade do produto para saúde;\n\nd)\t proporcionais ao risco associado ao produto para saúde.\n\nA organização deve planejar o monitoramento e a reavaliação de fornecedores. Deve ser monitorado o desempenho do fornecedor com relação ao cumprimento de requisitos para o produto adquirido.\n\nOs resultados do monitoramento devem fornecer uma entrada para o processo de reavaliação do fornecedor.\n\nO não cumprimento dos requisitos de aquisição deve ser abordado, junto ao fornecedor, de forma proporcional aos riscos associados ao produto adquirido e à conformidade com requisitos regulatórios aplicáveis.\n\nExemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020) Registros dos resultados da avaliação, da seleção, do monitoramento e da reavaliação da capacidade ou do desempenho do fornecedor e de quaisquer ações necessárias decorrentes dessas atividades devem ser mantidos (ver 4.2.5)."
+    },
+    {
+        "referencia": "7.4.2",
+        "descricao": "Informações de aquisição devem descrever ou fazer referência ao produto que será adquirido, incluindo, conforme apropriado:\n\na) especificações do produto;\n\nb) requisitos para aceitação do produto, procedimentos, processos e equipamentos;\n\nc) requisitos para a qualificação do pessoal do fornecedor;\n\nd) requisitos do sistema de gestão da qualidade.\n\nA organização deve assegurar a adequação dos requisitos de aquisição especificados antes de sua comunicação ao fornecedor.\n\nInformações de aquisição devem incluir, conforme aplicável, um acordo escrito para que o fornecedor notifique a organização sobre as alterações no produto adquirido antes da implementação de quaisquer alterações que afetem a habilidade do produto adquirido de atender aos requisitos de aquisição especificados.\n\nPara a extensão requerida para rastreabilidade, fornecida em 7.5.9, a organização deve manter informações de aquisição relevantes em forma de documentos (ver 4.2.4) e registros (ver 4.2.5)."
+    },
+    {
+        "referencia": "7.4.3",
+        "descricao": "A organização deve estabelecer e implementar atividades de inspeção ou outras atividades necessárias para assegurar que o produto adquirido atenda aos requisitos de aquisição especificados. A extensão das atividades de verificação deve ser baseada nos resultados de avaliação do fornecedor e ser proporcional aos riscos associados ao produto adquirido.\n\nQuando a organização tomar ciência de quaisquer alterações no produto adquirido, ela deve determinar se essas alterações afetam o processo de realização do produto ou do produto para saúde.\n\nQuando a organização ou seu cliente pretender executar a verificação nas instalações do fornecedor, a organização deve declarar, nas informações de aquisição, atividades de verificação e método para a liberação do produto pretendidos.\n\nRegistros da verificação devem ser mantidos (ver 4.2.5)."
+    },
+    {
+        "referencia": "7.5.1",
+        "descricao": "Produção e fornecimento de serviço devem ser planejados, executados, monitorados e controlados para assegurar que o produto esteja em conformidade com as especificações. Conforme apropriado, os controles de produção devem incluir, mas não estar limitados a:\n\na)\t documentação de procedimentos e métodos para o controle de produção (ver 4.2.4); Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)\n\nb)\t qualificação da infraestrutura;\n\nc) implementação de monitoramento e medições de parâmetros de processo e características de produto;\n\nd)\t disponibilidade e uso de equipamentos de monitoramento e medição;\n\ne)\t implementação de operações definidas para rotulagem e embalagem;\n\nf) implementação de atividades de liberação, entrega e pós-entrega do produto.\n\nA organização deve estabelecer e manter um registro (ver 4.2.5) para cada produto para saúde ou lote de produtos para saúde que forneça rastreabilidade na extensão especificada em 7.5.9 e que identifique a quantidade fabricada e a quantidade aprovada para distribuição. O registro deve ser verificado e aprovado."
+    },
+    {
+        "referencia": "7.5.2",
+        "descricao": "A organização deve documentar os requisitos para a limpeza do produto ou controle de contaminação do produto se:\n\na)\t o produto for limpo pela organização antes da esterilização ou de seu uso;\n\nb)\t o produto for fornecido não estéril e estiver sujeito ao processo de limpeza antes da esterilização ou de seu uso;\n\nc) o produto não puder ser limpo antes da esterilização ou de seu uso e sua limpeza for significante para o uso;\n\nd)\t o produto for fornecido para ser usado não estéril e sua limpeza for significante para o uso;\n\ne)\t agentes do processo tiverem que ser removidos do produto durante a fabricação.\n\nSe o produto for limpo de acordo com as alíneas a) ou b) acima, os requisitos contidos em 6.4.1 não serão aplicáveis antes do processo de limpeza."
+    },
+    {
+        "referencia": "7.5.3",
+        "descricao": "A organização deve documentar requisitos para a instalação do produto para saúde e critérios de aceitação para a verificação da instalação, conforme apropriado.\n\nSe os requisitos acordados do cliente permitirem que a instalação do produto para saúde seja execu- tada por uma entidade externa que não seja a organização ou seu fornecedor, a organização deve for- necer requisitos documentados para a instalação do produto para saúde e a verificação da instalação.\n\nRegistros da instalação do produto para saúde e da verificação da instalação realizadas pela organização ou seu fornecedor devem ser mantidos (ver 4.2.5)."
+    },
+    {
+        "referencia": "7.5.4",
+        "descricao": "Se a assistência técnica do produto para saúde for um requisito especificado, a organização deve documentar procedimentos para assistência técnica, materiais de referência e medições de referên- cia, conforme necessário, para realização das atividades de assistência técnica e verificação do cum- primento dos requisitos.\n\nExemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020) A organização deve analisar os registros das atividades de assistência técnica executadas pela orga- nização ou seu fornecedor:\n\na) para determinar se as informações são para ser tratadas como uma reclamação;\n\nb) conforme apropriado, para entrada do processo de melhoria.\n\nRegistros das atividades de assistência técnica realizadas pela organização ou seu fornecedor devem ser mantidos (ver 4.2.5)."
+    },
+    {
+        "referencia": "7.5.5",
+        "descricao": "A organização deve manter registros dos parâmetros do processo de esterilização usado para cada lote de esterilização (ver 4.2.5). Os registros de esterilização devem ser rastreáveis para cada lote de produção de produtos para saúde."
+    },
+    {
+        "referencia": "7.5.6",
+        "descricao": "A organização deve validar quaisquer processos de produção e fornecimento de serviço onde a saída resultante não puder ser ou não for verificada por monitoramento ou medição subsequente e, como consequência, quando as deficiências ficarem aparentes somente depois que o produto estiver em uso ou o serviço tiver sido entregue.\n\nA validação deve demonstrar a habilidade destes processos em alcançar os resultados planejados de maneira consistente.\n\nA organização deve documentar procedimentos para a validação dos processos, incluindo:\n\na)\t critérios definidos para análise crítica e aprovação dos processos;\n\nb)\t qualificação de equipamentos e pessoal;\n\nc) uso de métodos, procedimentos e critérios de aceitação específicos;\n\nd)\t conforme apropriado, técnicas estatísticas com justificativas para tamanhos de amostra;\n\ne)\t requisitos para registros (ver 4.2.5);\n\nf) revalidação, incluindo critérios para revalidação;\n\ng)\t aprovação de alterações aos processos.\n\nA organização deve documentar procedimentos para validação da aplicação de software de computador usado na produção e no fornecimento de serviço. Tais aplicações de software devem ser validadas antes do uso inicial e, conforme apropriado, após alterações de tal software ou em sua aplicação.\n\nA abordagem e as atividades específicas associadas à validação e à revalidação de software devem ser proporcionais ao risco associado ao uso do software, incluindo o efeito sobre a habilidade do produto de estar em conformidade com as especificações.\n\nRegistros dos resultados e da conclusão da validação, bem como das ações necessárias decorrentes da validação, devem ser mantidos (ver 4.2.4 e 4.2.5).\n\nExemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)"
+    },
+    {
+        "referencia": "7.5.7",
+        "descricao": "Requisitos particulares para validação de processos de esterilização e sistemas de barreira estéreis A organização deve documentar procedimentos (ver 4.2.4) para a validação de processos de esterili- zação e sistemas de barreira estéreis.\n\nProcessos de esterilização e sistemas de barreira estéreis devem ser validados antes da implementa- ção e após as alterações no produto ou no processo, conforme apropriado.\n\nRegistros dos resultados e da conclusão da validação, bem como das ações necessárias decorrentes da validação devem ser mantidos (ver 4.2.4 e 4.2.5).\n\nNOTA Informações adicionais podem ser encontradas nas ABNT NBR ISO 11607-1 e ABNT NBR ISO 11607-2."
+    },
+    {
+        "referencia": "7.5.8",
+        "descricao": "A organização deve documentar procedimentos para identificação do produto e identificar o produto através de meios adequados ao longo da realização do produto.\n\nA organização deve identificar a situação do produto com relação aos requisitos de monitoramento e medição ao longo da realização do produto. A identificação da situação do produto deve ser mantida ao longo da produção, armazenamento, instalação e assistência técnica do produto, de modo a assegurar que seja despachado, usado ou instalado somente o produto que tenha passado por inspeções e ensaios requeridos, ou que tenha sido liberado através de concessão autorizada.\n\nSe requerido por requisitos regulatórios aplicáveis, a organização deve documentar um sistema para atribuir identificação única de produto ao produto para saúde.\n\nA organização deve documentar procedimentos para assegurar que produtos para saúde retornados à organização sejam identificados e distinguidos de produto conforme."
+    },
+    {
+        "referencia": "7.5.9.1",
+        "descricao": "A organização deve documentar procedimentos para a rastreabilidade. Estes procedimentos devem definir a extensão da rastreabilidade de acordo com requisitos regulatórios aplicáveis e os registros a serem mantidos (ver 4.2.5)."
+    },
+    {
+        "referencia": "7.5.9.2",
+        "descricao": "Os registros requeridos para a rastreabilidade devem incluir registros dos componentes, dos materiais e das condições para o ambiente de trabalho usado, se estes puderem fazer com que o produto para saúde não satisfaça os requisitos de segurança e desempenho especificados.\n\nA organização deve requerer que fornecedores de serviços de distribuição ou distribuidores mantenham registros da distribuição dos produtos para saúde, de modo a permitir a rastreabilidade e a disponibilidade destes registros para inspeção.\n\nRegistros do nome e endereço do destinatário do pacote de transporte devem ser mantidos (ver 4.2.5).\n\nExemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)"
+    },
+    {
+        "referencia": "7.5.10",
+        "descricao": "A organização deve identificar, verificar, proteger e resguardar propriedade de cliente disponibilizada para uso ou incorporação em produto enquanto ela estiver no controle da organização ou sendo usada pela organização. Se qualquer propriedade do cliente for perdida, danificada ou, de outra forma, considerada inadequada ao uso, a organização deve comunicar isto ao cliente e manter registros (ver 4.2.5)."
+    },
+    {
+        "referencia": "7.5.11",
+        "descricao": "A organização deve documentar procedimentos para a preservação da conformidade de produto com os requisitos durante o processamento, armazenamento, manuseio e distribuição. A preservação deve se aplicar às partes constituintes de um produto para saúde.\n\nA organização deve proteger o produto contra alteração, contaminação ou dano quando exposto a condições e perigos esperados durante o processamento, armazenamento, manuseio e distribuição ao:\n\na)\t projetar e construir embalagens e contêineres de transporte adequadas;\n\nb)\t documentar requisitos para condições especiais necessárias se a embalagem em si não puder fornecer preservação.\n\nSe condições especiais forem requeridas, elas devem ser controladas e registradas (ver 4.2.5)."
+    },
+    {
+        "referencia": "7.6",
+        "descricao": "A organização deve determinar o monitoramento e a medição a serem realizados e os equipamentos de monitoramento e medição necessários para fornecer evidência de conformidade do produto com requisitos determinados.\n\nA organização deve documentar procedimentos para assegurar que o monitoramento e medição possam ser executados de uma maneira que seja consistente com os requisitos de monitoramento e medição.\n\nConforme necessário, para assegurar resultados válidos, o equipamento de medição deve:\n\na)\t ser calibrado ou verificado, ou ambos, em intervalos especificados ou antes do uso, com relação aos padrões de medição rastreáveis aos padrões de medição internacionais ou nacionais: quando não houver nenhum, a base usada para calibração ou verificação deve ser registrada (ver 4.2.5);\n\nb)\t ser ajustado ou reajustado, conforme necessário; esses ajustes ou reajustes devem ser registrados (ver 4.2.5);\n\nc) possuir identificação de modo a determinar seu estado de calibração;\n\nd)\t ser salvaguardado contra ajustes que possam invalidar o resultado da medição;\n\ne)\t ser protegido contra dano e deterioração durante manuseio, manutenção e armazenamento.\n\nA organização deve executar calibração ou verificação de acordo com procedimentos documentados.\n\nExemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020) Além disso, a organização deve avaliar e registrar a validade dos resultados de medição anteriores, quando constatado que o equipamento não está em conformidade com os requisitos. A organização deve adotar ações adequadas com relação ao equipamento e quaisquer produtos afetados.\n\nOs registros dos resultados de calibração e verificação devem ser mantidos (ver 4.2.5).\n\nA organização deve documentar procedimentos para a validação da aplicação de software de computador usado para os requisitos de monitoramento e medição. Tais aplicações de software devem ser validadas antes do uso inicial e, conforme apropriado, após alterações de tal software ou em sua aplicação. A abordagem e as atividades específicas associadas à validação e à revalidação de software devem ser proporcionais ao risco associado ao uso do software, incluindo o efeito sobre a habilidade do produto em estar em conformidade com as especificações.\n\nRegistros dos resultados e da conclusão da validação, bem como das ações necessárias decorrentes da validação devem ser mantidos (ver 4.2.4 e 4.2.5).\n\nNOTA Informações adicionais podem ser encontradas na ABNT NBR ISO 10012.\n\n8\t Medição, análise e melhoria"
+    },
+    {
+        "referencia": "8.1",
+        "descricao": "A organização deve planejar e implementar processos de monitoramento, medição, análise e melhoria necessários para:\n\na)\t demonstrar a conformidade do produto;\n\nb)\t assegurar a conformidade do sistema de gestão da qualidade;\n\nc) manter a eficácia do sistema de gestão da qualidade.\n\nIsto deve incluir a determinação de métodos aplicáveis, incluindo técnicas estatísticas, e a extensão de seu uso."
+    },
+    {
+        "referencia": "8.2.1",
+        "descricao": "Como uma das medições da eficácia do sistema de gestão da qualidade, a organização deve obter e monitorar informações relativas a se a organização atendeu aos requisitos do cliente. Os métodos para obtenção e uso destas informações devem ser documentados.\n\nA organização deve documentar procedimentos para o processo de realimentação. Este processo de realimentação deve incluir disposições para reunir dados provenientes de atividades de produção, assim como de atividades pós-produção.\n\nAs informações obtidas do processo de realimentação devem servir como entrada potencial ao gerenciamento de risco para monitorar e manter os requisitos do produto, assim como os processos de realização do produto ou de melhoria.\n\nSe requerido por requisitos regulatórios aplicáveis que a organização obtenha experiência específica proveniente de atividades pós-produção, a análise crítica desta experiência deve fazer parte do processo de realimentação.\n\nExemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)"
+    },
+    {
+        "referencia": "8.2.2",
+        "descricao": "A organização deve documentar procedimentos para o tratamento de reclamações em tempo hábil, de acordo com os requisitos regulatórios aplicáveis.\n\nEstes procedimentos devem incluir pelo menos os requisitos e as responsabilidades para:\n\na)\t receber e registrar as informações;\n\nb)\t avaliar as informações de modo a determinar se a realimentação constitui reclamação;\n\nc) investigar reclamações;\n\nd)\t determinar a necessidade de comunicar as informações às autoridades regulatórias apropriadas;\n\ne)\t tratar reclamações relacionadas ao produto;\n\nf) determinar a necessidade de iniciar correções ou ações corretivas.\n\nSe qualquer reclamação não for investigada, justificativas devem ser documentadas. Qualquer corre- ção ou ação corretiva resultante do processo de tratamento da reclamação deve ser documentada.\n\nSe uma investigação determinar que atividades realizadas fora da organização contribuiram para a reclamação, informações relevantes devem ser trocadas entre a organização e a entidade externa envolvida.\n\nRegistros de tratamento de reclamações devem ser mantidos (ver 4.2.5)."
+    },
+    {
+        "referencia": "8.2.3",
+        "descricao": "Se requisitos regulatórios aplicáveis requererem a notificação de reclamações que atendam aos crité- rios de comunicação especificados de eventos adversos ou a emissão de notas de aviso, a organiza- ção deve documentar procedimentos para notificar as autoridades regulatórias apropriadas.\n\nRegistros de notificação às autoridades regulatórias devem ser mantidos (ver 4.2.5)."
+    },
+    {
+        "referencia": "8.2.4",
+        "descricao": "A organização deve realizar auditorias internas em intervalos planejados para determinar se o sistema de gestão da qualidade:\n\na)\t está em conformidade com os arranjos planejados e documentados com os requisitos desta Norma, com os requisitos do sistema de gestão da qualidade estabelecidos pela organização e com os requisitos regulatórios aplicáveis;\n\nb)\t é implementado e mantido de maneira eficaz.\n\nA organização deve documentar um procedimento para descrever as responsabilidades e os requi- sitos para o planejamento e a realização de auditorias, bem como os registros e a comunicação dos resultados da auditoria.\n\nUm programa de auditoria deve ser planejado, levando em consideração a situação e a importância dos processos e as áreas a serem auditadas, bem como os resultados de auditorias anteriores.\n\nOs critérios escopo, frequência e métodos de auditoria devem ser definidos e registrados (ver 4.2.5).\n\nExemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020) A seleção dos auditores e a realização das auditorias devem assegurar objetividade e imparcialidade do processo de auditoria. Os auditores não podem auditar o seu próprio trabalho.\n\nRegistros das auditorias e seus resultados, incluindo a identificação dos processos e das áreas auditadas e as conclusões, devem ser mantidos (ver 4.2.5).\n\nA direção responsável pela área a ser auditada deve assegurar que quaisquer correções e ações corretivas necessárias sejam conduzidas, sem atraso indevido, para eliminar não conformidades detectadas e suas causas. As atividades de acompanhamento devem incluir a verificação das ações adotadas e a comunicação dos resultados da verificação.\n\nNOTA Informações adicionais podem ser encontradas na ABNT NBR ISO 19011."
+    },
+    {
+        "referencia": "8.2.5",
+        "descricao": "A organização deve aplicar métodos adequados para o monitoramento e, conforme apropriado, para a medição dos processos do sistema de gestão da qualidade. Estes métodos devem demonstrar a habilidade dos processos de alcançar os resultados planejados. Quando os resultados planejados não forem alcançados, devem ser conduzidas correções e ações corretivas, conforme apropriado."
+    },
+    {
+        "referencia": "8.2.6",
+        "descricao": "A organização deve monitorar e medir as características do produto para verificar se os requisitos do produto foram atendidos. Isto deve ser executado em estágios apropriados do processo de realização do produto, de acordo com arranjos planejados e documentados e procedimentos documentados.\n\nEvidência de conformidade com critérios de aceitação deve ser mantida. A identidade da pessoa responsável por autorizar a liberação do produto deve ser registrada (ver 4.2.5). Conforme apropriado, registros devem identificar o equipamento de ensaio usado para executar atividades de medição.\n\nA liberação do produto e a entrega de serviços não podem prosseguir até que os arranjos planejados e documentados tenham sido satisfatoriamente concluídos.\n\nPara produtos para saúde implantáveis, a organização deve registrar a identidade do pessoal que executa qualquer inspeção ou ensaio."
+    },
+    {
+        "referencia": "8.3.1",
+        "descricao": "A organização deve assegurar que produto que não esteja em conformidade com requisitos de produto seja identificado e controlado para prevenir seu uso ou entrega não intencional. A organização deve documentar procedimentos para definir os controles e as responsabilidades e autoridades relacionadas para a identificação, a documentação, a segregação, a avaliação e a disposição do produto não conforme.\n\nA avaliação de não conformidade deve incluir a determinação da necessidade de uma investigação e notificação de qualquer entidade externa responsável pela não conformidade.\n\nRegistros da natureza das não conformidades e de quaisquer ações subsequentes adotadas, incluindo avaliação, qualquer investigação e as justificativas para as decisões devem ser mantidos (ver 4.2.5).\n\nExemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)"
+    },
+    {
+        "referencia": "8.3.2",
+        "descricao": "A organização deve lidar com produto não conforme através de uma ou mais das seguintes maneiras:\n\na) adotar ações para eliminar a não conformidade detectada;\n\nb) adotar ações para impossibilitar seu uso pretendido ou aplicação original;\n\nc) autorizar seu uso, liberação ou aceitação sob concessão.\n\nA organização deve assegurar que o produto não conforme seja aceito, por meio de concessão, somente se justificativas forem fornecidas, aprovação for obtida e requisitos regulatórios aplicáveis forem atendidos. Os registros da aceitação por meio de concessão e a identidade da pessoa responsável pela autorização da concessão devem ser mantidos (ver 4.2.5)."
+    },
+    {
+        "referencia": "8.3.3",
+        "descricao": "Quando produto não conforme for detectado após a entrega ou o início do uso, a organização deve adotar ações apropriadas com relação aos efeitos ou efeitos potenciais da não conformidade. Registros das ações adotadas devem ser mantidos (ver 4.2.5).\n\nA organização deve documentar os procedimentos para a emissão de notas de aviso, de acordo com requisitos regulatórios aplicáveis. Estes procedimentos devem ser capazes de serem colocados em prática a qualquer momento. Registros das ações relacionadas à emissão das notas de aviso devem ser mantidos (ver 4.2.5)."
+    },
+    {
+        "referencia": "8.3.4",
+        "descricao": "A organização deve executar o retrabalho de acordo com procedimentos documentados que consi- deram o efeito adverso potencial do retrabalho no produto. Estes procedimentos devem estar sujeitos à mesma análise crítica e aprovação do procedimento original.\n\nApós a conclusão do retrabalho, o produto deve ser verificado para assegurar que ele atenda aos critérios de aceitação e aos requisitos regulatórios aplicáveis.\n\nRegistros de retrabalho devem ser mantidos (ver 4.2.5)."
+    },
+    {
+        "referencia": "8.4",
+        "descricao": "A organização deve documentar procedimentos para determinar, coletar e analisar dados apropriados para demonstrar a pertinência, a adequação e a eficácia do sistema de gestão da qualidade. Os pro- cedimentos devem incluir a determinação dos métodos apropriados, incluindo as técnicas estatísticas e a extensão de seu uso.\n\nA análise de dados deve incluir os dados gerados como resultado do monitoramento e da medição e de outras fontes relevantes, bem como incluir pelo menos entradas provenientes de:\n\na)\t realimentação;\n\nb)\t conformidade com os requisitos de produto;\n\nc) características e tendências de processos e produtos, incluindo oportunidades de melhoria; Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)\n\nd)\t fornecedores;\n\ne)\t auditorias;\n\nf) relatórios de serviço, conforme apropriado.\n\nSe a análise de dados mostrar que o sistema de gestão da qualidade não é pertinente, adequado ou eficaz, a organização deve usar esta análise como entrada para melhoria, conforme requerido em 8.5.\n\nRegistros dos resultados das análises devem ser mantidos (ver 4.2.5)."
+    },
+    {
+        "referencia": "8.5.1",
+        "descricao": "A organização deve identificar e implementar quaisquer alterações necessárias para assegurar e manter a contínua pertinência, adequação e eficácia do sistema de gestão da qualidade, assim como a segurança e o desempenho do produto para saúde através do uso da política da qualidade, dos objetivos da qualidade, dos resultados de auditoria, da vigilância pós-mercado, da análise de dados, das ação corretivas, das ações preventivas e da análise crítica pela direção."
+    },
+    {
+        "referencia": "8.5.2",
+        "descricao": "A organização deve adotar ações para eliminar as causas de não conformidades, de forma a prevenir sua recorrência. Quaisquer ações corretivas necessárias devem ser adotadas sem atraso indevido.\n\nAções corretivas devem ser proporcionais aos efeitos das não conformidades encontradas.\n\nA organização deve documentar um procedimento para definir os requisitos para:\n\na)\t analisar criticamente não conformidades (incluindo reclamações);\n\nb)\t determinar as causas das não conformidades;\n\nc) avaliar a necessidade de ações para assegurar que as não conformidades não recorram;\n\nd)\t planejar e documentar as ações necessárias e implementar essas ações, incluindo, conforme apropriado, a atualização da documentação;\n\ne)\t verificar se a ação corretiva não afeta, adversamente, a habilidade do produto para saúde de atender aos requisitos regulatórios aplicáveis ou a segurança e o desempenho do produto para a saúde;\n\nf) analisar criticamente a eficácia da ação corretiva adotada.\n\nRegistros dos resultados de qualquer investigação e ação adotada devem ser mantidos (ver 4.2.5)."
+    },
+    {
+        "referencia": "8.5.3",
+        "descricao": "A organização deve determinar as ações para eliminar as causas de não conformidades potenciais, de forma a prevenir sua ocorrência. As ações preventivas devem ser proporcionais aos efeitos dos problemas potenciais.\n\nExemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020) A organização deve documentar um procedimento para descrever os requisitos para:\n\na)\t determinar não conformidades potenciais e suas causas;\n\nb)\t avaliar a necessidade de ações para prevenir a ocorrência de não conformidades;\n\nc) planejar e documentar ações necessárias e implementar essas ações, incluindo, conforme apro- priado, a atualização da documentação;\n\nd)\t verificar se a ação corretiva não afeta, adversamente, a habilidade do produto para saúde de atender aos requisitos regulatórios aplicáveis ou a segurança e desempenho do produto para a saúde;\n\ne)\t analisar criticamente a eficácia da ação preventiva adotada, conforme apropriado.\n\nRegistros dos resultados de qualquer investigação e ação adotada devem ser mantidos (ver 4.2.5).\n\nExemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)"
+    }
+]
+
+def popular_descricoes(apps, schema_editor):
+    ItemNorma = apps.get_model('auditoria', 'ItemNorma')
+    for item in DESCRICOES_DATA:
+        ref = item['referencia']
+        desc = item['descricao']
+        ItemNorma.objects.filter(referencia=ref).update(descricao=desc)
+
+def remover_descricoes(apps, schema_editor):
+    pass
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('auditoria', '0037_agendaauditoriaiso_data_agendaauditoriaiso_hora_fim_and_more'),
+    ]
+
+    operations = [
+        migrations.RunPython(popular_descricoes, remover_descricoes),
+    ]

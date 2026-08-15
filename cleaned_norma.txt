@@ -1,0 +1,1910 @@
+4	 Sistema de gestão da qualidade
+4.1	 Requisitos gerais
+4.1.1	 A organização deve documentar um sistema de gestão da qualidade e manter sua eficácia 
+de acordo com os requisitos desta Norma e com os requisitos regulatórios aplicáveis.
+A organização deve estabelecer, implementar e manter qualquer requisito, procedimento, atividade 
+ou acordo requerido documentado por esta Norma ou por requisitos regulatórios aplicáveis.
+A organização deve documentar o(s) papel(éis) assumido(s) pela organização sob os requisitos 
+regulatórios aplicáveis.
+NOTA	
+Entre os papéis assumidos pela organização, pode-se incluir o papel de fabricante, representante 
+autorizado, importador ou distribuidor.
+4.1.2	 A organização deve:
+ a)	 determinar os processos necessários para o sistema de gestão da qualidade e a aplicação 
+destes processos em toda a organização, levando em consideração os papéis assumidos pela 
+organização;
+ b)	 aplicar uma abordagem baseada em risco no controle dos processos apropriados necessários 
+ao sistema de gestão da qualidade;
+ c)	
+determinar a sequência e a interação destes processos.
+4.1.3	 Para cada processo do sistema de gestão da qualidade, a organização deve:
+ a)	 determinar os critérios e os métodos necessários para assegurar que a operação e o controle 
+destes processos sejam eficazes;
+ b)	 assegurar a disponibilidade de recursos e informações necessárias para dar suporte à operação 
+e ao monitoramento destes processos;
+ c)	
+implementar ações necessárias para alcançar os resultados planejados e manter a eficácia destes 
+processos;
+ d)	 monitorar, medir, conforme apropriado, e analisar estes processos;
+ e)	 estabelecer e manter os registros necessários para demonstrar conformidade com esta Norma 
+e com os requisitos regulatórios aplicáveis (ver 4.2.5).
+4.1.4	 A organização deve gerenciar estes processos do sistema de gestão da qualidade de acordo 
+com os requisitos desta Norma e com os requisitos regulatórios aplicáveis. As alterações feitas nestes 
+processos devem ser:
+ a)	 avaliadas com relação ao seu impacto no sistema de gestão da qualidade;
+ b)	 avaliadas com relação ao seu impacto nos produtos para saúde produzidos com base neste 
+sistema de gestão da qualidade;
+ c)	
+controladas de acordo com os requisitos desta Norma e com os requisitos regulatórios aplicáveis.
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+4.1.5	 Quando uma organização optar por terceirizar algum processo que afete a conformidade 
+do produto em relação aos requisitos, ela deve monitorar e assegurar o controle de tais processos. 
+A organização deve reter responsabilidade de conformidade com esta Norma e com os requisitos 
+do cliente e os requisitos regulatórios aplicáveis aos processos terceirizados. Os controles devem 
+ser proporcionais ao risco envolvido e à habilidade da entidade externa em atender aos requisitos 
+de acordo com 7.4. Os controles devem incluir acordos de qualidade escritos.
+4.1.6	 A organização deve documentar procedimentos para validação da aplicação de software de 
+computador usado no sistema de gestão da qualidade. Tais aplicações de software devem ser validadas 
+antes do uso inicial e, conforme apropriado, após alterações de tal software ou em sua aplicação.
+A abordagem e as atividades específicas associadas à validação e revalidação de software devem ser 
+proporcionais ao risco associado ao uso do software.
+Registros de tais atividades devem ser mantidos (ver 4.2.5).
+4.2	 Requisitos de documentação
+4.2.1	 Geral
+A documentação do sistema de gestão da qualidade (ver 4.2.4) deve incluir:
+ a)	 declarações documentadas de uma política da qualidade e dos objetivos da qualidade;
+ b)	 um manual da qualidade;
+ c)	
+procedimentos documentados e registros requeridos por esta Norma;
+ d)	 documentos, incluindo registros, determinados pela organização como necessários para assegu-
+rar os eficazes planejamento, operação e controle de seus processos;
+ e)	 outras documentações especificadas por requisitos regulatórios aplicáveis.
+4.2.2	 Manual da qualidade
+A organização deve documentar um manual da qualidade que inclua:
+ a)	 o escopo do sistema de gestão da qualidade, incluindo detalhes e justificativas para qualquer 
+exclusão ou não aplicação;
+ b)	 os procedimentos documentados para o sistema de gestão da qualidade ou referência a eles;
+ c)	
+a descrição da interação entre os processos do sistema de gestão da qualidade.
+O manual da qualidade deve definir a estrutura da documentação usada no sistema de gestão 
+da qualidade.
+4.2.3	 Arquivo de produto para saúde
+Para cada tipo ou família de produtos para saúde, a organização deve estabelecer e manter um 
+ou mais arquivos que contenham ou que façam referência a documentos gerados para demonstrar 
+conformidade com os requisitos desta Norma e com os requisitos regulatórios aplicáveis.
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+O conteúdo deste(s) arquivo(s) deve incluir, mas não estar limitado a:
+ a)	 descrição geral do produto para saúde, do uso/propósito destinado e da rotulagem, incluindo 
+quaisquer instruções de uso;
+ b)	 especificações do produto;
+ c)	
+especificações ou procedimentos para fabricação, embalagem, armazenamento, manuseio e 
+distribuição;
+ d)	 procedimentos para medição e monitoramento;
+ e)	 conforme apropriado, requisitos para instalação;
+ f)	
+conforme apropriado, procedimentos para assistência técnica.
+4.2.4	 Controle de documentos
+Documentos requeridos pelo sistema de gestão da qualidade devem ser controlados. Registros são 
+um tipo especial de documento e devem ser controlados de acordo com os requisitos fornecidos em 
+4.2.5.
+Um procedimento documentado deve definir os controles necessários para:
+ a)	 analisar criticamente e aprovar os documentos para adequação antes da emissão;
+ b)	 analisar criticamente, atualizar conforme necessário e reaprovar os documentos;
+ c)	
+assegurar que a situação da revisão atual e as alterações dos documentos sejam identificadas;
+ d)	 assegurar que as versões pertinentes de documentos aplicáveis estejam disponíveis nos locais 
+de uso;
+ e)	 assegurar que os documentos permaneçam legíveis e prontamente identificáveis;
+ f)	
+assegurar que documentos de origem externa, determinados pela organização como necessários 
+ao planejamento e à operação do sistema de gestão da qualidade, sejam identificados e que sua 
+distribuição seja controlada;
+ g)	 prevenir a deterioração ou a perda de documentos;
+ h)	 prevenir o uso não intencional de documentos obsoletos e aplicar a eles identificação adequada.
+A organização deve assegurar que alterações nos documentos sejam analisadas criticamente e apro-
+vadas pela função aprovadora original ou outra função designada que tenha acesso às informações 
+antecedentes pertinentes nas quais possa basear suas decisões.
+A organização deve definir o período pelo qual pelo menos uma cópia dos documentos controlados 
+obsoletos deve ser retida. Este período deve assegurar que os documentos relativos à fabricação e 
+ensaios de produtos para saúde estejam disponíveis pelo menos durante a vida útil do produto para 
+saúde, como definido pela organização, mas não inferior ao período de retenção de qualquer registro 
+resultante (ver 4.2.5), ou conforme especificado pelos requisitos regulatórios aplicáveis.
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+4.2.5	 Controle de registros
+Registros devem ser mantidos para fornecer evidência de conformidade com requisitos e da operação 
+eficaz do sistema de gestão da qualidade.
+A organização deve documentar procedimentos para definir os controles necessários para identificação, 
+armazenamento, segurança e integridade, recuperação, tempo de retenção e disposição dos registros.
+A organização deve definir e implementar métodos para proteger informações confidenciais 
+relacionadas à saúde contidas nos registros, de acordo com os requisitos regulatórios aplicáveis.
+Os registros devem ser mantidos legíveis, prontamente identificáveis e recuperáveis. Alterações nos 
+registros devem permanecer identificáveis.
+A organização deve manter os registros por um período de tempo pelo menos equivalente ao da 
+vida útil do produto para saúde, como definido pela organização ou especificado pelos requisitos 
+regulatórios aplicáveis, mas não inferior a dois anos a partir da data de liberação do produto pela 
+organização.
+5	 Responsabilidade da direção
+5.1	 Comprometimento da direção
+A alta direção deve fornecer evidência de seu comprometimento com o desenvolvimento e a imple-
+mentação do sistema de gestão da qualidade e manter sua eficácia ao:
+ a)	 comunicar à organização a importância em atender aos requisitos do cliente, assim como aos 
+requisitos regulatórios aplicáveis;
+ b)	 estabelecer a política da qualidade;
+ c)	
+assegurar que sejam estabelecidos os objetivos da qualidade;
+ d)	 conduzir análises críticas pela direção;
+ e)	 assegurar a disponibilidade de recursos.
+5.2	 Foco no cliente
+A alta direção deve assegurar que os requisitos do cliente e os requisitos regulatórios aplicáveis sejam 
+determinados e atendidos.
+5.3	 Política da qualidade
+A alta direção deve assegurar que a política da qualidade:
+ a)	 seja aplicável ao propósito da organização;
+ b)	 inclua um comprometimento com o cumprimento dos requisitos e com a manutenção da eficácia 
+do sistema de gestão da qualidade;
+ c)	
+proporcione uma estrutura para estabelecimento e análise crítica dos objetivos da qualidade;
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+ d)	 seja comunicada e compreendida por toda a organização;
+ e)	 seja analisada criticamente para sua contínua adequação.
+5.4	 Planejamento
+5.4.1	 Objetivos da qualidade
+A alta direção deve assegurar que os objetivos da qualidade, incluindo aqueles necessários para 
+atender aos requisitos regulatórios aplicáveis e aos requisitos do produto, sejam estabelecidos em 
+funções e níveis relevantes dentro da organização. Os objetivos da qualidade devem ser mensuráveis 
+e coerentes com a política da qualidade.
+5.4.2	 Planejamento do sistema de gestão da qualidade
+A alta direção deve assegurar que:
+ a)	 o planejamento do sistema de gestão da qualidade seja realizado de forma a satisfazer os requi-
+sitos fornecidos em 4.1, assim como os objetivos da qualidade;
+ b)	 a integridade do sistema de gestão da qualidade seja mantida quando alterações no sistema 
+de gestão da qualidade forem planejadas e implementadas.
+5.5	 Responsabilidade, autoridade e comunicação
+5.5.1	 Responsabilidade e autoridade
+A alta direção deve assegurar que responsabilidades e autoridades sejam definidas, documentadas 
+e comunicadas dentro da organização.
+A alta direção deve documentar a inter-relação de todo o pessoal que gerencia, desempenha e verifica 
+o trabalho que afeta a qualidade, e deve assegurar a independência e a autoridade necessárias para 
+desempenhar estas tarefas.
+5.5.2	 Representante da direção
+A alta direção deve indicar um membro da direção que, independentemente de outras responsabilida-
+des, tenha responsabilidade e autoridade que incluam:
+ a)	 assegurar que os processos necessários para o sistema de gestão da qualidade sejam 
+documentados;
+ b)	 relatar à alta direção sobre a eficácia do sistema de gestão da qualidade e qualquer necessidade 
+de melhoria;
+ c)	
+assegurar a promoção da conscientização dos requisitos regulatórios aplicáveis e dos requisitos 
+do sistema de gestão da qualidade por toda a organização.
+5.5.3	 Comunicação interna
+A alta direção deve assegurar que sejam estabelecidos na organização processos de comunicação 
+apropriados e que seja realizada comunicação relativa à eficácia do sistema de gestão da qualidade.
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+5.6	 Análise crítica pela direção
+5.6.1	 Geral
+A organização deve documentar procedimentos para a análise crítica pela direção. A alta direção 
+deve analisar criticamente o sistema de gestão da qualidade da organização em intervalos planejados 
+documentados, de modo a assegurar sua pertinência, adequação e eficácia contínuas. A análise crítica 
+deve incluir a avaliação de oportunidades para a melhoria e a necessidade de alterações no sistema 
+de gestão da qualidade, incluindo a política da qualidade e os objetivos da qualidade.
+Registros das análises críticas pela direção devem ser mantidos (ver 4.2.5).
+5.6.2	 Entradas para análise crítica
+As entradas para a análise crítica pela direção devem incluir, mas não estar limitadas a, informações 
+provenientes de:
+ a)	 realimentação (feedback);
+ b)	 tratamento de reclamações;
+ c)	
+comunicação às autoridades regulatórias;
+ d)	 auditorias;
+ e)	 monitoramento e medição de processos;
+ f)	
+monitoramento e medição do produto;
+ g)	 ação corretiva;
+ h)	 ação preventiva;
+ i)	
+ações de acompanhamento provenientes de análises críticas pela direção anterior;
+ j)	
+alterações que poderiam afetar o sistema de gestão da qualidade;
+ k)	
+recomendações para melhoria;
+ l)	
+requisitos regulatórios aplicáveis, novos ou revisados.
+5.6.3	 Saídas da análise crítica
+As saídas da análise crítica devem ser registradas (ver 4.2.5) e incluir as entradas analisadas critica-
+mente, bemo como quaisquer decisões e ações relacionadas à(s):
+ a)	 melhoria necessária para manter a pertinência, a adequação e a eficácia do sistema de gestão 
+da qualidade e seus processos;
+ b)	 melhoria do produto relacionada aos requisitos do cliente;
+ c)	
+alterações necessárias para responder aos requisitos regulatórios aplicáveis, novos ou revisados;
+ d)	 necessidades de recursos.
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+6	 Gestão de recursos
+6.1	 Provisão de recursos
+A organização deve determinar e prover recursos necessários para:
+ a)	 implementar o sistema de gestão da qualidade e manter a sua eficácia;
+ b)	 atender aos requisitos regulatórios aplicáveis e aos requisitos do cliente.
+6.2	 Recursos humanos
+Pessoal que executa trabalho que afeta a qualidade do produto deve ser competente, com base em 
+educação, treinamento, habilidades e experiência apropriados.
+A organização deve documentar o(s) processo(s) para estabelecer as competências, fornecer treina-
+mento necessário e assegurar a conscientização do pessoal de serviço.
+A organização deve:
+ a)	 determinar as competências necessárias para o pessoal que executa trabalho que afeta a quali-
+dade do produto;
+ b)	 fornecer treinamento ou adotar outras ações para obtenção ou manutenção das competências 
+necessárias;
+ c)	
+avaliar a eficácia das ações executadas;
+ d)	 assegurar que o seu pessoal tenha consciência quanto à relevância e à importância de suas 
+atividades e sobre como elas contribuem para alcançar os objetivos da qualidade;
+ e)	 manter registros apropriados de educação, treinamento, habilidades e experiência (ver 4.2.5).
+NOTA	
+A metodologia usada para a verificação da eficácia é proporcional ao risco associado ao trabalho 
+para o qual o treinamento ou outra ação está sendo fornecida.
+6.3	 Infraestrutura
+A organização deve documentar os requisitos para a infraestrutura necessária para alcançar a confor-
+midade com os requisitos do produto, prevenir a mistura de produtos e assegurar o manuseio ordenado 
+do produto. A infraestrutura inclui, conforme apropriado:
+ a)	 edifícios, espaço de trabalho e instalações associadas;
+ b)	 equipamentos de processo (tanto hardware quanto software);
+ c)	
+serviços de apoio (como transporte, comunicação ou sistemas de informação).
+A organização deve documentar os requisitos para as atividades de manutenção, incluindo o intervalo 
+de execução das atividades de manutenção, quando tais atividades de manutenção, ou a falta delas, 
+puderem afetar a qualidade do produto. Conforme apropriado, os requisitos devem se aplicar aos 
+equipamentos usados na produção, no controle do ambiente de trabalho, no monitoramento e na medição.
+Registros de tais manutenções devem ser mantidos (ver 4.2.5).
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+6.4	 Ambiente de trabalho e controle de contaminação
+6.4.1	 Ambiente de trabalho
+A organização deve documentar os requisitos para o ambiente de trabalho necessário para alcançar 
+a conformidade com os requisitos do produto.
+Se as condições para o ambiente de trabalho puderem apresentar um efeito adverso na qualidade 
+do produto, a organização deve documentar os requisitos para o ambiente de trabalho e os procedi-
+mentos para monitorar e controlar este ambiente.
+A organização deve:
+ a)	 documentar os requisitos para saúde, limpeza e vestuário do pessoal, se o contato entre estes 
+e o produto ou o ambiente de trabalho puder afetar a segurança ou o desempenho do produto 
+para saúde;
+ b)	 assegurar que todo o pessoal requisitado a trabalhar temporariamente sob condições ambientais 
+especiais dentro do ambiente de trabalho seja competente ou supervisionado por uma pessoa 
+competente.
+NOTA	
+Informações adicionais podem ser encontradas nas ISO 14644 e ISO 14698.
+6.4.2	 Controle de contaminação
+Conforme apropriado, a organização deve planejar e documentar arranjos para o controle de produtos 
+contaminados ou potencialmente contaminados, de modo a prevenir a contaminação do ambiente 
+de trabalho, pessoal ou produto.
+Para produtos para saúde estéreis, a organização deve documentar os requisitos para o controle 
+de contaminação com micro-organismos ou material particulado, e manter a limpeza requerida durante 
+os processos de montagem ou embalagem.
+7	 Realização de produto
+7.1	 Planejamento da realização de produto
+A organização deve planejar e desenvolver os processos necessários para a realização do produto. 
+O planejamento da realização do produto deve ser coerente com os requisitos de outros processos 
+do sistema de gestão da qualidade.
+A organização deve documentar um ou mais processos para o gerenciamento de risco na realização 
+do produto. Registros das atividades de gerenciamento de risco devem ser mantidos (ver 4.2.5).
+Ao planejar a realização do produto, a organização deve determinar, conforme apropriado:
+ a)	 os objetivos da qualidade e os requisitos para o produto;
+ b)	 a necessidade de estabelecer processos e documentos (ver 4.2.4) e prover recursos específicos 
+para o produto, incluindo infraestrutura e ambiente de trabalho;
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+ c)	
+as atividades requeridas de verificação, validação, monitoramento, medição, inspeção e ensaio, 
+manuseio, armazenamento, distribuição e rastreabilidade específicas ao produto, juntamente 
+com os critérios de aceitação do produto;
+ d)	 os registros necessários para fornecer evidência de que os processos de realização e o produto 
+resultante atendem aos requisitos (ver 4.2.5).
+A saída deste planejamento deve ser documentada de forma adequada aos métodos de operação 
+da organização.
+NOTA	
+Informações adicionais podem ser encontradas na ABNT NBR ISO 14971.
+7.2	 Processos relacionados ao cliente
+7.2.1	 Determinação de requisitos relacionados ao produto
+A organização deve determinar:
+ a)	 os requisitos especificados pelo cliente, incluindo os requisitos para atividades de entrega e 
+pós-entrega;
+ b)	 os requisitos não declarados pelo cliente, mas necessários para o uso pretendido ou especificado, 
+quando conhecidos;
+ c)	
+os requisitos regulatórios aplicáveis relacionados ao produto;
+ d)	 qualquer treinamento de usuário necessário para assegurar o desempenho especificado e o uso 
+seguro do produto para saúde;
+ e)	 quaisquer requisitos adicionais determinados pela organização.
+7.2.2	 Análise crítica de requisitos relacionados ao produto
+A organização deve analisar criticamente os requisitos relacionados ao produto. Esta análise crítica 
+deve ser realizada antes que a organização assuma o compromisso de fornecer um produto para 
+o cliente (por exemplo, apresentação de propostas, aceitação de contratos ou pedidos, aceitação 
+de alterações em contratos ou pedidos) e deve assegurar que:
+ a)	 os requisitos do produto estejam definidos e documentados;
+ b)	 os requisitos de contrato ou do pedido que diferem daqueles previamente expressos sejam 
+determinados;
+ c)	
+os requisitos regulatórios aplicáveis sejam atendidos;
+ d)	 qualquer treinamento de usuário identificado de acordo com 7.2.1, esteja disponível ou tenha sua 
+disponibilidade planejada;
+ e)	 a organização tenha a habilidade de atender aos requisitos definidos.
+Registros dos resultados da análise crítica e das ações decorrentes da análise crítica devem ser 
+mantidos (ver 4.2.5).
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+Quando o cliente não fornecer uma declaração documentada dos requisitos, a organização deve con-
+firmar os requisitos do cliente antes da aceitação.
+Quando os requisitos do produto forem alterados, a organização deve assegurar que os documentos 
+relevantes sejam alterados e que o pessoal relevante esteja ciente dos requisitos alterados.
+7.2.3	 Comunicação
+A organização deve planejar e documentar arranjos para comunicação com os clientes com relação a:
+ a)	 informações do produto;
+ b)	 tratamento de solicitações, contratos ou pedidos, incluindo emendas;
+ c)	
+realimentação do cliente, incluindo reclamações;
+ d)	 notas de aviso.
+A organização deve manter comunicação com as autoridades regulatórias, de acordo com os requisi-
+tos regulatórios aplicáveis.
+7.3	 Projeto e desenvolvimento
+7.3.1	 Geral
+A organização deve documentar procedimentos para o projeto e o desenvolvimento.
+7.3.2	 Planejamento de projeto e desenvolvimento
+A organização deve planejar e controlar o projeto e o desenvolvimento do produto. Conforme apro-
+priado, os documentos do planejamento de projeto e desenvolvimento devem ser mantidos e atuali-
+zados à medida que o projeto e o desenvolvimento avançam.
+Durante o planejamento de projeto e desenvolvimento, a organização deve documentar:
+ a)	 os estágios do projeto e do desenvolvimento;
+ b)	 a(s) análise(s) crítica(s) necessária(s) a cada estágio do projeto e do desenvolvimento;
+ c)	
+as atividades de verificação, validação e transferência de projeto que são apropriadas a cada 
+estágio do projeto e do desenvolvimento;
+ d)	 as responsabilidades e as autoridades para o projeto e o desenvolvimento;
+ e)	 os métodos para assegurar a rastreabilidade tanto das saídas do projeto e do desenvolvimento 
+quanto das entradas do projeto e do desenvolvimento;
+ f)	
+os recursos necessários, incluindo as competências necessárias do pessoal de serviço.
+7.3.3	 Entradas para projeto e desenvolvimento
+Entradas relativas aos requisitos do produto devem ser determinadas, e registros devem ser mantidos 
+(ver 4.2.5). Estas entradas devem incluir:
+ a)	 requisitos de funcionamento, desempenho, usabilidade e segurança e de acordo com o uso 
+pretendido;
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+ b)	 requisitos regulatórios e normas aplicáveis;
+ c)	
+a(s) saída(s) aplicável(is) do gerenciamento de risco;
+ d)	 conforme apropriado, as informações provenientes de projetos similares anteriores;
+ e)	 outros requisitos essenciais para o projeto e o desenvolvimento do produto e dos processos.
+Estas entradas devem ser analisadas criticamente quanto à adequação e aprovadas.
+Os requisitos devem ser completos, sem ambiguidade, capazes de serem verificados ou validados 
+e não conflitantes entre si.
+NOTA	
+Informações adicionais podem ser encontradas na IEC 62366-1.
+7.3.4	 Saídas de projeto e desenvolvimento
+Saídas de projeto e desenvolvimento devem:
+ a)	 atender aos requisitos de entrada para projeto e desenvolvimento;
+ b)	 fornecer informações apropriadas para aquisição, produção e fornecimento de serviços;
+ c)	
+conter ou fazer referência a critérios de aceitação do produto;
+ d)	 especificar as características do produto que são essenciais para seu uso seguro e adequado.
+Saídas de projeto e desenvolvimento devem ser apresentadas de uma forma que possibilite a veri-
+ficação em relação às entradas de projeto e desenvolvimento e devem ser aprovadas antes de sua 
+liberação.
+Registros das saídas de projeto e desenvolvimento devem ser mantidos (ver 4.2.5).
+7.3.5	 Análise crítica de projeto e desenvolvimento
+Devem ser realizadas, em fases apropriadas, análises críticas sistemáticas de projeto e desenvolvi-
+mento, de acordo com arranjos planejados e documentados para:
+ a)	 avaliar a habilidade dos resultados de projeto e desenvolvimento em atender aos requisitos;
+ b)	 identificar e propor ações necessárias.
+Entre os participantes destas análises críticas, devem estar incluídos representantes de funções envol-
+vidas com o estágio de projeto e desenvolvimento que está sendo analisado criticamente, bem como 
+outro pessoal especializado.
+Registros dos resultados das análises críticas e de quaisquer ações necessárias devem ser mantidos 
+e devem incluir a identificação do projeto em análise crítica, os participantes envolvidos e a data 
+da análise crítica (ver 4.2.5).
+7.3.6	 Verificação de projeto e desenvolvimento
+A verificação de projeto e desenvolvimento deve ser executada de acordo com arranjos planejados 
+e documentados, de modo a assegurar que as saídas de projeto e desenvolvimento atendam aos 
+requisitos de entrada de projeto e desenvolvimento.
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+A organização deve documentar planos de verificação que incluam métodos, critérios de aceitação e, 
+conforme apropriado, técnicas estatísticas com justificativas para tamanho de amostra.
+Se o uso pretendido requerer que o produto para saúde seja conectado ou possua uma interface com 
+outro(s) produto(s) para saúde, a verificação deve incluir a confirmação de que as saídas de projeto 
+atendem às entradas do projeto, quando estes produtos estiverem conectados ou em interface.
+Registros dos resultados e das conclusões da verificação, bem como das ações necessárias, devem 
+ser mantidos (ver 4.2.4 e 4.2.5).
+7.3.7	 Validação de projeto e desenvolvimento
+A validação de projeto e  desenvolvimento deve ser executada de acordo com arranjos planejados e 
+documentados, de modo a assegurar que o produto resultante seja capaz de atender aos requisitos 
+para aplicação especificada ou uso pretendido.
+A organização deve documentar planos de validação que incluam métodos, critérios de aceitação e, 
+conforme apropriado, técnicas estatísticas com justificativas para o tamanho de amostra.
+A validação do projeto deve ser conduzida em produto representativo. Produto representativo inclui 
+unidades iniciais de produção, lotes iniciais de produção ou seus equivalentes. As justificativas para 
+a escolha de produto usado para a validação devem ser registradas (ver 4.2.5).
+Como parte da validação de projeto e desenvolvimento, a organização deve realizar avaliações 
+clínicas ou avaliações de desempenho do produto para saúde de acordo com os requisitos regulatórios 
+aplicáveis. Um produto para saúde usado para avaliação clínica ou avaliação de desempenho não 
+é considerado liberado para uso do cliente.
+Se o uso pretendido requerer que o produto para saúde seja conectado ou possua uma interface 
+com outro(s) produto(s) para saúde, a validação deve incluir a confirmação de que os requisitos 
+para a aplicação especificada ou o uso pretendido são atendidos quando estes produtos estiverem 
+conectados ou em interface.
+A validação deve ser finalizada antes da liberação do produto para uso do cliente.
+Devem ser mantidos registros dos resultados e das conclusões da validação, bem como das ações 
+necessárias (ver 4.2.4 e 4.2.5).
+7.3.8	 Transferência de projeto e desenvolvimento
+A organização deve documentar procedimentos para a transferência das saídas de projeto e desenvol-
+vimento para a fabricação. Estes procedimentos devem assegurar que as saídas de projeto e desen-
+volvimento sejam verificadas como adequadas à fabricação antes de se tornarem especificações finais 
+de produção, e que a capacidade de produção possa atender aos requisitos do produto.
+Resultados e conclusões da transferência devem ser registrados (ver 4.2.5).
+7.3.9	 Controle de alterações de projeto e desenvolvimento
+A organização deve documentar procedimentos para controlar alterações de projeto e desenvol-
+vimento. A organização deve determinar a significância da alteração com relação aos requisitos 
+de função, desempenho, usabilidade, segurança e requisitos regulatórios aplicáveis para o produto 
+para saúde e seu uso pretendido.
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+Alterações de projeto e desenvolvimento devem ser identificadas. Antes da implementação, as alte-
+rações devem ser:
+ a)	 analisadas criticamente;
+ b)	 verificadas;
+ c)	
+validadas, conforme apropriado;
+ d)	 aprovadas.
+A análise crítica de alterações de projeto e desenvolvimento deve incluir a avaliação dos efeitos das 
+alterações nas partes constituintes e no produto em processo ou já entregue, nas entradas ou saídas 
+do gerenciamento de risco e nos processos de realização do produto.
+Devem ser mantidos registros das alterações, de sua análise crítica e de quaisquer ações necessárias 
+(ver 4.2.5).
+7.3.10	 Arquivos de projeto e desenvolvimento
+A organização deve manter um arquivo de projeto e desenvolvimento para cada tipo de produto para 
+saúde ou família de produto para saúde. Este arquivo deve incluir ou fazer referência aos registros 
+gerados para demonstrar conformidade com os requisitos para projeto e desenvolvimento e aos 
+registros das alterações de projeto e desenvolvimento.
+7.4	 Aquisição
+7.4.1	 Processo de aquisição 
+A organização deve documentar procedimentos (ver 4.2.4) para assegurar que o produto adquirido 
+esteja em conformidade com informações de aquisição especificadas.
+A organização deve estabelecer os critérios de avaliação e seleção de fornecedores. Os critérios 
+devem ser:
+ a)	 baseados na habilidade do fornecedor de fornecer um produto que atenda aos requisitos 
+da organização;
+ b)	 baseados no desempenho do fornecedor;
+ c)	
+baseados no efeito do produto adquirido sobre a qualidade do produto para saúde;
+ d)	 proporcionais ao risco associado ao produto para saúde.
+A organização deve planejar o monitoramento e a reavaliação de fornecedores. Deve ser monitorado 
+o desempenho do fornecedor com relação ao cumprimento de requisitos para o produto adquirido. 
+Os resultados do monitoramento devem fornecer uma entrada para o processo de reavaliação 
+do fornecedor.
+O não cumprimento dos requisitos de aquisição deve ser abordado, junto ao fornecedor, de forma 
+proporcional aos riscos associados ao produto adquirido e à conformidade com requisitos regulatórios 
+aplicáveis.
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+Registros dos resultados da avaliação, da seleção, do monitoramento e da reavaliação da capacidade 
+ou do desempenho do fornecedor e de quaisquer ações necessárias decorrentes dessas atividades 
+devem ser mantidos (ver 4.2.5).
+7.4.2	 Informações de aquisição
+Informações de aquisição devem descrever ou fazer referência ao produto que será adquirido, 
+incluindo, conforme apropriado:
+a)	
+especificações do produto;
+b)	
+requisitos para aceitação do produto, procedimentos, processos e equipamentos;
+c)	
+requisitos para a qualificação do pessoal do fornecedor;
+d)	
+requisitos do sistema de gestão da qualidade.
+A organização deve assegurar a adequação dos requisitos de aquisição especificados antes de sua 
+comunicação ao fornecedor.
+Informações de aquisição devem incluir, conforme aplicável, um acordo escrito para que o fornecedor 
+notifique a organização sobre as alterações no produto adquirido antes da implementação de quaisquer 
+alterações que afetem a habilidade do produto adquirido de atender aos requisitos de aquisição 
+especificados.
+Para a extensão requerida para rastreabilidade, fornecida em 7.5.9, a organização deve manter 
+informações de aquisição relevantes em forma de documentos (ver 4.2.4) e registros (ver 4.2.5).
+7.4.3	 Verificação de produto adquirido
+A organização deve estabelecer e implementar atividades de inspeção ou outras atividades necessárias 
+para assegurar que o produto adquirido atenda aos requisitos de aquisição especificados. A extensão 
+das atividades de verificação deve ser baseada nos resultados de avaliação do fornecedor e ser 
+proporcional aos riscos associados ao produto adquirido.
+Quando a organização tomar ciência de quaisquer alterações no produto adquirido, ela deve determinar 
+se essas alterações afetam o processo de realização do produto ou do produto para saúde.
+Quando a organização ou seu cliente pretender executar a verificação nas instalações do fornecedor, 
+a organização deve declarar, nas informações de aquisição, atividades de verificação e método para 
+a liberação do produto pretendidos.
+Registros da verificação devem ser mantidos (ver 4.2.5).
+7.5	 Produção e fornecimento de serviços
+7.5.1	 Controle de produção e fornecimento de serviço
+Produção e fornecimento de serviço devem ser planejados, executados, monitorados e controlados 
+para assegurar que o produto esteja em conformidade com as especificações. Conforme apropriado, 
+os controles de produção devem incluir, mas não estar limitados a:
+ a)	 documentação de procedimentos e métodos para o controle de produção (ver 4.2.4);
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+ b)	 qualificação da infraestrutura;
+ c)	
+implementação de monitoramento e medições de parâmetros de processo e características 
+de produto;
+ d)	 disponibilidade e uso de equipamentos de monitoramento e medição;
+ e)	 implementação de operações definidas para rotulagem e embalagem;
+ f)	
+implementação de atividades de liberação, entrega e pós-entrega do produto.
+A organização deve estabelecer e manter um registro (ver 4.2.5) para cada produto para saúde 
+ou lote de produtos para saúde que forneça rastreabilidade na extensão especificada em 7.5.9 e que 
+identifique a quantidade fabricada e a quantidade aprovada para distribuição. O registro deve ser 
+verificado e aprovado.
+7.5.2	 Limpeza de produto
+A organização deve documentar os requisitos para a limpeza do produto ou controle de contaminação 
+do produto se:
+ a)	 o produto for limpo pela organização antes da esterilização ou de seu uso;
+ b)	 o produto for fornecido não estéril e estiver sujeito ao processo de limpeza antes da esterilização 
+ou de seu uso;
+ c)	
+o produto não puder ser limpo antes da esterilização ou de seu uso e sua limpeza for significante 
+para o uso;
+ d)	 o produto for fornecido para ser usado não estéril e sua limpeza for significante para o uso;
+ e)	 agentes do processo tiverem que ser removidos do produto durante a fabricação.
+Se o produto for limpo de acordo com as alíneas a) ou b) acima, os requisitos contidos em 6.4.1 não 
+serão aplicáveis antes do processo de limpeza.
+7.5.3	 Atividades de instalação
+A organização deve documentar requisitos para a instalação do produto para saúde e critérios 
+de aceitação para a verificação da instalação, conforme apropriado.
+Se os requisitos acordados do cliente permitirem que a instalação do produto para saúde seja execu-
+tada por uma entidade externa que não seja a organização ou seu fornecedor, a organização deve for-
+necer requisitos documentados para a instalação do produto para saúde e a verificação da instalação.
+Registros da instalação do produto para saúde e da verificação da instalação realizadas pela 
+organização ou seu fornecedor devem ser mantidos (ver 4.2.5).
+7.5.4	 Atividades de assistência técnica 
+Se a assistência técnica do produto para saúde for um requisito especificado, a organização deve 
+documentar procedimentos para assistência técnica, materiais de referência e medições de referên-
+cia, conforme necessário, para realização das atividades de assistência técnica e verificação do cum-
+primento dos requisitos.
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+A organização deve analisar os registros das atividades de assistência técnica executadas pela orga-
+nização ou seu fornecedor:
+a)	
+para determinar se as informações são para ser tratadas como uma reclamação;
+b)	
+conforme apropriado, para entrada do processo de melhoria.
+Registros das atividades de assistência técnica realizadas pela organização ou seu fornecedor devem 
+ser mantidos (ver 4.2.5).
+7.5.5	 Requisitos particulares para produtos para saúde estéreis
+A organização deve manter registros dos parâmetros do processo de esterilização usado para cada 
+lote de esterilização (ver 4.2.5). Os registros de esterilização devem ser rastreáveis para cada lote 
+de produção de produtos para saúde.
+7.5.6	 Validação dos processos para produção e fornecimento de serviço
+A organização deve validar quaisquer processos de produção e fornecimento de serviço onde a saída 
+resultante não puder ser ou não for verificada por monitoramento ou medição subsequente e, como 
+consequência, quando as deficiências ficarem aparentes somente depois que o produto estiver em 
+uso ou o serviço tiver sido entregue.
+A validação deve demonstrar a habilidade destes processos em alcançar os resultados planejados 
+de maneira consistente.
+A organização deve documentar procedimentos para a validação dos processos, incluindo:
+ a)	 critérios definidos para análise crítica e aprovação dos processos;
+ b)	 qualificação de equipamentos e pessoal;
+ c)	
+uso de métodos, procedimentos e critérios de aceitação específicos;
+ d)	 conforme apropriado, técnicas estatísticas com justificativas para tamanhos de amostra;
+ e)	 requisitos para registros (ver 4.2.5);
+ f)	
+revalidação, incluindo critérios para revalidação;
+ g)	 aprovação de alterações aos processos.
+A organização deve documentar procedimentos para validação da aplicação de software de computador 
+usado na produção e no fornecimento de serviço. Tais aplicações de software devem ser validadas 
+antes do uso inicial e, conforme apropriado, após alterações de tal software ou em sua aplicação. 
+A abordagem e as atividades específicas associadas à validação e à revalidação de software devem 
+ser proporcionais ao risco associado ao uso do software, incluindo o efeito sobre a habilidade 
+do produto de estar em conformidade com as especificações.
+Registros dos resultados e da conclusão da validação, bem como das ações necessárias decorrentes 
+da validação, devem ser mantidos (ver 4.2.4 e 4.2.5).
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+7.5.7	 Requisitos particulares para validação de processos de esterilização e sistemas 
+de barreira estéreis
+A organização deve documentar procedimentos (ver 4.2.4) para a validação de processos de esterili-
+zação e sistemas de barreira estéreis.
+Processos de esterilização e sistemas de barreira estéreis devem ser validados antes da implementa-
+ção e após as alterações no produto ou no processo, conforme apropriado.
+Registros dos resultados e da conclusão da validação, bem como das ações necessárias decorrentes 
+da validação devem ser mantidos (ver 4.2.4 e 4.2.5).
+NOTA	
+Informações adicionais podem ser encontradas nas ABNT NBR ISO 11607-1 e ABNT NBR ISO 11607-2.
+7.5.8	 Identificação
+A organização deve documentar procedimentos para identificação do produto e identificar o produto 
+através de meios adequados ao longo da realização do produto.
+A organização deve identificar a situação do produto com relação aos requisitos de monitoramento 
+e medição ao longo da realização do produto. A identificação da situação do produto deve ser 
+mantida ao longo da produção, armazenamento, instalação e assistência técnica do produto, de modo 
+a assegurar que seja despachado, usado ou instalado somente o produto que tenha passado por 
+inspeções e ensaios requeridos, ou que tenha sido liberado através de concessão autorizada.
+Se requerido por requisitos regulatórios aplicáveis, a organização deve documentar um sistema para 
+atribuir identificação única de produto ao produto para saúde.
+A organização deve documentar procedimentos para assegurar que produtos para saúde retornados 
+à organização sejam identificados e distinguidos de produto conforme.
+7.5.9	 Rastreabilidade
+7.5.9.1	 Geral
+A organização deve documentar procedimentos para a rastreabilidade. Estes procedimentos devem 
+definir a extensão da rastreabilidade de acordo com requisitos regulatórios aplicáveis e os registros 
+a serem mantidos (ver 4.2.5).
+7.5.9.2	 Requisitos particulares para produtos para saúde implantáveis
+Os registros requeridos para a rastreabilidade devem incluir registros dos componentes, dos materiais 
+e das condições para o ambiente de trabalho usado, se estes puderem fazer com que o produto para 
+saúde não satisfaça os requisitos de segurança e desempenho especificados.
+A organização deve requerer que fornecedores de serviços de distribuição ou distribuidores 
+mantenham registros da distribuição dos produtos para saúde, de modo a permitir a rastreabilidade 
+e a disponibilidade destes registros para inspeção.
+Registros do nome e endereço do destinatário do pacote de transporte devem ser mantidos (ver 4.2.5).
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+7.5.10	 Propriedade de cliente
+A organização deve identificar, verificar, proteger e resguardar propriedade de cliente disponibilizada 
+para uso ou incorporação em produto enquanto ela estiver no controle da organização ou sendo 
+usada pela organização. Se qualquer propriedade do cliente for perdida, danificada ou, de outra forma, 
+considerada inadequada ao uso, a organização deve comunicar isto ao cliente e manter registros 
+(ver 4.2.5).
+7.5.11	 Preservação de produto
+A organização deve documentar procedimentos para a preservação da conformidade de produto com 
+os requisitos durante o processamento, armazenamento, manuseio e distribuição. A preservação deve 
+se aplicar às partes constituintes de um produto para saúde.
+A organização deve proteger o produto contra alteração, contaminação ou dano quando exposto a 
+condições e perigos esperados durante o processamento, armazenamento, manuseio e distribuição ao:
+ a)	 projetar e construir embalagens e contêineres de transporte adequadas;
+ b)	 documentar requisitos para condições especiais necessárias se a embalagem em si não puder 
+fornecer preservação.
+Se condições especiais forem requeridas, elas devem ser controladas e registradas (ver 4.2.5).
+7.6	 Controle de equipamentos de monitoramento e medição
+A organização deve determinar o monitoramento e a medição a serem realizados e os equipamentos 
+de monitoramento e medição necessários para fornecer evidência de conformidade do produto com 
+requisitos determinados.
+A organização deve documentar procedimentos para assegurar que o monitoramento e medição 
+possam ser executados de uma maneira que seja consistente com os requisitos de monitoramento 
+e medição.
+Conforme necessário, para assegurar resultados válidos, o equipamento de medição deve:
+ a)	 ser calibrado ou verificado, ou ambos, em intervalos especificados ou antes do uso, com relação 
+aos padrões de medição rastreáveis aos padrões de medição internacionais ou nacionais: quando 
+não houver nenhum, a base usada para calibração ou verificação deve ser registrada (ver 4.2.5);
+ b)	 ser ajustado ou reajustado, conforme necessário; esses ajustes ou reajustes devem ser registrados 
+(ver 4.2.5);
+ c)	
+possuir identificação de modo a determinar seu estado de calibração;
+ d)	 ser salvaguardado contra ajustes que possam invalidar o resultado da medição;
+ e)	 ser protegido contra dano e deterioração durante manuseio, manutenção e armazenamento.
+A organização deve executar calibração ou verificação de acordo com procedimentos documentados.
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+Além disso, a organização deve avaliar e registrar a validade dos resultados de medição anteriores, 
+quando constatado que o equipamento não está em conformidade com os requisitos. A organização 
+deve adotar ações adequadas com relação ao equipamento e quaisquer produtos afetados.
+Os registros dos resultados de calibração e verificação devem ser mantidos (ver 4.2.5).
+A organização deve documentar procedimentos para a validação da aplicação de software de 
+computador usado para os requisitos de monitoramento e medição. Tais aplicações de software 
+devem ser validadas antes do uso inicial e, conforme apropriado, após alterações de tal software ou 
+em sua aplicação. A abordagem e as atividades específicas associadas à validação e à revalidação 
+de software devem ser proporcionais ao risco associado ao uso do software, incluindo o efeito sobre 
+a habilidade do produto em estar em conformidade com as especificações.
+Registros dos resultados e da conclusão da validação, bem como das ações necessárias decorrentes 
+da validação devem ser mantidos (ver 4.2.4 e 4.2.5).
+NOTA	
+Informações adicionais podem ser encontradas na ABNT NBR ISO 10012.
+8	 Medição, análise e melhoria
+8.1	 Geral
+A organização deve planejar e implementar processos de monitoramento, medição, análise e melhoria 
+necessários para:
+ a)	 demonstrar a conformidade do produto;
+ b)	 assegurar a conformidade do sistema de gestão da qualidade;
+ c)	
+manter a eficácia do sistema de gestão da qualidade.
+Isto deve incluir a determinação de métodos aplicáveis, incluindo técnicas estatísticas, e a extensão 
+de seu uso.
+8.2	 Monitoramento e medição
+8.2.1	 Realimentação (feedback)
+Como uma das medições da eficácia do sistema de gestão da qualidade, a organização deve obter 
+e monitorar informações relativas a se a organização atendeu aos requisitos do cliente. Os métodos 
+para obtenção e uso destas informações devem ser documentados.
+A organização deve documentar procedimentos para o processo de realimentação. Este processo de 
+realimentação deve incluir disposições para reunir dados provenientes de atividades de produção, 
+assim como de atividades pós-produção.
+As informações obtidas do processo de realimentação devem servir como entrada potencial ao 
+gerenciamento de risco para monitorar e manter os requisitos do produto, assim como os processos 
+de realização do produto ou de melhoria.
+Se requerido por requisitos regulatórios aplicáveis que a organização obtenha experiência específica 
+proveniente de atividades pós-produção, a análise crítica desta experiência deve fazer parte do 
+processo de realimentação.
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+8.2.2	 Tratamento de reclamações
+A organização deve documentar procedimentos para o tratamento de reclamações em tempo hábil, 
+de acordo com os requisitos regulatórios aplicáveis.
+Estes procedimentos devem incluir pelo menos os requisitos e as responsabilidades para:
+ a)	 receber e registrar as informações;
+ b)	 avaliar as informações de modo a determinar se a realimentação constitui reclamação;
+ c)	
+investigar reclamações;
+ d)	 determinar a necessidade de comunicar as informações às autoridades regulatórias apropriadas;
+ e)	 tratar reclamações relacionadas ao produto;
+ f)	
+determinar a necessidade de iniciar correções ou ações corretivas.
+Se qualquer reclamação não for investigada, justificativas devem ser documentadas. Qualquer corre-
+ção ou ação corretiva resultante do processo de tratamento da reclamação deve ser documentada.
+Se uma investigação determinar que atividades realizadas fora da organização contribuiram para 
+a reclamação, informações relevantes devem ser trocadas entre a organização e a entidade externa 
+envolvida.
+Registros de tratamento de reclamações devem ser mantidos (ver 4.2.5).
+8.2.3	 Notificação às autoridades regulatórias
+Se requisitos regulatórios aplicáveis requererem a notificação de reclamações que atendam aos crité-
+rios de comunicação especificados de eventos adversos ou a emissão de notas de aviso, a organiza-
+ção deve documentar procedimentos para notificar as autoridades regulatórias apropriadas.
+Registros de notificação às autoridades regulatórias devem ser mantidos (ver 4.2.5).
+8.2.4	 Auditoria interna
+A organização deve realizar auditorias internas em intervalos planejados para determinar se o sistema 
+de gestão da qualidade:
+ a)	 está em conformidade com os arranjos planejados e documentados com os requisitos desta 
+Norma, com os requisitos do sistema de gestão da qualidade estabelecidos pela organização 
+e com os requisitos regulatórios aplicáveis;
+ b)	 é implementado e mantido de maneira eficaz.
+A organização deve documentar um procedimento para descrever as responsabilidades e os requi-
+sitos para o planejamento e a realização de auditorias, bem como os registros e a comunicação dos 
+resultados da auditoria.
+Um programa de auditoria deve ser planejado, levando em consideração a situação e a importância 
+dos processos e as áreas a serem auditadas, bem como os resultados de auditorias anteriores. 
+Os critérios escopo, frequência e métodos de auditoria devem ser definidos e registrados (ver 4.2.5). 
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+A seleção dos auditores e a realização das auditorias devem assegurar objetividade e imparcialidade 
+do processo de auditoria. Os auditores não podem auditar o seu próprio trabalho.
+Registros das auditorias e seus resultados, incluindo a identificação dos processos e das áreas 
+auditadas e as conclusões, devem ser mantidos (ver 4.2.5).
+A direção responsável pela área a ser auditada deve assegurar que quaisquer correções e ações 
+corretivas necessárias sejam conduzidas, sem atraso indevido, para eliminar não conformidades 
+detectadas e suas causas. As atividades de acompanhamento devem incluir a verificação das ações 
+adotadas e a comunicação dos resultados da verificação.
+NOTA	
+Informações adicionais podem ser encontradas na ABNT NBR ISO 19011.
+8.2.5	 Monitoramento e medição de processos
+A organização deve aplicar métodos adequados para o monitoramento e, conforme apropriado, para 
+a medição dos processos do sistema de gestão da qualidade. Estes métodos devem demonstrar 
+a habilidade dos processos de alcançar os resultados planejados. Quando os resultados planejados 
+não forem alcançados, devem ser conduzidas correções e ações corretivas, conforme apropriado.
+8.2.6	 Monitoramento e medição de produto
+A organização deve monitorar e medir as características do produto para verificar se os requisitos do 
+produto foram atendidos. Isto deve ser executado em estágios apropriados do processo de realização 
+do produto, de acordo com arranjos planejados e documentados e procedimentos documentados.
+Evidência de conformidade com critérios de aceitação deve ser mantida. A identidade da pessoa 
+responsável por autorizar a liberação do produto deve ser registrada (ver 4.2.5). Conforme apropriado, 
+registros devem identificar o equipamento de ensaio usado para executar atividades de medição.
+A liberação do produto e a entrega de serviços não podem prosseguir até que os arranjos planejados 
+e documentados tenham sido satisfatoriamente concluídos.
+Para produtos para saúde implantáveis, a organização deve registrar a identidade do pessoal que 
+executa qualquer inspeção ou ensaio.
+8.3	 Controle de produto não conforme
+8.3.1	 Geral
+A organização deve assegurar que produto que não esteja em conformidade com requisitos de produto 
+seja identificado e controlado para prevenir seu uso ou entrega não intencional. A organização deve 
+documentar procedimentos para definir os controles e as responsabilidades e autoridades relacionadas 
+para a identificação, a documentação, a segregação, a avaliação e a disposição do produto não 
+conforme.
+A avaliação de não conformidade deve incluir a determinação da necessidade de uma investigação 
+e notificação de qualquer entidade externa responsável pela não conformidade.
+Registros da natureza das não conformidades e de quaisquer ações subsequentes adotadas, incluindo 
+avaliação, qualquer investigação e as justificativas para as decisões devem ser mantidos (ver 4.2.5).
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+8.3.2	 Ações em resposta ao produto não conforme detectado antes da entrega
+A organização deve lidar com produto não conforme através de uma ou mais das seguintes maneiras:
+a)	
+adotar ações para eliminar a não conformidade detectada;
+b)	
+adotar ações para impossibilitar seu uso pretendido ou aplicação original;
+c)	
+autorizar seu uso, liberação ou aceitação sob concessão.
+A organização deve assegurar que o produto não conforme seja aceito, por meio de concessão, 
+somente se justificativas forem fornecidas, aprovação for obtida e requisitos regulatórios aplicáveis 
+forem atendidos. Os registros da aceitação por meio de concessão e a identidade da pessoa 
+responsável pela autorização da concessão devem ser mantidos (ver 4.2.5).
+8.3.3	 Ações em resposta ao produto não conforme detectado após a entrega
+Quando produto não conforme for detectado após a entrega ou o início do uso, a organização deve 
+adotar ações apropriadas com relação aos efeitos ou efeitos potenciais da não conformidade. Registros 
+das ações adotadas devem ser mantidos (ver 4.2.5).
+A organização deve documentar os procedimentos para a emissão de notas de aviso, de acordo com 
+requisitos regulatórios aplicáveis. Estes procedimentos devem ser capazes de serem colocados em 
+prática a qualquer momento. Registros das ações relacionadas à emissão das notas de aviso devem 
+ser mantidos (ver 4.2.5).
+8.3.4	 Retrabalho
+A organização deve executar o retrabalho de acordo com procedimentos documentados que consi-
+deram o efeito adverso potencial do retrabalho no produto. Estes procedimentos devem estar sujeitos 
+à mesma análise crítica e aprovação do procedimento original.
+Após a conclusão do retrabalho, o produto deve ser verificado para assegurar que ele atenda aos 
+critérios de aceitação e aos requisitos regulatórios aplicáveis.
+Registros de retrabalho devem ser mantidos (ver 4.2.5).
+8.4	 Análise de dados
+A organização deve documentar procedimentos para determinar, coletar e analisar dados apropriados 
+para demonstrar a pertinência, a adequação e a eficácia do sistema de gestão da qualidade. Os pro-
+cedimentos devem incluir a determinação dos métodos apropriados, incluindo as técnicas estatísticas 
+e a extensão de seu uso.
+A análise de dados deve incluir os dados gerados como resultado do monitoramento e da medição 
+e de outras fontes relevantes, bem como incluir pelo menos entradas provenientes de:
+ a)	 realimentação;
+ b)	 conformidade com os requisitos de produto;
+ c)	
+características e tendências de processos e produtos, incluindo oportunidades de melhoria;
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+ d)	 fornecedores;
+ e)	 auditorias;
+ f)	
+relatórios de serviço, conforme apropriado.
+Se a análise de dados mostrar que o sistema de gestão da qualidade não é pertinente, adequado ou 
+eficaz, a organização deve usar esta análise como entrada para melhoria, conforme requerido em 8.5.
+Registros dos resultados das análises devem ser mantidos (ver 4.2.5).
+8.5	 Melhorias
+8.5.1	 Geral
+A organização deve identificar e implementar quaisquer alterações necessárias para assegurar 
+e manter a contínua pertinência, adequação e eficácia do sistema de gestão da qualidade, assim 
+como a segurança e o desempenho do produto para saúde através do uso da política da qualidade, 
+dos objetivos da qualidade, dos resultados de auditoria, da vigilância pós-mercado, da análise 
+de dados, das ação corretivas, das ações preventivas e da análise crítica pela direção.
+8.5.2	 Ação corretiva
+A organização deve adotar ações para eliminar as causas de não conformidades, de forma a prevenir 
+sua recorrência. Quaisquer ações corretivas necessárias devem ser adotadas sem atraso indevido. 
+Ações corretivas devem ser proporcionais aos efeitos das não conformidades encontradas.
+A organização deve documentar um procedimento para definir os requisitos para:
+ a)	 analisar criticamente não conformidades (incluindo reclamações);
+ b)	 determinar as causas das não conformidades;
+ c)	
+avaliar a necessidade de ações para assegurar que as não conformidades não recorram;
+ d)	 planejar e documentar as ações necessárias e implementar essas ações, incluindo, conforme 
+apropriado, a atualização da documentação;
+ e)	 verificar se a ação corretiva não afeta, adversamente, a habilidade do produto para saúde de 
+atender aos requisitos regulatórios aplicáveis ou a segurança e o desempenho do produto para 
+a saúde;
+ f)	
+analisar criticamente a eficácia da ação corretiva adotada.
+Registros dos resultados de qualquer investigação e ação adotada devem ser mantidos (ver 4.2.5).
+8.5.3	 Ação preventiva
+A organização deve determinar as ações para eliminar as causas de não conformidades potenciais, 
+de forma a prevenir sua ocorrência. As ações preventivas devem ser proporcionais aos efeitos dos 
+problemas potenciais.
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+A organização deve documentar um procedimento para descrever os requisitos para:
+ a)	 determinar não conformidades potenciais e suas causas;
+ b)	 avaliar a necessidade de ações para prevenir a ocorrência de não conformidades;
+ c)	
+planejar e documentar ações necessárias e implementar essas ações, incluindo, conforme apro-
+priado, a atualização da documentação;
+ d)	 verificar se a ação corretiva não afeta, adversamente, a habilidade do produto para saúde 
+de atender aos requisitos regulatórios aplicáveis ou a segurança e desempenho do produto para 
+a saúde;
+ e)	 analisar criticamente a eficácia da ação preventiva adotada, conforme apropriado.
+Registros dos resultados de qualquer investigação e ação adotada devem ser mantidos (ver 4.2.5).
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+Anexo A 
+(informativo) 
+ 
+Seção na  
+ABNT NBR ISO 13485:2016
+Comentário sobre a alteração em comparação com a  
+ABNT NBR ISO 13485:2004
+Prefácio
+—
+—
+Elucida o efeito da segunda edição desta Norma.
+Introdução
+0.1 Geral
+—
+—
+Inclui de maneira substancial mais detalhes relacionados à natureza 
+da organização abrangida pelos requisitos desta Norma e os estágios 
+do ciclo de vida abrangidos.
+—
+—
+Explica que os requisitos podem ser usados por fornecedores ou 
+outras entidades externas, tanto de forma voluntária quanto como 
+resultado das disposições contratuais.
+—
+—
+Alerta as organizações sobre suas obrigações relacionadas aos 
+requisitos regulatórios com foco nos sistemas de gestão da qualidade.
+—
+—
+Alerta as organizações sobre as diferenças nas definições de 
+regulamentação local e sua obrigação em compreender como essas 
+definições irão afetar seu sistema de gestão da qualidade.
+—
+—
+Adiciona a obrigação em atender aos requisitos do sistema de gestão 
+da qualidade da própria organização.
+—
+—
+Especificamente, chama a atenção sobre a necessidade de “atender 
+aos requisitos do cliente e requisitos regulatórios aplicáveis para a 
+segurança e desempenho.”
+—
+—
+Enfatiza que os requisitos do produto que são importantes são 
+aqueles relacionados à segurança e ao desempenho.
+—
+—
+Adiciona duas influências sobre a natureza do sistema de gestão 
+da qualidade que não estavam presentes na lista original (ambiente 
+organizacional e requisitos regulatórios).
+—
+—
+Elucida que a organização não tem que alinhar sua documentação à 
+estrutura de seção desta Norma.
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+Tabela A.1 (continuação)
+Seção na  
+ABNT NBR ISO 13485:2016
+Comentário sobre a alteração em comparação com a  
+ABNT NBR ISO 13485:2004
+0.2 Elucidação de conceitos
+—
+—
+Adiciona dois critérios adicionais associados à descrição dos 
+requisitos apropriados:
+—
+—
+conformidade com os requisitos regulatórios;
+—
+—
+o requisito é necessário para a organização gerenciar riscos.
+—
+—
+Limita a aplicação de risco aos requisitos de segurança e desempenho 
+do produto para saúde ou ao cumprimento dos requisitos regulatórios 
+aplicáveis.
+—
+—
+Elucida que o termo “documentado” inclui a necessidade de 
+estabelecer, implementar e manter.
+—
+—
+Elucida que o termo “produto” é aplicável às saídas destinadas 
+ao cliente ou por este requeridas ou a qualquer saída destinada 
+resultante do processo de realização do produto.
+0.3 Abordagem de processo
+Explicação sobre a extensão da abordagem de processo.
+0.4 Relação com a 
+ABNT NBR ISO 9001
+—
+—
+Declara a relação entre a ABNT NBR ISO  13485:2016 e a 
+ABNT NBR ISO 9001.
+—
+—
+Indica que a relação estrutural entre a ABNT NBR ISO 13485:2016 e 
+a ABNT NBR ISO 9001:2015 será esboçada no Anexo B.
+—
+—
+O uso do texto em itálico na norma para indicar alterações da 
+ABNT NBR ISO 9001:2008 foi eliminado.
+1 Escopo
+—
+—
+Indica a aplicabilidade desta Norma às organizações envolvidas em 
+um ou mais estágios do ciclo de vida do produto para saúde.
+—
+—
+Indica que esta Norma também pode ser usada por fornecedores 
+ou entidades externas que fornecem o produto, incluindo serviços 
+relacionados ao sistema de gestão da qualidade para organizações 
+de produtos para saúde.
+—
+—
+Especificamente, chama a atenção para as responsabilidades de 
+monitoramento, manutenção e controle dos processos terceirizados.
+—
+—
+Expande os requisitos que podem não ser aplicáveis àqueles nas 
+Seções 6 e 8.
+—
+—
+Elucida que o termo “requisitos regulatórios” inclui estatutos, 
+regulamentos, decretos ou diretrizes, e limita o escopo dos “requisitos 
+regulatórios aplicáveis” àqueles requisitos para o sistema de gestão 
+da qualidade e a segurança ou o desempenho do produto para saúde.
+3 Termos e definições
+—
+—
+Algumas novas definições foram adicionadas e algumas existentes 
+foram aprimoradas.
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+Tabela A.1 (continuação)
+Seção na  
+ABNT NBR ISO 13485:2016
+Comentário sobre a alteração em comparação com a  
+ABNT NBR ISO 13485:2004
+4 Sistema de gestão da 
+qualidade
+4.1 Requisitos gerais
+—
+—
+Foi adicionado o requisito para documentar o(s) papel(éis) da 
+organização.
+—
+—
+Requer a determinação de processos “levando em consideração os 
+papéis assumidos pela organização.”
+—
+—
+Requer a aplicação de uma “abordagem baseada em risco para 
+o controle dos processos apropriados necessários ao sistema de 
+gestão da qualidade.”
+—
+—
+Adiciona requisitos relacionados às alterações nos processos.
+—
+—
+Foram adicionados requisitos relacionados à validação da aplicação 
+do software de computador usado no sistema de gestão da qualidade.
+4.2  Requisitos de 
+documentação
+Inclui o controle de registros nos requisitos de controle de documentos.
+Lista os documentos que seriam incluídos no arquivo do produto para 
+saúde.
+Foi adicionado novo requisito relacionado à proteção de informações de 
+saúde confidenciais.
+Foi adicionado novo requisito relacionado à deterioração e perda de 
+documentos.
+5.6 Análise crítica pela direção 
+—
+—
+Inclui o requisito para a documentação de um ou mais procedimentos 
+para a análise crítica pela direção e o requisito para as análises 
+críticas pela direção em “intervalos planejados documentados”.
+—
+—
+As listas de entradas e saídas da análise crítica pela direção foram 
+expandidas.
+6.2 Recursos humanos
+—
+—
+Foi adicionado novo requisito para documentação de processos para 
+estabelecimento de competências, fornecimento de treinamento 
+necessário assegurar a conscientização do pessoal de serviço.
+6.3 Infraestrutura
+—
+—
+Adiciona o requisito, informando que a infraestrutura evita a confusão 
+de produtos e assegura o manuseio sistemático do produto.
+—
+—
+Adiciona o sistema de informações à lista de serviços complementares.
+6.4 Ambiente de trabalho e 
+controle de contaminação
+—
+—
+Foram adicionados requisitos de documentação para o ambiente de 
+trabalho.
+—
+—
+Foi adicionado o requisito relacionado ao controle de contaminação 
+com micro-organismos ou material particulado para produtos para 
+saúde estéreis.
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+Tabela A.1 (continuação)
+Seção na  
+ABNT NBR ISO 13485:2016
+Comentário sobre a alteração em comparação com a  
+ABNT NBR ISO 13485:2004
+7.1 Planejamento da realização 
+de produto
+—
+—
+Foram adicionados requisitos à lista.
+7.2 Processos relacionados ao 
+cliente
+—
+—
+Foram adicionados requisitos à lista.
+—
+—
+Foi adicionado novo requisito relacionado à comunicação às 
+autoridades regulatórias.
+7.3.2 Planejamento de projeto e 
+desenvolvimento
+—
+—
+Foram adicionados requisitos à lista.
+—
+—
+Foi eliminado o requisito relacionado à gestão das interfaces entre 
+diferentes grupos envolvidos no projeto e no desenvolvimento.
+7.3.3 Entradas para projeto e 
+desenvolvimento 
+—
+—
+Foram adicionados requisitos à lista.
+—
+—
+Foi adicionado o requisito informando que os requisitos devem ser 
+capazes de serem verificados ou validados.
+7.3.5 Análise crítica de projeto 
+e desenvolvimento 
+—
+—
+Foram adicionados detalhes dos conteúdos dos registros.
+7.3.6 Verificação de projeto e 
+desenvolvimento
+—
+—
+Foi adicionado o requisito para documentação dos planos de 
+verificação e das considerações de interface.
+—
+—
+Foi adicionado o requisito para registros de verificação.
+7.3.7 Validação de projeto e 
+desenvolvimento
+—
+—
+Foi adicionado o requisito para documentação dos planos de 
+validação, do produto a ser usado para validação e das considerações 
+de interface. Foi adicionado o requisito para registros de validação.
+7.3.8 Transferência de projeto e 
+desenvolvimento
+—
+—
+Foi adicionada nova subseção.
+7.3.9 Controle de alterações de 
+projeto e desenvolvimento 
+—
+—
+Adiciona o requisito recomendando que sejam avaliados os produtos 
+em processo e as saídas do gerenciamento de risco e dos processos 
+de realização do produto com relação aos efeitos das alterações.
+—
+—
+Foram adicionados detalhes para serem considerados na 
+determinação da significância das alterações no projeto e no 
+desenvolvimento.
+7.3.10 Arquivos de projeto e 
+desenvolvimento
+—
+—
+Foi adicionada nova subseção.
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+Tabela A.1 (continuação)
+Seção na  
+ABNT NBR ISO 13485:2016
+Comentário sobre a alteração em comparação com a  
+ABNT NBR ISO 13485:2004
+7.4.1 Processo de aquisição
+—
+—
+Enfoca os critérios de seleção de fornecedor com relação ao efeito 
+do desempenho do fornecedor na qualidade do produto para saúde, 
+ao risco associado ao produto para saúde e ao fato de o produto 
+atender aos requisitos regulatórios aplicáveis.
+—
+—
+Foram adicionados novos requisitos relacionados tanto ao 
+monitoramento e à reavaliação dos fornecedores quanto às ações 
+a serem adotadas quando os requisitos de aquisição não forem 
+atendidos.
+—
+—
+Fornece detalhes adicionais relacionados ao conteúdo dos registros.
+7.4.2 Informações de aquisição
+—
+—
+Foi adicionado novo requisito para inclusão da notificação das 
+alterações no produto adquirido.
+7.4.3 Verificação de produto 
+adquirido
+—
+—
+Foram adicionados novos requisitos sobre a extensão das atividades 
+de verificação e das ações a serem adotadas, quando a organização 
+tomar ciência de quaisquer alterações no produto adquirido.
+7.5.1 Controle de produção e 
+fornecimento de serviço
+—
+—
+Adiciona detalhes relacionados aos controles para a realização da 
+produção e fornecimento de serviços.
+7.5.2 Limpeza de produto
+—
+—
+Foi adicionado um requisito à lista.
+7.5.4 Atividades de assistência 
+técnica
+—
+—
+Foi adicionado novo requisito para análise dos registros para as 
+atividades de assistência técnica.
+7.5.6 Validação dos processos 
+para produção e fornecimento 
+de serviço
+—
+—
+Foram adicionados requisitos à lista.
+—
+—
+Adiciona detalhes relacionados às situações que requerem 
+procedimentos.
+—
+—
+Relaciona a abordagem específica para a validação do software ao 
+risco associado ao uso do software.
+—
+—
+Adiciona requisitos relacionados a registros de validação.
+7.5.7 Requisitos particulares 
+para validação de processos 
+de esterilização e sistemas de 
+barreira estéreis
+—
+—
+Foram adicionados requisitos para sistemas de barreira estéreis.
+7.5.8 Identificação
+—
+—
+Foi adicionado requisito para identificação única do produto.
+—
+—
+Foi adicionado novo requisito para um procedimento documentado 
+para a identificação do produto e sobre a identificação e a situação 
+do produto durante a produção.
+7.5.11 Preservação de produto
+—
+—
+Adiciona detalhes sobre como a preservação pode ser alcançada.
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+Tabela A.1 (continuação)
+Seção na  
+ABNT NBR ISO 13485:2016
+Comentário sobre a alteração em comparação com a  
+ABNT NBR ISO 13485:2004
+8.2.1 Realimentação 
+—
+—
+Indica que é recomendado que a realimentação seja decorrente das 
+atividades de produção e pós-produção.
+—
+—
+Adiciona um requisito para utilizar a realimentação no processo de 
+gerenciamento de riscos, de modo a monitorar e manter os requisitos 
+do produto.
+8.2.2 Tratamento de 
+reclamações
+—
+—
+Nova subseção.
+8.2.3 Comunicação às 
+autoridades regulatórias 
+—
+—
+Nova subseção.
+8.2.6 Monitoramento e medição 
+de produto
+—
+—
+Adiciona requisito para identificação do equipamento de ensaio 
+usado para execução das atividades de medição.
+8.3 Controle de produto não 
+conforme
+—
+—
+Foram adicionados detalhes relacionados aos tipos de controles que 
+devem ser documentados.
+—
+—
+O requisito para incluir qualquer investigação e as justificativas para 
+as decisões foi generalizado.
+—
+—
+Adiciona requisitos relacionados às concessões.
+—
+—
+Os requisitos para não conformidades detectadas antes da entrega e 
+após a entrega e para retrabalho foram separados.
+—
+—
+Adiciona requisitos para registros relacionados à emissão de notas 
+de aviso.
+8.4 Análise de dados
+—
+—
+Adiciona o requisito para inclusão da determinação de métodos 
+apropriados, incluindo técnicas estatísticas e a extensão de seu uso.
+—
+—
+Adiciona detalhes à lista de entradas.
+8.5.2 Ação corretiva
+—
+—
+Adiciona o requisito para verificar se a ação corretiva não apresenta 
+um efeito adverso.
+—
+—
+Foi adicionado o requisito para ação corretiva a ser adotada sem 
+atraso indevido.
+8.5.3 Ação preventiva
+—
+—
+Adiciona o requisito para verificar se a ação preventiva não apresenta 
+um efeito adverso.
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+Anexo B 
+(informativo) 
+ 
+Correspondência entre a ABNT NR ISO 13485:2016 e a  
+ABNT NBR ISO 9001:2015
+ABNT NBR ISO 9001:2015.
+ABNT NBR ISO 9001:2015
+Seção na ABNT NBR ISO 13485:2016
+Seção na ABNT NBR ISO 9001:2015
+1 Escopo
+4.1.1 (sem título)
+1 Escopo
+4.3 Determinando do escopo do sistema de 
+gestão da qualidade
+4 Sistema de gestão da qualidade
+4 Contexto da organização
+4.1 Entendendo a organização e seu contexto
+4.2 Entendendo as necessidades e 
+expectativas das partes interessadas
+4.4 Sistema de gestão da qualidade e seus 
+processos
+4.1 Requisitos gerais
+4.4 Sistema de gestão da qualidade e seus 
+processos
+8.4 Controle de processos, produtos e serviços 
+providos externamente
+4.2 Requisitos de documentação
+7.5 Informação documentada
+4.2.1 Geral
+7.5.1 Generalidades
+4.2.2 Manual da qualidade
+4.3 Determinando o do escopo do sistema de 
+gestão da qualidade
+4.4 Sistema de gestão da qualidade e seus 
+processos
+7.5.1 Geral
+4.2.3 Arquivo de produto para saúde
+Nenhuma seção equivalente
+4.2.4 Controle de documentos
+7.5.2 Criando e atualizando
+7.5.3 Controle de informação documentada
+4.2.5 Controle de registros
+7.5.2 Criando e atualizando
+7.5.3 Controle de informação documentada
+5 Responsabilidade da direção 
+5 Liderança
+5.1 Comprometimento da direção
+5.1 Liderança e comprometimento
+5.1.1 Generalidades
+5.2 Foco no cliente
+5.1.2 Foco no cliente
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+Tabela B.1 (continuação)
+Seção na ABNT NBR ISO 13485:2016
+Seção na ABNT NBR ISO 9001:2015
+5.3 Política da qualidade
+5.2 Política
+5.2.1 Desenvolvendo a política da qualidade
+5.2.2 Comunicando a política da qualidade
+5.4 Planejamento
+6 Planejamento
+5.4.1 Objetivos da qualidade
+6.2 Objetivos da qualidade e planejamento para 
+alcançá-los
+5.4.2 Planejamento do sistema de gestão da 
+qualidade 
+6 Planejamento
+6.1 Ações para abordar riscos e oportunidades
+6.3 Planejamento de mudanças 
+5.5 Responsabilidade, autoridade e 
+comunicação
+5 Liderança
+5.5.1 Responsabilidade e autoridade
+5.3 Papéis, responsabilidades e autoridades 
+organizacionais
+5.5.2 Representante da direção 
+5.3 Papéis, responsabilidades e autoridades 
+organizacionais
+5.5.3 Comunicação interna
+7.4 Comunicação
+5.6 Análise crítica pela direção 
+9.3 Análise crítica pela direção 
+5.6.1 Geral
+9.3.1 Generalidades
+5.6.2 Entradas para análise crítica
+9.3.2 Entradas de análise crítica pela direção 
+5.6.3 Saídas da análise crítica
+9.3.3 Saídas da análise crítica pela direção 
+6 Gestão de recursos
+7.1 Recursos
+6.1 Provisão de recursos
+7.1.1 Generalidades
+7.1.2 Pessoas
+6.2 Recursos humanos
+7.2 Competências
+7.3 Conscientização
+6.3 Infraestrutura
+7.1.3 Infraestrutura
+6.4 Ambiente de trabalho e controle de 
+contaminação
+7.1.4 Ambiente para operação dos processos
+7 Realização de produto
+8 Operação
+7.1 Planejamento da realização de produto
+8.1 Planejamento e controle operacionais
+7.2 Processos relacionados ao cliente
+8.2 Requisitos para produtos e serviços
+7.2.1 Determinação de requisitos relacionados 
+ao produto
+8.2.2 Determinação de requisitos relativos a 
+produtos e serviços
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+Tabela B.1 (continuação)
+Seção na ABNT NBR ISO 13485:2016
+Seção na ABNT NBR ISO 9001:2015
+7.2.2 Análise crítica de requisitos relacionados 
+ao produto
+8.2.3 Análise crítica derequisitos relativos a 
+produtos e serviços
+8.2.4 Mudanças dos requisitos para produtos e 
+serviços
+7.2.3 Comunicação
+8.2.1 Comunicação com o cliente
+7.3 Projeto e desenvolvimento
+8.3 Projeto e desenvolvimento de produtos e 
+serviços
+7.3.1 Geral
+8.3.1 Generalidades
+7.3.2 Planejamento de projeto e 
+desenvolvimento
+8.3.2 Planejamento de projeto e 
+desenvolvimento
+7.3.3 Entradas para projeto e desenvolvimento
+8.3.3 Entradas de projeto e desenvolvimento
+7.3.4 Saídas de projeto e desenvolvimento
+8.3.5 Saídas de projeto e desenvolvimento
+7.3.5 Análise crítica de projeto e 
+desenvolvimento
+8.3.4 Controles de projeto e desenvolvimento
+7.3.6 Verificação de projeto e desenvolvimento
+8.3.4 Controles de projeto e desenvolvimento
+7.3.7 Validação de projeto e desenvolvimento
+8.3.4 Controles de projeto e desenvolvimento
+7.3.8 Transferência de projeto e 
+desenvolvimento
+8.3.4 Controles de projeto e desenvolvimento
+7.3.9 Controle de alterações de projeto e 
+desenvolvimento 
+8.3.6 Mudança de projeto e desenvolvimento
+8.5.6 Controle de mudanças
+7.3.10 Arquivos de projeto e desenvolvimento
+7.5.3 Controle de informação documentada
+7.4 Aquisição
+8.4 Controle de processos, produtos e serviços 
+providos externamente
+7.4.1 Processo de aquisição
+8.4 Controle de processos, produtos e serviços 
+providos externamente 
+8.4.1 Generalidades
+8.4.2 Tipo e extensão do controle
+7.4.2 Informações de aquisição
+8.4.3 Informação para provedores externos
+7.4.3 Verificação de produto adquirido
+8.4.2 Tipo e extensão do controle
+8.4.3 Informação para provedores externos
+8.6 Liberação de produtos e serviços
+7.5 Produção e fornecimento de serviços
+8.5 Produção e provisão de serviços
+7.5.1 Controle de produção e fornecimento de 
+serviços
+8.5.1 Controle de produção e provisão de 
+serviço
+7.5.2 Limpeza de produto
+Nenhuma seção equivalente
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+Tabela B.1 (continuação)
+Seção na ABNT NBR ISO 13485:2016
+Seção na ABNT NBR ISO 9001:2015
+7.5.3 Atividades de instalação
+Nenhuma seção equivalente
+7.5.4 Atividades de assistência técnica
+Nenhuma seção equivalente
+7.5.5 Requisitos particulares para produtos 
+para saúde estéreis
+Nenhuma seção equivalente
+7.5.6 Validação dos processos para produção e 
+fornecimento de serviços
+8.5.1 Controle de produção e de provisão de 
+serviços
+7.5.7 Requisitos particulares para validação 
+de processos para esterilização e sistema de 
+barreira estéril
+Nenhuma seção equivalente
+7.5.8 Identificação
+8.5.2 Identificação e rastreabilidade
+7.5.9 Rastreabilidade
+8.5.2 Identificação e rastreabilidade
+7.5.10 Propriedade de cliente
+8.5.3 Propriedade pertencente a clientes ou 
+provedores externos
+7.5.11 Preservação de produto
+8.5.4 Preservação
+7.6 Controle de equipamentos de 
+monitoramento e medição
+7.1.5 Recursos de monitoramento e medição
+8 Medição, análise e melhoria
+9 Avaliação de desempenho
+9.1 Monitoramento, medição, análise e 
+avaliação
+8.1 Geral
+9.1.1 Generalidades
+8.2 Monitoramento e medição
+9.1 Monitoramento, medição, análise e 
+avaliação
+8.2.1 Realimentação 
+8.5.5 Atividades pós-entrega
+9.1.2 Satisfação do cliente
+8.2.2 Tratamento de reclamações
+9.1.2 Satisfação do cliente
+8.2.3 Notificação às autoridades regulatórias 
+8.5.5 Atividades pós-entrega
+8.2.4 Auditoria interna
+9.2 Auditoria interna
+8.2.5 Monitoramento e medição de processos
+9.1.1 Generalidades
+8.2.6 Monitoramento e medição de produto
+8.6 Liberação de produtos e serviços
+8.3 Controle de produto não conforme
+8.7 Controle de saídas não conformes
+8.3.1 Geral
+10.2 Não conformidade e ação corretiva
+8.3.2 Ações em resposta ao produto não 
+conforme detectado antes da entrega
+8.7 Controle de saídas não conformes
+8.3.3 Ações em resposta ao produto não 
+conforme detectado após a entrega
+8.7 Controle de saídas não conformes
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+Tabela B.1 (continuação)
+Seção na ABNT NBR ISO 13485:2016
+Seção na ABNT NBR ISO 9001:2015
+8.4 Análise de dados
+9.1.3 Análise e avaliação
+8.5 Melhorias
+10 Melhoria
+8.5.1 Geral
+10.1 Generalidades 
+10.3 Melhoria contínua
+8.5.2 Ação corretiva
+10.2 Não conformidade e ação corretiva
+8.5.3 Ação preventiva
+0.3.3 Mentalidade de risco
+6.1 Ações para abordar riscos e oportunidades
+10.1 Generalidades
+10.3 Melhoria contínua
+Tabela B.2 − Correspondência entre a ABNT NBR ISO 9001:2015  
+Seção na ABNT NBR ISO 9001:2015
+Seção na ABNT NBR ISO 13485:2016
+1 Escopo
+1 Escopo
+4 Contexto da organização
+4 Sistema de gestão da qualidade
+4.1 Entendendo a organização e seu contexto
+4.1 Requisitos gerais
+4.2 Entendendo as necessidades e 
+expectativas das partes interessadas
+4.1 Requisitos gerais
+4.3 Determiando o escopo do sistema de 
+gestão da qualidade
+4.1 Requisitos gerais
+4.2.2 Manual da qualidade
+4.4 Sistema de gestão da qualidade e seus 
+processos
+4.1 Requisitos gerais
+5 Liderança
+5 Responsabilidade da direção 
+5.1 Liderança e comprometimento
+5.1 Comprometimento da direção 
+5.1.1 Generalidades
+5.1 Comprometimento da direção 
+5.1.2 Foco no cliente
+5.2 Foco no cliente
+5.2 Política
+5.3 Política da qualidade
+5.2.1 Desenvolvendo a  política da qualidade
+5.3 Política da qualidade
+5.2.2 Comunicação da política da qualidade
+5.3 Política da qualidade
+5.3 Papéis, responsabilidades e autoridades 
+organizacionais
+5.4.2 Planejamento do sistema de gestão da 
+qualidade 
+5.5.1 Responsabilidade e autoridade
+5.5.2 Representante da direção 
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+Tabela B.2 (continuação)
+Seção na ABNT NBR ISO 9001:2015
+Seção na ABNT NBR ISO 13485:2016
+6 Planejamento
+5.4.2 Planejamento do sistema de gestão da 
+qualidade
+6.1 Ações para abordar riscos e oportunidades
+5.4.2 Planejamento do sistema de gestão da 
+qualidade
+8.5.3 Ação preventiva
+6.2 Objetivos da qualidade e planejamento para 
+alcançá-los
+5.4.1 Objetivos da qualidade
+6.3 Planejamento de mudanças
+5.4.2 Planejamento do sistema de gestão da 
+qualidade
+7 Apoio
+6 Gestão de recursos
+7.1 Recursos
+6 Gestão de recursos
+7.1.1 Generalidades
+6.1 Provisão de recursos
+7.1.2 Pessoas
+6.2 Recursos humanos
+7.1.3 Infraestrutura
+6.3 Infraestrutura
+7.1.4 Ambiente para operação de processos
+6.4.1 Ambiente de trabalho
+7.1.5 Recursos de monitoramento e medição
+7.6 Controle de equipamentos de 
+monitoramento e medição
+7.1.5.1 Generalidades
+7.6 Controle de equipamentos de 
+monitoramento e medição
+7.1.5.2 Rastreabilidade da medição
+7.6 Controle de equipamentos de 
+monitoramento e medição
+7.1.6 Conhecimento organizacional
+6.2 Recursos humanos
+7.2 Competências
+6.2 Recursos humanos
+7.3 Conscientização
+6.2 Recursos humanos
+7.4 Comunicação
+5.5.3 Comunicação interna
+7.5 Informação documentada
+4.2 Requisitos de documentação
+7.5.1 Generalidades
+4.2.1 Geral
+7.5.2 Criando e atualizando
+4.2.4 Controle de documentos
+4.2.5 Controle de registros
+7.5.3 Controle de informação documentada
+4.2.3 Arquivo de produto para saúde
+4.2.4 Controle de documentos
+4.2.5 Controle de registros
+7.3.10 Arquivos de projeto e desenvolvimento
+8 Operação
+7 Realização de produto
+8.1 Planejamento e controle operacionais
+7.1 Planejamento da realização de produto
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+Tabela B.2 (continuação)
+Seção na ABNT NBR ISO 9001:2015
+Seção na ABNT NBR ISO 13485:2016
+8.2 Requisitos para produtos e serviços
+7.2 Processos relacionados ao cliente
+8.2.1 Comunicação com o cliente
+7.2.3 Comunicação
+8.2.2 Determinação de requisitos para produtos 
+e serviços
+7.2.1 Determinação de requisitos relacionados 
+ao produto
+8.2.3 Análise crítica de requisitos para produtos 
+e serviços
+7.2.2 Análise crítica de requisitos relacionados 
+ao produto
+8.2.4 Mudança nos requisitos para produtos e 
+serviços
+7.2.2 Análise crítica de requisitos relacionados 
+ao produto
+8.3 Projeto e desenvolvimento de produtos e 
+serviços
+7.3 Projeto e desenvolvimento
+8.3.1 Generalidades
+7.3.1 Geral
+8.3.2 Planejamento de projeto e 
+desenvolvimento
+7.3.2 Planejamento de projeto e 
+desenvolvimento
+8.3.3 Entradas para projeto e desenvolvimento
+7.3.3 Entradas para projeto e desenvolvimento
+8.3.4 Controles de projeto e desenvolvimento
+7.3.5 Análise crítica de projeto e 
+desenvolvimento
+7.3.6 Verificação de projeto e desenvolvimento
+7.3.7 Validação de projeto e desenvolvimento
+7.3.8 Transferência de projeto e 
+desenvolvimento
+8.3.5 Saídas de projeto e desenvolvimento
+7.3.4 Saídas de projeto e desenvolvimento
+8.3.6 Mudanças de projeto e no 
+desenvolvimento 
+7.3.9 Controle de alterações de projeto e 
+desenvolvimento 
+8.4 Controle de processos, produtos e serviços 
+providos externamente
+4.1 Requisitos gerais (ver 4.1.5)
+7.4.1 Processo de aquisição
+8.4.1 Generalidades
+7.4.1 Processo de aquisição
+8.4.2 Tipo e extensão do controle
+4.1 Requisitos gerais (ver 4.1.5)
+7.4.1 Processo de aquisição
+7.4.3 Verificação de produto adquirido
+8.4.3 Informações para provedores externos
+7.4.2 Informações de aquisição
+7.4.3 Verificação de produto adquirido
+8.5 Produção e provisão de serviços
+7.5 Produção e fornecimento de serviços
+8.5.1 Controle de produção e de provisão de 
+serviços
+7.5.1 Controle de produção e fornecimento de 
+serviços
+7.5.6 Validação dos processos para produção e 
+fornecimento de serviços
+8.5.2 Identificação e rastreabilidade
+7.5.8 Identificação
+7.5.9 Rastreabilidade
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+Tabela B.2 (continuação)
+Seção na ABNT NBR ISO 9001:2015
+Seção na ABNT NBR ISO 13485:2016
+8.5.3 Propriedade pertencente a clientes ou 
+provedores externos
+7.5.10 Propriedade de cliente
+8.5.4 Preservação
+7.5.11 Preservação de produto
+8.5.5 Atividades pós-entrega
+7.5.1 Controle de produção e fornecimento de 
+serviço
+7.5.3 Atividades de instalação
+7.5.4 Atividades de assistência técnica
+8.2.2 Tratamento de reclamações
+8.2.3 Comunicação às autoridades reguladoras
+8.3.3 Ações em resposta ao produto não 
+conforme detectado após a entrega
+8.5.6 Controle de mudanças
+7.3.9 Controle de alterações de projeto e 
+desenvolvimento 
+8.6 Liberação de produtos e serviços
+7.4.3 Verificação de produto adquirido
+8.2.6 Monitoramento e medição de produto
+8.7 Controle de saídas não conformes
+8.3 Controle de produto não conforme
+9 Avaliação de desempenho
+8 Medição, análise e melhoria
+9.1 Monitoramento, medição, análise e 
+avaliação
+8 Medição, análise e melhoria
+9.1.1 Generalidades 
+8.1 Geral
+8.2.5 Monitoramento e medição de processos
+8.2.6 Monitoramento e medição de produto
+9.1.2 Satisfação do cliente
+7.2.3 Comunicação 
+8.2.1 Realimentação 
+8.2.2 Tratamento de reclamações
+9.1.3 Análise e avaliação
+8.4 Análise de dados
+9.2 Auditoria interna
+8.2.4 Auditoria interna
+9.3 Análise crítica realizada pela direção 
+5.6 Análise crítica pela direção 
+9.3.1 Generalidades
+5.6.1 Geral
+9.3.2 Entradas de análise crítica pela direção
+5.6.2 Entradas para análise crítica
+9.3.3 Saídas de análise crítica pela direção
+5.6.3 Entradas para análise crítica
+10 Melhoria
+8.5 Melhorias
+10.1 Generalidades
+8.5.1 Geral
+10.2 Não conformidade e ação corretiva
+8.3 Controle de produto não conforme
+8.5.2 Ação corretiva
+10.3 Melhoria contínua
+5.6.1 Geral
+8.5 Melhorias
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
+Bibliografia
+[1]  	 ABNT NBR ISO 9001:20153, Sistemas de gestão da qualidade – Requisitos 
+[2]  	 ABNT NBR ISO 10012, Sistemas de gestão de medição – Requisitos para os processos 
+de medição e equipamentos de medição
+[3]  	 ABNT NBR ISO 11607-1:2013, Embalagem final para produtos para saúde esterilizados – Parte 1: 
+Requisitos para materiais, sistemas de barreira estéril e sistemas de embalagem
+[4]  	 ABNT NBR ISO 11607-2, Embalagem final para produtos para saúde esterilizados – Parte 2: 
+Requisitos de validação para processos de formação, selagem e montagem
+[5]  	 ISO 14644 (all parts), Cleanrooms and associated controlled environments
+[6]  	 ISO 14698 (all parts), Cleanrooms and associated controlled environments – Biocontamination 
+control
+[7]  	 ABNT NBR ISO 14971:2009, Produtos para a saúde – Aplicação de gerenciamento de risco 
+a produtos para a saúde
+[8]  	 ABNT NBR ISO 19011, Diretrizes para auditoria de sistemas de gestão 
+[9]  	 IEC 62366-1, Medical devices – Part 1: Application of usability engineering to medical devices
+[10]  	GHTF/SG1/N055:20094, Definition of the Terms “Manufacturer”, “Authorised Representative”, 
+“Distributor” and “Importer”
+[11]  	GHTF/SG5/N4:20105, Post-Market Clinical Follow-Up Studies
+[12]  	GHTF/SG1/N70:20116, Label and Instructions for Use for Medical Devices
+[13]  	GHTF/SG1/N071:20127, Definition of the Terms “Medical Device” and “In Vitro Diagnostic (IVD) 
+Medical Device”
+Substitui a ABNT NBR ISO 9001:2008.
+Disponível na página eletrônica: http://www.imdrf.org/documents/doc-ghtf-sg1.asp
+Disponível na página eletrônica: http://www.imdrf.org/documents/doc-ghtf-sg5.asp
+Disponível na página eletrônica: http://www.imdrf.org/documents/doc-ghtf-sg1.asp
+Disponível na página eletrônica: http://www.imdrf.org/documents/doc-ghtf-sg1.asp
+Exemplar para uso exclusivo - Multi Óptica Distribuidora LTDA - 30.260.871/0022-30 (Pedido 689665 Impresso: 30/09/2020)
+
+
