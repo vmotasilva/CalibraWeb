@@ -197,33 +197,70 @@
                         </div>
                     </div>
 
-                    <!-- Container Scrollable de Seções (Accordion) -->
+                    <!-- Container Scrollable de Seções (Accordion de Nível 1, Nível 2 e Nível 3) -->
                     <div class="pe-1" style="max-height: 58vh; overflow-y: auto;">
                         <div class="accordion" id="accordionEscopoAlvoModelo">
                             {% regroup itens_norma_todos by referencia|slice:":1" as secoes_alvo_list %}
                             {% for secao in secoes_alvo_list %}
-                            <div class="accordion-item border rounded-3 mb-2 overflow-hidden escopo-alvo-secao-card" data-secao="{{ secao.grouper }}">
+                            <div class="accordion-item border rounded-3 mb-3 overflow-hidden escopo-alvo-secao-card shadow-sm" data-secao="{{ secao.grouper }}">
+                                <!-- Nível 1 Header (ex: Seção 4) -->
                                 <h2 class="accordion-header" id="headingAlvoModelo{{ secao.grouper }}">
-                                    <button class="accordion-button {% if not forloop.first %}collapsed{% endif %} fw-bold bg-light text-dark py-2.5" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAlvoModelo{{ secao.grouper }}" aria-expanded="true" aria-controls="collapseAlvoModelo{{ secao.grouper }}">
-                                        <i class="bi bi-folder2-open me-2 text-primary"></i> Seção {{ secao.grouper }}
-                                        <span class="badge bg-secondary bg-opacity-10 text-secondary border rounded-pill ms-2 fw-normal" style="font-size: 0.75rem;">{{ secao.list|length }} item(ns)</span>
+                                    <button class="accordion-button {% if not forloop.first %}collapsed{% endif %} fw-bold bg-light text-dark py-3" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAlvoModelo{{ secao.grouper }}" aria-expanded="true">
+                                        <i class="bi bi-folder2-open me-2 text-primary fs-5"></i> Seção {{ secao.grouper }}
+                                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 ms-2 fw-semibold" style="font-size: 0.75rem;">{{ secao.list|length }} item(ns)</span>
                                     </button>
                                 </h2>
-                                <div id="collapseAlvoModelo{{ secao.grouper }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" aria-labelledby="headingAlvoModelo{{ secao.grouper }}">
+                                <div id="collapseAlvoModelo{{ secao.grouper }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}">
                                     <div class="accordion-body p-3 bg-white">
                                         <div class="d-flex justify-content-end mb-2">
                                             <button type="button" class="btn btn-sm btn-link text-decoration-none text-primary p-0 fw-semibold btn-marcar-todos-alvo-secao" data-target="secao_alvo_mod_{{ secao.grouper }}">
                                                 <i class="bi bi-check-all me-1"></i> Marcar/Desmarcar Todos da Seção
                                             </button>
                                         </div>
-                                        <div class="row row-cols-1 row-cols-md-2 g-2 secao_alvo_mod_{{ secao.grouper }}">
-                                            {% for item in secao.list %}
-                                            <div class="col escopo-alvo-item-col" data-search="{{ item.referencia }} {{ item.titulo|lower }}">
-                                                <div class="form-check p-2 rounded-2 border border-light bg-light">
-                                                    <input class="form-check-input chk-escopo-alvo-item" type="checkbox" name="itens_alvo" value="{{ item.id }}" id="item_alvo_chk_{{ item.id }}" {% if item in bloco.itens_norma.all %}checked{% endif %}>
-                                                    <label class="form-check-label small text-dark fw-semibold" for="item_alvo_chk_{{ item.id }}" style="cursor: pointer;">
-                                                        <strong class="text-primary">{{ item.referencia }}</strong> - {{ item.titulo }}
-                                                    </label>
+
+                                        <!-- Agrupamento por Nível 2 (ex: 4.1, 4.2) -->
+                                        <div class="secao_alvo_mod_{{ secao.grouper }}">
+                                            {% regroup secao.list by referencia|slice:":3" as subsecoes_alvo_list %}
+                                            {% for sub in subsecoes_alvo_list %}
+                                            <div class="card border rounded-3 mb-2 overflow-hidden shadow-2xs ms-2 tree-level-2-card">
+                                                <!-- Nível 2 Header (ex: 4.1 - Requisitos gerais) -->
+                                                <div class="card-header bg-light py-2 px-3 d-flex align-items-center justify-content-between border-bottom" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapseSubAlvoMod_{{ secao.grouper }}_{{ forloop.counter }}">
+                                                    <div class="d-flex align-items-center gap-2 flex-grow-1">
+                                                        <i class="bi bi-chevron-down text-primary transition-icon fs-6"></i>
+                                                        <input class="form-check-input chk-escopo-alvo-parent-node me-1" type="checkbox" data-ref-prefix="{{ sub.grouper }}." id="chk_parent_alvo_{{ secao.grouper }}_{{ forloop.counter }}" onclick="event.stopPropagation();">
+                                                        <label class="form-check-label fw-bold text-dark mb-0 small" for="chk_parent_alvo_{{ secao.grouper }}_{{ forloop.counter }}" onclick="event.stopPropagation();" style="cursor: pointer;">
+                                                            <span class="text-primary fs-6">{{ sub.grouper }}</span> - 
+                                                            {% for it in sub.list %}
+                                                                {% if it.referencia == sub.grouper %}
+                                                                    {{ it.titulo }}
+                                                                {% endif %}
+                                                            {% empty %}
+                                                                Agrupamento {{ sub.grouper }}
+                                                            {% endfor %}
+                                                        </label>
+                                                        <span class="badge bg-secondary bg-opacity-10 text-secondary border rounded-pill small ms-1" style="font-size: 0.7rem;">{{ sub.list|length }} sub-item(ns)</span>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Nível 3 Content (Itens Folha ex: 4.1.1, 4.1.2...) -->
+                                                <div id="collapseSubAlvoMod_{{ secao.grouper }}_{{ forloop.counter }}" class="collapse show p-3 bg-white ms-3 border-start border-3 border-primary border-opacity-25 my-1">
+                                                    <div class="row row-cols-1 row-cols-md-2 g-2">
+                                                        {% for item in sub.list %}
+                                                        <div class="col escopo-alvo-item-col" data-search="{{ item.referencia }} {{ item.titulo|lower }}">
+                                                            <div class="form-check p-2 rounded-2 border border-light bg-light d-flex align-items-center justify-content-between">
+                                                                <div class="d-flex align-items-center gap-2 flex-grow-1">
+                                                                    <input class="form-check-input chk-escopo-alvo-item" type="checkbox" name="itens_alvo" value="{{ item.id }}" data-ref="{{ item.referencia }}" id="item_alvo_chk_{{ item.id }}" {% if item in bloco.itens_norma.all %}checked{% endif %}>
+                                                                    <label class="form-check-label small text-dark fw-semibold mb-0" for="item_alvo_chk_{{ item.id }}" style="cursor: pointer;">
+                                                                        <strong class="text-primary">{{ item.referencia }}</strong> - {{ item.titulo }}
+                                                                    </label>
+                                                                </div>
+                                                                <button type="button" class="btn btn-sm btn-light border rounded-circle p-1 text-primary btn-item-info-pop ms-1" data-id="{{ item.id }}" data-ref="{{ item.referencia }}" data-titulo="{{ item.titulo }}" data-descricao="{{ item.descricao|default:item.titulo }}" title="Ver descrição do requisito">
+                                                                    <i class="bi bi-info-circle-fill"></i>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        {% endfor %}
+                                                    </div>
                                                 </div>
                                             </div>
                                             {% endfor %}
@@ -666,6 +703,18 @@ document.addEventListener('DOMContentLoaded', function() {
             const checkboxes = document.querySelectorAll(`.${targetClass} .chk-escopo-alvo-item`);
             const allChecked = Array.from(checkboxes).every(cb => cb.checked);
             checkboxes.forEach(cb => cb.checked = !allChecked);
+        });
+    });
+
+    // Cascateamento de seleção para nós pai do Nível 2 (ex: 4.1 marca 4.1.1 a 4.1.6)
+    document.querySelectorAll('.chk-escopo-alvo-parent-node').forEach(parentChk => {
+        parentChk.addEventListener('change', function() {
+            const card = this.closest('.tree-level-2-card');
+            if (card) {
+                card.querySelectorAll('.chk-escopo-alvo-item').forEach(childCb => {
+                    childCb.checked = this.checked;
+                });
+            }
         });
     });
 });
