@@ -197,113 +197,10 @@
                         </div>
                     </div>
 
-                    <!-- Container Scrollable de Seções (Accordion de Nível 1, Nível 2 e Nível 3) -->
+                    <!-- Container Scrollable de Seções (Árvore Hierárquica Multinível Dinâmica) -->
                     <div class="pe-1" style="max-height: 58vh; overflow-y: auto;">
                         <div class="accordion" id="accordionEscopoAlvoModelo">
-                            {% regroup itens_norma_todos by referencia|slice:":1" as secoes_alvo_list %}
-                            {% for secao in secoes_alvo_list %}
-                            <div class="accordion-item border rounded-3 mb-3 overflow-hidden escopo-alvo-secao-card shadow-sm" data-secao="{{ secao.grouper }}">
-                                <!-- Nível 1 Header (ex: Seção 4 - Sistema de gestão da qualidade) -->
-                                <h2 class="accordion-header" id="headingAlvoModelo{{ secao.grouper }}">
-                                    <button class="accordion-button {% if not forloop.first %}collapsed{% endif %} fw-bold bg-light text-dark py-3" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAlvoModelo{{ secao.grouper }}" aria-expanded="true">
-                                        <i class="bi bi-folder2-open me-2 text-primary fs-5"></i> 
-                                        <span>Seção {{ secao.grouper }}
-                                            {% for it in secao.list %}
-                                                {% if it.referencia == secao.grouper %}
-                                                    - {{ it.titulo }}
-                                                {% endif %}
-                                            {% endfor %}
-                                        </span>
-                                        <span class="badge bg-secondary bg-opacity-10 text-secondary border ms-2 fw-semibold badge-secao-counter" id="badge_sec_count_{{ secao.grouper }}" style="font-size: 0.75rem;">
-                                            0 / {{ secao.list|length }} marcado(s)
-                                        </span>
-                                    </button>
-                                </h2>
-                                <div id="collapseAlvoModelo{{ secao.grouper }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}">
-                                    <div class="accordion-body p-3 bg-white">
-                                        <div class="d-flex justify-content-end mb-2">
-                                            <button type="button" class="btn btn-sm btn-link text-decoration-none text-primary p-0 fw-semibold btn-marcar-todos-alvo-secao" data-target="secao_alvo_mod_{{ secao.grouper }}">
-                                                <i class="bi bi-check-all me-1"></i> Marcar/Desmarcar Todos da Seção
-                                            </button>
-                                        </div>
-
-                                        <!-- Agrupamento por Nível 2 (ex: 4.1, 4.2 dentro da Seção 4) -->
-                                        <div class="secao_alvo_mod_{{ secao.grouper }}">
-                                            {% regroup secao.list by referencia|slice:":3" as subsecoes_alvo_list %}
-                                            {% for sub in subsecoes_alvo_list %}
-                                                {% if sub.grouper != secao.grouper %}
-                                                    {% if sub.list|length > 1 %}
-                                                    <!-- Item COM Sub-itens: Renderiza Card Expansível / Recolhível -->
-                                                    <div class="card border rounded-3 mb-2 overflow-hidden shadow-2xs ms-2 tree-level-2-card">
-                                                        <!-- Nível 2 Header (ex: 4.1 - Requisitos gerais) -->
-                                                        <div class="card-header bg-light py-2 px-3 d-flex align-items-center justify-content-between border-bottom" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapseSubAlvoMod_{{ secao.grouper }}_{{ forloop.counter }}">
-                                                            <div class="d-flex align-items-center gap-2 flex-grow-1">
-                                                                <i class="bi bi-chevron-down text-primary transition-icon fs-6"></i>
-                                                                
-                                                                {% for it in sub.list %}
-                                                                    {% if it.referencia == sub.grouper %}
-                                                                    <input class="form-check-input chk-escopo-alvo-parent-node chk-escopo-alvo-item me-1" type="checkbox" name="itens_alvo" value="{{ it.id }}" data-ref-prefix="{{ sub.grouper }}." id="chk_parent_alvo_{{ secao.grouper }}_{{ forloop.counter }}" {% if it in bloco.itens_norma.all %}checked{% endif %} onclick="event.stopPropagation();">
-                                                                    <label class="form-check-label fw-bold text-dark mb-0 small" for="chk_parent_alvo_{{ secao.grouper }}_{{ forloop.counter }}" onclick="event.stopPropagation();" style="cursor: pointer;">
-                                                                        <span class="text-primary fs-6">{{ it.referencia }}</span> - {{ it.titulo }}
-                                                                    </label>
-                                                                    <button type="button" class="btn btn-sm btn-light border rounded-circle p-1 text-primary btn-item-info-pop ms-1" data-id="{{ it.id }}" data-ref="{{ it.referencia }}" data-titulo="{{ it.titulo }}" data-descricao="{{ it.descricao|default:it.titulo }}" title="Ver descrição do requisito" onclick="event.stopPropagation();">
-                                                                        <i class="bi bi-info-circle-fill"></i>
-                                                                    </button>
-                                                                    {% endif %}
-                                                                {% endfor %}
-                                                                
-                                                                <span class="badge bg-secondary bg-opacity-10 text-secondary border rounded-pill small ms-2" style="font-size: 0.7rem;">{{ sub.list|length|add:"-1" }} sub-item(ns)</span>
-                                                            </div>
-                                                        </div>
-
-                                                        <!-- Nível 3 Content (Itens Folha ex: 4.1.1, 4.1.2... sem duplicar 4.1) -->
-                                                        <div id="collapseSubAlvoMod_{{ secao.grouper }}_{{ forloop.counter }}" class="collapse show p-3 bg-white ms-3 border-start border-3 border-primary border-opacity-25 my-1">
-                                                            <div class="row row-cols-1 row-cols-md-2 g-2">
-                                                                {% for item in sub.list %}
-                                                                    {% if item.referencia != sub.grouper %}
-                                                                    <div class="col escopo-alvo-item-col" data-search="{{ item.referencia }} {{ item.titulo|lower }}">
-                                                                        <div class="form-check p-2 rounded-2 border border-light bg-light d-flex align-items-center justify-content-between">
-                                                                            <div class="d-flex align-items-center gap-2 flex-grow-1">
-                                                                                <input class="form-check-input chk-escopo-alvo-item" type="checkbox" name="itens_alvo" value="{{ item.id }}" data-ref="{{ item.referencia }}" id="item_alvo_chk_{{ item.id }}" {% if item in bloco.itens_norma.all %}checked{% endif %}>
-                                                                                <label class="form-check-label small text-dark fw-semibold mb-0" for="item_alvo_chk_{{ item.id }}" style="cursor: pointer;">
-                                                                                    <strong class="text-primary">{{ item.referencia }}</strong> - {{ item.titulo }}
-                                                                                </label>
-                                                                            </div>
-                                                                            <button type="button" class="btn btn-sm btn-light border rounded-circle p-1 text-primary btn-item-info-pop ms-1" data-id="{{ item.id }}" data-ref="{{ item.referencia }}" data-titulo="{{ item.titulo }}" data-descricao="{{ item.descricao|default:item.titulo }}" title="Ver descrição do requisito">
-                                                                                <i class="bi bi-info-circle-fill"></i>
-                                                                            </button>
-                                                                        </div>
-                                                                    </div>
-                                                                    {% endif %}
-                                                                {% endfor %}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    {% else %}
-                                                    <!-- Item SEM Sub-itens (ex: 5.1, 5.2): Renderiza Card Direto Sem Chevron e Sem Container Vazio -->
-                                                    <div class="card border rounded-3 mb-2 p-2.5 bg-light ms-2 escopo-alvo-item-col" data-search="{{ sub.grouper }} {% for it in sub.list %}{{ it.titulo|lower }}{% endfor %}">
-                                                        <div class="d-flex align-items-center justify-content-between">
-                                                            {% for it in sub.list %}
-                                                            <div class="d-flex align-items-center gap-2 flex-grow-1">
-                                                                <input class="form-check-input chk-escopo-alvo-item ms-1" type="checkbox" name="itens_alvo" value="{{ it.id }}" data-ref="{{ it.referencia }}" id="item_alvo_chk_{{ it.id }}" {% if it in bloco.itens_norma.all %}checked{% endif %}>
-                                                                <label class="form-check-label small text-dark fw-bold mb-0" for="item_alvo_chk_{{ it.id }}" style="cursor: pointer;">
-                                                                    <span class="text-primary fs-6">{{ it.referencia }}</span> - {{ it.titulo }}
-                                                                </label>
-                                                            </div>
-                                                            <button type="button" class="btn btn-sm btn-light border rounded-circle p-1 text-primary btn-item-info-pop ms-1" data-id="{{ it.id }}" data-ref="{{ it.referencia }}" data-titulo="{{ it.titulo }}" data-descricao="{{ it.descricao|default:it.titulo }}" title="Ver descrição do requisito">
-                                                                <i class="bi bi-info-circle-fill"></i>
-                                                            </button>
-                                                            {% endfor %}
-                                                        </div>
-                                                    </div>
-                                                    {% endif %}
-                                                {% endif %}
-                                            {% endfor %}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            {% endfor %}
+                            <!-- A árvore de escopo multinível é renderizada dinamicamente via JS (renderEscopoAlvoTree) -->
                         </div>
                     </div>
                 </div>
@@ -565,12 +462,198 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Dicionário de títulos para montagem da Escada de Raízes
-    const normItemsLookup = {
+    // Dicionário e dados completos de itens para construção da árvore multinível recursiva
+    const allEscopoItemsData = [
         {% for item in itens_norma_todos %}
-        "{{ item.referencia }}": "{{ item.titulo|escapejs }}",
+        {
+            id: {{ item.id }},
+            ref: "{{ item.referencia }}",
+            titulo: "{{ item.titulo|escapejs }}",
+            desc: "{{ item.descricao|default:item.titulo|escapejs }}",
+            parentId: {% if item.parent %}{{ item.parent.id }}{% else %}null{% endif %},
+            parentRef: "{% if item.parent %}"{{ item.parent.referencia }}"{% else %}null{% endif %},
+            isChecked: {% if item in bloco.itens_norma.all %}true{% else %}false{% endif %}
+        }{% if not forloop.last %},{% endif %}
         {% endfor %}
-    };
+    ];
+
+    const normItemsLookup = {};
+    allEscopoItemsData.forEach(i => normItemsLookup[i.ref] = i.titulo);
+
+    function renderEscopoAlvoTree() {
+        const accordionContainer = document.getElementById('accordionEscopoAlvoModelo');
+        if (!accordionContainer) return;
+        accordionContainer.innerHTML = '';
+
+        // 1. Agrupa por Seção (Primeiro dígito da referência, ex: '4', '5', '6', '7', '8')
+        const sections = {};
+        allEscopoItemsData.forEach(item => {
+            const secKey = item.ref.split('.')[0];
+            if (!sections[secKey]) sections[secKey] = [];
+            sections[secKey].push(item);
+        });
+
+        const sortedSecKeys = Object.keys(sections).sort((a, b) => a.localeCompare(b, undefined, {numeric: true}));
+
+        sortedSecKeys.forEach((secKey, secIdx) => {
+            const secItems = sections[secKey];
+            const secTitleItem = secItems.find(i => i.ref === secKey);
+            const secTitleText = secTitleItem ? ` - ${secTitleItem.titulo}` : '';
+
+            const secCard = document.createElement('div');
+            secCard.className = 'accordion-item border rounded-3 mb-3 overflow-hidden escopo-alvo-secao-card shadow-sm';
+            secCard.dataset.secao = secKey;
+
+            const isFirst = (secIdx === 0);
+
+            secCard.innerHTML = `
+                <h2 class="accordion-header" id="headingAlvoModelo${secKey}">
+                    <button class="accordion-button ${isFirst ? '' : 'collapsed'} fw-bold bg-light text-dark py-3" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAlvoModelo${secKey}" aria-expanded="${isFirst}">
+                        <i class="bi bi-folder2-open me-2 text-primary fs-5"></i> 
+                        <span>Seção ${secKey}${secTitleText}</span>
+                        <span class="badge bg-secondary bg-opacity-10 text-secondary border ms-2 fw-semibold badge-secao-counter" id="badge_sec_count_${secKey}" style="font-size: 0.75rem;">
+                            0 / ${secItems.length} marcado(s)
+                        </span>
+                    </button>
+                </h2>
+                <div id="collapseAlvoModelo${secKey}" class="accordion-collapse collapse ${isFirst ? 'show' : ''}">
+                    <div class="accordion-body p-3 bg-white">
+                        <div class="d-flex justify-content-end mb-2">
+                            <button type="button" class="btn btn-sm btn-link text-decoration-none text-primary p-0 fw-semibold btn-marcar-todos-alvo-secao" data-target="secao_alvo_mod_${secKey}">
+                                <i class="bi bi-check-all me-1"></i> Marcar/Desmarcar Todos da Seção
+                            </button>
+                        </div>
+                        <div class="secao_alvo_mod_${secKey} tree-sec-body"></div>
+                    </div>
+                </div>
+            `;
+
+            const secBody = secCard.querySelector('.tree-sec-body');
+            buildChildrenNodes(secKey, secItems, secBody, 2);
+            accordionContainer.appendChild(secCard);
+        });
+
+        attachTreeEventListeners();
+        updateSectionCounters();
+    }
+
+    function buildChildrenNodes(parentRef, allItems, containerEl, depthLevel) {
+        const directChildren = allItems.filter(item => {
+            if (item.ref === parentRef) return false;
+            if (item.parentRef && item.parentRef === parentRef) return true;
+
+            if (item.ref.startsWith(parentRef + '.')) {
+                const remainder = item.ref.slice(parentRef.length + 1);
+                return !remainder.includes('.');
+            }
+            return false;
+        });
+
+        directChildren.sort((a, b) => a.ref.localeCompare(b.ref, undefined, {numeric: true}));
+
+        directChildren.forEach(item => {
+            const subChildren = allItems.filter(child => {
+                if (child.parentRef && child.parentRef === item.ref) return true;
+                return child.ref.startsWith(item.ref + '.') && child.ref !== item.ref;
+            });
+
+            if (subChildren.length > 0) {
+                const nodeCard = document.createElement('div');
+                nodeCard.className = `card border rounded-3 mb-2 overflow-hidden shadow-2xs ${depthLevel > 2 ? 'ms-3 my-1' : 'ms-2'} tree-level-card`;
+                nodeCard.dataset.ref = item.ref;
+
+                const collapseId = `collapseSubAlvoMod_${item.id}`;
+
+                nodeCard.innerHTML = `
+                    <div class="card-header bg-light py-2 px-3 d-flex align-items-center justify-content-between border-bottom cursor-pointer" data-bs-toggle="collapse" data-bs-target="#${collapseId}">
+                        <div class="d-flex align-items-center gap-2 flex-grow-1">
+                            <i class="bi bi-chevron-down text-primary transition-icon fs-6"></i>
+                            <input class="form-check-input chk-escopo-alvo-parent-node chk-escopo-alvo-item me-1" type="checkbox" name="itens_alvo" value="${item.id}" data-ref="${item.ref}" id="item_alvo_chk_${item.id}" ${item.isChecked ? 'checked' : ''} onclick="event.stopPropagation();">
+                            <label class="form-check-label fw-bold text-dark mb-0 small" for="item_alvo_chk_${item.id}" onclick="event.stopPropagation();" style="cursor: pointer;">
+                                <span class="text-primary fs-6">${item.ref}</span> - ${item.titulo}
+                            </label>
+                            <button type="button" class="btn btn-sm btn-light border rounded-circle p-1 text-primary btn-item-info-pop ms-1" data-id="${item.id}" data-ref="${item.ref}" data-titulo="${item.titulo}" data-descricao="${item.desc}" title="Ver descrição do requisito" onclick="event.stopPropagation();">
+                                <i class="bi bi-info-circle-fill"></i>
+                            </button>
+                            <span class="badge bg-secondary bg-opacity-10 text-secondary border rounded-pill small ms-2" style="font-size: 0.7rem;">${subChildren.length} sub-item(ns)</span>
+                        </div>
+                    </div>
+                    <div id="${collapseId}" class="collapse show p-2 bg-white ms-3 border-start border-3 border-primary border-opacity-25 my-1 node-children-container"></div>
+                `;
+
+                const nodeChildrenContainer = nodeCard.querySelector('.node-children-container');
+                buildChildrenNodes(item.ref, allItems, nodeChildrenContainer, depthLevel + 1);
+                containerEl.appendChild(nodeCard);
+            } else {
+                const leafItem = document.createElement('div');
+                leafItem.className = `escopo-alvo-item-col ${depthLevel > 2 ? 'mb-1' : 'mb-2 ms-2'}`;
+                leafItem.dataset.search = `${item.ref} ${item.titulo.toLowerCase()}`;
+
+                leafItem.innerHTML = `
+                    <div class="card border rounded-3 p-2 bg-light shadow-2xs">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center gap-2 flex-grow-1">
+                                <input class="form-check-input chk-escopo-alvo-item ms-1" type="checkbox" name="itens_alvo" value="${item.id}" data-ref="${item.ref}" id="item_alvo_chk_${item.id}" ${item.isChecked ? 'checked' : ''}>
+                                <label class="form-check-label small text-dark fw-bold mb-0" for="item_alvo_chk_${item.id}" style="cursor: pointer;">
+                                    <span class="text-primary fs-6">${item.ref}</span> - ${item.titulo}
+                                </label>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-light border rounded-circle p-1 text-primary btn-item-info-pop ms-1" data-id="${item.id}" data-ref="${item.ref}" data-titulo="${item.titulo}" data-descricao="${item.desc}" title="Ver descrição do requisito">
+                                <i class="bi bi-info-circle-fill"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                containerEl.appendChild(leafItem);
+            }
+        });
+    }
+
+    function attachTreeEventListeners() {
+        document.querySelectorAll('.btn-item-info-pop').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const ref = this.dataset.ref;
+                const titulo = this.dataset.titulo;
+                const desc = this.dataset.descricao;
+
+                document.getElementById('popItemDetailRef').textContent = ref;
+                document.getElementById('popItemDetailTitulo').textContent = titulo;
+                document.getElementById('popItemDetailDescricao').textContent = desc || titulo;
+
+                buildEscadaRaizes(ref, titulo);
+
+                const modalEl = document.getElementById('popItemDetailModal');
+                const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                modal.show();
+            });
+        });
+
+        document.querySelectorAll('.chk-escopo-alvo-parent-node').forEach(parentChk => {
+            parentChk.addEventListener('change', function() {
+                const card = this.closest('.tree-level-card');
+                if (card) {
+                    card.querySelectorAll('.chk-escopo-alvo-item').forEach(childCb => {
+                        childCb.checked = this.checked;
+                    });
+                }
+                updateSectionCounters();
+            });
+        });
+
+        document.querySelectorAll('.btn-marcar-todos-alvo-secao').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const targetClass = this.dataset.target;
+                const checkboxes = document.querySelectorAll(`.${targetClass} .chk-escopo-alvo-item`);
+                const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+                checkboxes.forEach(cb => {
+                    cb.checked = !allChecked;
+                });
+                updateSectionCounters();
+            });
+        });
+    }
 
     function buildEscadaRaizes(ref, mainTitulo) {
         const escadaBody = document.getElementById('popItemDetailEscadaBody');
@@ -610,26 +693,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Event listener para botões de Info nos itens do catálogo
-    document.querySelectorAll('.btn-item-info-pop').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const itemId = this.dataset.id;
-            const ref = this.dataset.ref;
-            const titulo = this.dataset.titulo;
-            const desc = this.dataset.descricao;
-
-            document.getElementById('popItemDetailRef').textContent = ref;
-            document.getElementById('popItemDetailTitulo').textContent = titulo;
-            document.getElementById('popItemDetailDescricao').textContent = desc || titulo;
-
-            buildEscadaRaizes(ref, titulo);
-
-            const modalEl = document.getElementById('popItemDetailModal');
-            const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
-            modal.show();
-        });
-    });
+    // Inicializa a renderização da árvore recursiva
+    renderEscopoAlvoTree();
 
     // Ajuste dinâmico de z-index dos backdrops para o pop-up informativo sempre ficar à frente de todos
     const popDetailModalEl = document.getElementById('popItemDetailModal');
