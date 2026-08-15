@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 960px;">
+    
+    <!-- Header de Contexto -->
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
+        <div>
+            <div class="small text-muted text-uppercase fw-bold mb-1">
+                <i class="bi bi-diagram-3-fill text-primary me-1"></i> {{ modelo.titulo }} / Bloco do Modelo
+            </div>
+            <h3 class="fw-bold text-dark mb-0">Gerenciar Perguntas: <span class="text-primary">{{ bloco.titulo }}</span></h3>
+        </div>
+        <a href="{{ back_url }}" class="btn btn-outline-secondary rounded-pill px-4">
+            <i class="bi bi-arrow-left me-1"></i> Voltar para o Modelo
+        </a>
+    </div>
+
+    {% if messages %}
+    <div class="mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="POST" action="">
+        {% csrf_token %}
+        
+        <div class="card shadow-sm border-0 rounded-4 mb-4">
+            <div class="card-header bg-white py-3 px-4 border-0 d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-question-circle text-primary me-2"></i>Perguntas Vinculadas a este Bloco</h5>
+                    <small class="text-muted">Selecione as perguntas do Banco Geral que farão parte do checklist deste bloco.</small>
+                </div>
+                <span class="badge bg-primary rounded-pill fs-6 px-3 py-2">
+                    <strong id="counterBlocoPerguntas">0</strong> selecionada(s)
+                </span>
+            </div>
+            <div class="card-body p-4 pt-2">
+                
+                <!-- Busca -->
+                <div class="input-group border rounded-3 shadow-sm mb-3">
+                    <span class="input-group-text bg-white border-0 text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" id="searchBlocoPerguntaInput" class="form-control border-0 ps-1 text-dark" placeholder="Digite para buscar perguntas...">
+                </div>
+
+                <!-- Lista de Perguntas -->
+                <div id="perguntasBlocoContainer">
+                    {% for p in perguntas_disponiveis %}
+                    <div class="card border mb-2 rounded-3 bloco-pergunta-card" data-search="{{ p.texto_pergunta|lower }} {% for item in p.itens_norma.all %}{{ item.referencia }} {{ item.titulo|lower }} {% endfor %}">
+                        <div class="card-body p-3 d-flex align-items-start gap-3">
+                            <input class="form-check-input flex-shrink-0 mt-1 chk-bloco-pergunta" type="checkbox" name="perguntas" value="{{ p.id }}" id="p_bloco_chk_{{ p.id }}" {% if p.id in perguntas_vinculadas_ids %}checked{% endif %}>
+                            <label for="p_bloco_chk_{{ p.id }}" class="form-check-label flex-grow-1" style="cursor: pointer;">
+                                <div class="fw-semibold text-dark mb-1" style="font-size: 0.95rem; line-height: 1.5;">
+                                    {{ p.texto_pergunta }}
+                                </div>
+                                <div class="d-flex flex-wrap gap-1 align-items-center mt-1">
+                                    {% for item in p.itens_norma.all %}
+                                    <span class="badge bg-secondary bg-opacity-10 text-secondary border rounded-pill px-2 py-0.5" style="font-size: 0.75rem;">
+                                        <i class="bi bi-tag-fill me-1" style="font-size: 0.7rem;"></i>{{ item.referencia }} - {{ item.titulo }}
+                                    </span>
+                                    {% empty %}
+                                    <span class="badge bg-light text-muted border" style="font-size: 0.75rem;">Sem requisito vinculado</span>
+                                    {% endfor %}
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="alert alert-info text-center py-4 rounded-3">
+                        Nenhuma pergunta cadastrada para esta norma.
+                    </div>
+                    {% endfor %}
+                </div>
+
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 pb-5">
+            <a href="{{ back_url }}" class="btn btn-secondary px-4 rounded-pill">Cancelar</a>
+            <button type="submit" class="btn btn-primary px-5 fw-bold rounded-pill shadow-sm">
+                <i class="bi bi-save me-1"></i> Salvar Perguntas do Bloco
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('.chk-bloco-pergunta');
+    const counter = document.getElementById('counterBlocoPerguntas');
+    const searchInput = document.getElementById('searchBlocoPerguntaInput');
+
+    function updateCounter() {
+        if (!counter) return;
+        const total = document.querySelectorAll('.chk-bloco-pergunta:checked').length;
+        counter.textContent = total;
+    }
+
+    checkboxes.forEach(cb => cb.addEventListener('change', updateCounter));
+    updateCounter();
+
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            document.querySelectorAll('.bloco-pergunta-card').forEach(card => {
+                const text = (card.dataset.search || '').toLowerCase();
+                if (!query || text.includes(query)) {
+                    card.classList.remove('d-none');
+                } else {
+                    card.classList.add('d-none');
+                }
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

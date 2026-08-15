@@ -3541,26 +3541,97 @@ def iso_modelo_edit(request, pk):
 
 @login_required
 def iso_modelo_detail(request, pk):
-    """Visão de Detalhes do Modelo (Template Mode - Sem datas, sem auditor, sem botão Auditar)"""
-    from .models import ModeloAuditoriaIso
+    """Visão de Detalhes do Modelo (Template Mode - Cards dos Blocos do Modelo sem datas/auditor/auditar)"""
+    from .models import ModeloAuditoriaIso, ItemNorma
     modelo = get_object_or_404(ModeloAuditoriaIso, pk=pk)
-    perguntas = modelo.perguntas.all().prefetch_related('itens_norma')
+    blocos = modelo.blocos.all().prefetch_related('perguntas', 'itens_norma')
+    itens_norma_todos = ItemNorma.objects.filter(norma=modelo.norma).order_by('ordem', 'referencia')
     
-    secoes_dict = {}
-    for p in perguntas:
-        itens = p.itens_norma.all()
-        secao_num = itens[0].referencia.split('.')[0] if itens else "Geral"
-        if secao_num not in secoes_dict:
-            secoes_dict[secao_num] = []
-        secoes_dict[secao_num].append(p)
-        
     return render(request, "auditoria/iso/setup/modelo_detail.html", {
         "modelo": modelo,
-        "perguntas": perguntas,
-        "secoes_dict": secoes_dict,
+        "blocos": blocos,
+        "itens_norma_todos": itens_norma_todos,
         "mode": "template",
         "back_url": reverse('auditoria:iso_norma_detail', args=[modelo.norma_id]) + "?tab=modelos"
     })
+
+@login_required
+@require_POST
+def iso_modelo_bloco_create(request, modelo_id):
+    from .models import ModeloAuditoriaIso, BlocoModeloIso
+    from django.http import JsonResponse
+    modelo = get_object_or_404(ModeloAuditoriaIso, pk=modelo_id)
+    titulo = request.POST.get("titulo")
+    if not titulo:
+        return JsonResponse({'success': False, 'message': 'O título do bloco é obrigatório.'}, status=400)
+        
+    bloco = BlocoModeloIso.objects.create(modelo=modelo, titulo=titulo)
+    
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({'success': True, 'id': bloco.id, 'titulo': bloco.titulo})
+        
+    messages.success(request, f"Bloco '{bloco.titulo}' adicionado ao modelo!")
+    return redirect('auditoria:iso_modelo_detail', pk=modelo.id)
+
+@login_required
+@require_POST
+def iso_modelo_bloco_edit(request, modelo_id, pk):
+    from .models import BlocoModeloIso
+    from django.http import JsonResponse
+    bloco = get_object_or_404(BlocoModeloIso, pk=pk, modelo_id=modelo_id)
+    titulo = request.POST.get("titulo")
+    if titulo:
+        bloco.titulo = titulo
+        bloco.save()
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({'success': True})
+    messages.success(request, "Título do bloco atualizado!")
+    return redirect('auditoria:iso_modelo_detail', pk=modelo_id)
+
+@login_required
+@require_POST
+def iso_modelo_bloco_delete(request, modelo_id, pk):
+    from .models import BlocoModeloIso
+    bloco = get_object_or_404(BlocoModeloIso, pk=pk, modelo_id=modelo_id)
+    bloco.delete()
+    messages.success(request, "Bloco removido do modelo!")
+    return redirect('auditoria:iso_modelo_detail', pk=modelo_id)
+
+@login_required
+def iso_modelo_bloco_perguntas(request, modelo_id, pk):
+    from .models import BlocoModeloIso, BancoPergunta
+    bloco = get_object_or_404(BlocoModeloIso, pk=pk, modelo_id=modelo_id)
+    if request.method == "POST":
+        pergunta_ids = request.POST.getlist("perguntas")
+        bloco.perguntas.set(pergunta_ids)
+        messages.success(request, "Perguntas vinculadas ao bloco do modelo!")
+        return redirect('auditoria:iso_modelo_detail', pk=modelo_id)
+        
+    perguntas_disponiveis = BancoPergunta.objects.filter(itens_norma__norma=bloco.modelo.norma).distinct().prefetch_related('itens_norma')
+    perguntas_vinculadas_ids = set(bloco.perguntas.values_list('id', flat=True))
+    
+    return render(request, "auditoria/iso/setup/modelo_bloco_perguntas.html", {
+        "bloco": bloco,
+        "modelo": bloco.modelo,
+        "perguntas_disponiveis": perguntas_disponiveis,
+        "perguntas_vinculadas_ids": perguntas_vinculadas_ids,
+        "back_url": reverse('auditoria:iso_modelo_detail', args=[modelo_id])
+    })
+
+@login_required
+@require_POST
+def iso_modelo_bloco_alvo_update(request, modelo_id, pk):
+    from .models import BlocoModeloIso
+    from django.http import JsonResponse
+    bloco = get_object_or_404(BlocoModeloIso, pk=pk, modelo_id=modelo_id)
+    item_ids = request.POST.getlist("itens_alvo")
+    bloco.itens_norma.set(item_ids)
+    
+    if request.headers.get("x-requested-with") == "XMLHttpRequest":
+        return JsonResponse({"success": True, "message": "Escopo alvo do bloco atualizado!"})
+        
+    messages.success(request, "Escopo alvo do bloco atualizado com sucesso!")
+    return redirect('auditoria:iso_modelo_detail', pk=modelo_id)
 
 @login_required
 @require_POST
@@ -3608,17 +3679,30 @@ def iso_agenda_create(request, auditoria_id):
             agenda.save()
             form.save_m2m()
             
-            # Instanciação do Modelo Base (Snapshot das Perguntas do Template)
+            # Instanciação do Modelo Base (Clonagem em Lote dos Blocos e Perguntas)
             if agenda.modelo_base:
-                perguntas_modelo = agenda.modelo_base.perguntas.all()
-                agenda.perguntas.set(perguntas_modelo)
-                
-                itens_alvo_ids = set()
-                for p in perguntas_modelo.prefetch_related('itens_norma'):
-                    for item in p.itens_norma.all():
-                        itens_alvo_ids.add(item.id)
-                if itens_alvo_ids:
-                    agenda.itens_norma.set(itens_alvo_ids)
+                blocos_modelo = agenda.modelo_base.blocos.all().prefetch_related('perguntas', 'itens_norma')
+                if blocos_modelo.exists():
+                    primeiro_bloco = blocos_modelo.first()
+                    agenda.titulo = primeiro_bloco.titulo
+                    agenda.save()
+                    agenda.perguntas.set(primeiro_bloco.perguntas.all())
+                    agenda.itens_norma.set(primeiro_bloco.itens_norma.all())
+                    
+                    for b in blocos_modelo[1:]:
+                        nova_agenda = AgendaAuditoriaIso.objects.create(
+                            auditoria=auditoria,
+                            modelo_base=agenda.modelo_base,
+                            titulo=b.titulo
+                        )
+                        nova_agenda.perguntas.set(b.perguntas.all())
+                        nova_agenda.itens_norma.set(b.itens_norma.all())
+                else:
+                    perguntas_modelo = agenda.modelo_base.perguntas.all()
+                    agenda.perguntas.set(perguntas_modelo)
+                    itens_alvo_ids = {item.id for p in perguntas_modelo.prefetch_related('itens_norma') for item in p.itens_norma.all()}
+                    if itens_alvo_ids:
+                        agenda.itens_norma.set(itens_alvo_ids)
             
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return JsonResponse({

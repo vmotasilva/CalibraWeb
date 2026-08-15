@@ -766,6 +766,23 @@ class ModeloAuditoriaIso(models.Model):
         return f"{self.titulo} ({self.norma.codigo})"
 
 
+class BlocoModeloIso(models.Model):
+    modelo = models.ForeignKey(ModeloAuditoriaIso, on_delete=models.CASCADE, related_name="blocos", verbose_name="Modelo de Origem")
+    titulo = models.CharField(max_length=255, verbose_name="Título do Bloco")
+    itens_norma = models.ManyToManyField('ItemNorma', blank=True, related_name="blocos_modelo_vinculados", verbose_name="Itens Alvo do Bloco")
+    perguntas = models.ManyToManyField('BancoPergunta', blank=True, related_name="blocos_modelo_vinculados", verbose_name="Perguntas do Bloco")
+    ordem = models.IntegerField(default=0)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Bloco de Modelo"
+        verbose_name_plural = "Blocos de Modelo"
+        ordering = ['ordem', 'criado_em']
+
+    def __str__(self):
+        return f"{self.titulo} - {self.modelo.titulo}"
+
+
 class AgendaAuditoriaIso(models.Model):
     auditoria = models.ForeignKey(AuditoriaIso, on_delete=models.CASCADE, related_name="agendas")
     modelo_base = models.ForeignKey(ModeloAuditoriaIso, on_delete=models.SET_NULL, null=True, blank=True, related_name="agendas_instanciadas", verbose_name="Modelo Base")
