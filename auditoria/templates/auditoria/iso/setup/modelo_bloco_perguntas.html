@@ -161,7 +161,7 @@
     </div>
 </div>
 
-<!-- Modal Definir Escopo Alvo -->
+<!-- Modal Definir Escopo Alvo (Seções Expansíveis/Recolhíveis + Barra de Rolagem) -->
 <div class="modal fade" id="selecionarItensAlvoModeloModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content shadow-lg border-0 rounded-4">
@@ -173,37 +173,71 @@
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body p-4">
-                    <div class="row g-3">
-                        {% regroup itens_norma_todos by referencia|slice:":1" as secoes_alvo_list %}
-                        {% for secao in secoes_alvo_list %}
-                        <div class="col-12">
-                            <div class="card border rounded-3 bg-light">
-                                <div class="card-header bg-white py-2 fw-bold text-dark border-0">
-                                    Seção {{ secao.grouper }}
+                <div class="modal-body p-4 pt-3">
+                    <!-- Sticky Header de Busca + Autofill Trap + Botões de Expandir/Recolher -->
+                    <div class="sticky-top bg-white pb-3 mb-3 border-bottom shadow-sm" style="top: 0; z-index: 1050; margin-top: -1rem; margin-left: -1.5rem; margin-right: -1.5rem; padding-left: 1.5rem; padding-right: 1.5rem; padding-top: 1rem;">
+                        <input type="text" style="position: absolute; opacity: 0; height: 0; width: 0; z-index: -1;" aria-hidden="true" tabindex="-1" autocomplete="off">
+                        <input type="password" style="position: absolute; opacity: 0; height: 0; width: 0; z-index: -1;" aria-hidden="true" tabindex="-1" autocomplete="new-password">
+
+                        <div class="row g-2 align-items-center">
+                            <div class="col-md-7">
+                                <div class="input-group border rounded-3 bg-white">
+                                    <span class="input-group-text bg-transparent border-0 text-muted"><i class="bi bi-search"></i></span>
+                                    <input type="search" id="searchEscopoAlvoModeloInput" name="q_search_escopo_alvo_modelo_noautofill" class="form-control border-0 ps-1 text-dark" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" role="searchbox" placeholder="Buscar item por número (ex: 4.1) ou palavra-chave..." readonly onfocus="this.removeAttribute('readonly');">
                                 </div>
-                                <div class="card-body p-3 bg-white">
-                                    <div class="row row-cols-1 row-cols-md-2 g-2">
-                                        {% for item in secao.list %}
-                                        <div class="col">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" name="itens_alvo" value="{{ item.id }}" id="item_alvo_chk_{{ item.id }}" {% if item in bloco.itens_norma.all %}checked{% endif %}>
-                                                <label class="form-check-label small text-dark" for="item_alvo_chk_{{ item.id }}">
-                                                    <strong>{{ item.referencia }}</strong> - {{ item.titulo }}
-                                                </label>
-                                            </div>
+                            </div>
+                            <div class="col-md-5 d-flex justify-content-end gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" id="btnExpandirTodosEscopoAlvoModelo">
+                                    <i class="bi bi-chevron-double-down me-1"></i> Expandir Todas
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" id="btnRecolherTodosEscopoAlvoModelo">
+                                    <i class="bi bi-chevron-double-up me-1"></i> Recolher Todas
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Container Scrollable de Seções (Accordion) -->
+                    <div class="pe-1" style="max-height: 58vh; overflow-y: auto;">
+                        <div class="accordion" id="accordionEscopoAlvoModelo">
+                            {% regroup itens_norma_todos by referencia|slice:":1" as secoes_alvo_list %}
+                            {% for secao in secoes_alvo_list %}
+                            <div class="accordion-item border rounded-3 mb-2 overflow-hidden escopo-alvo-secao-card" data-secao="{{ secao.grouper }}">
+                                <h2 class="accordion-header" id="headingAlvoModelo{{ secao.grouper }}">
+                                    <button class="accordion-button {% if not forloop.first %}collapsed{% endif %} fw-bold bg-light text-dark py-2.5" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAlvoModelo{{ secao.grouper }}" aria-expanded="true" aria-controls="collapseAlvoModelo{{ secao.grouper }}">
+                                        <i class="bi bi-folder2-open me-2 text-primary"></i> Seção {{ secao.grouper }}
+                                        <span class="badge bg-secondary bg-opacity-10 text-secondary border rounded-pill ms-2 fw-normal" style="font-size: 0.75rem;">{{ secao.list|length }} item(ns)</span>
+                                    </button>
+                                </h2>
+                                <div id="collapseAlvoModelo{{ secao.grouper }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" aria-labelledby="headingAlvoModelo{{ secao.grouper }}">
+                                    <div class="accordion-body p-3 bg-white">
+                                        <div class="d-flex justify-content-end mb-2">
+                                            <button type="button" class="btn btn-sm btn-link text-decoration-none text-primary p-0 fw-semibold btn-marcar-todos-alvo-secao" data-target="secao_alvo_mod_{{ secao.grouper }}">
+                                                <i class="bi bi-check-all me-1"></i> Marcar/Desmarcar Todos da Seção
+                                            </button>
                                         </div>
-                                        {% endfor %}
+                                        <div class="row row-cols-1 row-cols-md-2 g-2 secao_alvo_mod_{{ secao.grouper }}">
+                                            {% for item in secao.list %}
+                                            <div class="col escopo-alvo-item-col" data-search="{{ item.referencia }} {{ item.titulo|lower }}">
+                                                <div class="form-check p-2 rounded-2 border border-light bg-light">
+                                                    <input class="form-check-input chk-escopo-alvo-item" type="checkbox" name="itens_alvo" value="{{ item.id }}" id="item_alvo_chk_{{ item.id }}" {% if item in bloco.itens_norma.all %}checked{% endif %}>
+                                                    <label class="form-check-label small text-dark fw-semibold" for="item_alvo_chk_{{ item.id }}" style="cursor: pointer;">
+                                                        <strong class="text-primary">{{ item.referencia }}</strong> - {{ item.titulo }}
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+                            {% endfor %}
                         </div>
-                        {% endfor %}
                     </div>
                 </div>
                 <div class="modal-footer border-0 bg-light">
                     <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">Salvar Escopo Alvo</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">Salvar Escopo Alvo</button>
                 </div>
             </form>
         </div>
@@ -588,6 +622,52 @@ document.addEventListener('DOMContentLoaded', function() {
             chipsContainer.appendChild(chip);
         });
     }
+
+    // Controles do Modal de Escopo Alvo (Expandir, Recolher, Filtrar, Marcar Todos)
+    const btnExpandAlvo = document.getElementById('btnExpandirTodosEscopoAlvoModelo');
+    const btnRecolherAlvo = document.getElementById('btnRecolherTodosEscopoAlvoModelo');
+    const searchAlvoInput = document.getElementById('searchEscopoAlvoModeloInput');
+
+    if (btnExpandAlvo) {
+        btnExpandAlvo.addEventListener('click', function() {
+            document.querySelectorAll('#accordionEscopoAlvoModelo .accordion-collapse').forEach(el => {
+                const bsCollapse = bootstrap.Collapse.getInstance(el) || new bootstrap.Collapse(el, { toggle: false });
+                bsCollapse.show();
+            });
+        });
+    }
+
+    if (btnRecolherAlvo) {
+        btnRecolherAlvo.addEventListener('click', function() {
+            document.querySelectorAll('#accordionEscopoAlvoModelo .accordion-collapse').forEach(el => {
+                const bsCollapse = bootstrap.Collapse.getInstance(el) || new bootstrap.Collapse(el, { toggle: false });
+                bsCollapse.hide();
+            });
+        });
+    }
+
+    if (searchAlvoInput) {
+        searchAlvoInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            document.querySelectorAll('#accordionEscopoAlvoModelo .escopo-alvo-item-col').forEach(col => {
+                const text = col.dataset.search || '';
+                if (!query || text.includes(query)) {
+                    col.classList.remove('d-none');
+                } else {
+                    col.classList.add('d-none');
+                }
+            });
+        });
+    }
+
+    document.querySelectorAll('.btn-marcar-todos-alvo-secao').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const targetClass = this.dataset.target;
+            const checkboxes = document.querySelectorAll(`.${targetClass} .chk-escopo-alvo-item`);
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            checkboxes.forEach(cb => cb.checked = !allChecked);
+        });
+    });
 });
 </script>
 {% endblock %}
