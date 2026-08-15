@@ -221,11 +221,15 @@
       </div>
       <div class="modal-body p-4">
         
-        <!-- Barra de Busca em Tempo Real (Sem Autopreenchimento) -->
+        <!-- Anti-Autofill Dummy Trap -->
+        <input type="text" style="position: absolute; opacity: 0; height: 0; width: 0; z-index: -1;" aria-hidden="true" tabindex="-1">
+        <input type="password" style="position: absolute; opacity: 0; height: 0; width: 0; z-index: -1;" aria-hidden="true" tabindex="-1">
+
+        <!-- Barra de Busca em Tempo Real (Proteção Anti-Autofill Total) -->
         <div class="mb-4">
             <div class="input-group input-group-lg border rounded-3 shadow-sm">
                 <span class="input-group-text bg-white border-0 text-muted"><i class="bi bi-search fs-5"></i></span>
-                <input type="search" id="searchItemCardsInput" name="search_norma_item_no_autofill" class="form-control border-0 ps-1 text-dark" placeholder="Digite para buscar por item (ex: 4.1.1) ou palavra-chave..." autocomplete="new-password" role="searchbox" aria-autocomplete="none">
+                <input type="text" id="searchItemCardsInput" name="search_norma_item_no_autofill" class="form-control border-0 ps-1 text-dark" placeholder="Digite para buscar por item (ex: 4.1.1) ou palavra-chave..." autocomplete="chrome-off" readonly onfocus="this.removeAttribute('readonly');">
             </div>
         </div>
 
@@ -453,6 +457,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const cardsModalEl = document.getElementById('selecionarItensCardsModal');
     const cardsModal = cardsModalEl ? new bootstrap.Modal(cardsModalEl) : null;
     const btnAbrirModal = document.getElementById('btnAbrirCardsItensModal');
+
+    if (cardsModalEl) {
+        cardsModalEl.addEventListener('shown.bs.modal', function() {
+            const sInput = document.getElementById('searchItemCardsInput');
+            if (sInput) {
+                sInput.value = '';
+                sInput.removeAttribute('readonly');
+                sInput.dispatchEvent(new Event('input'));
+            }
+        });
+    }
 
     if (btnAbrirModal && cardsModal) {
         btnAbrirModal.addEventListener('click', function(e) {
