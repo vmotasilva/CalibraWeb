@@ -22,6 +22,24 @@
                             {{ form.titulo.errors }}
                         </div>
 
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">{{ form.data.label }}</label>
+                                {{ form.data }}
+                                {{ form.data.errors }}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">{{ form.hora_inicio.label }}</label>
+                                {{ form.hora_inicio }}
+                                {{ form.hora_inicio.errors }}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">{{ form.hora_fim.label }}</label>
+                                {{ form.hora_fim }}
+                                {{ form.hora_fim.errors }}
+                            </div>
+                        </div>
+
                         <!-- Escopo (Itens Aplicaveis) -->
                         <div class="mb-4">
                             <label class="form-label fw-bold">{{ form.itens_norma.label }}</label>
@@ -36,22 +54,10 @@
                             </div>
                             {{ form.itens_norma.errors }}
                         </div>
-                        
-                        <div class="mb-4">
-                            <label class="form-label fw-bold">{{ form.perguntas.label }}</label>
-                            <div class="text-muted small mb-2">Quais perguntas devem ser respondidas nesta agenda?</div>
-                            {{ form.perguntas }}
-                            {{ form.perguntas.errors }}
-                            <div class="mt-2 text-end">
-                                <a href="{% url 'auditoria:iso_setup_dashboard' %}?tab=perguntas" target="_blank" class="btn btn-sm btn-outline-primary">
-                                    <i class="bi bi-plus-circle"></i> Criar nova pergunta no Banco
-                                </a>
-                            </div>
-                        </div>
 
                         <div class="d-grid mt-4">
                             <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="bi bi-check2-circle"></i> Salvar Agenda
+                                <i class="bi bi-check2-circle"></i> Salvar Bloco
                             </button>
                         </div>
                     </form>
@@ -64,15 +70,6 @@
 
 {% block extra_js %}
 <script>
-    // Inicializa Select2
-    $(document).ready(function() {
-        $('.select2-multiple').select2({
-            theme: 'bootstrap-5',
-            width: '100%',
-            placeholder: "Busque e adicione perguntas..."
-        });
-    });
-
     // Reutilizar a logica da arvore de itens
     document.addEventListener('DOMContentLoaded', function() {
         const wrapper = document.getElementById('escopo_wrapper_hidden');

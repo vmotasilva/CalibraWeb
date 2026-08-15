@@ -751,6 +751,9 @@ class AuditoriaIso(models.Model):
 class AgendaAuditoriaIso(models.Model):
     auditoria = models.ForeignKey(AuditoriaIso, on_delete=models.CASCADE, related_name="agendas")
     titulo = models.CharField(max_length=255, verbose_name="Título da Agenda")
+    data = models.DateField(null=True, blank=True, verbose_name="Data da Agenda")
+    hora_inicio = models.TimeField(null=True, blank=True, verbose_name="Hora de Início")
+    hora_fim = models.TimeField(null=True, blank=True, verbose_name="Hora de Término")
     itens_norma = models.ManyToManyField(ItemNorma, blank=True, related_name="agendas_vinculadas", verbose_name="Itens da Norma Observados")
     perguntas = models.ManyToManyField(BancoPergunta, blank=True, related_name="agendas_vinculadas", verbose_name="Perguntas Aplicáveis")
     criado_em = models.DateTimeField(auto_now_add=True)

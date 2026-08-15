@@ -46,7 +46,8 @@
                                 <i class="bi bi-three-dots-vertical"></i>
                             </button>
                             <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="{% url 'auditoria:iso_agenda_edit' auditoria.id obj.agenda.id %}"><i class="bi bi-pencil"></i> Editar</a></li>
+                                <li><a class="dropdown-item" href="{% url 'auditoria:iso_agenda_perguntas_edit' auditoria.id obj.agenda.id %}"><i class="bi bi-list-check"></i> Vincular Perguntas</a></li>
+                                <li><a class="dropdown-item" href="{% url 'auditoria:iso_agenda_edit' auditoria.id obj.agenda.id %}"><i class="bi bi-pencil"></i> Editar Bloco</a></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
                                     <form action="{% url 'auditoria:iso_agenda_delete' auditoria.id obj.agenda.id %}" method="POST" class="d-inline">
@@ -61,10 +62,22 @@
                     </h5>
                     
                     <p class="text-muted small mb-3 mt-2">
-                        <i class="bi bi-list-check"></i> {{ obj.agenda.itens_norma.count }} Itens da Norma
+                        {% if obj.agenda.data %}
+                        <i class="bi bi-calendar"></i> {{ obj.agenda.data|date:"d/m/Y" }} 
+                        {% if obj.agenda.hora_inicio %} | <i class="bi bi-clock"></i> {{ obj.agenda.hora_inicio|time:"H:i" }} às {{ obj.agenda.hora_fim|time:"H:i" }} {% endif %}
+                        <br>
+                        {% endif %}
+                        <i class="bi bi-tags"></i> {{ obj.agenda.itens_norma.count }} Itens da Norma
                         <br>
                         <i class="bi bi-question-circle"></i> {{ obj.agenda.perguntas.count }} Perguntas vinculadas
                     </p>
+                    
+                    {% if obj.agenda.perguntas.count == 0 %}
+                    <div class="alert alert-warning py-1 px-2 small mb-0 mt-2">
+                        <i class="bi bi-exclamation-triangle"></i> Nenhuma pergunta vinculada. <br>
+                        <a href="{% url 'auditoria:iso_agenda_perguntas_edit' auditoria.id obj.agenda.id %}" class="alert-link">Clique aqui para adicionar</a>.
+                    </div>
+                    {% endif %}
 
                     <!-- Progresso Checklist -->
                     <div class="mt-4 bg-light p-3 rounded">

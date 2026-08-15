@@ -3508,6 +3508,30 @@ def iso_agenda_delete(request, auditoria_id, pk):
     return redirect('auditoria:iso_auditoria_detail', pk=auditoria_id)
 
 @login_required
+def iso_agenda_perguntas_edit(request, auditoria_id, pk):
+    from .models import AgendaAuditoriaIso, AuditoriaIso
+    from .forms import AgendaPerguntasForm
+    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+    agenda = get_object_or_404(AgendaAuditoriaIso, pk=pk, auditoria=auditoria)
+    
+    if request.method == "POST":
+        form = AgendaPerguntasForm(request.POST, instance=agenda)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Perguntas vinculadas com sucesso!")
+            return redirect('auditoria:iso_auditoria_detail', pk=auditoria.id)
+    else:
+        form = AgendaPerguntasForm(instance=agenda)
+        
+    return render(request, "auditoria/iso/setup/agenda_perguntas_form.html", {
+        "form": form, 
+        "auditoria": auditoria,
+        "agenda": agenda,
+        "title": f"Vincular Perguntas: {agenda.titulo}",
+        "back_url": reverse('auditoria:iso_auditoria_detail', kwargs={'pk': auditoria.id})
+    })
+
+@login_required
 def iso_auditoria_create(request):
     from .forms import AuditoriaIsoForm
     if request.method == "POST":
