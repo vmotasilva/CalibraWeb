@@ -3315,24 +3315,38 @@ def iso_matriz_view(request, auditoria_id):
 
 @login_required
 def iso_setup_dashboard(request):
+    """Nível 1: Visão Global das Normas Cadastradas"""
+    normas = Norma.objects.all().order_by('codigo')
+    return render(request, "auditoria/iso/setup/dashboard.html", {
+        "normas": normas,
+    })
+
+@login_required
+def iso_norma_detail(request, pk):
+    """Nível 2: Visão Específica da Norma (Itens, Perguntas, Modelos, Agendas)"""
     from .models import ModeloAuditoriaIso
-    normas = Norma.objects.all()
-    itens_qs = ItemNorma.objects.all().order_by('norma', 'ordem')
+    norma = get_object_or_404(Norma, pk=pk)
+    
+    itens_qs = ItemNorma.objects.filter(norma=norma).order_by('ordem', 'referencia')
     itens = []
     for item in itens_qs:
         item.nivel = item.referencia.count('.')
         itens.append(item)
-    perguntas = BancoPergunta.objects.all()
-    modelos = ModeloAuditoriaIso.objects.all().select_related('norma').prefetch_related('perguntas')
-    auditorias = AuditoriaIso.objects.all().order_by('-criado_em')
+        
+    perguntas = BancoPergunta.objects.filter(norma=norma).prefetch_related('itens_norma')
+    if not perguntas.exists():
+        perguntas = BancoPergunta.objects.filter(itens_norma__norma=norma).distinct().prefetch_related('itens_norma')
+        
+    modelos = ModeloAuditoriaIso.objects.filter(norma=norma).prefetch_related('perguntas')
+    auditorias = AuditoriaIso.objects.filter(norma=norma).order_by('-criado_em')
     
-    return render(request, "auditoria/iso/setup/dashboard.html", {
-        "normas": normas,
+    return render(request, "auditoria/iso/setup/norma_detail.html", {
+        "norma": norma,
         "itens": itens,
         "perguntas": perguntas,
         "modelos": modelos,
         "auditorias": auditorias,
-        "active_tab": request.GET.get('tab', 'normas')
+        "active_tab": request.GET.get('tab', 'itens')
     })
 
 # --- Norma CRUD ---
@@ -3516,9 +3530,10 @@ def iso_modelo_delete(request, pk):
 
 @login_required
 def iso_auditoria_detail(request, pk):
-    from .models import AuditoriaIso
+    from .models import AuditoriaIso, ModeloAuditoriaIso
     auditoria = get_object_or_404(AuditoriaIso, pk=pk)
     agendas = auditoria.agendas.all()
+    modelos_norma = ModeloAuditoriaIso.objects.filter(norma=auditoria.norma, ativo=True)
     
     agendas_progresso = []
     for agenda in agendas:
@@ -3530,6 +3545,7 @@ def iso_auditoria_detail(request, pk):
     return render(request, "auditoria/iso/setup/auditoria_detail.html", {
         "auditoria": auditoria,
         "agendas_progresso": agendas_progresso,
+        "modelos_norma": modelos_norma,
     })
 
 @login_required

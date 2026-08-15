@@ -64,6 +64,7 @@ urlpatterns = [
     path("iso/setup/", views.iso_setup_dashboard, name="iso_setup_dashboard"),
     
     path("iso/setup/normas/nova/", views.iso_norma_create, name="iso_norma_create"),
+    path("iso/setup/normas/<int:pk>/", views.iso_norma_detail, name="iso_norma_detail"),
     path("iso/setup/normas/<int:pk>/editar/", views.iso_norma_edit, name="iso_norma_edit"),
     path("iso/setup/normas/<int:pk>/remover/", views.iso_norma_delete, name="iso_norma_delete"),
     

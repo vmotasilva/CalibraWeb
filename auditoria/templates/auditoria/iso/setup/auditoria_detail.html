@@ -116,25 +116,68 @@
 
 </div>
 
-<!-- Modal Nova Agenda -->
+<!-- Modal Nova Agenda (Bifurcação: Via Modelo vs. Criar Livre) -->
 <div class="modal fade" id="novaAgendaModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Nova Agenda de Auditoria</h5>
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content shadow-lg border-0 rounded-4">
+      <div class="modal-header bg-light border-0 py-3">
+        <h5 class="modal-title fw-bold text-primary">
+            <i class="bi bi-calendar-plus me-2"></i>Nova Agenda de Auditoria
+        </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form id="novaAgendaForm" method="POST" action="{% url 'auditoria:iso_agenda_create' auditoria.id %}">
-          <div class="modal-body">
+          <div class="modal-body p-4">
               {% csrf_token %}
+              
+              <!-- Seletor de Tipo de Criação (Card Radios) -->
+              <label class="form-label fw-bold text-dark mb-2">Como deseja criar este bloco da agenda?</label>
+              <div class="row g-3 mb-4">
+                  <div class="col-md-6">
+                      <div class="card h-100 border-2 option-card shadow-sm p-3 text-center border-primary bg-primary bg-opacity-10" id="cardOptionModelo" style="cursor: pointer;">
+                          <div class="form-check d-flex justify-content-center mb-2">
+                              <input class="form-check-input" type="radio" name="modo_criacao" id="modoModelo" value="MODELO" checked>
+                          </div>
+                          <i class="bi bi-diagram-3-fill fs-2 text-primary mb-2"></i>
+                          <h6 class="fw-bold text-dark mb-1">A partir de um Modelo (Template)</h6>
+                          <small class="text-muted">Copiar perguntas e requisitos alvo de um modelo padrão pré-cadastrado.</small>
+                      </div>
+                  </div>
+                  <div class="col-md-6">
+                      <div class="card h-100 border-2 option-card shadow-sm p-3 text-center" id="cardOptionLivre" style="cursor: pointer;">
+                          <div class="form-check d-flex justify-content-center mb-2">
+                              <input class="form-check-input" type="radio" name="modo_criacao" id="modoLivre" value="LIVRE">
+                          </div>
+                          <i class="bi bi-pencil-square fs-2 text-secondary mb-2"></i>
+                          <h6 class="fw-bold text-dark mb-1">Agenda Livre (Customizada)</h6>
+                          <small class="text-muted">Criar um bloco vazio e adicionar perguntas manualmente do Banco Geral.</small>
+                      </div>
+                  </div>
+              </div>
+
+              <!-- Opção A: Selecionar Modelo Base -->
+              <div id="containerOptionModelo" class="bg-light p-3 rounded-3 border mb-3">
+                  <label class="form-label fw-bold text-primary mb-1"><i class="bi bi-journal-bookmark me-1"></i> Selecione o Modelo Base <span class="text-danger">*</span></label>
+                  <select name="modelo_base" class="form-select border-primary" id="selectModeloBase">
+                      <option value="">-- Escolha um Modelo Padrão --</option>
+                      {% for m in modelos_norma %}
+                      <option value="{{ m.id }}">{{ m.titulo }} ({{ m.perguntas.count }} perguntas)</option>
+                      {% endfor %}
+                  </select>
+                  <small class="text-muted mt-1 d-block"><i class="bi bi-info-circle me-1"></i>Ao selecionar o modelo, o checklist e requisitos alvo serão copiados automaticamente (snapshot).</small>
+              </div>
+
+              <!-- Título da Agenda -->
               <div class="mb-3">
-                  <label class="form-label fw-bold">Título da Agenda <span class="text-danger">*</span></label>
-                  <input type="text" name="titulo" class="form-control" placeholder="Ex: Entrevista com a Diretoria" required>
+                  <label class="form-label fw-bold text-dark">Título da Agenda / Bloco <span class="text-danger">*</span></label>
+                  <input type="text" name="titulo" id="inputTituloAgenda" class="form-control" placeholder="Ex: Entrevista com a Diretoria" required>
               </div>
           </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-            <button type="submit" class="btn btn-primary">Salvar Bloco</button>
+          <div class="modal-footer border-0 bg-light">
+            <button type="button" class="btn btn-secondary px-4 rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary px-4 fw-bold rounded-pill">
+                <i class="bi bi-check-circle-fill me-1"></i> Confirmar e Criar
+            </button>
           </div>
       </form>
     </div>
@@ -243,6 +286,56 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Alternar modo de criação de agenda (Modelo vs. Livre)
+    const radioModelo = document.getElementById('modoModelo');
+    const radioLivre = document.getElementById('modoLivre');
+    const containerModelo = document.getElementById('containerOptionModelo');
+    const cardModelo = document.getElementById('cardOptionModelo');
+    const cardLivre = document.getElementById('cardOptionLivre');
+    const selectModelo = document.getElementById('selectModeloBase');
+    const inputTitulo = document.getElementById('inputTituloAgenda');
+
+    if (cardModelo && cardLivre) {
+        cardModelo.addEventListener('click', () => {
+            if (radioModelo) radioModelo.checked = true;
+            updateModeUI();
+        });
+        cardLivre.addEventListener('click', () => {
+            if (radioLivre) radioLivre.checked = true;
+            updateModeUI();
+        });
+    }
+
+    function updateModeUI() {
+        if (!radioModelo || !radioLivre) return;
+        if (radioModelo.checked) {
+            if (containerModelo) containerModelo.style.display = 'block';
+            cardModelo.classList.add('border-primary', 'bg-primary', 'bg-opacity-10');
+            cardLivre.classList.remove('border-primary', 'bg-primary', 'bg-opacity-10');
+            if (selectModelo) selectModelo.required = true;
+        } else {
+            if (containerModelo) containerModelo.style.display = 'none';
+            cardLivre.classList.add('border-primary', 'bg-primary', 'bg-opacity-10');
+            cardModelo.classList.remove('border-primary', 'bg-primary', 'bg-opacity-10');
+            if (selectModelo) {
+                selectModelo.required = false;
+                selectModelo.value = '';
+            }
+        }
+    }
+
+    if (selectModelo) {
+        selectModelo.addEventListener('change', function() {
+            if (this.value && this.options[this.selectedIndex]) {
+                const optText = this.options[this.selectedIndex].text;
+                const cleanTitle = optText.replace(/\s*\(\d+\s*perguntas\)/, '').trim();
+                if (inputTitulo) {
+                    inputTitulo.value = cleanTitle;
+                }
+            }
+        });
+    }
+
     const form = document.getElementById('novaAgendaForm');
     if(form) {
         form.addEventListener('submit', function(e) {
