@@ -3333,9 +3333,7 @@ def iso_norma_detail(request, pk):
         item.nivel = item.referencia.count('.')
         itens.append(item)
         
-    perguntas = BancoPergunta.objects.filter(norma=norma).prefetch_related('itens_norma')
-    if not perguntas.exists():
-        perguntas = BancoPergunta.objects.filter(itens_norma__norma=norma).distinct().prefetch_related('itens_norma')
+    perguntas = BancoPergunta.objects.filter(itens_norma__norma=norma).distinct().prefetch_related('itens_norma')
         
     modelos = ModeloAuditoriaIso.objects.filter(norma=norma).prefetch_related('perguntas')
     auditorias = AuditoriaIso.objects.filter(norma=norma).order_by('-criado_em')
