@@ -78,4 +78,9 @@ urlpatterns = [
     path("iso/setup/auditorias/nova/", views.iso_auditoria_create, name="iso_auditoria_create"),
     path("iso/setup/auditorias/<int:pk>/editar/", views.iso_auditoria_edit, name="iso_auditoria_edit"),
     path("iso/setup/auditorias/<int:pk>/remover/", views.iso_auditoria_delete, name="iso_auditoria_delete"),
+    
+    path("iso/setup/auditorias/<int:pk>/", views.iso_auditoria_detail, name="iso_auditoria_detail"),
+    path("iso/setup/auditorias/<int:auditoria_id>/agendas/nova/", views.iso_agenda_create, name="iso_agenda_create"),
+    path("iso/setup/auditorias/<int:auditoria_id>/agendas/<int:pk>/editar/", views.iso_agenda_edit, name="iso_agenda_edit"),
+    path("iso/setup/auditorias/<int:auditoria_id>/agendas/<int:pk>/remover/", views.iso_agenda_delete, name="iso_agenda_delete"),
 ]

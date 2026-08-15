@@ -258,9 +258,12 @@
                                         {% endif %}
                                     </td>
                                     <td class="text-end">
-                                        <a href="{% url 'auditoria:iso_auditoria_edit' aud.id %}" class="btn btn-sm btn-outline-secondary">
-                                            <i class="bi bi-pencil"></i>
-                                        </a>
+                                        <a href="{% url 'auditoria:iso_auditoria_detail' aud.id %}" class="btn btn-sm btn-outline-primary" title="Painel da Auditoria">
+                                        <i class="bi bi-kanban"></i> Painel
+                                    </a>
+                                    <a href="{% url 'auditoria:iso_auditoria_edit' aud.id %}" class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
                                         <form method="POST" action="{% url 'auditoria:iso_auditoria_delete' aud.id %}" style="display:inline;">
                                             {% csrf_token %}
                                             <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Tem certeza?');">

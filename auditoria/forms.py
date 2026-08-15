@@ -357,6 +357,7 @@ from .models import (
     ItemNorma,
     BancoPergunta,
     AuditoriaIso,
+    AgendaAuditoriaIso,
 )
 
 # ==========================================
@@ -397,21 +398,24 @@ class BancoPerguntaIsoForm(forms.ModelForm):
         }
 
 
-class AuditoriaIsoCreateForm(forms.ModelForm):
+class AgendaAuditoriaIsoForm(forms.ModelForm):
+    class Meta:
+        model = AgendaAuditoriaIso
+        fields = ['titulo', 'itens_norma', 'perguntas']
+        widgets = {
+            'titulo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Entrevista com a Diretoria'}),
+            'itens_norma': forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input iso-item-checkbox'}),
+            'perguntas': forms.SelectMultiple(attrs={'class': 'form-select select2-multiple'}),
+        }
+
+class AuditoriaIsoForm(forms.ModelForm):
     class Meta:
         model = AuditoriaIso
-        fields = ['norma', 'auditores', 'data_inicio', 'data_fim']
+        fields = ['norma', 'auditores', 'data_inicio', 'data_fim', 'escopo_itens']
         widgets = {
             'norma': forms.Select(attrs={'class': 'form-select'}),
             'auditores': forms.SelectMultiple(attrs={'class': 'form-select select2-multiple'}),
             'data_inicio': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'data_fim': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-        }
-
-class AuditoriaIsoEditForm(AuditoriaIsoCreateForm):
-    class Meta(AuditoriaIsoCreateForm.Meta):
-        fields = ['norma', 'auditores', 'data_inicio', 'data_fim', 'escopo_itens']
-        widgets = {
-            **AuditoriaIsoCreateForm.Meta.widgets,
             'escopo_itens': forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input iso-item-checkbox'}),
         }

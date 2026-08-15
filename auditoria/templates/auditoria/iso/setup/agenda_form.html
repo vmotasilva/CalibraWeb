@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} | Calibra{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">{{ title }}</h4>
+                    <a href="{{ back_url }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-x-lg"></i> Cancelar
+                    </a>
+                </div>
+                <div class="card-body p-4">
+                    <form method="POST">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">{{ form.titulo.label }} <span class="text-danger">*</span></label>
+                            {{ form.titulo }}
+                            {{ form.titulo.errors }}
+                        </div>
+
+                        <!-- Escopo (Itens Aplicaveis) -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">{{ form.itens_norma.label }}</label>
+                            <div class="text-muted small mb-2">Selecione os itens da norma que serão observados nesta agenda.</div>
+                            
+                            <div id="escopo_wrapper_hidden" style="display:none;">
+                                {{ form.itens_norma }}
+                            </div>
+                            
+                            <div class="escopo-container" id="custom_escopo_tree">
+                                <!-- Preenchido via JS (mesmo script da auditoria_form) -->
+                            </div>
+                            {{ form.itens_norma.errors }}
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">{{ form.perguntas.label }}</label>
+                            <div class="text-muted small mb-2">Quais perguntas devem ser respondidas nesta agenda?</div>
+                            {{ form.perguntas }}
+                            {{ form.perguntas.errors }}
+                            <div class="mt-2 text-end">
+                                <a href="{% url 'auditoria:iso_setup_dashboard' %}?tab=perguntas" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-plus-circle"></i> Criar nova pergunta no Banco
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="d-grid mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-check2-circle"></i> Salvar Agenda
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Inicializa Select2
+    $(document).ready(function() {
+        $('.select2-multiple').select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            placeholder: "Busque e adicione perguntas..."
+        });
+    });
+
+    // Reutilizar a logica da arvore de itens
+    document.addEventListener('DOMContentLoaded', function() {
+        const wrapper = document.getElementById('escopo_wrapper_hidden');
+        if(!wrapper) return;
+        
+        const originalDivs = wrapper.querySelectorAll('div');
+        const customContainer = document.getElementById('custom_escopo_tree');
+        
+        const items = [];
+        originalDivs.forEach(div => {
+            const cb = div.querySelector('input[type="checkbox"]');
+            const label = div.querySelector('label');
+            if (cb && label) {
+                const text = label.textContent.trim();
+                if (!text || text.includes('---------')) return;
+                
+                const refMatch = text.match(/^(\d+(?:\.\d+)*)/);
+                let ref = "";
+                let level = 0;
+                if (refMatch) {
+                    ref = refMatch[1];
+                    level = (ref.match(/\./g) || []).length;
+                    cb.dataset.ref = ref;
+                }
+                items.push({ cb, label, text, ref, level });
+            }
+        });
+
+        const sortedItems = items.sort((a, b) => {
+            const partsA = a.ref.split('.').map(Number);
+            const partsB = b.ref.split('.').map(Number);
+            for(let i=0; i<Math.max(partsA.length, partsB.length); i++){
+                const valA = partsA[i] || 0;
+                const valB = partsB[i] || 0;
+                if(valA !== valB) return valA - valB;
+            }
+            return 0;
+        });
+
+        sortedItems.forEach(item => {
+            const row = document.createElement('div');
+            row.className = 'iso-tree-row';
+            row.style.paddingLeft = `calc(0.5rem + ${item.level} * 1.5rem)`;
+            
+            row.dataset.ref = item.ref;
+            row.dataset.level = item.level;
+
+            if (item.level === 0) {
+                row.classList.add('fw-bold', 'text-primary');
+            }
+
+            const wrapperDiv = document.createElement('div');
+            wrapperDiv.className = 'form-check d-flex align-items-center mb-0';
+
+            const arrowIcon = document.createElement('i');
+            arrowIcon.className = 'bi bi-chevron-right me-2 text-muted';
+            arrowIcon.style.cursor = 'pointer';
+            arrowIcon.style.transition = 'transform 0.2s';
+            
+            const hasChildren = sortedItems.some(child => child.ref.startsWith(item.ref + '.') && child.level === item.level + 1);
+            if (!hasChildren) {
+                arrowIcon.style.visibility = 'hidden';
+            }
+
+            const checkbox = item.cb;
+            checkbox.classList.add('form-check-input', 'me-2');
+            checkbox.style.marginTop = '0';
+            
+            const label = document.createElement('label');
+            label.className = 'form-check-label';
+            label.textContent = item.text;
+
+            wrapperDiv.appendChild(arrowIcon);
+            wrapperDiv.appendChild(checkbox);
+            wrapperDiv.appendChild(label);
+            row.appendChild(wrapperDiv);
+            customContainer.appendChild(row);
+
+            checkbox.addEventListener('change', function(e) {
+                const isChecked = e.target.checked;
+                const parentRef = this.dataset.ref;
+                
+                const allRows = customContainer.querySelectorAll('.iso-tree-row');
+                allRows.forEach(r => {
+                    const cb = r.querySelector('input[type="checkbox"]');
+                    if (cb && cb.dataset.ref && cb.dataset.ref.startsWith(parentRef + '.')) {
+                        cb.checked = isChecked;
+                    }
+                });
+            });
+
+            if (hasChildren) {
+                arrowIcon.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const isExpanded = this.classList.contains('expanded');
+                    const parentRef = item.ref;
+
+                    if (isExpanded) {
+                        this.classList.remove('expanded');
+                        this.style.transform = 'rotate(0deg)';
+                        const children = customContainer.querySelectorAll('.iso-tree-row');
+                        children.forEach(child => {
+                            if (child.dataset.ref.startsWith(parentRef + '.') && child.dataset.ref !== parentRef) {
+                                child.style.display = 'none';
+                                const childArrow = child.querySelector('i.bi-chevron-right');
+                                if(childArrow) {
+                                    childArrow.classList.remove('expanded');
+                                    childArrow.style.transform = 'rotate(0deg)';
+                                }
+                            }
+                        });
+                    } else {
+                        this.classList.add('expanded');
+                        this.style.transform = 'rotate(90deg)';
+                        const children = customContainer.querySelectorAll('.iso-tree-row');
+                        children.forEach(child => {
+                            if (child.dataset.ref.startsWith(parentRef + '.') && parseInt(child.dataset.level) === item.level + 1) {
+                                child.style.display = 'block';
+                            }
+                        });
+                    }
+                });
+                
+                if (item.level > 0) {
+                    row.style.display = 'none';
+                }
+            } else if (item.level > 0) {
+                row.style.display = 'none';
+            }
+        });
+    });
+</script>
+{% endblock %}

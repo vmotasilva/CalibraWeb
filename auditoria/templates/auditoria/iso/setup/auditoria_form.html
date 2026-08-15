@@ -80,7 +80,7 @@
                                     {{ error }}
                                 {% endfor %}
                             </div>
-                        {% endif %}
+                        
                         
                         <!-- Norma -->
                         <div class="mb-3">
@@ -110,7 +110,7 @@
                             </div>
                         </div>
                         
-                        {% if form.escopo_itens %}
+                        
                         <!-- Escopo (Itens Aplicaveis) -->
                         <div class="mb-3">
                             <label class="form-label fw-bold">{{ form.escopo_itens.label }} <span class="text-danger">*</span></label>
@@ -127,7 +127,7 @@
                             </div>
                             {{ form.escopo_itens.errors }}
                         </div>
-                        {% endif %}
+                        
                         
                         <div class="d-grid mt-4">
                             <button type="submit" class="btn btn-primary btn-lg">

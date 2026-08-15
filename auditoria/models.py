@@ -748,6 +748,37 @@ class AuditoriaIso(models.Model):
         return f"Auditoria {self.norma.codigo} - {self.data_inicio:%d/%m/%Y}"
 
 
+class AgendaAuditoriaIso(models.Model):
+    auditoria = models.ForeignKey(AuditoriaIso, on_delete=models.CASCADE, related_name="agendas")
+    titulo = models.CharField(max_length=255, verbose_name="Título da Agenda")
+    itens_norma = models.ManyToManyField(ItemNorma, blank=True, related_name="agendas_vinculadas", verbose_name="Itens da Norma Observados")
+    perguntas = models.ManyToManyField(BancoPergunta, blank=True, related_name="agendas_vinculadas", verbose_name="Perguntas Aplicáveis")
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Agenda de Auditoria"
+        verbose_name_plural = "Agendas de Auditoria"
+        ordering = ['criado_em']
+
+    def __str__(self):
+        return self.titulo
+
+    def progresso(self):
+        perguntas_ids = self.perguntas.values_list('id', flat=True)
+        if not perguntas_ids:
+            return {'total': 0, 'respondidas': 0, 'percentual': 0}
+            
+        respondidas = RespostaEntrevistaIso.objects.filter(
+            auditoria=self.auditoria,
+            pergunta_id__in=perguntas_ids,
+            classificacao__in=['C', 'NC', 'NA', 'OM']
+        ).count()
+        
+        total = len(perguntas_ids)
+        percentual = int((respondidas / total) * 100) if total > 0 else 0
+        return {'total': total, 'respondidas': respondidas, 'percentual': percentual}
+
+
 class RespostaEntrevistaIso(models.Model):
     CLASSIFICACAO_CHOICES = [
         ("C", "Conforme"),

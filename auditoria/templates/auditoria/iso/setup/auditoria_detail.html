@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Painel da Auditoria | Calibra{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    
+    <!-- Cabeçalho -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">Auditoria: {{ auditoria.norma.codigo }}</h2>
+            <p class="text-muted mb-0">
+                <i class="bi bi-calendar"></i> {{ auditoria.data_inicio|date:"d/m/Y" }} a {{ auditoria.data_fim|date:"d/m/Y" }} | 
+                <i class="bi bi-people"></i> Auditores: 
+                {% for auditor in auditoria.auditores.all %}
+                    {{ auditor.get_full_name|default:auditor.username }}{% if not forloop.last %}, {% endif %}
+                {% endfor %}
+            </p>
+        </div>
+        <div>
+            <a href="{% url 'auditoria:iso_setup_dashboard' %}?tab=auditorias" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+            <a href="{% url 'auditoria:iso_agenda_create' auditoria.id %}" class="btn btn-primary">
+                <i class="bi bi-plus-lg"></i> Nova Agenda
+            </a>
+        </div>
+    </div>
+
+    <!-- Lista de Agendas -->
+    <h4 class="mb-3">Agendas de Auditoria</h4>
+    
+    {% if not agendas_progresso %}
+    <div class="alert alert-info">
+        Nenhuma agenda criada para esta auditoria. Clique em "Nova Agenda" para planejar as sessões (ex: Reunião de Abertura, Entrevista Diretoria, etc).
+    </div>
+    {% else %}
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        {% for obj in agendas_progresso %}
+        <div class="col">
+            <div class="card h-100 shadow-sm border-0" style="border-top: 4px solid #0d6efd !important;">
+                <div class="card-body">
+                    <h5 class="card-title d-flex justify-content-between align-items-start">
+                        {{ obj.agenda.titulo }}
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-three-dots-vertical"></i>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{% url 'auditoria:iso_agenda_edit' auditoria.id obj.agenda.id %}"><i class="bi bi-pencil"></i> Editar</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <form action="{% url 'auditoria:iso_agenda_delete' auditoria.id obj.agenda.id %}" method="POST" class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="dropdown-item text-danger" onclick="return confirm('Tem certeza?');">
+                                            <i class="bi bi-trash"></i> Remover
+                                        </button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
+                    </h5>
+                    
+                    <p class="text-muted small mb-3 mt-2">
+                        <i class="bi bi-list-check"></i> {{ obj.agenda.itens_norma.count }} Itens da Norma
+                        <br>
+                        <i class="bi bi-question-circle"></i> {{ obj.agenda.perguntas.count }} Perguntas vinculadas
+                    </p>
+
+                    <!-- Progresso Checklist -->
+                    <div class="mt-4 bg-light p-3 rounded">
+                        <div class="d-flex justify-content-between small mb-1 fw-bold">
+                            <span>Checklist (Perguntas)</span>
+                            <span>{{ obj.progresso.respondidas }} / {{ obj.progresso.total }} ({{ obj.progresso.percentual }}%)</span>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar {% if obj.progresso.percentual == 100 %}bg-success{% endif %}" 
+                                 role="progressbar" 
+                                 style="width: {{ obj.progresso.percentual }}%;">
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
