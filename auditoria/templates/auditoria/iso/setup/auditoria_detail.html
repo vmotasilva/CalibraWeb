@@ -44,8 +44,10 @@
             <div class="card h-100 shadow-sm border-0" style="border-top: 4px solid #0d6efd !important;">
                 <div class="card-body">
                     <h5 class="card-title d-flex justify-content-between align-items-start">
-                        {{ obj.agenda.titulo }}
-                        <div class="dropdown">
+                        <a href="{% url 'auditoria:iso_agenda_detail' auditoria.id obj.agenda.id %}" class="text-decoration-none text-dark stretched-link">
+                            {{ obj.agenda.titulo }}
+                        </a>
+                        <div class="dropdown" style="position: relative; z-index: 2;">
                             <button class="btn btn-sm btn-light" type="button" data-bs-toggle="dropdown">
                                 <i class="bi bi-three-dots-vertical"></i>
                             </button>
@@ -67,13 +69,13 @@
                     
                     <p class="text-muted small mb-3 mt-2">
                         {% if obj.agenda.data %}
-                        <a href="{% url 'auditoria:iso_agenda_edit' auditoria.id obj.agenda.id %}" class="text-decoration-none text-muted">
+                        <a href="{% url 'auditoria:iso_agenda_edit' auditoria.id obj.agenda.id %}" class="text-decoration-none text-muted edit-agenda-btn" style="position:relative; z-index:2;">
                             <i class="bi bi-calendar"></i> {{ obj.agenda.data|date:"d/m/Y" }} 
                             {% if obj.agenda.hora_inicio %} | <i class="bi bi-clock"></i> {{ obj.agenda.hora_inicio|time:"H:i" }} às {{ obj.agenda.hora_fim|time:"H:i" }} {% endif %}
                         </a>
                         <br>
                         {% else %}
-                        <a href="{% url 'auditoria:iso_agenda_edit' auditoria.id obj.agenda.id %}" class="text-decoration-none text-primary">
+                        <a href="{% url 'auditoria:iso_agenda_edit' auditoria.id obj.agenda.id %}" class="text-decoration-none text-primary edit-agenda-btn" style="position:relative; z-index:2;">
                             <i class="bi bi-calendar-plus"></i> Definir data e horários
                         </a>
                         <br>
@@ -138,6 +140,45 @@
     </div>
   </div>
 </div>
+
+<!-- Modal Editar Agenda -->
+<div class="modal fade" id="editAgendaModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Editar Agenda</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="editAgendaForm" method="POST" action="">
+          <div class="modal-body">
+              <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+              <div class="mb-3">
+                  <label class="form-label fw-bold">Título da Agenda <span class="text-danger">*</span></label>
+                  <input type="text" name="titulo" id="edit_titulo" class="form-control" required>
+              </div>
+              <div class="row mb-3">
+                  <div class="col-md-4">
+                      <label class="form-label fw-bold">Data</label>
+                      <input type="date" name="data" id="edit_data" class="form-control">
+                  </div>
+                  <div class="col-md-4">
+                      <label class="form-label fw-bold">Hora Início</label>
+                      <input type="time" name="hora_inicio" id="edit_hora_inicio" class="form-control">
+                  </div>
+                  <div class="col-md-4">
+                      <label class="form-label fw-bold">Hora Fim</label>
+                      <input type="time" name="hora_fim" id="edit_hora_fim" class="form-control">
+                  </div>
+              </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+          </div>
+      </form>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -186,8 +227,10 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="card h-100 shadow-sm border-0" style="border-top: 4px solid #0d6efd !important;">
                                 <div class="card-body">
                                     <h5 class="card-title d-flex justify-content-between align-items-start">
-                                        ${data.titulo}
-                                        <div class="dropdown">
+                                        <a href="${data.detail_url}" class="text-decoration-none text-dark stretched-link">
+                                            ${data.titulo}
+                                        </a>
+                                        <div class="dropdown" style="position: relative; z-index: 2;">
                                             <button class="btn btn-sm btn-light" type="button" data-bs-toggle="dropdown">
                                                 <i class="bi bi-three-dots-vertical"></i>
                                             </button>
@@ -208,7 +251,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     </h5>
                                     
                                     <p class="text-muted small mb-3 mt-2">
-                                        <a href="${data.edit_url}" class="text-decoration-none text-primary">
+                                        <a href="${data.edit_url}" class="text-decoration-none text-primary edit-agenda-btn" style="position:relative; z-index:2;">
                                             <i class="bi bi-calendar-plus"></i> Definir data e horários
                                         </a>
                                         <br>
@@ -248,6 +291,119 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('Erro de comunicação com o servidor.');
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = 'Salvar Bloco';
+            });
+        });
+    }
+
+    // Lógica para o modal de Editar Agenda
+    const editModal = document.getElementById('editAgendaModal');
+    if (editModal) {
+        document.addEventListener('click', function(e) {
+            const editBtn = e.target.closest('.edit-agenda-btn');
+            if (editBtn) {
+                e.preventDefault();
+                const url = editBtn.getAttribute('href');
+                const cardEl = editBtn.closest('.card-body');
+                
+                // Salvar o elemento pai para atualizar depois
+                document.getElementById('editAgendaForm').dataset.targetCardId = cardEl.closest('.col').id || '';
+                if (!cardEl.closest('.col').id) {
+                    const uniqueId = 'card_' + Math.random().toString(36).substr(2, 9);
+                    cardEl.closest('.col').id = uniqueId;
+                    document.getElementById('editAgendaForm').dataset.targetCardId = uniqueId;
+                }
+                
+                // Fetch dados
+                fetch(url, {
+                    headers: {'X-Requested-With': 'XMLHttpRequest'}
+                })
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('edit_titulo').value = data.titulo || '';
+                    document.getElementById('edit_data').value = data.data || '';
+                    document.getElementById('edit_hora_inicio').value = data.hora_inicio || '';
+                    document.getElementById('edit_hora_fim').value = data.hora_fim || '';
+                    document.getElementById('editAgendaForm').action = data.action_url;
+                    
+                    const modal = new bootstrap.Modal(editModal);
+                    modal.show();
+                })
+                .catch(err => {
+                    console.error('Erro ao buscar dados:', err);
+                    alert('Erro ao abrir o formulário de edição.');
+                });
+            }
+        });
+        
+        const editForm = document.getElementById('editAgendaForm');
+        editForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(editForm);
+            const submitBtn = editForm.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Salvando...';
+            
+            fetch(editForm.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const modal = bootstrap.Modal.getInstance(editModal);
+                    modal.hide();
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = 'Salvar Alterações';
+                    
+                    // Atualizar o Card visualmente
+                    const cardId = editForm.dataset.targetCardId;
+                    if (cardId) {
+                        const cardBody = document.getElementById(cardId).querySelector('.card-body');
+                        const titleLink = cardBody.querySelector('h5 > a');
+                        if (titleLink) titleLink.textContent = data.titulo;
+                        
+                        // Atualiza a área de data/hora
+                        let dateArea = cardBody.querySelector('p.text-muted');
+                        if (dateArea) {
+                            let timeHtml = '';
+                            if (data.hora_inicio_str) {
+                                timeHtml = ` | <i class="bi bi-clock"></i> ${data.hora_inicio_str} às ${data.hora_fim_str}`;
+                            }
+                            
+                            const dateInfoHtml = data.data_str 
+                                ? `<a href="${editForm.action}" class="text-decoration-none text-muted edit-agenda-btn" style="position:relative; z-index:2;">
+                                    <i class="bi bi-calendar"></i> ${data.data_str} ${timeHtml}
+                                   </a><br>`
+                                : `<a href="${editForm.action}" class="text-decoration-none text-primary edit-agenda-btn" style="position:relative; z-index:2;">
+                                    <i class="bi bi-calendar-plus"></i> Definir data e horários
+                                   </a><br>`;
+                                   
+                            const tagsMatch = cardBody.innerHTML.match(/(\d+) Itens da Norma/);
+                            const pergsMatch = cardBody.innerHTML.match(/(\d+) Perguntas vinculadas/);
+                            
+                            const numItens = tagsMatch ? tagsMatch[1] : '0';
+                            const numPerg = pergsMatch ? pergsMatch[1] : '0';
+                            
+                            const tagsHtml = `<i class="bi bi-tags"></i> ${numItens} Itens da Norma<br>
+                                              <i class="bi bi-question-circle"></i> ${numPerg} Perguntas vinculadas`;
+                                              
+                            dateArea.innerHTML = dateInfoHtml + tagsHtml;
+                        }
+                    }
+                } else {
+                    alert('Erro ao atualizar agenda.');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = 'Salvar Alterações';
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Erro de comunicação.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Salvar Alterações';
             });
         });
     }

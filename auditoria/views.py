@@ -3494,6 +3494,7 @@ def iso_agenda_create(request, auditoria_id):
 def iso_agenda_edit(request, auditoria_id, pk):
     from .models import AgendaAuditoriaIso, AuditoriaIso
     from .forms import AgendaAuditoriaIsoEditForm
+    from django.http import JsonResponse
     auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
     agenda = get_object_or_404(AgendaAuditoriaIso, pk=pk, auditoria=auditoria)
     
@@ -3501,10 +3502,35 @@ def iso_agenda_edit(request, auditoria_id, pk):
         form = AgendaAuditoriaIsoEditForm(request.POST, instance=agenda)
         if form.is_valid():
             form.save()
+            
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'id': agenda.id,
+                    'titulo': agenda.titulo,
+                    'data_str': agenda.data.strftime('%d/%m/%Y') if agenda.data else None,
+                    'hora_inicio_str': agenda.hora_inicio.strftime('%H:%M') if agenda.hora_inicio else None,
+                    'hora_fim_str': agenda.hora_fim.strftime('%H:%M') if agenda.hora_fim else None,
+                })
+            
             messages.success(request, "Agenda atualizada!")
             return redirect('auditoria:iso_auditoria_detail', pk=auditoria.id)
+        else:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'errors': form.errors}, status=400)
     else:
         form = AgendaAuditoriaIsoEditForm(instance=agenda)
+        
+    # Allow fetching the initial data for the edit modal
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest' and request.method == "GET":
+        from django.http import JsonResponse
+        return JsonResponse({
+            'titulo': agenda.titulo,
+            'data': agenda.data.strftime('%Y-%m-%d') if agenda.data else '',
+            'hora_inicio': agenda.hora_inicio.strftime('%H:%M') if agenda.hora_inicio else '',
+            'hora_fim': agenda.hora_fim.strftime('%H:%M') if agenda.hora_fim else '',
+            'action_url': reverse('auditoria:iso_agenda_edit', args=[auditoria.id, agenda.id])
+        })
         
     return render(request, "auditoria/iso/setup/agenda_form.html", {
         "form": form, 
@@ -3523,6 +3549,41 @@ def iso_agenda_delete(request, auditoria_id, pk):
     return redirect('auditoria:iso_auditoria_detail', pk=auditoria_id)
 
 @login_required
+def iso_agenda_detail(request, auditoria_id, pk):
+    from .models import AgendaAuditoriaIso, AuditoriaIso
+    from .forms import BancoPerguntaIsoForm
+    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+    agenda = get_object_or_404(AgendaAuditoriaIso, pk=pk, auditoria=auditoria)
+    
+    # Formulario para criar nova pergunta direto no bloco
+    form_nova_pergunta = BancoPerguntaIsoForm()
+    
+    return render(request, "auditoria/iso/setup/agenda_detail.html", {
+        "auditoria": auditoria,
+        "agenda": agenda,
+        "perguntas": agenda.perguntas.all().prefetch_related('itens_norma'),
+        "form_nova_pergunta": form_nova_pergunta
+    })
+
+@login_required
+@require_POST
+def iso_agenda_pergunta_create(request, auditoria_id, pk):
+    from .models import AgendaAuditoriaIso, AuditoriaIso
+    from .forms import BancoPerguntaIsoForm
+    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+    agenda = get_object_or_404(AgendaAuditoriaIso, pk=pk, auditoria=auditoria)
+    
+    form = BancoPerguntaIsoForm(request.POST)
+    if form.is_valid():
+        nova_pergunta = form.save()
+        agenda.perguntas.add(nova_pergunta)
+        messages.success(request, "Pergunta criada e vinculada com sucesso!")
+        return redirect('auditoria:iso_agenda_detail', auditoria_id=auditoria.id, pk=agenda.id)
+    else:
+        messages.error(request, "Erro ao criar pergunta. Verifique os campos.")
+        return redirect('auditoria:iso_agenda_detail', auditoria_id=auditoria.id, pk=agenda.id)
+
+@login_required
 def iso_agenda_perguntas_edit(request, auditoria_id, pk):
     from .models import AgendaAuditoriaIso, AuditoriaIso
     from .forms import AgendaPerguntasForm
@@ -3534,7 +3595,7 @@ def iso_agenda_perguntas_edit(request, auditoria_id, pk):
         if form.is_valid():
             form.save()
             messages.success(request, "Perguntas vinculadas com sucesso!")
-            return redirect('auditoria:iso_auditoria_detail', pk=auditoria.id)
+            return redirect('auditoria:iso_agenda_detail', auditoria_id=auditoria.id, pk=agenda.id)
     else:
         form = AgendaPerguntasForm(instance=agenda)
         
@@ -3543,7 +3604,7 @@ def iso_agenda_perguntas_edit(request, auditoria_id, pk):
         "auditoria": auditoria,
         "agenda": agenda,
         "title": f"Vincular Perguntas: {agenda.titulo}",
-        "back_url": reverse('auditoria:iso_auditoria_detail', kwargs={'pk': auditoria.id})
+        "back_url": reverse('auditoria:iso_agenda_detail', kwargs={'auditoria_id': auditoria.id, 'pk': agenda.id})
     })
 
 @login_required
