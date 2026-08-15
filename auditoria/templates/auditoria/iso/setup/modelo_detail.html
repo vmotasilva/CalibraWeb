@@ -18,10 +18,43 @@
             <p class="text-muted mb-0 small">{{ modelo.descricao }}</p>
             {% endif %}
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 align-items-center">
             <a href="{{ back_url }}" class="btn btn-outline-secondary rounded-pill px-3">
                 <i class="bi bi-arrow-left me-1"></i> Voltar para Modelos
             </a>
+
+            <!-- Dropdown de Ações do Modelo (Editar, Arquivar, Excluir) -->
+            <div class="dropdown">
+                <button class="btn btn-outline-dark rounded-pill px-3 fw-semibold dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-gear-fill me-1 text-primary"></i> Ações do Modelo
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-3">
+                    <li>
+                        <a class="dropdown-item py-2" href="{% url 'auditoria:iso_modelo_edit' modelo.id %}">
+                            <i class="bi bi-pencil me-2 text-primary"></i>Editar Modelo
+                        </a>
+                    </li>
+                    <li>
+                        <form method="POST" action="{% url 'auditoria:iso_modelo_archive' modelo.id %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="dropdown-item py-2">
+                                <i class="bi {% if not modelo.ativo %}bi-box-arrow-up text-success{% else %}bi-box-archive text-warning{% endif %} me-2"></i>
+                                {% if not modelo.ativo %}Desarquivar Modelo{% else %}Arquivar Modelo{% endif %}
+                            </button>
+                        </form>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <form method="POST" action="{% url 'auditoria:iso_modelo_delete' modelo.id %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="dropdown-item py-2 text-danger" onclick="return confirm('Tem certeza que deseja excluir este modelo de auditoria?');">
+                                <i class="bi bi-trash me-2"></i>Excluir Modelo
+                            </button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
+
             <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#novoBlocoModeloModal">
                 <i class="bi bi-plus-lg me-1"></i> Adicionar Novo Bloco
             </button>

@@ -80,6 +80,7 @@ urlpatterns = [
     path("iso/setup/modelos/novo/", views.iso_modelo_create, name="iso_modelo_create"),
     path("iso/setup/modelos/<int:pk>/", views.iso_modelo_detail, name="iso_modelo_detail"),
     path("iso/setup/modelos/<int:pk>/editar/", views.iso_modelo_edit, name="iso_modelo_edit"),
+    path("iso/setup/modelos/<int:pk>/arquivar/", views.iso_modelo_archive, name="iso_modelo_archive"),
     path("iso/setup/modelos/<int:pk>/remover/", views.iso_modelo_delete, name="iso_modelo_delete"),
     path("iso/setup/modelos/<int:modelo_id>/blocos/novo/", views.iso_modelo_bloco_create, name="iso_modelo_bloco_create"),
     path("iso/setup/modelos/<int:modelo_id>/blocos/<int:pk>/editar/", views.iso_modelo_bloco_edit, name="iso_modelo_bloco_edit"),

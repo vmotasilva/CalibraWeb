@@ -3694,12 +3694,24 @@ def iso_modelo_bloco_alvo_update(request, modelo_id, pk):
 
 @login_required
 @require_POST
+def iso_modelo_archive(request, pk):
+    from .models import ModeloAuditoriaIso
+    modelo = get_object_or_404(ModeloAuditoriaIso, pk=pk)
+    modelo.ativo = not modelo.ativo
+    modelo.save()
+    status_str = "arquivado" if not modelo.ativo else "desarquivado"
+    messages.success(request, f"Modelo '{modelo.titulo}' {status_str} com sucesso!")
+    return redirect('auditoria:iso_modelo_detail', pk=pk)
+
+@login_required
+@require_POST
 def iso_modelo_delete(request, pk):
     from .models import ModeloAuditoriaIso
     modelo = get_object_or_404(ModeloAuditoriaIso, pk=pk)
+    norma_id = modelo.norma_id
     modelo.delete()
     messages.success(request, "Modelo de Auditoria removido com sucesso!")
-    return redirect(reverse('auditoria:iso_setup_dashboard') + "?tab=modelos")
+    return redirect(reverse('auditoria:iso_norma_detail', args=[norma_id]) + "?tab=modelos")
 
 # --- AuditoriaIso CRUD e Agendas ---
 
