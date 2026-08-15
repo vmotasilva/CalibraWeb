@@ -277,13 +277,13 @@
             </div>
 
             <!-- Anti-Autofill Dummy Trap -->
-            <input type="text" style="position: absolute; opacity: 0; height: 0; width: 0; z-index: -1;" aria-hidden="true" tabindex="-1">
-            <input type="password" style="position: absolute; opacity: 0; height: 0; width: 0; z-index: -1;" aria-hidden="true" tabindex="-1">
+            <input type="text" style="position: absolute; opacity: 0; height: 0; width: 0; z-index: -1;" aria-hidden="true" tabindex="-1" autocomplete="off">
+            <input type="password" style="position: absolute; opacity: 0; height: 0; width: 0; z-index: -1;" aria-hidden="true" tabindex="-1" autocomplete="new-password">
 
-            <!-- Barra de Busca em Tempo Real e Botões de Colapso -->
+            <!-- Barra de Busca em Tempo Real com Trava Anti-Autofill -->
             <div class="input-group input-group-lg border rounded-3 shadow-sm mb-2">
                 <span class="input-group-text bg-white border-0 text-muted"><i class="bi bi-search fs-5"></i></span>
-                <input type="text" id="searchItemCardsInput" name="search_norma_item_no_autofill" class="form-control border-0 ps-1 text-dark" placeholder="Digite para buscar por item (ex: 4.1.1) ou palavra-chave..." autocomplete="chrome-off" readonly onfocus="this.removeAttribute('readonly');">
+                <input type="search" id="searchItemCardsInput" name="q_search_norma_req_nobinding" class="form-control border-0 ps-1 text-dark" placeholder="Digite para buscar por item (ex: 4.1.1) ou palavra-chave..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" readonly onfocus="this.removeAttribute('readonly');">
             </div>
 
             <!-- Controles Globais de Expandir/Recolher -->
@@ -675,6 +675,8 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             updateCounter();
+            const searchInput = document.getElementById('searchItemCardsInput');
+            if (searchInput) searchInput.value = '';
             cardsModal.show();
         });
     }
