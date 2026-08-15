@@ -3482,18 +3482,33 @@ def iso_pergunta_delete(request, pk):
 def iso_modelo_create(request):
     from .models import ModeloAuditoriaIso
     from .forms import ModeloAuditoriaIsoForm
+    norma_id = request.GET.get('norma') or request.POST.get('norma')
+    
     if request.method == "POST":
-        form = ModeloAuditoriaIsoForm(request.POST)
+        form = ModeloAuditoriaIsoForm(request.POST, initial={'norma': norma_id} if norma_id else None)
         if form.is_valid():
             modelo = form.save()
             messages.success(request, f"Modelo de Auditoria '{modelo.titulo}' criado com sucesso!")
-            return redirect(reverse('auditoria:iso_setup_dashboard') + "?tab=modelos")
+            target_norma = norma_id or modelo.norma_id
+            if target_norma:
+                return redirect(reverse('auditoria:iso_norma_detail', args=[target_norma]) + "?tab=modelos")
+            return redirect(reverse('auditoria:iso_setup_dashboard'))
     else:
-        form = ModeloAuditoriaIsoForm()
-    return render(request, "auditoria/iso/setup/form_generico.html", {
+        initial = {'norma': norma_id} if norma_id else {}
+        form = ModeloAuditoriaIsoForm(initial=initial)
+        
+    back_url = reverse('auditoria:iso_norma_detail', args=[norma_id]) + "?tab=modelos" if norma_id else reverse('auditoria:iso_setup_dashboard')
+    
+    perguntas_norma = BancoPergunta.objects.all().prefetch_related('itens_norma')
+    if norma_id:
+        perguntas_norma = BancoPergunta.objects.filter(itens_norma__norma_id=norma_id).distinct().prefetch_related('itens_norma')
+        
+    return render(request, "auditoria/iso/setup/form_modelo.html", {
         "form": form,
         "title": "Novo Modelo de Auditoria (Template)",
-        "back_url": reverse('auditoria:iso_setup_dashboard') + "?tab=modelos"
+        "back_url": back_url,
+        "perguntas_norma": perguntas_norma,
+        "perguntas_selecionadas_ids": [],
     })
 
 @login_required
@@ -3501,18 +3516,27 @@ def iso_modelo_edit(request, pk):
     from .models import ModeloAuditoriaIso
     from .forms import ModeloAuditoriaIsoForm
     modelo = get_object_or_404(ModeloAuditoriaIso, pk=pk)
+    norma_id = modelo.norma_id
+    
     if request.method == "POST":
         form = ModeloAuditoriaIsoForm(request.POST, instance=modelo)
         if form.is_valid():
             form.save()
             messages.success(request, f"Modelo '{modelo.titulo}' atualizado com sucesso!")
-            return redirect(reverse('auditoria:iso_setup_dashboard') + "?tab=modelos")
+            return redirect(reverse('auditoria:iso_norma_detail', args=[norma_id]) + "?tab=modelos")
     else:
         form = ModeloAuditoriaIsoForm(instance=modelo)
-    return render(request, "auditoria/iso/setup/form_generico.html", {
+        
+    back_url = reverse('auditoria:iso_norma_detail', args=[norma_id]) + "?tab=modelos"
+    perguntas_norma = BancoPergunta.objects.filter(itens_norma__norma_id=norma_id).distinct().prefetch_related('itens_norma')
+    perguntas_selecionadas_ids = set(modelo.perguntas.values_list('id', flat=True))
+    
+    return render(request, "auditoria/iso/setup/form_modelo.html", {
         "form": form,
         "title": f"Editar Modelo: {modelo.titulo}",
-        "back_url": reverse('auditoria:iso_setup_dashboard') + "?tab=modelos"
+        "back_url": back_url,
+        "perguntas_norma": perguntas_norma,
+        "perguntas_selecionadas_ids": perguntas_selecionadas_ids,
     })
 
 @login_required

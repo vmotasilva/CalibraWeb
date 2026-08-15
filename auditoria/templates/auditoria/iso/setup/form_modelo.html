@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 960px;">
+    
+    <!-- Cabeçalho de Formulário -->
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
+        <div>
+            <div class="small text-muted text-uppercase fw-bold mb-1">
+                <i class="bi bi-diagram-3 text-primary me-1"></i> Modelos de Auditoria (Templates)
+            </div>
+            <h3 class="fw-bold text-dark mb-0">{{ title }}</h3>
+        </div>
+        <a href="{{ back_url }}" class="btn btn-outline-secondary rounded-pill px-4">
+            <i class="bi bi-x-lg me-1"></i> Cancelar
+        </a>
+    </div>
+
+    <form method="POST" action="">
+        {% csrf_token %}
+        
+        <!-- Card Dados do Modelo -->
+        <div class="card shadow-sm border-0 rounded-4 mb-4">
+            <div class="card-header bg-white py-3 border-0">
+                <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-pencil-square text-primary me-2"></i>Informações do Modelo</h5>
+            </div>
+            <div class="card-body p-4">
+                
+                <div class="row g-3 mb-3">
+                    <div class="col-md-8">
+                        <label class="form-label fw-bold text-dark">Título do Modelo <span class="text-danger">*</span></label>
+                        {{ form.titulo }}
+                        {% if form.titulo.errors %}<div class="text-danger small mt-1">{{ form.titulo.errors }}</div>{% endif %}
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold text-dark">Norma de Referência <span class="text-danger">*</span></label>
+                        {{ form.norma }}
+                        {% if form.norma.errors %}<div class="text-danger small mt-1">{{ form.norma.errors }}</div>{% endif %}
+                    </div>
+                </div>
+
+                <div class="mb-0">
+                    <label class="form-label fw-bold text-dark">Descrição do Modelo</label>
+                    {{ form.descricao }}
+                    {% if form.descricao.errors %}<div class="text-danger small mt-1">{{ form.descricao.errors }}</div>{% endif %}
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Card Seleção de Perguntas do Modelo -->
+        <div class="card shadow-sm border-0 rounded-4 mb-4">
+            <div class="card-header bg-white py-3 px-4 border-0 d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-check2-square text-primary me-2"></i>Perguntas Padrão do Modelo</h5>
+                    <small class="text-muted">Selecione quais perguntas do banco farão parte deste modelo template.</small>
+                </div>
+                <span class="badge bg-primary rounded-pill fs-6 px-3 py-2">
+                    <strong id="counterModeloPerguntas">0</strong> selecionada(s)
+                </span>
+            </div>
+            <div class="card-body p-4 pt-2">
+                
+                <!-- Barra de Busca e Controles -->
+                <div class="row g-2 mb-3">
+                    <div class="col-md-7">
+                        <div class="input-group border rounded-3 shadow-sm">
+                            <span class="input-group-text bg-white border-0 text-muted"><i class="bi bi-search"></i></span>
+                            <input type="text" id="searchPerguntaInput" class="form-control border-0 ps-1 text-dark" placeholder="Digite para buscar perguntas ou requisitos (ex: 4.1, 5.2)...">
+                        </div>
+                    </div>
+                    <div class="col-md-5 d-flex justify-content-end gap-2 align-items-center">
+                        <button type="button" class="btn btn-sm btn-light border text-muted rounded-pill px-3" id="btnExpandAllModelPerguntas">
+                            <i class="bi bi-chevron-double-down me-1"></i> Expandir Todas
+                        </button>
+                        <button type="button" class="btn btn-sm btn-light border text-muted rounded-pill px-3" id="btnCollapseAllModelPerguntas">
+                            <i class="bi bi-chevron-double-up me-1"></i> Recolher Todas
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Lista de Perguntas Agrupadas por Seção -->
+                <div id="perguntasModeloAccordion">
+                    {% for p in perguntas_norma %}
+                    <div class="card border mb-2 rounded-3 pergunta-model-card" data-search="{{ p.texto_pergunta|lower }} {% for item in p.itens_norma.all %}{{ item.referencia }} {{ item.titulo|lower }} {% endfor %}">
+                        <div class="card-body p-3 d-flex align-items-start gap-3">
+                            <input class="form-check-input flex-shrink-0 mt-1 checkbox-pergunta-modelo" type="checkbox" name="perguntas" value="{{ p.id }}" id="pergunta_chk_{{ p.id }}" {% if p.id in perguntas_selecionadas_ids %}checked{% endif %}>
+                            <label for="pergunta_chk_{{ p.id }}" class="form-check-label flex-grow-1" style="cursor: pointer;">
+                                <div class="fw-semibold text-dark mb-1" style="font-size: 0.95rem; line-height: 1.5;">
+                                    {{ p.texto_pergunta }}
+                                </div>
+                                <div class="d-flex flex-wrap gap-1 align-items-center mt-1">
+                                    {% for item in p.itens_norma.all %}
+                                    <span class="badge bg-secondary bg-opacity-10 text-secondary border rounded-pill px-2 py-0.5" style="font-size: 0.75rem;">
+                                        <i class="bi bi-tag-fill me-1" style="font-size: 0.7rem;"></i>{{ item.referencia }} - {{ item.titulo }}
+                                    </span>
+                                    {% empty %}
+                                    <span class="badge bg-light text-muted border">Sem requisito vinculado</span>
+                                    {% endfor %}
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="alert alert-info text-center py-4 rounded-3">
+                        <i class="bi bi-info-circle fs-4 d-block mb-2"></i>
+                        Nenhuma pergunta cadastrada no banco para esta norma. Cadastre perguntas na aba "Banco de Perguntas" para poder compor o modelo.
+                    </div>
+                    {% endfor %}
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Botões de Ação -->
+        <div class="d-flex justify-content-end gap-2 pb-5">
+            <a href="{{ back_url }}" class="btn btn-secondary px-4 rounded-pill">Cancelar</a>
+            <button type="submit" class="btn btn-primary px-5 fw-bold rounded-pill shadow-sm">
+                <i class="bi bi-save me-1"></i> Salvar Modelo
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('.checkbox-pergunta-modelo');
+    const counter = document.getElementById('counterModeloPerguntas');
+    const searchInput = document.getElementById('searchPerguntaInput');
+
+    function updateCounter() {
+        if (!counter) return;
+        const total = document.querySelectorAll('.checkbox-pergunta-modelo:checked').length;
+        counter.textContent = total;
+    }
+
+    checkboxes.forEach(cb => cb.addEventListener('change', updateCounter));
+    updateCounter();
+
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            document.querySelectorAll('.pergunta-model-card').forEach(card => {
+                const text = (card.dataset.search || '').toLowerCase();
+                if (!query || text.includes(query)) {
+                    card.classList.remove('d-none');
+                } else {
+                    card.classList.add('d-none');
+                }
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

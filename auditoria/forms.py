@@ -373,8 +373,15 @@ class ModeloAuditoriaIsoForm(forms.ModelForm):
             'titulo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Checklist Padrão SGQ - Alta Direção'}),
             'norma': forms.Select(attrs={'class': 'form-select'}),
             'descricao': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Descrição ou objetivo do modelo...'}),
-            'perguntas': forms.SelectMultiple(attrs={'class': 'form-select', 'size': 6}),
+            'perguntas': forms.SelectMultiple(attrs={'class': 'form-select', 'size': 8}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        norma_id = self.initial.get('norma') or (self.instance.norma_id if self.instance and self.instance.pk else None)
+        if norma_id:
+            self.fields['norma'].initial = norma_id
+            self.fields['perguntas'].queryset = BancoPergunta.objects.filter(itens_norma__norma_id=norma_id).distinct()
 
 class NormaIsoForm(forms.ModelForm):
     class Meta:
