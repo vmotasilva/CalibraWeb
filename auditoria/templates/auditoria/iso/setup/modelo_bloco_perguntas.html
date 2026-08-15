@@ -214,7 +214,9 @@
                                                 {% endif %}
                                             {% endfor %}
                                         </span>
-                                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 ms-2 fw-semibold" style="font-size: 0.75rem;">{{ secao.list|length }} item(ns)</span>
+                                        <span class="badge bg-secondary bg-opacity-10 text-secondary border ms-2 fw-semibold badge-secao-counter" id="badge_sec_count_{{ secao.grouper }}" style="font-size: 0.75rem;">
+                                            0 / {{ secao.list|length }} marcado(s)
+                                        </span>
                                     </button>
                                 </h2>
                                 <div id="collapseAlvoModelo{{ secao.grouper }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}">
@@ -748,8 +750,40 @@ document.addEventListener('DOMContentLoaded', function() {
                     childCb.checked = this.checked;
                 });
             }
+            updateSectionCounters();
         });
     });
+
+    // Atualização em tempo real do contador X de Y marcados em cada seção
+    function updateSectionCounters() {
+        document.querySelectorAll('.escopo-alvo-secao-card').forEach(secCard => {
+            const total = secCard.querySelectorAll('.chk-escopo-alvo-item').length;
+            const checked = secCard.querySelectorAll('.chk-escopo-alvo-item:checked').length;
+            const badge = secCard.querySelector('.badge-secao-counter');
+            
+            if (badge) {
+                badge.textContent = `${checked} / ${total} marcado(s)`;
+                if (checked > 0) {
+                    badge.className = 'badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 ms-2 fw-bold badge-secao-counter';
+                } else {
+                    badge.className = 'badge bg-secondary bg-opacity-10 text-secondary border ms-2 fw-semibold badge-secao-counter';
+                }
+            }
+        });
+    }
+
+    // Event listener global de alteração de checkboxes no modal de escopo alvo
+    document.querySelectorAll('#selecionarItensAlvoModeloModal input[type="checkbox"]').forEach(cb => {
+        cb.addEventListener('change', updateSectionCounters);
+    });
+
+    const modalAlvoEl = document.getElementById('selecionarItensAlvoModeloModal');
+    if (modalAlvoEl) {
+        modalAlvoEl.addEventListener('shown.bs.modal', updateSectionCounters);
+    }
+
+    // Executa a contagem inicial
+    updateSectionCounters();
 });
 </script>
 {% endblock %}
