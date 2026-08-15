@@ -219,23 +219,24 @@
         </div>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body p-4">
+      <div class="modal-body p-4 pt-3">
         
-        <!-- Banner da Pergunta Digitada (Ajuda a Orientar a Busca) -->
-        <div id="catalogQuestionBanner" class="alert alert-primary border-0 rounded-3 py-2 px-3 mb-3 align-items-center gap-2 shadow-sm" style="display: none;">
-            <i class="bi bi-chat-left-text-fill fs-5 text-primary flex-shrink-0"></i>
-            <div class="overflow-hidden">
-                <div class="fw-bold text-primary small text-uppercase" style="font-size: 0.75rem;">Pergunta Sendo Avaliada:</div>
-                <div class="fw-semibold text-dark small text-truncate" id="catalogQuestionText"></div>
+        <!-- Container Congelado no Topo (Sticky Top Header) -->
+        <div class="sticky-top bg-white pb-3 mb-3 border-bottom shadow-sm" style="top: 0; z-index: 1050; margin-top: -1rem; margin-left: -1.5rem; margin-right: -1.5rem; padding-left: 1.5rem; padding-right: 1.5rem; padding-top: 1rem;">
+            <!-- Banner da Pergunta Digitada (Ajuda a Orientar a Busca) -->
+            <div id="catalogQuestionBanner" class="alert alert-primary border-0 rounded-3 py-2 px-3 mb-3 align-items-center gap-2 shadow-sm" style="display: none;">
+                <i class="bi bi-chat-left-text-fill fs-5 text-primary flex-shrink-0"></i>
+                <div class="overflow-hidden">
+                    <div class="fw-bold text-primary small text-uppercase" style="font-size: 0.75rem;">Pergunta Sendo Avaliada:</div>
+                    <div class="fw-semibold text-dark small text-truncate" id="catalogQuestionText"></div>
+                </div>
             </div>
-        </div>
 
-        <!-- Anti-Autofill Dummy Trap -->
-        <input type="text" style="position: absolute; opacity: 0; height: 0; width: 0; z-index: -1;" aria-hidden="true" tabindex="-1">
-        <input type="password" style="position: absolute; opacity: 0; height: 0; width: 0; z-index: -1;" aria-hidden="true" tabindex="-1">
+            <!-- Anti-Autofill Dummy Trap -->
+            <input type="text" style="position: absolute; opacity: 0; height: 0; width: 0; z-index: -1;" aria-hidden="true" tabindex="-1">
+            <input type="password" style="position: absolute; opacity: 0; height: 0; width: 0; z-index: -1;" aria-hidden="true" tabindex="-1">
 
-        <!-- Barra de Busca em Tempo Real (Proteção Anti-Autofill Total) -->
-        <div class="mb-4">
+            <!-- Barra de Busca em Tempo Real (Proteção Anti-Autofill Total) -->
             <div class="input-group input-group-lg border rounded-3 shadow-sm">
                 <span class="input-group-text bg-white border-0 text-muted"><i class="bi bi-search fs-5"></i></span>
                 <input type="text" id="searchItemCardsInput" name="search_norma_item_no_autofill" class="form-control border-0 ps-1 text-dark" placeholder="Digite para buscar por item (ex: 4.1.1) ou palavra-chave..." autocomplete="chrome-off" readonly onfocus="this.removeAttribute('readonly');">
