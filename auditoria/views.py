@@ -3315,7 +3315,7 @@ def iso_matriz_view(request, auditoria_id):
 
 @login_required
 def iso_setup_dashboard(request):
-    """Dashboard unificado com abas para gerenciamento do Setup da ISO."""
+    from .models import ModeloAuditoriaIso
     normas = Norma.objects.all()
     itens_qs = ItemNorma.objects.all().order_by('norma', 'ordem')
     itens = []
@@ -3323,12 +3323,14 @@ def iso_setup_dashboard(request):
         item.nivel = item.referencia.count('.')
         itens.append(item)
     perguntas = BancoPergunta.objects.all()
+    modelos = ModeloAuditoriaIso.objects.all().select_related('norma').prefetch_related('perguntas')
     auditorias = AuditoriaIso.objects.all().order_by('-criado_em')
     
     return render(request, "auditoria/iso/setup/dashboard.html", {
         "normas": normas,
         "itens": itens,
         "perguntas": perguntas,
+        "modelos": modelos,
         "auditorias": auditorias,
         "active_tab": request.GET.get('tab', 'normas')
     })
@@ -3463,6 +3465,53 @@ def iso_pergunta_delete(request, pk):
     messages.success(request, "Pergunta removida com sucesso!")
     return redirect(reverse('auditoria:iso_setup_dashboard') + "?tab=perguntas")
 
+# --- ModeloAuditoriaIso CRUD ---
+@login_required
+def iso_modelo_create(request):
+    from .models import ModeloAuditoriaIso
+    from .forms import ModeloAuditoriaIsoForm
+    if request.method == "POST":
+        form = ModeloAuditoriaIsoForm(request.POST)
+        if form.is_valid():
+            modelo = form.save()
+            messages.success(request, f"Modelo de Auditoria '{modelo.titulo}' criado com sucesso!")
+            return redirect(reverse('auditoria:iso_setup_dashboard') + "?tab=modelos")
+    else:
+        form = ModeloAuditoriaIsoForm()
+    return render(request, "auditoria/iso/setup/form_generico.html", {
+        "form": form,
+        "title": "Novo Modelo de Auditoria (Template)",
+        "back_url": reverse('auditoria:iso_setup_dashboard') + "?tab=modelos"
+    })
+
+@login_required
+def iso_modelo_edit(request, pk):
+    from .models import ModeloAuditoriaIso
+    from .forms import ModeloAuditoriaIsoForm
+    modelo = get_object_or_404(ModeloAuditoriaIso, pk=pk)
+    if request.method == "POST":
+        form = ModeloAuditoriaIsoForm(request.POST, instance=modelo)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Modelo '{modelo.titulo}' atualizado com sucesso!")
+            return redirect(reverse('auditoria:iso_setup_dashboard') + "?tab=modelos")
+    else:
+        form = ModeloAuditoriaIsoForm(instance=modelo)
+    return render(request, "auditoria/iso/setup/form_generico.html", {
+        "form": form,
+        "title": f"Editar Modelo: {modelo.titulo}",
+        "back_url": reverse('auditoria:iso_setup_dashboard') + "?tab=modelos"
+    })
+
+@login_required
+@require_POST
+def iso_modelo_delete(request, pk):
+    from .models import ModeloAuditoriaIso
+    modelo = get_object_or_404(ModeloAuditoriaIso, pk=pk)
+    modelo.delete()
+    messages.success(request, "Modelo de Auditoria removido com sucesso!")
+    return redirect(reverse('auditoria:iso_setup_dashboard') + "?tab=modelos")
+
 # --- AuditoriaIso CRUD e Agendas ---
 
 @login_required
@@ -3497,6 +3546,18 @@ def iso_agenda_create(request, auditoria_id):
             agenda.auditoria = auditoria
             agenda.save()
             form.save_m2m()
+            
+            # Instanciação do Modelo Base (Snapshot das Perguntas do Template)
+            if agenda.modelo_base:
+                perguntas_modelo = agenda.modelo_base.perguntas.all()
+                agenda.perguntas.set(perguntas_modelo)
+                
+                itens_alvo_ids = set()
+                for p in perguntas_modelo.prefetch_related('itens_norma'):
+                    for item in p.itens_norma.all():
+                        itens_alvo_ids.add(item.id)
+                if itens_alvo_ids:
+                    agenda.itens_norma.set(itens_alvo_ids)
             
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return JsonResponse({

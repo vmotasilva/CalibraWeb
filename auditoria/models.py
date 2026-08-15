@@ -748,8 +748,27 @@ class AuditoriaIso(models.Model):
         return f"Auditoria {self.norma.codigo} - {self.data_inicio:%d/%m/%Y}"
 
 
+class ModeloAuditoriaIso(models.Model):
+    titulo = models.CharField(max_length=255, verbose_name="Título do Modelo")
+    norma = models.ForeignKey(Norma, on_delete=models.CASCADE, related_name="modelos_auditoria", verbose_name="Norma de Referência")
+    descricao = models.TextField(blank=True, verbose_name="Descrição do Modelo")
+    perguntas = models.ManyToManyField('BancoPergunta', blank=True, related_name="modelos_vinculados", verbose_name="Perguntas do Modelo")
+    ativo = models.BooleanField(default=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Modelo de Auditoria"
+        verbose_name_plural = "Modelos de Auditoria"
+        ordering = ['-criado_em']
+
+    def __str__(self):
+        return f"{self.titulo} ({self.norma.codigo})"
+
+
 class AgendaAuditoriaIso(models.Model):
     auditoria = models.ForeignKey(AuditoriaIso, on_delete=models.CASCADE, related_name="agendas")
+    modelo_base = models.ForeignKey(ModeloAuditoriaIso, on_delete=models.SET_NULL, null=True, blank=True, related_name="agendas_instanciadas", verbose_name="Modelo Base")
     titulo = models.CharField(max_length=255, verbose_name="Título da Agenda")
     data = models.DateField(null=True, blank=True, verbose_name="Data da Agenda")
     hora_inicio = models.TimeField(null=True, blank=True, verbose_name="Hora de Início")

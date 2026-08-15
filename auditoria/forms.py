@@ -358,11 +358,23 @@ from .models import (
     BancoPergunta,
     AuditoriaIso,
     AgendaAuditoriaIso,
+    ModeloAuditoriaIso,
 )
 
 # ==========================================
-# FORMS ISO 13485
+# FORMS ISO 13485 / MULTI-NORMAS
 # ==========================================
+
+class ModeloAuditoriaIsoForm(forms.ModelForm):
+    class Meta:
+        model = ModeloAuditoriaIso
+        fields = ['titulo', 'norma', 'descricao', 'perguntas']
+        widgets = {
+            'titulo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Checklist Padrão SGQ - Alta Direção'}),
+            'norma': forms.Select(attrs={'class': 'form-select'}),
+            'descricao': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Descrição ou objetivo do modelo...'}),
+            'perguntas': forms.SelectMultiple(attrs={'class': 'form-select', 'size': 6}),
+        }
 
 class NormaIsoForm(forms.ModelForm):
     class Meta:
@@ -401,9 +413,10 @@ class BancoPerguntaIsoForm(forms.ModelForm):
 class AgendaAuditoriaIsoCreateForm(forms.ModelForm):
     class Meta:
         model = AgendaAuditoriaIso
-        fields = ['titulo']
+        fields = ['titulo', 'modelo_base']
         widgets = {
             'titulo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Entrevista com a Diretoria'}),
+            'modelo_base': forms.Select(attrs={'class': 'form-select'}),
         }
 
 class AgendaAuditoriaIsoEditForm(forms.ModelForm):
