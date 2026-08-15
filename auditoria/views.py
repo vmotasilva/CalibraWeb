@@ -3650,6 +3650,7 @@ def iso_modelo_bloco_perguntas(request, modelo_id, pk):
         "perguntas_disponiveis": perguntas_disponiveis,
         "perguntas_vinculadas": perguntas_vinculadas,
         "perguntas_vinculadas_ids": perguntas_vinculadas_ids,
+        "itens_cobertos_ids": list(itens_cobertos_ids),
         "total_alvo": total_alvo,
         "total_coberto": total_coberto,
         "porcentagem_cobertura": porcentagem_cobertura,

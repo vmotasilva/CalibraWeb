@@ -348,18 +348,28 @@
                     <input type="password" style="position: absolute; opacity: 0; height: 0; width: 0; z-index: -1;" aria-hidden="true" tabindex="-1" autocomplete="new-password">
                     
                     <div class="row g-2 align-items-center">
-                        <div class="col-md-7">
+                        <div class="col-md-5">
                             <div class="input-group border rounded-3 bg-white">
                                 <span class="input-group-text bg-transparent border-0 text-muted"><i class="bi bi-search"></i></span>
                                 <input type="search" id="search_norm_catalog_input_noautofill_modelo" name="search_norm_catalog_input_noautofill_modelo" class="form-control border-0 ps-1 text-dark" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" role="searchbox" placeholder="Buscar por número do item ou título (ex: 4.1, 5.2)..." readonly onfocus="this.removeAttribute('readonly');">
                             </div>
                         </div>
-                        <div class="col-md-5 d-flex justify-content-end gap-2">
-                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" id="btnExpandirTodosCatalogoModelo">
-                                <i class="bi bi-chevron-double-down me-1"></i> Expandir Todas
+                        <div class="col-md-7 d-flex justify-content-end align-items-center gap-1.5 flex-wrap">
+                            <!-- Filtro 1: Limitar aos itens alvos definidos no bloco -->
+                            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-2.5 fw-semibold" id="btnFilterOnlyTargetItems" title="Limitar exibição aos itens definidos como alvo deste bloco">
+                                <i class="bi bi-target me-1"></i> Apenas Alvos
                             </button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" id="btnRecolherTodosCatalogoModelo">
-                                <i class="bi bi-chevron-double-up me-1"></i> Recolher Todas
+
+                            <!-- Filtro 2: Ocultar itens já associados a perguntas deste bloco -->
+                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-2.5 fw-semibold" id="btnFilterHideAssociatedItems" title="Ocultar itens que já possuem pergunta vinculada neste bloco">
+                                <i class="bi bi-eye-slash me-1"></i> Ocultar Associados
+                            </button>
+
+                            <button type="button" class="btn btn-sm btn-light border rounded-circle p-1.5" id="btnExpandirTodosCatalogoModelo" title="Expandir Todas as Seções">
+                                <i class="bi bi-chevron-double-down"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-light border rounded-circle p-1.5" id="btnRecolherTodosCatalogoModelo" title="Recolher Todas as Seções">
+                                <i class="bi bi-chevron-double-up"></i>
                             </button>
                         </div>
                     </div>
@@ -391,11 +401,22 @@
                                             </thead>
                                             <tbody>
                                                 {% for item in secao.list %}
-                                                <tr class="catalogo-item-row" data-id="{{ item.id }}" data-ref="{{ item.referencia }}" data-titulo="{{ item.titulo }}" data-search="{{ item.referencia }} {{ item.titulo|lower }}">
+                                                <tr class="catalogo-item-row" 
+                                                    data-id="{{ item.id }}" 
+                                                    data-ref="{{ item.referencia }}" 
+                                                    data-titulo="{{ item.titulo }}" 
+                                                    data-search="{{ item.referencia }} {{ item.titulo|lower }}"
+                                                    data-is-target="{% if item in bloco.itens_norma.all %}true{% else %}false{% endif %}"
+                                                    data-is-associated="{% if item.id in itens_cobertos_ids %}true{% else %}false{% endif %}">
                                                     <td class="text-center">
                                                         <input class="form-check-input chk-catalogo-item-modelo" type="checkbox" value="{{ item.id }}" data-ref="{{ item.referencia }}" data-titulo="{{ item.titulo }}" id="chk_cat_mod_{{ item.id }}">
                                                     </td>
-                                                    <td class="fw-bold text-primary">{{ item.referencia }}</td>
+                                                    <td class="fw-bold text-primary">
+                                                        {{ item.referencia }}
+                                                        {% if item.id in itens_cobertos_ids %}
+                                                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill small ms-1" style="font-size: 0.65rem;" title="Este requisito já possui pergunta cadastrada neste bloco">Associado</span>
+                                                        {% endif %}
+                                                    </td>
                                                     <td>
                                                         <label for="chk_cat_mod_{{ item.id }}" class="form-check-label text-dark fw-semibold" style="cursor: pointer;">
                                                             {{ item.titulo }}
@@ -755,19 +776,75 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Busca no catálogo do Modelo com trava anti-autofill
+    // Sistema Avançado de Filtros do Catálogo de Requisitos (Busca + Apenas Alvos + Ocultar Associados)
     const searchInput = document.getElementById('search_norm_catalog_input_noautofill_modelo');
-    if (searchInput) {
-        searchInput.addEventListener('input', function() {
-            const query = this.value.toLowerCase().trim();
-            document.querySelectorAll('.catalogo-item-row').forEach(row => {
-                const text = row.dataset.search || '';
-                if (!query || text.includes(query)) {
-                    row.classList.remove('d-none');
-                } else {
-                    row.classList.add('d-none');
+    const btnTargetFilter = document.getElementById('btnFilterOnlyTargetItems');
+    const btnHideAssocFilter = document.getElementById('btnFilterHideAssociatedItems');
+
+    function applyCatalogFilters() {
+        const query = (searchInput?.value || '').toLowerCase().trim();
+        const onlyTarget = btnTargetFilter?.classList.contains('active') || false;
+        const hideAssoc = btnHideAssocFilter?.classList.contains('active') || false;
+
+        document.querySelectorAll('.catalogo-item-row').forEach(row => {
+            const text = row.dataset.search || '';
+            const isTarget = row.dataset.isTarget === 'true';
+            const isAssociated = row.dataset.isAssociated === 'true';
+
+            let visible = true;
+
+            if (query && !text.includes(query)) visible = false;
+            if (onlyTarget && !isTarget) visible = false;
+            if (hideAssoc && isAssociated) visible = false;
+
+            if (visible) {
+                row.classList.remove('d-none');
+            } else {
+                row.classList.add('d-none');
+            }
+        });
+
+        // Expande seções com itens visíveis e oculta seções vazias sob filtro
+        document.querySelectorAll('.item-secao-catalogo').forEach(sec => {
+            const visibleRows = sec.querySelectorAll('.catalogo-item-row:not(.d-none)').length;
+            const collapseEl = sec.querySelector('.accordion-collapse');
+            if (visibleRows > 0) {
+                sec.classList.remove('d-none');
+                if ((onlyTarget || hideAssoc || query) && collapseEl && !collapseEl.classList.contains('show')) {
+                    const bsCollapse = bootstrap.Collapse.getInstance(collapseEl) || new bootstrap.Collapse(collapseEl, { toggle: false });
+                    bsCollapse.show();
                 }
-            });
+            } else {
+                sec.classList.add('d-none');
+            }
+        });
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', applyCatalogFilters);
+    }
+
+    if (btnTargetFilter) {
+        btnTargetFilter.addEventListener('click', function() {
+            this.classList.toggle('active');
+            if (this.classList.contains('active')) {
+                this.className = 'btn btn-sm btn-primary rounded-pill px-2.5 fw-bold active shadow-2xs';
+            } else {
+                this.className = 'btn btn-sm btn-outline-primary rounded-pill px-2.5 fw-semibold';
+            }
+            applyCatalogFilters();
+        });
+    }
+
+    if (btnHideAssocFilter) {
+        btnHideAssocFilter.addEventListener('click', function() {
+            this.classList.toggle('active');
+            if (this.classList.contains('active')) {
+                this.className = 'btn btn-sm btn-dark rounded-pill px-2.5 fw-bold active shadow-2xs';
+            } else {
+                this.className = 'btn btn-sm btn-outline-secondary rounded-pill px-2.5 fw-semibold';
+            }
+            applyCatalogFilters();
         });
     }
 
