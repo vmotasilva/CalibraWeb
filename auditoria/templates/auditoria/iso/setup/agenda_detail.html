@@ -221,11 +221,11 @@
       </div>
       <div class="modal-body p-4">
         
-        <!-- Barra de Busca em Tempo Real -->
+        <!-- Barra de Busca em Tempo Real (Sem Autopreenchimento) -->
         <div class="mb-4">
             <div class="input-group input-group-lg border rounded-3 shadow-sm">
                 <span class="input-group-text bg-white border-0 text-muted"><i class="bi bi-search fs-5"></i></span>
-                <input type="text" id="searchItemCardsInput" class="form-control border-0 ps-1 text-dark" placeholder="Digite para buscar por item (ex: 4.1.1) ou palavra-chave..." autocomplete="off">
+                <input type="search" id="searchItemCardsInput" name="search_norma_item_no_autofill" class="form-control border-0 ps-1 text-dark" placeholder="Digite para buscar por item (ex: 4.1.1) ou palavra-chave..." autocomplete="new-password" role="searchbox" aria-autocomplete="none">
             </div>
         </div>
 
@@ -475,7 +475,36 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     document.querySelectorAll('.item-card-checkbox').forEach(cb => {
-        cb.addEventListener('change', updateCounter);
+        cb.addEventListener('change', function() {
+            const isChecked = this.checked;
+            const ref = this.dataset.ref;
+
+            if (ref) {
+                // 1. Cascata para baixo: Marcar/Desmarcar todos os sub-itens vinculados (ex: 4 -> 4.1, 4.1.1)
+                document.querySelectorAll('.item-card-checkbox').forEach(childCb => {
+                    const childRef = childCb.dataset.ref;
+                    if (childRef && childRef !== ref) {
+                        if (childRef.startsWith(ref + '.')) {
+                            childCb.checked = isChecked;
+                        }
+                    }
+                });
+
+                // 2. Cascata para cima: Se desmarcou um sub-item, desmarca os pais (ex: 4.1.1 desmarcado -> desmarca 4.1 e 4)
+                if (!isChecked) {
+                    document.querySelectorAll('.item-card-checkbox').forEach(parentCb => {
+                        const parentRef = parentCb.dataset.ref;
+                        if (parentRef && parentRef !== ref) {
+                            if (ref.startsWith(parentRef + '.')) {
+                                parentCb.checked = false;
+                            }
+                        }
+                    });
+                }
+            }
+
+            updateCounter();
+        });
     });
 
     document.querySelectorAll('.btn-select-all-section').forEach(btn => {
