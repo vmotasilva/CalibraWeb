@@ -3724,6 +3724,52 @@ def iso_auditoria_detail(request, pk):
     })
 
 @login_required
+@require_POST
+def iso_auditoria_archive(request, pk):
+    from .models import AuditoriaIso
+    auditoria = get_object_or_404(AuditoriaIso, pk=pk)
+    auditoria.arquivada = not auditoria.arquivada
+    if auditoria.arquivada:
+        auditoria.status = "ARQUIVADA"
+        msg = f"Auditoria '{auditoria.norma.codigo}' arquivada com sucesso!"
+    else:
+        auditoria.status = "PLANEJADA"
+        msg = f"Auditoria '{auditoria.norma.codigo}' desarquivada com sucesso!"
+    auditoria.save()
+    messages.success(request, msg)
+    return redirect(reverse('auditoria:iso_norma_detail', args=[auditoria.norma_id]) + "?tab=agendas")
+
+@login_required
+@require_POST
+def iso_auditoria_delete(request, pk):
+    from .models import AuditoriaIso
+    auditoria = get_object_or_404(AuditoriaIso, pk=pk)
+    norma_id = auditoria.norma_id
+    auditoria.delete()
+    messages.success(request, "Planejamento de Auditoria excluído com sucesso!")
+    return redirect(reverse('auditoria:iso_norma_detail', args=[norma_id]) + "?tab=agendas")
+
+@login_required
+@require_POST
+def iso_agenda_archive(request, auditoria_id, pk):
+    from .models import AgendaAuditoriaIso
+    agenda = get_object_or_404(AgendaAuditoriaIso, pk=pk, auditoria_id=auditoria_id)
+    agenda.arquivada = not agenda.arquivada
+    agenda.save()
+    status_str = "arquivado" if agenda.arquivada else "desarquivado"
+    messages.success(request, f"Bloco '{agenda.titulo}' {status_str} com sucesso!")
+    return redirect('auditoria:iso_auditoria_detail', pk=auditoria_id)
+
+@login_required
+@require_POST
+def iso_agenda_delete(request, auditoria_id, pk):
+    from .models import AgendaAuditoriaIso
+    agenda = get_object_or_404(AgendaAuditoriaIso, pk=pk, auditoria_id=auditoria_id)
+    agenda.delete()
+    messages.success(request, "Bloco da agenda removido com sucesso!")
+    return redirect('auditoria:iso_auditoria_detail', pk=auditoria_id)
+
+@login_required
 def iso_agenda_create(request, auditoria_id):
     from .models import AuditoriaIso
     from .forms import AgendaAuditoriaIsoCreateForm

@@ -89,13 +89,14 @@ urlpatterns = [
     path("iso/setup/modelos/<int:modelo_id>/blocos/<int:pk>/alvo/", views.iso_modelo_bloco_alvo_update, name="iso_modelo_bloco_alvo_update"),
     
     path("iso/setup/auditorias/nova/", views.iso_auditoria_create, name="iso_auditoria_create"),
-    path("iso/setup/auditorias/<int:pk>/editar/", views.iso_auditoria_edit, name="iso_auditoria_edit"),
-    path("iso/setup/auditorias/<int:pk>/remover/", views.iso_auditoria_delete, name="iso_auditoria_delete"),
-    
     path("iso/setup/auditorias/<int:pk>/", views.iso_auditoria_detail, name="iso_auditoria_detail"),
+    path("iso/setup/auditorias/<int:pk>/editar/", views.iso_auditoria_edit, name="iso_auditoria_edit"),
+    path("iso/setup/auditorias/<int:pk>/arquivar/", views.iso_auditoria_archive, name="iso_auditoria_archive"),
+    path("iso/setup/auditorias/<int:pk>/remover/", views.iso_auditoria_delete, name="iso_auditoria_delete"),
     path("iso/setup/auditorias/<int:auditoria_id>/agendas/nova/", views.iso_agenda_create, name="iso_agenda_create"),
     path("iso/setup/auditorias/<int:auditoria_id>/agendas/<int:pk>/", views.iso_agenda_detail, name="iso_agenda_detail"),
     path("iso/setup/auditorias/<int:auditoria_id>/agendas/<int:pk>/editar/", views.iso_agenda_edit, name="iso_agenda_edit"),
+    path("iso/setup/auditorias/<int:auditoria_id>/agendas/<int:pk>/arquivar/", views.iso_agenda_archive, name="iso_agenda_archive"),
     path("iso/setup/auditorias/<int:auditoria_id>/agendas/<int:pk>/remover/", views.iso_agenda_delete, name="iso_agenda_delete"),
     path("iso/setup/auditorias/<int:auditoria_id>/agendas/<int:pk>/perguntas/", views.iso_agenda_perguntas_edit, name="iso_agenda_perguntas_edit"),
     path("iso/setup/auditorias/<int:auditoria_id>/agendas/<int:pk>/perguntas/nova/", views.iso_agenda_pergunta_create, name="iso_agenda_pergunta_create"),

@@ -731,6 +731,7 @@ class AuditoriaIso(models.Model):
         ("PLANEJADA", "Planejada"),
         ("EM_ANDAMENTO", "Em Andamento"),
         ("CONCLUIDA", "Concluída"),
+        ("ARQUIVADA", "Arquivada"),
     ]
     norma = models.ForeignKey(Norma, on_delete=models.PROTECT, related_name="auditorias")
     data_inicio = models.DateField(verbose_name="Data de Início")
@@ -738,6 +739,7 @@ class AuditoriaIso(models.Model):
     auditores = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="auditorias_iso_realizadas", verbose_name="Auditores")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="PLANEJADA")
     escopo_itens = models.ManyToManyField(ItemNorma, related_name="auditorias_escopo", verbose_name="Escopo (Itens Aplicáveis)", help_text="Itens da norma que serão avaliados nesta auditoria")
+    arquivada = models.BooleanField(default=False, verbose_name="Arquivada")
     criado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -792,6 +794,7 @@ class AgendaAuditoriaIso(models.Model):
     hora_fim = models.TimeField(null=True, blank=True, verbose_name="Hora de Término")
     itens_norma = models.ManyToManyField(ItemNorma, blank=True, related_name="agendas_vinculadas", verbose_name="Itens da Norma Observados")
     perguntas = models.ManyToManyField(BancoPergunta, blank=True, related_name="agendas_vinculadas", verbose_name="Perguntas Aplicáveis")
+    arquivada = models.BooleanField(default=False, verbose_name="Arquivada")
     criado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:

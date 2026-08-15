@@ -16,12 +16,28 @@
                 {% endfor %}
             </p>
         </div>
-        <div>
-            <a href="{% url 'auditoria:iso_setup_dashboard' %}?tab=auditorias" class="btn btn-outline-secondary">
+        <div class="d-flex gap-2">
+            <a href="{% url 'auditoria:iso_norma_detail' auditoria.norma_id %}?tab=agendas" class="btn btn-outline-secondary rounded-pill px-3">
                 <i class="bi bi-arrow-left"></i> Voltar
             </a>
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#novaAgendaModal">
-                <i class="bi bi-plus-lg"></i> Nova Agenda
+            
+            <form method="POST" action="{% url 'auditoria:iso_auditoria_archive' auditoria.id %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn {% if auditoria.arquivada %}btn-outline-success{% else %}btn-outline-warning{% endif %} rounded-pill px-3 fw-semibold">
+                    <i class="bi {% if auditoria.arquivada %}bi-box-arrow-up{% else %}bi-box-archive{% endif %} me-1"></i>
+                    {% if auditoria.arquivada %}Desarquivar{% else %}Arquivar{% endif %}
+                </button>
+            </form>
+
+            <form method="POST" action="{% url 'auditoria:iso_auditoria_delete' auditoria.id %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-danger rounded-pill px-3 fw-semibold" onclick="return confirm('Tem certeza que deseja excluir esta auditoria/planejamento por completo?');">
+                    <i class="bi bi-trash me-1"></i> Excluir
+                </button>
+            </form>
+
+            <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#novaAgendaModal">
+                <i class="bi bi-plus-lg me-1"></i> Nova Agenda
             </button>
         </div>
     </div>
