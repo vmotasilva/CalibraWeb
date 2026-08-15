@@ -3369,13 +3369,34 @@ def iso_norma_delete(request, pk):
 
 # --- ItemNorma CRUD ---
 @login_required
+def iso_item_detail_api(request, pk):
+    from django.http import JsonResponse
+    item = get_object_or_404(ItemNorma, pk=pk)
+    return JsonResponse({
+        "id": item.id,
+        "norma_codigo": item.norma.codigo,
+        "norma_id": item.norma_id,
+        "referencia": item.referencia,
+        "titulo": item.titulo,
+        "descricao": item.descricao or "",
+        "ordem": item.ordem,
+        "edit_url": reverse('auditoria:iso_item_edit', args=[item.id]),
+        "delete_url": reverse('auditoria:iso_item_delete', args=[item.id]),
+    })
+
+@login_required
 def iso_item_create(request):
     if request.method == "POST":
         form = ItemNormaIsoForm(request.POST)
         if form.is_valid():
-            form.save()
+            item = form.save()
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': True, 'id': item.id})
             messages.success(request, "Item da norma cadastrado com sucesso!")
             return redirect(reverse('auditoria:iso_setup_dashboard') + "?tab=itens")
+        else:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'errors': form.errors}, status=400)
     else:
         form = ItemNormaIsoForm()
     return render(request, "auditoria/iso/setup/form_generico.html", {"form": form, "title": "Novo Item da Norma", "back_url": reverse('auditoria:iso_setup_dashboard') + "?tab=itens"})
@@ -3387,8 +3408,13 @@ def iso_item_edit(request, pk):
         form = ItemNormaIsoForm(request.POST, instance=item)
         if form.is_valid():
             form.save()
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': True, 'id': item.id, 'referencia': item.referencia, 'titulo': item.titulo, 'descricao': item.descricao or ''})
             messages.success(request, "Item atualizado!")
             return redirect(reverse('auditoria:iso_setup_dashboard') + "?tab=itens")
+        else:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'errors': form.errors}, status=400)
     else:
         form = ItemNormaIsoForm(instance=item)
     return render(request, "auditoria/iso/setup/form_generico.html", {"form": form, "title": f"Editar Item: {item.referencia}", "back_url": reverse('auditoria:iso_setup_dashboard') + "?tab=itens"})
@@ -3398,6 +3424,8 @@ def iso_item_edit(request, pk):
 def iso_item_delete(request, pk):
     item = get_object_or_404(ItemNorma, pk=pk)
     item.delete()
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({'success': True, 'id': pk})
     messages.success(request, "Item removido com sucesso!")
     return redirect(reverse('auditoria:iso_setup_dashboard') + "?tab=itens")
 
@@ -3557,19 +3585,23 @@ def iso_agenda_delete(request, auditoria_id, pk):
 
 @login_required
 def iso_agenda_detail(request, auditoria_id, pk):
-    from .models import AgendaAuditoriaIso, AuditoriaIso
+    from .models import AgendaAuditoriaIso, AuditoriaIso, ItemNorma
     from .forms import BancoPerguntaIsoForm
     auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
     agenda = get_object_or_404(AgendaAuditoriaIso, pk=pk, auditoria=auditoria)
     
     # Formulario para criar nova pergunta direto no bloco
     form_nova_pergunta = BancoPerguntaIsoForm()
+    itens_norma_todos = ItemNorma.objects.filter(norma=auditoria.norma).order_by('referencia')
+    if not itens_norma_todos.exists():
+        itens_norma_todos = ItemNorma.objects.all().order_by('referencia')
     
     return render(request, "auditoria/iso/setup/agenda_detail.html", {
         "auditoria": auditoria,
         "agenda": agenda,
         "perguntas": agenda.perguntas.all().prefetch_related('itens_norma'),
-        "form_nova_pergunta": form_nova_pergunta
+        "form_nova_pergunta": form_nova_pergunta,
+        "itens_norma_todos": itens_norma_todos,
     })
 
 @login_required

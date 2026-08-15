@@ -111,12 +111,11 @@
                                     <th>Norma</th>
                                     <th>Referência</th>
                                     <th>Título do Item</th>
-                                    <th class="text-end">Ações</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for item in itens %}
-                                <tr>
+                                <tr class="item-row" style="cursor: pointer;" data-id="{{ item.id }}" data-api-url="{% url 'auditoria:iso_item_detail_api' item.id %}" id="item-row-{{ item.id }}">
                                     <td><span class="badge bg-secondary">{{ item.norma.codigo }}</span></td>
                                     <td style="padding-left: calc(0.5rem + {{ item.nivel }} * 1.5rem);">
                                         {% if item.nivel == 0 %}
@@ -133,23 +132,12 @@
                                         {% else %}
                                             <i class="bi bi-file-earmark-text text-muted me-1" style="font-size: 0.9em;"></i>
                                         {% endif %}
-                                        {{ item.titulo }}
-                                    </td>
-                                    <td class="text-end">
-                                        <a href="{% url 'auditoria:iso_item_edit' item.id %}" class="btn btn-sm btn-outline-secondary">
-                                            <i class="bi bi-pencil"></i>
-                                        </a>
-                                        <form method="POST" action="{% url 'auditoria:iso_item_delete' item.id %}" style="display:inline;">
-                                            {% csrf_token %}
-                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Tem certeza que deseja excluir este item?');">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </form>
+                                        <span class="item-titulo-text">{{ item.titulo }}</span>
                                     </td>
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="4" class="text-center text-muted py-4">Nenhum item cadastrado.</td>
+                                    <td colspan="3" class="text-center text-muted py-4">Nenhum item cadastrado.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -286,4 +274,210 @@
 
     </div>
 </div>
+
+<!-- Modal Detalhe / Edição do Item da Norma -->
+<div class="modal fade" id="itemDetailModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content shadow border-0 rounded-4">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold text-primary">
+            <span class="badge bg-secondary me-2" id="modalItemNorma"></span>
+            Item <span id="modalItemRef"></span>: <span id="modalItemTitulo"></span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      
+      <!-- Modo Visualização -->
+      <div id="itemModalViewMode">
+          <div class="modal-body py-3">
+              <h6 class="fw-bold text-muted border-bottom pb-2 mb-3">
+                  <i class="bi bi-file-earmark-text text-primary me-2"></i>Descrição / Requisito Completo
+              </h6>
+              <div id="modalItemDesc" class="p-3 bg-light rounded-3 border" style="white-space: pre-wrap; font-family: inherit; font-size: 0.95rem; line-height: 1.6; max-height: 55vh; overflow-y: auto;">
+                  <span class="text-muted">Carregando...</span>
+              </div>
+          </div>
+          <div class="modal-footer border-0 d-flex justify-content-between">
+              <button type="button" class="btn btn-outline-danger" id="btnModalExcluirItem">
+                  <i class="bi bi-trash me-1"></i> Excluir Item
+              </button>
+              <div>
+                  <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Fechar</button>
+                  <button type="button" class="btn btn-primary" id="btnModalEditarItem">
+                      <i class="bi bi-pencil me-1"></i> Editar Item
+                  </button>
+              </div>
+          </div>
+      </div>
+
+      <!-- Modo Edição -->
+      <div id="itemModalEditMode" style="display: none;">
+          <form id="itemEditForm" method="POST" action="">
+              {% csrf_token %}
+              <div class="modal-body py-3">
+                  <h6 class="fw-bold text-primary border-bottom pb-2 mb-3">
+                      <i class="bi bi-pencil-square me-2"></i>Editar Item da Norma
+                  </h6>
+                  <div class="mb-3">
+                      <label class="form-label fw-bold">Título / Resumo</label>
+                      <input type="text" name="titulo" id="editItemTitulo" class="form-control" required>
+                  </div>
+                  <div class="mb-3">
+                      <label class="form-label fw-bold">Descrição / Requisito Completo</label>
+                      <textarea name="descricao" id="editItemDescricao" class="form-control" rows="8"></textarea>
+                  </div>
+              </div>
+              <div class="modal-footer border-0 d-flex justify-content-between">
+                  <button type="button" class="btn btn-outline-secondary" id="btnModalCancelarEdicao">Cancelar</button>
+                  <button type="submit" class="btn btn-success" id="btnModalSalvarEdicao">
+                      <i class="bi bi-check-lg me-1"></i> Salvar Alterações
+                  </button>
+              </div>
+          </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let currentItemData = null;
+    const modalEl = document.getElementById('itemDetailModal');
+    const modal = new bootstrap.Modal(modalEl);
+
+    const viewMode = document.getElementById('itemModalViewMode');
+    const editMode = document.getElementById('itemModalEditMode');
+
+    // Clique na linha do Item da Norma
+    document.querySelectorAll('.item-row').forEach(row => {
+        row.addEventListener('click', function(e) {
+            const apiUrl = this.dataset.apiUrl;
+            
+            // Reset modal state
+            viewMode.style.display = 'block';
+            editMode.style.display = 'none';
+            document.getElementById('modalItemDesc').innerHTML = '<div class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm me-2"></span>Carregando requisito...</div>';
+
+            fetch(apiUrl, {
+                headers: {'X-Requested-With': 'XMLHttpRequest'}
+            })
+            .then(res => res.json())
+            .then(data => {
+                currentItemData = data;
+                document.getElementById('modalItemNorma').textContent = data.norma_codigo;
+                document.getElementById('modalItemRef').textContent = data.referencia;
+                document.getElementById('modalItemTitulo').textContent = data.titulo;
+                
+                const descText = data.descricao ? data.descricao : '<em>Nenhuma descrição cadastrada para este item.</em>';
+                document.getElementById('modalItemDesc').innerHTML = descText;
+
+                document.getElementById('itemEditForm').action = data.edit_url;
+                document.getElementById('editItemTitulo').value = data.titulo;
+                document.getElementById('editItemDescricao').value = data.descricao || '';
+
+                modal.show();
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Erro ao carregar item.');
+            });
+        });
+    });
+
+    // Alternar para Modo Edição
+    document.getElementById('btnModalEditarItem').addEventListener('click', function() {
+        viewMode.style.display = 'none';
+        editMode.style.display = 'block';
+    });
+
+    // Cancelar Edição
+    document.getElementById('btnModalCancelarEdicao').addEventListener('click', function() {
+        editMode.style.display = 'none';
+        viewMode.style.display = 'block';
+    });
+
+    // Salvar Edição via AJAX
+    document.getElementById('itemEditForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const form = this;
+        const formData = new FormData(form);
+        const submitBtn = document.getElementById('btnModalSalvarEdicao');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvando...';
+
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {'X-Requested-With': 'XMLHttpRequest'}
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                // Atualiza os dados do modal
+                currentItemData.titulo = data.titulo;
+                currentItemData.descricao = data.descricao;
+
+                document.getElementById('modalItemTitulo').textContent = data.titulo;
+                document.getElementById('modalItemDesc').innerHTML = data.descricao ? data.descricao : '<em>Nenhuma descrição cadastrada.</em>';
+
+                // Atualiza o elemento da tabela
+                const row = document.getElementById('item-row-' + data.id);
+                if (row) {
+                    const titleSpan = row.querySelector('.item-titulo-text');
+                    if (titleSpan) titleSpan.textContent = data.titulo;
+                }
+
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Salvar Alterações';
+
+                // Volta para o modo de visualização
+                editMode.style.display = 'none';
+                viewMode.style.display = 'block';
+            } else {
+                alert('Erro ao salvar edições.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Salvar Alterações';
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Erro de comunicação.');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Salvar Alterações';
+        });
+    });
+
+    // Excluir Item via AJAX
+    document.getElementById('btnModalExcluirItem').addEventListener('click', function() {
+        if (!currentItemData) return;
+        if (!confirm(`Tem certeza que deseja excluir o item ${currentItemData.referencia}?`)) return;
+
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const formData = new FormData();
+        formData.append('csrfmiddlewaretoken', csrfToken);
+
+        fetch(currentItemData.delete_url, {
+            method: 'POST',
+            body: formData,
+            headers: {'X-Requested-With': 'XMLHttpRequest'}
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                modal.hide();
+                const row = document.getElementById('item-row-' + data.id);
+                if (row) row.remove();
+            } else {
+                alert('Erro ao excluir item.');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Erro de comunicação.');
+        });
+    });
+});
+</script>
 {% endblock %}

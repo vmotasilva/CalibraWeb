@@ -139,6 +139,9 @@
                   <label class="form-label fw-bold">{{ form_nova_pergunta.itens_norma.label }}</label>
                   <div class="text-muted small mb-2">Selecione o(s) item(ns) da norma que esta pergunta vai avaliar.</div>
                   {{ form_nova_pergunta.itens_norma }}
+                  <button type="button" class="btn btn-outline-primary btn-sm mt-2 w-100 fw-bold" id="btnAbrirCardsItensModal">
+                      <i class="bi bi-grid-3x3-gap-fill me-1"></i> Selecionar por Cards de Agrupamento (Flags)
+                  </button>
               </div>
           </div>
           <div class="modal-footer">
@@ -146,6 +149,73 @@
             <button type="submit" class="btn btn-primary">Salvar e Vincular</button>
           </div>
       </form>
+    </div>
+  </div>
+</div>
+
+<!-- Pop-up Modal de Seleção de Itens da Norma por Cards de Agrupamento -->
+<div class="modal fade" id="selecionarItensCardsModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content shadow-lg border-0 rounded-4">
+      <div class="modal-header bg-light border-0 pb-3">
+        <div>
+            <h5 class="modal-title fw-bold text-primary mb-1">
+                <i class="bi bi-grid-3x3-gap-fill me-2"></i>Selecionar Itens da Norma por Cards de Agrupamento
+            </h5>
+            <small class="text-muted">Marque as flags dos requisitos aplicáveis a esta pergunta.</small>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        
+        <!-- Accordion / Grid de Seções da Norma -->
+        <div class="row g-4">
+            {% regroup itens_norma_todos by referencia|slice:":1" as secoes_list %}
+            {% for secao in secoes_list %}
+            <div class="col-md-6">
+                <div class="card h-100 shadow-sm border-0 bg-light">
+                    <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0 fw-bold text-dark">
+                            <i class="bi bi-folder-fill me-2 text-primary"></i>
+                            {% if secao.grouper == '4' %}Seção 4 - Sistema de gestão da qualidade
+                            {% elif secao.grouper == '5' %}Seção 5 - Responsabilidade da direção
+                            {% elif secao.grouper == '6' %}Seção 6 - Gestão de recursos
+                            {% elif secao.grouper == '7' %}Seção 7 - Realização de produto
+                            {% elif secao.grouper == '8' %}Seção 8 - Medição, análise e melhoria
+                            {% else %}Seção {{ secao.grouper }}
+                            {% endif %}
+                        </h6>
+                        <button type="button" class="btn btn-sm btn-outline-primary btn-select-all-section" data-section="{{ secao.grouper }}">
+                            Marcar Todos
+                        </button>
+                    </div>
+                    <div class="card-body p-3 bg-white border-top">
+                        <div class="list-group list-group-flush" style="max-height: 280px; overflow-y: auto;">
+                            {% for item in secao.list %}
+                            <label class="list-group-item d-flex align-items-start gap-2 py-2 border-0 rounded-2 mb-1 item-flag-card">
+                                <input class="form-check-input flex-shrink-0 mt-1 item-card-checkbox section-{{ secao.grouper }}" type="checkbox" value="{{ item.id }}" data-ref="{{ item.referencia }}">
+                                <span class="small">
+                                    <strong class="text-dark">{{ item.referencia }}</strong> - {{ item.titulo }}
+                                </span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+      </div>
+      <div class="modal-footer border-0 bg-light d-flex justify-content-between">
+        <span class="small text-muted"><strong id="counterItensSelecionados">0</strong> item(ns) selecionado(s)</span>
+        <div>
+            <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-success fw-bold" id="btnConfirmarSelecaoCards">
+                <i class="bi bi-check-circle-fill me-1"></i> Confirmar Seleção
+            </button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -162,6 +232,54 @@
                 dropdownParent: $('#novaPerguntaModal'),
                 placeholder: "Busque os itens (ex: 4.1)"
             });
+        });
+
+        const cardsModalEl = document.getElementById('selecionarItensCardsModal');
+        const cardsModal = new bootstrap.Modal(cardsModalEl);
+
+        // Botão para abrir o segundo modal por cards
+        $('#btnAbrirCardsItensModal').on('click', function() {
+            // Sincroniza checkboxes com os valores selecionados no select2
+            const currentSelected = $('#id_itens_norma').val() || [];
+
+            $('.item-card-checkbox').each(function() {
+                const val = $(this).val();
+                $(this).prop('checked', currentSelected.includes(val));
+            });
+
+            updateCounter();
+            cardsModal.show();
+        });
+
+        // Contagem de marcados
+        function updateCounter() {
+            const count = $('.item-card-checkbox:checked').length;
+            $('#counterItensSelecionados').text(count);
+        }
+
+        $('.item-card-checkbox').on('change', function() {
+            updateCounter();
+        });
+
+        // Botão Marcar Todos da Seção
+        $('.btn-select-all-section').on('click', function() {
+            const sec = $(this).data('section');
+            const checkboxes = $('.item-card-checkbox.section-' + sec);
+            const allChecked = checkboxes.filter(':checked').length === checkboxes.length;
+            checkboxes.prop('checked', !allChecked);
+            $(this).text(allChecked ? 'Marcar Todos' : 'Desmarcar Todos');
+            updateCounter();
+        });
+
+        // Confirmar Seleção nos Cards
+        $('#btnConfirmarSelecaoCards').on('click', function() {
+            const selectedVals = [];
+            $('.item-card-checkbox:checked').each(function() {
+                selectedVals.push($(this).val());
+            });
+
+            $('#id_itens_norma').val(selectedVals).trigger('change');
+            cardsModal.hide();
         });
     });
 </script>
