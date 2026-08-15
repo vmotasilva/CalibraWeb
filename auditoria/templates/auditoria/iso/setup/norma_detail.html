@@ -192,18 +192,9 @@
                                     <td><span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-2.5 py-1">{{ m.norma.codigo }}</span></td>
                                     <td class="text-center"><span class="badge bg-secondary rounded-pill px-2.5 py-1">{{ m.perguntas.count }}</span></td>
                                     <td class="text-end pe-4">
-                                        <a href="{% url 'auditoria:iso_modelo_detail' m.id %}" class="btn btn-sm btn-primary rounded-pill px-3 me-1 fw-bold shadow-sm">
+                                        <a href="{% url 'auditoria:iso_modelo_detail' m.id %}" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold shadow-sm">
                                             <i class="bi bi-eye me-1"></i> Ver Blocos do Modelo
                                         </a>
-                                        <a href="{% url 'auditoria:iso_modelo_edit' m.id %}" class="btn btn-sm btn-outline-secondary me-1 rounded-circle" title="Editar">
-                                            <i class="bi bi-pencil"></i>
-                                        </a>
-                                        <form method="POST" action="{% url 'auditoria:iso_modelo_delete' m.id %}" style="display:inline;">
-                                            {% csrf_token %}
-                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-circle" onclick="return confirm('Excluir modelo?');" title="Excluir">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </form>
                                     </td>
                                 </tr>
                                 {% empty %}
