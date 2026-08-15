@@ -398,7 +398,15 @@ class BancoPerguntaIsoForm(forms.ModelForm):
         }
 
 
-class AgendaAuditoriaIsoForm(forms.ModelForm):
+class AgendaAuditoriaIsoCreateForm(forms.ModelForm):
+    class Meta:
+        model = AgendaAuditoriaIso
+        fields = ['titulo']
+        widgets = {
+            'titulo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Entrevista com a Diretoria'}),
+        }
+
+class AgendaAuditoriaIsoEditForm(forms.ModelForm):
     class Meta:
         model = AgendaAuditoriaIso
         fields = ['titulo', 'data', 'hora_inicio', 'hora_fim']

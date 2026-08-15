@@ -22,6 +22,7 @@
                             {{ form.titulo.errors }}
                         </div>
 
+                        {% if form.data %}
                         <div class="row mb-3">
                             <div class="col-md-4">
                                 <label class="form-label fw-bold">{{ form.data.label }}</label>
@@ -39,6 +40,7 @@
                                 {{ form.hora_fim.errors }}
                             </div>
                         </div>
+                        {% endif %}
 
                         <div class="d-grid mt-4">
                             <button type="submit" class="btn btn-primary btn-lg">

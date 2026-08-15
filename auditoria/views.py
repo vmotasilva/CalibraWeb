@@ -3453,11 +3453,11 @@ def iso_auditoria_detail(request, pk):
 @login_required
 def iso_agenda_create(request, auditoria_id):
     from .models import AuditoriaIso
-    from .forms import AgendaAuditoriaIsoForm
+    from .forms import AgendaAuditoriaIsoCreateForm
     auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
     
     if request.method == "POST":
-        form = AgendaAuditoriaIsoForm(request.POST)
+        form = AgendaAuditoriaIsoCreateForm(request.POST)
         if form.is_valid():
             agenda = form.save(commit=False)
             agenda.auditoria = auditoria
@@ -3466,7 +3466,7 @@ def iso_agenda_create(request, auditoria_id):
             messages.success(request, "Agenda criada com sucesso!")
             return redirect('auditoria:iso_auditoria_detail', pk=auditoria.id)
     else:
-        form = AgendaAuditoriaIsoForm()
+        form = AgendaAuditoriaIsoCreateForm()
         
     return render(request, "auditoria/iso/setup/agenda_form.html", {
         "form": form, 
@@ -3478,18 +3478,18 @@ def iso_agenda_create(request, auditoria_id):
 @login_required
 def iso_agenda_edit(request, auditoria_id, pk):
     from .models import AgendaAuditoriaIso, AuditoriaIso
-    from .forms import AgendaAuditoriaIsoForm
+    from .forms import AgendaAuditoriaIsoEditForm
     auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
     agenda = get_object_or_404(AgendaAuditoriaIso, pk=pk, auditoria=auditoria)
     
     if request.method == "POST":
-        form = AgendaAuditoriaIsoForm(request.POST, instance=agenda)
+        form = AgendaAuditoriaIsoEditForm(request.POST, instance=agenda)
         if form.is_valid():
             form.save()
             messages.success(request, "Agenda atualizada!")
             return redirect('auditoria:iso_auditoria_detail', pk=auditoria.id)
     else:
-        form = AgendaAuditoriaIsoForm(instance=agenda)
+        form = AgendaAuditoriaIsoEditForm(instance=agenda)
         
     return render(request, "auditoria/iso/setup/agenda_form.html", {
         "form": form, 
