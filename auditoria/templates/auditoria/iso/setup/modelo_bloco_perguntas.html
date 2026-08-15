@@ -530,21 +530,29 @@
                 </button>
             </div>
         </div>
-    <!-- Pop-up Sub-modal de Detalhes do Requisito (Info Pop-up) -->
-<div class="modal fade" id="popItemDetailModal" tabindex="-1" aria-hidden="true" style="z-index: 1070;">
+<!-- Pop-up Sub-modal de Detalhes do Requisito (Info Pop-up com Escada de Raízes) -->
+<div class="modal fade" id="popItemDetailModal" tabindex="-1" aria-hidden="true" style="z-index: 1100 !important;">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content shadow-lg border-0 rounded-4">
             <div class="modal-header bg-primary text-white py-3 border-0">
                 <h5 class="modal-title fw-bold d-flex align-items-center gap-2">
                     <i class="bi bi-info-circle-fill fs-5"></i>
                     <span id="popItemDetailNormaBadge" class="badge bg-white text-primary rounded-pill fs-6 px-3 py-1">{{ modelo.norma.codigo }}</span>
-                    <span id="popItemDetailRef"></span>
+                    <span>Item <span id="popItemDetailRef"></span></span>
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4">
-                <h5 class="fw-bold text-dark mb-3" id="popItemDetailTitulo"></h5>
-                <div class="card bg-light border-0 rounded-3 p-3 text-dark" style="font-size: 0.95rem; line-height: 1.6; white-space: pre-wrap;" id="popItemDetailDescricao"></div>
+                <!-- Escada de Raízes (Hierarquia do Requisito) -->
+                <div id="popItemDetailEscadaContainer" class="card bg-light border-0 rounded-3 p-3 mb-3 shadow-2xs">
+                    <div class="text-muted small fw-bold mb-2 text-uppercase tracking-wider">
+                        <i class="bi bi-diagram-3 me-1 text-primary"></i> Hierarquia da Norma (Escada das Raízes)
+                    </div>
+                    <div id="popItemDetailEscadaBody" class="d-flex flex-column gap-1.5"></div>
+                </div>
+
+                <h5 class="fw-bold text-dark mb-2" id="popItemDetailTitulo"></h5>
+                <div class="card bg-white border rounded-3 p-3 text-dark shadow-2xs" style="font-size: 0.95rem; line-height: 1.6; white-space: pre-wrap;" id="popItemDetailDescricao"></div>
             </div>
             <div class="modal-footer border-0 bg-light">
                 <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Fechar</button>
@@ -557,6 +565,51 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Dicionário de títulos para montagem da Escada de Raízes
+    const normItemsLookup = {
+        {% for item in itens_norma_todos %}
+        "{{ item.referencia }}": "{{ item.titulo|escapejs }}",
+        {% endfor %}
+    };
+
+    function buildEscadaRaizes(ref, mainTitulo) {
+        const escadaBody = document.getElementById('popItemDetailEscadaBody');
+        if (!escadaBody) return;
+        escadaBody.innerHTML = '';
+
+        const parts = ref.split('.');
+        let currentRef = '';
+        
+        parts.forEach((part, index) => {
+            if (index === 0) {
+                currentRef = part;
+            } else {
+                currentRef += '.' + part;
+            }
+
+            const title = normItemsLookup[currentRef] || (currentRef === ref ? mainTitulo : '');
+            const isLast = (index === parts.length - 1);
+            
+            const line = document.createElement('div');
+            const indentClass = index === 0 ? '' : (index === 1 ? 'ms-3 ps-2 border-start border-2 border-primary border-opacity-50' : 'ms-4 ps-2 border-start border-3 border-primary');
+            
+            const displayRef = (index === 0 && !currentRef.includes('.')) ? `${currentRef}.0` : currentRef;
+
+            if (isLast) {
+                line.className = `d-flex align-items-center text-dark fw-bold ${indentClass}`;
+                line.innerHTML = `<i class="bi bi-file-earmark-check-fill me-2 text-primary fs-6"></i><span class="text-primary me-1">${displayRef}</span> - ${title}`;
+            } else if (index === 0) {
+                line.className = `d-flex align-items-center text-dark small fw-semibold ${indentClass}`;
+                line.innerHTML = `<i class="bi bi-folder2-open me-2 text-primary"></i><span class="text-primary me-1">${displayRef}</span> - ${title}`;
+            } else {
+                line.className = `d-flex align-items-center text-dark small fw-semibold ${indentClass}`;
+                line.innerHTML = `<i class="bi bi-diagram-2 me-2 text-primary"></i><span class="text-primary me-1">${displayRef}</span> - ${title}`;
+            }
+
+            escadaBody.appendChild(line);
+        });
+    }
+
     // Event listener para botões de Info nos itens do catálogo
     document.querySelectorAll('.btn-item-info-pop').forEach(btn => {
         btn.addEventListener('click', function(e) {
@@ -570,10 +623,28 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('popItemDetailTitulo').textContent = titulo;
             document.getElementById('popItemDetailDescricao').textContent = desc || titulo;
 
-            const modal = new bootstrap.Modal(document.getElementById('popItemDetailModal'));
+            buildEscadaRaizes(ref, titulo);
+
+            const modalEl = document.getElementById('popItemDetailModal');
+            const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
             modal.show();
         });
     });
+
+    // Ajuste dinâmico de z-index dos backdrops para o pop-up informativo sempre ficar à frente de todos
+    const popDetailModalEl = document.getElementById('popItemDetailModal');
+    if (popDetailModalEl) {
+        popDetailModalEl.addEventListener('show.bs.modal', function() {
+            setTimeout(() => {
+                const backdrops = document.querySelectorAll('.modal-backdrop');
+                backdrops.forEach((bd, idx) => {
+                    if (idx > 0) {
+                        bd.style.zIndex = 1085 + (idx * 10);
+                    }
+                });
+            }, 10);
+        });
+    }
     const btnAbrir = document.getElementById('btnAbrirCatalogoModeloModal');
     const modalCatalogoEl = document.getElementById('catalogoItensModalModelo');
     const modalPerguntaEl = document.getElementById('novaPerguntaModeloModal');
