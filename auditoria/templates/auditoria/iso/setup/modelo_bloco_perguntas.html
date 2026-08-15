@@ -340,14 +340,15 @@
             <div class="modal-body p-0">
                 <!-- Sticky Header de Busca + Autofill Trap -->
                 <div class="sticky-top bg-light p-3 border-bottom shadow-sm">
-                    <input type="text" style="display:none;" name="prevent_autofill_fake_user">
-                    <input type="password" style="display:none;" name="prevent_autofill_fake_pass">
+                    <!-- Anti-Autofill Dummy Trap -->
+                    <input type="text" style="position: absolute; opacity: 0; height: 0; width: 0; z-index: -1;" aria-hidden="true" tabindex="-1" autocomplete="off">
+                    <input type="password" style="position: absolute; opacity: 0; height: 0; width: 0; z-index: -1;" aria-hidden="true" tabindex="-1" autocomplete="new-password">
                     
                     <div class="row g-2 align-items-center">
                         <div class="col-md-7">
                             <div class="input-group border rounded-3 bg-white">
                                 <span class="input-group-text bg-transparent border-0 text-muted"><i class="bi bi-search"></i></span>
-                                <input type="text" id="searchCatalogoModeloInput" class="form-control border-0 ps-1 text-dark" autocomplete="off" placeholder="Buscar por número do item ou título (ex: 4.1, 5.2)...">
+                                <input type="search" id="search_norm_catalog_input_noautofill_modelo" name="search_norm_catalog_input_noautofill_modelo" class="form-control border-0 ps-1 text-dark" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" role="searchbox" placeholder="Buscar por número do item ou título (ex: 4.1, 5.2)..." readonly onfocus="this.removeAttribute('readonly');">
                             </div>
                         </div>
                         <div class="col-md-5 d-flex justify-content-end gap-2">
@@ -501,8 +502,18 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Busca no catálogo do Modelo
-    const searchInput = document.getElementById('searchCatalogoModeloInput');
+    if (modalCatalogoEl) {
+        modalCatalogoEl.addEventListener('shown.bs.modal', function () {
+            const sInput = document.getElementById('search_norm_catalog_input_noautofill_modelo');
+            if (sInput) {
+                sInput.value = '';
+                sInput.blur();
+            }
+        });
+    }
+
+    // Busca no catálogo do Modelo com trava anti-autofill
+    const searchInput = document.getElementById('search_norm_catalog_input_noautofill_modelo');
     if (searchInput) {
         searchInput.addEventListener('input', function() {
             const query = this.value.toLowerCase().trim();

@@ -249,25 +249,9 @@
                                     </td>
                                     <td class="text-center"><span class="badge bg-secondary rounded-pill px-2.5 py-1">{{ aud.agendas.count }}</span></td>
                                     <td class="text-end pe-4">
-                                        <a href="{% url 'auditoria:iso_auditoria_detail' aud.id %}" class="btn btn-sm btn-primary rounded-pill px-3 me-1 fw-bold shadow-sm">
+                                        <a href="{% url 'auditoria:iso_auditoria_detail' aud.id %}" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold shadow-sm">
                                             <i class="bi bi-eye me-1"></i> Ver Detalhes
                                         </a>
-                                        
-                                        <!-- Botão Arquivar/Desarquivar Planejamento -->
-                                        <form method="POST" action="{% url 'auditoria:iso_auditoria_archive' aud.id %}" style="display:inline;">
-                                            {% csrf_token %}
-                                            <button type="submit" class="btn btn-sm {% if aud.arquivada %}btn-outline-success{% else %}btn-outline-warning{% endif %} rounded-circle me-1" title="{% if aud.arquivada %}Desarquivar{% else %}Arquivar{% endif %}">
-                                                <i class="bi {% if aud.arquivada %}bi-box-arrow-up{% else %}bi-box-archive{% endif %}"></i>
-                                            </button>
-                                        </form>
-
-                                        <!-- Botão Excluir Planejamento -->
-                                        <form method="POST" action="{% url 'auditoria:iso_auditoria_delete' aud.id %}" style="display:inline;">
-                                            {% csrf_token %}
-                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-circle" onclick="return confirm('Tem certeza que deseja excluir todo este planejamento de auditoria?');" title="Excluir Planejamento">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </form>
                                     </td>
                                 </tr>
                                 {% empty %}
