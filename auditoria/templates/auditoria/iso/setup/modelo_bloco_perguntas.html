@@ -2,19 +2,26 @@
 {% load static %}
 
 {% block content %}
-<div class="container py-4" style="max-width: 960px;">
-    
-    <!-- Header de Contexto -->
-    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <div class="small text-muted text-uppercase fw-bold mb-1">
-                <i class="bi bi-diagram-3-fill text-primary me-1"></i> {{ modelo.titulo }} / Bloco do Modelo
-            </div>
-            <h3 class="fw-bold text-dark mb-0">Gerenciar Perguntas: <span class="text-primary">{{ bloco.titulo }}</span></h3>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'auditoria:iso_setup_dashboard' %}">Modelos</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'auditoria:iso_modelo_detail' modelo.id %}">{{ modelo.titulo }}</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Bloco: {{ bloco.titulo }}</li>
+                </ol>
+            </nav>
+            <h2 class="mb-0 fw-bold text-dark">
+                <i class="bi bi-diagram-3 text-primary me-2"></i>Bloco do Modelo: {{ bloco.titulo }}
+            </h2>
         </div>
-        <a href="{{ back_url }}" class="btn btn-outline-secondary rounded-pill px-4">
-            <i class="bi bi-arrow-left me-1"></i> Voltar para o Modelo
-        </a>
+        <div>
+            <a href="{{ back_url }}" class="btn btn-outline-secondary rounded-pill px-3">
+                <i class="bi bi-arrow-left me-1"></i> Voltar ao Modelo
+            </a>
+        </div>
     </div>
 
     {% if messages %}
@@ -28,89 +35,237 @@
     </div>
     {% endif %}
 
-    <form method="POST" action="">
-        {% csrf_token %}
-        
-        <div class="card shadow-sm border-0 rounded-4 mb-4">
-            <div class="card-header bg-white py-3 px-4 border-0 d-flex justify-content-between align-items-center">
-                <div>
-                    <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-question-circle text-primary me-2"></i>Perguntas Vinculadas a este Bloco</h5>
-                    <small class="text-muted">Selecione as perguntas do Banco Geral que farão parte do checklist deste bloco.</small>
+    <div class="row">
+        <!-- Coluna Esquerda: <ScopeCoverageSidebar /> (Análise de Cobertura do Escopo Alvo do Bloco do Modelo) -->
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm border-0 h-100 rounded-4">
+                <div class="card-header bg-white py-3 border-0">
+                    <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-info-circle text-primary me-2"></i>Escopo Alvo do Bloco</h5>
                 </div>
-                <span class="badge bg-primary rounded-pill fs-6 px-3 py-2">
-                    <strong id="counterBlocoPerguntas">0</strong> selecionada(s)
-                </span>
-            </div>
-            <div class="card-body p-4 pt-2">
-                
-                <!-- Busca -->
-                <div class="input-group border rounded-3 shadow-sm mb-3">
-                    <span class="input-group-text bg-white border-0 text-muted"><i class="bi bi-search"></i></span>
-                    <input type="text" id="searchBlocoPerguntaInput" class="form-control border-0 ps-1 text-dark" placeholder="Digite para buscar perguntas...">
-                </div>
-
-                <!-- Lista de Perguntas -->
-                <div id="perguntasBlocoContainer">
-                    {% for p in perguntas_disponiveis %}
-                    <div class="card border mb-2 rounded-3 bloco-pergunta-card" data-search="{{ p.texto_pergunta|lower }} {% for item in p.itens_norma.all %}{{ item.referencia }} {{ item.titulo|lower }} {% endfor %}">
-                        <div class="card-body p-3 d-flex align-items-start gap-3">
-                            <input class="form-check-input flex-shrink-0 mt-1 chk-bloco-pergunta" type="checkbox" name="perguntas" value="{{ p.id }}" id="p_bloco_chk_{{ p.id }}" {% if p.id in perguntas_vinculadas_ids %}checked{% endif %}>
-                            <label for="p_bloco_chk_{{ p.id }}" class="form-check-label flex-grow-1" style="cursor: pointer;">
-                                <div class="fw-semibold text-dark mb-1" style="font-size: 0.95rem; line-height: 1.5;">
-                                    {{ p.texto_pergunta }}
-                                </div>
-                                <div class="d-flex flex-wrap gap-1 align-items-center mt-1">
-                                    {% for item in p.itens_norma.all %}
-                                    <span class="badge bg-secondary bg-opacity-10 text-secondary border rounded-pill px-2 py-0.5" style="font-size: 0.75rem;">
-                                        <i class="bi bi-tag-fill me-1" style="font-size: 0.7rem;"></i>{{ item.referencia }} - {{ item.titulo }}
-                                    </span>
-                                    {% empty %}
-                                    <span class="badge bg-light text-muted border" style="font-size: 0.75rem;">Sem requisito vinculado</span>
-                                    {% endfor %}
-                                </div>
-                            </label>
+                <div class="card-body">
+                    <!-- Bloco de Cobertura do Escopo Planejado -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <small class="text-primary d-block fw-bold text-uppercase" style="font-size: 0.75rem;">
+                                <i class="bi bi-bullseye me-1"></i>Cobertura do Escopo Alvo
+                            </small>
+                            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-2 py-0 fw-semibold" style="font-size: 0.75rem;" data-bs-toggle="modal" data-bs-target="#selecionarItensAlvoModeloModal">
+                                🎯 Definir Alvos
+                            </button>
                         </div>
-                    </div>
-                    {% empty %}
-                    <div class="alert alert-info text-center py-4 rounded-3">
-                        Nenhuma pergunta cadastrada para esta norma.
-                    </div>
-                    {% endfor %}
-                </div>
 
+                        {% if total_alvo > 0 %}
+                            <div class="d-flex justify-content-between align-items-baseline mb-1">
+                                <span class="fw-bold fs-5 text-dark">{{ total_coberto }} <span class="text-muted fs-6 font-monospace">/ {{ total_alvo }}</span></span>
+                                <span class="badge {% if porcentagem_cobertura == 100 %}bg-success{% elif porcentagem_cobertura > 0 %}bg-warning text-dark{% else %}bg-secondary{% endif %} rounded-pill px-2.5 py-1">
+                                    {{ porcentagem_cobertura }}% Coberto
+                                </span>
+                            </div>
+
+                            <!-- Barra de Progresso Visual -->
+                            <div class="progress rounded-pill mb-3 shadow-sm" style="height: 10px; background-color: #e9ecef;">
+                                <div class="progress-bar {% if porcentagem_cobertura == 100 %}bg-success{% elif porcentagem_cobertura > 0 %}bg-warning{% else %}bg-secondary{% endif %} progress-bar-striped progress-bar-animated" role="progressbar" style="width: {{ porcentagem_cobertura }}%;" aria-valuenow="{{ porcentagem_cobertura }}" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+
+                            <!-- Checklist de Tags de Cobertura -->
+                            <small class="text-muted d-block fw-bold mb-2">Requisitos Alvo deste Bloco:</small>
+                            <div class="d-flex flex-wrap gap-1">
+                                {% for status in cobertura_status %}
+                                    {% if status.coberto %}
+                                        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill" title="Coberto por perguntas vinculadas">
+                                            🟢 {{ status.item.referencia }}
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill" title="Ainda não contemplado por nenhuma pergunta">
+                                            🔴 {{ status.item.referencia }}
+                                        </span>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="alert alert-light border text-center small text-muted my-2 rounded-3">
+                                Nenhum item da norma definido como alvo para este bloco. Clique em <strong>"🎯 Definir Alvos"</strong> acima.
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="d-flex justify-content-end gap-2 pb-5">
-            <a href="{{ back_url }}" class="btn btn-secondary px-4 rounded-pill">Cancelar</a>
-            <button type="submit" class="btn btn-primary px-5 fw-bold rounded-pill shadow-sm">
-                <i class="bi bi-save me-1"></i> Salvar Perguntas do Bloco
-            </button>
+        <!-- Coluna Direita: <ManageQuestionsPanel /> (Lista de Perguntas do Bloco do Modelo) -->
+        <div class="col-lg-8 mb-4">
+            <div class="card shadow-sm border-0 rounded-4">
+                <div class="card-header bg-white py-3 px-4 border-0 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-question-square text-primary me-2"></i>Perguntas Vinculadas a este Bloco</h5>
+                        <small class="text-muted">Perguntas do checklist padrão que serão clonadas para as agendas.</small>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-sm rounded-pill px-3 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#vincularPerguntasModeloModal">
+                        <i class="bi bi-plus-lg me-1"></i> Selecionar Perguntas
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-4">Enunciado da Pergunta</th>
+                                    <th>Requisitos Cobertos</th>
+                                    <th class="text-end pe-4">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for p in perguntas_vinculadas %}
+                                <tr>
+                                    <td class="ps-4 fw-semibold text-dark">{{ p.texto_pergunta }}</td>
+                                    <td>
+                                        {% for item in p.itens_norma.all %}
+                                        <span class="badge bg-info text-dark mb-1 me-1">{{ item.referencia }}</span>
+                                        {% empty %}
+                                        <span class="text-muted small">Sem vínculo</span>
+                                        {% endfor %}
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        <form method="POST" action="{% url 'auditoria:iso_modelo_bloco_perguntas' modelo.id bloco.id %}" style="display:inline;">
+                                            {% csrf_token %}
+                                            {% for item_id in perguntas_vinculadas_ids %}
+                                                {% if item_id != p.id %}
+                                                <input type="hidden" name="perguntas" value="{{ item_id }}">
+                                                {% endif %}
+                                            {% endfor %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-circle" title="Remover do bloco">
+                                                <i class="bi bi-x-lg"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted py-5">
+                                        <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
+                                        Nenhuma pergunta vinculada a este bloco do modelo ainda. Clique no botão acima para selecionar as perguntas.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
-    </form>
+    </div>
+</div>
+
+<!-- Modal Definir Escopo Alvo (<NormCatalogModal />) -->
+<div class="modal fade" id="selecionarItensAlvoModeloModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content shadow-lg border-0 rounded-4">
+            <form action="{% url 'auditoria:iso_modelo_bloco_alvo_update' modelo.id bloco.id %}" method="post">
+                {% csrf_token %}
+                <div class="modal-header bg-light border-0 py-3">
+                    <h5 class="modal-title fw-bold text-primary">
+                        <i class="bi bi-bullseye me-2"></i>Definir Escopo Alvo do Bloco: {{ bloco.titulo }}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        {% regroup itens_norma_todos by referencia|slice:":1" as secoes_alvo_list %}
+                        {% for secao in secoes_alvo_list %}
+                        <div class="col-12">
+                            <div class="card border rounded-3 bg-light">
+                                <div class="card-header bg-white py-2 fw-bold text-dark border-0">
+                                    Seção {{ secao.grouper }}
+                                </div>
+                                <div class="card-body p-3 bg-white">
+                                    <div class="row row-cols-1 row-cols-md-2 g-2">
+                                        {% for item in secao.list %}
+                                        <div class="col">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="itens_alvo" value="{{ item.id }}" id="item_alvo_chk_{{ item.id }}" {% if item in bloco.itens_norma.all %}checked{% endif %}>
+                                                <label class="form-check-label small text-dark" for="item_alvo_chk_{{ item.id }}">
+                                                    <strong>{{ item.referencia }}</strong> - {{ item.titulo }}
+                                                </label>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="modal-footer border-0 bg-light">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">Salvar Escopo Alvo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Selecionar / Vincular Perguntas do Banco -->
+<div class="modal fade" id="vincularPerguntasModeloModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content shadow-lg border-0 rounded-4">
+            <form action="{% url 'auditoria:iso_modelo_bloco_perguntas' modelo.id bloco.id %}" method="post">
+                {% csrf_token %}
+                <div class="modal-header bg-light border-0 py-3">
+                    <h5 class="modal-title fw-bold text-primary">
+                        <i class="bi bi-question-circle me-2"></i>Selecionar Perguntas para o Bloco: {{ bloco.titulo }}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <!-- Busca -->
+                    <div class="input-group border rounded-3 shadow-sm mb-3">
+                        <span class="input-group-text bg-white border-0 text-muted"><i class="bi bi-search"></i></span>
+                        <input type="text" id="searchModalPerguntaInput" class="form-control border-0 ps-1 text-dark" placeholder="Digite para filtrar perguntas...">
+                    </div>
+
+                    <div id="perguntasModalContainer">
+                        {% for p in perguntas_disponiveis %}
+                        <div class="card border mb-2 rounded-3 modal-pergunta-card" data-search="{{ p.texto_pergunta|lower }} {% for item in p.itens_norma.all %}{{ item.referencia }} {{ item.titulo|lower }} {% endfor %}">
+                            <div class="card-body p-3 d-flex align-items-start gap-3">
+                                <input class="form-check-input flex-shrink-0 mt-1 chk-modal-pergunta" type="checkbox" name="perguntas" value="{{ p.id }}" id="p_modal_chk_{{ p.id }}" {% if p.id in perguntas_vinculadas_ids %}checked{% endif %}>
+                                <label for="p_modal_chk_{{ p.id }}" class="form-check-label flex-grow-1" style="cursor: pointer;">
+                                    <div class="fw-semibold text-dark mb-1" style="font-size: 0.95rem; line-height: 1.5;">
+                                        {{ p.texto_pergunta }}
+                                    </div>
+                                    <div class="d-flex flex-wrap gap-1 align-items-center mt-1">
+                                        {% for item in p.itens_norma.all %}
+                                        <span class="badge bg-secondary bg-opacity-10 text-secondary border rounded-pill px-2 py-0.5" style="font-size: 0.75rem;">
+                                            <i class="bi bi-tag-fill me-1" style="font-size: 0.7rem;"></i>{{ item.referencia }} - {{ item.titulo }}
+                                        </span>
+                                        {% endfor %}
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="alert alert-info text-center py-4 rounded-3">Nenhuma pergunta disponível.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="modal-footer border-0 bg-light">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">Salvar Perguntas do Bloco</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const checkboxes = document.querySelectorAll('.chk-bloco-pergunta');
-    const counter = document.getElementById('counterBlocoPerguntas');
-    const searchInput = document.getElementById('searchBlocoPerguntaInput');
-
-    function updateCounter() {
-        if (!counter) return;
-        const total = document.querySelectorAll('.chk-bloco-pergunta:checked').length;
-        counter.textContent = total;
-    }
-
-    checkboxes.forEach(cb => cb.addEventListener('change', updateCounter));
-    updateCounter();
-
+    const searchInput = document.getElementById('searchModalPerguntaInput');
     if (searchInput) {
         searchInput.addEventListener('input', function() {
             const query = this.value.toLowerCase().trim();
-            document.querySelectorAll('.bloco-pergunta-card').forEach(card => {
+            document.querySelectorAll('.modal-pergunta-card').forEach(card => {
                 const text = (card.dataset.search || '').toLowerCase();
                 if (!query || text.includes(query)) {
                     card.classList.remove('d-none');

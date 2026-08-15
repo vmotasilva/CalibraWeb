@@ -3599,22 +3599,52 @@ def iso_modelo_bloco_delete(request, modelo_id, pk):
 
 @login_required
 def iso_modelo_bloco_perguntas(request, modelo_id, pk):
-    from .models import BlocoModeloIso, BancoPergunta
+    from .models import BlocoModeloIso, BancoPergunta, ItemNorma
     bloco = get_object_or_404(BlocoModeloIso, pk=pk, modelo_id=modelo_id)
     if request.method == "POST":
         pergunta_ids = request.POST.getlist("perguntas")
         bloco.perguntas.set(pergunta_ids)
         messages.success(request, "Perguntas vinculadas ao bloco do modelo!")
-        return redirect('auditoria:iso_modelo_detail', pk=modelo_id)
+        return redirect('auditoria:iso_modelo_bloco_perguntas', modelo_id=modelo_id, pk=pk)
         
     perguntas_disponiveis = BancoPergunta.objects.filter(itens_norma__norma=bloco.modelo.norma).distinct().prefetch_related('itens_norma')
-    perguntas_vinculadas_ids = set(bloco.perguntas.values_list('id', flat=True))
+    perguntas_vinculadas = bloco.perguntas.all().prefetch_related('itens_norma')
+    perguntas_vinculadas_ids = set(perguntas_vinculadas.values_list('id', flat=True))
+    
+    # Análise de Cobertura de Escopo Planejado para o Bloco do Modelo
+    itens_alvo = bloco.itens_norma.all()
+    total_alvo = itens_alvo.count()
+    
+    itens_cobertos_ids = set()
+    for p in perguntas_vinculadas:
+        for item in p.itens_norma.all():
+            itens_cobertos_ids.add(item.id)
+            
+    cobertura_status = []
+    total_coberto = 0
+    for item in itens_alvo:
+        is_coberto = item.id in itens_cobertos_ids
+        if is_coberto:
+            total_coberto += 1
+        cobertura_status.append({
+            'item': item,
+            'coberto': is_coberto
+        })
+        
+    porcentagem_cobertura = round((total_coberto / total_alvo * 100)) if total_alvo > 0 else 0
+    itens_norma_todos = ItemNorma.objects.filter(norma=bloco.modelo.norma).order_by('ordem', 'referencia')
     
     return render(request, "auditoria/iso/setup/modelo_bloco_perguntas.html", {
         "bloco": bloco,
         "modelo": bloco.modelo,
         "perguntas_disponiveis": perguntas_disponiveis,
+        "perguntas_vinculadas": perguntas_vinculadas,
         "perguntas_vinculadas_ids": perguntas_vinculadas_ids,
+        "total_alvo": total_alvo,
+        "total_coberto": total_coberto,
+        "porcentagem_cobertura": porcentagem_cobertura,
+        "cobertura_status": cobertura_status,
+        "itens_norma_todos": itens_norma_todos,
         "back_url": reverse('auditoria:iso_modelo_detail', args=[modelo_id])
     })
 
