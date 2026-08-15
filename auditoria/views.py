@@ -3178,7 +3178,6 @@ def reorder_topicos(request):
         return JsonResponse({"status": "success"})
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
 # ==========================================
 # VIEWS PARA AUDITORIA MODO ENTREVISTA (ISO)
 # ==========================================
@@ -3194,11 +3193,17 @@ def iso_auditoria_list(request):
 def iso_entrevista_view(request, auditoria_id):
     auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
     
-    # Obter perguntas vinculadas ao escopo da auditoria
-    perguntas = BancoPergunta.objects.filter(ativa=True, itens_norma__in=auditoria.escopo_itens.all()).distinct().prefetch_related('itens_norma')
-    # Fallback se escopo estiver vazio (para facilitar testes do MVP)
-    if not perguntas.exists():
-        perguntas = BancoPergunta.objects.filter(ativa=True).prefetch_related('itens_norma')
+    agenda_id = request.GET.get('agenda_id')
+    if agenda_id:
+        from .models import AgendaAuditoriaIso
+        agenda = get_object_or_404(AgendaAuditoriaIso, pk=agenda_id, auditoria=auditoria)
+        perguntas = agenda.perguntas.filter(ativa=True).distinct().prefetch_related('itens_norma')
+    else:
+        # Obter perguntas vinculadas ao escopo da auditoria
+        perguntas = BancoPergunta.objects.filter(ativa=True, itens_norma__in=auditoria.escopo_itens.all()).distinct().prefetch_related('itens_norma')
+        # Fallback se escopo estiver vazio (para facilitar testes do MVP)
+        if not perguntas.exists():
+            perguntas = BancoPergunta.objects.filter(ativa=True).prefetch_related('itens_norma')
     
     # Obter respostas já existentes
     respostas_dict = {}
@@ -3470,9 +3475,11 @@ def iso_agenda_create(request, auditoria_id):
                     'success': True,
                     'id': agenda.id,
                     'titulo': agenda.titulo,
+                    'detail_url': reverse('auditoria:iso_agenda_detail', args=[auditoria.id, agenda.id]),
                     'edit_url': reverse('auditoria:iso_agenda_edit', args=[auditoria.id, agenda.id]),
                     'delete_url': reverse('auditoria:iso_agenda_delete', args=[auditoria.id, agenda.id]),
                     'vincular_url': reverse('auditoria:iso_agenda_perguntas_edit', args=[auditoria.id, agenda.id]),
+                    'entrevista_url': reverse('auditoria:iso_entrevista_view', args=[auditoria.id]) + f"?agenda_id={agenda.id}",
                 })
                 
             messages.success(request, "Agenda criada com sucesso!")

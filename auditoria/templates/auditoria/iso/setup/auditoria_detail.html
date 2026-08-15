@@ -52,8 +52,9 @@
                                 <i class="bi bi-three-dots-vertical"></i>
                             </button>
                             <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="{% url 'auditoria:iso_agenda_perguntas_edit' auditoria.id obj.agenda.id %}"><i class="bi bi-list-check"></i> Vincular Perguntas</a></li>
-                                <li><a class="dropdown-item" href="{% url 'auditoria:iso_agenda_edit' auditoria.id obj.agenda.id %}"><i class="bi bi-pencil"></i> Editar Bloco</a></li>
+                                <li><a class="dropdown-item" href="{% url 'auditoria:iso_agenda_detail' auditoria.id obj.agenda.id %}"><i class="bi bi-gear-fill me-1"></i> Gestão de Perguntas</a></li>
+                                <li><a class="dropdown-item" href="{% url 'auditoria:iso_agenda_perguntas_edit' auditoria.id obj.agenda.id %}"><i class="bi bi-list-check"></i> Vincular do Banco</a></li>
+                                <li><a class="dropdown-item edit-agenda-btn" href="{% url 'auditoria:iso_agenda_edit' auditoria.id obj.agenda.id %}"><i class="bi bi-pencil"></i> Editar Bloco</a></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
                                     <form action="{% url 'auditoria:iso_agenda_delete' auditoria.id obj.agenda.id %}" method="POST" class="d-inline">
@@ -87,14 +88,14 @@
                     </p>
                     
                     {% if obj.agenda.perguntas.count == 0 %}
-                    <div class="alert alert-warning py-1 px-2 small mb-0 mt-2">
+                    <div class="alert alert-warning py-1 px-2 small mb-0 mt-2" style="position:relative; z-index:2;">
                         <i class="bi bi-exclamation-triangle"></i> Nenhuma pergunta vinculada. <br>
-                        <a href="{% url 'auditoria:iso_agenda_perguntas_edit' auditoria.id obj.agenda.id %}" class="alert-link">Clique aqui para adicionar</a>.
+                        <a href="{% url 'auditoria:iso_agenda_detail' auditoria.id obj.agenda.id %}" class="alert-link">Clique aqui para adicionar</a>.
                     </div>
                     {% endif %}
 
                     <!-- Progresso Checklist -->
-                    <div class="mt-4 bg-light p-3 rounded">
+                    <div class="mt-3 bg-light p-3 rounded">
                         <div class="d-flex justify-content-between small mb-1 fw-bold">
                             <span>Checklist (Perguntas)</span>
                             <span>{{ obj.progresso.respondidas }} / {{ obj.progresso.total }} ({{ obj.progresso.percentual }}%)</span>
@@ -105,6 +106,13 @@
                                  style="width: {{ obj.progresso.percentual }}%;">
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Botão Auditar -->
+                    <div class="mt-3" style="position: relative; z-index: 2;">
+                        <a href="{% url 'auditoria:iso_entrevista_view' auditoria.id %}?agenda_id={{ obj.agenda.id }}" class="btn btn-primary btn-sm w-100 fw-bold">
+                            <i class="bi bi-play-circle-fill me-1"></i> Auditar
+                        </a>
                     </div>
 
                 </div>
@@ -235,8 +243,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                                 <i class="bi bi-three-dots-vertical"></i>
                                             </button>
                                             <ul class="dropdown-menu">
-                                                <li><a class="dropdown-item" href="${data.vincular_url}"><i class="bi bi-list-check"></i> Vincular Perguntas</a></li>
-                                                <li><a class="dropdown-item" href="${data.edit_url}"><i class="bi bi-pencil"></i> Editar Bloco</a></li>
+                                                <li><a class="dropdown-item" href="${data.detail_url}"><i class="bi bi-gear-fill me-1"></i> Gestão de Perguntas</a></li>
+                                                <li><a class="dropdown-item" href="${data.vincular_url}"><i class="bi bi-list-check"></i> Vincular do Banco</a></li>
+                                                <li><a class="dropdown-item edit-agenda-btn" href="${data.edit_url}"><i class="bi bi-pencil"></i> Editar Bloco</a></li>
                                                 <li><hr class="dropdown-divider"></li>
                                                 <li>
                                                     <form action="${data.delete_url}" method="POST" class="d-inline">
@@ -260,12 +269,12 @@ document.addEventListener('DOMContentLoaded', function() {
                                         <i class="bi bi-question-circle"></i> 0 Perguntas vinculadas
                                     </p>
                                     
-                                    <div class="alert alert-warning py-1 px-2 small mb-0 mt-2">
+                                    <div class="alert alert-warning py-1 px-2 small mb-0 mt-2" style="position:relative; z-index:2;">
                                         <i class="bi bi-exclamation-triangle"></i> Nenhuma pergunta vinculada. <br>
-                                        <a href="${data.vincular_url}" class="alert-link">Clique aqui para adicionar</a>.
+                                        <a href="${data.detail_url}" class="alert-link">Clique aqui para adicionar</a>.
                                     </div>
                 
-                                    <div class="mt-4 bg-light p-3 rounded">
+                                    <div class="mt-3 bg-light p-3 rounded">
                                         <div class="d-flex justify-content-between small mb-1 fw-bold">
                                             <span>Checklist (Perguntas)</span>
                                             <span>0 / 0 (0%)</span>
@@ -273,6 +282,13 @@ document.addEventListener('DOMContentLoaded', function() {
                                         <div class="progress" style="height: 10px;">
                                             <div class="progress-bar" role="progressbar" style="width: 0%;"></div>
                                         </div>
+                                    </div>
+
+                                    <!-- Botão Auditar -->
+                                    <div class="mt-3" style="position: relative; z-index: 2;">
+                                        <a href="${data.entrevista_url}" class="btn btn-primary btn-sm w-100 fw-bold">
+                                            <i class="bi bi-play-circle-fill me-1"></i> Auditar
+                                        </a>
                                     </div>
                                 </div>
                             </div>
