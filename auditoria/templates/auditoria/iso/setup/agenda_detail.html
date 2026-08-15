@@ -314,156 +314,190 @@
 
 {% block extra_js %}
 <script>
-    $(document).ready(function() {
-        const itemModalEl = document.getElementById('itemDetailModal');
-        const itemModal = new bootstrap.Modal(itemModalEl);
+document.addEventListener('DOMContentLoaded', function() {
+    const itemModalEl = document.getElementById('itemDetailModal');
+    const itemModal = itemModalEl ? new bootstrap.Modal(itemModalEl) : null;
 
-        $(document).on('click', '.view-item-btn', function(e) {
+    document.querySelectorAll('.view-item-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
             e.preventDefault();
-            const apiUrl = $(this).data('apiUrl');
-            $('#modalItemDesc').html('<div class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm me-2"></span>Carregando...</div>');
+            const apiUrl = this.dataset.apiUrl;
+            const descEl = document.getElementById('modalItemDesc');
+            if (descEl) descEl.innerHTML = '<div class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm me-2"></span>Carregando...</div>';
 
             fetch(apiUrl, {
                 headers: {'X-Requested-With': 'XMLHttpRequest'}
             })
             .then(res => res.json())
             .then(data => {
-                $('#modalItemNorma').text(data.norma_codigo);
-                $('#modalItemRef').text(data.referencia);
-                $('#modalItemTitulo').text(data.titulo);
-                $('#modalItemDesc').html(data.descricao ? data.descricao : '<em>Nenhuma descrição cadastrada.</em>');
-                itemModal.show();
+                document.getElementById('modalItemNorma').textContent = data.norma_codigo;
+                document.getElementById('modalItemRef').textContent = data.referencia;
+                document.getElementById('modalItemTitulo').textContent = data.titulo;
+                document.getElementById('modalItemDesc').innerHTML = data.descricao ? data.descricao : '<em>Nenhuma descrição cadastrada.</em>';
+                if (itemModal) itemModal.show();
             })
             .catch(err => {
                 console.error(err);
                 alert('Erro ao carregar item.');
             });
         });
+    });
 
-        // Renderiza Chips e sincroniza Select oculto
-        function syncChipsAndSelect() {
-            const selectedVals = $('#id_itens_norma').val() || [];
-            const container = $('#selectedItemsChipsContainer');
-            container.empty();
+    const selectEl = document.getElementById('id_itens_norma');
 
-            $('#triggerCountBadge').text(selectedVals.length + ' selecionado(s)');
+    function getSelectedValues() {
+        if (!selectEl) return [];
+        return Array.from(selectEl.options).filter(opt => opt.selected).map(opt => opt.value);
+    }
 
-            if (selectedVals.length === 0) {
-                container.html('<span class="text-muted small ms-1" id="emptyChipsPlaceholder"><i class="bi bi-info-circle me-1"></i> Nenhum item selecionado. Clique no botão acima para adicionar.</span>');
-                $('#previewItemNormaContainer').fadeOut(150);
-                return;
-            }
+    function setSelectedValues(values) {
+        if (!selectEl) return;
+        Array.from(selectEl.options).forEach(opt => {
+            opt.selected = values.includes(opt.value);
+        });
+    }
 
-            selectedVals.forEach(val => {
-                const cb = $(`.item-card-checkbox[value="${val}"]`);
-                const ref = cb.data('ref') || val;
-                const titulo = cb.data('titulo') || '';
+    // Renderiza Chips e sincroniza Select oculto
+    function syncChipsAndSelect() {
+        const selectedVals = getSelectedValues();
+        const container = document.getElementById('selectedItemsChipsContainer');
+        const badgeEl = document.getElementById('triggerCountBadge');
+        const previewContainer = document.getElementById('previewItemNormaContainer');
 
-                const chipHtml = `
-                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 py-2 px-3 rounded-pill d-inline-flex align-items-center gap-2 item-chip fw-semibold" style="font-size: 0.85rem;" data-id="${val}">
-                        <i class="bi bi-tag-fill text-primary"></i> <strong>${ref}</strong> ${titulo ? '- ' + titulo.substring(0, 25) + '...' : ''}
-                        <button type="button" class="btn-close ms-1 remove-chip-btn" aria-label="Remover" data-id="${val}" style="font-size: 0.65rem;"></button>
-                    </span>
-                `;
-                container.append(chipHtml);
-            });
+        if (badgeEl) badgeEl.textContent = selectedVals.length + ' selecionado(s)';
+        if (!container) return;
 
-            // Atualiza preview do último item selecionado
-            const lastVal = selectedVals[selectedVals.length - 1];
-            const apiUrl = `/auditoria/iso/setup/itens/${lastVal}/json/`;
-            fetch(apiUrl, { headers: {'X-Requested-With': 'XMLHttpRequest'} })
-            .then(res => res.json())
-            .then(data => {
-                $('#previewItemBadge').text(data.norma_codigo + ' | Item ' + data.referencia);
-                $('#previewItemTitulo').text(data.referencia + ' - ' + data.titulo);
-                $('#previewItemDescricao').html(data.descricao ? data.descricao : '<em>Nenhuma descrição cadastrada para este item.</em>');
-                $('#previewItemNormaContainer').fadeIn(200);
-            })
-            .catch(err => console.error(err));
+        container.innerHTML = '';
+
+        if (selectedVals.length === 0) {
+            container.innerHTML = '<span class="text-muted small ms-1" id="emptyChipsPlaceholder"><i class="bi bi-info-circle me-1"></i> Nenhum item selecionado. Clique no botão acima para adicionar.</span>';
+            if (previewContainer) previewContainer.style.display = 'none';
+            return;
         }
 
-        // Remover Chip individualmente
-        $(document).on('click', '.remove-chip-btn', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            const idToRemove = $(this).data('id').toString();
-            let currentSelected = $('#id_itens_norma').val() || [];
-            currentSelected = currentSelected.filter(v => v.toString() !== idToRemove);
-            
-            $('#id_itens_norma').val(currentSelected);
-            $(`.item-card-checkbox[value="${idToRemove}"]`).prop('checked', false);
-            
-            syncChipsAndSelect();
+        selectedVals.forEach(val => {
+            const cb = document.querySelector(`.item-card-checkbox[value="${val}"]`);
+            const ref = cb ? (cb.dataset.ref || val) : val;
+            const titulo = cb ? (cb.dataset.titulo || '') : '';
+            const truncTitle = titulo ? '- ' + titulo.substring(0, 25) + '...' : '';
+
+            const chipSpan = document.createElement('span');
+            chipSpan.className = 'badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 py-2 px-3 rounded-pill d-inline-flex align-items-center gap-2 item-chip fw-semibold';
+            chipSpan.style.fontSize = '0.85rem';
+            chipSpan.dataset.id = val;
+            chipSpan.innerHTML = `<i class="bi bi-tag-fill text-primary"></i> <strong>${ref}</strong> ${truncTitle} <button type="button" class="btn-close ms-1 remove-chip-btn" aria-label="Remover" data-id="${val}" style="font-size: 0.65rem;"></button>`;
+
+            container.appendChild(chipSpan);
         });
 
-        // Busca em Tempo Real no Modal Secundário
-        $('#searchItemCardsInput').on('keyup input', function() {
-            const query = $(this).val().toLowerCase().trim();
+        // Event listener nos botões de fechar dos chips
+        container.querySelectorAll('.remove-chip-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const idToRemove = this.dataset.id;
+                let current = getSelectedValues().filter(v => v !== idToRemove);
+                setSelectedValues(current);
 
-            $('.item-flag-card').each(function() {
-                const searchData = ($(this).data('search') || '').toLowerCase();
+                const targetCb = document.querySelector(`.item-card-checkbox[value="${idToRemove}"]`);
+                if (targetCb) targetCb.checked = false;
+
+                syncChipsAndSelect();
+            });
+        });
+
+        // Atualiza preview do último item selecionado
+        const lastVal = selectedVals[selectedVals.length - 1];
+        const apiUrl = `/auditoria/iso/setup/itens/${lastVal}/json/`;
+        fetch(apiUrl, { headers: {'X-Requested-With': 'XMLHttpRequest'} })
+        .then(res => res.json())
+        .then(data => {
+            const pBadge = document.getElementById('previewItemBadge');
+            const pTitulo = document.getElementById('previewItemTitulo');
+            const pDesc = document.getElementById('previewItemDescricao');
+
+            if (pBadge) pBadge.textContent = data.norma_codigo + ' | Item ' + data.referencia;
+            if (pTitulo) pTitulo.textContent = data.referencia + ' - ' + data.titulo;
+            if (pDesc) pDesc.innerHTML = data.descricao ? data.descricao : '<em>Nenhuma descrição cadastrada para este item.</em>';
+            if (previewContainer) previewContainer.style.display = 'block';
+        })
+        .catch(err => console.error(err));
+    }
+
+    // Busca em Tempo Real no Modal Secundário
+    const searchInput = document.getElementById('searchItemCardsInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+
+            document.querySelectorAll('.item-flag-card').forEach(card => {
+                const searchData = (card.dataset.search || '').toLowerCase();
                 if (!query || searchData.includes(query)) {
-                    $(this).removeClass('d-none');
+                    card.classList.remove('d-none');
                 } else {
-                    $(this).addClass('d-none');
+                    card.classList.add('d-none');
                 }
             });
 
-            // Oculta colunas de seções sem itens visíveis
-            $('.section-card-col').each(function() {
-                const visibleCount = $(this).find('.item-flag-card:not(.d-none)').length;
+            document.querySelectorAll('.section-card-col').forEach(col => {
+                const visibleCount = col.querySelectorAll('.item-flag-card:not(.d-none)').length;
                 if (visibleCount === 0 && query !== '') {
-                    $(this).addClass('d-none');
+                    col.classList.add('d-none');
                 } else {
-                    $(this).removeClass('d-none');
+                    col.classList.remove('d-none');
                 }
             });
         });
+    }
 
-        const cardsModalEl = document.getElementById('selecionarItensCardsModal');
-        const cardsModal = new bootstrap.Modal(cardsModalEl);
+    const cardsModalEl = document.getElementById('selecionarItensCardsModal');
+    const cardsModal = cardsModalEl ? new bootstrap.Modal(cardsModalEl) : null;
+    const btnAbrirModal = document.getElementById('btnAbrirCardsItensModal');
 
-        // Botão Trigger para abrir o Catálogo de Itens
-        $('#btnAbrirCardsItensModal').on('click', function() {
-            const currentSelected = $('#id_itens_norma').val() || [];
+    if (btnAbrirModal && cardsModal) {
+        btnAbrirModal.addEventListener('click', function(e) {
+            e.preventDefault();
+            const currentSelected = getSelectedValues();
 
-            $('.item-card-checkbox').each(function() {
-                const val = $(this).val();
-                $(this).prop('checked', currentSelected.includes(val));
+            document.querySelectorAll('.item-card-checkbox').forEach(cb => {
+                cb.checked = currentSelected.includes(cb.value);
             });
 
             updateCounter();
             cardsModal.show();
         });
+    }
 
-        function updateCounter() {
-            const count = $('.item-card-checkbox:checked').length;
-            $('#counterItensSelecionados').text(count);
-        }
+    function updateCounter() {
+        const count = document.querySelectorAll('.item-card-checkbox:checked').length;
+        const counterEl = document.getElementById('counterItensSelecionados');
+        if (counterEl) counterEl.textContent = count;
+    }
 
-        $('.item-card-checkbox').on('change', function() {
+    document.querySelectorAll('.item-card-checkbox').forEach(cb => {
+        cb.addEventListener('change', updateCounter);
+    });
+
+    document.querySelectorAll('.btn-select-all-section').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const sec = this.dataset.section;
+            const checkboxes = document.querySelectorAll('.item-card-checkbox.section-' + sec);
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            checkboxes.forEach(cb => cb.checked = !allChecked);
+            this.textContent = allChecked ? 'Marcar Todos' : 'Desmarcar Todos';
             updateCounter();
-        });
-
-        $('.btn-select-all-section').on('click', function() {
-            const sec = $(this).data('section');
-            const checkboxes = $('.item-card-checkbox.section-' + sec);
-            const allChecked = checkboxes.filter(':checked').length === checkboxes.length;
-            checkboxes.prop('checked', !allChecked);
-            $(this).text(allChecked ? 'Marcar Todos' : 'Desmarcar Todos');
-            updateCounter();
-        });
-
-        $('#btnConfirmarSelecaoCards').on('click', function() {
-            const selectedVals = [];
-            $('.item-card-checkbox:checked').each(function() {
-                selectedVals.push($(this).val());
-            });
-
-            $('#id_itens_norma').val(selectedVals);
-            cardsModal.hide();
-            syncChipsAndSelect();
         });
     });
+
+    const btnConfirmar = document.getElementById('btnConfirmarSelecaoCards');
+    if (btnConfirmar) {
+        btnConfirmar.addEventListener('click', function() {
+            const selectedVals = Array.from(document.querySelectorAll('.item-card-checkbox:checked')).map(cb => cb.value);
+            setSelectedValues(selectedVals);
+            if (cardsModal) cardsModal.hide();
+            syncChipsAndSelect();
+        });
+    }
+});
 </script>
 {% endblock %}
