@@ -74,7 +74,7 @@
                                 {% for norma in normas %}
                                 <tr>
                                     <td class="fw-bold text-primary fs-6">{{ norma.codigo }}</td>
-                                    <td>{{ norma.descricao|default:norma.titulo }}</td>
+                                    <td>{{ norma.descricao|default:norma.codigo }}</td>
                                     <td class="text-end">
                                         <a href="{% url 'auditoria:iso_norma_detail' norma.id %}" class="btn btn-sm btn-primary fw-bold me-1 px-3 rounded-pill shadow-sm">
                                             <i class="bi bi-gear-fill me-1"></i> Gerenciar Norma
