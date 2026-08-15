@@ -221,6 +221,15 @@
       </div>
       <div class="modal-body p-4">
         
+        <!-- Banner da Pergunta Digitada (Ajuda a Orientar a Busca) -->
+        <div id="catalogQuestionBanner" class="alert alert-primary border-0 rounded-3 py-2 px-3 mb-3 align-items-center gap-2 shadow-sm" style="display: none;">
+            <i class="bi bi-chat-left-text-fill fs-5 text-primary flex-shrink-0"></i>
+            <div class="overflow-hidden">
+                <div class="fw-bold text-primary small text-uppercase" style="font-size: 0.75rem;">Pergunta Sendo Avaliada:</div>
+                <div class="fw-semibold text-dark small text-truncate" id="catalogQuestionText"></div>
+            </div>
+        </div>
+
         <!-- Anti-Autofill Dummy Trap -->
         <input type="text" style="position: absolute; opacity: 0; height: 0; width: 0; z-index: -1;" aria-hidden="true" tabindex="-1">
         <input type="password" style="position: absolute; opacity: 0; height: 0; width: 0; z-index: -1;" aria-hidden="true" tabindex="-1">
@@ -257,17 +266,18 @@
                     <div class="card-body p-3 bg-white border-top">
                         <div class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
                             {% for item in secao.list %}
-                            <label class="list-group-item d-flex align-items-start gap-2 py-2 border-0 rounded-2 mb-1 item-flag-card" data-search="{{ item.referencia }} {{ item.titulo|lower }} {{ item.descricao|lower }}">
+                            <div class="list-group-item d-flex align-items-start gap-2 py-2 border-0 rounded-2 mb-1 item-flag-card" data-search="{{ item.referencia }} {{ item.titulo|lower }} {{ item.descricao|lower }}">
                                 <input class="form-check-input flex-shrink-0 mt-1 item-card-checkbox section-{{ secao.grouper }}" type="checkbox" value="{{ item.id }}" data-ref="{{ item.referencia }}" data-titulo="{{ item.titulo }}">
-                                <div class="small">
+                                <div class="small flex-grow-1 view-item-detail-from-catalog" style="cursor: pointer;" data-id="{{ item.id }}" data-api-url="{% url 'auditoria:iso_item_detail_api' item.id %}" title="Clique para ver a descrição completa do requisito">
                                     <strong class="text-dark">{{ item.referencia }}</strong> - {{ item.titulo }}
+                                    <i class="bi bi-info-circle text-primary ms-1" style="font-size: 0.8rem;"></i>
                                     {% if item.descricao %}
-                                        <div class="text-muted small mt-1 text-truncate" style="max-width: 420px; font-size: 0.8rem;">
+                                        <div class="text-muted small mt-1 text-truncate" style="max-width: 400px; font-size: 0.8rem;">
                                             {{ item.descricao|slice:":90" }}...
                                         </div>
                                     {% endif %}
                                 </div>
-                            </label>
+                            </div>
                             {% endfor %}
                         </div>
                     </div>
@@ -469,10 +479,49 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Clique em qualquer item (linha) dentro do catálogo para abrir o pop-up de detalhes
+    document.querySelectorAll('.view-item-detail-from-catalog').forEach(function(el) {
+        el.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const apiUrl = this.dataset.apiUrl;
+            const descEl = document.getElementById('modalItemDesc');
+            if (descEl) descEl.innerHTML = '<div class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm me-2"></span>Carregando...</div>';
+
+            fetch(apiUrl, {
+                headers: {'X-Requested-With': 'XMLHttpRequest'}
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('modalItemNorma').textContent = data.norma_codigo;
+                document.getElementById('modalItemRef').textContent = data.referencia;
+                document.getElementById('modalItemTitulo').textContent = data.titulo;
+                document.getElementById('modalItemDesc').innerHTML = data.descricao ? data.descricao : '<em>Nenhuma descrição cadastrada.</em>';
+                if (itemModal) itemModal.show();
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Erro ao carregar item.');
+            });
+        });
+    });
+
     if (btnAbrirModal && cardsModal) {
         btnAbrirModal.addEventListener('click', function(e) {
             e.preventDefault();
             const currentSelected = getSelectedValues();
+
+            // Exibe a pergunta digitada no topo do catálogo para guiar o auditor
+            const qText = (document.getElementById('id_texto_pergunta')?.value || '').trim();
+            const qBanner = document.getElementById('catalogQuestionBanner');
+            const qTextHolder = document.getElementById('catalogQuestionText');
+
+            if (qText && qBanner && qTextHolder) {
+                qTextHolder.textContent = qText;
+                qBanner.style.display = 'flex';
+            } else if (qBanner) {
+                qBanner.style.display = 'none';
+            }
 
             document.querySelectorAll('.item-card-checkbox').forEach(cb => {
                 cb.checked = currentSelected.includes(cb.value);
