@@ -696,17 +696,18 @@ document.addEventListener('DOMContentLoaded', function() {
     // Inicializa a renderização da árvore recursiva
     renderEscopoAlvoTree();
 
-    // Ajuste dinâmico de z-index dos backdrops para o pop-up informativo sempre ficar à frente de todos
+    // Garantir que o popItemDetailModal esteja direto no body para nunca ficar preso sob modais pai
     const popDetailModalEl = document.getElementById('popItemDetailModal');
     if (popDetailModalEl) {
+        document.body.appendChild(popDetailModalEl);
         popDetailModalEl.addEventListener('show.bs.modal', function() {
+            this.style.setProperty('z-index', '10050', 'important');
             setTimeout(() => {
                 const backdrops = document.querySelectorAll('.modal-backdrop');
-                backdrops.forEach((bd, idx) => {
-                    if (idx > 0) {
-                        bd.style.zIndex = 1085 + (idx * 10);
-                    }
-                });
+                if (backdrops.length > 0) {
+                    const lastBd = backdrops[backdrops.length - 1];
+                    lastBd.style.setProperty('z-index', '10040', 'important');
+                }
             }, 10);
         });
     }
