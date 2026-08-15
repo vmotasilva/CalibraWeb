@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid py-4 px-4">
+    
+    <!-- Header de Contexto do Modelo (mode="template") -->
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
+        <div>
+            <div class="small text-muted text-uppercase fw-bold mb-1">
+                <i class="bi bi-diagram-3-fill text-primary me-1"></i> Modelo Template (Molde de Auditoria)
+            </div>
+            <h2 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
+                <span class="badge bg-primary rounded-pill px-3 py-2 fs-6">{{ modelo.norma.codigo }}</span>
+                <span>{{ modelo.titulo }}</span>
+            </h2>
+            {% if modelo.descricao %}
+            <p class="text-muted mb-0 small">{{ modelo.descricao }}</p>
+            {% endif %}
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ back_url }}" class="btn btn-outline-secondary rounded-pill px-3">
+                <i class="bi bi-arrow-left me-1"></i> Voltar para Modelos
+            </a>
+            <a href="{% url 'auditoria:iso_modelo_edit' modelo.id %}" class="btn btn-primary rounded-pill px-4 fw-bold">
+                <i class="bi bi-pencil-square me-1"></i> Editar Perguntas do Modelo
+            </a>
+        </div>
+    </div>
+
+    {% if messages %}
+    <div class="mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Alert Informativo do Modo Template -->
+    <div class="alert alert-primary border-0 rounded-4 shadow-sm p-3 mb-4 d-flex align-items-center gap-3">
+        <i class="bi bi-info-circle-fill fs-3 text-primary flex-shrink-0"></i>
+        <div>
+            <strong class="d-block text-primary fs-6">Modo Template (Estruturação do Molde)</strong>
+            <small class="text-secondary">
+                Esta tela representa a estrutura padrão do modelo. Aqui você define os blocos e perguntas. 
+                <strong>Não há datas, horários ou botão 'Auditar'</strong> nesta visão, pois os agendamentos são preenchidos ao instanciar o modelo em uma Agenda de Auditoria.
+            </small>
+        </div>
+    </div>
+
+    <!-- Cards de Blocos do Modelo -->
+    <h4 class="fw-bold text-dark mb-3">Blocos de Requisitos do Modelo ({{ perguntas.count }} perguntas no total)</h4>
+
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-5">
+        {% for secao_num, lista_perguntas in secoes_dict.items %}
+        <div class="col">
+            <div class="card h-100 shadow-sm border-0 rounded-4 overflow-hidden" style="border-top: 4px solid #0d6efd !important;">
+                <div class="card-header bg-white py-3 px-4 border-0 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                            <i class="bi bi-folder-fill text-primary fs-5"></i>
+                            <span>Seção {{ secao_num }}</span>
+                        </h6>
+                    </div>
+                    <span class="badge bg-secondary rounded-pill px-2.5 py-1">{{ lista_perguntas|length }} pergunta(s)</span>
+                </div>
+                <div class="card-body p-4 pt-2">
+                    <div class="list-group list-group-flush border rounded-3 overflow-hidden mb-3" style="max-height: 260px; overflow-y: auto;">
+                        {% for p in lista_perguntas %}
+                        <div class="list-group-item p-2.5 border-bottom small">
+                            <div class="fw-semibold text-dark mb-1">{{ p.texto_pergunta }}</div>
+                            <div class="d-flex flex-wrap gap-1">
+                                {% for item in p.itens_norma.all %}
+                                <span class="badge bg-light text-primary border" style="font-size: 0.7rem;">{{ item.referencia }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="text-muted text-center small py-2 bg-light rounded-3 border">
+                        <i class="bi bi-shield-check me-1 text-success"></i>Pronto para clonagem na Agenda
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-warning text-center py-5 rounded-4 shadow-sm">
+                <i class="bi bi-exclamation-triangle fs-2 text-warning d-block mb-2"></i>
+                Nenhuma pergunta vinculada a este modelo ainda. Clique no botão <strong>"Editar Perguntas do Modelo"</strong> acima para montar o checklist.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+{% endblock %}

@@ -3540,6 +3540,29 @@ def iso_modelo_edit(request, pk):
     })
 
 @login_required
+def iso_modelo_detail(request, pk):
+    """Visão de Detalhes do Modelo (Template Mode - Sem datas, sem auditor, sem botão Auditar)"""
+    from .models import ModeloAuditoriaIso
+    modelo = get_object_or_404(ModeloAuditoriaIso, pk=pk)
+    perguntas = modelo.perguntas.all().prefetch_related('itens_norma')
+    
+    secoes_dict = {}
+    for p in perguntas:
+        itens = p.itens_norma.all()
+        secao_num = itens[0].referencia.split('.')[0] if itens else "Geral"
+        if secao_num not in secoes_dict:
+            secoes_dict[secao_num] = []
+        secoes_dict[secao_num].append(p)
+        
+    return render(request, "auditoria/iso/setup/modelo_detail.html", {
+        "modelo": modelo,
+        "perguntas": perguntas,
+        "secoes_dict": secoes_dict,
+        "mode": "template",
+        "back_url": reverse('auditoria:iso_norma_detail', args=[modelo.norma_id]) + "?tab=modelos"
+    })
+
+@login_required
 @require_POST
 def iso_modelo_delete(request, pk):
     from .models import ModeloAuditoriaIso

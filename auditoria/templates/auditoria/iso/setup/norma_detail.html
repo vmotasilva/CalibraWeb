@@ -184,16 +184,23 @@
                             <tbody>
                                 {% for m in modelos %}
                                 <tr>
-                                    <td class="fw-bold text-dark">{{ m.titulo }}</td>
+                                    <td class="fw-bold text-dark">
+                                        <a href="{% url 'auditoria:iso_modelo_detail' m.id %}" class="text-decoration-none text-primary">
+                                            <i class="bi bi-diagram-3-fill me-1"></i>{{ m.titulo }}
+                                        </a>
+                                    </td>
                                     <td><span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-2.5 py-1">{{ m.norma.codigo }}</span></td>
                                     <td class="text-center"><span class="badge bg-secondary rounded-pill px-2.5 py-1">{{ m.perguntas.count }}</span></td>
                                     <td class="text-end">
-                                        <a href="{% url 'auditoria:iso_modelo_edit' m.id %}" class="btn btn-sm btn-outline-secondary me-1">
+                                        <a href="{% url 'auditoria:iso_modelo_detail' m.id %}" class="btn btn-sm btn-primary rounded-pill px-3 me-1 fw-bold shadow-sm">
+                                            <i class="bi bi-eye me-1"></i> Ver Blocos do Modelo
+                                        </a>
+                                        <a href="{% url 'auditoria:iso_modelo_edit' m.id %}" class="btn btn-sm btn-outline-secondary me-1" title="Editar">
                                             <i class="bi bi-pencil"></i>
                                         </a>
                                         <form method="POST" action="{% url 'auditoria:iso_modelo_delete' m.id %}" style="display:inline;">
                                             {% csrf_token %}
-                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Excluir modelo?');">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Excluir modelo?');" title="Excluir">
                                                 <i class="bi bi-trash"></i>
                                             </button>
                                         </form>
