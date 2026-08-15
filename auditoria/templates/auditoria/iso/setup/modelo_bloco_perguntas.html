@@ -808,7 +808,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const targetClass = this.dataset.target;
             const checkboxes = document.querySelectorAll(`.${targetClass} .chk-escopo-alvo-item`);
             const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-            checkboxes.forEach(cb => cb.checked = !allChecked);
+            checkboxes.forEach(cb => {
+                cb.checked = !allChecked;
+            });
+            updateSectionCounters();
         });
     });
 
@@ -825,8 +828,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Atualização em tempo real do contador X de Y marcados em cada seção
+    // Atualização em tempo real dos contadores da Seção (Nível 1) e Sub-seções (Nível 2)
     function updateSectionCounters() {
+        // 1. Atualiza Seções Principais (Nível 1)
         document.querySelectorAll('.escopo-alvo-secao-card').forEach(secCard => {
             const total = secCard.querySelectorAll('.chk-escopo-alvo-item').length;
             const checked = secCard.querySelectorAll('.chk-escopo-alvo-item:checked').length;
@@ -841,11 +845,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
+
+        // 2. Atualiza Sub-seções (Nível 2) e Sincroniza Checkbox Pai do Agrupador
+        document.querySelectorAll('.tree-level-2-card').forEach(card => {
+            const childCheckboxes = card.querySelectorAll('.chk-escopo-alvo-item:not(.chk-escopo-alvo-parent-node)');
+            const total = childCheckboxes.length;
+            const checked = Array.from(childCheckboxes).filter(cb => cb.checked).length;
+            const parentChk = card.querySelector('.chk-escopo-alvo-parent-node');
+
+            if (parentChk && total > 0) {
+                parentChk.checked = (checked === total);
+            }
+        });
     }
 
     // Event listener global de alteração de checkboxes no modal de escopo alvo
-    document.querySelectorAll('#selecionarItensAlvoModeloModal input[type="checkbox"]').forEach(cb => {
-        cb.addEventListener('change', updateSectionCounters);
+    document.querySelectorAll('#selecionarItensAlvoModeloModal').forEach(modal => {
+        modal.addEventListener('change', function(e) {
+            if (e.target.matches('input[type="checkbox"]')) {
+                updateSectionCounters();
+            }
+        });
     });
 
     const modalAlvoEl = document.getElementById('selecionarItensAlvoModeloModal');
