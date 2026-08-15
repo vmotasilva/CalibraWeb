@@ -397,6 +397,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const editForm = document.getElementById('editAgendaForm');
         editForm.addEventListener('submit', function(e) {
             e.preventDefault();
+            const titulo = document.getElementById('edit_titulo').value;
+            if (!confirm(`Você está tentando salvar alterações no bloco/agenda "${titulo}". Tem certeza que deseja prosseguir?`)) {
+                return;
+            }
             const formData = new FormData(editForm);
             const submitBtn = editForm.querySelector('button[type="submit"]');
             submitBtn.disabled = true;
@@ -496,6 +500,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 const modal = new bootstrap.Modal(gestaoModalEl);
                 modal.show();
+            }
+        });
+
+        document.getElementById('gestaoFormDelete').addEventListener('submit', function(e) {
+            const titulo = document.getElementById('gestaoModalTitulo').textContent || '';
+            if (!confirm(`Você está tentando excluir o bloco/agenda "${titulo}". Tem certeza que deseja prosseguir com a exclusão?`)) {
+                e.preventDefault();
             }
         });
 

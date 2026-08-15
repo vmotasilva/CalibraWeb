@@ -401,6 +401,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Salvar Edição via AJAX
     document.getElementById('itemEditForm').addEventListener('submit', function(e) {
         e.preventDefault();
+        const refName = currentItemData ? currentItemData.referencia : '';
+        if (!confirm(`Você está tentando salvar alterações no item "${refName}". Tem certeza que deseja prosseguir?`)) {
+            return;
+        }
+
         const form = this;
         const formData = new FormData(form);
         const submitBtn = document.getElementById('btnModalSalvarEdicao');
@@ -452,7 +457,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Excluir Item via AJAX
     document.getElementById('btnModalExcluirItem').addEventListener('click', function() {
         if (!currentItemData) return;
-        if (!confirm(`Tem certeza que deseja excluir o item ${currentItemData.referencia}?`)) return;
+        const refName = currentItemData.referencia;
+        if (!confirm(`Você está tentando excluir o item "${refName}". Tem certeza que deseja prosseguir com a exclusão?`)) {
+            return;
+        }
 
         const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
         const formData = new FormData();
