@@ -471,7 +471,7 @@ document.addEventListener('DOMContentLoaded', function() {
             titulo: "{{ item.titulo|escapejs }}",
             desc: "{{ item.descricao|default:item.titulo|escapejs }}",
             parentId: {% if item.parent %}{{ item.parent.id }}{% else %}null{% endif %},
-            parentRef: "{% if item.parent %}"{{ item.parent.referencia }}"{% else %}null{% endif %},
+            parentRef: {% if item.parent %}"{{ item.parent.referencia }}"{% else %}null{% endif %},
             isChecked: {% if item in bloco.itens_norma.all %}true{% else %}false{% endif %}
         }{% if not forloop.last %},{% endif %}
         {% endfor %}
@@ -935,6 +935,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const modalAlvoEl = document.getElementById('selecionarItensAlvoModeloModal');
     if (modalAlvoEl) {
+        modalAlvoEl.addEventListener('show.bs.modal', renderEscopoAlvoTree);
         modalAlvoEl.addEventListener('shown.bs.modal', updateSectionCounters);
     }
 
