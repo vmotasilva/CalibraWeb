@@ -88,7 +88,9 @@
                                     {% if p.itens_norma.all %}
                                         <div class="d-flex flex-wrap gap-1 mt-2">
                                             {% for item in p.itens_norma.all %}
-                                            <span class="badge bg-light text-dark border"><i class="bi bi-tag"></i> {{ item.codigo }}</span>
+                                            <button type="button" class="btn btn-sm btn-light border p-1 px-2 view-item-btn" data-api-url="{% url 'auditoria:iso_item_detail_api' item.id %}" style="font-size: 0.8rem;">
+                                                <i class="bi bi-tag-fill text-primary me-1"></i> {{ item.referencia }}
+                                            </button>
                                             {% endfor %}
                                         </div>
                                     {% else %}
@@ -219,11 +221,61 @@
     </div>
   </div>
 </div>
+<!-- Modal Detalhe do Item da Norma -->
+<div class="modal fade" id="itemDetailModal" tabindex="-1" aria-hidden="true" style="z-index: 1070;">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content shadow border-0 rounded-4">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold text-primary">
+            <span class="badge bg-secondary me-2" id="modalItemNorma"></span>
+            Item <span id="modalItemRef"></span>: <span id="modalItemTitulo"></span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body py-3">
+          <h6 class="fw-bold text-muted border-bottom pb-2 mb-3">
+              <i class="bi bi-file-earmark-text text-primary me-2"></i>Descrição / Requisito Completo
+          </h6>
+          <div id="modalItemDesc" class="p-3 bg-light rounded-3 border" style="white-space: pre-wrap; font-family: inherit; font-size: 0.95rem; line-height: 1.6; max-height: 55vh; overflow-y: auto;">
+              <span class="text-muted">Carregando...</span>
+          </div>
+      </div>
+      <div class="modal-footer border-0">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
     $(document).ready(function() {
+        const itemModalEl = document.getElementById('itemDetailModal');
+        const itemModal = new bootstrap.Modal(itemModalEl);
+
+        $(document).on('click', '.view-item-btn', function(e) {
+            e.preventDefault();
+            const apiUrl = $(this).data('apiUrl');
+            $('#modalItemDesc').html('<div class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm me-2"></span>Carregando...</div>');
+
+            fetch(apiUrl, {
+                headers: {'X-Requested-With': 'XMLHttpRequest'}
+            })
+            .then(res => res.json())
+            .then(data => {
+                $('#modalItemNorma').text(data.norma_codigo);
+                $('#modalItemRef').text(data.referencia);
+                $('#modalItemTitulo').text(data.titulo);
+                $('#modalItemDesc').html(data.descricao ? data.descricao : '<em>Nenhuma descrição cadastrada.</em>');
+                itemModal.show();
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Erro ao carregar item.');
+            });
+        });
+
         // Inicializa o select2 no modal para os itens da norma
         $('#novaPerguntaModal').on('shown.bs.modal', function () {
             $('#id_itens_norma').select2({
@@ -239,7 +291,6 @@
 
         // Botão para abrir o segundo modal por cards
         $('#btnAbrirCardsItensModal').on('click', function() {
-            // Sincroniza checkboxes com os valores selecionados no select2
             const currentSelected = $('#id_itens_norma').val() || [];
 
             $('.item-card-checkbox').each(function() {
@@ -251,7 +302,6 @@
             cardsModal.show();
         });
 
-        // Contagem de marcados
         function updateCounter() {
             const count = $('.item-card-checkbox:checked').length;
             $('#counterItensSelecionados').text(count);
@@ -261,7 +311,6 @@
             updateCounter();
         });
 
-        // Botão Marcar Todos da Seção
         $('.btn-select-all-section').on('click', function() {
             const sec = $(this).data('section');
             const checkboxes = $('.item-card-checkbox.section-' + sec);
@@ -271,7 +320,6 @@
             updateCounter();
         });
 
-        // Confirmar Seleção nos Cards
         $('#btnConfirmarSelecaoCards').on('click', function() {
             const selectedVals = [];
             $('.item-card-checkbox:checked').each(function() {
