@@ -711,6 +711,23 @@ class ItemNorma(models.Model):
     def __str__(self):
         return f"{self.referencia} - {self.titulo}"
 
+    @property
+    def referencia_raiz(self):
+        if self.parent:
+            return f"{self.parent.referencia} - {self.parent.titulo}"
+        parts = self.referencia.split('.')
+        if len(parts) > 1:
+            return '.'.join(parts[:-1])
+        return "— (Seção Raiz)"
+
+    def save(self, *args, **kwargs):
+        if not self.parent and '.' in self.referencia:
+            parent_ref = '.'.join(self.referencia.split('.')[:-1])
+            parent_item = ItemNorma.objects.filter(norma=self.norma, referencia=parent_ref).first()
+            if parent_item:
+                self.parent = parent_item
+        super().save(*args, **kwargs)
+
 
 class BancoPergunta(models.Model):
     texto_pergunta = models.TextField(verbose_name="Pergunta (Linguagem Natural)")

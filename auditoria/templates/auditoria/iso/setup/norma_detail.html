@@ -70,8 +70,9 @@
                         <table class="table table-hover mb-0 align-middle">
                             <thead class="table-light">
                                 <tr>
-                                    <th class="ps-4" style="width: 120px;">Ref.</th>
-                                    <th style="width: 320px;">Título do Requisito</th>
+                                    <th class="ps-4" style="width: 110px;">Ref.</th>
+                                    <th style="width: 280px;">Título do Requisito</th>
+                                    <th style="width: 240px;">Item Pai (Raiz)</th>
                                     <th>Descrição Resumida</th>
                                 </tr>
                             </thead>
@@ -80,6 +81,7 @@
                                 <tr class="item-detail-row" style="cursor: pointer;" 
                                     data-id="{{ item.id }}" 
                                     data-ref="{{ item.referencia }}" 
+                                    data-parent="{{ item.referencia_raiz }}"
                                     data-titulo="{{ item.titulo }}" 
                                     data-descricao="{{ item.descricao|default:item.titulo }}"
                                     data-edit-url="{% url 'auditoria:iso_item_edit' item.id %}"
@@ -87,11 +89,26 @@
                                     title="Clique para visualizar detalhes, editar ou excluir">
                                     <td class="ps-4 fw-bold text-primary fs-6">{{ item.referencia }}</td>
                                     <td class="fw-semibold text-dark">{{ item.titulo }}</td>
-                                    <td class="text-muted small">{{ item.descricao|slice:":120" }}{% if item.descricao|length > 120 %}...{% endif %}</td>
+                                    <td>
+                                        {% if item.parent %}
+                                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-2.5 py-1 text-truncate" style="max-width: 220px;" title="{{ item.parent.referencia }} - {{ item.parent.titulo }}">
+                                                <i class="bi bi-diagram-2 me-1"></i>{{ item.parent.referencia }} - {{ item.parent.titulo|slice:":20" }}{% if item.parent.titulo|length > 20 %}...{% endif %}
+                                            </span>
+                                        {% elif item.referencia|length == 1 %}
+                                            <span class="badge bg-secondary bg-opacity-10 text-secondary border rounded-pill px-2.5 py-1">
+                                                <i class="bi bi-folder2-open me-1"></i>Seção Principal {{ item.referencia }}
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-light text-muted border rounded-pill px-2.5 py-1">
+                                                <i class="bi bi-diagram-2 me-1"></i>Raiz {{ item.referencia|slice:":3" }}
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-muted small">{{ item.descricao|slice:":100" }}{% if item.descricao|length > 100 %}...{% endif %}</td>
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="3" class="text-center text-muted py-5">
+                                    <td colspan="4" class="text-center text-muted py-5">
                                         <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
                                         Nenhum item cadastrado para esta norma. Clique em "Novo Item" para adicionar.
                                     </td>
