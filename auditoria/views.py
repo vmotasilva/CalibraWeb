@@ -3650,6 +3650,35 @@ def iso_modelo_bloco_perguntas(request, modelo_id, pk):
 
 @login_required
 @require_POST
+def iso_modelo_bloco_pergunta_create(request, modelo_id, pk):
+    """Cria uma nova pergunta no Banco Geral e a vincula atomicamente ao Bloco do Modelo"""
+    from .models import BlocoModeloIso, BancoPergunta
+    from django.db import transaction
+    bloco = get_object_or_404(BlocoModeloIso, pk=pk, modelo_id=modelo_id)
+    
+    texto_pergunta = request.POST.get("texto_pergunta")
+    dica_resposta = request.POST.get("dica_resposta", "")
+    item_ids = request.POST.getlist("itens_norma")
+    
+    if not texto_pergunta:
+        messages.error(request, "O enunciado da pergunta é obrigatório.")
+        return redirect('auditoria:iso_modelo_bloco_perguntas', modelo_id=modelo_id, pk=pk)
+        
+    with transaction.atomic():
+        nova_pergunta = BancoPergunta.objects.create(
+            texto_pergunta=texto_pergunta,
+            dica_resposta=dica_resposta
+        )
+        if item_ids:
+            nova_pergunta.itens_norma.set(item_ids)
+            
+        bloco.perguntas.add(nova_pergunta)
+        
+    messages.success(request, f"Pergunta '{nova_pergunta.texto_pergunta[:40]}...' criada no Banco Geral e vinculada ao bloco!")
+    return redirect('auditoria:iso_modelo_bloco_perguntas', modelo_id=modelo_id, pk=pk)
+
+@login_required
+@require_POST
 def iso_modelo_bloco_alvo_update(request, modelo_id, pk):
     from .models import BlocoModeloIso
     from django.http import JsonResponse

@@ -92,7 +92,7 @@
             </div>
         </div>
 
-        <!-- Coluna Direita: <ManageQuestionsPanel /> (Lista de Perguntas do Bloco do Modelo) -->
+        <!-- Coluna Direita: <ManageQuestionsPanel /> (Lista de Perguntas com Botões Selecionar e Nova Pergunta) -->
         <div class="col-lg-8 mb-4">
             <div class="card shadow-sm border-0 rounded-4">
                 <div class="card-header bg-white py-3 px-4 border-0 d-flex justify-content-between align-items-center">
@@ -100,9 +100,14 @@
                         <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-question-square text-primary me-2"></i>Perguntas Vinculadas a este Bloco</h5>
                         <small class="text-muted">Perguntas do checklist padrão que serão clonadas para as agendas.</small>
                     </div>
-                    <button type="button" class="btn btn-primary btn-sm rounded-pill px-3 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#vincularPerguntasModeloModal">
-                        <i class="bi bi-plus-lg me-1"></i> Selecionar Perguntas
-                    </button>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#vincularPerguntasModeloModal">
+                            <i class="bi bi-list-check me-1"></i> Selecionar Existentes
+                        </button>
+                        <button type="button" class="btn btn-primary btn-sm rounded-pill px-3 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#novaPerguntaModeloModal">
+                            <i class="bi bi-plus-lg me-1"></i> Nova Pergunta
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -143,7 +148,7 @@
                                 <tr>
                                     <td colspan="3" class="text-center text-muted py-5">
                                         <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
-                                        Nenhuma pergunta vinculada a este bloco do modelo ainda. Clique no botão acima para selecionar as perguntas.
+                                        Nenhuma pergunta vinculada a este bloco do modelo ainda. Clique no botão acima para adicionar ou selecionar perguntas.
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -205,7 +210,7 @@
     </div>
 </div>
 
-<!-- Modal Selecionar / Vincular Perguntas do Banco -->
+<!-- Modal Selecionar / Vincular Perguntas Existentes -->
 <div class="modal fade" id="vincularPerguntasModeloModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content shadow-lg border-0 rounded-4">
@@ -213,12 +218,11 @@
                 {% csrf_token %}
                 <div class="modal-header bg-light border-0 py-3">
                     <h5 class="modal-title fw-bold text-primary">
-                        <i class="bi bi-question-circle me-2"></i>Selecionar Perguntas para o Bloco: {{ bloco.titulo }}
+                        <i class="bi bi-list-check me-2"></i>Selecionar Perguntas do Banco Geral
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-4">
-                    <!-- Busca -->
                     <div class="input-group border rounded-3 shadow-sm mb-3">
                         <span class="input-group-text bg-white border-0 text-muted"><i class="bi bi-search"></i></span>
                         <input type="text" id="searchModalPerguntaInput" class="form-control border-0 ps-1 text-dark" placeholder="Digite para filtrar perguntas...">
@@ -250,7 +254,61 @@
                 </div>
                 <div class="modal-footer border-0 bg-light">
                     <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">Salvar Perguntas do Bloco</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">Salvar Vínculos</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Adicionar Nova Pergunta (<QuestionModal />) -->
+<div class="modal fade" id="novaPerguntaModeloModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content shadow-lg border-0 rounded-4">
+            <form action="{% url 'auditoria:iso_modelo_bloco_pergunta_create' modelo.id bloco.id %}" method="post">
+                {% csrf_token %}
+                <div class="modal-header bg-primary text-white py-3 border-0">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-plus-circle me-2"></i>Nova Pergunta para o Bloco do Modelo
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Enunciado da Pergunta <span class="text-danger">*</span></label>
+                        <textarea name="texto_pergunta" class="form-control border-primary" rows="3" placeholder="Ex: A Alta Direção evidencia o comprometimento com o desenvolvimento do SGQ?" required></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Evidências Esperadas / Dica de Resposta</label>
+                        <textarea name="dica_resposta" class="form-control" rows="2" placeholder="Ex: Verificar ata da análise crítica da direção, política da qualidade assinada..."></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark mb-1">Requisitos da Norma Vinculados</label>
+                        <small class="text-muted d-block mb-2">Selecione quais itens da norma esta pergunta verifica.</small>
+                        
+                        <div class="border rounded-3 p-3 bg-light" style="max-height: 200px; overflow-y: auto;">
+                            <div class="row row-cols-1 row-cols-md-2 g-2">
+                                {% for item in itens_norma_todos %}
+                                <div class="col">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="itens_norma" value="{{ item.id }}" id="p_new_item_{{ item.id }}">
+                                        <label class="form-check-label small text-dark" for="p_new_item_{{ item.id }}">
+                                            <strong>{{ item.referencia }}</strong> - {{ item.titulo }}
+                                        </label>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 bg-light">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">
+                        <i class="bi bi-save me-1"></i> Salvar e Vincular Pergunta
+                    </button>
                 </div>
             </form>
         </div>
