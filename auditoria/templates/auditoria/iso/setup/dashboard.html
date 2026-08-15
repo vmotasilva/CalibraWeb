@@ -55,18 +55,9 @@
                             </td>
                             <td class="text-dark fw-semibold">{{ norma.descricao|default:norma.codigo }}</td>
                             <td class="text-end pe-4">
-                                <a href="{% url 'auditoria:iso_norma_detail' norma.id %}" class="btn btn-sm btn-primary fw-bold me-1 px-3 rounded-pill shadow-sm">
+                                <a href="{% url 'auditoria:iso_norma_detail' norma.id %}" class="btn btn-sm btn-primary fw-bold px-3 rounded-pill shadow-sm">
                                     <i class="bi bi-gear-fill me-1"></i> Gerenciar Norma
                                 </a>
-                                <a href="{% url 'auditoria:iso_norma_edit' norma.id %}" class="btn btn-sm btn-outline-secondary me-1 rounded-circle" title="Editar">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <form method="POST" action="{% url 'auditoria:iso_norma_delete' norma.id %}" style="display:inline;">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-circle" onclick="return confirm('Tem certeza que deseja excluir esta norma?');" title="Excluir">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
                             </td>
                         </tr>
                         {% empty %}

@@ -14,9 +14,42 @@
                 <span>{{ norma.descricao|default:norma.codigo }}</span>
             </h2>
         </div>
-        <a href="{% url 'auditoria:iso_setup_dashboard' %}" class="btn btn-outline-secondary rounded-pill px-3">
-            <i class="bi bi-arrow-left me-1"></i> Voltar para Normas
-        </a>
+        <div class="d-flex align-items-center gap-2">
+            <!-- Dropdown de Ações da Norma -->
+            <div class="dropdown">
+                <button class="btn btn-outline-primary rounded-pill px-3.5 py-1.5 dropdown-toggle fw-semibold shadow-2xs" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-gear-fill me-1"></i> Ações
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-3 p-2">
+                    <li>
+                        <a class="dropdown-item py-2 fw-semibold rounded-2 text-dark" href="{% url 'auditoria:iso_norma_edit' norma.id %}">
+                            <i class="bi bi-pencil me-2 text-primary"></i> Editar Norma
+                        </a>
+                    </li>
+                    <li>
+                        <form method="POST" action="{% url 'auditoria:iso_norma_archive' norma.id %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="dropdown-item py-2 fw-semibold rounded-2 text-warning" onclick="return confirm('Deseja {% if norma.ativa %}arquivar{% else %}desarquivar{% endif %} esta norma?');">
+                                <i class="bi bi-archive me-2"></i> {% if norma.ativa %}Arquivar Norma{% else %}Desarquivar Norma{% endif %}
+                            </button>
+                        </form>
+                    </li>
+                    <li><hr class="dropdown-divider my-1"></li>
+                    <li>
+                        <form method="POST" action="{% url 'auditoria:iso_norma_delete' norma.id %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="dropdown-item py-2 fw-semibold rounded-2 text-danger" onclick="return confirm('Tem certeza que deseja excluir esta norma?');">
+                                <i class="bi bi-trash me-2"></i> Excluir Norma
+                            </button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
+
+            <a href="{% url 'auditoria:iso_setup_dashboard' %}" class="btn btn-outline-secondary rounded-pill px-3">
+                <i class="bi bi-arrow-left me-1"></i> Voltar para Normas
+            </a>
+        </div>
     </div>
 
     {% if messages %}

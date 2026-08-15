@@ -3375,6 +3375,16 @@ def iso_norma_edit(request, pk):
 
 @login_required
 @require_POST
+def iso_norma_archive(request, pk):
+    norma = get_object_or_404(Norma, pk=pk)
+    norma.ativa = not norma.ativa
+    norma.save()
+    msg = "arquivada" if not norma.ativa else "desarquivada"
+    messages.success(request, f"Norma {msg} com sucesso!")
+    return redirect('auditoria:iso_norma_detail', pk=pk)
+
+@login_required
+@require_POST
 def iso_norma_delete(request, pk):
     norma = get_object_or_404(Norma, pk=pk)
     norma.delete()
