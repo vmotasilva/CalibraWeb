@@ -3622,12 +3622,16 @@ def iso_agenda_detail(request, auditoria_id, pk):
 @require_POST
 def iso_agenda_alvo_update(request, auditoria_id, pk):
     from .models import AgendaAuditoriaIso, AuditoriaIso
+    from django.http import JsonResponse
     auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
     agenda = get_object_or_404(AgendaAuditoriaIso, pk=pk, auditoria=auditoria)
     
     item_ids = request.POST.getlist("itens_alvo")
     agenda.itens_norma.set(item_ids)
     
+    if request.headers.get("x-requested-with") == "XMLHttpRequest":
+        return JsonResponse({"success": True, "message": "Escopo alvo atualizado com sucesso!"})
+
     messages.success(request, "Itens alvo do escopo planejados com sucesso!")
     return redirect("auditoria:iso_agenda_detail", auditoria_id=auditoria_id, pk=pk)
 

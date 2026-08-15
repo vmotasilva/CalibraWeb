@@ -365,6 +365,8 @@
       </div>
       <div class="modal-footer border-0">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -372,7 +374,7 @@
 <div class="modal fade" id="selecionarItensAlvoModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
   <div class="modal-dialog modal-xl modal-dialog-scrollable">
     <div class="modal-content shadow-lg border-0 rounded-4">
-      <form action="{% url 'auditoria:iso_agenda_alvo_update' auditoria.id agenda.id %}" method="post">
+      <form id="formSelecaoItensAlvo" action="{% url 'auditoria:iso_agenda_alvo_update' auditoria.id agenda.id %}" method="post">
         {% csrf_token %}
         <div class="modal-header bg-light border-0 pb-3">
           <div>
@@ -776,6 +778,41 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     col.classList.remove('d-none');
                 }
+            });
+        });
+    }
+
+    // Submissão AJAX Fluida para Definir Itens Alvo
+    const formAlvo = document.getElementById('formSelecaoItensAlvo');
+    if (formAlvo) {
+        formAlvo.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const submitBtn = this.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvando...';
+            }
+
+            const formData = new FormData(this);
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    alert(data.message || 'Erro ao salvar escopo alvo.');
+                    if (submitBtn) submitBtn.disabled = false;
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                window.location.reload();
             });
         });
     }
