@@ -230,51 +230,71 @@
                                             {% regroup secao.list by referencia|slice:":3" as subsecoes_alvo_list %}
                                             {% for sub in subsecoes_alvo_list %}
                                                 {% if sub.grouper != secao.grouper %}
-                                                <div class="card border rounded-3 mb-2 overflow-hidden shadow-2xs ms-2 tree-level-2-card">
-                                                    <!-- Nível 2 Header (ex: 4.1 - Requisitos gerais) -->
-                                                    <div class="card-header bg-light py-2 px-3 d-flex align-items-center justify-content-between border-bottom" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapseSubAlvoMod_{{ secao.grouper }}_{{ forloop.counter }}">
-                                                        <div class="d-flex align-items-center gap-2 flex-grow-1">
-                                                            <i class="bi bi-chevron-down text-primary transition-icon fs-6"></i>
-                                                            
+                                                    {% if sub.list|length > 1 %}
+                                                    <!-- Item COM Sub-itens: Renderiza Card Expansível / Recolhível -->
+                                                    <div class="card border rounded-3 mb-2 overflow-hidden shadow-2xs ms-2 tree-level-2-card">
+                                                        <!-- Nível 2 Header (ex: 4.1 - Requisitos gerais) -->
+                                                        <div class="card-header bg-light py-2 px-3 d-flex align-items-center justify-content-between border-bottom" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapseSubAlvoMod_{{ secao.grouper }}_{{ forloop.counter }}">
+                                                            <div class="d-flex align-items-center gap-2 flex-grow-1">
+                                                                <i class="bi bi-chevron-down text-primary transition-icon fs-6"></i>
+                                                                
+                                                                {% for it in sub.list %}
+                                                                    {% if it.referencia == sub.grouper %}
+                                                                    <input class="form-check-input chk-escopo-alvo-parent-node chk-escopo-alvo-item me-1" type="checkbox" name="itens_alvo" value="{{ it.id }}" data-ref-prefix="{{ sub.grouper }}." id="chk_parent_alvo_{{ secao.grouper }}_{{ forloop.counter }}" {% if it in bloco.itens_norma.all %}checked{% endif %} onclick="event.stopPropagation();">
+                                                                    <label class="form-check-label fw-bold text-dark mb-0 small" for="chk_parent_alvo_{{ secao.grouper }}_{{ forloop.counter }}" onclick="event.stopPropagation();" style="cursor: pointer;">
+                                                                        <span class="text-primary fs-6">{{ it.referencia }}</span> - {{ it.titulo }}
+                                                                    </label>
+                                                                    <button type="button" class="btn btn-sm btn-light border rounded-circle p-1 text-primary btn-item-info-pop ms-1" data-id="{{ it.id }}" data-ref="{{ it.referencia }}" data-titulo="{{ it.titulo }}" data-descricao="{{ it.descricao|default:it.titulo }}" title="Ver descrição do requisito" onclick="event.stopPropagation();">
+                                                                        <i class="bi bi-info-circle-fill"></i>
+                                                                    </button>
+                                                                    {% endif %}
+                                                                {% endfor %}
+                                                                
+                                                                <span class="badge bg-secondary bg-opacity-10 text-secondary border rounded-pill small ms-2" style="font-size: 0.7rem;">{{ sub.list|length|add:"-1" }} sub-item(ns)</span>
+                                                            </div>
+                                                        </div>
+
+                                                        <!-- Nível 3 Content (Itens Folha ex: 4.1.1, 4.1.2... sem duplicar 4.1) -->
+                                                        <div id="collapseSubAlvoMod_{{ secao.grouper }}_{{ forloop.counter }}" class="collapse show p-3 bg-white ms-3 border-start border-3 border-primary border-opacity-25 my-1">
+                                                            <div class="row row-cols-1 row-cols-md-2 g-2">
+                                                                {% for item in sub.list %}
+                                                                    {% if item.referencia != sub.grouper %}
+                                                                    <div class="col escopo-alvo-item-col" data-search="{{ item.referencia }} {{ item.titulo|lower }}">
+                                                                        <div class="form-check p-2 rounded-2 border border-light bg-light d-flex align-items-center justify-content-between">
+                                                                            <div class="d-flex align-items-center gap-2 flex-grow-1">
+                                                                                <input class="form-check-input chk-escopo-alvo-item" type="checkbox" name="itens_alvo" value="{{ item.id }}" data-ref="{{ item.referencia }}" id="item_alvo_chk_{{ item.id }}" {% if item in bloco.itens_norma.all %}checked{% endif %}>
+                                                                                <label class="form-check-label small text-dark fw-semibold mb-0" for="item_alvo_chk_{{ item.id }}" style="cursor: pointer;">
+                                                                                    <strong class="text-primary">{{ item.referencia }}</strong> - {{ item.titulo }}
+                                                                                </label>
+                                                                            </div>
+                                                                            <button type="button" class="btn btn-sm btn-light border rounded-circle p-1 text-primary btn-item-info-pop ms-1" data-id="{{ item.id }}" data-ref="{{ item.referencia }}" data-titulo="{{ item.titulo }}" data-descricao="{{ item.descricao|default:item.titulo }}" title="Ver descrição do requisito">
+                                                                                <i class="bi bi-info-circle-fill"></i>
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                    {% endif %}
+                                                                {% endfor %}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    {% else %}
+                                                    <!-- Item SEM Sub-itens (ex: 5.1, 5.2): Renderiza Card Direto Sem Chevron e Sem Container Vazio -->
+                                                    <div class="card border rounded-3 mb-2 p-2.5 bg-light ms-2 escopo-alvo-item-col" data-search="{{ sub.grouper }} {% for it in sub.list %}{{ it.titulo|lower }}{% endfor %}">
+                                                        <div class="d-flex align-items-center justify-content-between">
                                                             {% for it in sub.list %}
-                                                                {% if it.referencia == sub.grouper %}
-                                                                <input class="form-check-input chk-escopo-alvo-parent-node chk-escopo-alvo-item me-1" type="checkbox" name="itens_alvo" value="{{ it.id }}" data-ref-prefix="{{ sub.grouper }}." id="chk_parent_alvo_{{ secao.grouper }}_{{ forloop.counter }}" {% if it in bloco.itens_norma.all %}checked{% endif %} onclick="event.stopPropagation();">
-                                                                <label class="form-check-label fw-bold text-dark mb-0 small" for="chk_parent_alvo_{{ secao.grouper }}_{{ forloop.counter }}" onclick="event.stopPropagation();" style="cursor: pointer;">
+                                                            <div class="d-flex align-items-center gap-2 flex-grow-1">
+                                                                <input class="form-check-input chk-escopo-alvo-item ms-1" type="checkbox" name="itens_alvo" value="{{ it.id }}" data-ref="{{ it.referencia }}" id="item_alvo_chk_{{ it.id }}" {% if it in bloco.itens_norma.all %}checked{% endif %}>
+                                                                <label class="form-check-label small text-dark fw-bold mb-0" for="item_alvo_chk_{{ it.id }}" style="cursor: pointer;">
                                                                     <span class="text-primary fs-6">{{ it.referencia }}</span> - {{ it.titulo }}
                                                                 </label>
-                                                                <button type="button" class="btn btn-sm btn-light border rounded-circle p-1 text-primary btn-item-info-pop ms-1" data-id="{{ it.id }}" data-ref="{{ it.referencia }}" data-titulo="{{ it.titulo }}" data-descricao="{{ it.descricao|default:it.titulo }}" title="Ver descrição do requisito" onclick="event.stopPropagation();">
-                                                                    <i class="bi bi-info-circle-fill"></i>
-                                                                </button>
-                                                                {% endif %}
-                                                            {% endfor %}
-                                                            
-                                                            <span class="badge bg-secondary bg-opacity-10 text-secondary border rounded-pill small ms-2" style="font-size: 0.7rem;">{{ sub.list|length|add:"-1" }} sub-item(ns)</span>
-                                                        </div>
-                                                    </div>
-
-                                                    <!-- Nível 3 Content (Itens Folha ex: 4.1.1, 4.1.2... sem duplicar 4.1) -->
-                                                    <div id="collapseSubAlvoMod_{{ secao.grouper }}_{{ forloop.counter }}" class="collapse show p-3 bg-white ms-3 border-start border-3 border-primary border-opacity-25 my-1">
-                                                        <div class="row row-cols-1 row-cols-md-2 g-2">
-                                                            {% for item in sub.list %}
-                                                                {% if item.referencia != sub.grouper %}
-                                                                <div class="col escopo-alvo-item-col" data-search="{{ item.referencia }} {{ item.titulo|lower }}">
-                                                                    <div class="form-check p-2 rounded-2 border border-light bg-light d-flex align-items-center justify-content-between">
-                                                                        <div class="d-flex align-items-center gap-2 flex-grow-1">
-                                                                            <input class="form-check-input chk-escopo-alvo-item" type="checkbox" name="itens_alvo" value="{{ item.id }}" data-ref="{{ item.referencia }}" id="item_alvo_chk_{{ item.id }}" {% if item in bloco.itens_norma.all %}checked{% endif %}>
-                                                                            <label class="form-check-label small text-dark fw-semibold mb-0" for="item_alvo_chk_{{ item.id }}" style="cursor: pointer;">
-                                                                                <strong class="text-primary">{{ item.referencia }}</strong> - {{ item.titulo }}
-                                                                            </label>
-                                                                        </div>
-                                                                        <button type="button" class="btn btn-sm btn-light border rounded-circle p-1 text-primary btn-item-info-pop ms-1" data-id="{{ item.id }}" data-ref="{{ item.referencia }}" data-titulo="{{ item.titulo }}" data-descricao="{{ item.descricao|default:item.titulo }}" title="Ver descrição do requisito">
-                                                                            <i class="bi bi-info-circle-fill"></i>
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                                {% endif %}
+                                                            </div>
+                                                            <button type="button" class="btn btn-sm btn-light border rounded-circle p-1 text-primary btn-item-info-pop ms-1" data-id="{{ it.id }}" data-ref="{{ it.referencia }}" data-titulo="{{ it.titulo }}" data-descricao="{{ it.descricao|default:it.titulo }}" title="Ver descrição do requisito">
+                                                                <i class="bi bi-info-circle-fill"></i>
+                                                            </button>
                                                             {% endfor %}
                                                         </div>
                                                     </div>
-                                                </div>
+                                                    {% endif %}
                                                 {% endif %}
                                             {% endfor %}
                                         </div>
