@@ -67,7 +67,8 @@
                         {% if obj.agenda.hora_inicio %} | <i class="bi bi-clock"></i> {{ obj.agenda.hora_inicio|time:"H:i" }} às {{ obj.agenda.hora_fim|time:"H:i" }} {% endif %}
                         <br>
                         {% endif %}
-                        <i class="bi bi-tags"></i> {{ obj.agenda.itens_norma.count }} Itens da Norma
+                        <i class="bi bi-tags"></i> {{ obj.agenda.itens_cobertos.count }} Itens da Norma
+
                         <br>
                         <i class="bi bi-question-circle"></i> {{ obj.agenda.perguntas.count }} Perguntas vinculadas
                     </p>

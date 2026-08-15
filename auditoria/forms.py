@@ -401,13 +401,12 @@ class BancoPerguntaIsoForm(forms.ModelForm):
 class AgendaAuditoriaIsoForm(forms.ModelForm):
     class Meta:
         model = AgendaAuditoriaIso
-        fields = ['titulo', 'data', 'hora_inicio', 'hora_fim', 'itens_norma']
+        fields = ['titulo', 'data', 'hora_inicio', 'hora_fim']
         widgets = {
             'titulo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Entrevista com a Diretoria'}),
             'data': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'hora_inicio': forms.TimeInput(attrs={'class': 'form-control', 'type': 'time'}),
             'hora_fim': forms.TimeInput(attrs={'class': 'form-control', 'type': 'time'}),
-            'itens_norma': forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input iso-item-checkbox'}),
         }
 
 class AgendaPerguntasForm(forms.ModelForm):
