@@ -20,9 +20,9 @@
             <a href="{% url 'auditoria:iso_setup_dashboard' %}?tab=auditorias" class="btn btn-outline-secondary">
                 <i class="bi bi-arrow-left"></i> Voltar
             </a>
-            <a href="{% url 'auditoria:iso_agenda_create' auditoria.id %}" class="btn btn-primary">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#novaAgendaModal">
                 <i class="bi bi-plus-lg"></i> Nova Agenda
-            </a>
+            </button>
         </div>
     </div>
 
@@ -30,11 +30,15 @@
     <h4 class="mb-3">Agendas de Auditoria</h4>
     
     {% if not agendas_progresso %}
-    <div class="alert alert-info">
+    <div class="alert alert-info" id="emptyAgendaAlert">
         Nenhuma agenda criada para esta auditoria. Clique em "Nova Agenda" para planejar as sessões (ex: Reunião de Abertura, Entrevista Diretoria, etc).
     </div>
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="agendaList" style="display:none;"></div>
     {% else %}
-    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+    <div class="alert alert-info" id="emptyAgendaAlert" style="display:none;">
+        Nenhuma agenda criada para esta auditoria. Clique em "Nova Agenda" para planejar as sessões (ex: Reunião de Abertura, Entrevista Diretoria, etc).
+    </div>
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="agendaList">
         {% for obj in agendas_progresso %}
         <div class="col">
             <div class="card h-100 shadow-sm border-0" style="border-top: 4px solid #0d6efd !important;">
@@ -102,4 +106,140 @@
     {% endif %}
 
 </div>
+
+<!-- Modal Nova Agenda -->
+<div class="modal fade" id="novaAgendaModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Nova Agenda de Auditoria</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="novaAgendaForm" method="POST" action="{% url 'auditoria:iso_agenda_create' auditoria.id %}">
+          <div class="modal-body">
+              {% csrf_token %}
+              <div class="mb-3">
+                  <label class="form-label fw-bold">Título da Agenda <span class="text-danger">*</span></label>
+                  <input type="text" name="titulo" class="form-control" placeholder="Ex: Entrevista com a Diretoria" required>
+              </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Salvar Bloco</button>
+          </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('novaAgendaForm');
+    if(form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(form);
+            const submitBtn = form.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Salvando...';
+            
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.success) {
+                    // Fechar modal
+                    const modalEl = document.getElementById('novaAgendaModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                    modal.hide();
+                    
+                    form.reset();
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = 'Salvar Bloco';
+                    
+                    // Ocultar mensagem de vazio
+                    const emptyAlert = document.getElementById('emptyAgendaAlert');
+                    if (emptyAlert) emptyAlert.style.display = 'none';
+                    
+                    // Mostrar lista se estiver escondida
+                    const agendaList = document.getElementById('agendaList');
+                    if (agendaList) {
+                        agendaList.style.display = 'flex'; // ou block/row
+                        
+                        const csrfToken = form.querySelector('[name=csrfmiddlewaretoken]').value;
+                        const newCardHTML = `
+                        <div class="col">
+                            <div class="card h-100 shadow-sm border-0" style="border-top: 4px solid #0d6efd !important;">
+                                <div class="card-body">
+                                    <h5 class="card-title d-flex justify-content-between align-items-start">
+                                        ${data.titulo}
+                                        <div class="dropdown">
+                                            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="dropdown">
+                                                <i class="bi bi-three-dots-vertical"></i>
+                                            </button>
+                                            <ul class="dropdown-menu">
+                                                <li><a class="dropdown-item" href="${data.vincular_url}"><i class="bi bi-list-check"></i> Vincular Perguntas</a></li>
+                                                <li><a class="dropdown-item" href="${data.edit_url}"><i class="bi bi-pencil"></i> Editar Bloco</a></li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li>
+                                                    <form action="${data.delete_url}" method="POST" class="d-inline">
+                                                        <input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">
+                                                        <button type="submit" class="dropdown-item text-danger" onclick="return confirm('Tem certeza?');">
+                                                            <i class="bi bi-trash"></i> Remover
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </h5>
+                                    
+                                    <p class="text-muted small mb-3 mt-2">
+                                        <i class="bi bi-tags"></i> 0 Itens da Norma
+                                        <br>
+                                        <i class="bi bi-question-circle"></i> 0 Perguntas vinculadas
+                                    </p>
+                                    
+                                    <div class="alert alert-warning py-1 px-2 small mb-0 mt-2">
+                                        <i class="bi bi-exclamation-triangle"></i> Nenhuma pergunta vinculada. <br>
+                                        <a href="${data.vincular_url}" class="alert-link">Clique aqui para adicionar</a>.
+                                    </div>
+                
+                                    <div class="mt-4 bg-light p-3 rounded">
+                                        <div class="d-flex justify-content-between small mb-1 fw-bold">
+                                            <span>Checklist (Perguntas)</span>
+                                            <span>0 / 0 (0%)</span>
+                                        </div>
+                                        <div class="progress" style="height: 10px;">
+                                            <div class="progress-bar" role="progressbar" style="width: 0%;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>`;
+                        
+                        agendaList.insertAdjacentHTML('beforeend', newCardHTML);
+                    }
+                } else {
+                    alert('Erro ao salvar agenda. Verifique os campos.');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = 'Salvar Bloco';
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Erro de comunicação com o servidor.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Salvar Bloco';
+            });
+        });
+    }
+});
+</script>
 {% endblock %}

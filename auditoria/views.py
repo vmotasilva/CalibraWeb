@@ -3454,6 +3454,7 @@ def iso_auditoria_detail(request, pk):
 def iso_agenda_create(request, auditoria_id):
     from .models import AuditoriaIso
     from .forms import AgendaAuditoriaIsoCreateForm
+    from django.http import JsonResponse
     auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
     
     if request.method == "POST":
@@ -3463,8 +3464,22 @@ def iso_agenda_create(request, auditoria_id):
             agenda.auditoria = auditoria
             agenda.save()
             form.save_m2m()
+            
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'id': agenda.id,
+                    'titulo': agenda.titulo,
+                    'edit_url': reverse('auditoria:iso_agenda_edit', args=[auditoria.id, agenda.id]),
+                    'delete_url': reverse('auditoria:iso_agenda_delete', args=[auditoria.id, agenda.id]),
+                    'vincular_url': reverse('auditoria:iso_agenda_perguntas_edit', args=[auditoria.id, agenda.id]),
+                })
+                
             messages.success(request, "Agenda criada com sucesso!")
             return redirect('auditoria:iso_auditoria_detail', pk=auditoria.id)
+        else:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'errors': form.errors}, status=400)
     else:
         form = AgendaAuditoriaIsoCreateForm()
         
