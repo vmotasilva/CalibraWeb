@@ -30,6 +30,9 @@
             <a href="{% url 'auditoria:iso_auditoria_detail' auditoria.id %}" class="btn btn-outline-secondary rounded-pill px-3 fw-bold">
                 <i class="bi bi-arrow-left me-1"></i> Voltar à Auditoria
             </a>
+            <a href="{% url 'auditoria:iso_auditoria_export_excel' auditoria.id %}" class="btn btn-outline-success rounded-pill px-3 fw-bold shadow-2xs">
+                <i class="bi bi-file-earmark-excel me-1"></i> Exportar Excel
+            </a>
             <button class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" onclick="window.print()">
                 <i class="bi bi-printer me-1"></i> Imprimir PDF
             </button>
