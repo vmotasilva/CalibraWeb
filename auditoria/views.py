@@ -3478,37 +3478,9 @@ def iso_matriz_view(request, auditoria_id):
                 'perguntas': perguntas_info
             })
                 
-        # Status Calculado (Com Rollup dos Sub-itens para Pais)
+        # Status Calculado (Apenas para os níveis finais/folhas dos itens da norma)
         if is_parent:
-            prefix = item.referencia + '.'
-            sub_itens_folhas = [other for other in itens_escopo_list if other.id not in parent_ids and other.referencia.startswith(prefix)]
-            
-            pior_peso = 0
-            for sub in sub_itens_folhas:
-                sub_perguntas = set()
-                for ag in agendas:
-                    ag_ids = agenda_item_ids_map.get(ag.id, set())
-                    for p in ag.perguntas.all():
-                        p_ids = set(p.itens_norma.values_list('id', flat=True))
-                        if sub.id in p_ids or (not p_ids and sub.id in ag_ids):
-                            sub_perguntas.add(p.id)
-                
-                sub_peso = 1 # NA
-                if sub_perguntas:
-                    for p_id in sub_perguntas:
-                        r = respostas_map.get(p_id)
-                        c = r.classificacao if r else "P"
-                        w = hierarchy.get(c, 4)
-                        if w > sub_peso:
-                            sub_peso = w
-                else:
-                    if any(sub.id in ag_ids for ag_ids in agenda_item_ids_map.values()):
-                        sub_peso = 4 # P
-                
-                if sub_peso > pior_peso:
-                    pior_peso = sub_peso
-                    
-            status_item = reverse_hierarchy.get(pior_peso, "NA") if pior_peso > 0 else "NA"
+            status_item = ""
         elif not todas_perguntas_item_set:
             status_item = "P" if blocos_associados else "NA"
         else:
@@ -3527,8 +3499,9 @@ def iso_matriz_view(request, auditoria_id):
             "titulo": item.titulo,
             "descricao": item.descricao or item.titulo,
             "is_parent": is_parent,
+            "level": len(item.referencia.split('.')),
             "status": status_item,
-            "qtd_perguntas": len(todas_perguntas_item_set),
+            "qtd_perguntas": len(todas_perguntas_item_set) if not is_parent else "",
             "blocos_associados": blocos_associados,
             "blocos_associados_json": json.dumps(blocos_associados)
         })

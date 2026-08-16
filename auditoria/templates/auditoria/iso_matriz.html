@@ -53,35 +53,53 @@
                     </thead>
                     <tbody>
                         {% for row in matriz_data %}
-                        <tr class="{% if not row.is_parent %}row-item-matriz-auditoria{% endif %}"
-                            {% if not row.is_parent %}
-                            style="cursor: pointer;"
-                            data-ref="{{ row.referencia }}"
-                            data-titulo="{{ row.titulo }}"
-                            data-desc="{{ row.descricao }}"
-                            data-status="{{ row.status }}"
-                            {% endif %}>
-                            {% if not row.is_parent %}
-                            <script class="blocos-json-data" type="application/json">{{ row.blocos_associados_json|safe }}</script>
+                        {% if row.is_parent %}
+                            {% if row.level == 1 %}
+                            <!-- Nível 1: Seção Principal Banner -->
+                            <tr class="table-primary bg-primary bg-opacity-10 border-top border-bottom border-primary border-opacity-25">
+                                <td class="ps-4 py-3"><strong class="fs-6 text-primary"><i class="bi bi-journal-bookmark-fill me-2"></i>Seção {{ row.referencia }}</strong></td>
+                                <td colspan="3" class="py-3">
+                                    <strong class="fs-6 text-primary">{{ row.titulo }}</strong>
+                                    <div class="small text-muted mb-0">{{ row.descricao }}</div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <!-- Nível 2: Subseção Agrupadora -->
+                            <tr class="table-light border-top border-bottom fw-bold">
+                                <td class="ps-4 py-2.5"><strong class="text-dark"><i class="bi bi-folder2 me-2 text-secondary"></i>{{ row.referencia }}</strong></td>
+                                <td colspan="3" class="py-2.5">
+                                    <strong class="text-dark">{{ row.titulo }}</strong>
+                                </td>
+                            </tr>
                             {% endif %}
-                            <td class="ps-4"><strong>{{ row.referencia }}</strong></td>
-                            <td>
-                                <div><strong class="{% if row.is_parent %}text-muted{% else %}text-primary hover-underline{% endif %}">{{ row.titulo }}</strong></div>
-                                <div class="small text-muted text-truncate" style="max-width: 450px;" title="{{ row.descricao }}">{{ row.descricao }}</div>
-                            </td>
-                            <td class="text-center">
-                                <span class="badge bg-secondary bg-opacity-10 text-dark rounded-pill px-2.5 py-1">{{ row.qtd_perguntas }}</span>
-                            </td>
-                            <td class="text-center pe-4">
-                                <span class="status-badge status-{{ row.status }}">
-                                    {% if row.status == 'C' %} ✅ Conforme
-                                    {% elif row.status == 'NC' %} 🔴 Não Conforme
-                                    {% elif row.status == 'OM' %} 🟠 Oportunidade
-                                    {% elif row.status == 'P' %} ⚠️ Pendente
-                                    {% else %} ℹ️ Não Aplicável {% endif %}
-                                </span>
-                            </td>
-                        </tr>
+                        {% else %}
+                            <!-- Nível Final (Folha): Requisito com Perguntas e Status Calculado -->
+                            <tr class="row-item-matriz-auditoria"
+                                style="cursor: pointer;"
+                                data-ref="{{ row.referencia }}"
+                                data-titulo="{{ row.titulo }}"
+                                data-desc="{{ row.descricao }}"
+                                data-status="{{ row.status }}">
+                                <script class="blocos-json-data" type="application/json">{{ row.blocos_associados_json|safe }}</script>
+                                <td class="ps-4"><strong>{{ row.referencia }}</strong></td>
+                                <td>
+                                    <div><strong class="text-primary hover-underline">{{ row.titulo }}</strong></div>
+                                    <div class="small text-muted text-truncate" style="max-width: 500px;" title="{{ row.descricao }}">{{ row.descricao }}</div>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-secondary bg-opacity-10 text-dark rounded-pill px-2.5 py-1">{{ row.qtd_perguntas }}</span>
+                                </td>
+                                <td class="text-center pe-4">
+                                    <span class="status-badge status-{{ row.status }}">
+                                        {% if row.status == 'C' %} ✅ Conforme
+                                        {% elif row.status == 'NC' %} 🔴 Não Conforme
+                                        {% elif row.status == 'OM' %} 🟠 Oportunidade
+                                        {% elif row.status == 'P' %} ⚠️ Pendente
+                                        {% else %} ℹ️ N/A {% endif %}
+                                    </span>
+                                </td>
+                            </tr>
+                        {% endif %}
                         {% empty %}
                         <tr>
                             <td colspan="4" class="text-center text-muted py-5">
