@@ -772,6 +772,7 @@ class AuditoriaIso(models.Model):
     auditores = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="auditorias_iso_realizadas", verbose_name="Auditores")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="PLANEJADA")
     escopo_itens = models.ManyToManyField(ItemNorma, related_name="auditorias_escopo", verbose_name="Escopo (Itens Aplicáveis)", help_text="Itens da norma que serão avaliados nesta auditoria")
+    itens_nao_aplicaveis = models.ManyToManyField(ItemNorma, blank=True, related_name="auditorias_nao_aplicaveis", verbose_name="Itens Marcados como Não Aplicáveis")
     arquivada = models.BooleanField(default=False, verbose_name="Arquivada")
     criado_em = models.DateTimeField(auto_now_add=True)
 

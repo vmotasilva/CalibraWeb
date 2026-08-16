@@ -3439,6 +3439,12 @@ def api_iso_marcar_nao_aplicavel(request):
 
         count_updated = 0
         texto_na = justificativa if status_target == "NA" else ""
+        
+        if status_target == "NA":
+            auditoria.itens_nao_aplicaveis.add(*itens_afetados)
+        else:
+            auditoria.itens_nao_aplicaveis.remove(*itens_afetados)
+
         for p in perguntas_afetadas:
             RespostaEntrevistaIso.objects.update_or_create(
                 auditoria=auditoria,
@@ -3464,92 +3470,96 @@ def api_iso_marcar_nao_aplicavel(request):
 @login_required
 def iso_matriz_view(request, auditoria_id):
     from .models import AuditoriaIso, ItemNorma, RespostaEntrevistaIso
+    
     auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
     agendas = list(auditoria.agendas.all().prefetch_related('perguntas', 'itens_norma', 'perguntas__itens_norma'))
     
-    respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria)
-    respostas_map = {r.pergunta_id: r for r in respostas}
-    
-    # 1. Obter todos os itens do escopo da auditoria ou todos os itens da norma
-    itens_escopo = auditoria.escopo_itens.all().prefetch_related('perguntas_vinculadas')
+    # Todos os itens de norma no escopo (ou da norma completa se o escopo estiver vazio)
+    itens_escopo = auditoria.escopo_itens.all()
     if not itens_escopo.exists():
-        itens_escopo = ItemNorma.objects.filter(norma=auditoria.norma).prefetch_related('perguntas_vinculadas')
+        itens_escopo = ItemNorma.objects.filter(norma=auditoria.norma)
         
     itens_escopo_list = list(itens_escopo)
     
-    # Pre-calcula o conjunto de IDs de itens para cada agenda (direto + perguntas)
-    agenda_item_ids_map = {}
-    for ag in agendas:
-        item_ids = set(ag.itens_norma.values_list('id', flat=True))
-        for p in ag.perguntas.all():
-            item_ids.update(p.itens_norma.values_list('id', flat=True))
-        agenda_item_ids_map[ag.id] = item_ids
-
-    # 2. Identifica apenas itens de último nível (folhas)
+    # Mapeamento de itens pai (que possuem sub-itens)
     parent_ids = set()
     for item in itens_escopo_list:
         prefix = item.referencia + '.'
-        if any(other.referencia.startswith(prefix) for other in itens_escopo_list if other.id != item.id):
+        if any(other.referencia.startswith(prefix) for other in itens_escopo_list):
             parent_ids.add(item.id)
             
-    # Classificação por hierarquia de gravidade
+    # Respostas já preenchidas
+    respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).prefetch_related('solicitacoes')
+    respostas_map = {r.pergunta_id: r for r in respostas}
+    
+    # Mapeia itens explicitamente marcados como N/A na auditoria
+    na_item_ids = set(auditoria.itens_nao_aplicaveis.values_list('id', flat=True))
+
     hierarchy = {"NC": 5, "P": 4, "OM": 3, "C": 2, "NA": 1}
     reverse_hierarchy = {v: k for k, v in hierarchy.items()}
+    
+    # Mapeamento rápido de agendas por item da norma
+    agenda_item_ids_map = {agenda.id: set(agenda.itens_norma.values_list('id', flat=True)) for agenda in agendas}
     
     matriz_data = []
     
     for item in sorted(itens_escopo_list, key=lambda x: x.referencia):
         is_parent = item.id in parent_ids
         
+        # Encontra todos os blocos (agendas) e perguntas associadas a este item
         blocos_associados = []
         todas_perguntas_item_set = set()
         
         for agenda in agendas:
-            ag_item_ids = agenda_item_ids_map.get(agenda.id, set())
+            ag_item_ids = agenda_item_ids_map[agenda.id]
             
-            # Mapeia perguntas do bloco que atendem a este item
-            perguntas_bloco_req = []
+            # Perguntas vinculadas diretamente a este item neste bloco
+            perguntas_bloco_item = []
             for p in agenda.perguntas.all():
                 p_item_ids = set(p.itens_norma.values_list('id', flat=True))
+                
+                # Se a pergunta tem vinculo explicito com este item OU se a pergunta nao tem vinculo e a agenda tem vinculo com este item
                 if item.id in p_item_ids or (not p_item_ids and item.id in ag_item_ids):
-                    perguntas_bloco_req.append(p)
+                    perguntas_bloco_item.append(p)
+                    todas_perguntas_item_set.add(p.id)
+                    
+            if perguntas_bloco_item or (item.id in ag_item_ids):
+                perguntas_info = []
+                for p in perguntas_bloco_item:
+                    resp = respostas_map.get(p.id)
+                    sols_list = []
+                    if resp:
+                        for s in resp.solicitacoes.all():
+                            sols_list.append({
+                                'id': s.id,
+                                'solicitacao': s.solicitacao,
+                                'evidencia': s.evidencia or '',
+                                'conclusao': s.conclusao,
+                                'conclusao_display': s.get_conclusao_display()
+                            })
 
-            # Todas as agendas da auditoria aparecem para o requisito
-            perguntas_info = []
-            for p in perguntas_bloco_req:
-                todas_perguntas_item_set.add(p.id)
-                resp = respostas_map.get(p.id)
-                sols_list = []
-                if resp:
-                    for s in resp.solicitacoes.all():
-                        sols_list.append({
-                            'id': s.id,
-                            'solicitacao': s.solicitacao,
-                            'evidencia': s.evidencia or '',
-                            'conclusao': s.conclusao,
-                            'conclusao_display': s.get_conclusao_display()
-                        })
-
-                perguntas_info.append({
-                    'id': p.id,
-                    'texto_pergunta': p.texto_pergunta,
-                    'dica_auditor': p.dica_auditor or '',
-                    'classificacao': resp.classificacao if resp else 'P',
-                    'classificacao_display': resp.get_classificacao_display() if resp else 'Pendente',
-                    'texto_resposta': resp.texto_resposta if (resp and resp.texto_resposta) else '',
-                    'solicitacoes': sols_list
+                    perguntas_info.append({
+                        'id': p.id,
+                        'texto_pergunta': p.texto_pergunta,
+                        'dica_auditor': p.dica_auditor or '',
+                        'classificacao': resp.classificacao if resp else 'P',
+                        'classificacao_display': resp.get_classificacao_display() if resp else 'Pendente',
+                        'texto_resposta': resp.texto_resposta if (resp and resp.texto_resposta) else '',
+                        'solicitacoes': sols_list
+                    })
+                    
+                blocos_associados.append({
+                    'bloco_id': agenda.id,
+                    'bloco_titulo': agenda.titulo,
+                    'total_perguntas': len(perguntas_info),
+                    'perguntas': perguntas_info
                 })
-                
-            blocos_associados.append({
-                'bloco_id': agenda.id,
-                'bloco_titulo': agenda.titulo,
-                'total_perguntas': len(perguntas_info),
-                'perguntas': perguntas_info
-            })
-                
+                    
         # Status Calculado (Apenas para os níveis finais/folhas dos itens da norma)
         if is_parent:
             status_item = ""
+        elif item.id in na_item_ids:
+            status_item = "NA"
         elif not todas_perguntas_item_set:
             status_item = "P" if blocos_associados else "NA"
         else:
