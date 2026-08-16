@@ -3600,6 +3600,8 @@ def iso_modelo_detail(request, pk):
                 'tem_cobertura': any(b['total_perguntas'] > 0 for b in blocos_associados)
             })
 
+    total_single_associacoes = total_alvo_modelo - total_multi_associacoes
+
     return render(request, "auditoria/iso/setup/modelo_detail.html", {
         "modelo": modelo,
         "blocos": blocos,
@@ -3607,6 +3609,7 @@ def iso_modelo_detail(request, pk):
         "matriz_requisitos": matriz_requisitos,
         "total_alvo_modelo": total_alvo_modelo,
         "total_multi_associacoes": total_multi_associacoes,
+        "total_single_associacoes": total_single_associacoes,
         "mode": "template",
         "back_url": reverse('auditoria:iso_norma_detail', args=[modelo.norma_id]) + "?tab=modelos"
     })

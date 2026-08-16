@@ -479,9 +479,22 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4">
-                <!-- Campo de Busca de Requisitos -->
+                <!-- Seleção de Item da Norma Específico -->
                 <div class="mb-4">
-                    <label class="form-label fw-bold text-dark mb-1">Buscar por Referência ou Título</label>
+                    <label class="form-label fw-bold text-dark mb-1">Selecionar Requisito Específico da Norma</label>
+                    <select id="selectFilterItemNormaMatriz" class="form-select border rounded-3 shadow-2xs">
+                        <option value="">-- Todos os {{ total_alvo_modelo }} Requisitos no Escopo --</option>
+                        {% for item_info in matriz_requisitos %}
+                        <option value="{{ item_info.item.referencia|lower }}">
+                            {{ item_info.item.referencia }} - {{ item_info.item.titulo|truncatechars:60 }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Campo de Busca por Texto -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold text-dark mb-1">Buscar por Texto Livre</label>
                     <div class="input-group border rounded-3 overflow-hidden shadow-2xs">
                         <span class="input-group-text bg-light border-0"><i class="bi bi-search text-muted"></i></span>
                         <!-- Dummy Hidden Inputs anti-autofill -->
@@ -503,9 +516,9 @@
                     </div>
                 </div>
 
-                <!-- Filtros de Tipo de Associação -->
+                <!-- Filtros por Tipo de Associação -->
                 <div class="mb-3">
-                    <label class="form-label fw-bold text-dark mb-2">Filtrar por Tipo de Associação</label>
+                    <label class="form-label fw-bold text-dark mb-2">Filtrar por Repetição entre Blocos</label>
                     <div class="d-flex flex-column gap-2">
                         <button type="button" class="btn btn-outline-secondary rounded-3 text-start d-flex justify-content-between align-items-center py-2.5 active" id="btnFilterMatrizTodos">
                             <span><i class="bi bi-list-stars me-2"></i> Todos os Requisitos</span>
@@ -513,8 +526,13 @@
                         </button>
 
                         <button type="button" class="btn btn-outline-warning text-dark rounded-3 text-start d-flex justify-content-between align-items-center py-2.5" id="btnFilterMatrizMulti">
-                            <span><i class="bi bi-arrow-repeat me-2 text-warning"></i> Apenas Múltiplas Associações</span>
+                            <span><i class="bi bi-arrow-repeat me-2 text-warning"></i> 🔄 Apenas Múltiplas Associações (Se repetem)</span>
                             <span class="badge bg-warning text-dark rounded-pill px-2.5 py-1">{{ total_multi_associacoes }}</span>
+                        </button>
+
+                        <button type="button" class="btn btn-outline-info text-dark rounded-3 text-start d-flex justify-content-between align-items-center py-2.5" id="btnFilterMatrizSingle">
+                            <span><i class="bi bi-pin-angle me-2 text-info"></i> 📍 Apenas Associação Única (NÃO se repetem)</span>
+                            <span class="badge bg-info text-dark rounded-pill px-2.5 py-1">{{ total_single_associacoes }}</span>
                         </button>
                     </div>
                 </div>
@@ -705,27 +723,41 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Filtros e Busca da Matriz de Requisitos (no Pop-up)
+    const selectItemNorma = document.getElementById('selectFilterItemNormaMatriz');
     const inputSearch = document.getElementById('search_mapping_input');
     const btnFilterTodos = document.getElementById('btnFilterMatrizTodos');
     const btnFilterMulti = document.getElementById('btnFilterMatrizMulti');
+    const btnFilterSingle = document.getElementById('btnFilterMatrizSingle');
     const btnLimparFiltros = document.getElementById('btnLimparFiltrosMatriz');
     const itemCards = document.querySelectorAll('.item-matriz-card');
 
-    let currentFilterMultiOnly = false;
+    let currentFilterAssociationMode = 'ALL'; // 'ALL', 'MULTI', 'SINGLE'
 
     function applyMatrizFilters() {
         const query = (inputSearch ? inputSearch.value : '').toLowerCase().trim();
+        const selectedItemRef = (selectItemNorma ? selectItemNorma.value : '').toLowerCase().trim();
         let visibleCount = 0;
 
         itemCards.forEach(card => {
-            const ref = card.dataset.ref || '';
-            const titulo = card.dataset.titulo || '';
+            const ref = (card.dataset.ref || '').toLowerCase();
+            const titulo = (card.dataset.titulo || '').toLowerCase();
             const isMulti = card.dataset.multi === 'true';
 
+            // Filtro 1: Busca Livre por Texto
             const matchesSearch = !query || ref.includes(query) || titulo.includes(query);
-            const matchesFilter = !currentFilterMultiOnly || isMulti;
 
-            const isVisible = matchesSearch && matchesFilter;
+            // Filtro 2: Seleção de Item Específico no Dropdown
+            const matchesItemSelect = !selectedItemRef || ref === selectedItemRef || ref.startsWith(selectedItemRef + '.');
+
+            // Filtro 3: Repetição entre Blocos (Todos, Múltiplos, Único)
+            let matchesAssociation = true;
+            if (currentFilterAssociationMode === 'MULTI') {
+                matchesAssociation = isMulti;
+            } else if (currentFilterAssociationMode === 'SINGLE') {
+                matchesAssociation = !isMulti;
+            }
+
+            const isVisible = matchesSearch && matchesItemSelect && matchesAssociation;
             card.style.display = isVisible ? 'block' : 'none';
             if (isVisible) visibleCount++;
         });
@@ -738,11 +770,23 @@ document.addEventListener('DOMContentLoaded', function() {
             textEl.textContent = `Exibindo ${visibleCount} de {{ total_alvo_modelo }} requisitos no escopo`;
         }
 
-        const isFiltered = query.length > 0 || currentFilterMultiOnly;
+        const isFiltered = query.length > 0 || selectedItemRef.length > 0 || currentFilterAssociationMode !== 'ALL';
         if (badgeEl) {
             badgeEl.style.display = isFiltered ? 'inline-block' : 'none';
-            badgeEl.textContent = currentFilterMultiOnly ? 'Filtro: Múltiplos' : 'Filtro Ativo';
+            if (currentFilterAssociationMode === 'MULTI') {
+                badgeEl.textContent = 'Filtro: Se Repetem (Múltiplos)';
+            } else if (currentFilterAssociationMode === 'SINGLE') {
+                badgeEl.textContent = 'Filtro: Não se Repetem (Único)';
+            } else if (selectedItemRef) {
+                badgeEl.textContent = 'Filtro: Item Específico';
+            } else {
+                badgeEl.textContent = 'Filtro Ativo';
+            }
         }
+    }
+
+    if (selectItemNorma) {
+        selectItemNorma.addEventListener('change', applyMatrizFilters);
     }
 
     if (inputSearch) {
@@ -750,18 +794,33 @@ document.addEventListener('DOMContentLoaded', function() {
         inputSearch.addEventListener('input', applyMatrizFilters);
     }
 
-    if (btnFilterTodos && btnFilterMulti) {
+    function setActiveAssociationBtn(activeBtn) {
+        [btnFilterTodos, btnFilterMulti, btnFilterSingle].forEach(btn => {
+            if (btn) btn.classList.remove('active');
+        });
+        if (activeBtn) activeBtn.classList.add('active');
+    }
+
+    if (btnFilterTodos) {
         btnFilterTodos.addEventListener('click', function() {
-            currentFilterMultiOnly = false;
-            btnFilterTodos.classList.add('active', 'btn-outline-secondary');
-            btnFilterMulti.classList.remove('active');
+            currentFilterAssociationMode = 'ALL';
+            setActiveAssociationBtn(btnFilterTodos);
             applyMatrizFilters();
         });
+    }
 
+    if (btnFilterMulti) {
         btnFilterMulti.addEventListener('click', function() {
-            currentFilterMultiOnly = true;
-            btnFilterMulti.classList.add('active');
-            btnFilterTodos.classList.remove('active');
+            currentFilterAssociationMode = 'MULTI';
+            setActiveAssociationBtn(btnFilterMulti);
+            applyMatrizFilters();
+        });
+    }
+
+    if (btnFilterSingle) {
+        btnFilterSingle.addEventListener('click', function() {
+            currentFilterAssociationMode = 'SINGLE';
+            setActiveAssociationBtn(btnFilterSingle);
             applyMatrizFilters();
         });
     }
@@ -769,11 +828,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (btnLimparFiltros) {
         btnLimparFiltros.addEventListener('click', function() {
             if (inputSearch) inputSearch.value = '';
-            currentFilterMultiOnly = false;
-            if (btnFilterTodos && btnFilterMulti) {
-                btnFilterTodos.classList.add('active', 'btn-outline-secondary');
-                btnFilterMulti.classList.remove('active');
-            }
+            if (selectItemNorma) selectItemNorma.value = '';
+            currentFilterAssociationMode = 'ALL';
+            setActiveAssociationBtn(btnFilterTodos);
             applyMatrizFilters();
         });
     }
