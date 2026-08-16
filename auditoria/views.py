@@ -3679,8 +3679,8 @@ def iso_modelo_bloco_perguntas(request, modelo_id, pk):
         messages.success(request, "Perguntas vinculadas ao bloco do modelo!")
         return redirect('auditoria:iso_modelo_bloco_perguntas', modelo_id=modelo_id, pk=pk)
         
-    perguntas_disponiveis = BancoPergunta.objects.filter(itens_norma__norma=bloco.modelo.norma).distinct().prefetch_related('itens_norma')
-    perguntas_vinculadas = bloco.perguntas.all().prefetch_related('itens_norma')
+    perguntas_disponiveis = BancoPergunta.objects.filter(itens_norma__norma=bloco.modelo.norma).prefetch_related('itens_norma').order_by('itens_norma__ordem', 'itens_norma__referencia').distinct()
+    perguntas_vinculadas = bloco.perguntas.all().prefetch_related('itens_norma').order_by('itens_norma__ordem', 'itens_norma__referencia').distinct()
     perguntas_vinculadas_ids = set(perguntas_vinculadas.values_list('id', flat=True))
     
     # Análise de Cobertura de Escopo Planejado para o Bloco do Modelo
