@@ -3622,8 +3622,18 @@ def iso_modelo_bloco_perguntas(request, modelo_id, pk):
     perguntas_vinculadas_ids = set(perguntas_vinculadas.values_list('id', flat=True))
     
     # Análise de Cobertura de Escopo Planejado para o Bloco do Modelo
-    itens_alvo = bloco.itens_norma.all()
-    total_alvo = itens_alvo.count()
+    itens_alvo_todos = list(bloco.itens_norma.all())
+    
+    # Identifica itens que possuem sub-itens selecionados dentro do escopo alvo (pais/agrupadores)
+    parent_ids_in_alvo = set()
+    for item in itens_alvo_todos:
+        prefix = item.referencia + '.'
+        if any(other.referencia.startswith(prefix) for other in itens_alvo_todos if other.id != item.id):
+            parent_ids_in_alvo.add(item.id)
+
+    # Mantém apenas os itens do último nível (folhas sem sub-itens no escopo)
+    itens_alvo = [item for item in itens_alvo_todos if item.id not in parent_ids_in_alvo]
+    total_alvo = len(itens_alvo)
     
     itens_cobertos_ids = set()
     for p in perguntas_vinculadas:
