@@ -92,15 +92,26 @@
             </div>
         </div>
 
-        <!-- Coluna Direita: <ManageQuestionsPanel /> (Lista de Perguntas com Botões Selecionar e Nova Pergunta) -->
+        <!-- Coluna Direita: <ManageQuestionsPanel /> (com Toggle de Visões: Por Perguntas vs Por Requisitos) -->
         <div class="col-lg-8 mb-4">
             <div class="card shadow-sm border-0 rounded-4">
-                <div class="card-header bg-white py-3 px-4 border-0 d-flex justify-content-between align-items-center">
+                <div class="card-header bg-white py-3 px-4 border-0 d-flex flex-wrap justify-content-between align-items-center gap-3">
                     <div>
-                        <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-question-square text-primary me-2"></i>Perguntas Vinculadas a este Bloco</h5>
-                        <small class="text-muted">Perguntas do checklist padrão que serão clonadas para as agendas.</small>
+                        <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-question-square text-primary me-2"></i>Perguntas do Bloco</h5>
+                        <small class="text-muted">Gerencie o checklist do bloco orientando por lista plana ou agrupamento por requisitos alvo.</small>
                     </div>
-                    <div class="d-flex gap-2">
+
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <!-- Toggle de Visões (Tabs / Segmented Control) -->
+                        <div class="btn-group p-1 bg-light rounded-pill border" role="group" aria-label="Modo de Visualização">
+                            <button type="button" class="btn btn-sm rounded-pill px-3 fw-bold btn-view-toggle active" id="btnViewByQuestions" data-view="questions">
+                                <i class="bi bi-list-ul me-1"></i> Por Perguntas
+                            </button>
+                            <button type="button" class="btn btn-sm rounded-pill px-3 fw-semibold text-secondary btn-view-toggle" id="btnViewByRequirements" data-view="requirements">
+                                <i class="bi bi-diagram-3 me-1"></i> Por Requisitos
+                            </button>
+                        </div>
+
                         <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#vincularPerguntasModeloModal">
                             <i class="bi bi-list-check me-1"></i> Selecionar Existentes
                         </button>
@@ -109,51 +120,146 @@
                         </button>
                     </div>
                 </div>
+
                 <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th class="ps-4">Enunciado da Pergunta</th>
-                                    <th>Requisitos Cobertos</th>
-                                    <th class="text-end pe-4">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for p in perguntas_vinculadas %}
-                                <tr>
-                                    <td class="ps-4 fw-semibold text-dark">{{ p.texto_pergunta }}</td>
-                                    <td>
-                                        {% for item in p.itens_norma.all %}
-                                        <span class="badge bg-info text-dark mb-1 me-1">{{ item.referencia }}</span>
-                                        {% empty %}
-                                        <span class="text-muted small">Sem vínculo</span>
-                                        {% endfor %}
-                                    </td>
-                                    <td class="text-end pe-4">
-                                        <form method="POST" action="{% url 'auditoria:iso_modelo_bloco_perguntas' modelo.id bloco.id %}" style="display:inline;">
-                                            {% csrf_token %}
-                                            {% for item_id in perguntas_vinculadas_ids %}
-                                                {% if item_id != p.id %}
-                                                <input type="hidden" name="perguntas" value="{{ item_id }}">
-                                                {% endif %}
+                    <!-- VISÃO 1: Por Perguntas (Lista Plana Atual) -->
+                    <div id="viewContainerQuestions">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-4">Enunciado da Pergunta</th>
+                                        <th>Requisitos Cobertos</th>
+                                        <th class="text-end pe-4">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for p in perguntas_vinculadas %}
+                                    <tr>
+                                        <td class="ps-4 fw-semibold text-dark">{{ p.texto_pergunta }}</td>
+                                        <td>
+                                            {% for item in p.itens_norma.all %}
+                                            <span class="badge bg-info text-dark mb-1 me-1"><i class="bi bi-tag me-1"></i>{{ item.referencia }}</span>
+                                            {% empty %}
+                                            <span class="text-muted small">Sem vínculo</span>
                                             {% endfor %}
-                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-circle" title="Remover do bloco">
-                                                <i class="bi bi-x-lg"></i>
+                                        </td>
+                                        <td class="text-end pe-4">
+                                            <form method="POST" action="{% url 'auditoria:iso_modelo_bloco_perguntas' modelo.id bloco.id %}" style="display:inline;">
+                                                {% csrf_token %}
+                                                {% for item_id in perguntas_vinculadas_ids %}
+                                                    {% if item_id != p.id %}
+                                                    <input type="hidden" name="perguntas" value="{{ item_id }}">
+                                                    {% endif %}
+                                                {% endfor %}
+                                                <button type="submit" class="btn btn-sm btn-outline-danger rounded-circle" title="Remover do bloco">
+                                                    <i class="bi bi-x-lg"></i>
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="3" class="text-center text-muted py-5">
+                                            <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
+                                            Nenhuma pergunta vinculada a este bloco do modelo ainda. Clique nos botões acima para adicionar perguntas.
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- VISÃO 2: Por Requisitos (Nova Visão Agrupada por Requisito Alvo) -->
+                    <div id="viewContainerRequirements" style="display: none;" class="p-3">
+                        <div class="accordion" id="accordionRequirementsView">
+                            {% for status_info in cobertura_status %}
+                            {% with item=status_info.item is_coberto=status_info.coberto %}
+                            <div class="card border rounded-3 mb-3 overflow-hidden shadow-2xs">
+                                <div class="card-header bg-light py-2.5 px-3 d-flex align-items-center justify-content-between border-bottom" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapseReqView_{{ item.id }}">
+                                    <div class="d-flex align-items-center gap-2 flex-grow-1">
+                                        <i class="bi bi-chevron-down text-primary transition-icon fs-6"></i>
+                                        <strong class="text-primary fs-6">{{ item.referencia }}</strong>
+                                        <span class="fw-bold text-dark small">- {{ item.titulo }}</span>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        {% if is_coberto %}
+                                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-2.5 py-1 small">
+                                                <i class="bi bi-check-circle-fill me-1"></i> Coberto
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill px-2.5 py-1 small">
+                                                <i class="bi bi-exclamation-triangle-fill me-1"></i> Pendente
+                                            </span>
+                                        {% endif %}
+                                        
+                                        <!-- O Pulo do Gato: Ação Contextualizada de Criar Pergunta para este Requisito -->
+                                        <button type="button" class="btn btn-sm btn-primary rounded-pill px-2.5 fw-bold btn-add-question-for-req" 
+                                                data-id="{{ item.id }}" 
+                                                data-ref="{{ item.referencia }}" 
+                                                data-titulo="{{ item.titulo }}"
+                                                title="Criar nova pergunta já pré-selecionando este requisito" 
+                                                onclick="event.stopPropagation();">
+                                            <i class="bi bi-plus-lg me-1"></i> Criar Pergunta
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="collapseReqView_{{ item.id }}" class="collapse show p-3 bg-white">
+                                    <div class="list-group list-group-flush">
+                                        {% for p in perguntas_vinculadas %}
+                                            {% if item in p.itens_norma.all %}
+                                            <div class="list-group-item border rounded-3 mb-2 bg-light p-3 d-flex align-items-center justify-content-between">
+                                                <div>
+                                                    <span class="fw-semibold text-dark d-block mb-1">{{ p.texto_pergunta }}</span>
+                                                    <div class="d-flex align-items-center gap-1.5 flex-wrap">
+                                                        <span class="text-muted small me-1">Todos os vínculos:</span>
+                                                        {% for linked_item in p.itens_norma.all %}
+                                                        <span class="badge bg-secondary bg-opacity-10 text-secondary border rounded-pill px-2 py-0.5 small">{{ linked_item.referencia }}</span>
+                                                        {% endfor %}
+                                                    </div>
+                                                </div>
+                                                <form method="POST" action="{% url 'auditoria:iso_modelo_bloco_perguntas' modelo.id bloco.id %}" style="display:inline;">
+                                                    {% csrf_token %}
+                                                    {% for item_id in perguntas_vinculadas_ids %}
+                                                        {% if item_id != p.id %}
+                                                        <input type="hidden" name="perguntas" value="{{ item_id }}">
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-circle ms-2" title="Desvincular pergunta do bloco">
+                                                        <i class="bi bi-x-lg"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                            {% endif %}
+                                        {% empty %}
+                                        {% endfor %}
+
+                                        <!-- Placeholder quando não há nenhuma pergunta elaborada para este requisito -->
+                                        {% if not is_coberto %}
+                                        <div class="p-3 text-center text-muted border border-dashed rounded-3 bg-light">
+                                            <i class="bi bi-file-earmark-plus fs-4 d-block mb-1 text-secondary"></i>
+                                            <span class="small font-semibold">Nenhuma pergunta elaborada para este requisito ainda.</span>
+                                            <br>
+                                            <button type="button" class="btn btn-sm btn-link text-primary text-decoration-none fw-bold mt-1 p-0 btn-add-question-for-req" 
+                                                    data-id="{{ item.id }}" 
+                                                    data-ref="{{ item.referencia }}" 
+                                                    data-titulo="{{ item.titulo }}">
+                                                <i class="bi bi-plus-circle me-1"></i> Clique para criar a primeira pergunta
                                             </button>
-                                        </form>
-                                    </td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="3" class="text-center text-muted py-5">
-                                        <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
-                                        Nenhuma pergunta vinculada a este bloco do modelo ainda. Clique no botão acima para adicionar ou selecionar perguntas.
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endwith %}
+                            {% empty %}
+                            <div class="text-center text-muted py-5">
+                                <i class="bi bi-bullseye fs-2 d-block mb-2 text-secondary"></i>
+                                Nenhum requisito alvo definido para este bloco ainda. Clique em "🎯 Definir Alvos" no painel esquerdo para selecionar os requisitos.
+                            </div>
+                            {% endfor %}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -731,7 +837,63 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }, 10);
         });
+    // Toggle de Visões (Por Perguntas vs Por Requisitos)
+    const btnViewQuestions = document.getElementById('btnViewByQuestions');
+    const btnViewRequirements = document.getElementById('btnViewByRequirements');
+    const viewContainerQuestions = document.getElementById('viewContainerQuestions');
+    const viewContainerRequirements = document.getElementById('viewContainerRequirements');
+
+    if (btnViewQuestions && btnViewRequirements) {
+        btnViewQuestions.addEventListener('click', function() {
+            btnViewQuestions.classList.add('active', 'btn-primary', 'fw-bold');
+            btnViewQuestions.classList.remove('btn-light', 'text-secondary', 'fw-semibold');
+            
+            btnViewRequirements.classList.remove('active', 'btn-primary', 'fw-bold');
+            btnViewRequirements.classList.add('btn-light', 'text-secondary', 'fw-semibold');
+
+            viewContainerQuestions.style.display = 'block';
+            viewContainerRequirements.style.display = 'none';
+        });
+
+        btnViewRequirements.addEventListener('click', function() {
+            btnViewRequirements.classList.add('active', 'btn-primary', 'fw-bold');
+            btnViewRequirements.classList.remove('btn-light', 'text-secondary', 'fw-semibold');
+
+            btnViewQuestions.classList.remove('active', 'btn-primary', 'fw-bold');
+            btnViewQuestions.classList.add('btn-light', 'text-secondary', 'fw-semibold');
+
+            viewContainerQuestions.style.display = 'none';
+            viewContainerRequirements.style.display = 'block';
+        });
     }
+
+    // O Pulo do Gato: Ação Contextualizada de Criar Pergunta para um Requisito Específico
+    document.querySelectorAll('.btn-add-question-for-req').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const itemId = this.dataset.id;
+            const itemRef = this.dataset.ref;
+            const itemTitulo = this.dataset.titulo;
+
+            // Limpa seleções anteriores e marca o requisito contextualizado
+            selectedItemsMap.clear();
+            selectedItemsMap.set(String(itemId), {
+                ref: itemRef,
+                titulo: itemTitulo
+            });
+
+            // Atualiza checkboxes no catálogo modal
+            document.querySelectorAll('.chk-catalogo-item-modelo').forEach(chk => {
+                chk.checked = (chk.value === String(itemId));
+            });
+
+            renderSelectedItems();
+
+            const modalPerguntaEl = document.getElementById('novaPerguntaModeloModal');
+            const bsPergunta = bootstrap.Modal.getInstance(modalPerguntaEl) || new bootstrap.Modal(modalPerguntaEl);
+            bsPergunta.show();
+        });
+    });
     const btnAbrir = document.getElementById('btnAbrirCatalogoModeloModal');
     const modalCatalogoEl = document.getElementById('catalogoItensModalModelo');
     const modalPerguntaEl = document.getElementById('novaPerguntaModeloModal');
