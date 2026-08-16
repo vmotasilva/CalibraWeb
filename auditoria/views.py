@@ -3203,6 +3203,17 @@ def iso_entrevista_view(request, auditoria_id):
         perguntas = BancoPergunta.objects.filter(ativa=True, itens_norma__in=auditoria.escopo_itens.all()).distinct().prefetch_related('itens_norma')
         if not perguntas.exists():
             perguntas = BancoPergunta.objects.filter(ativa=True).prefetch_related('itens_norma')
+            
+    # Ordenar perguntas rigorosamente pela ordem e referência do item da norma
+    def get_pergunta_sort_key(p):
+        items = list(p.itens_norma.all())
+        if items:
+            min_ordem = min((it.ordem or 0) for it in items)
+            min_ref = min((it.referencia or '') for it in items)
+            return (min_ordem, min_ref, p.id)
+        return (999999, '', p.id)
+
+    perguntas_lista = sorted(list(perguntas), key=get_pergunta_sort_key)
     
     # Obter respostas já existentes
     respostas_dict = {}
@@ -3215,7 +3226,7 @@ def iso_entrevista_view(request, auditoria_id):
     agendas_outras_todas = list(auditoria.agendas.all().prefetch_related('itens_norma', 'perguntas'))
 
     perguntas_data = []
-    for p in perguntas:
+    for p in perguntas_lista:
         r = respostas_dict.get(p.id, {})
         
         itens_p = list(p.itens_norma.all())
