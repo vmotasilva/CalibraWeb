@@ -255,39 +255,17 @@
             </div>
         </div>
 
-        <!-- Filtros Rápidos da Matriz -->
-        <div class="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white">
-            <div class="row g-2 align-items-center">
-                <div class="col-md-5">
-                    <div class="input-group">
-                        <span class="input-group-text bg-light border-0"><i class="bi bi-search text-muted"></i></span>
-                        <!-- Dummy Hidden Inputs para capturar o autofill do Chrome -->
-                        <input type="text" style="display:none !important;" aria-hidden="true" tabindex="-1">
-                        <input type="password" style="display:none !important;" aria-hidden="true" tabindex="-1">
+        <!-- Barra de Ações e Botão de Filtro em Pop-up -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+            <button type="button" class="btn btn-outline-primary rounded-pill px-4 py-2 fw-bold shadow-2xs d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#filterMatrizModal">
+                <i class="bi bi-funnel-fill text-primary"></i>
+                <span>Filtrar e Buscar Requisitos</span>
+                <span class="badge bg-warning text-dark rounded-pill px-2.5 py-1 small" id="activeFilterBadgeCount" style="display: none;">Filtro Ativo</span>
+            </button>
 
-                        <input type="text" 
-                               id="search_mapping_input" 
-                               name="search_mapping_input" 
-                               class="form-control border-0 bg-light" 
-                               placeholder="Buscar por referência (ex: 4.1.1) ou título..." 
-                               readonly
-                               onfocus="this.removeAttribute('readonly');"
-                               autocomplete="off" 
-                               autocorrect="off" 
-                               autocapitalize="none" 
-                               spellcheck="false" 
-                               value="">
-                    </div>
-                </div>
-                <div class="col-md-7 d-flex justify-content-end gap-2">
-                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 active" id="btnFilterMatrizTodos">
-                        Todos ({{ total_alvo_modelo }})
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-3 text-dark" id="btnFilterMatrizMulti">
-                        🔄 Apenas Múltiplas Associações ({{ total_multi_associacoes }})
-                    </button>
-                </div>
-            </div>
+            <span class="text-muted small fw-semibold" id="matrizFilteredResultsText">
+                Exibindo todos os {{ total_alvo_modelo }} requisitos no escopo
+            </span>
         </div>
 
         <!-- Lista de Accordions/Cards dos Requisitos da Norma -->
@@ -387,11 +365,17 @@
                                 <p class="text-muted small mb-3 fst-italic">Nenhuma pergunta criada especificamente para o contexto deste bloco ainda.</p>
                                 {% endif %}
 
-                                <!-- Botão de Ação: Criar Pergunta Coesa para este Bloco -->
-                                <a href="{% url 'auditoria:iso_modelo_bloco_perguntas' modelo.id b_assoc.bloco.id %}" 
-                                   class="btn btn-outline-primary btn-sm rounded-pill w-100 fw-bold py-1.5 mt-auto">
+                                <!-- Botão de Ação: Criar Pergunta Coesa para este Bloco no Modal Pop-up -->
+                                <button type="button" 
+                                        class="btn btn-outline-primary btn-sm rounded-pill w-100 fw-bold py-1.5 mt-auto btn-gerar-pergunta-matriz"
+                                        data-bloco-id="{{ b_assoc.bloco.id }}"
+                                        data-bloco-titulo="{{ b_assoc.bloco.titulo }}"
+                                        data-item-id="{{ item_info.item.id }}"
+                                        data-item-ref="{{ item_info.item.referencia }}"
+                                        data-item-titulo="{{ item_info.item.titulo }}"
+                                        data-item-desc="{{ item_info.item.descricao|default:item_info.item.titulo }}">
                                     <i class="bi bi-plus-lg me-1"></i> Gerar Pergunta Coesa para {{ b_assoc.bloco.titulo }}
-                                </a>
+                                </button>
                             </div>
                         </div>
                         {% endfor %}
@@ -483,16 +467,186 @@
     </div>
 </div>
 
+<!-- Modal Filtros e Busca da Matriz de Requisitos (Pop-up de Filtro) -->
+<div class="modal fade" id="filterMatrizModal" tabindex="-1" aria-hidden="true" style="z-index: 10040;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0 rounded-4">
+            <div class="modal-header bg-light py-3 border-0">
+                <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2">
+                    <i class="bi bi-funnel-fill text-primary"></i>
+                    <span>Filtrar Requisitos da Matriz</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Campo de Busca de Requisitos -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold text-dark mb-1">Buscar por Referência ou Título</label>
+                    <div class="input-group border rounded-3 overflow-hidden shadow-2xs">
+                        <span class="input-group-text bg-light border-0"><i class="bi bi-search text-muted"></i></span>
+                        <!-- Dummy Hidden Inputs anti-autofill -->
+                        <input type="text" style="display:none !important;" aria-hidden="true" tabindex="-1">
+                        <input type="password" style="display:none !important;" aria-hidden="true" tabindex="-1">
+
+                        <input type="text" 
+                               id="search_mapping_input" 
+                               name="search_mapping_input" 
+                               class="form-control border-0 bg-white" 
+                               placeholder="Ex: 4.1.1, 5.1 ou 'Qualidade'..." 
+                               readonly
+                               onfocus="this.removeAttribute('readonly');"
+                               autocomplete="off" 
+                               autocorrect="off" 
+                               autocapitalize="none" 
+                               spellcheck="false" 
+                               value="">
+                    </div>
+                </div>
+
+                <!-- Filtros de Tipo de Associação -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-dark mb-2">Filtrar por Tipo de Associação</label>
+                    <div class="d-flex flex-column gap-2">
+                        <button type="button" class="btn btn-outline-secondary rounded-3 text-start d-flex justify-content-between align-items-center py-2.5 active" id="btnFilterMatrizTodos">
+                            <span><i class="bi bi-list-stars me-2"></i> Todos os Requisitos</span>
+                            <span class="badge bg-secondary rounded-pill px-2.5 py-1">{{ total_alvo_modelo }}</span>
+                        </button>
+
+                        <button type="button" class="btn btn-outline-warning text-dark rounded-3 text-start d-flex justify-content-between align-items-center py-2.5" id="btnFilterMatrizMulti">
+                            <span><i class="bi bi-arrow-repeat me-2 text-warning"></i> Apenas Múltiplas Associações</span>
+                            <span class="badge bg-warning text-dark rounded-pill px-2.5 py-1">{{ total_multi_associacoes }}</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 bg-light d-flex justify-content-between">
+                <button type="button" class="btn btn-link text-muted text-decoration-none" id="btnLimparFiltrosMatriz">Limpar Filtros</button>
+                <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" data-bs-dismiss="modal">Aplicar e Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Adicionar Pergunta Direta no Bloco (Pop-up em 2 Colunas) -->
+<div class="modal fade" id="novaPerguntaModeloModalGlobal" tabindex="-1" aria-hidden="true" style="z-index: 10050;">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content shadow-lg border-0 rounded-4">
+            <form id="formNovaPerguntaModeloGlobal" action="" method="post">
+                {% csrf_token %}
+                <div class="modal-header bg-primary text-white py-3 border-0">
+                    <h5 class="modal-title fw-bold d-flex align-items-center gap-2">
+                        <i class="bi bi-plus-circle me-1"></i>
+                        <span>Elaboração de Pergunta - Bloco: <span id="modalGlobalBlocoTitulo" class="text-white text-decoration-underline"></span></span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert alert-info border-0 rounded-3 d-flex align-items-center mb-3 py-2">
+                        <i class="bi bi-info-circle-fill fs-5 me-2 text-info"></i>
+                        <span class="small">A pergunta será salva no Banco Geral e vinculada automaticamente ao bloco selecionado.</span>
+                    </div>
+
+                    <!-- Layout 2 Colunas Lado a Lado -->
+                    <div class="row g-4">
+                        <!-- COLUNA 1: Norma e Descrição Completa (Leitura do Requisito) -->
+                        <div class="col-lg-6">
+                            <div class="card bg-primary bg-opacity-10 border-primary border-opacity-25 rounded-4 p-3.5 shadow-2xs h-100 d-flex flex-column">
+                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <span class="badge bg-primary text-white rounded-pill px-3 py-1.5 fw-bold fs-6" id="modalGlobalRefBadge"></span>
+                                    <small class="text-primary fw-bold text-uppercase" style="letter-spacing: 0.5px;">
+                                        <i class="bi bi-book-half me-1"></i> Requisito da Norma (Leitura)
+                                    </small>
+                                </div>
+                                <h6 class="fw-bold text-dark fs-6 mb-2" id="modalGlobalTituloReq"></h6>
+                                <div class="card bg-white border-0 p-3 rounded-3 text-dark font-monospace flex-grow-1 shadow-2xs" style="line-height: 1.6; font-size: 0.9rem; max-height: 420px; overflow-y: auto; white-space: pre-wrap;" id="modalGlobalDescReq"></div>
+                            </div>
+                        </div>
+
+                        <!-- COLUNA 2: Demais Campos da Pergunta -->
+                        <div class="col-lg-6">
+                            <input type="hidden" name="itens_norma" id="modalGlobalItemNormaId">
+
+                            <!-- Enunciado -->
+                            <div class="mb-3">
+                                <label class="form-label fw-bold text-dark mb-1">Enunciado da Pergunta <span class="text-danger">*</span></label>
+                                <textarea name="texto_pergunta" class="form-control border-primary shadow-2xs" rows="3" placeholder="Ex: Como a equipe evidencia a eficácia no cumprimento deste requisito?" required></textarea>
+                            </div>
+
+                            <!-- Evidências Esperadas -->
+                            <div class="mb-3">
+                                <label class="form-label fw-bold text-dark mb-1">Evidências Esperadas / Dicas para o Auditor <span class="text-muted fw-normal small">(Opcional)</span></label>
+                                <textarea name="dica_resposta" class="form-control shadow-2xs" rows="2" placeholder="Ex: Verificar registros de treinamentos, atas de reuniões..."></textarea>
+                            </div>
+
+                            <!-- Requisito Vinculado Pré-selecionado -->
+                            <div class="mb-3">
+                                <label class="form-label fw-bold text-dark mb-1">Requisito da Norma Pré-selecionado</label>
+                                <div class="p-3 bg-light rounded-3 border d-flex align-items-center gap-2">
+                                    <span class="badge bg-primary rounded-pill px-3 py-1.5 fw-bold" id="modalGlobalChipRef"></span>
+                                    <span class="text-dark small fw-bold" id="modalGlobalChipTitulo"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer border-0 bg-light">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">Salvar e Vincular Pergunta</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Garante que o modal popup fique no body com z-index elevado
-    const popModalEl = document.getElementById('popItemDetailModalMatriz');
-    if (popModalEl && popModalEl.parentElement !== document.body) {
-        document.body.appendChild(popModalEl);
-    }
+    // Garante que os modais popup (PopUp Info, Filtros e Nova Pergunta Direct) fiquem no body
+    ['popItemDetailModalMatriz', 'filterMatrizModal', 'novaPerguntaModeloModalGlobal'].forEach(modalId => {
+        const el = document.getElementById(modalId);
+        if (el && el.parentElement !== document.body) {
+            document.body.appendChild(el);
+        }
+    });
+
+    // Manipulador para o botão [ ➕ Gerar Pergunta Coesa para Bloco X ] na Matriz
+    document.querySelectorAll('.btn-gerar-pergunta-matriz').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const blocoId = this.dataset.blocoId;
+            const blocoTitulo = this.dataset.blocoTitulo;
+            const itemId = this.dataset.itemId;
+            const itemRef = this.dataset.itemRef;
+            const itemTitulo = this.dataset.itemTitulo;
+            const itemDesc = this.dataset.itemDesc;
+
+            // Define action dinâmica do form de submissão do bloco específico
+            const form = document.getElementById('formNovaPerguntaModeloGlobal');
+            form.action = `/auditoria/iso/setup/modelos/{{ modelo.id }}/blocos/${blocoId}/perguntas/nova/`;
+
+            // Popula os dados de leitura e título do modal
+            document.getElementById('modalGlobalBlocoTitulo').textContent = blocoTitulo;
+            document.getElementById('modalGlobalRefBadge').textContent = itemRef;
+            document.getElementById('modalGlobalTituloReq').textContent = itemTitulo;
+            
+            const descEl = document.getElementById('modalGlobalDescReq');
+            descEl.textContent = itemDesc || itemTitulo;
+            descEl.style.maxHeight = '420px';
+            descEl.style.overflowY = 'auto';
+
+            // Popula o campo oculto e o chip pré-selecionado
+            document.getElementById('modalGlobalItemNormaId').value = itemId;
+            document.getElementById('modalGlobalChipRef').textContent = itemRef;
+            document.getElementById('modalGlobalChipTitulo').textContent = itemTitulo;
+
+            const modalGlobalEl = document.getElementById('novaPerguntaModeloModalGlobal');
+            const bsModal = bootstrap.Modal.getInstance(modalGlobalEl) || new bootstrap.Modal(modalGlobalEl);
+            bsModal.show();
+        });
+    });
 
     // Manipulador para os botões de ícone informativo ℹ️ da Matriz
     document.querySelectorAll('.btn-pop-item-matriz').forEach(btn => {
@@ -506,6 +660,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('popMatrizTitulo').textContent = titulo;
             document.getElementById('popMatrizDesc').textContent = desc || titulo;
 
+            const popModalEl = document.getElementById('popItemDetailModalMatriz');
             const bsModal = bootstrap.Modal.getInstance(popModalEl) || new bootstrap.Modal(popModalEl);
             bsModal.show();
         });
@@ -546,32 +701,21 @@ document.addEventListener('DOMContentLoaded', function() {
             btnBlocos.className = 'btn btn-sm btn-light text-secondary rounded-pill px-3.5 py-1.5 fw-semibold';
             containerBlocos.style.display = 'none';
             containerRequisitos.style.display = 'block';
-
-            // Expurgador ativo contra o autofill tardio do Chrome ao alternar a visao
-            if (inputSearch) {
-                inputSearch.value = '';
-                [50, 150, 350].forEach(delay => {
-                    setTimeout(() => {
-                        if (inputSearch && inputSearch.getAttribute('readonly')) {
-                            inputSearch.value = '';
-                            applyMatrizFilters();
-                        }
-                    }, delay);
-                });
-            }
         });
     }
 
-    // Filtros e Busca da Matriz de Requisitos
+    // Filtros e Busca da Matriz de Requisitos (no Pop-up)
     const inputSearch = document.getElementById('search_mapping_input');
     const btnFilterTodos = document.getElementById('btnFilterMatrizTodos');
     const btnFilterMulti = document.getElementById('btnFilterMatrizMulti');
+    const btnLimparFiltros = document.getElementById('btnLimparFiltrosMatriz');
     const itemCards = document.querySelectorAll('.item-matriz-card');
 
     let currentFilterMultiOnly = false;
 
     function applyMatrizFilters() {
         const query = (inputSearch ? inputSearch.value : '').toLowerCase().trim();
+        let visibleCount = 0;
 
         itemCards.forEach(card => {
             const ref = card.dataset.ref || '';
@@ -581,23 +725,29 @@ document.addEventListener('DOMContentLoaded', function() {
             const matchesSearch = !query || ref.includes(query) || titulo.includes(query);
             const matchesFilter = !currentFilterMultiOnly || isMulti;
 
-            card.style.display = (matchesSearch && matchesFilter) ? 'block' : 'none';
+            const isVisible = matchesSearch && matchesFilter;
+            card.style.display = isVisible ? 'block' : 'none';
+            if (isVisible) visibleCount++;
         });
+
+        // Atualiza os textos e badge de filtro ativo na tela principal
+        const textEl = document.getElementById('matrizFilteredResultsText');
+        const badgeEl = document.getElementById('activeFilterBadgeCount');
+
+        if (textEl) {
+            textEl.textContent = `Exibindo ${visibleCount} de {{ total_alvo_modelo }} requisitos no escopo`;
+        }
+
+        const isFiltered = query.length > 0 || currentFilterMultiOnly;
+        if (badgeEl) {
+            badgeEl.style.display = isFiltered ? 'inline-block' : 'none';
+            badgeEl.textContent = currentFilterMultiOnly ? 'Filtro: Múltiplos' : 'Filtro Ativo';
+        }
     }
 
     if (inputSearch) {
         inputSearch.value = '';
         inputSearch.addEventListener('input', applyMatrizFilters);
-
-        // Expurgador preventivo na carga da pagina
-        [50, 150, 350, 700].forEach(delay => {
-            setTimeout(() => {
-                if (inputSearch && inputSearch.getAttribute('readonly')) {
-                    inputSearch.value = '';
-                    applyMatrizFilters();
-                }
-            }, delay);
-        });
     }
 
     if (btnFilterTodos && btnFilterMulti) {
@@ -612,6 +762,18 @@ document.addEventListener('DOMContentLoaded', function() {
             currentFilterMultiOnly = true;
             btnFilterMulti.classList.add('active');
             btnFilterTodos.classList.remove('active');
+            applyMatrizFilters();
+        });
+    }
+
+    if (btnLimparFiltros) {
+        btnLimparFiltros.addEventListener('click', function() {
+            if (inputSearch) inputSearch.value = '';
+            currentFilterMultiOnly = false;
+            if (btnFilterTodos && btnFilterMulti) {
+                btnFilterTodos.classList.add('active', 'btn-outline-secondary');
+                btnFilterMulti.classList.remove('active');
+            }
             applyMatrizFilters();
         });
     }
