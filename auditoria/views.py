@@ -3554,15 +3554,26 @@ def iso_modelo_detail(request, pk):
     """Visão de Detalhes do Modelo (Template Mode com Visão por Blocos e Matriz Orientada aos Itens da Norma)"""
     from .models import ModeloAuditoriaIso, ItemNorma
     modelo = get_object_or_404(ModeloAuditoriaIso, pk=pk)
-    blocos = modelo.blocos.all().prefetch_related('perguntas', 'itens_norma')
-    itens_norma_todos = ItemNorma.objects.filter(norma=modelo.norma).order_by('ordem', 'referencia')
+    itens_norma_todos = list(ItemNorma.objects.filter(norma=modelo.norma).order_by('ordem', 'referencia'))
+    
+    # Identifica itens que são pais/agrupadores na norma (possuem sub-itens)
+    parent_ids_global = set()
+    for item in itens_norma_todos:
+        if item.parent_id:
+            parent_ids_global.add(item.parent_id)
+        prefix = item.referencia + '.'
+        if any(other.referencia.startswith(prefix) for other in itens_norma_todos if other.id != item.id):
+            parent_ids_global.add(item.id)
+
+    # Considera apenas os itens de último nível (folhas sem sub-itens)
+    itens_norma_folhas = [item for item in itens_norma_todos if item.id not in parent_ids_global]
     
     # Matriz de Mapeamento Orientado aos Itens da Norma
     matriz_requisitos = []
     total_multi_associacoes = 0
     total_alvo_modelo = 0
     
-    for item in itens_norma_todos:
+    for item in itens_norma_folhas:
         blocos_associados = []
         for bloco in blocos:
             is_alvo = bloco.itens_norma.filter(id=item.id).exists()
