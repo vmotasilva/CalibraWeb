@@ -215,6 +215,34 @@ document.addEventListener('DOMContentLoaded', function() {
                                 respostaTextoHtml = `<small class="text-muted fst-italic d-block mt-1">Aguardando realização da entrevista neste bloco.</small>`;
                             }
 
+                            let solicitacoesHtml = '';
+                            if (p.solicitacoes && p.solicitacoes.length > 0) {
+                                let solsItems = p.solicitacoes.map(s => {
+                                    let cBadge = 'bg-secondary';
+                                    if (s.conclusao === 'C') cBadge = 'bg-success';
+                                    else if (s.conclusao === 'NC') cBadge = 'bg-danger';
+                                    else if (s.conclusao === 'OM') cBadge = 'bg-warning text-dark';
+                                    else if (s.conclusao === 'NA') cBadge = 'bg-secondary';
+
+                                    return `
+                                        <div class="p-2 bg-light rounded-3 border mb-1.5 small">
+                                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                                <strong class="text-dark"><i class="bi bi-file-earmark-text text-primary me-1"></i>${s.solicitacao}</strong>
+                                                <span class="badge ${cBadge} rounded-pill px-2 py-0.5" style="font-size: 0.75rem;">${s.conclusao_display || 'Pendente'}</span>
+                                            </div>
+                                            ${s.evidencia ? `<div class="text-muted font-monospace" style="font-size: 0.8rem; white-space: pre-wrap;"><i class="bi bi-check2-square me-1"></i>Evidência: ${s.evidencia}</div>` : `<small class="text-muted fst-italic">Sem registro de evidência ainda.</small>`}
+                                        </div>
+                                    `;
+                                }).join('');
+
+                                solicitacoesHtml = `
+                                    <div class="mt-2.5 pt-2 border-top">
+                                        <small class="fw-bold text-dark d-block mb-1.5"><i class="bi bi-file-earmark-check text-primary me-1"></i> Solicitações de Evidência & Amostragens (${p.solicitacoes.length}):</small>
+                                        ${solsItems}
+                                    </div>
+                                `;
+                            }
+
                             perguntasHtml += `
                                 <div class="p-3 bg-white border rounded-3 mb-2 shadow-2xs">
                                     <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
@@ -223,6 +251,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     </div>
                                     ${p.dica_auditor ? `<small class="text-muted d-block mb-1"><i class="bi bi-info-circle me-1"></i>Dica: ${p.dica_auditor}</small>` : ''}
                                     ${respostaTextoHtml}
+                                    ${solicitacoesHtml}
                                 </div>
                             `;
                         });

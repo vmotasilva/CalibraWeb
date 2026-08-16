@@ -743,6 +743,22 @@ class BancoPergunta(models.Model):
         return self.texto_pergunta[:80]
 
 
+class BancoSolicitacaoIso(models.Model):
+    norma = models.ForeignKey(Norma, on_delete=models.CASCADE, related_name="banco_solicitacoes", verbose_name="Norma de Referência")
+    titulo_solicitacao = models.TextField(verbose_name="Solicitação / Item Solicitado")
+    dica_evidencia = models.TextField(blank=True, verbose_name="Dicas de Evidência / O que verificar")
+    itens_norma = models.ManyToManyField(ItemNorma, blank=True, related_name="solicitacoes_modelo_vinculadas", verbose_name="Itens da Norma Avaliados")
+    ativa = models.BooleanField(default=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Banco de Solicitação de Evidência (ISO)"
+        verbose_name_plural = "Banco de Solicitações de Evidências (ISO)"
+
+    def __str__(self):
+        return self.titulo_solicitacao[:80]
+
+
 class AuditoriaIso(models.Model):
     STATUS_CHOICES = [
         ("PLANEJADA", "Planejada"),
@@ -772,6 +788,7 @@ class ModeloAuditoriaIso(models.Model):
     norma = models.ForeignKey(Norma, on_delete=models.CASCADE, related_name="modelos_auditoria", verbose_name="Norma de Referência")
     descricao = models.TextField(blank=True, verbose_name="Descrição do Modelo")
     perguntas = models.ManyToManyField('BancoPergunta', blank=True, related_name="modelos_vinculados", verbose_name="Perguntas do Modelo")
+    solicitacoes = models.ManyToManyField('BancoSolicitacaoIso', blank=True, related_name="modelos_vinculados", verbose_name="Solicitações do Modelo")
     ativo = models.BooleanField(default=True)
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
@@ -790,6 +807,7 @@ class BlocoModeloIso(models.Model):
     titulo = models.CharField(max_length=255, verbose_name="Título do Bloco")
     itens_norma = models.ManyToManyField('ItemNorma', blank=True, related_name="blocos_modelo_vinculados", verbose_name="Itens Alvo do Bloco")
     perguntas = models.ManyToManyField('BancoPergunta', blank=True, related_name="blocos_modelo_vinculados", verbose_name="Perguntas do Bloco")
+    solicitacoes = models.ManyToManyField('BancoSolicitacaoIso', blank=True, related_name="blocos_modelo_vinculados", verbose_name="Solicitações do Bloco")
     ordem = models.IntegerField(default=0)
     criado_em = models.DateTimeField(auto_now_add=True)
 

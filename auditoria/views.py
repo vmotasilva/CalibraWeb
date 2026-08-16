@@ -3429,13 +3429,25 @@ def iso_matriz_view(request, auditoria_id):
             for p in perguntas_bloco_req:
                 todas_perguntas_item_set.add(p.id)
                 resp = respostas_map.get(p.id)
+                sols_list = []
+                if resp:
+                    for s in resp.solicitacoes.all():
+                        sols_list.append({
+                            'id': s.id,
+                            'solicitacao': s.solicitacao,
+                            'evidencia': s.evidencia or '',
+                            'conclusao': s.conclusao,
+                            'conclusao_display': s.get_conclusao_display()
+                        })
+
                 perguntas_info.append({
                     'id': p.id,
                     'texto_pergunta': p.texto_pergunta,
                     'dica_auditor': p.dica_auditor or '',
                     'classificacao': resp.classificacao if resp else 'P',
                     'classificacao_display': resp.get_classificacao_display() if resp else 'Pendente',
-                    'texto_resposta': resp.texto_resposta if (resp and resp.texto_resposta) else ''
+                    'texto_resposta': resp.texto_resposta if (resp and resp.texto_resposta) else '',
+                    'solicitacoes': sols_list
                 })
                 
             blocos_associados.append({
