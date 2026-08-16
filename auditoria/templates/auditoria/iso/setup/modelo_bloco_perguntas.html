@@ -152,13 +152,25 @@
                                     <tr>
                                         <th class="ps-4">Enunciado da Pergunta</th>
                                         <th>Requisitos Cobertos</th>
-                                        <th class="text-end pe-4">Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for p in perguntas_vinculadas %}
-                                    <tr>
-                                        <td class="ps-4 fw-semibold text-dark">{{ p.texto_pergunta }}</td>
+                                    <tr class="btn-visualizar-pergunta-tr" 
+                                        style="cursor: pointer;"
+                                        data-id="{{ p.id }}" 
+                                        data-texto="{{ p.texto_pergunta }}" 
+                                        data-dica="{{ p.dica_auditor }}"
+                                        data-itens='[
+                                          {% for item in p.itens_norma.all %}
+                                          {"id": {{ item.id }}, "ref": "{{ item.referencia|escapejs }}", "titulo": "{{ item.titulo|escapejs }}", "desc": "{{ item.descricao|default:item.titulo|escapejs }}"}{% if not forloop.last %},{% endif %}
+                                          {% endfor %}
+                                        ]'>
+                                        <td class="ps-4 fw-semibold text-dark">
+                                            <span class="text-primary hover-underline">
+                                                <i class="bi bi-question-circle text-primary me-2"></i>{{ p.texto_pergunta }}
+                                            </span>
+                                        </td>
                                         <td>
                                             {% for item in p.itens_norma.all %}
                                             <span class="badge bg-info text-dark mb-1 me-1"><i class="bi bi-tag me-1"></i>{{ item.referencia }}</span>
@@ -166,31 +178,10 @@
                                             <span class="text-muted small">Sem vínculo</span>
                                             {% endfor %}
                                         </td>
-                                        <td class="text-end pe-4">
-                                            <button type="button" 
-                                                    class="btn btn-sm btn-outline-primary rounded-circle me-1 btn-editar-pergunta" 
-                                                    data-id="{{ p.id }}" 
-                                                    data-texto="{{ p.texto_pergunta }}" 
-                                                    data-dica="{{ p.dica_auditor }}"
-                                                    title="Editar Pergunta">
-                                                <i class="bi bi-pencil-fill"></i>
-                                            </button>
-                                            <form method="POST" action="{% url 'auditoria:iso_modelo_bloco_perguntas' modelo.id bloco.id %}" style="display:inline;">
-                                                {% csrf_token %}
-                                                {% for item_id in perguntas_vinculadas_ids %}
-                                                    {% if item_id != p.id %}
-                                                    <input type="hidden" name="perguntas" value="{{ item_id }}">
-                                                    {% endif %}
-                                                {% endfor %}
-                                                <button type="submit" class="btn btn-sm btn-outline-danger rounded-circle" title="Remover do bloco">
-                                                    <i class="bi bi-x-lg"></i>
-                                                </button>
-                                            </form>
-                                        </td>
                                     </tr>
                                     {% empty %}
                                     <tr>
-                                        <td colspan="3" class="text-center text-muted py-5">
+                                        <td colspan="2" class="text-center text-muted py-5">
                                             <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
                                             Nenhuma pergunta vinculada a este bloco do modelo ainda. Clique nos botões acima para adicionar perguntas.
                                         </td>
@@ -1293,18 +1284,92 @@ document.addEventListener('DOMContentLoaded', function() {
         modalAlvoEl.addEventListener('shown.bs.modal', updateSectionCounters);
     }
 
-    // Manipulador para o botão [✏️ Editar Pergunta]
-    document.querySelectorAll('.btn-editar-pergunta').forEach(btn => {
-        btn.addEventListener('click', function() {
+    // Manipulador para clicar na linha da pergunta e abrir o Modal de Visualização
+    let currentViewingPerguntaData = null;
+    const viewModalEl = document.getElementById('visualizarPerguntaModal');
+    if (viewModalEl && viewModalEl.parentElement !== document.body) {
+        document.body.appendChild(viewModalEl);
+    }
+
+    document.querySelectorAll('.btn-visualizar-pergunta-tr').forEach(tr => {
+        tr.addEventListener('click', function() {
             const pId = this.dataset.id;
             const texto = this.dataset.texto;
             const dica = this.dataset.dica;
+            let itens = [];
+            try {
+                itens = JSON.parse(this.dataset.itens || '[]');
+            } catch(e) { itens = []; }
 
+            currentViewingPerguntaData = { id: pId, texto: texto, dica: dica, itens: itens };
+
+            // Popula Coluna 1 (Norma e Descrição)
+            if (itens.length > 0) {
+                const firstItem = itens[0];
+                document.getElementById('viewModalRefBadge').textContent = firstItem.ref;
+                document.getElementById('viewModalTituloReq').textContent = firstItem.titulo;
+                document.getElementById('viewModalDescReq').textContent = firstItem.desc || firstItem.titulo;
+            } else {
+                document.getElementById('viewModalRefBadge').textContent = 'Norma';
+                document.getElementById('viewModalTituloReq').textContent = 'Requisito da Norma';
+                document.getElementById('viewModalDescReq').textContent = 'Sem requisito específico associado.';
+            }
+
+            // Popula Coluna 2 (Detalhes da Pergunta)
+            document.getElementById('viewModalTextoPergunta').textContent = texto;
+            const dicaEl = document.getElementById('viewModalDicaResposta');
+            const dicaWrapper = document.getElementById('viewModalDicaWrapper');
+            if (dica && dica.trim()) {
+                dicaEl.textContent = dica;
+                if (dicaWrapper) dicaWrapper.style.display = 'block';
+            } else {
+                if (dicaWrapper) dicaWrapper.style.display = 'none';
+            }
+
+            // Badges dos Requisitos
+            const badgesContainer = document.getElementById('viewModalBadgesRequisitos');
+            badgesContainer.innerHTML = '';
+            itens.forEach(it => {
+                const span = document.createElement('span');
+                span.className = 'badge bg-info text-dark me-1 mb-1';
+                span.innerHTML = `<i class="bi bi-tag me-1"></i>${it.ref} - ${it.titulo}`;
+                badgesContainer.appendChild(span);
+            });
+
+            // Popula inputs ocultos do form de remoção
+            const hiddenContainer = document.getElementById('hiddenInputsFormRemover');
+            hiddenContainer.innerHTML = '';
+            {% for item_id in perguntas_vinculadas_ids %}
+            if ("{{ item_id }}" !== pId) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'perguntas';
+                input.value = "{{ item_id }}";
+                hiddenContainer.appendChild(input);
+            }
+            {% endfor %}
+
+            const bsModal = bootstrap.Modal.getInstance(viewModalEl) || new bootstrap.Modal(viewModalEl);
+            bsModal.show();
+        });
+    });
+
+    // Botão Editar dentro do Modal de Visualização
+    const btnEditFromView = document.getElementById('btnEditarFromViewModal');
+    if (btnEditFromView) {
+        btnEditFromView.addEventListener('click', function() {
+            if (!currentViewingPerguntaData) return;
+
+            // Oculta modal de visualização
+            const bsViewModal = bootstrap.Modal.getInstance(viewModalEl);
+            if (bsViewModal) bsViewModal.hide();
+
+            // Preenche e abre modal de edição
             const form = document.getElementById('formEditarPergunta');
-            form.action = `/auditoria/iso/setup/perguntas/${pId}/editar/`;
+            form.action = `/auditoria/iso/setup/perguntas/${currentViewingPerguntaData.id}/editar/`;
 
-            document.getElementById('inputEditarTextoPergunta').value = texto;
-            document.getElementById('inputEditarDicaResposta').value = dica || '';
+            document.getElementById('inputEditarTextoPergunta').value = currentViewingPerguntaData.texto;
+            document.getElementById('inputEditarDicaResposta').value = currentViewingPerguntaData.dica || '';
 
             const editModalEl = document.getElementById('editarPerguntaModal');
             if (editModalEl && editModalEl.parentElement !== document.body) {
@@ -1313,12 +1378,79 @@ document.addEventListener('DOMContentLoaded', function() {
             const modal = new bootstrap.Modal(editModalEl);
             modal.show();
         });
-    });
+    }
 
     // Executa a contagem inicial
     updateSectionCounters();
 });
 </script>
+
+<!-- Modal Visualizar e Gerenciar Pergunta (Layout 2 Colunas) -->
+<div class="modal fade" id="visualizarPerguntaModal" tabindex="-1" aria-hidden="true" style="z-index: 10050;">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content shadow-lg border-0 rounded-4">
+            <div class="modal-header bg-primary text-white py-3 border-0">
+                <h5 class="modal-title fw-bold d-flex align-items-center gap-2">
+                    <i class="bi bi-file-earmark-text me-1"></i>
+                    <span>Detalhes da Pergunta do Bloco</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Layout 2 Colunas Lado a Lado -->
+                <div class="row g-4">
+                    <!-- COLUNA 1: Requisito(s) da Norma e Texto Integral (Leitura) -->
+                    <div class="col-lg-6">
+                        <div class="card bg-primary bg-opacity-10 border-primary border-opacity-25 rounded-4 p-3.5 shadow-2xs h-100 d-flex flex-column">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="badge bg-primary text-white rounded-pill px-3 py-1.5 fw-bold fs-6" id="viewModalRefBadge"></span>
+                                <small class="text-primary fw-bold text-uppercase" style="letter-spacing: 0.5px;">
+                                    <i class="bi bi-book-half me-1"></i> Requisito da Norma (Leitura)
+                                </small>
+                            </div>
+                            <h6 class="fw-bold text-dark fs-6 mb-2" id="viewModalTituloReq"></h6>
+                            <div class="card bg-white border-0 p-3 rounded-3 text-dark font-monospace flex-grow-1 shadow-2xs" style="line-height: 1.6; font-size: 0.9rem; max-height: 420px; overflow-y: auto; white-space: pre-wrap;" id="viewModalDescReq"></div>
+                        </div>
+                    </div>
+
+                    <!-- COLUNA 2: Enunciado, Dicas e Ações -->
+                    <div class="col-lg-6 d-flex flex-column">
+                        <div class="card border rounded-4 p-3.5 shadow-2xs bg-white mb-3 flex-grow-1">
+                            <small class="text-uppercase fw-bold text-muted d-block mb-1" style="letter-spacing: 0.5px;">Enunciado da Pergunta:</small>
+                            <h5 class="fw-bold text-dark mb-3" id="viewModalTextoPergunta" style="line-height: 1.5;"></h5>
+
+                            <div id="viewModalDicaWrapper">
+                                <small class="text-uppercase fw-bold text-muted d-block mb-1" style="letter-spacing: 0.5px;">Evidências Esperadas / Dicas para o Auditor:</small>
+                                <p class="text-dark bg-light p-3 rounded-3 border mb-3 font-monospace small" id="viewModalDicaResposta" style="line-height: 1.5;"></p>
+                            </div>
+
+                            <small class="text-uppercase fw-bold text-muted d-block mb-1" style="letter-spacing: 0.5px;">Requisitos Cobertos:</small>
+                            <div class="d-flex flex-wrap gap-1.5" id="viewModalBadgesRequisitos"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 bg-light d-flex justify-content-between align-items-center">
+                <!-- Botão Desvincular / Excluir do Bloco -->
+                <form id="formRemoverPerguntaViewModal" method="POST" action="{% url 'auditoria:iso_modelo_bloco_perguntas' modelo.id bloco.id %}">
+                    {% csrf_token %}
+                    <div id="hiddenInputsFormRemover"></div>
+                    <button type="submit" class="btn btn-outline-danger rounded-pill px-4 fw-bold shadow-2xs" onclick="return confirm('Tem certeza que deseja remover esta pergunta deste bloco?');">
+                        <i class="bi bi-trash-fill me-1.5"></i> Excluir do Bloco
+                    </button>
+                </form>
+
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Fechar</button>
+                    <!-- Botão Editar Pergunta -->
+                    <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" id="btnEditarFromViewModal">
+                        <i class="bi bi-pencil-fill me-1.5"></i> Editar Pergunta
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Modal Editar Pergunta -->
 <div class="modal fade" id="editarPerguntaModal" tabindex="-1" aria-hidden="true" style="z-index: 10060;">
