@@ -332,28 +332,30 @@
 
                     <div class="row row-cols-1 row-cols-md-2 g-3">
                         {% for b_assoc in item_info.blocos_associados %}
-                        <div class="col">
+                        <div class="col" id="bloco-item-card-{{ item_info.item.id }}-{{ b_assoc.bloco.id }}">
                             <div class="card bg-white border rounded-3 p-3 h-100 shadow-2xs d-flex flex-column">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                     <span class="fw-bold text-primary fs-6">
                                         <i class="bi bi-box-seam me-1"></i> {{ b_assoc.bloco.titulo }}
                                     </span>
-                                    {% if b_assoc.total_perguntas > 0 %}
-                                    <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2.5 py-1 small">
-                                        {{ b_assoc.total_perguntas }} pergunta(s)
-                                    </span>
-                                    {% else %}
-                                    <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2.5 py-1 small">
-                                        Pendente
-                                    </span>
-                                    {% endif %}
+                                    <div class="badge-status-container">
+                                        {% if b_assoc.total_perguntas > 0 %}
+                                        <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2.5 py-1 small">
+                                            {{ b_assoc.total_perguntas }} pergunta(s)
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2.5 py-1 small">
+                                            Pendente
+                                        </span>
+                                        {% endif %}
+                                    </div>
                                 </div>
 
-                                <!-- Lista de Perguntas Existentes para este Requisito neste Bloco -->
-                                {% if b_assoc.perguntas %}
-                                <div class="mb-3">
-                                    <small class="text-muted fw-bold d-block mb-1">Perguntas Vinculadas:</small>
-                                    <ul class="list-group list-group-flush small">
+                                <!-- Container de Perguntas Existentes para este Requisito neste Bloco -->
+                                <div class="perguntas-list-container mb-3">
+                                    {% if b_assoc.perguntas %}
+                                    <small class="text-muted fw-bold d-block mb-1 msg-titulo-vinculadas">Perguntas Vinculadas:</small>
+                                    <ul class="list-group list-group-flush small perguntas-ul">
                                         {% for p in b_assoc.perguntas %}
                                         <li class="list-group-item bg-light border-0 rounded-2 p-2 mb-1">
                                             <i class="bi bi-question-circle text-primary me-1"></i>
@@ -361,10 +363,10 @@
                                         </li>
                                         {% endfor %}
                                     </ul>
+                                    {% else %}
+                                    <p class="text-muted small mb-3 fst-italic msg-sem-perguntas">Nenhuma pergunta criada especificamente para o contexto deste bloco ainda.</p>
+                                    {% endif %}
                                 </div>
-                                {% else %}
-                                <p class="text-muted small mb-3 fst-italic">Nenhuma pergunta criada especificamente para o contexto deste bloco ainda.</p>
-                                {% endif %}
 
                                 <!-- Botão de Ação: Criar Pergunta Coesa para este Bloco no Modal Pop-up -->
                                 <button type="button" 
@@ -631,20 +633,23 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    let activeTargetItemId = null;
+    let activeTargetBlocoId = null;
+
     // Manipulador para o botão [ ➕ Gerar Pergunta Coesa para Bloco X ] na Matriz
     document.querySelectorAll('.btn-gerar-pergunta-matriz').forEach(btn => {
         btn.addEventListener('click', function(e) {
             e.stopPropagation();
-            const blocoId = this.dataset.blocoId;
+            activeTargetBlocoId = this.dataset.blocoId;
+            activeTargetItemId = this.dataset.itemId;
             const blocoTitulo = this.dataset.blocoTitulo;
-            const itemId = this.dataset.itemId;
             const itemRef = this.dataset.itemRef;
             const itemTitulo = this.dataset.itemTitulo;
             const itemDesc = this.dataset.itemDesc;
 
             // Define action dinâmica do form de submissão do bloco específico
             const form = document.getElementById('formNovaPerguntaModeloGlobal');
-            form.action = `/auditoria/iso/setup/modelos/{{ modelo.id }}/blocos/${blocoId}/perguntas/nova/`;
+            form.action = `/auditoria/iso/setup/modelos/{{ modelo.id }}/blocos/${activeTargetBlocoId}/perguntas/nova/`;
 
             // Popula os dados de leitura e título do modal
             document.getElementById('modalGlobalBlocoTitulo').textContent = blocoTitulo;
@@ -657,7 +662,7 @@ document.addEventListener('DOMContentLoaded', function() {
             descEl.style.overflowY = 'auto';
 
             // Popula o campo oculto e o chip pré-selecionado
-            document.getElementById('modalGlobalItemNormaId').value = itemId;
+            document.getElementById('modalGlobalItemNormaId').value = activeTargetItemId;
             document.getElementById('modalGlobalChipRef').textContent = itemRef;
             document.getElementById('modalGlobalChipTitulo').textContent = itemTitulo;
 
@@ -666,6 +671,82 @@ document.addEventListener('DOMContentLoaded', function() {
             bsModal.show();
         });
     });
+
+    // Submissão AJAX do Formulário Global de Perguntas (sem recarregar e sem perder o scroll/posição)
+    const formGlobal = document.getElementById('formNovaPerguntaModeloGlobal');
+    if (formGlobal) {
+        formGlobal.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const submitBtn = formGlobal.querySelector('button[type="submit"]');
+            const originalBtnHtml = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Salvando...`;
+
+            try {
+                const formData = new FormData(formGlobal);
+                formData.append('is_ajax', 'true');
+
+                const response = await fetch(formGlobal.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        // Fecha o modal
+                        const modalGlobalEl = document.getElementById('novaPerguntaModeloModalGlobal');
+                        const bsModal = bootstrap.Modal.getInstance(modalGlobalEl);
+                        if (bsModal) bsModal.hide();
+
+                        // Limpa o formulário
+                        formGlobal.reset();
+
+                        // Atualiza dinamicamente apenas o card do bloco específico na tela
+                        const cardCol = document.getElementById(`bloco-item-card-${activeTargetItemId}-${activeTargetBlocoId}`);
+                        if (cardCol) {
+                            const badgeContainer = cardCol.querySelector('.badge-status-container');
+                            const listContainer = cardCol.querySelector('.perguntas-list-container');
+                            const msgSemPerguntas = listContainer.querySelector('.msg-sem-perguntas');
+
+                            let ulEl = listContainer.querySelector('.perguntas-ul');
+                            if (!ulEl) {
+                                if (msgSemPerguntas) msgSemPerguntas.remove();
+                                const titleEl = document.createElement('small');
+                                titleEl.className = 'text-muted fw-bold d-block mb-1 msg-titulo-vinculadas';
+                                titleEl.textContent = 'Perguntas Vinculadas:';
+
+                                ulEl = document.createElement('ul');
+                                ulEl.className = 'list-group list-group-flush small perguntas-ul';
+                                
+                                listContainer.appendChild(titleEl);
+                                listContainer.appendChild(ulEl);
+                            }
+
+                            // Inserção da nova pergunta com animação suave
+                            const newLi = document.createElement('li');
+                            newLi.className = 'list-group-item bg-light border-0 rounded-2 p-2 mb-1 border-start border-success border-3';
+                            newLi.innerHTML = `<i class="bi bi-question-circle text-primary me-1"></i> <span class="text-dark">${data.texto_pergunta}</span>`;
+                            ulEl.appendChild(newLi);
+
+                            // Atualiza a contagem no badge
+                            const count = ulEl.querySelectorAll('li').length;
+                            badgeContainer.innerHTML = `<span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2.5 py-1 small">${count} pergunta(s)</span>`;
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Erro na submissão AJAX:', err);
+                formGlobal.submit(); // fallback
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnHtml;
+            }
+        });
+    }
 
     // Manipulador para os botões de ícone informativo ℹ️ da Matriz
     document.querySelectorAll('.btn-pop-item-matriz').forEach(btn => {

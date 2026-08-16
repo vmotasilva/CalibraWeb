@@ -3776,6 +3776,18 @@ def iso_modelo_bloco_pergunta_create(request, modelo_id, pk):
         bloco.perguntas.add(nova_pergunta)
         
     messages.success(request, f"Pergunta '{nova_pergunta.texto_pergunta[:40]}...' criada no Banco Geral e vinculada ao bloco!")
+    
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.POST.get('is_ajax') == 'true':
+        from django.http import JsonResponse
+        return JsonResponse({
+            'success': True,
+            'pergunta_id': nova_pergunta.id,
+            'texto_pergunta': nova_pergunta.texto_pergunta,
+            'bloco_id': bloco.id,
+            'bloco_titulo': bloco.titulo,
+            'message': f"Pergunta criada e vinculada ao bloco '{bloco.titulo}' com sucesso!"
+        })
+
     next_url = request.POST.get('next') or request.GET.get('next') or request.META.get('HTTP_REFERER')
     if next_url and ('modelos' in next_url or 'setup' in next_url):
         return redirect(next_url)
