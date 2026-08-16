@@ -3505,10 +3505,38 @@ def iso_matriz_view(request, auditoria_id):
             "blocos_associados": blocos_associados,
             "blocos_associados_json": json.dumps(blocos_associados)
         })
+
+    # Calcula as métricas e estatísticas do relatório (desconsiderando N/A)
+    count_c = sum(1 for m in matriz_data if not m["is_parent"] and m["status"] == "C")
+    count_nc = sum(1 for m in matriz_data if not m["is_parent"] and m["status"] == "NC")
+    count_om = sum(1 for m in matriz_data if not m["is_parent"] and m["status"] == "OM")
+    count_p = sum(1 for m in matriz_data if not m["is_parent"] and m["status"] == "P")
+    count_na = sum(1 for m in matriz_data if not m["is_parent"] and m["status"] == "NA")
+
+    total_avaliados = count_c + count_nc + count_om + count_p
+    
+    pct_c = round((count_c / total_avaliados * 100), 1) if total_avaliados > 0 else 0
+    pct_nc = round((count_nc / total_avaliados * 100), 1) if total_avaliados > 0 else 0
+    pct_om = round((count_om / total_avaliados * 100), 1) if total_avaliados > 0 else 0
+    pct_p = round((count_p / total_avaliados * 100), 1) if total_avaliados > 0 else 0
+
+    stats = {
+        "count_c": count_c,
+        "count_nc": count_nc,
+        "count_om": count_om,
+        "count_p": count_p,
+        "count_na": count_na,
+        "total_avaliados": total_avaliados,
+        "pct_c": pct_c,
+        "pct_nc": pct_nc,
+        "pct_om": pct_om,
+        "pct_p": pct_p,
+    }
         
     context = {
         "auditoria": auditoria,
-        "matriz_data": matriz_data
+        "matriz_data": matriz_data,
+        "stats": stats
     }
     
     return render(request, "auditoria/iso_matriz.html", context)

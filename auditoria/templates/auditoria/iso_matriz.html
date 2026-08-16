@@ -36,7 +36,76 @@
             <button class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" onclick="window.print()">
                 <i class="bi bi-printer me-1"></i> Imprimir PDF
             </button>
+    </div>
+
+    <!-- Painel de Indicadores & Métricas de Conformidade (Score Dashboard) -->
+    <div class="card shadow-sm border-0 rounded-4 mb-4 bg-white p-3.5">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <div>
+                <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                    <i class="bi bi-speedometer2 text-primary fs-4"></i>
+                    <span>Índice de Conformidade & Distribuição de Respostas</span>
+                </h5>
+                <small class="text-muted">Cálculo proporcional do status dos itens da norma (excluídos os itens N/A).</small>
+            </div>
+            <div class="text-end">
+                <span class="fs-4 fw-bold {% if stats.pct_c >= 80 %}text-success{% elif stats.pct_c >= 50 %}text-warning{% else %}text-danger{% endif %}">
+                    {{ stats.pct_c }}%
+                </span>
+                <small class="text-muted d-block" style="font-size: 0.75rem;">Taxa de Conformidade ({{ stats.count_c }}/{{ stats.total_avaliados }})</small>
+            </div>
         </div>
+
+        <!-- Barra de Distribuição Multissegmento -->
+        <div class="progress rounded-pill mb-3 shadow-2xs" style="height: 12px; background-color: #f1f5f9;">
+            <div class="progress-bar bg-success" role="progressbar" style="width: {{ stats.pct_c }}%" title="Conforme: {{ stats.pct_c }}%"></div>
+            <div class="progress-bar bg-danger" role="progressbar" style="width: {{ stats.pct_nc }}%" title="Não Conforme: {{ stats.pct_nc }}%"></div>
+            <div class="progress-bar bg-warning text-dark" role="progressbar" style="width: {{ stats.pct_om }}%" title="Oportunidade: {{ stats.pct_om }}%"></div>
+            <div class="progress-bar bg-secondary bg-opacity-75" role="progressbar" style="width: {{ stats.pct_p }}%" title="Pendente: {{ stats.pct_p }}%"></div>
+        </div>
+
+        <!-- Cards com Percentual Individual -->
+        <div class="row g-2 text-center">
+            <div class="col-md-3 col-6">
+                <div class="p-2.5 rounded-3 bg-success bg-opacity-10 border border-success border-opacity-25">
+                    <small class="fw-bold text-success d-block mb-0.5">✅ Conforme</small>
+                    <span class="fs-5 fw-bold text-success">{{ stats.count_c }}</span>
+                    <span class="badge bg-success text-white rounded-pill ms-1" style="font-size: 0.75rem;">{{ stats.pct_c }}%</span>
+                </div>
+            </div>
+
+            <div class="col-md-3 col-6">
+                <div class="p-2.5 rounded-3 bg-danger bg-opacity-10 border border-danger border-opacity-25">
+                    <small class="fw-bold text-danger d-block mb-0.5">🔴 Não Conforme</small>
+                    <span class="fs-5 fw-bold text-danger">{{ stats.count_nc }}</span>
+                    <span class="badge bg-danger text-white rounded-pill ms-1" style="font-size: 0.75rem;">{{ stats.pct_nc }}%</span>
+                </div>
+            </div>
+
+            <div class="col-md-3 col-6">
+                <div class="p-2.5 rounded-3 bg-warning bg-opacity-15 border border-warning border-opacity-25">
+                    <small class="fw-bold text-dark d-block mb-0.5">🟠 Oportunidade (OM)</small>
+                    <span class="fs-5 fw-bold text-dark">{{ stats.count_om }}</span>
+                    <span class="badge bg-warning text-dark rounded-pill ms-1" style="font-size: 0.75rem;">{{ stats.pct_om }}%</span>
+                </div>
+            </div>
+
+            <div class="col-md-3 col-6">
+                <div class="p-2.5 rounded-3 bg-secondary bg-opacity-10 border border-secondary border-opacity-25">
+                    <small class="fw-bold text-secondary d-block mb-0.5">⚠️ Pendente</small>
+                    <span class="fs-5 fw-bold text-dark">{{ stats.count_p }}</span>
+                    <span class="badge bg-secondary text-white rounded-pill ms-1" style="font-size: 0.75rem;">{{ stats.pct_p }}%</span>
+                </div>
+            </div>
+        </div>
+
+        {% if stats.count_na > 0 %}
+        <div class="mt-2.5 text-center">
+            <small class="text-muted font-monospace" style="font-size: 0.8rem;">
+                <i class="bi bi-info-circle me-1"></i> <strong>{{ stats.count_na }}</strong> item(ns) classificados como <strong>Não Aplicável (N/A)</strong> e desconsiderados no cálculo percentual.
+            </small>
+        </div>
+        {% endif %}
     </div>
 
     <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
