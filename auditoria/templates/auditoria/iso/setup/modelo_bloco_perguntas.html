@@ -166,7 +166,7 @@
                                           {"id": {{ item.id }}, "ref": "{{ item.referencia|escapejs }}", "titulo": "{{ item.titulo|escapejs }}", "desc": "{{ item.descricao|default:item.titulo|escapejs }}"}{% if not forloop.last %},{% endif %}
                                           {% endfor %}
                                         ]'>
-                                        <td class="ps-4 fw-semibold text-dark">
+                                        <td class="ps-4 fw-semibold text-dark" style="white-space: pre-wrap;">
                                             <span class="text-primary hover-underline">
                                                 <i class="bi bi-question-circle text-primary me-2"></i>{{ p.texto_pergunta }}
                                             </span>
@@ -1417,11 +1417,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="col-lg-6 d-flex flex-column">
                         <div class="card border rounded-4 p-3.5 shadow-2xs bg-white mb-3 flex-grow-1">
                             <small class="text-uppercase fw-bold text-muted d-block mb-1" style="letter-spacing: 0.5px;">Enunciado da Pergunta:</small>
-                            <h5 class="fw-bold text-dark mb-3" id="viewModalTextoPergunta" style="line-height: 1.5;"></h5>
+                            <h5 class="fw-bold text-dark mb-3" id="viewModalTextoPergunta" style="line-height: 1.5; white-space: pre-wrap;"></h5>
 
                             <div id="viewModalDicaWrapper">
                                 <small class="text-uppercase fw-bold text-muted d-block mb-1" style="letter-spacing: 0.5px;">Evidências Esperadas / Dicas para o Auditor:</small>
-                                <p class="text-dark bg-light p-3 rounded-3 border mb-3 font-monospace small" id="viewModalDicaResposta" style="line-height: 1.5;"></p>
+                                <p class="text-dark bg-light p-3 rounded-3 border mb-3 font-monospace small" id="viewModalDicaResposta" style="line-height: 1.5; white-space: pre-wrap;"></p>
                             </div>
 
                             <small class="text-uppercase fw-bold text-muted d-block mb-1" style="letter-spacing: 0.5px;">Requisitos Cobertos:</small>
