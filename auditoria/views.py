@@ -3215,6 +3215,23 @@ def iso_entrevista_view(request, auditoria_id):
 
     perguntas_lista = sorted(list(perguntas), key=get_pergunta_sort_key)
     
+    # Garante a existência e atualização da pergunta padrão de Identificação dos Auditados (Nome e Função)
+    pergunta_auditados, _ = BancoPergunta.objects.get_or_create(
+        texto_pergunta="Quais são os nomes e funções das pessoas auditadas / entrevistadas neste bloco?",
+        defaults={
+            "dica_auditor": "Registre o nome completo e a função / cargo de cada participante entrevistado nesta etapa da auditoria.",
+            "ativa": True
+        }
+    )
+    if "funções" not in pergunta_auditados.texto_pergunta.lower():
+        pergunta_auditados.texto_pergunta = "Quais são os nomes e funções das pessoas auditadas / entrevistadas neste bloco?"
+        pergunta_auditados.dica_auditor = "Registre o nome completo e a função / cargo de cada participante entrevistado nesta etapa da auditoria."
+        pergunta_auditados.save()
+
+    # Prepend a pergunta de auditados na PRIMEIRA POSIÇÃO da entrevista
+    perguntas_lista = [p for p in perguntas_lista if p.id != pergunta_auditados.id]
+    perguntas_lista.insert(0, pergunta_auditados)
+    
     # Obter respostas já existentes
     respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).prefetch_related('solicitacoes')
     respostas_dict = {}
@@ -3256,11 +3273,15 @@ def iso_entrevista_view(request, auditoria_id):
                         'total_perguntas': ag.perguntas.count()
                     })
 
+        itens_str = ", ".join([item.referencia for item in p.itens_norma.all()])
+        if p.id == pergunta_auditados.id and not itens_str:
+            itens_str = "Identificação / Auditados"
+
         perguntas_data.append({
             "id": p.id,
             "texto_pergunta": p.texto_pergunta,
             "dica_auditor": p.dica_auditor,
-            "itens": ", ".join([item.referencia for item in p.itens_norma.all()]),
+            "itens": itens_str,
             "itens_objects": [{"id": item.id, "ref": item.referencia, "titulo": item.titulo} for item in p.itens_norma.all()],
             "outros_blocos": outros_blocos_info,
             "classificacao": r.get("classificacao", "P"),
