@@ -4189,12 +4189,20 @@ def iso_modelo_bloco_perguntas(request, modelo_id, pk):
         messages.success(request, "Perguntas vinculadas ao bloco do modelo!")
         return redirect('auditoria:iso_modelo_bloco_perguntas', modelo_id=modelo_id, pk=pk)
         
-    perguntas_disponiveis = BancoPergunta.objects.filter(itens_norma__norma=bloco.modelo.norma).prefetch_related('itens_norma').order_by('itens_norma__ordem', 'itens_norma__referencia').distinct()
-    perguntas_vinculadas = bloco.perguntas.all().prefetch_related('itens_norma').order_by('itens_norma__ordem', 'itens_norma__referencia').distinct()
-    perguntas_vinculadas_ids = set(perguntas_vinculadas.values_list('id', flat=True))
+    perguntas_disponiveis = BancoPergunta.objects.filter(itens_norma__norma=bloco.modelo.norma).prefetch_related('itens_norma').distinct()
     
-    # Análise de Cobertura de Escopo Planejado para o Bloco do Modelo
-    itens_alvo_todos = list(bloco.itens_norma.all())
+    def get_pergunta_sort_key(p):
+        first_item = p.itens_norma.all()
+        if first_item:
+            item = first_item[0]
+            return (item.ordem or 0, natural_sort_key(item.referencia))
+        return (999, [])
+
+    perguntas_vinculadas = sorted(list(bloco.perguntas.all().prefetch_related('itens_norma')), key=get_pergunta_sort_key)
+    perguntas_vinculadas_ids = set(p.id for p in perguntas_vinculadas)
+    
+    # Análise de Cobertura de Escopo Planejado para o Bloco do Modelo (Ordenação Natural de Requisitos)
+    itens_alvo_todos = sorted(list(bloco.itens_norma.all()), key=lambda x: (x.ordem or 0, natural_sort_key(x.referencia)))
     
     # Identifica itens que possuem sub-itens selecionados dentro do escopo alvo (pais/agrupadores)
     parent_ids_in_alvo = set()
@@ -4258,7 +4266,7 @@ def iso_modelo_bloco_perguntas(request, modelo_id, pk):
         })
         
     porcentagem_cobertura = round((total_coberto / total_alvo * 100)) if total_alvo > 0 else 0
-    itens_norma_todos = ItemNorma.objects.filter(norma=bloco.modelo.norma).order_by('ordem', 'referencia')
+    itens_norma_todos = sorted(list(ItemNorma.objects.filter(norma=bloco.modelo.norma)), key=lambda x: (x.ordem or 0, natural_sort_key(x.referencia)))
     
     return render(request, "auditoria/iso/setup/modelo_bloco_perguntas.html", {
         "bloco": bloco,
