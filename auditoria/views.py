@@ -3414,7 +3414,17 @@ def iso_matriz_view(request, auditoria_id):
                 if item in p.itens_norma.all() or item in agenda.itens_norma.all()
             ]
             
-            if item in agenda.itens_norma.all() or perguntas_bloco_req:
+            # O bloco está associado ao item se:
+            # 1. O item está explicitamente no escopo da agenda (agenda.itens_norma)
+            # 2. Alguma pergunta da agenda cobre o item
+            # 3. A agenda não restringe itens_norma (escopo livre)
+            is_associado = (
+                (item in agenda.itens_norma.all()) or 
+                bool(perguntas_bloco_req) or 
+                (not agenda.itens_norma.exists())
+            )
+            
+            if is_associado:
                 perguntas_info = []
                 for p in perguntas_bloco_req:
                     todas_perguntas_item_set.add(p.id)

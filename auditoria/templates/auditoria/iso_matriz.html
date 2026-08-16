@@ -225,7 +225,14 @@ document.addEventListener('DOMContentLoaded', function() {
                             `;
                         });
                     } else {
-                        perguntasHtml = `<p class="text-muted small fst-italic mb-0">Nenhuma pergunta vinculada a este requisito neste bloco.</p>`;
+                        perguntasHtml = `
+                            <div class="alert alert-warning border text-center py-3 rounded-3 mb-2 small">
+                                <i class="bi bi-exclamation-triangle me-1"></i> Nenhuma pergunta criada neste bloco para este requisito ainda.
+                            </div>
+                            <a href="/auditoria/iso/setup/auditorias/{{ auditoria.id }}/agendas/${b.bloco_id}/" class="btn btn-outline-primary btn-sm rounded-pill w-100 fw-bold">
+                                <i class="bi bi-plus-lg me-1"></i> Ir para o Bloco e Adicionar Perguntas
+                            </a>
+                        `;
                     }
 
                     blockCard.innerHTML = `
