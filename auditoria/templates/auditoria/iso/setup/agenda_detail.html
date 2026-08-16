@@ -112,12 +112,15 @@
                         <i class="bi bi-question-circle me-2"></i>Perguntas Vinculadas
                         <span class="badge bg-secondary ms-2 rounded-pill">{{ perguntas.count }}</span>
                     </h5>
-                    <div>
-                        <a href="{% url 'auditoria:iso_agenda_perguntas_edit' auditoria.id agenda.id %}" class="btn btn-sm btn-outline-primary me-2">
-                            <i class="bi bi-list-check"></i> Vincular Existentes
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <a href="{% url 'auditoria:iso_agenda_sincronizar_modelo' auditoria.id agenda.id %}" class="btn btn-sm btn-outline-warning text-dark fw-bold rounded-pill px-3 shadow-2xs" title="Sincronizar e incluir perguntas que foram adicionadas ao Modelo posteriormente">
+                            <i class="bi bi-arrow-repeat text-dark me-1"></i> Sincronizar com Modelo
                         </a>
-                        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#novaPerguntaModal">
-                            <i class="bi bi-plus-lg"></i> Nova Pergunta
+                        <a href="{% url 'auditoria:iso_agenda_perguntas_edit' auditoria.id agenda.id %}" class="btn btn-sm btn-outline-primary fw-bold rounded-pill px-3">
+                            <i class="bi bi-list-check me-1"></i> Vincular Existentes
+                        </a>
+                        <button type="button" class="btn btn-sm btn-primary fw-bold rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#novaPerguntaModal">
+                            <i class="bi bi-plus-lg me-1"></i> Nova Pergunta
                         </button>
                     </div>
                 </div>

@@ -4786,3 +4786,56 @@ def iso_auditoria_delete(request, pk):
     auditoria.delete()
     messages.success(request, "Auditoria cancelada/removida com sucesso!")
     return redirect(reverse('auditoria:iso_setup_dashboard') + "?tab=auditorias")
+
+
+@login_required
+def iso_agenda_sincronizar_modelo(request, auditoria_id, pk):
+    """
+    Sincroniza a Agenda da Auditoria com o Modelo Base, importando
+    perguntas e itens alvos adicionados posteriormente ao Modelo.
+    """
+    from .models import AgendaAuditoriaIso, BlocoModeloIso, ModeloAuditoriaIso
+    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+    agenda = get_object_or_404(AgendaAuditoriaIso, pk=pk, auditoria=auditoria)
+    
+    modelo = agenda.modelo_base
+    if not modelo:
+        bloco_match = BlocoModeloIso.objects.filter(modelo__norma=auditoria.norma, titulo__iexact=agenda.titulo).first()
+        if bloco_match:
+            modelo = bloco_match.modelo
+            agenda.modelo_base = modelo
+            agenda.save()
+
+    if not modelo:
+        messages.warning(request, "Esta agenda não possui um Modelo Base associado para sincronizar.")
+        return redirect('auditoria:iso_agenda_detail', auditoria_id=auditoria_id, pk=pk)
+
+    bloco_modelo = modelo.blocos.filter(titulo__iexact=agenda.titulo).first()
+    
+    if bloco_modelo:
+        perguntas_modelo = bloco_modelo.perguntas.all()
+        itens_modelo = bloco_modelo.itens_norma.all()
+    else:
+        perguntas_modelo = modelo.perguntas.all()
+        itens_modelo = []
+
+    existentes_p_ids = set(agenda.perguntas.values_list('id', flat=True))
+    existentes_item_ids = set(agenda.itens_norma.values_list('id', flat=True))
+
+    novas_perguntas = [p for p in perguntas_modelo if p.id not in existentes_p_ids]
+    novos_itens = [item for item in itens_modelo if item.id not in existentes_item_ids]
+
+    if novas_perguntas:
+        agenda.perguntas.add(*novas_perguntas)
+    if novos_itens:
+        agenda.itens_norma.add(*novos_itens)
+
+    if novas_perguntas or novos_itens:
+        messages.success(
+            request, 
+            f"Sincronização concluída! {len(novas_perguntas)} nova(s) pergunta(s) e {len(novos_itens)} item(ns) alvo foram incluídos a partir do modelo '{modelo.titulo}'."
+        )
+    else:
+        messages.info(request, f"A agenda já está 100% atualizada e sincronizada com o modelo '{modelo.titulo}'.")
+
+    return redirect('auditoria:iso_agenda_detail', auditoria_id=auditoria_id, pk=pk)
