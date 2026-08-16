@@ -4167,6 +4167,13 @@ def iso_modelo_bloco_perguntas(request, modelo_id, pk):
     from .models import BlocoModeloIso, BancoPergunta, ItemNorma
     bloco = get_object_or_404(BlocoModeloIso, pk=pk, modelo_id=modelo_id)
     if request.method == "POST":
+        if "vincular_pergunta_id" in request.POST:
+            p_id = request.POST.get("vincular_pergunta_id")
+            if p_id:
+                bloco.perguntas.add(p_id)
+                messages.success(request, "Pergunta vinculada a este bloco do modelo com sucesso!")
+                return redirect('auditoria:iso_modelo_bloco_perguntas', modelo_id=modelo_id, pk=pk)
+
         pergunta_ids = request.POST.getlist("perguntas")
         bloco.perguntas.set(pergunta_ids)
         messages.success(request, "Perguntas vinculadas ao bloco do modelo!")
@@ -4197,7 +4204,8 @@ def iso_modelo_bloco_perguntas(request, modelo_id, pk):
 
     # Identifica itens cobertos por perguntas em OUTROS blocos do mesmo modelo
     itens_cobertos_outros_blocos_ids = set()
-    outros_blocos = bloco.modelo.blocos.exclude(id=bloco.id)
+    outros_blocos = list(bloco.modelo.blocos.exclude(id=bloco.id).prefetch_related('perguntas', 'perguntas__itens_norma'))
+    
     for b in outros_blocos:
         for p in b.perguntas.all():
             for item in p.itens_norma.all():
@@ -4209,6 +4217,19 @@ def iso_modelo_bloco_perguntas(request, modelo_id, pk):
     for item in itens_alvo:
         is_coberto_neste_bloco = item.id in itens_cobertos_ids
         is_coberto_outro_bloco = item.id in itens_cobertos_outros_blocos_ids
+
+        # Coleta perguntas em OUTROS blocos para este item
+        perguntas_outros_blocos = []
+        for b in outros_blocos:
+            for p in b.perguntas.all():
+                if item in p.itens_norma.all():
+                    perguntas_outros_blocos.append({
+                        'pergunta_id': p.id,
+                        'texto_pergunta': p.texto_pergunta,
+                        'dica_auditor': p.dica_auditor or '',
+                        'bloco_id': b.id,
+                        'bloco_titulo': b.titulo
+                    })
 
         if is_coberto_neste_bloco:
             total_coberto += 1
@@ -4222,6 +4243,8 @@ def iso_modelo_bloco_perguntas(request, modelo_id, pk):
             'item': item,
             'coberto': is_coberto_neste_bloco,
             'status_code': status_code,
+            'perguntas_outros_blocos': perguntas_outros_blocos,
+            'perguntas_outros_blocos_json': json.dumps(perguntas_outros_blocos),
         })
         
     porcentagem_cobertura = round((total_coberto / total_alvo * 100)) if total_alvo > 0 else 0

@@ -82,13 +82,14 @@
                                             🟢 {{ status.item.referencia }}
                                         </span>
                                     {% elif status.status_code == 'AMARELO' %}
-                                        <span class="badge bg-warning bg-opacity-20 text-dark border border-warning border-opacity-50 rounded-pill btn-quick-create-tag shadow-2xs" 
+                                        <span class="badge bg-warning bg-opacity-20 text-dark border border-warning border-opacity-50 rounded-pill btn-view-other-blocks-tag shadow-2xs" 
                                               data-id="{{ status.item.id }}" 
                                               data-ref="{{ status.item.referencia }}" 
                                               data-titulo="{{ status.item.titulo }}"
                                               data-desc="{{ status.item.descricao|default:status.item.titulo }}"
+                                              data-perguntas="{{ status.perguntas_outros_blocos_json|escapejs }}"
                                               style="cursor: pointer; transition: transform 0.15s ease;"
-                                              title="🟡 Possui pergunta em OUTRO bloco deste modelo - Clique para criar uma pergunta para este bloco (item {{ status.item.referencia }})">
+                                              title="🟡 Possui pergunta em OUTRO bloco - Clique para visualizar as perguntas existentes e vincular ou criar nova">
                                             🟡 {{ status.item.referencia }}
                                         </span>
                                     {% else %}
@@ -1483,4 +1484,133 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
     </div>
 </div>
+
+<!-- Modal Visualizar Perguntas em Outros Blocos -->
+<div class="modal fade" id="perguntasOutrosBlocosModal" tabindex="-1" aria-hidden="true" style="z-index: 10055;">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content shadow-lg border-0 rounded-4">
+            <div class="modal-header bg-warning bg-opacity-20 border-0 py-3">
+                <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2">
+                    <i class="bi bi-diagram-3-fill text-warning fs-4"></i>
+                    <span>Perguntas Existentes em Outros Blocos deste Modelo</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Card de informações do Item -->
+                <div class="alert alert-light border rounded-3 p-3 mb-3 shadow-2xs">
+                    <span class="badge bg-warning text-dark font-monospace mb-1" id="modalOtherBlocksItemRef"></span>
+                    <h6 class="fw-bold text-dark mb-1" id="modalOtherBlocksItemTitle"></h6>
+                    <small class="text-muted d-block" id="modalOtherBlocksItemDesc"></small>
+                </div>
+
+                <p class="text-secondary small mb-3">
+                    <i class="bi bi-info-circle text-primary me-1"></i>
+                    Este item já possui a(s) pergunta(s) abaixo em outros blocos deste modelo. Você pode <strong>vincular uma pergunta existente</strong> a este bloco ou <strong>criar uma pergunta nova específica</strong>.
+                </p>
+
+                <div id="modalOtherBlocksQuestionsContainer" class="d-flex flex-column gap-3">
+                    <!-- Preenchido via JS -->
+                </div>
+            </div>
+
+            <div class="modal-footer border-0 bg-light d-flex justify-content-between align-items-center">
+                <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" id="btnModalOtherBlocksCreateNew">
+                    <i class="bi bi-plus-lg me-1"></i> Criar Nova Pergunta para Este Bloco
+                </button>
+                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let currentYellowItemId = null;
+    let currentYellowItemRef = '';
+    let currentYellowItemTitle = '';
+    let currentYellowItemDesc = '';
+
+    const otherBlocksModalEl = document.getElementById('perguntasOutrosBlocosModal');
+    const otherBlocksModal = otherBlocksModalEl ? new bootstrap.Modal(otherBlocksModalEl) : null;
+
+    document.querySelectorAll('.btn-view-other-blocks-tag').forEach(tag => {
+        tag.addEventListener('click', function(e) {
+            e.stopPropagation();
+            currentYellowItemId = this.dataset.id;
+            currentYellowItemRef = this.dataset.ref;
+            currentYellowItemTitle = this.dataset.titulo;
+            currentYellowItemDesc = this.dataset.desc;
+
+            let perguntas = [];
+            try {
+                perguntas = JSON.parse(this.dataset.perguntas || '[]');
+            } catch(err) { console.error('Erro ao ler perguntas:', err); }
+
+            document.getElementById('modalOtherBlocksItemRef').textContent = '🟡 Item ' + currentYellowItemRef;
+            document.getElementById('modalOtherBlocksItemTitle').textContent = currentYellowItemTitle;
+            document.getElementById('modalOtherBlocksItemDesc').textContent = currentYellowItemDesc;
+
+            const container = document.getElementById('modalOtherBlocksQuestionsContainer');
+            container.innerHTML = '';
+
+            if (perguntas.length === 0) {
+                container.innerHTML = '<div class="alert alert-light text-center text-muted py-4">Nenhuma pergunta encontrada em outros blocos para este item.</div>';
+            } else {
+                perguntas.forEach(p => {
+                    const card = document.createElement('div');
+                    card.className = 'card border rounded-3 p-3 shadow-2xs bg-white';
+                    card.innerHTML = `
+                        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-2.5 py-1 small">
+                                <i class="bi bi-box me-1"></i> Bloco: ${p.bloco_titulo}
+                            </span>
+                        </div>
+                        <div class="fw-semibold text-dark mb-2" style="white-space: pre-wrap; font-size: 0.95rem;">
+                            <i class="bi bi-question-circle text-primary me-1.5"></i> ${p.texto_pergunta}
+                        </div>
+                        ${p.dica_auditor ? '<div class="small text-muted mb-3"><i class="bi bi-info-circle me-1"></i>' + p.dica_auditor + '</div>' : ''}
+                        <form action="{% url 'auditoria:iso_modelo_bloco_perguntas' modelo.id bloco.id %}" method="post" class="mt-2 text-end">
+                            {% csrf_token %}
+                            <input type="hidden" name="vincular_pergunta_id" value="${p.pergunta_id}">
+                            <button type="submit" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold">
+                                <i class="bi bi-link-45deg me-1"></i> Vincular Esta Pergunta a Este Bloco Também
+                            </button>
+                        </form>
+                    `;
+                    container.appendChild(card);
+                });
+            }
+
+            if (otherBlocksModal) {
+                otherBlocksModal.show();
+            }
+        });
+    });
+
+    const btnCreateNewFromOther = document.getElementById('btnModalOtherBlocksCreateNew');
+    if (btnCreateNewFromOther) {
+        btnCreateNewFromOther.addEventListener('click', function() {
+            if (otherBlocksModal) {
+                otherBlocksModal.hide();
+            }
+            // Dispara modal de criar nova pergunta com item selecionado
+            const novaModalEl = document.getElementById('novaPerguntaModeloModal');
+            if (novaModalEl) {
+                const selectItem = novaModalEl.querySelector('select[name="itens_norma"]');
+                if (selectItem && currentYellowItemId) {
+                    for (let opt of selectItem.options) {
+                        if (opt.value == currentYellowItemId) {
+                            opt.selected = true;
+                            break;
+                        }
+                    }
+                }
+                const novaModal = new bootstrap.Modal(novaModalEl);
+                novaModal.show();
+            }
+        });
+    }
+});
+</script>
 {% endblock %}
