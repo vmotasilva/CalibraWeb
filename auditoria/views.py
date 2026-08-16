@@ -3375,7 +3375,7 @@ def api_iso_solicitacao_delete(request, pk):
 def iso_matriz_view(request, auditoria_id):
     from .models import AuditoriaIso, ItemNorma, RespostaEntrevistaIso
     auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
-    agendas = list(auditoria.agendas.all().prefetch_related('perguntas', 'itens_norma'))
+    agendas = list(auditoria.agendas.all().prefetch_related('perguntas', 'itens_norma', 'perguntas__itens_norma'))
     
     respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria)
     respostas_map = {r.pergunta_id: r for r in respostas}
@@ -3387,6 +3387,14 @@ def iso_matriz_view(request, auditoria_id):
         
     itens_escopo_list = list(itens_escopo)
     
+    # Pre-calcula o conjunto de IDs de itens para cada agenda (direto + perguntas)
+    agenda_item_ids_map = {}
+    for ag in agendas:
+        item_ids = set(ag.itens_norma.values_list('id', flat=True))
+        for p in ag.perguntas.all():
+            item_ids.update(p.itens_norma.values_list('id', flat=True))
+        agenda_item_ids_map[ag.id] = item_ids
+
     # 2. Identifica apenas itens de último nível (folhas)
     parent_ids = set()
     for item in itens_escopo_list:
@@ -3403,26 +3411,21 @@ def iso_matriz_view(request, auditoria_id):
     for item in sorted(itens_escopo_list, key=lambda x: x.referencia):
         is_parent = item.id in parent_ids
         
-        # Procura por todos os blocos (agendas) desta auditoria vinculados a este item
         blocos_associados = []
         todas_perguntas_item_set = set()
         
         for agenda in agendas:
-            # Perguntas deste bloco que cobrem este requisito especificamente
-            perguntas_bloco_req = [
-                p for p in agenda.perguntas.all()
-                if item in p.itens_norma.all() or item in agenda.itens_norma.all()
-            ]
+            ag_item_ids = agenda_item_ids_map.get(agenda.id, set())
             
-            # O bloco está associado ao item se:
-            # 1. O item está explicitamente no escopo da agenda (agenda.itens_norma)
-            # 2. Alguma pergunta da agenda cobre o item
-            # 3. A agenda não restringe itens_norma (escopo livre)
-            is_associado = (
-                (item in agenda.itens_norma.all()) or 
-                bool(perguntas_bloco_req) or 
-                (not agenda.itens_norma.exists())
-            )
+            # Mapeia perguntas do bloco que atendem a este item
+            perguntas_bloco_req = []
+            for p in agenda.perguntas.all():
+                p_item_ids = set(p.itens_norma.values_list('id', flat=True))
+                if item.id in p_item_ids or (not p_item_ids and item.id in ag_item_ids):
+                    perguntas_bloco_req.append(p)
+
+            # Bloco é associado se contém o ID do item ou se não possui restrições de escopo registradas
+            is_associado = (item.id in ag_item_ids) or (not ag_item_ids)
             
             if is_associado:
                 perguntas_info = []
@@ -3449,7 +3452,7 @@ def iso_matriz_view(request, auditoria_id):
         if is_parent:
             status_item = "NA"
         elif not todas_perguntas_item_set:
-            status_item = "NA"
+            status_item = "P" if blocos_associados else "NA"
         else:
             pior_peso = 0
             for p_id in todas_perguntas_item_set:
