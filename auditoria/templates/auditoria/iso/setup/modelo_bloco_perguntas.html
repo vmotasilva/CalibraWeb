@@ -167,6 +167,14 @@
                                             {% endfor %}
                                         </td>
                                         <td class="text-end pe-4">
+                                            <button type="button" 
+                                                    class="btn btn-sm btn-outline-primary rounded-circle me-1 btn-editar-pergunta" 
+                                                    data-id="{{ p.id }}" 
+                                                    data-texto="{{ p.texto_pergunta }}" 
+                                                    data-dica="{{ p.dica_auditor }}"
+                                                    title="Editar Pergunta">
+                                                <i class="bi bi-pencil-fill"></i>
+                                            </button>
                                             <form method="POST" action="{% url 'auditoria:iso_modelo_bloco_perguntas' modelo.id bloco.id %}" style="display:inline;">
                                                 {% csrf_token %}
                                                 {% for item_id in perguntas_vinculadas_ids %}
@@ -1285,8 +1293,61 @@ document.addEventListener('DOMContentLoaded', function() {
         modalAlvoEl.addEventListener('shown.bs.modal', updateSectionCounters);
     }
 
+    // Manipulador para o botão [✏️ Editar Pergunta]
+    document.querySelectorAll('.btn-editar-pergunta').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const pId = this.dataset.id;
+            const texto = this.dataset.texto;
+            const dica = this.dataset.dica;
+
+            const form = document.getElementById('formEditarPergunta');
+            form.action = `/auditoria/iso/setup/perguntas/${pId}/editar/`;
+
+            document.getElementById('inputEditarTextoPergunta').value = texto;
+            document.getElementById('inputEditarDicaResposta').value = dica || '';
+
+            const editModalEl = document.getElementById('editarPerguntaModal');
+            if (editModalEl && editModalEl.parentElement !== document.body) {
+                document.body.appendChild(editModalEl);
+            }
+            const modal = new bootstrap.Modal(editModalEl);
+            modal.show();
+        });
+    });
+
     // Executa a contagem inicial
     updateSectionCounters();
 });
 </script>
+
+<!-- Modal Editar Pergunta -->
+<div class="modal fade" id="editarPerguntaModal" tabindex="-1" aria-hidden="true" style="z-index: 10060;">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0 rounded-4">
+            <form id="formEditarPergunta" action="" method="post">
+                {% csrf_token %}
+                <div class="modal-header bg-primary text-white py-3 border-0">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-pencil-square me-1"></i> Editar Pergunta
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark mb-1">Enunciado da Pergunta <span class="text-danger">*</span></label>
+                        <textarea name="texto_pergunta" id="inputEditarTextoPergunta" class="form-control border-primary shadow-2xs" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark mb-1">Evidências Esperadas / Dicas para o Auditor <span class="text-muted fw-normal small">(Opcional)</span></label>
+                        <textarea name="dica_resposta" id="inputEditarDicaResposta" class="form-control shadow-2xs" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 bg-light">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}

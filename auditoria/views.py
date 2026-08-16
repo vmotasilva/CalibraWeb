@@ -3795,6 +3795,46 @@ def iso_modelo_bloco_pergunta_create(request, modelo_id, pk):
 
 @login_required
 @require_POST
+def iso_pergunta_edit(request, pk):
+    """Edita uma pergunta existente no Banco Geral de Perguntas"""
+    from .models import BancoPergunta
+    from django.http import JsonResponse
+    pergunta = get_object_or_404(BancoPergunta, pk=pk)
+    
+    texto_pergunta = request.POST.get("texto_pergunta")
+    dica_resposta = request.POST.get("dica_resposta", "")
+    item_ids = request.POST.getlist("itens_norma")
+    
+    if not texto_pergunta:
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.POST.get('is_ajax') == 'true':
+            return JsonResponse({'success': False, 'error': 'O enunciado da pergunta é obrigatório.'}, status=400)
+        messages.error(request, "O enunciado da pergunta é obrigatório.")
+        return redirect(request.META.get('HTTP_REFERER', '/'))
+        
+    pergunta.texto_pergunta = texto_pergunta
+    pergunta.dica_auditor = dica_resposta
+    if item_ids:
+        pergunta.itens_norma.set(item_ids)
+    pergunta.save()
+    
+    messages.success(request, f"Pergunta '{pergunta.texto_pergunta[:40]}...' atualizada com sucesso!")
+    
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.POST.get('is_ajax') == 'true':
+        return JsonResponse({
+            'success': True,
+            'pergunta_id': pergunta.id,
+            'texto_pergunta': pergunta.texto_pergunta,
+            'dica_auditor': pergunta.dica_auditor,
+            'message': 'Pergunta atualizada com sucesso!'
+        })
+        
+    next_url = request.POST.get('next') or request.META.get('HTTP_REFERER')
+    if next_url:
+        return redirect(next_url)
+    return redirect(request.META.get('HTTP_REFERER', '/'))
+
+@login_required
+@require_POST
 def iso_modelo_bloco_alvo_update(request, modelo_id, pk):
     from .models import BlocoModeloIso
     from django.http import JsonResponse

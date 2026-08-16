@@ -357,9 +357,19 @@
                                     <small class="text-muted fw-bold d-block mb-1 msg-titulo-vinculadas">Perguntas Vinculadas:</small>
                                     <ul class="list-group list-group-flush small perguntas-ul">
                                         {% for p in b_assoc.perguntas %}
-                                        <li class="list-group-item bg-light border-0 rounded-2 p-2 mb-1">
-                                            <i class="bi bi-question-circle text-primary me-1"></i>
-                                            <span class="text-dark">{{ p.texto_pergunta }}</span>
+                                        <li class="list-group-item bg-light border-0 rounded-2 p-2 mb-1 d-flex justify-content-between align-items-center" id="pergunta-item-li-{{ p.id }}">
+                                            <div>
+                                                <i class="bi bi-question-circle text-primary me-1"></i>
+                                                <span class="text-dark pergunta-texto">{{ p.texto_pergunta }}</span>
+                                            </div>
+                                            <button type="button" 
+                                                    class="btn btn-sm btn-link text-primary p-0 ms-2 btn-editar-pergunta-matriz" 
+                                                    data-id="{{ p.id }}" 
+                                                    data-texto="{{ p.texto_pergunta }}" 
+                                                    data-dica="{{ p.dica_auditor }}"
+                                                    title="Editar esta pergunta">
+                                                <i class="bi bi-pencil-fill small"></i>
+                                            </button>
                                         </li>
                                         {% endfor %}
                                     </ul>
@@ -618,6 +628,35 @@
             </form>
         </div>
     </div>
+<!-- Modal Editar Pergunta na Matriz -->
+<div class="modal fade" id="editarPerguntaModalMatriz" tabindex="-1" aria-hidden="true" style="z-index: 10060;">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0 rounded-4">
+            <form id="formEditarPerguntaMatriz" action="" method="post">
+                {% csrf_token %}
+                <div class="modal-header bg-primary text-white py-3 border-0">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-pencil-square me-1"></i> Editar Pergunta
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark mb-1">Enunciado da Pergunta <span class="text-danger">*</span></label>
+                        <textarea name="texto_pergunta" id="inputEditarTextoPerguntaMatriz" class="form-control border-primary shadow-2xs" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark mb-1">Evidências Esperadas / Dicas para o Auditor <span class="text-muted fw-normal small">(Opcional)</span></label>
+                        <textarea name="dica_resposta" id="inputEditarDicaRespostaMatriz" class="form-control shadow-2xs" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 bg-light">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
 {% endblock %}
@@ -625,8 +664,8 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Garante que os modais popup (PopUp Info, Filtros e Nova Pergunta Direct) fiquem no body
-    ['popItemDetailModalMatriz', 'filterMatrizModal', 'novaPerguntaModeloModalGlobal'].forEach(modalId => {
+    // Garante que os modais popup fiquem no body
+    ['popItemDetailModalMatriz', 'filterMatrizModal', 'novaPerguntaModeloModalGlobal', 'editarPerguntaModalMatriz'].forEach(modalId => {
         const el = document.getElementById(modalId);
         if (el && el.parentElement !== document.body) {
             document.body.appendChild(el);
@@ -744,6 +783,75 @@ document.addEventListener('DOMContentLoaded', function() {
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalBtnHtml;
+            }
+        });
+    }
+
+    // Manipulador para o botão [✏️ Editar Pergunta na Matriz]
+    let activeEditingPerguntaId = null;
+
+    document.addEventListener('click', function(e) {
+        const btnEdit = e.target.closest('.btn-editar-pergunta-matriz');
+        if (btnEdit) {
+            e.stopPropagation();
+            activeEditingPerguntaId = btnEdit.dataset.id;
+            const texto = btnEdit.dataset.texto;
+            const dica = btnEdit.dataset.dica;
+
+            const form = document.getElementById('formEditarPerguntaMatriz');
+            form.action = `/auditoria/iso/setup/perguntas/${activeEditingPerguntaId}/editar/`;
+
+            document.getElementById('inputEditarTextoPerguntaMatriz').value = texto;
+            document.getElementById('inputEditarDicaRespostaMatriz').value = dica || '';
+
+            const editModalEl = document.getElementById('editarPerguntaModalMatriz');
+            const bsModal = bootstrap.Modal.getInstance(editModalEl) || new bootstrap.Modal(editModalEl);
+            bsModal.show();
+        }
+    });
+
+    const formEditMatriz = document.getElementById('formEditarPerguntaMatriz');
+    if (formEditMatriz) {
+        formEditMatriz.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const submitBtn = formEditMatriz.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+
+            try {
+                const formData = new FormData(formEditMatriz);
+                formData.append('is_ajax', 'true');
+
+                const response = await fetch(formEditMatriz.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        const editModalEl = document.getElementById('editarPerguntaModalMatriz');
+                        const bsModal = bootstrap.Modal.getInstance(editModalEl);
+                        if (bsModal) bsModal.hide();
+
+                        // Atualiza todas as ocorrências da pergunta editada no DOM
+                        document.querySelectorAll(`[id="pergunta-item-li-${activeEditingPerguntaId}"]`).forEach(li => {
+                            const textSpan = li.querySelector('.pergunta-texto');
+                            if (textSpan) textSpan.textContent = data.texto_pergunta;
+
+                            const btnEdit = li.querySelector('.btn-editar-pergunta-matriz');
+                            if (btnEdit) {
+                                btnEdit.dataset.texto = data.texto_pergunta;
+                                btnEdit.dataset.dica = data.dica_auditor || '';
+                            }
+                        });
+                    }
+                }
+            } catch (err) {
+                console.error('Erro ao editar pergunta:', err);
+                formEditMatriz.submit();
+            } finally {
+                submitBtn.disabled = false;
             }
         });
     }
