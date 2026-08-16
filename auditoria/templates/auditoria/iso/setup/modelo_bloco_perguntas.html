@@ -67,16 +67,28 @@
                                 <div class="progress-bar {% if porcentagem_cobertura == 100 %}bg-success{% elif porcentagem_cobertura > 0 %}bg-warning{% else %}bg-secondary{% endif %} progress-bar-striped progress-bar-animated" role="progressbar" style="width: {{ porcentagem_cobertura }}%;" aria-valuenow="{{ porcentagem_cobertura }}" aria-valuemin="0" aria-valuemax="100"></div>
                             </div>
 
-                            <!-- Checklist de Tags de Cobertura -->
-                            <small class="text-muted d-block fw-bold mb-2">Requisitos Alvo deste Bloco:</small>
+                            <!-- Checklist de Tags de Cobertura com Interação Quick Create -->
+                            <small class="text-muted d-block fw-bold mb-2">Requisitos Alvo (Clique para Criar Pergunta Rápida):</small>
                             <div class="d-flex flex-wrap gap-1">
                                 {% for status in cobertura_status %}
                                     {% if status.coberto %}
-                                        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill" title="Coberto por perguntas vinculadas">
+                                        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill btn-quick-create-tag shadow-2xs" 
+                                              data-id="{{ status.item.id }}" 
+                                              data-ref="{{ status.item.referencia }}" 
+                                              data-titulo="{{ status.item.titulo }}"
+                                              data-desc="{{ status.item.descricao|default:status.item.titulo }}"
+                                              style="cursor: pointer; transition: transform 0.15s ease;"
+                                              title="🟢 Coberto - Clique para criar pergunta rápida para o item {{ status.item.referencia }}">
                                             🟢 {{ status.item.referencia }}
                                         </span>
                                     {% else %}
-                                        <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill" title="Ainda não contemplado por nenhuma pergunta">
+                                        <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill btn-quick-create-tag shadow-2xs" 
+                                              data-id="{{ status.item.id }}" 
+                                              data-ref="{{ status.item.referencia }}" 
+                                              data-titulo="{{ status.item.titulo }}"
+                                              data-desc="{{ status.item.descricao|default:status.item.titulo }}"
+                                              style="cursor: pointer; transition: transform 0.15s ease;"
+                                              title="🔴 Pendente - Clique para criar pergunta rápida para o item {{ status.item.referencia }}">
                                             🔴 {{ status.item.referencia }}
                                         </span>
                                     {% endif %}
@@ -384,9 +396,21 @@
                 </div>
                 <div class="modal-body p-4">
                     
-                    <div class="alert alert-info border-0 rounded-3 d-flex align-items-center mb-4 py-2">
+                    <div class="alert alert-info border-0 rounded-3 d-flex align-items-center mb-3 py-2">
                         <i class="bi bi-info-circle-fill fs-5 me-2 text-info"></i>
                         <span class="small">A pergunta será salva no Banco Geral e automaticamente vinculada a este bloco do modelo.</span>
+                    </div>
+
+                    <!-- Metade Superior (Contexto): Painel de Leitura do Requisito Alvo para Quick Create -->
+                    <div id="quickCreateContextContainer" class="card bg-primary bg-opacity-10 border-primary border-opacity-25 rounded-3 p-3 mb-3 shadow-2xs" style="display: none;">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <span class="badge bg-primary text-white rounded-pill px-3 py-1 fw-bold fs-6" id="quickCreateRefBadge"></span>
+                            <small class="text-primary fw-bold text-uppercase" style="letter-spacing: 0.5px;">
+                                <i class="bi bi-book-half me-1"></i> Requisito Contextualizado (Leitura)
+                            </small>
+                        </div>
+                        <h6 class="fw-bold text-dark mb-1" id="quickCreateTitulo"></h6>
+                        <div class="card bg-white border-0 p-2.5 rounded-3 text-secondary small font-monospace" style="line-height: 1.5; max-height: 110px; overflow-y: auto; white-space: pre-wrap;" id="quickCreateDesc"></div>
                     </div>
 
                     <!-- Enunciado -->
@@ -869,31 +893,56 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // O Pulo do Gato: Ação Contextualizada de Criar Pergunta para um Requisito Específico
+    // Quick Create: Função compartilhada para abrir o modal pré-selecionando o requisito e exibindo o contexto na metade superior
+    function openQuickCreateForRequirement(itemId, itemRef, itemTitulo, itemDesc) {
+        const contextContainer = document.getElementById('quickCreateContextContainer');
+        if (contextContainer) {
+            document.getElementById('quickCreateRefBadge').textContent = itemRef;
+            document.getElementById('quickCreateTitulo').textContent = itemTitulo;
+            document.getElementById('quickCreateDesc').textContent = itemDesc || itemTitulo;
+            contextContainer.style.display = 'block';
+        }
+
+        selectedItemsMap.clear();
+        selectedItemsMap.set(String(itemId), {
+            ref: itemRef,
+            titulo: itemTitulo
+        });
+
+        document.querySelectorAll('.chk-catalogo-item-modelo').forEach(chk => {
+            chk.checked = (chk.value === String(itemId));
+        });
+
+        renderSelectedItems();
+
+        const modalPerguntaEl = document.getElementById('novaPerguntaModeloModal');
+        const bsPergunta = bootstrap.Modal.getInstance(modalPerguntaEl) || new bootstrap.Modal(modalPerguntaEl);
+        bsPergunta.show();
+    }
+
+    // Listener para as tags do painel esquerdo
+    document.querySelectorAll('.btn-quick-create-tag').forEach(tag => {
+        tag.addEventListener('click', function(e) {
+            e.stopPropagation();
+            openQuickCreateForRequirement(
+                this.dataset.id,
+                this.dataset.ref,
+                this.dataset.titulo,
+                this.dataset.desc
+            );
+        });
+    });
+
+    // Listener para o botão de cada requisito na Visão por Requisitos
     document.querySelectorAll('.btn-add-question-for-req').forEach(btn => {
         btn.addEventListener('click', function(e) {
             e.stopPropagation();
-            const itemId = this.dataset.id;
-            const itemRef = this.dataset.ref;
-            const itemTitulo = this.dataset.titulo;
-
-            // Limpa seleções anteriores e marca o requisito contextualizado
-            selectedItemsMap.clear();
-            selectedItemsMap.set(String(itemId), {
-                ref: itemRef,
-                titulo: itemTitulo
-            });
-
-            // Atualiza checkboxes no catálogo modal
-            document.querySelectorAll('.chk-catalogo-item-modelo').forEach(chk => {
-                chk.checked = (chk.value === String(itemId));
-            });
-
-            renderSelectedItems();
-
-            const modalPerguntaEl = document.getElementById('novaPerguntaModeloModal');
-            const bsPergunta = bootstrap.Modal.getInstance(modalPerguntaEl) || new bootstrap.Modal(modalPerguntaEl);
-            bsPergunta.show();
+            openQuickCreateForRequirement(
+                this.dataset.id,
+                this.dataset.ref,
+                this.dataset.titulo,
+                this.dataset.desc || this.dataset.titulo
+            );
         });
     });
     const btnAbrir = document.getElementById('btnAbrirCatalogoModeloModal');
