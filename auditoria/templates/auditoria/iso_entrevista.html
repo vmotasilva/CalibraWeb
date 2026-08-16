@@ -120,7 +120,7 @@
                     <!-- Requisito Vinculado -->
                     <div class="mb-2">
                         <label class="form-label fw-bold text-dark mb-1">Requisito da Norma Associado</label>
-                        <div class="p-2.5 bg-light rounded-3 border d-flex align-items-center gap-2" id="modalEntrevistaRequisitosContainer">
+                        <div class="p-2.5 bg-light rounded-3 border d-flex flex-column gap-2" id="modalEntrevistaRequisitosContainer">
                             <!-- Populado via JS -->
                         </div>
                     </div>
@@ -270,9 +270,12 @@
                 hiddenContainer.innerHTML = '';
 
                 itemObjects.forEach(io => {
-                    const span = document.createElement('span');
-                    span.className = 'badge bg-primary text-white rounded-pill px-2.5 py-1 small me-1';
-                    span.textContent = `${io.ref} - ${io.titulo}`;
+                    const span = document.createElement('div');
+                    span.className = 'badge bg-primary text-white rounded-3 p-2.5 small text-start w-100 fw-normal shadow-2xs';
+                    span.style.whiteSpace = 'normal';
+                    span.style.wordBreak = 'break-word';
+                    span.style.lineHeight = '1.4';
+                    span.innerHTML = `<strong class="fw-bold">${io.ref}</strong> - ${io.titulo}`;
                     reqContainer.appendChild(span);
 
                     const input = document.createElement('input');
