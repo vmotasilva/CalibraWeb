@@ -3574,6 +3574,9 @@ def iso_modelo_detail(request, pk):
     total_multi_associacoes = 0
     total_alvo_modelo = 0
     
+    total_cobertos_100 = 0
+    total_pendentes = 0
+
     for item in itens_norma_folhas:
         blocos_associados = []
         for bloco in blocos:
@@ -3591,13 +3594,21 @@ def iso_modelo_detail(request, pk):
             is_multi = len(blocos_associados) > 1
             if is_multi:
                 total_multi_associacoes += 1
+
+            is_coberto_100 = all(b['total_perguntas'] > 0 for b in blocos_associados)
+            if is_coberto_100:
+                total_cobertos_100 += 1
+            else:
+                total_pendentes += 1
                 
             matriz_requisitos.append({
                 'item': item,
                 'blocos_associados': blocos_associados,
                 'total_blocos': len(blocos_associados),
                 'is_multi': is_multi,
-                'tem_cobertura': any(b['total_perguntas'] > 0 for b in blocos_associados)
+                'tem_cobertura': any(b['total_perguntas'] > 0 for b in blocos_associados),
+                'is_coberto_100': is_coberto_100,
+                'status_cobertura': 'COMPLETO' if is_coberto_100 else 'PENDENTE'
             })
 
     total_single_associacoes = total_alvo_modelo - total_multi_associacoes
@@ -3610,6 +3621,8 @@ def iso_modelo_detail(request, pk):
         "total_alvo_modelo": total_alvo_modelo,
         "total_multi_associacoes": total_multi_associacoes,
         "total_single_associacoes": total_single_associacoes,
+        "total_cobertos_100": total_cobertos_100,
+        "total_pendentes": total_pendentes,
         "mode": "template",
         "back_url": reverse('auditoria:iso_norma_detail', args=[modelo.norma_id]) + "?tab=modelos"
     })
@@ -3763,6 +3776,9 @@ def iso_modelo_bloco_pergunta_create(request, modelo_id, pk):
         bloco.perguntas.add(nova_pergunta)
         
     messages.success(request, f"Pergunta '{nova_pergunta.texto_pergunta[:40]}...' criada no Banco Geral e vinculada ao bloco!")
+    next_url = request.POST.get('next') or request.GET.get('next') or request.META.get('HTTP_REFERER')
+    if next_url and ('modelos' in next_url or 'setup' in next_url):
+        return redirect(next_url)
     return redirect('auditoria:iso_modelo_bloco_perguntas', modelo_id=modelo_id, pk=pk)
 
 @login_required

@@ -274,7 +274,8 @@
             <div class="card border-0 shadow-sm rounded-4 overflow-hidden item-matriz-card" 
                  data-ref="{{ item_info.item.referencia|lower }}" 
                  data-titulo="{{ item_info.item.titulo|lower }}" 
-                 data-multi="{{ item_info.is_multi|yesno:'true,false' }}">
+                 data-multi="{{ item_info.is_multi|yesno:'true,false' }}"
+                 data-status-cobertura="{{ item_info.status_cobertura }}">
                  
                 <div class="card-header bg-white p-3.5 d-flex flex-wrap align-items-center justify-content-between gap-2 border-0">
                     <div class="d-flex align-items-center gap-2">
@@ -516,23 +517,23 @@
                     </div>
                 </div>
 
-                <!-- Filtros por Tipo de Associação -->
+                <!-- Filtros por Status de Elaboração de Perguntas -->
                 <div class="mb-3">
-                    <label class="form-label fw-bold text-dark mb-2">Filtrar por Repetição entre Blocos</label>
+                    <label class="form-label fw-bold text-dark mb-2">Filtrar por Status de Elaboração de Perguntas</label>
                     <div class="d-flex flex-column gap-2">
-                        <button type="button" class="btn btn-outline-secondary rounded-3 text-start d-flex justify-content-between align-items-center py-2.5 active" id="btnFilterMatrizTodos">
-                            <span><i class="bi bi-list-stars me-2"></i> Todos os Requisitos</span>
+                        <button type="button" class="btn btn-outline-secondary rounded-3 text-start d-flex justify-content-between align-items-center py-2.5 active" id="btnFilterMatrizStatusTodos">
+                            <span><i class="bi bi-filter-circle me-2"></i> Todos os Status</span>
                             <span class="badge bg-secondary rounded-pill px-2.5 py-1">{{ total_alvo_modelo }}</span>
                         </button>
 
-                        <button type="button" class="btn btn-outline-warning text-dark rounded-3 text-start d-flex justify-content-between align-items-center py-2.5" id="btnFilterMatrizMulti">
-                            <span><i class="bi bi-arrow-repeat me-2 text-warning"></i> 🔄 Apenas Múltiplas Associações (Se repetem)</span>
-                            <span class="badge bg-warning text-dark rounded-pill px-2.5 py-1">{{ total_multi_associacoes }}</span>
+                        <button type="button" class="btn btn-outline-success rounded-3 text-start d-flex justify-content-between align-items-center py-2.5 text-dark" id="btnFilterMatrizStatusCompleto">
+                            <span><i class="bi bi-check-circle-fill me-2 text-success"></i> ✅ Perguntas Criadas em Todos os Blocos</span>
+                            <span class="badge bg-success text-white rounded-pill px-2.5 py-1">{{ total_cobertos_100 }}</span>
                         </button>
 
-                        <button type="button" class="btn btn-outline-info text-dark rounded-3 text-start d-flex justify-content-between align-items-center py-2.5" id="btnFilterMatrizSingle">
-                            <span><i class="bi bi-pin-angle me-2 text-info"></i> 📍 Apenas Associação Única (NÃO se repetem)</span>
-                            <span class="badge bg-info text-dark rounded-pill px-2.5 py-1">{{ total_single_associacoes }}</span>
+                        <button type="button" class="btn btn-outline-danger rounded-3 text-start d-flex justify-content-between align-items-center py-2.5 text-dark" id="btnFilterMatrizStatusPendente">
+                            <span><i class="bi bi-exclamation-triangle-fill me-2 text-danger"></i> ⚠️ Faltando Perguntas / Pendentes</span>
+                            <span class="badge bg-danger text-white rounded-pill px-2.5 py-1">{{ total_pendentes }}</span>
                         </button>
                     </div>
                 </div>
@@ -725,13 +726,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // Filtros e Busca da Matriz de Requisitos (no Pop-up)
     const selectItemNorma = document.getElementById('selectFilterItemNormaMatriz');
     const inputSearch = document.getElementById('search_mapping_input');
-    const btnFilterTodos = document.getElementById('btnFilterMatrizTodos');
-    const btnFilterMulti = document.getElementById('btnFilterMatrizMulti');
-    const btnFilterSingle = document.getElementById('btnFilterMatrizSingle');
+    const btnFilterStatusTodos = document.getElementById('btnFilterMatrizStatusTodos');
+    const btnFilterStatusCompleto = document.getElementById('btnFilterMatrizStatusCompleto');
+    const btnFilterStatusPendente = document.getElementById('btnFilterMatrizStatusPendente');
     const btnLimparFiltros = document.getElementById('btnLimparFiltrosMatriz');
     const itemCards = document.querySelectorAll('.item-matriz-card');
 
-    let currentFilterAssociationMode = 'ALL'; // 'ALL', 'MULTI', 'SINGLE'
+    let currentFilterStatusMode = 'ALL'; // 'ALL', 'COMPLETO', 'PENDENTE'
 
     function applyMatrizFilters() {
         const query = (inputSearch ? inputSearch.value : '').toLowerCase().trim();
@@ -741,7 +742,7 @@ document.addEventListener('DOMContentLoaded', function() {
         itemCards.forEach(card => {
             const ref = (card.dataset.ref || '').toLowerCase();
             const titulo = (card.dataset.titulo || '').toLowerCase();
-            const isMulti = card.dataset.multi === 'true';
+            const statusCobertura = card.dataset.statusCobertura || '';
 
             // Filtro 1: Busca Livre por Texto
             const matchesSearch = !query || ref.includes(query) || titulo.includes(query);
@@ -749,15 +750,15 @@ document.addEventListener('DOMContentLoaded', function() {
             // Filtro 2: Seleção de Item Específico no Dropdown
             const matchesItemSelect = !selectedItemRef || ref === selectedItemRef || ref.startsWith(selectedItemRef + '.');
 
-            // Filtro 3: Repetição entre Blocos (Todos, Múltiplos, Único)
-            let matchesAssociation = true;
-            if (currentFilterAssociationMode === 'MULTI') {
-                matchesAssociation = isMulti;
-            } else if (currentFilterAssociationMode === 'SINGLE') {
-                matchesAssociation = !isMulti;
+            // Filtro 3: Status de Elaboração de Perguntas (Todos, Completo, Pendente)
+            let matchesStatus = true;
+            if (currentFilterStatusMode === 'COMPLETO') {
+                matchesStatus = (statusCobertura === 'COMPLETO');
+            } else if (currentFilterStatusMode === 'PENDENTE') {
+                matchesStatus = (statusCobertura === 'PENDENTE');
             }
 
-            const isVisible = matchesSearch && matchesItemSelect && matchesAssociation;
+            const isVisible = matchesSearch && matchesItemSelect && matchesStatus;
             card.style.display = isVisible ? 'block' : 'none';
             if (isVisible) visibleCount++;
         });
@@ -770,13 +771,13 @@ document.addEventListener('DOMContentLoaded', function() {
             textEl.textContent = `Exibindo ${visibleCount} de {{ total_alvo_modelo }} requisitos no escopo`;
         }
 
-        const isFiltered = query.length > 0 || selectedItemRef.length > 0 || currentFilterAssociationMode !== 'ALL';
+        const isFiltered = query.length > 0 || selectedItemRef.length > 0 || currentFilterStatusMode !== 'ALL';
         if (badgeEl) {
             badgeEl.style.display = isFiltered ? 'inline-block' : 'none';
-            if (currentFilterAssociationMode === 'MULTI') {
-                badgeEl.textContent = 'Filtro: Se Repetem (Múltiplos)';
-            } else if (currentFilterAssociationMode === 'SINGLE') {
-                badgeEl.textContent = 'Filtro: Não se Repetem (Único)';
+            if (currentFilterStatusMode === 'COMPLETO') {
+                badgeEl.textContent = 'Filtro: Perguntas Completas';
+            } else if (currentFilterStatusMode === 'PENDENTE') {
+                badgeEl.textContent = 'Filtro: Faltando Perguntas';
             } else if (selectedItemRef) {
                 badgeEl.textContent = 'Filtro: Item Específico';
             } else {
@@ -794,33 +795,33 @@ document.addEventListener('DOMContentLoaded', function() {
         inputSearch.addEventListener('input', applyMatrizFilters);
     }
 
-    function setActiveAssociationBtn(activeBtn) {
-        [btnFilterTodos, btnFilterMulti, btnFilterSingle].forEach(btn => {
+    function setActiveStatusBtn(activeBtn) {
+        [btnFilterStatusTodos, btnFilterStatusCompleto, btnFilterStatusPendente].forEach(btn => {
             if (btn) btn.classList.remove('active');
         });
         if (activeBtn) activeBtn.classList.add('active');
     }
 
-    if (btnFilterTodos) {
-        btnFilterTodos.addEventListener('click', function() {
-            currentFilterAssociationMode = 'ALL';
-            setActiveAssociationBtn(btnFilterTodos);
+    if (btnFilterStatusTodos) {
+        btnFilterStatusTodos.addEventListener('click', function() {
+            currentFilterStatusMode = 'ALL';
+            setActiveStatusBtn(btnFilterStatusTodos);
             applyMatrizFilters();
         });
     }
 
-    if (btnFilterMulti) {
-        btnFilterMulti.addEventListener('click', function() {
-            currentFilterAssociationMode = 'MULTI';
-            setActiveAssociationBtn(btnFilterMulti);
+    if (btnFilterStatusCompleto) {
+        btnFilterStatusCompleto.addEventListener('click', function() {
+            currentFilterStatusMode = 'COMPLETO';
+            setActiveStatusBtn(btnFilterStatusCompleto);
             applyMatrizFilters();
         });
     }
 
-    if (btnFilterSingle) {
-        btnFilterSingle.addEventListener('click', function() {
-            currentFilterAssociationMode = 'SINGLE';
-            setActiveAssociationBtn(btnFilterSingle);
+    if (btnFilterStatusPendente) {
+        btnFilterStatusPendente.addEventListener('click', function() {
+            currentFilterStatusMode = 'PENDENTE';
+            setActiveStatusBtn(btnFilterStatusPendente);
             applyMatrizFilters();
         });
     }
@@ -829,8 +830,8 @@ document.addEventListener('DOMContentLoaded', function() {
         btnLimparFiltros.addEventListener('click', function() {
             if (inputSearch) inputSearch.value = '';
             if (selectItemNorma) selectItemNorma.value = '';
-            currentFilterAssociationMode = 'ALL';
-            setActiveAssociationBtn(btnFilterTodos);
+            currentFilterStatusMode = 'ALL';
+            setActiveStatusBtn(btnFilterStatusTodos);
             applyMatrizFilters();
         });
     }
