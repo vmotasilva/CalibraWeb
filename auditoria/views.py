@@ -4591,12 +4591,20 @@ def iso_agenda_detail(request, auditoria_id, pk):
     if not itens_norma_todos.exists():
         itens_norma_todos = ItemNorma.objects.all().order_by('referencia')
     
-    # Análise de Cobertura de Escopo (Itens Alvo vs Itens Cobertos)
-    itens_alvo = agenda.itens_norma.all()
+    # Análise de Cobertura de Escopo (Apenas itens de último nível / folhas)
+    itens_alvo_todos = list(agenda.itens_norma.all().order_by('ordem', 'referencia'))
+    
+    parent_ids_in_alvo = set()
+    for item in itens_alvo_todos:
+        prefix = item.referencia + '.'
+        if any(other.referencia.startswith(prefix) for other in itens_alvo_todos if other.id != item.id):
+            parent_ids_in_alvo.add(item.id)
+
+    itens_alvo = [item for item in itens_alvo_todos if item.id not in parent_ids_in_alvo]
     itens_cobertos_qs = agenda.itens_cobertos()
     itens_cobertos_ids = set(itens_cobertos_qs.values_list('id', flat=True))
     
-    total_alvo = itens_alvo.count()
+    total_alvo = len(itens_alvo)
     total_coberto = sum(1 for item in itens_alvo if item.id in itens_cobertos_ids)
     porcentagem_cobertura = round((total_coberto / total_alvo * 100)) if total_alvo > 0 else 0
     
