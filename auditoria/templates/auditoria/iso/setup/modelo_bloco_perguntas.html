@@ -67,19 +67,29 @@
                                 <div class="progress-bar {% if porcentagem_cobertura == 100 %}bg-success{% elif porcentagem_cobertura > 0 %}bg-warning{% else %}bg-secondary{% endif %} progress-bar-striped progress-bar-animated" role="progressbar" style="width: {{ porcentagem_cobertura }}%;" aria-valuenow="{{ porcentagem_cobertura }}" aria-valuemin="0" aria-valuemax="100"></div>
                             </div>
 
-                            <!-- Checklist de Tags de Cobertura com Interação Quick Create -->
+                            <!-- Checklist de Tags de Cobertura com Sinalização de 3 Cores -->
                             <small class="text-muted d-block fw-bold mb-2">Requisitos Alvo (Clique para Criar Pergunta Rápida):</small>
                             <div class="d-flex flex-wrap gap-1">
                                 {% for status in cobertura_status %}
-                                    {% if status.coberto %}
+                                    {% if status.status_code == 'VERDE' %}
                                         <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill btn-quick-create-tag shadow-2xs" 
                                               data-id="{{ status.item.id }}" 
                                               data-ref="{{ status.item.referencia }}" 
                                               data-titulo="{{ status.item.titulo }}"
                                               data-desc="{{ status.item.descricao|default:status.item.titulo }}"
                                               style="cursor: pointer; transition: transform 0.15s ease;"
-                                              title="🟢 Coberto - Clique para criar pergunta rápida para o item {{ status.item.referencia }}">
+                                              title="🟢 Coberto neste bloco - Clique para criar outra pergunta rápida para {{ status.item.referencia }}">
                                             🟢 {{ status.item.referencia }}
+                                        </span>
+                                    {% elif status.status_code == 'AMARELO' %}
+                                        <span class="badge bg-warning bg-opacity-20 text-dark border border-warning border-opacity-50 rounded-pill btn-quick-create-tag shadow-2xs" 
+                                              data-id="{{ status.item.id }}" 
+                                              data-ref="{{ status.item.referencia }}" 
+                                              data-titulo="{{ status.item.titulo }}"
+                                              data-desc="{{ status.item.descricao|default:status.item.titulo }}"
+                                              style="cursor: pointer; transition: transform 0.15s ease;"
+                                              title="🟡 Possui pergunta em OUTRO bloco deste modelo - Clique para criar uma pergunta para este bloco (item {{ status.item.referencia }})">
+                                            🟡 {{ status.item.referencia }}
                                         </span>
                                     {% else %}
                                         <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill btn-quick-create-tag shadow-2xs" 
@@ -88,7 +98,7 @@
                                               data-titulo="{{ status.item.titulo }}"
                                               data-desc="{{ status.item.descricao|default:status.item.titulo }}"
                                               style="cursor: pointer; transition: transform 0.15s ease;"
-                                              title="🔴 Pendente - Clique para criar pergunta rápida para o item {{ status.item.referencia }}">
+                                              title="🔴 Pendente - Sem pergunta em nenhum bloco (Clique para criar pergunta para {{ status.item.referencia }})">
                                             🔴 {{ status.item.referencia }}
                                         </span>
                                     {% endif %}

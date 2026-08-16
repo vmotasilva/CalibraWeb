@@ -3629,16 +3629,34 @@ def iso_modelo_bloco_perguntas(request, modelo_id, pk):
     for p in perguntas_vinculadas:
         for item in p.itens_norma.all():
             itens_cobertos_ids.add(item.id)
+
+    # Identifica itens cobertos por perguntas em OUTROS blocos do mesmo modelo
+    itens_cobertos_outros_blocos_ids = set()
+    outros_blocos = bloco.modelo.blocos.exclude(id=bloco.id)
+    for b in outros_blocos:
+        for p in b.perguntas.all():
+            for item in p.itens_norma.all():
+                if item.id not in itens_cobertos_ids:
+                    itens_cobertos_outros_blocos_ids.add(item.id)
             
     cobertura_status = []
     total_coberto = 0
     for item in itens_alvo:
-        is_coberto = item.id in itens_cobertos_ids
-        if is_coberto:
+        is_coberto_neste_bloco = item.id in itens_cobertos_ids
+        is_coberto_outro_bloco = item.id in itens_cobertos_outros_blocos_ids
+
+        if is_coberto_neste_bloco:
             total_coberto += 1
+            status_code = 'VERDE'
+        elif is_coberto_outro_bloco:
+            status_code = 'AMARELO'
+        else:
+            status_code = 'VERMELHO'
+
         cobertura_status.append({
             'item': item,
-            'coberto': is_coberto
+            'coberto': is_coberto_neste_bloco,
+            'status_code': status_code,
         })
         
     porcentagem_cobertura = round((total_coberto / total_alvo * 100)) if total_alvo > 0 else 0
