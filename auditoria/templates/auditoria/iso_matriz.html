@@ -57,8 +57,10 @@
                             data-titulo="{{ row.titulo }}"
                             data-desc="{{ row.descricao }}"
                             data-status="{{ row.status }}"
-                            data-blocos='{{ row.blocos_associados|json_script:"blocos-data" }}'
                             {% endif %}>
+                            {% if not row.is_parent %}
+                            <script class="blocos-json-data" type="application/json">{{ row.blocos_associados_json|safe }}</script>
+                            {% endif %}
                             <td class="ps-4"><strong>{{ row.referencia }}</strong></td>
                             <td>
                                 <div><strong class="{% if row.is_parent %}text-muted{% else %}text-primary hover-underline{% endif %}">{{ row.titulo }}</strong></div>
@@ -153,7 +155,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Extrai o JSON de blocos associados do script da linha
             let blocos = [];
-            const scriptTag = this.querySelector('script');
+            const scriptTag = this.querySelector('.blocos-json-data');
             if (scriptTag) {
                 try {
                     blocos = JSON.parse(scriptTag.textContent || '[]');

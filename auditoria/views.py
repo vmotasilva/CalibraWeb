@@ -3424,29 +3424,26 @@ def iso_matriz_view(request, auditoria_id):
                 if item.id in p_item_ids or (not p_item_ids and item.id in ag_item_ids):
                     perguntas_bloco_req.append(p)
 
-            # Bloco é associado se contém o ID do item ou se não possui restrições de escopo registradas
-            is_associado = (item.id in ag_item_ids) or (not ag_item_ids)
-            
-            if is_associado:
-                perguntas_info = []
-                for p in perguntas_bloco_req:
-                    todas_perguntas_item_set.add(p.id)
-                    resp = respostas_map.get(p.id)
-                    perguntas_info.append({
-                        'id': p.id,
-                        'texto_pergunta': p.texto_pergunta,
-                        'dica_auditor': p.dica_auditor or '',
-                        'classificacao': resp.classificacao if resp else 'P',
-                        'classificacao_display': resp.get_classificacao_display() if resp else 'Pendente',
-                        'texto_resposta': resp.texto_resposta if (resp and resp.texto_resposta) else ''
-                    })
-                    
-                blocos_associados.append({
-                    'bloco_id': agenda.id,
-                    'bloco_titulo': agenda.titulo,
-                    'total_perguntas': len(perguntas_info),
-                    'perguntas': perguntas_info
+            # Todas as agendas da auditoria aparecem para o requisito
+            perguntas_info = []
+            for p in perguntas_bloco_req:
+                todas_perguntas_item_set.add(p.id)
+                resp = respostas_map.get(p.id)
+                perguntas_info.append({
+                    'id': p.id,
+                    'texto_pergunta': p.texto_pergunta,
+                    'dica_auditor': p.dica_auditor or '',
+                    'classificacao': resp.classificacao if resp else 'P',
+                    'classificacao_display': resp.get_classificacao_display() if resp else 'Pendente',
+                    'texto_resposta': resp.texto_resposta if (resp and resp.texto_resposta) else ''
                 })
+                
+            blocos_associados.append({
+                'bloco_id': agenda.id,
+                'bloco_titulo': agenda.titulo,
+                'total_perguntas': len(perguntas_info),
+                'perguntas': perguntas_info
+            })
                 
         # Status Calculado
         if is_parent:
@@ -3471,7 +3468,8 @@ def iso_matriz_view(request, auditoria_id):
             "is_parent": is_parent,
             "status": status_item,
             "qtd_perguntas": len(todas_perguntas_item_set),
-            "blocos_associados": blocos_associados
+            "blocos_associados": blocos_associados,
+            "blocos_associados_json": json.dumps(blocos_associados)
         })
         
     context = {
