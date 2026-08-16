@@ -3554,6 +3554,7 @@ def iso_modelo_detail(request, pk):
     """Visão de Detalhes do Modelo (Template Mode com Visão por Blocos e Matriz Orientada aos Itens da Norma)"""
     from .models import ModeloAuditoriaIso, ItemNorma
     modelo = get_object_or_404(ModeloAuditoriaIso, pk=pk)
+    blocos = modelo.blocos.all().prefetch_related('perguntas', 'itens_norma')
     itens_norma_todos = list(ItemNorma.objects.filter(norma=modelo.norma).order_by('ordem', 'referencia'))
     
     # Identifica itens que são pais/agrupadores na norma (possuem sub-itens)
