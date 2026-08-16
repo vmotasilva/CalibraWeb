@@ -159,6 +159,13 @@
         }
 
         const p = perguntas[currentIndex];
+
+        // Restaura rascunho salvo do localStorage se o texto do servidor estiver vazio
+        const draftKey = `calibra_entrevista_${auditoriaId}_${p.id}`;
+        const localDraft = localStorage.getItem(draftKey);
+        if (localDraft && (!p.texto_resposta || p.texto_resposta.trim() === '')) {
+            p.texto_resposta = localDraft;
+        }
         
         let outrosBlocosHtml = '';
         if (p.outros_blocos && p.outros_blocos.length > 0) {
@@ -204,7 +211,7 @@
                         
                         <div class="mb-4 mt-3">
                             <label class="form-label fw-bold text-dark mb-1">Anotações / Evidências Coletadas pelo Auditor:</label>
-                            <textarea id="resposta-text" class="form-control textarea-response shadow-2xs" rows="4" placeholder="Digite aqui os registros, documentos e evidências apresentadas pelo auditado...">${p.texto_resposta}</textarea>
+                            <textarea id="resposta-text" class="form-control textarea-response shadow-2xs" rows="4" placeholder="Digite aqui os registros, documentos e evidências apresentadas pelo auditado...">${p.texto_resposta || ''}</textarea>
                         </div>
 
                         <div class="d-flex justify-content-center gap-2 mb-4 flex-wrap">
@@ -260,11 +267,12 @@
         
         app.innerHTML = html;
 
-        // Adiciona evento de digitação para Autosave (Debounce)
+        // Adiciona evento de digitação para Autosave + localStorage
         const textarea = document.getElementById('resposta-text');
         if (textarea) {
             textarea.addEventListener('input', () => {
                 p.texto_resposta = textarea.value;
+                localStorage.setItem(draftKey, textarea.value);
                 triggerAutosave();
             });
         }
@@ -317,9 +325,10 @@
     }
 
     function setClassificacao(val) {
+        doSave(); // Salva estado atual imediatamente antes de alterar
         perguntas[currentIndex].classificacao = val;
-        renderQuestion(); // Re-render para atualizar os botões
-        triggerAutosave(true); // Força save imediato
+        renderQuestion();
+        triggerAutosave(true);
     }
 
     function triggerAutosave(immediate = false) {
@@ -327,13 +336,17 @@
         if (immediate) {
             doSave();
         } else {
-            saveTimeout = setTimeout(doSave, 1000); // 1 segundo de debounce
+            saveTimeout = setTimeout(doSave, 800); // 800ms de debounce
         }
     }
 
     function doSave() {
         const p = perguntas[currentIndex];
-        
+        if (!p) return;
+
+        const draftKey = `calibra_entrevista_${auditoriaId}_${p.id}`;
+        localStorage.setItem(draftKey, p.texto_resposta || '');
+
         fetch("{% url 'auditoria:api_iso_autosave_resposta' %}", {
             method: 'POST',
             headers: {
@@ -343,16 +356,18 @@
             body: JSON.stringify({
                 auditoria_id: auditoriaId,
                 pergunta_id: p.id,
-                texto_resposta: p.texto_resposta,
-                classificacao: p.classificacao
+                texto_resposta: p.texto_resposta || '',
+                classificacao: p.classificacao || 'P'
             })
         })
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
                 showSaveIndicator();
+                localStorage.removeItem(draftKey);
             }
-        });
+        })
+        .catch(err => console.error("Erro no autosave:", err));
     }
 
     function renderSolicitacoesList(sols) {
@@ -570,6 +585,28 @@
                 }
             });
         }
+    });
+
+    function nextQuestion() {
+        doSave();
+        if (currentIndex < perguntas.length - 1) {
+            currentIndex++;
+            renderQuestion();
+        } else {
+            window.location.href = "{% url 'auditoria:iso_auditoria_detail' auditoria.id %}";
+        }
+    }
+
+    function prevQuestion() {
+        doSave();
+        if (currentIndex > 0) {
+            currentIndex--;
+            renderQuestion();
+        }
+    }
+
+    window.addEventListener('beforeunload', function() {
+        doSave();
     });
 
     function showSaveIndicatorMessage(msg) {
