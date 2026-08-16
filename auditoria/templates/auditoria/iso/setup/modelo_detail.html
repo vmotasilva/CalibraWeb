@@ -261,12 +261,18 @@
                 <div class="col-md-5">
                     <div class="input-group">
                         <span class="input-group-text bg-light border-0"><i class="bi bi-search text-muted"></i></span>
+                        <!-- Dummy Hidden Inputs para capturar o autofill do Chrome -->
+                        <input type="text" style="display:none !important;" aria-hidden="true" tabindex="-1">
+                        <input type="password" style="display:none !important;" aria-hidden="true" tabindex="-1">
+
                         <input type="text" 
                                id="search_mapping_input" 
                                name="search_mapping_input" 
                                class="form-control border-0 bg-light" 
                                placeholder="Buscar por referência (ex: 4.1.1) ou título..." 
-                               autocomplete="new-password" 
+                               readonly
+                               onfocus="this.removeAttribute('readonly');"
+                               autocomplete="off" 
                                autocorrect="off" 
                                autocapitalize="none" 
                                spellcheck="false" 
@@ -540,6 +546,19 @@ document.addEventListener('DOMContentLoaded', function() {
             btnBlocos.className = 'btn btn-sm btn-light text-secondary rounded-pill px-3.5 py-1.5 fw-semibold';
             containerBlocos.style.display = 'none';
             containerRequisitos.style.display = 'block';
+
+            // Expurgador ativo contra o autofill tardio do Chrome ao alternar a visao
+            if (inputSearch) {
+                inputSearch.value = '';
+                [50, 150, 350].forEach(delay => {
+                    setTimeout(() => {
+                        if (inputSearch && inputSearch.getAttribute('readonly')) {
+                            inputSearch.value = '';
+                            applyMatrizFilters();
+                        }
+                    }, delay);
+                });
+            }
         });
     }
 
@@ -569,6 +588,16 @@ document.addEventListener('DOMContentLoaded', function() {
     if (inputSearch) {
         inputSearch.value = '';
         inputSearch.addEventListener('input', applyMatrizFilters);
+
+        // Expurgador preventivo na carga da pagina
+        [50, 150, 350, 700].forEach(delay => {
+            setTimeout(() => {
+                if (inputSearch && inputSearch.getAttribute('readonly')) {
+                    inputSearch.value = '';
+                    applyMatrizFilters();
+                }
+            }, delay);
+        });
     }
 
     if (btnFilterTodos && btnFilterMulti) {
