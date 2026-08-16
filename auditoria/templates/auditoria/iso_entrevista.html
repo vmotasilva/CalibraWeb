@@ -214,7 +214,28 @@
                             <button type="button" class="btn btn-outline-secondary btn-classificacao px-3 py-2 ${p.classificacao === 'NA' ? 'active btn-secondary text-white' : ''}" onclick="setClassificacao('NA')">ℹ️ N/A</button>
                         </div>
 
-                        <div class="d-flex justify-content-between pt-3 border-top">
+                        <!-- Seção de Solicitações de Evidência -->
+                        <div class="mt-4 pt-3 border-top">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                                        <i class="bi bi-file-earmark-check text-primary fs-5"></i>
+                                        <span>Solicitações de Evidência & Amostragens</span>
+                                        <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill small ms-1" id="solicitacoes-count-badge">${(p.solicitacoes || []).length}</span>
+                                    </h6>
+                                    <small class="text-muted d-block" style="font-size: 0.8rem;">Registre itens ou amostras solicitadas para comprovar a conformidade do requisito.</small>
+                                </div>
+                                <button type="button" class="btn btn-outline-primary btn-sm rounded-pill fw-bold px-3 shadow-2xs" onclick="adicionarSolicitacaoEvidencia()">
+                                    <i class="bi bi-plus-lg me-1"></i> Nova Solicitação
+                                </button>
+                            </div>
+
+                            <div id="solicitacoes-list-container" class="d-flex flex-column gap-3">
+                                ${renderSolicitacoesList(p.solicitacoes || [])}
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between pt-4 mt-4 border-top">
                             <button type="button" class="btn btn-light rounded-pill px-4 fw-bold" onclick="prevQuestion()" ${currentIndex === 0 ? 'disabled' : ''}><i class="bi bi-arrow-left me-1"></i> Anterior</button>
                             <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" onclick="nextQuestion()">${currentIndex === perguntas.length - 1 ? 'Finalizar Entrevista <i class="bi bi-check2-all ms-1"></i>' : 'Próxima <i class="bi bi-arrow-right ms-1"></i>'}</button>
                         </div>
@@ -334,26 +355,167 @@
         });
     }
 
-    function showSaveIndicator() {
-        saveIndicator.style.opacity = '1';
-        setTimeout(() => {
-            saveIndicator.style.opacity = '0';
-        }, 2000);
+    function renderSolicitacoesList(sols) {
+        if (!sols || sols.length === 0) {
+            return `
+                <div class="alert alert-light border text-center py-3 rounded-3 text-muted small mb-0">
+                    <i class="bi bi-inbox fs-5 d-block mb-1 text-secondary"></i>
+                    Nenhuma solicitação de evidência registrada nesta pergunta ainda.
+                </div>
+            `;
+        }
+
+        let html = '';
+        sols.forEach((s, idx) => {
+            let concBadge = '';
+            if (s.conclusao === 'C') concBadge = 'btn-success';
+            else if (s.conclusao === 'NC') concBadge = 'btn-danger';
+            else if (s.conclusao === 'OM') concBadge = 'btn-warning text-dark';
+            else if (s.conclusao === 'NA') concBadge = 'btn-secondary';
+            else concBadge = 'btn-outline-secondary';
+
+            html += `
+                <div class="card border rounded-3 p-3 bg-light shadow-2xs position-relative" id="sol-card-${s.id}">
+                    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                        <span class="badge bg-secondary bg-opacity-10 text-dark rounded-pill px-2.5 py-1 small fw-bold">Solicitação #${idx + 1}</span>
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="small text-muted me-1 fw-bold">Conclusão:</span>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button type="button" class="btn ${s.conclusao === 'C' ? 'btn-success' : 'btn-outline-success'} px-2 py-0.5 small" onclick="setConclusaoSolicitacao(${s.id}, 'C')">✅ Conforme</button>
+                                <button type="button" class="btn ${s.conclusao === 'NC' ? 'btn-danger' : 'btn-outline-danger'} px-2 py-0.5 small" onclick="setConclusaoSolicitacao(${s.id}, 'NC')">🔴 Não Conforme</button>
+                                <button type="button" class="btn ${s.conclusao === 'OM' ? 'btn-warning text-dark' : 'btn-outline-warning text-dark'} px-2 py-0.5 small" onclick="setConclusaoSolicitacao(${s.id}, 'OM')">🟠 OM</button>
+                                <button type="button" class="btn ${s.conclusao === 'NA' ? 'btn-secondary' : 'btn-outline-secondary'} px-2 py-0.5 small" onclick="setConclusaoSolicitacao(${s.id}, 'NA')">ℹ️ N/A</button>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-2" onclick="removerSolicitacaoEvidencia(${s.id})" title="Excluir Solicitação">
+                                <i class="bi bi-trash3"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label fw-bold text-dark mb-1 small">Item / Documento Solicitado <span class="text-danger">*</span></label>
+                        <input type="text" id="sol-texto-${s.id}" class="form-control form-control-sm bg-white border" placeholder="Ex: Certificado de Calibração do Manômetro M-04..." value="${s.solicitacao || ''}" onchange="salvarEdicaoSolicitacao(${s.id})">
+                    </div>
+
+                    <div>
+                        <label class="form-label fw-bold text-dark mb-1 small">Evidência Apresentada / Constatada pelo Auditor</label>
+                        <textarea id="sol-evidencia-${s.id}" class="form-control form-control-sm bg-white border" rows="2" placeholder="Ex: Apresentado laudo #1042/2026 emitido em 12/04 com selo RBC..." onchange="salvarEdicaoSolicitacao(${s.id})">${s.evidencia || ''}</textarea>
+                    </div>
+                </div>
+            `;
+        });
+        return html;
     }
 
-    function nextQuestion() {
-        if (currentIndex < perguntas.length - 1) {
-            currentIndex++;
-            renderQuestion();
-        } else {
-            window.location.href = "{% url 'auditoria:iso_auditoria_list' %}";
+    async function adicionarSolicitacaoEvidencia() {
+        const p = perguntas[currentIndex];
+        try {
+            const response = await fetch("{% url 'auditoria:api_iso_solicitacao_create' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    auditoria_id: auditoriaId,
+                    pergunta_id: p.id,
+                    solicitacao: "Nova Solicitação de Evidência",
+                    evidencia: "",
+                    conclusao: "P"
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                if (!p.solicitacoes) p.solicitacoes = [];
+                p.solicitacoes.push(data.solicitacao);
+                renderQuestion();
+                showSaveIndicatorMessage("Solicitação criada com sucesso!");
+            } else {
+                alert(data.error || 'Erro ao adicionar solicitação.');
+            }
+        } catch(err) {
+            console.error('Erro ao criar solicitação:', err);
         }
     }
 
-    function prevQuestion() {
-        if (currentIndex > 0) {
-            currentIndex--;
-            renderQuestion();
+    async function salvarEdicaoSolicitacao(solId) {
+        const p = perguntas[currentIndex];
+        const solObj = (p.solicitacoes || []).find(s => s.id === solId);
+        if (!solObj) return;
+
+        const inputTexto = document.getElementById(`sol-texto-${solId}`);
+        const inputEvidencia = document.getElementById(`sol-evidencia-${solId}`);
+
+        if (inputTexto) solObj.solicitacao = inputTexto.value;
+        if (inputEvidencia) solObj.evidencia = inputEvidencia.value;
+
+        try {
+            await fetch(`/auditoria/iso/api/solicitacoes/${solId}/editar/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    solicitacao: solObj.solicitacao,
+                    evidencia: solObj.evidencia,
+                    conclusao: solObj.conclusao
+                })
+            });
+            showSaveIndicatorMessage("Solicitação salva!");
+        } catch(err) {
+            console.error('Erro ao salvar solicitação:', err);
+        }
+    }
+
+    async function setConclusaoSolicitacao(solId, conclusaoVal) {
+        const p = perguntas[currentIndex];
+        const solObj = (p.solicitacoes || []).find(s => s.id === solId);
+        if (!solObj) return;
+
+        solObj.conclusao = conclusaoVal;
+        renderQuestion();
+
+        try {
+            await fetch(`/auditoria/iso/api/solicitacoes/${solId}/editar/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    solicitacao: solObj.solicitacao,
+                    evidencia: solObj.evidencia,
+                    conclusao: solObj.conclusao
+                })
+            });
+            showSaveIndicatorMessage("Conclusão atualizada!");
+        } catch(err) {
+            console.error('Erro ao atualizar conclusão:', err);
+        }
+    }
+
+    async function removerSolicitacaoEvidencia(solId) {
+        if (!confirm("Deseja realmente remover esta solicitação de evidência?")) return;
+        const p = perguntas[currentIndex];
+
+        try {
+            const response = await fetch(`/auditoria/iso/api/solicitacoes/${solId}/deletar/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                }
+            });
+            const data = await response.json();
+            if (data.success) {
+                p.solicitacoes = (p.solicitacoes || []).filter(s => s.id !== solId);
+                renderQuestion();
+                showSaveIndicatorMessage("Solicitação removida!");
+            }
+        } catch(err) {
+            console.error('Erro ao remover solicitação:', err);
         }
     }
 

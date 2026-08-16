@@ -3216,11 +3216,22 @@ def iso_entrevista_view(request, auditoria_id):
     perguntas_lista = sorted(list(perguntas), key=get_pergunta_sort_key)
     
     # Obter respostas já existentes
+    respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).prefetch_related('solicitacoes')
     respostas_dict = {}
-    for r in RespostaEntrevistaIso.objects.filter(auditoria=auditoria):
+    for r in respostas:
+        sols = [
+            {
+                "id": s.id,
+                "solicitacao": s.solicitacao,
+                "evidencia": s.evidencia,
+                "conclusao": s.conclusao
+            }
+            for s in r.solicitacoes.all()
+        ]
         respostas_dict[r.pergunta_id] = {
             "classificacao": r.classificacao,
-            "texto_resposta": r.texto_resposta
+            "texto_resposta": r.texto_resposta,
+            "solicitacoes": sols
         }
         
     agendas_outras_todas = list(auditoria.agendas.all().prefetch_related('itens_norma', 'perguntas'))
@@ -3253,7 +3264,8 @@ def iso_entrevista_view(request, auditoria_id):
             "itens_objects": [{"id": item.id, "ref": item.referencia, "titulo": item.titulo} for item in p.itens_norma.all()],
             "outros_blocos": outros_blocos_info,
             "classificacao": r.get("classificacao", "P"),
-            "texto_resposta": r.get("texto_resposta", "")
+            "texto_resposta": r.get("texto_resposta", ""),
+            "solicitacoes": r.get("solicitacoes", [])
         })
         
     context = {
@@ -3287,6 +3299,77 @@ def api_iso_autosave_resposta(request):
         return JsonResponse({"status": "success", "resposta_id": resposta.id})
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+@login_required
+@require_POST
+def api_iso_solicitacao_create(request):
+    from .models import SolicitacaoEvidenciaIso, RespostaEntrevistaIso, AuditoriaIso, BancoPergunta
+    try:
+        data = json.loads(request.body)
+        auditoria_id = data.get("auditoria_id")
+        pergunta_id = data.get("pergunta_id")
+        solicitacao_texto = data.get("solicitacao", "Nova Solicitação de Evidência").strip()
+        evidencia_texto = data.get("evidencia", "").strip()
+        conclusao = data.get("conclusao", "P")
+
+        auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+        pergunta = get_object_or_404(BancoPergunta, pk=pergunta_id)
+
+        resposta, _ = RespostaEntrevistaIso.objects.get_or_create(
+            auditoria=auditoria,
+            pergunta=pergunta,
+            defaults={"respondida_por": request.user}
+        )
+
+        nova_sol = SolicitacaoEvidenciaIso.objects.create(
+            resposta=resposta,
+            solicitacao=solicitacao_texto,
+            evidencia=evidencia_texto,
+            conclusao=conclusao
+        )
+
+        return JsonResponse({
+            "success": True,
+            "solicitacao": {
+                "id": nova_sol.id,
+                "solicitacao": nova_sol.solicitacao,
+                "evidencia": nova_sol.evidencia,
+                "conclusao": nova_sol.conclusao
+            }
+        })
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+@login_required
+@require_POST
+def api_iso_solicitacao_update(request, pk):
+    from .models import SolicitacaoEvidenciaIso
+    try:
+        sol = get_object_or_404(SolicitacaoEvidenciaIso, pk=pk)
+        data = json.loads(request.body)
+
+        if "solicitacao" in data:
+            sol.solicitacao = data["solicitacao"]
+        if "evidencia" in data:
+            sol.evidencia = data["evidencia"]
+        if "conclusao" in data:
+            sol.conclusao = data["conclusao"]
+
+        sol.save()
+        return JsonResponse({"success": True})
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+@login_required
+@require_POST
+def api_iso_solicitacao_delete(request, pk):
+    from .models import SolicitacaoEvidenciaIso
+    try:
+        sol = get_object_or_404(SolicitacaoEvidenciaIso, pk=pk)
+        sol.delete()
+        return JsonResponse({"success": True})
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=400)
 
 @login_required
 def iso_matriz_view(request, auditoria_id):

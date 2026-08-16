@@ -60,6 +60,9 @@ urlpatterns = [
     path("iso/<int:auditoria_id>/entrevista/", views.iso_entrevista_view, name="iso_entrevista_view"),
     path("iso/<int:auditoria_id>/matriz/", views.iso_matriz_view, name="iso_matriz_view"),
     path("iso/api/autosave/", views.api_iso_autosave_resposta, name="api_iso_autosave_resposta"),
+    path("iso/api/solicitacoes/criar/", views.api_iso_solicitacao_create, name="api_iso_solicitacao_create"),
+    path("iso/api/solicitacoes/<int:pk>/editar/", views.api_iso_solicitacao_update, name="api_iso_solicitacao_update"),
+    path("iso/api/solicitacoes/<int:pk>/deletar/", views.api_iso_solicitacao_delete, name="api_iso_solicitacao_delete"),
     # ISO 13485 (Setup CRUD)
     path("iso/setup/", views.iso_setup_dashboard, name="iso_setup_dashboard"),
     

@@ -865,3 +865,28 @@ class RespostaEntrevistaIso(models.Model):
     def __str__(self):
         return f"{self.auditoria} - {self.pergunta.texto_pergunta[:30]}"
 
+
+class SolicitacaoEvidenciaIso(models.Model):
+    CLASSIFICACAO_CHOICES = [
+        ("C", "Conforme"),
+        ("NC", "Não Conforme"),
+        ("NA", "Não Aplicável"),
+        ("OM", "Oportunidade de Melhoria"),
+        ("P", "Pendente"),
+    ]
+    resposta = models.ForeignKey(RespostaEntrevistaIso, on_delete=models.CASCADE, related_name="solicitacoes")
+    solicitacao = models.TextField(verbose_name="Solicitação / Item Solicitado")
+    evidencia = models.TextField(blank=True, verbose_name="Evidência Apresentada")
+    conclusao = models.CharField(max_length=2, choices=CLASSIFICACAO_CHOICES, default="P")
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Solicitação de Evidência ISO"
+        verbose_name_plural = "Solicitações de Evidências ISO"
+        ordering = ['criado_em']
+
+    def __str__(self):
+        return f"Solicitação: {self.solicitacao[:30]} ({self.conclusao})"
+
+
