@@ -112,27 +112,9 @@
                         </div>
                         
                         
-                        <!-- Escopo (Itens Aplicaveis) -->
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">{{ form.escopo_itens.label }} <span class="text-danger">*</span></label>
-                            <div class="text-muted small mb-2">Selecione os itens e sub-itens que serão auditados. Clique na seta para expandir.</div>
-                            
-                            <!-- Esconde os checkboxes padroes do django -->
-                            <div id="escopo_wrapper_hidden" style="display:none;">
-                                {{ form.escopo_itens }}
-                            </div>
-                            
-                            <!-- Mostra a nova arvore renderizada via JS -->
-                            <div class="escopo-container" id="custom_escopo_tree">
-                                <!-- Preenchido via JS -->
-                            </div>
-                            {{ form.escopo_itens.errors }}
-                        </div>
-                        
-                        
                         <div class="d-grid mt-4">
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="bi bi-check2-circle"></i> Salvar
+                            <button type="submit" class="btn btn-primary btn-lg rounded-pill fw-bold shadow-sm">
+                                <i class="bi bi-arrow-right-circle me-1"></i> Criar Planejamento (Avançar para Conteúdo)
                             </button>
                         </div>
                     </form>
