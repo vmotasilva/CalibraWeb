@@ -3201,7 +3201,6 @@ def iso_entrevista_view(request, auditoria_id):
     else:
         # Obter perguntas vinculadas ao escopo da auditoria
         perguntas = BancoPergunta.objects.filter(ativa=True, itens_norma__in=auditoria.escopo_itens.all()).distinct().prefetch_related('itens_norma')
-        # Fallback se escopo estiver vazio (para facilitar testes do MVP)
         if not perguntas.exists():
             perguntas = BancoPergunta.objects.filter(ativa=True).prefetch_related('itens_norma')
     
@@ -3213,14 +3212,35 @@ def iso_entrevista_view(request, auditoria_id):
             "texto_resposta": r.texto_resposta
         }
         
+    agendas_outras_todas = list(auditoria.agendas.all().prefetch_related('itens_norma', 'perguntas'))
+
     perguntas_data = []
     for p in perguntas:
         r = respostas_dict.get(p.id, {})
+        
+        itens_p = list(p.itens_norma.all())
+        outros_blocos_info = []
+        if itens_p:
+            for ag in agendas_outras_todas:
+                if agenda_id and str(ag.id) == str(agenda_id):
+                    continue
+                # Se o bloco tem algum dos itens da norma desta pergunta
+                itens_em_comum = [item for item in itens_p if item in ag.itens_norma.all() or any(item in p_ag.itens_norma.all() for p_ag in ag.perguntas.all())]
+                if itens_em_comum:
+                    outros_blocos_info.append({
+                        'agenda_id': ag.id,
+                        'titulo': ag.titulo,
+                        'itens_comum': [it.referencia for it in itens_em_comum],
+                        'total_perguntas': ag.perguntas.count()
+                    })
+
         perguntas_data.append({
             "id": p.id,
             "texto_pergunta": p.texto_pergunta,
             "dica_auditor": p.dica_auditor,
             "itens": ", ".join([item.referencia for item in p.itens_norma.all()]),
+            "itens_objects": [{"id": item.id, "ref": item.referencia, "titulo": item.titulo} for item in p.itens_norma.all()],
+            "outros_blocos": outros_blocos_info,
             "classificacao": r.get("classificacao", "P"),
             "texto_resposta": r.get("texto_resposta", "")
         })
@@ -4163,20 +4183,43 @@ def iso_agenda_alvo_update(request, auditoria_id, pk):
 @login_required
 @require_POST
 def iso_agenda_pergunta_create(request, auditoria_id, pk):
-    from .models import AgendaAuditoriaIso, AuditoriaIso
-    from .forms import BancoPerguntaIsoForm
+    from .models import AgendaAuditoriaIso, AuditoriaIso, BancoPergunta
+    from django.http import JsonResponse
     auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
     agenda = get_object_or_404(AgendaAuditoriaIso, pk=pk, auditoria=auditoria)
     
-    form = BancoPerguntaIsoForm(request.POST)
-    if form.is_valid():
-        nova_pergunta = form.save()
-        agenda.perguntas.add(nova_pergunta)
-        messages.success(request, "Pergunta criada e vinculada com sucesso!")
+    texto_pergunta = request.POST.get("texto_pergunta")
+    dica_resposta = request.POST.get("dica_resposta", "") or request.POST.get("dica_auditor", "")
+    item_ids = request.POST.getlist("itens_norma")
+    
+    if not texto_pergunta:
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'error': 'O enunciado da pergunta é obrigatório.'}, status=400)
+        messages.error(request, "O enunciado da pergunta é obrigatório.")
         return redirect('auditoria:iso_agenda_detail', auditoria_id=auditoria.id, pk=agenda.id)
-    else:
-        messages.error(request, "Erro ao criar pergunta. Verifique os campos.")
-        return redirect('auditoria:iso_agenda_detail', auditoria_id=auditoria.id, pk=agenda.id)
+
+    nova_pergunta = BancoPergunta.objects.create(
+        texto_pergunta=texto_pergunta,
+        dica_auditor=dica_resposta
+    )
+    if item_ids:
+        nova_pergunta.itens_norma.set(item_ids)
+        
+    agenda.perguntas.add(nova_pergunta)
+    
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({
+            'success': True,
+            'pergunta_id': nova_pergunta.id,
+            'texto_pergunta': nova_pergunta.texto_pergunta,
+            'agenda_id': agenda.id,
+            'agenda_titulo': agenda.titulo,
+            'total_perguntas': agenda.perguntas.count(),
+            'message': f"Pergunta criada com sucesso e vinculada ao bloco '{agenda.titulo}'!"
+        })
+
+    messages.success(request, "Pergunta criada e vinculada com sucesso!")
+    return redirect('auditoria:iso_agenda_detail', auditoria_id=auditoria.id, pk=agenda.id)
 
 @login_required
 def iso_agenda_perguntas_edit(request, auditoria_id, pk):

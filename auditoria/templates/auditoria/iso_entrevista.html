@@ -61,19 +61,21 @@
 {% endblock %}
 
 {% block content %}
-<div class="container mt-4">
+<div class="container-fluid py-4 px-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h4 class="mb-0">Auditoria ISO: {{ auditoria.norma.codigo }}</h4>
-            <small class="text-muted">Modo Entrevista</small>
+            <h3 class="fw-bold mb-1 text-dark"><i class="bi bi-chat-left-dots-fill text-primary me-2"></i>Auditoria ISO: {{ auditoria.norma.codigo }}</h3>
+            <p class="text-muted mb-0">Modo Entrevista de Auditoria</p>
         </div>
         <div>
-            <a href="{% url 'auditoria:iso_auditoria_list' %}" class="btn btn-outline-secondary">Sair</a>
+            <a href="{% url 'auditoria:iso_auditoria_detail' auditoria.id %}" class="btn btn-outline-secondary rounded-pill px-4 fw-bold">
+                <i class="bi bi-x-lg me-1"></i> Sair da Entrevista
+            </a>
         </div>
     </div>
 
-    <div class="interview-container" id="app">
-        <!-- JS irá renderizar aqui -->
+    <div id="app">
+        <!-- JS irá renderizar o layout 2 colunas aqui -->
         <div class="text-center py-5">
             <div class="spinner-border text-primary" role="status">
               <span class="visually-hidden">Carregando...</span>
@@ -82,7 +84,57 @@
     </div>
 
     <div id="save-indicator">
-        <i class="bi bi-check-circle"></i> Salvo
+        <i class="bi bi-check-circle me-1"></i> Resposta Salva
+    </div>
+</div>
+
+<!-- Modal Criar Nova Pergunta para Outro Bloco Durante a Entrevista -->
+<div class="modal fade" id="modalNovaPerguntaEntrevista" tabindex="-1" aria-hidden="true" style="z-index: 10060;">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0 rounded-4">
+            <form id="formNovaPerguntaEntrevista" action="" method="post">
+                {% csrf_token %}
+                <div class="modal-header bg-primary text-white py-3 border-0">
+                    <h5 class="modal-title fw-bold d-flex align-items-center gap-2">
+                        <i class="bi bi-plus-circle me-1"></i>
+                        <span>Nova Pergunta para <span id="modalEntrevistaBlocoTitulo"></span></span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert alert-info border-0 bg-primary bg-opacity-10 text-primary rounded-3 small mb-3">
+                        <i class="bi bi-lightbulb-fill me-1"></i>
+                        Insira uma nova pergunta direcionada a este bloco com base nos achados ou desdobramentos desta entrevista.
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark mb-1">Enunciado da Pergunta <span class="text-danger">*</span></label>
+                        <textarea name="texto_pergunta" class="form-control border-primary shadow-2xs" rows="3" placeholder="Ex: Como este processo verifica os registros gerados na etapa anterior?" required></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark mb-1">Evidências Esperadas / Dicas para o Auditor <span class="text-muted fw-normal small">(Opcional)</span></label>
+                        <textarea name="dica_resposta" class="form-control shadow-2xs" rows="2" placeholder="Ex: Verificar evidências de treinamento, registros de calibração..."></textarea>
+                    </div>
+
+                    <!-- Requisito Vinculado -->
+                    <div class="mb-2">
+                        <label class="form-label fw-bold text-dark mb-1">Requisito da Norma Associado</label>
+                        <div class="p-2.5 bg-light rounded-3 border d-flex align-items-center gap-2" id="modalEntrevistaRequisitosContainer">
+                            <!-- Populado via JS -->
+                        </div>
+                    </div>
+
+                    <div id="hiddenItemIdsContainer"></div>
+                </div>
+                <div class="modal-footer border-0 bg-light">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" id="btnSalvarPerguntaEntrevista">
+                        <i class="bi bi-check-lg me-1"></i> Adicionar Pergunta ao Bloco
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
@@ -108,30 +160,79 @@
 
         const p = perguntas[currentIndex];
         
+        let outrosBlocosHtml = '';
+        if (p.outros_blocos && p.outros_blocos.length > 0) {
+            p.outros_blocos.forEach(b => {
+                outrosBlocosHtml += `
+                    <div class="card border rounded-3 p-3 mb-2 shadow-2xs bg-white">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="fw-bold text-primary small"><i class="bi bi-box-seam me-1"></i> ${b.titulo}</span>
+                            <span class="badge bg-secondary bg-opacity-10 text-dark rounded-pill px-2 py-0.5 small" id="badge-count-agenda-${b.agenda_id}">${b.total_perguntas} pergunta(s)</span>
+                        </div>
+                        <small class="text-muted d-block mb-2 font-monospace" style="font-size: 0.8rem;"><i class="bi bi-tag me-1"></i>Requisito em comum: ${b.itens_comum.join(', ')}</small>
+                        <button type="button" 
+                                class="btn btn-outline-primary btn-sm rounded-pill w-100 fw-bold btn-gerar-pergunta-entrevista"
+                                data-agenda-id="${b.agenda_id}"
+                                data-agenda-titulo="${b.titulo}"
+                                data-item-objects='${JSON.stringify(p.itens_objects || [])}'>
+                            <i class="bi bi-plus-lg me-1"></i> Nova Pergunta para ${b.titulo}
+                        </button>
+                    </div>
+                `;
+            });
+        } else {
+            outrosBlocosHtml = `
+                <div class="alert alert-light border text-center py-4 rounded-3 text-muted small mb-0">
+                    <i class="bi bi-info-circle fs-4 d-block mb-1 text-secondary"></i>
+                    Nenhum outro bloco avalia o requisito <strong>${p.itens}</strong> nesta auditoria.
+                </div>
+            `;
+        }
+
         let html = `
-            <div class="question-card">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="badge bg-secondary">Pergunta ${currentIndex + 1} de ${perguntas.length}</span>
-                    <span class="text-muted small">Itens: ${p.itens}</span>
-                </div>
-                
-                <div class="question-text">${p.texto_pergunta}</div>
-                ${p.dica_auditor ? `<div class="question-meta"><i class="bi bi-info-circle"></i> Dica: ${p.dica_auditor}</div>` : ''}
-                
-                <div class="mb-4">
-                    <textarea id="resposta-text" class="form-control textarea-response" placeholder="Digite a resposta ou anotações do auditor...">${p.texto_resposta}</textarea>
+            <div class="row g-4 justify-content-center">
+                <!-- COLUNA 1: Card da Pergunta Atual -->
+                <div class="col-lg-7">
+                    <div class="question-card shadow-sm border rounded-4 p-4 bg-white">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-1.5 fw-bold">Pergunta ${currentIndex + 1} de ${perguntas.length}</span>
+                            <span class="badge bg-secondary bg-opacity-10 text-dark rounded-pill px-3 py-1.5 font-monospace fw-bold"><i class="bi bi-tag me-1"></i>Itens: ${p.itens}</span>
+                        </div>
+                        
+                        <div class="question-text fs-4 fw-bold text-dark mb-2" style="line-height: 1.4; white-space: pre-wrap;">${p.texto_pergunta}</div>
+                        ${p.dica_auditor ? `<div class="question-meta alert alert-info py-2 px-3 rounded-3 border-0 small mb-3"><i class="bi bi-lightbulb me-1"></i> <strong>Dica / Evidência:</strong> ${p.dica_auditor}</div>` : ''}
+                        
+                        <div class="mb-4 mt-3">
+                            <label class="form-label fw-bold text-dark mb-1">Anotações / Evidências Coletadas pelo Auditor:</label>
+                            <textarea id="resposta-text" class="form-control textarea-response shadow-2xs" rows="4" placeholder="Digite aqui os registros, documentos e evidências apresentadas pelo auditado...">${p.texto_resposta}</textarea>
+                        </div>
+
+                        <div class="d-flex justify-content-center gap-2 mb-4 flex-wrap">
+                            <button type="button" class="btn btn-outline-success btn-classificacao px-3 py-2 ${p.classificacao === 'C' ? 'active btn-success text-white' : ''}" onclick="setClassificacao('C')">✅ Conforme</button>
+                            <button type="button" class="btn btn-outline-danger btn-classificacao px-3 py-2 ${p.classificacao === 'NC' ? 'active btn-danger text-white' : ''}" onclick="setClassificacao('NC')">🔴 Não Conforme</button>
+                            <button type="button" class="btn btn-outline-warning btn-classificacao px-3 py-2 ${p.classificacao === 'OM' ? 'active btn-warning text-dark' : ''}" onclick="setClassificacao('OM')">🟠 Oportunidade</button>
+                            <button type="button" class="btn btn-outline-secondary btn-classificacao px-3 py-2 ${p.classificacao === 'NA' ? 'active btn-secondary text-white' : ''}" onclick="setClassificacao('NA')">ℹ️ N/A</button>
+                        </div>
+
+                        <div class="d-flex justify-content-between pt-3 border-top">
+                            <button type="button" class="btn btn-light rounded-pill px-4 fw-bold" onclick="prevQuestion()" ${currentIndex === 0 ? 'disabled' : ''}><i class="bi bi-arrow-left me-1"></i> Anterior</button>
+                            <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" onclick="nextQuestion()">${currentIndex === perguntas.length - 1 ? 'Finalizar Entrevista <i class="bi bi-check2-all ms-1"></i>' : 'Próxima <i class="bi bi-arrow-right ms-1"></i>'}</button>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="d-flex justify-content-center gap-3 mb-4">
-                    <button class="btn btn-outline-success btn-classificacao ${p.classificacao === 'C' ? 'active btn-success text-white' : ''}" onclick="setClassificacao('C')">Conforme</button>
-                    <button class="btn btn-outline-danger btn-classificacao ${p.classificacao === 'NC' ? 'active btn-danger text-white' : ''}" onclick="setClassificacao('NC')">Não Conforme</button>
-                    <button class="btn btn-outline-warning btn-classificacao ${p.classificacao === 'OM' ? 'active btn-warning text-dark' : ''}" onclick="setClassificacao('OM')">Oportunidade</button>
-                    <button class="btn btn-outline-secondary btn-classificacao ${p.classificacao === 'NA' ? 'active btn-secondary text-white' : ''}" onclick="setClassificacao('NA')">N/A</button>
-                </div>
-
-                <div class="d-flex justify-content-between mt-5">
-                    <button class="btn btn-light" onclick="prevQuestion()" ${currentIndex === 0 ? 'disabled' : ''}><i class="bi bi-arrow-left"></i> Anterior</button>
-                    <button class="btn btn-primary" onclick="nextQuestion()">${currentIndex === perguntas.length - 1 ? 'Finalizar <i class="bi bi-check2-all"></i>' : 'Próxima <i class="bi bi-arrow-right"></i>'}</button>
+                <!-- COLUNA 2: Outros Blocos Associados ao Requisito Atual -->
+                <div class="col-lg-5">
+                    <div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 d-flex flex-column">
+                        <div class="mb-3">
+                            <h6 class="fw-bold text-dark mb-1"><i class="bi bi-diagram-3-fill text-primary me-2"></i>Outros Blocos com este Requisito</h6>
+                            <small class="text-muted d-block">Outros blocos da auditoria que também avaliam os requisitos desta pergunta (<strong>${p.itens}</strong>).</small>
+                        </div>
+                        
+                        <div class="flex-grow-1" style="max-height: 520px; overflow-y: auto;">
+                            ${outrosBlocosHtml}
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
@@ -140,9 +241,54 @@
 
         // Adiciona evento de digitação para Autosave (Debounce)
         const textarea = document.getElementById('resposta-text');
-        textarea.addEventListener('input', () => {
-            p.texto_resposta = textarea.value;
-            triggerAutosave();
+        if (textarea) {
+            textarea.addEventListener('input', () => {
+                p.texto_resposta = textarea.value;
+                triggerAutosave();
+            });
+        }
+
+        // Ativa manipulador dos botões de gerar pergunta no outro bloco
+        document.querySelectorAll('.btn-gerar-pergunta-entrevista').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const agendaId = this.dataset.agendaId;
+                const agendaTitulo = this.dataset.agendaTitulo;
+                let itemObjects = [];
+                try {
+                    itemObjects = JSON.parse(this.dataset.itemObjects || '[]');
+                } catch(err) { itemObjects = []; }
+
+                const form = document.getElementById('formNovaPerguntaEntrevista');
+                form.action = `/auditoria/iso/setup/auditorias/${auditoriaId}/agendas/${agendaId}/perguntas/nova/`;
+
+                document.getElementById('modalEntrevistaBlocoTitulo').textContent = agendaTitulo;
+
+                const reqContainer = document.getElementById('modalEntrevistaRequisitosContainer');
+                const hiddenContainer = document.getElementById('hiddenItemIdsContainer');
+                reqContainer.innerHTML = '';
+                hiddenContainer.innerHTML = '';
+
+                itemObjects.forEach(io => {
+                    const span = document.createElement('span');
+                    span.className = 'badge bg-primary text-white rounded-pill px-2.5 py-1 small me-1';
+                    span.textContent = `${io.ref} - ${io.titulo}`;
+                    reqContainer.appendChild(span);
+
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'itens_norma';
+                    input.value = io.id;
+                    hiddenContainer.appendChild(input);
+                });
+
+                const modalEl = document.getElementById('modalNovaPerguntaEntrevista');
+                if (modalEl && modalEl.parentElement !== document.body) {
+                    document.body.appendChild(modalEl);
+                }
+                const modal = new bootstrap.Modal(modalEl);
+                modal.show();
+            });
         });
     }
 
@@ -208,9 +354,65 @@
         }
     }
 
-    // Inicializa a primeira renderização
+    // Submissão AJAX para criação de novas perguntas nos blocos laterais
     document.addEventListener('DOMContentLoaded', () => {
         renderQuestion();
+
+        const formNova = document.getElementById('formNovaPerguntaEntrevista');
+        if (formNova) {
+            formNova.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const btnSubmit = document.getElementById('btnSalvarPerguntaEntrevista');
+                const origHtml = btnSubmit.innerHTML;
+                btnSubmit.disabled = true;
+                btnSubmit.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Salvando...`;
+
+                try {
+                    const formData = new FormData(formNova);
+                    const response = await fetch(formNova.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        // Fechar Modal
+                        const modalEl = document.getElementById('modalNovaPerguntaEntrevista');
+                        const modal = bootstrap.Modal.getInstance(modalEl);
+                        if (modal) modal.hide();
+
+                        // Limpar o formulário
+                        formNova.reset();
+
+                        // Notificação Toast
+                        showSaveIndicatorMessage(data.message || 'Pergunta adicionada com sucesso!');
+
+                        // Atualiza o contador de perguntas no card lateral se visível
+                        const badgeCount = document.getElementById(`badge-count-agenda-${data.agenda_id}`);
+                        if (badgeCount && data.total_perguntas) {
+                            badgeCount.textContent = `${data.total_perguntas} pergunta(s)`;
+                        }
+                    } else {
+                        alert(data.error || 'Erro ao salvar pergunta.');
+                    }
+                } catch (err) {
+                    console.error('Erro ao enviar formulário:', err);
+                    formNova.submit();
+                } finally {
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = origHtml;
+                }
+            });
+        }
     });
+
+    function showSaveIndicatorMessage(msg) {
+        saveIndicator.innerHTML = `<i class="bi bi-check-circle me-1"></i> ${msg}`;
+        saveIndicator.style.opacity = '1';
+        setTimeout(() => {
+            saveIndicator.style.opacity = '0';
+        }, 3500);
+    }
 </script>
 {% endblock %}
