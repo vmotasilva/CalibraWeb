@@ -3678,7 +3678,7 @@ def iso_modelo_bloco_pergunta_create(request, modelo_id, pk):
     with transaction.atomic():
         nova_pergunta = BancoPergunta.objects.create(
             texto_pergunta=texto_pergunta,
-            dica_resposta=dica_resposta
+            dica_auditor=dica_resposta
         )
         if item_ids:
             nova_pergunta.itens_norma.set(item_ids)
