@@ -382,77 +382,91 @@
     </div>
 </div>
 
-<!-- Modal Adicionar Nova Pergunta (<QuestionModal /> com Trigger do Catálogo) -->
+<!-- Modal Adicionar Nova Pergunta (Layout 2 Colunas: Coluna 1 Norma e Descrição | Coluna 2 Demais Campos) -->
 <div class="modal fade" id="novaPerguntaModeloModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content shadow-lg border-0 rounded-4">
             <form action="{% url 'auditoria:iso_modelo_bloco_pergunta_create' modelo.id bloco.id %}" method="post">
                 {% csrf_token %}
                 <div class="modal-header bg-primary text-white py-3 border-0">
-                    <h5 class="modal-title fw-bold">
-                        <i class="bi bi-plus-circle me-2"></i>Nova Pergunta para o Bloco do Modelo
+                    <h5 class="modal-title fw-bold d-flex align-items-center gap-2">
+                        <i class="bi bi-plus-circle me-1"></i>
+                        <span>Elaboração de Pergunta para o Bloco</span>
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-4">
-                    
                     <div class="alert alert-info border-0 rounded-3 d-flex align-items-center mb-3 py-2">
                         <i class="bi bi-info-circle-fill fs-5 me-2 text-info"></i>
                         <span class="small">A pergunta será salva no Banco Geral e automaticamente vinculada a este bloco do modelo.</span>
                     </div>
 
-                    <!-- Metade Superior (Contexto): Painel de Leitura do Requisito Alvo para Quick Create -->
-                    <div id="quickCreateContextContainer" class="card bg-primary bg-opacity-10 border-primary border-opacity-25 rounded-3 p-3 mb-3 shadow-2xs" style="display: none;">
-                        <div class="d-flex align-items-center justify-content-between mb-1">
-                            <span class="badge bg-primary text-white rounded-pill px-3 py-1 fw-bold fs-6" id="quickCreateRefBadge"></span>
-                            <small class="text-primary fw-bold text-uppercase" style="letter-spacing: 0.5px;">
-                                <i class="bi bi-book-half me-1"></i> Requisito Contextualizado (Leitura)
-                            </small>
+                    <!-- Layout de 2 Colunas -->
+                    <div class="row g-4">
+                        <!-- COLUNA 1: Norma e Descrição Completa (Leitura do Requisito) -->
+                        <div class="col-lg-6">
+                            <!-- Container de Contexto do Requisito -->
+                            <div id="quickCreateContextContainer" class="card bg-primary bg-opacity-10 border-primary border-opacity-25 rounded-4 p-3.5 shadow-2xs h-100" style="display: none;">
+                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <span class="badge bg-primary text-white rounded-pill px-3 py-1.5 fw-bold fs-6" id="quickCreateRefBadge"></span>
+                                    <small class="text-primary fw-bold text-uppercase" style="letter-spacing: 0.5px;">
+                                        <i class="bi bi-book-half me-1"></i> Requisito da Norma (Leitura)
+                                    </small>
+                                </div>
+                                <h6 class="fw-bold text-dark fs-6 mb-2" id="quickCreateTitulo"></h6>
+                                <div class="card bg-white border-0 p-3 rounded-3 text-dark font-monospace flex-grow-1 shadow-2xs" style="line-height: 1.6; font-size: 0.9rem; max-height: 420px; overflow-y: auto; white-space: pre-wrap;" id="quickCreateDesc"></div>
+                            </div>
+
+                            <!-- Placeholder para abertura convencional sem requisito selecionado -->
+                            <div id="quickCreateDefaultPlaceholder" class="card bg-light border rounded-4 p-4 text-center h-100 d-flex flex-column justify-content-center align-items-center">
+                                <i class="bi bi-journal-text text-primary fs-1 mb-2"></i>
+                                <h6 class="fw-bold text-dark mb-1">Leitura de Requisitos da Norma</h6>
+                                <p class="text-muted small mb-0">Clique em uma tag de Requisito Alvo no painel esquerdo ou selecione um item no catálogo ao lado para visualizar a descrição integral da norma aqui enquanto elabora sua pergunta.</p>
+                            </div>
                         </div>
-                        <h6 class="fw-bold text-dark mb-1" id="quickCreateTitulo"></h6>
-                        <div class="card bg-white border-0 p-2.5 rounded-3 text-secondary small font-monospace" style="line-height: 1.5; max-height: 110px; overflow-y: auto; white-space: pre-wrap;" id="quickCreateDesc"></div>
-                    </div>
 
-                    <!-- Enunciado -->
-                    <div class="mb-3">
-                        <label class="form-label fw-bold text-dark">Enunciado da Pergunta <span class="text-danger">*</span></label>
-                        <textarea name="texto_pergunta" class="form-control border-primary" rows="3" placeholder="Ex: A Alta Direção evidencia o comprometimento com o desenvolvimento do SGQ?" required></textarea>
-                    </div>
+                        <!-- COLUNA 2: Demais Campos da Pergunta -->
+                        <div class="col-lg-6">
+                            <!-- Enunciado -->
+                            <div class="mb-3">
+                                <label class="form-label fw-bold text-dark mb-1">Enunciado da Pergunta <span class="text-danger">*</span></label>
+                                <textarea name="texto_pergunta" class="form-control border-primary shadow-2xs" rows="3" placeholder="Ex: A Alta Direção evidencia o comprometimento com o desenvolvimento do SGQ?" required></textarea>
+                            </div>
 
-                    <!-- Evidências Esperadas -->
-                    <div class="mb-3">
-                        <label class="form-label fw-bold text-dark">Evidências Esperadas / Dicas para o Auditor <span class="text-muted fw-normal small">(Opcional)</span></label>
-                        <textarea name="dica_resposta" class="form-control" rows="2" placeholder="Ex: Verificar ata da análise crítica da direção, política da qualidade assinada..."></textarea>
-                    </div>
+                            <!-- Evidências Esperadas -->
+                            <div class="mb-3">
+                                <label class="form-label fw-bold text-dark mb-1">Evidências Esperadas / Dicas para o Auditor <span class="text-muted fw-normal small">(Opcional)</span></label>
+                                <textarea name="dica_resposta" class="form-control shadow-2xs" rows="2" placeholder="Ex: Verificar ata da análise crítica da direção, política da qualidade assinada..."></textarea>
+                            </div>
 
-                    <!-- Requisitos da Norma Vinculados (<NormCatalogModal /> Trigger) -->
-                    <div class="mb-3">
-                        <label class="form-label fw-bold text-dark">Requisitos da Norma Avaliados <span class="text-danger">*</span></label>
-                        <div class="text-muted small mb-2">Clique no botão abaixo para abrir o catálogo hierárquico e selecionar os itens aplicáveis.</div>
-                        
-                        <!-- Inputs Ocultos de envio dos IDs selecionados -->
-                        <div id="hiddenInputsItensContainerModelo"></div>
+                            <!-- Requisitos da Norma Vinculados (<NormCatalogModal /> Trigger) -->
+                            <div class="mb-3">
+                                <label class="form-label fw-bold text-dark mb-1">Requisitos da Norma Avaliados <span class="text-danger">*</span></label>
+                                <div class="text-muted small mb-2">Clique no botão abaixo para abrir o catálogo hierárquico e alterar ou selecionar itens:</div>
+                                
+                                <!-- Inputs Ocultos de envio dos IDs selecionados -->
+                                <div id="hiddenInputsItensContainerModelo"></div>
 
-                        <!-- Botão Trigger Limpo -->
-                        <button type="button" class="btn btn-outline-primary w-100 py-2 fw-bold border-2 rounded-3 text-start d-flex justify-content-between align-items-center shadow-sm" id="btnAbrirCatalogoModeloModal">
-                            <span><i class="bi bi-plus-circle-fill me-2 fs-5 align-middle"></i> Selecionar Itens da Norma</span>
-                            <span class="badge bg-primary rounded-pill px-3 py-2" id="triggerCountBadgeModelo">0 selecionado(s)</span>
-                        </button>
+                                <!-- Botão Trigger Limpo -->
+                                <button type="button" class="btn btn-outline-primary w-100 py-2 fw-bold border-2 rounded-3 text-start d-flex justify-content-between align-items-center shadow-sm" id="btnAbrirCatalogoModeloModal">
+                                    <span><i class="bi bi-plus-circle-fill me-2 fs-5 align-middle"></i> Selecionar Itens da Norma</span>
+                                    <span class="badge bg-primary rounded-pill px-3 py-2" id="triggerCountBadgeModelo">0 selecionado(s)</span>
+                                </button>
 
-                        <!-- Chips / Tags Removíveis dos Itens Selecionados -->
-                        <div id="selectedItemsChipsContainerModelo" class="mt-2 d-flex flex-wrap gap-2 align-items-center p-2 bg-light rounded-3 border" style="min-height: 50px;">
-                            <span class="text-muted small ms-1" id="emptyChipsPlaceholderModelo">
-                                <i class="bi bi-info-circle me-1"></i> Nenhum item selecionado. Clique no botão acima para adicionar.
-                            </span>
+                                <!-- Chips / Tags Removíveis dos Itens Selecionados -->
+                                <div id="selectedItemsChipsContainerModelo" class="mt-2 d-flex flex-wrap gap-2 align-items-center p-2 bg-light rounded-3 border" style="min-height: 50px;">
+                                    <span class="text-muted small ms-1" id="emptyChipsPlaceholderModelo">
+                                        <i class="bi bi-info-circle me-1"></i> Nenhum item selecionado. Clique no botão acima para adicionar.
+                                    </span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                 </div>
-                <div class="modal-footer border-0 bg-light d-flex justify-content-between rounded-bottom-4">
-                    <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary px-4 fw-bold shadow-sm">
-                        <i class="bi bi-check-circle-fill me-1"></i> Salvar e Vincular Pergunta
-                    </button>
+                <div class="modal-footer border-0 bg-light">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">Salvar Pergunta</button>
                 </div>
             </form>
         </div>
@@ -893,22 +907,26 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Quick Create: Função compartilhada para abrir o modal pré-selecionando o requisito e exibindo o contexto na metade superior
+    // Quick Create: Função compartilhada para abrir o modal pré-selecionando o requisito e exibindo o contexto na Coluna 1
     function openQuickCreateForRequirement(itemId, itemRef, itemTitulo, itemDesc) {
         const fullItem = allEscopoItemsData.find(i => String(i.id) === String(itemId));
         const finalDesc = (fullItem && fullItem.desc) ? fullItem.desc : (itemDesc || itemTitulo);
 
         const contextContainer = document.getElementById('quickCreateContextContainer');
+        const defaultPlaceholder = document.getElementById('quickCreateDefaultPlaceholder');
+
         if (contextContainer) {
             document.getElementById('quickCreateRefBadge').textContent = itemRef;
             document.getElementById('quickCreateTitulo').textContent = itemTitulo;
             
             const descEl = document.getElementById('quickCreateDesc');
             descEl.textContent = finalDesc;
-            descEl.style.maxHeight = '180px';
+            descEl.style.maxHeight = '420px';
             descEl.style.overflowY = 'auto';
 
-            contextContainer.style.display = 'block';
+            contextContainer.style.display = 'flex';
+            contextContainer.classList.add('d-flex', 'flex-column');
+            if (defaultPlaceholder) defaultPlaceholder.style.display = 'none';
         }
 
         selectedItemsMap.clear();
