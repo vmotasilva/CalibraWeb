@@ -128,17 +128,27 @@
                             <!-- Nível 1: Seção Principal Banner -->
                             <tr class="table-primary bg-primary bg-opacity-10 border-top border-bottom border-primary border-opacity-25">
                                 <td class="ps-4 py-3"><strong class="fs-6 text-primary"><i class="bi bi-journal-bookmark-fill me-2"></i>Seção {{ row.referencia }}</strong></td>
-                                <td colspan="3" class="py-3">
+                                <td class="py-3">
                                     <strong class="fs-6 text-primary">{{ row.titulo }}</strong>
                                     <div class="small text-muted mb-0">{{ row.descricao }}</div>
+                                </td>
+                                <td colspan="2" class="text-end pe-4 py-3">
+                                    <button type="button" class="btn btn-sm btn-outline-danger bg-white rounded-pill px-3 fw-bold btn-quick-na shadow-2xs" data-ref="{{ row.referencia }}" data-titulo="{{ row.titulo }}" title="Marcar todos os itens da Seção {{ row.referencia }} como Não Aplicável (Exclusão de Escopo)">
+                                        <i class="bi bi-slash-circle me-1"></i> Seção {{ row.referencia }} N/A
+                                    </button>
                                 </td>
                             </tr>
                             {% else %}
                             <!-- Nível 2: Subseção Agrupadora -->
                             <tr class="table-light border-top border-bottom fw-bold">
                                 <td class="ps-4 py-2.5"><strong class="text-dark"><i class="bi bi-folder2 me-2 text-secondary"></i>{{ row.referencia }}</strong></td>
-                                <td colspan="3" class="py-2.5">
+                                <td class="py-2.5">
                                     <strong class="text-dark">{{ row.titulo }}</strong>
+                                </td>
+                                <td colspan="2" class="text-end pe-4 py-2.5">
+                                    <button type="button" class="btn btn-sm btn-outline-danger bg-white rounded-pill px-2.5 py-0.5 small btn-quick-na" data-ref="{{ row.referencia }}" data-titulo="{{ row.titulo }}" title="Marcar sub-itens de {{ row.referencia }} como N/A">
+                                        <i class="bi bi-slash-circle me-1"></i> {{ row.referencia }} N/A
+                                    </button>
                                 </td>
                             </tr>
                             {% endif %}
@@ -221,7 +231,10 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer border-0 bg-light">
+            <div class="modal-footer border-0 bg-light d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-danger rounded-pill px-3 fw-bold" id="btnToggleNaModal">
+                    <i class="bi bi-slash-circle me-1"></i> Definir como Não Aplicável (N/A)
+                </button>
                 <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Fechar</button>
             </div>
         </div>
@@ -237,12 +250,82 @@ document.addEventListener('DOMContentLoaded', function() {
         document.body.appendChild(modalEl);
     }
 
+    let currentItemRef = '';
+    let currentItemStatus = '';
+
+    function executeMarcarNa(ref, statusTarget = 'NA', titulo = '') {
+        const actionLabel = statusTarget === 'NA' ? 'Não Aplicável (N/A)' : 'Aplicável / Pendente';
+        if (!confirm(`Deseja definir o item/seção '${ref} - ${titulo}' (e todos os seus sub-itens) como ${actionLabel} nesta auditoria?`)) {
+            return;
+        }
+
+        fetch("{% url 'auditoria:api_iso_marcar_nao_aplicavel' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                auditoria_id: {{ auditoria.id }},
+                referencia: ref,
+                status_target: statusTarget,
+                incluir_sub_itens: true
+            })
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) {
+                window.location.reload();
+            } else {
+                alert('Erro ao atualizar item: ' + (res.error || 'Erro desconhecido.'));
+            }
+        })
+        .catch(err => {
+            console.error('Erro na requisição N/A:', err);
+            alert('Falha na comunicação com o servidor.');
+        });
+    }
+
+    // Clique nos botões de Seção N/A na tabela
+    document.querySelectorAll('.btn-quick-na').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const ref = this.dataset.ref;
+            const titulo = this.dataset.titulo || '';
+            executeMarcarNa(ref, 'NA', titulo);
+        });
+    });
+
+    // Clique no botão N/A do Modal
+    const btnModalNa = document.getElementById('btnToggleNaModal');
+    if (btnModalNa) {
+        btnModalNa.addEventListener('click', function() {
+            if (!currentItemRef) return;
+            const targetStatus = currentItemStatus === 'NA' ? 'P' : 'NA';
+            executeMarcarNa(currentItemRef, targetStatus, '');
+        });
+    }
+
     document.querySelectorAll('.row-item-matriz-auditoria').forEach(row => {
         row.addEventListener('click', function() {
             const ref = this.dataset.ref;
             const titulo = this.dataset.titulo;
             const desc = this.dataset.desc;
             const status = this.dataset.status;
+
+            currentItemRef = ref;
+            currentItemStatus = status;
+
+            const btnModalNa = document.getElementById('btnToggleNaModal');
+            if (btnModalNa) {
+                if (status === 'NA') {
+                    btnModalNa.className = "btn btn-outline-success rounded-pill px-3 fw-bold";
+                    btnModalNa.innerHTML = '<i class="bi bi-arrow-counterclockwise me-1"></i> Restaurar Item como Aplicável';
+                } else {
+                    btnModalNa.className = "btn btn-outline-danger rounded-pill px-3 fw-bold";
+                    btnModalNa.innerHTML = '<i class="bi bi-slash-circle me-1"></i> Definir como Não Aplicável (N/A)';
+                }
+            }
 
             // Extrai o JSON de blocos associados do script da linha
             let blocos = [];

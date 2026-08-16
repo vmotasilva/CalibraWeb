@@ -64,6 +64,7 @@ urlpatterns = [
     path("iso/api/solicitacoes/criar/", views.api_iso_solicitacao_create, name="api_iso_solicitacao_create"),
     path("iso/api/solicitacoes/<int:pk>/editar/", views.api_iso_solicitacao_update, name="api_iso_solicitacao_update"),
     path("iso/api/solicitacoes/<int:pk>/deletar/", views.api_iso_solicitacao_delete, name="api_iso_solicitacao_delete"),
+    path("iso/api/marcar-nao-aplicavel/", views.api_iso_marcar_nao_aplicavel, name="api_iso_marcar_nao_aplicavel"),
     # ISO 13485 (Setup CRUD)
     path("iso/setup/", views.iso_setup_dashboard, name="iso_setup_dashboard"),
     

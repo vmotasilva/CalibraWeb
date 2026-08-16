@@ -3392,6 +3392,75 @@ def api_iso_solicitacao_delete(request, pk):
     except Exception as e:
         return JsonResponse({"success": False, "error": str(e)}, status=400)
 
+
+@login_required
+@require_POST
+def api_iso_marcar_nao_aplicavel(request):
+    """
+    Define um item da norma (e opcionalmente todos os seus sub-itens descendentes)
+    como Não Aplicável (N/A) / Exclusão de Escopo nesta auditoria.
+    """
+    from .models import ItemNorma, RespostaEntrevistaIso, AuditoriaIso
+    try:
+        data = json.loads(request.body)
+        auditoria_id = data.get("auditoria_id")
+        item_id = data.get("item_id")
+        referencia = data.get("referencia")
+        justificativa = data.get("justificativa", "Item definido como Não Aplicável (N/A) / Exclusão de Escopo pelo auditor.").strip()
+        status_target = data.get("status_target", "NA")
+        incluir_sub_itens = data.get("incluir_sub_itens", True)
+
+        auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+        
+        if item_id:
+            target_item = get_object_or_404(ItemNorma, pk=item_id)
+            ref_root = target_item.referencia
+        elif referencia:
+            target_item = get_object_or_404(ItemNorma, norma=auditoria.norma, referencia=referencia)
+            ref_root = referencia
+        else:
+            return JsonResponse({"success": False, "error": "Item não informado."}, status=400)
+
+        if incluir_sub_itens:
+            # Pega o próprio item e todos que começam com 'referencia.'
+            itens_afetados = list(ItemNorma.objects.filter(norma=auditoria.norma, referencia=ref_root)) + \
+                             list(ItemNorma.objects.filter(norma=auditoria.norma, referencia__startswith=ref_root + "."))
+        else:
+            itens_afetados = [target_item]
+
+        agendas = auditoria.agendas.all().prefetch_related('perguntas', 'perguntas__itens_norma')
+        perguntas_afetadas = set()
+        
+        for item_a in itens_afetados:
+            for agenda in agendas:
+                for p in agenda.perguntas.all():
+                    if item_a in p.itens_norma.all() or (not p.itens_norma.exists() and item_a in agenda.itens_norma.all()):
+                        perguntas_afetadas.add(p)
+
+        count_updated = 0
+        texto_na = justificativa if status_target == "NA" else ""
+        for p in perguntas_afetadas:
+            RespostaEntrevistaIso.objects.update_or_create(
+                auditoria=auditoria,
+                pergunta=p,
+                defaults={
+                    "classificacao": status_target,
+                    "texto_resposta": texto_na,
+                    "respondida_por": request.user
+                }
+            )
+            count_updated += 1
+
+        return JsonResponse({
+            "success": True,
+            "referencia": ref_root,
+            "status_target": status_target,
+            "itens_afetados_count": len(itens_afetados),
+            "perguntas_atualizadas_count": count_updated
+        })
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=400)
+
 @login_required
 def iso_matriz_view(request, auditoria_id):
     from .models import AuditoriaIso, ItemNorma, RespostaEntrevistaIso
