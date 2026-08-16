@@ -401,12 +401,11 @@
                         <span class="small">A pergunta será salva no Banco Geral e automaticamente vinculada a este bloco do modelo.</span>
                     </div>
 
-                    <!-- Layout de 2 Colunas -->
-                    <div class="row g-4">
-                        <!-- COLUNA 1: Norma e Descrição Completa (Leitura do Requisito) -->
-                        <div class="col-lg-6">
-                            <!-- Container de Contexto do Requisito -->
-                            <div id="quickCreateContextContainer" class="card bg-primary bg-opacity-10 border-primary border-opacity-25 rounded-4 p-3.5 shadow-2xs h-100" style="display: none;">
+                    <!-- Layout Adaptativo (1 Coluna por padrão, 2 Colunas no Quick Create) -->
+                    <div class="row g-4" id="rowModalPerguntaLayout">
+                        <!-- COLUNA 1: Norma e Descrição Completa (Exibida dinamicamente no Quick Create) -->
+                        <div class="col-lg-6" id="colLeituraNorma" style="display: none;">
+                            <div id="quickCreateContextContainer" class="card bg-primary bg-opacity-10 border-primary border-opacity-25 rounded-4 p-3.5 shadow-2xs h-100">
                                 <div class="d-flex align-items-center justify-content-between mb-2">
                                     <span class="badge bg-primary text-white rounded-pill px-3 py-1.5 fw-bold fs-6" id="quickCreateRefBadge"></span>
                                     <small class="text-primary fw-bold text-uppercase" style="letter-spacing: 0.5px;">
@@ -416,17 +415,10 @@
                                 <h6 class="fw-bold text-dark fs-6 mb-2" id="quickCreateTitulo"></h6>
                                 <div class="card bg-white border-0 p-3 rounded-3 text-dark font-monospace flex-grow-1 shadow-2xs" style="line-height: 1.6; font-size: 0.9rem; max-height: 420px; overflow-y: auto; white-space: pre-wrap;" id="quickCreateDesc"></div>
                             </div>
-
-                            <!-- Placeholder para abertura convencional sem requisito selecionado -->
-                            <div id="quickCreateDefaultPlaceholder" class="card bg-light border rounded-4 p-4 text-center h-100 d-flex flex-column justify-content-center align-items-center">
-                                <i class="bi bi-journal-text text-primary fs-1 mb-2"></i>
-                                <h6 class="fw-bold text-dark mb-1">Leitura de Requisitos da Norma</h6>
-                                <p class="text-muted small mb-0">Clique em uma tag de Requisito Alvo no painel esquerdo ou selecione um item no catálogo ao lado para visualizar a descrição integral da norma aqui enquanto elabora sua pergunta.</p>
-                            </div>
                         </div>
 
-                        <!-- COLUNA 2: Demais Campos da Pergunta -->
-                        <div class="col-lg-6">
+                        <!-- COLUNA 2: Formulario da Pergunta (Ocupa col-lg-12 no modo normal e col-lg-6 no Quick Create) -->
+                        <div class="col-lg-12" id="colFormPergunta">
                             <!-- Enunciado -->
                             <div class="mb-3">
                                 <label class="form-label fw-bold text-dark mb-1">Enunciado da Pergunta <span class="text-danger">*</span></label>
@@ -907,15 +899,33 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    function resetNovaPerguntaModalLayout() {
+        const colLeitura = document.getElementById('colLeituraNorma');
+        const colForm = document.getElementById('colFormPergunta');
+        const modalDialog = document.querySelector('#novaPerguntaModeloModal .modal-dialog');
+
+        if (colLeitura && colForm) {
+            colLeitura.style.display = 'none';
+            colForm.className = 'col-lg-12';
+            if (modalDialog) modalDialog.className = 'modal-dialog modal-lg';
+        }
+    }
+
     // Quick Create: Função compartilhada para abrir o modal pré-selecionando o requisito e exibindo o contexto na Coluna 1
     function openQuickCreateForRequirement(itemId, itemRef, itemTitulo, itemDesc) {
         const fullItem = allEscopoItemsData.find(i => String(i.id) === String(itemId));
         const finalDesc = (fullItem && fullItem.desc) ? fullItem.desc : (itemDesc || itemTitulo);
 
+        const colLeitura = document.getElementById('colLeituraNorma');
+        const colForm = document.getElementById('colFormPergunta');
         const contextContainer = document.getElementById('quickCreateContextContainer');
-        const defaultPlaceholder = document.getElementById('quickCreateDefaultPlaceholder');
+        const modalDialog = document.querySelector('#novaPerguntaModeloModal .modal-dialog');
 
-        if (contextContainer) {
+        if (colLeitura && colForm) {
+            colLeitura.style.display = 'block';
+            colForm.className = 'col-lg-6';
+            if (modalDialog) modalDialog.className = 'modal-dialog modal-xl';
+
             document.getElementById('quickCreateRefBadge').textContent = itemRef;
             document.getElementById('quickCreateTitulo').textContent = itemTitulo;
             
@@ -926,7 +936,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
             contextContainer.style.display = 'flex';
             contextContainer.classList.add('d-flex', 'flex-column');
-            if (defaultPlaceholder) defaultPlaceholder.style.display = 'none';
         }
 
         selectedItemsMap.clear();
@@ -944,6 +953,16 @@ document.addEventListener('DOMContentLoaded', function() {
         const modalPerguntaEl = document.getElementById('novaPerguntaModeloModal');
         const bsPergunta = bootstrap.Modal.getInstance(modalPerguntaEl) || new bootstrap.Modal(modalPerguntaEl);
         bsPergunta.show();
+    }
+
+    const modalNovaPerguntaEl = document.getElementById('novaPerguntaModeloModal');
+    if (modalNovaPerguntaEl) {
+        modalNovaPerguntaEl.addEventListener('show.bs.modal', function(e) {
+            // Se aberto via botão padrão sem acionamento contextual do Quick Create, ajusta para 1 coluna limpa
+            if (selectedItemsMap.size === 0) {
+                resetNovaPerguntaModalLayout();
+            }
+        });
     }
 
     // Listener para as tags do painel esquerdo
