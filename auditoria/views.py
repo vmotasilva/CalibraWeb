@@ -4162,12 +4162,69 @@ def iso_auditoria_create(request):
     if request.method == "POST":
         form = AuditoriaIsoForm(request.POST)
         if form.is_valid():
-            form.save()
-            messages.success(request, "Auditoria planejada com sucesso!")
-            return redirect(reverse('auditoria:iso_setup_dashboard') + "?tab=auditorias")
+            auditoria = form.save()
+            messages.success(request, "Auditoria criada com sucesso! Selecione como deseja estruturar o checklist.")
+            return redirect('auditoria:iso_auditoria_detail', pk=auditoria.id)
     else:
-        form = AuditoriaIsoForm()
+        norma_id = request.GET.get('norma')
+        initial = {}
+        if norma_id:
+            initial['norma'] = norma_id
+        form = AuditoriaIsoForm(initial=initial)
     return render(request, "auditoria/iso/setup/auditoria_form.html", {"form": form, "title": "Planejar Nova Auditoria", "back_url": reverse('auditoria:iso_setup_dashboard') + "?tab=auditorias"})
+
+@login_required
+@require_POST
+def iso_auditoria_import_modelo(request, pk):
+    """Clona atomicamente todos os blocos, requisitos alvo e perguntas de um ModeloAuditoriaIso para a AuditoriaIso (pk)"""
+    from .models import AuditoriaIso, ModeloAuditoriaIso, AgendaAuditoriaIso
+    from django.db import transaction
+    from django.http import JsonResponse
+
+    auditoria = get_object_or_404(AuditoriaIso, pk=pk)
+    modelo_id = request.POST.get("modelo_id")
+    
+    if not modelo_id:
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({"success": False, "error": "Modelo de auditoria não selecionado."}, status=400)
+        messages.error(request, "Selecione um modelo de auditoria válido.")
+        return redirect('auditoria:iso_auditoria_detail', pk=pk)
+        
+    modelo = get_object_or_404(ModeloAuditoriaIso, pk=modelo_id, norma=auditoria.norma)
+    blocos_modelo = modelo.blocos.all().prefetch_related('perguntas', 'itens_norma')
+    
+    if not blocos_modelo.exists():
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({"success": False, "error": "O modelo selecionado não possui blocos/requisitos cadastrados."}, status=400)
+        messages.error(request, "O modelo selecionado não possui blocos cadastrados.")
+        return redirect('auditoria:iso_auditoria_detail', pk=pk)
+
+    agendas_criadas = []
+    with transaction.atomic():
+        for b in blocos_modelo:
+            nova_agenda = AgendaAuditoriaIso.objects.create(
+                auditoria=auditoria,
+                modelo_base=modelo,
+                titulo=b.titulo
+            )
+            nova_agenda.perguntas.set(b.perguntas.all())
+            nova_agenda.itens_norma.set(b.itens_norma.all())
+            agendas_criadas.append(nova_agenda)
+
+    auditoria.status = "PLANEJADA"
+    auditoria.save()
+
+    messages.success(request, f"Modelo '{modelo.titulo}' importado com sucesso ({len(agendas_criadas)} blocos duplicados)!")
+
+    if request.headers.get("x-requested-with") == "XMLHttpRequest":
+        return JsonResponse({
+            "success": True,
+            "message": f"Modelo '{modelo.titulo}' importado com sucesso!",
+            "total_blocos": len(agendas_criadas),
+            "redirect_url": reverse('auditoria:iso_auditoria_detail', args=[pk])
+        })
+
+    return redirect('auditoria:iso_auditoria_detail', pk=pk)
 
 @login_required
 def iso_auditoria_edit(request, pk):

@@ -43,17 +43,70 @@
     </div>
 
     <!-- Lista de Agendas -->
-    <h4 class="mb-3">Agendas de Auditoria</h4>
+    <h4 class="mb-3 fw-bold text-dark"><i class="bi bi-journal-text me-2 text-primary"></i>Estrutura de Agendas e Blocos da Auditoria</h4>
     
     {% if not agendas_progresso %}
-    <div class="alert alert-info" id="emptyAgendaAlert">
-        Nenhuma agenda criada para esta auditoria. Clique em "Nova Agenda" para planejar as sessões (ex: Reunião de Abertura, Entrevista Diretoria, etc).
+    <!-- EMPTY STATE DE TOMADA DE DECISÃO (ETAPA 2: DEFINIÇÃO DE CONTEÚDO) -->
+    <div class="card bg-light border rounded-4 p-5 text-center shadow-sm my-3" id="decisionPointContainer">
+        <div class="mb-4">
+            <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill fw-bold fs-6 border border-primary border-opacity-25">
+                <i class="bi bi-layers-half me-1"></i> Etapa 2: Estruturação do Conteúdo
+            </span>
+            <h3 class="fw-bold text-dark mt-3">Como deseja estruturar esta auditoria?</h3>
+            <p class="text-muted fs-6 mb-0" style="max-width: 650px; margin: 0 auto;">
+                Sua auditoria foi criada! Agora selecione se prefere importar um modelo padronizado já pronto ou construir os blocos manualmente do zero.
+            </p>
+        </div>
+
+        <div class="row g-4 justify-content-center mt-1">
+            <!-- CARD A: IMPORTAR DE UM MODELO EXISTENTE -->
+            <div class="col-md-5">
+                <div class="card h-100 border-primary border-2 shadow-sm rounded-4 p-4 text-start position-relative hover-shadow bg-white d-flex flex-column">
+                    <span class="position-absolute top-0 end-0 m-3 badge bg-success text-white rounded-pill px-3 py-1.5 fw-bold small">
+                        🚀 Recomendado
+                    </span>
+                    <div class="fs-1 text-primary mb-3">📦</div>
+                    <h4 class="fw-bold text-dark mb-2">Importar de um Modelo</h4>
+                    <p class="text-muted small mb-4">
+                        Acelere a preparação importando um checklist padronizado previamente configurado com blocos, requisitos alvo e perguntas maduras da norma.
+                    </p>
+                    <ul class="list-unstyled text-secondary small mb-4 flex-grow-1">
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Clonagem automática de blocos e escopos</li>
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Garante padronização e qualidade histórica</li>
+                    </ul>
+                    <button type="button" 
+                            class="btn btn-primary btn-lg w-100 rounded-pill fw-bold py-2.5 shadow-sm mt-auto" 
+                            data-bs-toggle="modal" 
+                            data-bs-target="#selecionarModeloImportModal">
+                        <i class="bi bi-folder-symlink me-2"></i>Escolher Modelo de Auditoria
+                    </button>
+                </div>
+            </div>
+
+            <!-- CARD B: CONSTRUIR DO ZERO (MODO LIVRE) -->
+            <div class="col-md-5">
+                <div class="card h-100 border-secondary border-opacity-25 shadow-sm rounded-4 p-4 text-start bg-white d-flex flex-column">
+                    <div class="fs-1 text-secondary mb-3">🧩</div>
+                    <h4 class="fw-bold text-dark mb-2">Construir do Zero (Modo Livre)</h4>
+                    <p class="text-muted small mb-4">
+                        Crie os blocos manualmente sob medida, selecione os requisitos alvo e elabore as perguntas em modo livre diretamente para esta auditoria.
+                    </p>
+                    <ul class="list-unstyled text-secondary small mb-4 flex-grow-1">
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Total flexibilidade na criação dos blocos</li>
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Ideal para auditorias com escopos inéditos</li>
+                    </ul>
+                    <button type="button" 
+                            class="btn btn-outline-dark btn-lg w-100 rounded-pill fw-bold py-2.5 mt-auto"
+                            data-bs-toggle="modal" 
+                            data-bs-target="#novaAgendaModal">
+                        <i class="bi bi-plus-circle me-2"></i>Iniciar Modo Livre (+ Bloco)
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
     <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="agendaList" style="display:none;"></div>
     {% else %}
-    <div class="alert alert-info" id="emptyAgendaAlert" style="display:none;">
-        Nenhuma agenda criada para esta auditoria. Clique em "Nova Agenda" para planejar as sessões (ex: Reunião de Abertura, Entrevista Diretoria, etc).
-    </div>
     <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="agendaList">
         {% for obj in agendas_progresso %}
         <div class="col">
@@ -651,7 +704,99 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('Erro ao carregar o formulário.');
             });
         });
+        // Submissão AJAX de Importação do Modelo
+        const formImport = document.getElementById('formImportarModeloAuditoria');
+        if (formImport) {
+            formImport.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const btnSubmit = document.getElementById('btnConfirmImportModelo');
+                const origHtml = btnSubmit.innerHTML;
+                btnSubmit.disabled = true;
+                btnSubmit.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Duplicando modelo...`;
+
+                try {
+                    const formData = new FormData(formImport);
+                    const response = await fetch(formImport.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        window.location.reload();
+                    } else {
+                        alert(data.error || 'Erro ao importar modelo.');
+                    }
+                } catch (err) {
+                    console.error('Erro na importação:', err);
+                    formImport.submit();
+                } finally {
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = origHtml;
+                }
+            });
+        }
     }
 });
 </script>
+
+<!-- Modal Escolher Modelo de Auditoria para Importação -->
+<div class="modal fade" id="selecionarModeloImportModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0 rounded-4">
+            <form id="formImportarModeloAuditoria" method="POST" action="{% url 'auditoria:iso_auditoria_import_modelo' auditoria.id %}">
+                {% csrf_token %}
+                <div class="modal-header bg-primary text-white py-3 border-0">
+                    <h5 class="modal-title fw-bold d-flex align-items-center gap-2">
+                        <i class="bi bi-box-seam me-1"></i> Selecionar Modelo de Auditoria
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-muted small mb-3">
+                        Selecione um dos modelos cadastrados para a norma <strong>{{ auditoria.norma.codigo }}</strong>. O sistema clonará automaticamente todos os blocos, requisitos alvo e perguntas vinculadas.
+                    </p>
+
+                    {% if modelos_norma %}
+                    <div class="list-group gap-2">
+                        {% for m in modelos_norma %}
+                        <label class="list-group-item list-group-item-action border rounded-3 p-3 d-flex align-items-center justify-content-between style-model-item">
+                            <div class="d-flex align-items-center gap-3">
+                                <input class="form-check-input flex-shrink-0" type="radio" name="modelo_id" value="{{ m.id }}" {% if forloop.first %}checked{% endif %}>
+                                <div>
+                                    <h6 class="fw-bold text-dark mb-1">{{ m.titulo }}</h6>
+                                    <p class="text-muted small mb-0">{{ m.descricao|default:"Modelo padronizado de auditoria" }}</p>
+                                </div>
+                            </div>
+                            <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-1.5 fw-bold small">
+                                {{ m.blocos.count }} bloco(s)
+                            </span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning border text-center py-4 rounded-3 mb-0">
+                        <i class="bi bi-exclamation-triangle fs-3 text-warning d-block mb-2"></i>
+                        Nenhum modelo de auditoria cadastrado ou ativo para a norma {{ auditoria.norma.codigo }} ainda.
+                        <div class="mt-2">
+                            <a href="{% url 'auditoria:iso_norma_detail' auditoria.norma_id %}?tab=modelos" class="btn btn-sm btn-outline-primary rounded-pill fw-bold">
+                                <i class="bi bi-plus-lg me-1"></i> Cadastrar Modelo na Norma
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer border-0 bg-light">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    {% if modelos_norma %}
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" id="btnConfirmImportModelo">
+                        <i class="bi bi-check-lg me-1"></i> Importar Modelo Selecionado
+                    </button>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}

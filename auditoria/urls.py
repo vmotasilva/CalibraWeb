@@ -93,6 +93,7 @@ urlpatterns = [
     
     path("iso/setup/auditorias/nova/", views.iso_auditoria_create, name="iso_auditoria_create"),
     path("iso/setup/auditorias/<int:pk>/", views.iso_auditoria_detail, name="iso_auditoria_detail"),
+    path("iso/setup/auditorias/<int:pk>/importar-modelo/", views.iso_auditoria_import_modelo, name="iso_auditoria_import_modelo"),
     path("iso/setup/auditorias/<int:pk>/editar/", views.iso_auditoria_edit, name="iso_auditoria_edit"),
     path("iso/setup/auditorias/<int:pk>/arquivar/", views.iso_auditoria_archive, name="iso_auditoria_archive"),
     path("iso/setup/auditorias/<int:pk>/remover/", views.iso_auditoria_delete, name="iso_auditoria_delete"),
