@@ -895,11 +895,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Quick Create: Função compartilhada para abrir o modal pré-selecionando o requisito e exibindo o contexto na metade superior
     function openQuickCreateForRequirement(itemId, itemRef, itemTitulo, itemDesc) {
+        const fullItem = allEscopoItemsData.find(i => String(i.id) === String(itemId));
+        const finalDesc = (fullItem && fullItem.desc) ? fullItem.desc : (itemDesc || itemTitulo);
+
         const contextContainer = document.getElementById('quickCreateContextContainer');
         if (contextContainer) {
             document.getElementById('quickCreateRefBadge').textContent = itemRef;
             document.getElementById('quickCreateTitulo').textContent = itemTitulo;
-            document.getElementById('quickCreateDesc').textContent = itemDesc || itemTitulo;
+            
+            const descEl = document.getElementById('quickCreateDesc');
+            descEl.textContent = finalDesc;
+            descEl.style.maxHeight = '180px';
+            descEl.style.overflowY = 'auto';
+
             contextContainer.style.display = 'block';
         }
 
