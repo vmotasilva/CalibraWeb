@@ -3467,6 +3467,16 @@ def api_iso_marcar_nao_aplicavel(request):
     except Exception as e:
         return JsonResponse({"success": False, "error": str(e)}, status=400)
 
+def natural_sort_key(referencia):
+    """
+    Função de chave para ordenação numérica natural de referências normativas (ex: 7.3.2 vem antes de 7.3.10).
+    """
+    import re
+    if not referencia:
+        return []
+    return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', str(referencia))]
+
+
 @login_required
 def iso_matriz_view(request, auditoria_id):
     from .models import AuditoriaIso, ItemNorma, RespostaEntrevistaIso
@@ -3503,7 +3513,7 @@ def iso_matriz_view(request, auditoria_id):
     
     matriz_data = []
     
-    for item in sorted(itens_escopo_list, key=lambda x: x.referencia):
+    for item in sorted(itens_escopo_list, key=lambda x: (x.ordem or 0, natural_sort_key(x.referencia))):
         is_parent = item.id in parent_ids
         
         # Encontra todos os blocos (agendas) e perguntas associadas a este item
@@ -3710,7 +3720,7 @@ def iso_auditoria_export_excel(request, auditoria_id):
     hierarchy = {"NC": 5, "P": 4, "OM": 3, "C": 2, "NA": 1}
     reverse_hierarchy = {v: k for k, v in hierarchy.items()}
 
-    for item in sorted(itens_escopo_list, key=lambda x: x.referencia):
+    for item in sorted(itens_escopo_list, key=lambda x: (x.ordem or 0, natural_sort_key(x.referencia))):
         todas_perguntas_item_set = set()
         for agenda in agendas:
             for p in agenda.perguntas.all():
@@ -4591,8 +4601,15 @@ def iso_agenda_detail(request, auditoria_id, pk):
     if not itens_norma_todos.exists():
         itens_norma_todos = ItemNorma.objects.all().order_by('referencia')
     
+    if request.method == "POST" and "vincular_pergunta_id" in request.POST:
+        p_id = request.POST.get("vincular_pergunta_id")
+        if p_id:
+            agenda.perguntas.add(p_id)
+            messages.success(request, "Pergunta vinculada a este bloco da agenda com sucesso!")
+            return redirect('auditoria:iso_agenda_detail', auditoria_id=auditoria_id, pk=pk)
+
     # Análise de Cobertura de Escopo (Apenas itens de último nível / folhas)
-    itens_alvo_todos = list(agenda.itens_norma.all().order_by('ordem', 'referencia'))
+    itens_alvo_todos = sorted(list(agenda.itens_norma.all()), key=lambda x: (x.ordem or 0, natural_sort_key(x.referencia)))
     
     parent_ids_in_alvo = set()
     for item in itens_alvo_todos:
@@ -4604,17 +4621,72 @@ def iso_agenda_detail(request, auditoria_id, pk):
     itens_cobertos_qs = agenda.itens_cobertos()
     itens_cobertos_ids = set(itens_cobertos_qs.values_list('id', flat=True))
     
+    # Identifica perguntas e itens em OUTROS blocos desta mesma auditoria
+    outras_agendas = list(auditoria.agendas.exclude(id=agenda.id).prefetch_related('perguntas', 'perguntas__itens_norma'))
+    
+    itens_cobertos_outras_agendas_ids = set()
+    for ag in outras_agendas:
+        for p in ag.perguntas.all():
+            for item in p.itens_norma.all():
+                if item.id not in itens_cobertos_ids:
+                    itens_cobertos_outras_agendas_ids.add(item.id)
+
+    cobertura_status = []
+    total_coberto = 0
+    for item in itens_alvo:
+        is_coberto_neste_bloco = item.id in itens_cobertos_ids
+        is_coberto_outro_bloco = item.id in itens_cobertos_outras_agendas_ids
+
+        perguntas_outros_blocos = []
+        for ag in outras_agendas:
+            for p in ag.perguntas.all():
+                if item in p.itens_norma.all():
+                    perguntas_outros_blocos.append({
+                        'pergunta_id': p.id,
+                        'texto_pergunta': p.texto_pergunta,
+                        'dica_auditor': p.dica_auditor or '',
+                        'bloco_id': ag.id,
+                        'bloco_titulo': ag.titulo
+                    })
+
+        if is_coberto_neste_bloco:
+            total_coberto += 1
+            status_code = 'VERDE'
+        elif is_coberto_outro_bloco:
+            status_code = 'AMARELO'
+        else:
+            status_code = 'VERMELHO'
+
+        cobertura_status.append({
+            'item': item,
+            'coberto': is_coberto_neste_bloco,
+            'status_code': status_code,
+            'perguntas_outros_blocos': perguntas_outros_blocos,
+            'perguntas_outros_blocos_json': json.dumps(perguntas_outros_blocos),
+        })
+
     total_alvo = len(itens_alvo)
-    total_coberto = sum(1 for item in itens_alvo if item.id in itens_cobertos_ids)
     porcentagem_cobertura = round((total_coberto / total_alvo * 100)) if total_alvo > 0 else 0
     
+    # Perguntas ordenadas rigorosamente pela ordem numerica natural do item da norma (ex: 7.3.2 antes de 7.3.10)
+    def get_pergunta_sort_key(p):
+        first_item = p.itens_norma.all()
+        if first_item:
+            item = first_item[0]
+            return (item.ordem or 0, natural_sort_key(item.referencia))
+        return (999, [])
+
+    perguntas_lista = list(agenda.perguntas.all().prefetch_related('itens_norma'))
+    perguntas_ordenadas = sorted(perguntas_lista, key=get_pergunta_sort_key)
+
     return render(request, "auditoria/iso/setup/agenda_detail.html", {
         "auditoria": auditoria,
         "agenda": agenda,
-        "perguntas": agenda.perguntas.all().prefetch_related('itens_norma'),
+        "perguntas": perguntas_ordenadas,
         "form_nova_pergunta": form_nova_pergunta,
         "itens_norma_todos": itens_norma_todos,
         "itens_alvo": itens_alvo,
+        "cobertura_status": cobertura_status,
         "itens_cobertos_ids": itens_cobertos_ids,
         "total_alvo": total_alvo,
         "total_coberto": total_coberto,

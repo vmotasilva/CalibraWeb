@@ -78,16 +78,29 @@
                             <!-- Checklist de Tags de Cobertura -->
                             <small class="text-muted d-block fw-bold mb-2">Checklist de Requisitos Alvo:</small>
                             <div class="d-flex flex-wrap gap-1">
-                                {% for item in itens_alvo %}
-                                    {% if item.id in itens_cobertos_ids %}
-                                        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 py-2 px-2.5 rounded-pill view-item-btn d-inline-flex align-items-center gap-1" style="cursor: pointer; font-size: 0.78rem;" data-api-url="{% url 'auditoria:iso_item_detail_api' item.id %}" title="Item coberto por pergunta - Clique para ver a descrição">
-                                            <i class="bi bi-check-circle-fill text-success"></i> <strong>{{ item.referencia }}</strong>
-                                        </span>
-                                    {% else %}
-                                        <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 py-2 px-2.5 rounded-pill view-item-btn d-inline-flex align-items-center gap-1" style="cursor: pointer; font-size: 0.78rem;" data-api-url="{% url 'auditoria:iso_item_detail_api' item.id %}" title="Pendente de pergunta no bloco - Clique para ver a descrição">
-                                            <i class="bi bi-hourglass-split text-danger"></i> <strong>{{ item.referencia }}</strong>
-                                        </span>
-                                    {% endif %}
+                                {% for status_info in cobertura_status %}
+                                    {% with item=status_info.item status_code=status_info.status_code %}
+                                        {% if status_code == 'VERDE' %}
+                                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 py-2 px-2.5 rounded-pill view-item-btn d-inline-flex align-items-center gap-1" style="cursor: pointer; font-size: 0.78rem;" data-api-url="{% url 'auditoria:iso_item_detail_api' item.id %}" title="🟢 Coberto neste bloco - Clique para ver detalhes">
+                                                <i class="bi bi-check-circle-fill text-success"></i> <strong>{{ item.referencia }}</strong>
+                                            </span>
+                                        {% elif status_code == 'AMARELO' %}
+                                            <span class="badge bg-warning bg-opacity-20 text-dark border border-warning border-opacity-50 py-2 px-2.5 rounded-pill btn-view-other-agendas-tag d-inline-flex align-items-center gap-1 shadow-2xs" 
+                                                  data-id="{{ item.id }}"
+                                                  data-ref="{{ item.referencia }}"
+                                                  data-titulo="{{ item.titulo }}"
+                                                  data-desc="{{ item.descricao|default:item.titulo }}"
+                                                  data-perguntas="{{ status_info.perguntas_outros_blocos_json|escapejs }}"
+                                                  style="cursor: pointer; font-size: 0.78rem;"
+                                                  title="🟡 Possui pergunta em OUTRO bloco desta auditoria - Clique para visualizar as perguntas existentes e vincular">
+                                                🟡 <strong>{{ item.referencia }}</strong>
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 py-2 px-2.5 rounded-pill view-item-btn d-inline-flex align-items-center gap-1" style="cursor: pointer; font-size: 0.78rem;" data-api-url="{% url 'auditoria:iso_item_detail_api' item.id %}" title="🔴 Pendente de pergunta nesta auditoria - Clique para ver detalhes">
+                                                <i class="bi bi-hourglass-split text-danger"></i> <strong>{{ item.referencia }}</strong>
+                                            </span>
+                                        {% endif %}
+                                    {% endwith %}
                                 {% endfor %}
                             </div>
                         {% else %}
