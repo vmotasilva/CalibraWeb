@@ -20,54 +20,69 @@
 {% endblock %}
 
 {% block content %}
-<div class="container mt-4">
+<div class="container-fluid py-4 px-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h4 class="mb-0">Matriz de Conformidade: {{ auditoria.norma.codigo }}</h4>
-            <small class="text-muted">Resultado Automático da Entrevista</small>
+            <h3 class="fw-bold mb-1 text-dark"><i class="bi bi-grid-3x3-gap-fill text-primary me-2"></i>Matriz de Conformidade: {{ auditoria.norma.codigo }}</h3>
+            <p class="text-muted mb-0">Clique em qualquer item da matriz para visualizar os blocos associados, perguntas e respostas preenchidas na auditoria.</p>
         </div>
-        <div>
-            <a href="{% url 'auditoria:iso_auditoria_list' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Voltar</a>
-            <button class="btn btn-primary" onclick="window.print()"><i class="bi bi-printer"></i> Imprimir PDF</button>
+        <div class="d-flex gap-2">
+            <a href="{% url 'auditoria:iso_auditoria_detail' auditoria.id %}" class="btn btn-outline-secondary rounded-pill px-3 fw-bold">
+                <i class="bi bi-arrow-left me-1"></i> Voltar à Auditoria
+            </a>
+            <button class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" onclick="window.print()">
+                <i class="bi bi-printer me-1"></i> Imprimir PDF
+            </button>
         </div>
     </div>
 
-    <div class="card shadow-sm">
+    <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-hover mb-0 align-middle">
                     <thead class="table-light">
                         <tr>
-                            <th style="width: 15%">Referência</th>
+                            <th style="width: 15%" class="ps-4">Referência</th>
                             <th style="width: 45%">Item da Norma</th>
                             <th style="width: 15%" class="text-center">Perguntas Vinculadas</th>
-                            <th style="width: 25%" class="text-center">Status Calculado</th>
+                            <th style="width: 25%" class="text-center pe-4">Status Calculado</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for row in matriz_data %}
-                        <tr>
-                            <td><strong>{{ row.referencia }}</strong></td>
+                        <tr class="{% if not row.is_parent %}row-item-matriz-auditoria{% endif %}"
+                            {% if not row.is_parent %}
+                            style="cursor: pointer;"
+                            data-ref="{{ row.referencia }}"
+                            data-titulo="{{ row.titulo }}"
+                            data-desc="{{ row.descricao }}"
+                            data-status="{{ row.status }}"
+                            data-blocos='{{ row.blocos_associados|json_script:"blocos-data" }}'
+                            {% endif %}>
+                            <td class="ps-4"><strong>{{ row.referencia }}</strong></td>
                             <td>
-                                <div><strong>{{ row.titulo }}</strong></div>
-                                <div class="small text-muted text-truncate" style="max-width: 400px;" title="{{ row.descricao }}">{{ row.descricao }}</div>
+                                <div><strong class="{% if row.is_parent %}text-muted{% else %}text-primary hover-underline{% endif %}">{{ row.titulo }}</strong></div>
+                                <div class="small text-muted text-truncate" style="max-width: 450px;" title="{{ row.descricao }}">{{ row.descricao }}</div>
                             </td>
                             <td class="text-center">
-                                <span class="badge bg-secondary">{{ row.qtd_perguntas }}</span>
+                                <span class="badge bg-secondary bg-opacity-10 text-dark rounded-pill px-2.5 py-1">{{ row.qtd_perguntas }}</span>
                             </td>
-                            <td class="text-center">
+                            <td class="text-center pe-4">
                                 <span class="status-badge status-{{ row.status }}">
-                                    {% if row.status == 'C' %} Conforme
-                                    {% elif row.status == 'NC' %} Não Conforme
-                                    {% elif row.status == 'OM' %} Oportunidade
-                                    {% elif row.status == 'P' %} Pendente
-                                    {% else %} Não Aplicável {% endif %}
+                                    {% if row.status == 'C' %} ✅ Conforme
+                                    {% elif row.status == 'NC' %} 🔴 Não Conforme
+                                    {% elif row.status == 'OM' %} 🟠 Oportunidade
+                                    {% elif row.status == 'P' %} ⚠️ Pendente
+                                    {% else %} ℹ️ Não Aplicável {% endif %}
                                 </span>
                             </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="4" class="text-center text-muted py-4">Nenhum item avaliado nesta auditoria.</td>
+                            <td colspan="4" class="text-center text-muted py-5">
+                                <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+                                Nenhum item avaliado nesta auditoria.
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -76,4 +91,159 @@
         </div>
     </div>
 </div>
+
+<!-- Modal Detalhe do Item na Auditoria (Layout 2 Colunas) -->
+<div class="modal fade" id="detalheItemMatrizAuditoriaModal" tabindex="-1" aria-hidden="true" style="z-index: 10050;">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0 rounded-4">
+            <div class="modal-header bg-primary text-white py-3 border-0">
+                <h5 class="modal-title fw-bold d-flex align-items-center gap-2">
+                    <i class="bi bi-layers me-1"></i>
+                    <span>Detalhamento do Requisito na Auditoria</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row g-4">
+                    <!-- COLUNA 1: Requisito da Norma (Leitura) -->
+                    <div class="col-lg-5">
+                        <div class="card bg-primary bg-opacity-10 border-primary border-opacity-25 rounded-4 p-4 shadow-2xs h-100 d-flex flex-column">
+                            <div class="d-flex align-items-center justify-content-between mb-3">
+                                <span class="badge bg-primary text-white rounded-pill px-3 py-1.5 fw-bold fs-6" id="auditoriaModalRefBadge"></span>
+                                <span id="auditoriaModalStatusBadgeContainer"></span>
+                            </div>
+                            <h5 class="fw-bold text-dark mb-2" id="auditoriaModalTituloReq"></h5>
+                            <small class="text-primary fw-bold text-uppercase d-block mb-2" style="letter-spacing: 0.5px;">
+                                <i class="bi bi-book me-1"></i> Texto Integral da Norma
+                            </small>
+                            <div class="card bg-white border-0 p-3 rounded-3 text-dark font-monospace flex-grow-1 shadow-2xs" style="line-height: 1.6; font-size: 0.9rem; max-height: 440px; overflow-y: auto; white-space: pre-wrap;" id="auditoriaModalDescReq"></div>
+                        </div>
+                    </div>
+
+                    <!-- COLUNA 2: Blocos Associados, Perguntas e Respostas Preenchidas -->
+                    <div class="col-lg-7">
+                        <div style="max-height: 520px; overflow-y: auto;" id="auditoriaModalBlocosContainer">
+                            <!-- Preenchido via JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 bg-light">
+                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modalEl = document.getElementById('detalheItemMatrizAuditoriaModal');
+    if (modalEl && modalEl.parentElement !== document.body) {
+        document.body.appendChild(modalEl);
+    }
+
+    document.querySelectorAll('.row-item-matriz-auditoria').forEach(row => {
+        row.addEventListener('click', function() {
+            const ref = this.dataset.ref;
+            const titulo = this.dataset.titulo;
+            const desc = this.dataset.desc;
+            const status = this.dataset.status;
+
+            // Extrai o JSON de blocos associados do script da linha
+            let blocos = [];
+            const scriptTag = this.querySelector('script');
+            if (scriptTag) {
+                try {
+                    blocos = JSON.parse(scriptTag.textContent || '[]');
+                } catch(e) { console.error('Erro ao ler JSON de blocos:', e); }
+            }
+
+            // Popula Coluna 1 (Norma)
+            document.getElementById('auditoriaModalRefBadge').textContent = ref;
+            document.getElementById('auditoriaModalTituloReq').textContent = titulo;
+            document.getElementById('auditoriaModalDescReq').textContent = desc || titulo;
+
+            // Badge de status
+            const statusContainer = document.getElementById('auditoriaModalStatusBadgeContainer');
+            let statusHtml = '';
+            if (status === 'C') statusHtml = '<span class="status-badge status-C">✅ Conforme</span>';
+            else if (status === 'NC') statusHtml = '<span class="status-badge status-NC">🔴 Não Conforme</span>';
+            else if (status === 'OM') statusHtml = '<span class="status-badge status-OM">🟠 Oportunidade</span>';
+            else if (status === 'P') statusHtml = '<span class="status-badge status-P">⚠️ Pendente</span>';
+            else statusHtml = '<span class="status-badge status-NA">ℹ️ Não Aplicável</span>';
+            statusContainer.innerHTML = statusHtml;
+
+            // Popula Coluna 2 (Blocos e Perguntas)
+            const blocosContainer = document.getElementById('auditoriaModalBlocosContainer');
+            blocosContainer.innerHTML = '';
+
+            if (!blocos || blocos.length === 0) {
+                blocosContainer.innerHTML = `
+                    <div class="alert alert-light border text-center py-5 rounded-4">
+                        <i class="bi bi-inbox fs-2 text-muted d-block mb-2"></i>
+                        Este item da norma não possui perguntas ou blocos associados nesta auditoria ainda.
+                    </div>
+                `;
+            } else {
+                blocos.forEach(b => {
+                    const blockCard = document.createElement('div');
+                    blockCard.className = 'card border rounded-4 shadow-2xs mb-3 bg-white p-3.5';
+
+                    let perguntasHtml = '';
+                    if (b.perguntas && b.perguntas.length > 0) {
+                        b.perguntas.forEach(p => {
+                            let respBadge = '';
+                            if (p.classificacao === 'C') respBadge = '<span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2.5 py-1 small">✅ Conforme</span>';
+                            else if (p.classificacao === 'NC') respBadge = '<span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2.5 py-1 small">🔴 Não Conforme</span>';
+                            else if (p.classificacao === 'OM') respBadge = '<span class="badge bg-warning bg-opacity-10 text-dark rounded-pill px-2.5 py-1 small">🟠 Oportunidade</span>';
+                            else if (p.classificacao === 'NA') respBadge = '<span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2.5 py-1 small">ℹ️ Não Aplicável</span>';
+                            else respBadge = '<span class="badge bg-secondary bg-opacity-10 text-muted rounded-pill px-2.5 py-1 small">⚠️ Pendente</span>';
+
+                            let respostaTextoHtml = '';
+                            if (p.texto_resposta && p.texto_resposta.trim()) {
+                                respostaTextoHtml = `
+                                    <div class="mt-2 p-2.5 bg-light rounded-3 border">
+                                        <small class="fw-bold text-secondary d-block mb-1"><i class="bi bi-chat-left-text me-1"></i> Evidências / Anotações do Auditor:</small>
+                                        <div class="text-dark small font-monospace" style="white-space: pre-wrap;">${p.texto_resposta}</div>
+                                    </div>
+                                `;
+                            } else {
+                                respostaTextoHtml = `<small class="text-muted fst-italic d-block mt-1">Aguardando realização da entrevista neste bloco.</small>`;
+                            }
+
+                            perguntasHtml += `
+                                <div class="p-3 bg-white border rounded-3 mb-2 shadow-2xs">
+                                    <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
+                                        <span class="fw-bold text-dark small" style="white-space: pre-wrap;"><i class="bi bi-question-circle text-primary me-1"></i>${p.texto_pergunta}</span>
+                                        ${respBadge}
+                                    </div>
+                                    ${p.dica_auditor ? `<small class="text-muted d-block mb-1"><i class="bi bi-info-circle me-1"></i>Dica: ${p.dica_auditor}</small>` : ''}
+                                    ${respostaTextoHtml}
+                                </div>
+                            `;
+                        });
+                    } else {
+                        perguntasHtml = `<p class="text-muted small fst-italic mb-0">Nenhuma pergunta vinculada a este requisito neste bloco.</p>`;
+                    }
+
+                    blockCard.innerHTML = `
+                        <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                            <span class="fw-bold text-primary fs-6"><i class="bi bi-box-seam me-1"></i> Bloco: ${b.bloco_titulo}</span>
+                            <span class="badge bg-secondary bg-opacity-10 text-dark rounded-pill px-2.5 py-1 small">${b.total_perguntas} pergunta(s)</span>
+                        </div>
+                        <div>${perguntasHtml}</div>
+                    `;
+
+                    blocosContainer.appendChild(blockCard);
+                });
+            }
+
+            const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            modal.show();
+        });
+    });
+});
+</script>
 {% endblock %}

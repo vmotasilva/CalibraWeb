@@ -3259,51 +3259,97 @@ def api_iso_autosave_resposta(request):
 
 @login_required
 def iso_matriz_view(request, auditoria_id):
+    from .models import AuditoriaIso, ItemNorma, RespostaEntrevistaIso
     auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+    agendas = list(auditoria.agendas.all().prefetch_related('perguntas', 'itens_norma'))
     
-    # 1. Obter todos os itens do escopo da auditoria
+    respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria)
+    respostas_map = {r.pergunta_id: r for r in respostas}
+    
+    # 1. Obter todos os itens do escopo da auditoria ou todos os itens da norma
     itens_escopo = auditoria.escopo_itens.all().prefetch_related('perguntas_vinculadas')
     if not itens_escopo.exists():
-        # Fallback para MVP: pega todos os itens da norma
-        from .models import ItemNorma
         itens_escopo = ItemNorma.objects.filter(norma=auditoria.norma).prefetch_related('perguntas_vinculadas')
         
-    # 2. Obter respostas desta auditoria
-    respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria)
-    respostas_por_pergunta = {r.pergunta_id: r.classificacao for r in respostas}
+    itens_escopo_list = list(itens_escopo)
     
-    # 3. Hierarquia de pior caso
-    # NC (Não Conforme) > P (Pendente) > OM (Oportunidade) > C (Conforme) > NA (Não Aplicável)
-    # Se não houver perguntas, consideramos NA ou P.
+    # 2. Identifica apenas itens de último nível (folhas)
+    parent_ids = set()
+    for item in itens_escopo_list:
+        prefix = item.referencia + '.'
+        if any(other.referencia.startswith(prefix) for other in itens_escopo_list if other.id != item.id):
+            parent_ids.add(item.id)
+            
+    # Classificação por hierarquia de gravidade
     hierarchy = {"NC": 5, "P": 4, "OM": 3, "C": 2, "NA": 1}
     reverse_hierarchy = {v: k for k, v in hierarchy.items()}
     
     matriz_data = []
     
-    for item in itens_escopo:
-        perguntas = item.perguntas_vinculadas.filter(ativa=True)
-        if not perguntas.exists():
+    for item in sorted(itens_escopo_list, key=lambda x: x.referencia):
+        is_parent = item.id in parent_ids
+        
+        # Procura por todos os blocos (agendas) desta auditoria vinculados a este item
+        blocos_associados = []
+        todas_perguntas_item_set = set()
+        
+        for agenda in agendas:
+            # Perguntas deste bloco que cobrem este requisito especificamente
+            perguntas_bloco_req = [
+                p for p in agenda.perguntas.all()
+                if item in p.itens_norma.all() or item in agenda.itens_norma.all()
+            ]
+            
+            if item in agenda.itens_norma.all() or perguntas_bloco_req:
+                perguntas_info = []
+                for p in perguntas_bloco_req:
+                    todas_perguntas_item_set.add(p.id)
+                    resp = respostas_map.get(p.id)
+                    perguntas_info.append({
+                        'id': p.id,
+                        'texto_pergunta': p.texto_pergunta,
+                        'dica_auditor': p.dica_auditor or '',
+                        'classificacao': resp.classificacao if resp else 'P',
+                        'classificacao_display': resp.get_classificacao_display() if resp else 'Pendente',
+                        'texto_resposta': resp.texto_resposta if (resp and resp.texto_resposta) else ''
+                    })
+                    
+                blocos_associados.append({
+                    'bloco_id': agenda.id,
+                    'bloco_titulo': agenda.titulo,
+                    'total_perguntas': len(perguntas_info),
+                    'perguntas': perguntas_info
+                })
+                
+        # Status Calculado
+        if is_parent:
+            status_item = "NA"
+        elif not todas_perguntas_item_set:
             status_item = "NA"
         else:
             pior_peso = 0
-            for p in perguntas:
-                classificacao = respostas_por_pergunta.get(p.id, "P") # Se não tem resposta, é Pendente
+            for p_id in todas_perguntas_item_set:
+                r = respostas_map.get(p_id)
+                classificacao = r.classificacao if r else "P"
                 peso = hierarchy.get(classificacao, 4)
                 if peso > pior_peso:
                     pior_peso = peso
             status_item = reverse_hierarchy.get(pior_peso, "P")
             
         matriz_data.append({
+            "id": item.id,
             "referencia": item.referencia,
             "titulo": item.titulo,
-            "descricao": item.descricao,
+            "descricao": item.descricao or item.titulo,
+            "is_parent": is_parent,
             "status": status_item,
-            "qtd_perguntas": perguntas.count()
+            "qtd_perguntas": len(todas_perguntas_item_set),
+            "blocos_associados": blocos_associados
         })
         
     context = {
         "auditoria": auditoria,
-        "matriz_data": sorted(matriz_data, key=lambda x: x['referencia'])
+        "matriz_data": matriz_data
     }
     
     return render(request, "auditoria/iso_matriz.html", context)
