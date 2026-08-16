@@ -3551,16 +3551,50 @@ def iso_modelo_edit(request, pk):
 
 @login_required
 def iso_modelo_detail(request, pk):
-    """Visão de Detalhes do Modelo (Template Mode - Cards dos Blocos do Modelo sem datas/auditor/auditar)"""
+    """Visão de Detalhes do Modelo (Template Mode com Visão por Blocos e Matriz Orientada aos Itens da Norma)"""
     from .models import ModeloAuditoriaIso, ItemNorma
     modelo = get_object_or_404(ModeloAuditoriaIso, pk=pk)
     blocos = modelo.blocos.all().prefetch_related('perguntas', 'itens_norma')
     itens_norma_todos = ItemNorma.objects.filter(norma=modelo.norma).order_by('ordem', 'referencia')
     
+    # Matriz de Mapeamento Orientado aos Itens da Norma
+    matriz_requisitos = []
+    total_multi_associacoes = 0
+    total_alvo_modelo = 0
+    
+    for item in itens_norma_todos:
+        blocos_associados = []
+        for bloco in blocos:
+            is_alvo = bloco.itens_norma.filter(id=item.id).exists()
+            if is_alvo:
+                perguntas_do_item = [p for p in bloco.perguntas.all() if p.itens_norma.filter(id=item.id).exists()]
+                blocos_associados.append({
+                    'bloco': bloco,
+                    'perguntas': perguntas_do_item,
+                    'total_perguntas': len(perguntas_do_item)
+                })
+        
+        if blocos_associados:
+            total_alvo_modelo += 1
+            is_multi = len(blocos_associados) > 1
+            if is_multi:
+                total_multi_associacoes += 1
+                
+            matriz_requisitos.append({
+                'item': item,
+                'blocos_associados': blocos_associados,
+                'total_blocos': len(blocos_associados),
+                'is_multi': is_multi,
+                'tem_cobertura': any(b['total_perguntas'] > 0 for b in blocos_associados)
+            })
+
     return render(request, "auditoria/iso/setup/modelo_detail.html", {
         "modelo": modelo,
         "blocos": blocos,
         "itens_norma_todos": itens_norma_todos,
+        "matriz_requisitos": matriz_requisitos,
+        "total_alvo_modelo": total_alvo_modelo,
+        "total_multi_associacoes": total_multi_associacoes,
         "mode": "template",
         "back_url": reverse('auditoria:iso_norma_detail', args=[modelo.norma_id]) + "?tab=modelos"
     })

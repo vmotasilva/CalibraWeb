@@ -72,149 +72,317 @@
     </div>
     {% endif %}
 
-    <!-- Sub-header com total de blocos -->
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h4 class="fw-bold text-dark mb-0">Estrutura de Blocos do Modelo (Molde)</h4>
-        <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Estes blocos serão copiados automaticamente para as agendas que selecionarem este modelo.</small>
-    </div>
-
-    <!-- Grid de Cards de Blocos do Modelo (Identica a tela de Auditorias) -->
-    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-5">
-        {% for bloco in blocos %}
-        <div class="col">
-            <div class="card h-100 shadow-sm border-0 rounded-4 overflow-hidden" style="border-top: 4px solid #0d6efd !important;">
-                <div class="card-body p-4">
-                    
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <h5 class="fw-bold text-dark mb-0 me-2">{{ bloco.titulo }}</h5>
-                        
-                        <!-- Menu 3 Pontinhos de Ações do Bloco do Modelo -->
-                        <div class="dropdown">
-                            <button class="btn btn-sm btn-light border rounded-circle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="bi bi-three-dots-vertical text-muted"></i>
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-3">
-                                <li>
-                                    <button class="dropdown-item py-2 edit-bloco-btn" data-id="{{ bloco.id }}" data-titulo="{{ bloco.titulo }}">
-                                        <i class="bi bi-pencil me-2 text-primary"></i>Editar Título
-                                    </button>
-                                </li>
-                                <li>
-                                    <button class="dropdown-item py-2 btn-alvo-bloco-modal" data-id="{{ bloco.id }}" data-bs-toggle="modal" data-bs-target="#alvoBlocoModal{{ bloco.id }}">
-                                        <i class="bi bi-bullseye me-2 text-danger"></i>Definir Itens Alvo (Escopo)
-                                    </button>
-                                </li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li>
-                                    <form method="POST" action="{% url 'auditoria:iso_modelo_bloco_delete' modelo.id bloco.id %}">
-                                        {% csrf_token %}
-                                        <button type="submit" class="dropdown-item py-2 text-danger" onclick="return confirm('Excluir este bloco do modelo?');">
-                                            <i class="bi bi-trash me-2"></i>Excluir Bloco
-                                        </button>
-                                    </form>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <!-- Contadores de Itens e Perguntas -->
-                    <div class="text-muted small mb-3">
-                        <div class="mb-1">
-                            <i class="bi bi-tags text-primary me-1"></i>
-                            <strong class="text-dark">{{ bloco.itens_norma.count }}</strong> Itens Alvo da Norma
-                        </div>
-                        <div>
-                            <i class="bi bi-question-circle text-primary me-1"></i>
-                            <strong class="text-dark">{{ bloco.perguntas.count }}</strong> Perguntas vinculadas
-                        </div>
-                    </div>
-
-                    <!-- Tags dos Itens Alvo -->
-                    <div class="mb-3">
-                        {% for item in bloco.itens_norma.all %}
-                        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill me-1 mb-1" style="font-size: 0.75rem;">
-                            🟢 {{ item.referencia }}
-                        </span>
-                        {% empty %}
-                        <span class="badge bg-light text-muted border" style="font-size: 0.75rem;">Sem escopo alvo configurado</span>
-                        {% endfor %}
-                    </div>
-
-                    <!-- Botão/Link para Vincular Perguntas ao Bloco -->
-                    <a href="{% url 'auditoria:iso_modelo_bloco_perguntas' modelo.id bloco.id %}" class="btn btn-outline-primary btn-sm w-100 rounded-3 py-2 fw-semibold mb-2">
-                        <i class="bi bi-plus-lg me-1"></i> Gerenciar Perguntas deste Bloco
-                    </a>
-
-                    <!-- Informação do Modo Template (Datas Ocultas) -->
-                    <div class="bg-light p-2 rounded-3 text-center small text-muted border">
-                        <i class="bi bi-clock-history me-1"></i> Agendamento preenchido na execução
-                    </div>
-
-                </div>
-            </div>
+    <!-- Sub-header com Toggle de Alternância de Visão -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <h4 class="fw-bold text-dark mb-1">Mapeamento de Auditoria do Modelo</h4>
+            <small class="text-muted"><i class="bi bi-info-circle me-1"></i> Alterne entre a visão organizada por Blocos de Auditoria ou por Requisitos da Norma.</small>
         </div>
 
-        <!-- Modal Definir Itens Alvo para este Bloco do Modelo -->
-        <div class="modal fade" id="alvoBlocoModal{{ bloco.id }}" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-xl modal-dialog-scrollable">
-                <div class="modal-content shadow-lg border-0 rounded-4">
-                    <form action="{% url 'auditoria:iso_modelo_bloco_alvo_update' modelo.id bloco.id %}" method="post">
-                        {% csrf_token %}
-                        <div class="modal-header bg-light border-0 py-3">
-                            <h5 class="modal-title fw-bold text-primary">
-                                <i class="bi bi-bullseye me-2"></i>Definir Itens Alvo do Bloco: {{ bloco.titulo }}
-                            </h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <!-- Controle de Alternância de Visão (Segmented Button) -->
+        <div class="btn-group p-1 bg-light border rounded-pill shadow-2xs" role="group">
+            <button type="button" class="btn btn-sm btn-primary rounded-pill px-3.5 py-1.5 fw-bold" id="btnVisaoBlocosModelo">
+                <i class="bi bi-grid-3x3-gap-fill me-1"></i> Visão por Blocos ({{ blocos.count }})
+            </button>
+            <button type="button" class="btn btn-sm btn-light text-secondary rounded-pill px-3.5 py-1.5 fw-semibold" id="btnVisaoRequisitosModelo">
+                <i class="bi bi-diagram-3-fill me-1"></i> Visão por Requisitos ({{ total_alvo_modelo }})
+            </button>
+        </div>
+    </div>
+
+    <!-- CONTAINER 1: Visão por Cards de Blocos (Visão Atual) -->
+    <div id="visaoBlocosModeloContainer">
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-5">
+            {% for bloco in blocos %}
+            <div class="col">
+                <div class="card h-100 shadow-sm border-0 rounded-4 overflow-hidden" style="border-top: 4px solid #0d6efd !important;">
+                    <div class="card-body p-4">
+                        
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <h5 class="fw-bold text-dark mb-0 me-2">{{ bloco.titulo }}</h5>
+                            
+                            <!-- Menu 3 Pontinhos de Ações do Bloco do Modelo -->
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-light border rounded-circle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-three-dots-vertical text-muted"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-3">
+                                    <li>
+                                        <button class="dropdown-item py-2 edit-bloco-btn" data-id="{{ bloco.id }}" data-titulo="{{ bloco.titulo }}">
+                                            <i class="bi bi-pencil me-2 text-primary"></i>Editar Título
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button class="dropdown-item py-2 btn-alvo-bloco-modal" data-id="{{ bloco.id }}" data-bs-toggle="modal" data-bs-target="#alvoBlocoModal{{ bloco.id }}">
+                                            <i class="bi bi-bullseye me-2 text-danger"></i>Definir Itens Alvo (Escopo)
+                                        </button>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <form method="POST" action="{% url 'auditoria:iso_modelo_bloco_delete' modelo.id bloco.id %}">
+                                            {% csrf_token %}
+                                            <button type="submit" class="dropdown-item py-2 text-danger" onclick="return confirm('Excluir este bloco do modelo?');">
+                                                <i class="bi bi-trash me-2"></i>Excluir Bloco
+                                            </button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </div>
                         </div>
-                        <div class="modal-body p-4">
-                            <div class="row g-3">
-                                {% regroup itens_norma_todos by referencia|slice:":1" as secoes_alvo_list %}
-                                {% for secao in secoes_alvo_list %}
-                                <div class="col-12">
-                                    <div class="card border rounded-3 bg-light">
-                                        <div class="card-header bg-white py-2 fw-bold text-dark border-0">
-                                            Seção {{ secao.grouper }}
-                                        </div>
-                                        <div class="card-body p-3 bg-white">
-                                            <div class="row row-cols-1 row-cols-md-2 g-2">
-                                                {% for item in secao.list %}
-                                                <div class="col">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" name="itens_alvo" value="{{ item.id }}" id="item_bloco_{{ bloco.id }}_{{ item.id }}" {% if item in bloco.itens_norma.all %}checked{% endif %}>
-                                                        <label class="form-check-label small text-dark" for="item_bloco_{{ bloco.id }}_{{ item.id }}">
-                                                            <strong>{{ item.referencia }}</strong> - {{ item.titulo }}
-                                                        </label>
+
+                        <!-- Contadores de Itens e Perguntas -->
+                        <div class="text-muted small mb-3">
+                            <div class="mb-1">
+                                <i class="bi bi-tags text-primary me-1"></i>
+                                <strong class="text-dark">{{ bloco.itens_norma.count }}</strong> Itens Alvo da Norma
+                            </div>
+                            <div>
+                                <i class="bi bi-question-circle text-primary me-1"></i>
+                                <strong class="text-dark">{{ bloco.perguntas.count }}</strong> Perguntas vinculadas
+                            </div>
+                        </div>
+
+                        <!-- Tags dos Itens Alvo -->
+                        <div class="mb-3">
+                            {% for item in bloco.itens_norma.all %}
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill me-1 mb-1" style="font-size: 0.75rem;">
+                                🟢 {{ item.referencia }}
+                            </span>
+                            {% empty %}
+                            <span class="badge bg-light text-muted border" style="font-size: 0.75rem;">Sem escopo alvo configurado</span>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Botão/Link para Vincular Perguntas ao Bloco -->
+                        <a href="{% url 'auditoria:iso_modelo_bloco_perguntas' modelo.id bloco.id %}" class="btn btn-outline-primary btn-sm w-100 rounded-3 py-2 fw-semibold mb-2">
+                            <i class="bi bi-plus-lg me-1"></i> Gerenciar Perguntas deste Bloco
+                        </a>
+
+                        <!-- Informação do Modo Template (Datas Ocultas) -->
+                        <div class="bg-light p-2 rounded-3 text-center small text-muted border">
+                            <i class="bi bi-clock-history me-1"></i> Agendamento preenchido na execução
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Definir Itens Alvo para este Bloco do Modelo -->
+            <div class="modal fade" id="alvoBlocoModal{{ bloco.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                    <div class="modal-content shadow-lg border-0 rounded-4">
+                        <form action="{% url 'auditoria:iso_modelo_bloco_alvo_update' modelo.id bloco.id %}" method="post">
+                            {% csrf_token %}
+                            <div class="modal-header bg-light border-0 py-3">
+                                <h5 class="modal-title fw-bold text-primary">
+                                    <i class="bi bi-bullseye me-2"></i>Definir Itens Alvo do Bloco: {{ bloco.titulo }}
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body p-4">
+                                <div class="row g-3">
+                                    {% regroup itens_norma_todos by referencia|slice:":1" as secoes_alvo_list %}
+                                    {% for secao in secoes_alvo_list %}
+                                    <div class="col-12">
+                                        <div class="card border rounded-3 bg-light">
+                                            <div class="card-header bg-white py-2 fw-bold text-dark border-0">
+                                                Seção {{ secao.grouper }}
+                                            </div>
+                                            <div class="card-body p-3 bg-white">
+                                                <div class="row row-cols-1 row-cols-md-2 g-2">
+                                                    {% for item in secao.list %}
+                                                    <div class="col">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="checkbox" name="itens_alvo" value="{{ item.id }}" id="item_bloco_{{ bloco.id }}_{{ item.id }}" {% if item in bloco.itens_norma.all %}checked{% endif %}>
+                                                            <label class="form-check-label small text-dark" for="item_bloco_{{ bloco.id }}_{{ item.id }}">
+                                                                <strong>{{ item.referencia }}</strong> - {{ item.titulo }}
+                                                            </label>
+                                                        </div>
                                                     </div>
+                                                    {% endfor %}
                                                 </div>
-                                                {% endfor %}
                                             </div>
                                         </div>
                                     </div>
+                                    {% endfor %}
                                 </div>
-                                {% endfor %}
                             </div>
-                        </div>
-                        <div class="modal-footer border-0 bg-light">
-                            <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
-                            <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">Salvar Escopo Alvo</button>
-                        </div>
-                    </form>
+                            <div class="modal-footer border-0 bg-light">
+                                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">Salvar Escopo Alvo</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            {% empty %}
+            <div class="col-12">
+                <div class="alert alert-info text-center py-5 rounded-4 shadow-sm border-0">
+                    <i class="bi bi-grid-3x3-gap fs-1 text-primary d-block mb-3"></i>
+                    <h5 class="fw-bold text-dark mb-2">Nenhum bloco cadastrado neste modelo</h5>
+                    <p class="text-muted mb-4">Clique no botão abaixo para adicionar a primeira seção (ex: Alta Direção, Qualidade, Compras).</p>
+                    <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#novoBlocoModeloModal">
+                        <i class="bi bi-plus-lg me-1"></i> Adicionar Primeiro Bloco
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- CONTAINER 2: Visão Orientada aos Itens da Norma (Matriz Global) -->
+    <div id="visaoRequisitosModeloContainer" style="display: none;">
+        <!-- Card de Resumo de Mapeamento de Requisitos -->
+        <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-primary bg-opacity-10 border-start border-primary border-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <div>
+                    <h5 class="fw-bold text-dark mb-1">
+                        <i class="bi bi-map-fill text-primary me-2"></i>Matriz de Mapeamento de Requisitos da Norma
+                    </h5>
+                    <p class="text-muted small mb-0">
+                        Visualização focada na distribuição dos requisitos entre os blocos. Permite analisar <strong>múltiplas associações</strong> e elaborar perguntas coesas para cada situação.
+                    </p>
+                </div>
+                <div class="d-flex gap-2">
+                    <span class="badge bg-primary text-white rounded-pill px-3 py-2 fs-6">
+                        🎯 {{ total_alvo_modelo }} Requisitos no Escopo
+                    </span>
+                    <span class="badge bg-warning text-dark rounded-pill px-3 py-2 fs-6">
+                        🔄 {{ total_multi_associacoes }} com Múltiplas Associações
+                    </span>
                 </div>
             </div>
         </div>
 
-        {% empty %}
-        <div class="col-12">
-            <div class="alert alert-info text-center py-5 rounded-4 shadow-sm border-0">
-                <i class="bi bi-grid-3x3-gap fs-1 text-primary d-block mb-3"></i>
-                <h5 class="fw-bold text-dark mb-2">Nenhum bloco cadastrado neste modelo</h5>
-                <p class="text-muted mb-4">Clique no botão abaixo para adicionar a primeira seção (ex: Alta Direção, Qualidade, Compras).</p>
-                <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#novoBlocoModeloModal">
-                    <i class="bi bi-plus-lg me-1"></i> Adicionar Primeiro Bloco
-                </button>
+        <!-- Filtros Rápidos da Matriz -->
+        <div class="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-5">
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-0"><i class="bi bi-search text-muted"></i></span>
+                        <input type="text" id="inputFilterRequisitosMatriz" class="form-control border-0 bg-light" placeholder="Buscar por referência (ex: 4.1.1) ou título...">
+                    </div>
+                </div>
+                <div class="col-md-7 d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 active" id="btnFilterMatrizTodos">
+                        Todos ({{ total_alvo_modelo }})
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-3 text-dark" id="btnFilterMatrizMulti">
+                        🔄 Apenas Múltiplas Associações ({{ total_multi_associacoes }})
+                    </button>
+                </div>
             </div>
         </div>
-        {% endfor %}
+
+        <!-- Lista de Accordions/Cards dos Requisitos da Norma -->
+        <div class="d-flex flex-column gap-3 mb-5" id="matrizRequisitosListaContainer">
+            {% for item_info in matriz_requisitos %}
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden item-matriz-card" 
+                 data-ref="{{ item_info.item.referencia|lower }}" 
+                 data-titulo="{{ item_info.item.titulo|lower }}" 
+                 data-multi="{{ item_info.is_multi|yesno:'true,false' }}">
+                 
+                <div class="card-header bg-white p-3.5 d-flex flex-wrap align-items-center justify-content-between gap-2 border-0">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-primary text-white rounded-pill px-3 py-1.5 fw-bold fs-6">
+                            {{ item_info.item.referencia }}
+                        </span>
+                        <h6 class="fw-bold text-dark mb-0 fs-6">{{ item_info.item.titulo }}</h6>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2">
+                        {% if item_info.is_multi %}
+                        <span class="badge bg-warning bg-opacity-20 text-dark border border-warning border-opacity-50 rounded-pill px-3 py-1 fw-bold small">
+                            🔄 Múltiplas Associações ({{ item_info.total_blocos }} Blocos)
+                        </span>
+                        {% else %}
+                        <span class="badge bg-light text-secondary border rounded-pill px-3 py-1 small">
+                            📍 Presente em 1 Bloco
+                        </span>
+                        {% endif %}
+
+                        {% if item_info.tem_cobertura %}
+                        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-2.5 py-1 small">
+                            ✅ Possui Perguntas
+                        </span>
+                        {% else %}
+                        <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill px-2.5 py-1 small">
+                            ⚠️ Sem Perguntas
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="card-body p-4 bg-light border-top">
+                    <!-- Texto da Norma -->
+                    {% if item_info.item.descricao %}
+                    <div class="card bg-white border-0 p-3 rounded-3 text-secondary small font-monospace mb-3 shadow-2xs">
+                        <strong class="text-dark d-block mb-1">📖 Cláusula da Norma:</strong>
+                        <div style="white-space: pre-wrap;">{{ item_info.item.descricao }}</div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Blocos Onde Este Requisito é Auditado -->
+                    <small class="text-uppercase fw-bold text-muted d-block mb-2" style="letter-spacing: 0.5px;">
+                        <i class="bi bi-diagram-2 me-1"></i> Blocos em que este requisito é avaliado:
+                    </small>
+
+                    <div class="row row-cols-1 row-cols-md-2 g-3">
+                        {% for b_assoc in item_info.blocos_associados %}
+                        <div class="col">
+                            <div class="card bg-white border rounded-3 p-3 h-100 shadow-2xs d-flex flex-column">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="fw-bold text-primary fs-6">
+                                        <i class="bi bi-box-seam me-1"></i> {{ b_assoc.bloco.titulo }}
+                                    </span>
+                                    {% if b_assoc.total_perguntas > 0 %}
+                                    <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2.5 py-1 small">
+                                        {{ b_assoc.total_perguntas }} pergunta(s)
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2.5 py-1 small">
+                                        Pendente
+                                    </span>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Lista de Perguntas Existentes para este Requisito neste Bloco -->
+                                {% if b_assoc.perguntas %}
+                                <div class="mb-3">
+                                    <small class="text-muted fw-bold d-block mb-1">Perguntas Vinculadas:</small>
+                                    <ul class="list-group list-group-flush small">
+                                        {% for p in b_assoc.perguntas %}
+                                        <li class="list-group-item bg-light border-0 rounded-2 p-2 mb-1">
+                                            <i class="bi bi-question-circle text-primary me-1"></i>
+                                            <span class="text-dark">{{ p.texto_pergunta }}</span>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                                {% else %}
+                                <p class="text-muted small mb-3 fst-italic">Nenhuma pergunta criada especificamente para o contexto deste bloco ainda.</p>
+                                {% endif %}
+
+                                <!-- Botão de Ação: Criar Pergunta Coesa para este Bloco -->
+                                <a href="{% url 'auditoria:iso_modelo_bloco_perguntas' modelo.id b_assoc.bloco.id %}" 
+                                   class="btn btn-outline-primary btn-sm rounded-pill w-100 fw-bold py-1.5 mt-auto">
+                                    <i class="bi bi-plus-lg me-1"></i> Gerar Pergunta Coesa para {{ b_assoc.bloco.titulo }}
+                                </a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                </div>
+            </div>
+            {% empty %}
+            <div class="alert alert-info text-center py-4 rounded-4 border-0">
+                <i class="bi bi-info-circle fs-3 d-block mb-2"></i>
+                Nenhum requisito da norma foi associado aos blocos deste modelo ainda.
+            </div>
+            {% endfor %}
+        </div>
     </div>
 
 </div>
@@ -273,6 +441,7 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Editar título do bloco
     document.querySelectorAll('.edit-bloco-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const blocoId = this.dataset.id;
@@ -287,6 +456,69 @@ document.addEventListener('DOMContentLoaded', function() {
             modal.show();
         });
     });
+
+    // Toggle de Visões (Visão por Blocos vs Visão por Requisitos)
+    const btnBlocos = document.getElementById('btnVisaoBlocosModelo');
+    const btnRequisitos = document.getElementById('btnVisaoRequisitosModelo');
+    const containerBlocos = document.getElementById('visaoBlocosModeloContainer');
+    const containerRequisitos = document.getElementById('visaoRequisitosModeloContainer');
+
+    if (btnBlocos && btnRequisitos) {
+        btnBlocos.addEventListener('click', function() {
+            btnBlocos.className = 'btn btn-sm btn-primary rounded-pill px-3.5 py-1.5 fw-bold';
+            btnRequisitos.className = 'btn btn-sm btn-light text-secondary rounded-pill px-3.5 py-1.5 fw-semibold';
+            containerBlocos.style.display = 'block';
+            containerRequisitos.style.display = 'none';
+        });
+
+        btnRequisitos.addEventListener('click', function() {
+            btnRequisitos.className = 'btn btn-sm btn-primary rounded-pill px-3.5 py-1.5 fw-bold';
+            btnBlocos.className = 'btn btn-sm btn-light text-secondary rounded-pill px-3.5 py-1.5 fw-semibold';
+            containerBlocos.style.display = 'none';
+            containerRequisitos.style.display = 'block';
+        });
+    }
+
+    // Filtros e Busca da Matriz de Requisitos
+    const inputSearch = document.getElementById('inputFilterRequisitosMatriz');
+    const btnFilterTodos = document.getElementById('btnFilterMatrizTodos');
+    const btnFilterMulti = document.getElementById('btnFilterMatrizMulti');
+    const itemCards = document.querySelectorAll('.item-matriz-card');
+
+    let currentFilterMultiOnly = false;
+
+    function applyMatrizFilters() {
+        const query = (inputSearch ? inputSearch.value : '').toLowerCase().trim();
+
+        itemCards.forEach(card => {
+            const ref = card.dataset.ref || '';
+            const titulo = card.dataset.titulo || '';
+            const isMulti = card.dataset.multi === 'true';
+
+            const matchesSearch = !query || ref.includes(query) || titulo.includes(query);
+            const matchesFilter = !currentFilterMultiOnly || isMulti;
+
+            card.style.display = (matchesSearch && matchesFilter) ? 'block' : 'none';
+        });
+    }
+
+    if (inputSearch) inputSearch.addEventListener('input', applyMatrizFilters);
+
+    if (btnFilterTodos && btnFilterMulti) {
+        btnFilterTodos.addEventListener('click', function() {
+            currentFilterMultiOnly = false;
+            btnFilterTodos.classList.add('active', 'btn-outline-secondary');
+            btnFilterMulti.classList.remove('active');
+            applyMatrizFilters();
+        });
+
+        btnFilterMulti.addEventListener('click', function() {
+            currentFilterMultiOnly = true;
+            btnFilterMulti.classList.add('active');
+            btnFilterTodos.classList.remove('active');
+            applyMatrizFilters();
+        });
+    }
 });
 </script>
 {% endblock %}
