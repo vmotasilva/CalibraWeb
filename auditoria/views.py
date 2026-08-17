@@ -4989,6 +4989,10 @@ def iso_auditoria_cronograma(request, auditoria_id):
         data_ajustada = agenda.data_real or agenda.data
         cronograma_ajustado[data_ajustada].append(agenda)
         
+    def format_reps(rep_str):
+        items = [x.strip() for x in (rep_str or "").replace('\n', ',').split(',') if x.strip()]
+        return sorted(items)
+        
     def inject_gaps(agendas_list, is_ajustado=False, is_first_day=False, is_last_day=False):
         import datetime
         result = []
@@ -5003,11 +5007,13 @@ def iso_auditoria_cronograma(request, auditoria_id):
             if is_first_day and i == 0 and inicio:
                 inicio_dt = datetime.datetime.combine(datetime.date.today(), inicio)
                 abertura_inicio = (inicio_dt - datetime.timedelta(minutes=30)).time()
+                rep_str = getattr(auditoria, 'abertura_representantes', '') or 'Todos'
                 result.append({
                     'is_gap': True,
                     'special_type': 'abertura',
                     'auditores_nomes': getattr(auditoria, 'abertura_auditores', '') or 'Equipe',
-                    'representantes': getattr(auditoria, 'abertura_representantes', '') or 'Todos',
+                    'representantes': rep_str,
+                    'representantes_list': format_reps(rep_str),
                     'hora_inicio': abertura_inicio,
                     'hora_fim': inicio,
                     'titulo': 'Reunião de Abertura',
@@ -5022,6 +5028,7 @@ def iso_auditoria_cronograma(request, auditoria_id):
                     'titulo': 'Intervalo',
                     'data': data
                 })
+            a.representantes_list = format_reps(a.representantes)
             result.append(a)
             if fim:
                 prev_fim = fim
@@ -5030,11 +5037,13 @@ def iso_auditoria_cronograma(request, auditoria_id):
             prev_fim_dt = datetime.datetime.combine(datetime.date.today(), prev_fim)
             
             revisao_fim_dt = prev_fim_dt + datetime.timedelta(hours=1, minutes=30)
+            rep_str_rev = getattr(auditoria, 'revisao_representantes', '') or 'Equipe'
             result.append({
                 'is_gap': True,
                 'special_type': 'revisao',
                 'auditores_nomes': getattr(auditoria, 'revisao_auditores', '') or 'Equipe',
-                'representantes': getattr(auditoria, 'revisao_representantes', '') or 'Equipe',
+                'representantes': rep_str_rev,
+                'representantes_list': format_reps(rep_str_rev),
                 'hora_inicio': prev_fim_dt.time(),
                 'hora_fim': revisao_fim_dt.time(),
                 'titulo': 'Revisão da Auditoria com Auditores',
@@ -5042,11 +5051,13 @@ def iso_auditoria_cronograma(request, auditoria_id):
             })
             
             encerramento_fim_dt = revisao_fim_dt + datetime.timedelta(minutes=30)
+            rep_str_enc = getattr(auditoria, 'encerramento_representantes', '') or 'Todos'
             result.append({
                 'is_gap': True,
                 'special_type': 'encerramento',
                 'auditores_nomes': getattr(auditoria, 'encerramento_auditores', '') or 'Equipe',
-                'representantes': getattr(auditoria, 'encerramento_representantes', '') or 'Todos',
+                'representantes': rep_str_enc,
+                'representantes_list': format_reps(rep_str_enc),
                 'hora_inicio': revisao_fim_dt.time(),
                 'hora_fim': encerramento_fim_dt.time(),
                 'titulo': 'Encerramento da auditoria',

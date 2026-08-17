@@ -108,7 +108,9 @@
                                                 <i class="bi bi-pencil ms-1 no-print text-primary" style="font-size: 0.75rem;"></i>
                                             </td>
                                             <td class="align-middle cursor-pointer" onclick="openQuickEditRepresentante('{{ agenda.special_type }}', '{{ agenda.representantes|default:'' }}')">
-                                                <small class="text-muted">{{ agenda.representantes|default:"Todos" }}</small>
+                                                <small class="text-muted">
+                                                    {% for rep in agenda.representantes_list %}{{ rep }}{% if not forloop.last %}<br>{% endif %}{% empty %}Todos{% endfor %}
+                                                </small>
                                                 <i class="bi bi-pencil ms-1 no-print text-primary" style="font-size: 0.75rem;"></i>
                                             </td>
                                             <td class="align-middle text-center">-</td>
@@ -160,14 +162,14 @@
                                         </td>
                                         <td class="align-middle cursor-pointer" onclick="openQuickEditRepresentante({{ agenda.id }}, '{{ agenda.representantes|default:'' }}')">
                                             <small class="text-muted">
-                                                {{ agenda.representantes|default:"A Definir" }}
+                                                {% for rep in agenda.representantes_list %}{{ rep }}{% if not forloop.last %}<br>{% endif %}{% empty %}A Definir{% endfor %}
                                             </small>
                                             <i class="bi bi-pencil ms-1 no-print text-primary" style="font-size: 0.75rem;"></i>
                                         </td>
                                         <td class="align-middle">
                                             <div class="d-flex flex-wrap gap-1">
                                             {% for item in agenda.itens_norma.all %}
-                                                <span class="badge bg-secondary">{{ item.referencia }}</span>
+                                                <span class="badge bg-secondary text-center" style="min-width: 55px;">{{ item.referencia }}</span>
                                             {% empty %}
                                                 <span class="text-muted small">-</span>
                                             {% endfor %}
@@ -231,7 +233,9 @@
                                                 <i class="bi bi-pencil ms-1 no-print text-primary" style="font-size: 0.75rem;"></i>
                                             </td>
                                             <td class="align-middle cursor-pointer" onclick="openQuickEditRepresentante('{{ agenda.special_type }}', '{{ agenda.representantes|default:'' }}')">
-                                                <small class="text-muted">{{ agenda.representantes|default:"Todos" }}</small>
+                                                <small class="text-muted">
+                                                    {% for rep in agenda.representantes_list %}{{ rep }}{% if not forloop.last %}<br>{% endif %}{% empty %}Todos{% endfor %}
+                                                </small>
                                                 <i class="bi bi-pencil ms-1 no-print text-primary" style="font-size: 0.75rem;"></i>
                                             </td>
                                             <td class="align-middle text-center">-</td>
@@ -283,14 +287,14 @@
                                         </td>
                                         <td class="align-middle cursor-pointer" onclick="openQuickEditRepresentante({{ agenda.id }}, '{{ agenda.representantes|default:'' }}')">
                                             <small class="text-muted">
-                                                {{ agenda.representantes|default:"A Definir" }}
+                                                {% for rep in agenda.representantes_list %}{{ rep }}{% if not forloop.last %}<br>{% endif %}{% empty %}A Definir{% endfor %}
                                             </small>
                                             <i class="bi bi-pencil ms-1 no-print text-primary" style="font-size: 0.75rem;"></i>
                                         </td>
                                         <td class="align-middle">
                                             <div class="d-flex flex-wrap gap-1">
                                             {% for item in agenda.itens_norma.all %}
-                                                <span class="badge bg-secondary">{{ item.referencia }}</span>
+                                                <span class="badge bg-secondary text-center" style="min-width: 55px;">{{ item.referencia }}</span>
                                             {% empty %}
                                                 <span class="text-muted small">-</span>
                                             {% endfor %}
