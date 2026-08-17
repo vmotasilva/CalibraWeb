@@ -181,10 +181,19 @@
             <h2 class="slide-title">Pontos Fortes e Destaques Positivos</h2>
         </div>
         <div class="slide-content">
-            {% for resp in grupos.conformidades %}
+            {% for dado in grupos.conformidades %}
             <div class="item-box border-start border-success border-5">
-                <h4 class="text-success mb-3"><i class="bi bi-star-fill me-2"></i>{{ resp.pergunta.texto_pergunta }}</h4>
-                <p class="mb-0">{{ resp.texto_resposta|linebreaksbr }}</p>
+                <h4 class="text-success mb-3"><i class="bi bi-star-fill me-2"></i>Requisito {{ dado.item.referencia }} - {{ dado.item.titulo }}</h4>
+                {% if dado.justificativa %}
+                    <p class="mb-2 text-muted"><strong>Veredicto da Revisão:</strong> {{ dado.justificativa|linebreaksbr }}</p>
+                {% else %}
+                    <p class="mb-2 text-muted"><strong>Evidências:</strong></p>
+                    <ul class="mb-0">
+                    {% for resp in dado.respostas %}
+                        {% if resp.texto_resposta %}<li>{{ resp.texto_resposta }}</li>{% endif %}
+                    {% endfor %}
+                    </ul>
+                {% endif %}
             </div>
             {% endfor %}
         </div>
@@ -202,10 +211,19 @@
             <h2 class="slide-title">Oportunidades de Melhoria</h2>
         </div>
         <div class="slide-content">
-            {% for resp in grupos.oportunidades %}
+            {% for dado in grupos.oportunidades %}
             <div class="item-box border-start border-warning border-5">
-                <h4 class="text-warning mb-3"><i class="bi bi-lightbulb-fill me-2"></i>{{ resp.pergunta.texto_pergunta }}</h4>
-                <p class="mb-0">{{ resp.texto_resposta|default:"Sem anotações"|linebreaksbr }}</p>
+                <h4 class="text-warning mb-3"><i class="bi bi-lightbulb-fill me-2"></i>Requisito {{ dado.item.referencia }} - {{ dado.item.titulo }}</h4>
+                {% if dado.justificativa %}
+                    <p class="mb-2 text-muted"><strong>Veredicto da Revisão:</strong> {{ dado.justificativa|linebreaksbr }}</p>
+                {% else %}
+                    <p class="mb-2 text-muted"><strong>Evidências:</strong></p>
+                    <ul class="mb-0">
+                    {% for resp in dado.respostas %}
+                        {% if resp.texto_resposta %}<li>{{ resp.texto_resposta }}</li>{% endif %}
+                    {% endfor %}
+                    </ul>
+                {% endif %}
             </div>
             {% endfor %}
         </div>
@@ -223,10 +241,21 @@
             <h2 class="slide-title">Não Conformidades</h2>
         </div>
         <div class="slide-content">
-            {% for resp in grupos.nc_menores %}
+            {% for dado in grupos.nc_menores %}
             <div class="item-box border-start border-danger border-5">
-                <h4 class="text-danger mb-3"><i class="bi bi-exclamation-triangle-fill me-2"></i>{{ resp.pergunta.texto_pergunta }}</h4>
-                <p class="mb-0"><strong>Constatação:</strong> {{ resp.texto_resposta|default:"Sem evidência descrita"|linebreaksbr }}</p>
+                <h4 class="text-danger mb-3"><i class="bi bi-exclamation-triangle-fill me-2"></i>Requisito {{ dado.item.referencia }} - {{ dado.item.titulo }}</h4>
+                {% if dado.justificativa %}
+                    <p class="mb-2 text-muted"><strong>Veredicto da Revisão:</strong> {{ dado.justificativa|linebreaksbr }}</p>
+                {% else %}
+                    <p class="mb-2 text-muted"><strong>Constatações:</strong></p>
+                    <ul class="mb-0">
+                    {% for resp in dado.respostas %}
+                        {% if resp.classificacao == 'NC' %}
+                            <li>{{ resp.texto_resposta|default:"Sem evidência descrita" }}</li>
+                        {% endif %}
+                    {% endfor %}
+                    </ul>
+                {% endif %}
             </div>
             {% endfor %}
         </div>

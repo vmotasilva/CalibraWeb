@@ -5233,11 +5233,42 @@ def api_iso_agenda_create_gap(request, auditoria_id):
 
 @login_required
 def iso_auditoria_fechamento_presentation(request, auditoria_id):
-    from .models import AuditoriaIso, RespostaEntrevistaIso
+    from .models import AuditoriaIso, RespostaEntrevistaIso, AvaliacaoFinalRequisitoIso
+    from collections import defaultdict
     
     auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
-    respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).select_related('pergunta')
+    respostas_brutas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).select_related('pergunta')
+    avaliacoes_finais = {av.item_norma_id: av for av in AvaliacaoFinalRequisitoIso.objects.filter(auditoria=auditoria)}
     
+    # Agrupa respostas por item da norma para consolidar os blocos
+    itens_map = {}
+    
+    for resp in respostas_brutas:
+        if resp.classificacao == 'NA':
+            continue
+        for item in resp.pergunta.itens_norma.all():
+            if item.id not in itens_map:
+                itens_map[item.id] = {
+                    'item': item,
+                    'respostas': [],
+                    'classificacao_final': 'C', # Default temporario
+                    'justificativa': None
+                }
+            itens_map[item.id]['respostas'].append(resp)
+            
+            # Pior status bruto
+            peso = {'P': 4, 'NC': 3, 'OM': 2, 'C': 1}
+            status_atual = itens_map[item.id]['classificacao_final']
+            novo_status = resp.classificacao
+            if peso.get(novo_status, 0) > peso.get(status_atual, 0):
+                itens_map[item.id]['classificacao_final'] = novo_status
+                
+    # Aplica o overriding do veredicto final
+    for item_id, data in itens_map.items():
+        if item_id in avaliacoes_finais:
+            data['classificacao_final'] = avaliacoes_finais[item_id].classificacao
+            data['justificativa'] = avaliacoes_finais[item_id].justificativa
+            
     grupos = {
         'conformidades': [],
         'oportunidades': [],
@@ -5245,21 +5276,20 @@ def iso_auditoria_fechamento_presentation(request, auditoria_id):
         'nc_maiores': [],
     }
     
-    total_aplicavel = 0
+    total_aplicavel = len(itens_map)
     total_conformes = 0
     
-    for resp in respostas:
-        if resp.classificacao in ['C', 'NC', 'OM']:
-            total_aplicavel += 1
-            if resp.classificacao == 'C':
-                total_conformes += 1
-                if resp.texto_resposta and resp.texto_resposta.strip():
-                    grupos['conformidades'].append(resp)
-            elif resp.classificacao == 'OM':
-                grupos['oportunidades'].append(resp)
-            elif resp.classificacao == 'NC':
-                grupos['nc_menores'].append(resp)
-                
+    for item_id, data in itens_map.items():
+        cls = data['classificacao_final']
+        if cls == 'C':
+            total_conformes += 1
+            # Para exibição, vamos passar o próprio dicionário 'data'
+            grupos['conformidades'].append(data)
+        elif cls == 'OM':
+            grupos['oportunidades'].append(data)
+        elif cls == 'NC':
+            grupos['nc_menores'].append(data)
+            
     percentual_conformidade = int((total_conformes / total_aplicavel) * 100) if total_aplicavel > 0 else 0
     
     context = {
@@ -5273,9 +5303,10 @@ def iso_auditoria_fechamento_presentation(request, auditoria_id):
     return render(request, 'auditoria/iso/fechamento_presentation.html', context)
 
 
+
 @login_required
 def iso_revisao_dashboard(request, auditoria_id):
-    from .models import AuditoriaIso, RespostaEntrevistaIso, AgendaAuditoriaIso
+    from .models import AuditoriaIso, RespostaEntrevistaIso, AgendaAuditoriaIso, ItemNorma, AvaliacaoFinalRequisitoIso
     from collections import defaultdict
     
     auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
@@ -5288,33 +5319,53 @@ def iso_revisao_dashboard(request, auditoria_id):
     
     agendas = AgendaAuditoriaIso.objects.filter(auditoria=auditoria).prefetch_related('perguntas')
     
-    pergunta_agenda_map = {}
+    pergunta_agendas_map = defaultdict(list)
     for agenda in agendas:
         for p in agenda.perguntas.all():
-            if p.id not in pergunta_agenda_map:
-                pergunta_agenda_map[p.id] = agenda
+            pergunta_agendas_map[p.id].append(agenda)
+            
+    avaliacoes_finais = {
+        av.item_norma_id: av.classificacao
+        for av in AvaliacaoFinalRequisitoIso.objects.filter(auditoria=auditoria)
+    }
                 
-    grupos_por_agenda = defaultdict(list)
-    sem_agenda = []
+    # Agrupamento por ItemNorma
+    itens_map = {}
     
     for resp in respostas:
-        agenda = pergunta_agenda_map.get(resp.pergunta.id)
-        if agenda:
-            grupos_por_agenda[agenda].append(resp)
-        else:
-            sem_agenda.append(resp)
+        resp.agendas_avaliadas = pergunta_agendas_map.get(resp.pergunta.id, [])
+        
+        # Uma resposta pode pertencer a vários itens da norma
+        for item in resp.pergunta.itens_norma.all():
+            if item.id not in itens_map:
+                itens_map[item.id] = {
+                    'item': item,
+                    'respostas': [],
+                    'pior_status': 'C'
+                }
+            itens_map[item.id]['respostas'].append(resp)
             
+            # Atualiza o pior status do campo (bruto) (P > NC > OM > C)
+            status_atual = itens_map[item.id]['pior_status']
+            novo_status = resp.classificacao
+            
+            peso = {'P': 4, 'NC': 3, 'OM': 2, 'C': 1}
+            if peso.get(novo_status, 0) > peso.get(status_atual, 0):
+                itens_map[item.id]['pior_status'] = novo_status
+
+    # Sobrescreve com avaliação final, se existir
+    for item_id, data in itens_map.items():
+        if item_id in avaliacoes_finais:
+            data['pior_status'] = avaliacoes_finais[item_id]
+                
+    # Converte dicionário em lista ordenada
     blocos = []
-    for agenda, resps in grupos_por_agenda.items():
-        blocos.append({
-            'agenda': agenda,
-            'respostas': resps
-        })
+    for item_id, data in sorted(itens_map.items(), key=lambda x: x[1]['item'].referencia):
+        blocos.append(data)
         
     context = {
         'auditoria': auditoria,
         'blocos': blocos,
-        'sem_agenda': sem_agenda
     }
     
     return render(request, 'auditoria/iso/revisao_dashboard.html', context)
@@ -5324,31 +5375,36 @@ def iso_revisao_dashboard(request, auditoria_id):
 def api_iso_revisao_reverter(request):
     import json
     from django.http import JsonResponse
-    from .models import RespostaEntrevistaIso, ComentarioRespostaAuditoria
+    from .models import ItemNorma, AvaliacaoFinalRequisitoIso, AuditoriaIso, ComentarioRespostaAuditoria
     
     try:
         data = json.loads(request.body)
-        resposta_id = data.get('resposta_id')
+        item_norma_id = data.get('item_norma_id')
+        auditoria_id = data.get('auditoria_id')
         novo_status = data.get('novo_status')
         argumentacao = data.get('argumentacao')
         
-        resp = get_object_or_404(RespostaEntrevistaIso, pk=resposta_id)
-        status_antigo = resp.classificacao
+        item_norma = get_object_or_404(ItemNorma, pk=item_norma_id)
+        auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
         
-        if novo_status and novo_status != status_antigo:
-            resp.classificacao = novo_status
-            resp.save(update_fields=['classificacao'])
-            texto_log = f"[REVISÃO DE AUDITORIA] Status alterado de {status_antigo} para {novo_status}. Argumentação/Evidência: {argumentacao}"
-        else:
-            texto_log = f"[REVISÃO DE AUDITORIA] Status mantido ({status_antigo}). Argumentação/Evidência: {argumentacao}"
-            
-        ComentarioRespostaAuditoria.objects.create(
-            pergunta=resp.pergunta,
-            autor=request.user,
-            texto=texto_log,
-            data_referencia=resp.auditoria.data_inicio
+        avaliacao, created = AvaliacaoFinalRequisitoIso.objects.update_or_create(
+            auditoria=auditoria,
+            item_norma=item_norma,
+            defaults={
+                'classificacao': novo_status,
+                'justificativa': argumentacao,
+                'atualizado_por': request.user
+            }
         )
         
-        return JsonResponse({'success': True, 'message': 'Status atualizado com sucesso.', 'novo_status': resp.classificacao})
+        texto_log = f"[VEREDICTO FINAL] Requisito {item_norma.referencia} definido como {novo_status}. Argumentação: {argumentacao}"
+            
+        ComentarioRespostaAuditoria.objects.create(
+            autor=request.user,
+            texto=texto_log,
+            data_referencia=auditoria.data_inicio
+        )
+            
+        return JsonResponse({'success': True, 'message': 'Status final atualizado com sucesso.', 'novo_status': novo_status})
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)}, status=400)
