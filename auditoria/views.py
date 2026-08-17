@@ -4989,12 +4989,27 @@ def iso_auditoria_cronograma(request, auditoria_id):
         data_ajustada = agenda.data_real or agenda.data
         cronograma_ajustado[data_ajustada].append(agenda)
         
-    def inject_gaps(agendas_list, is_ajustado=False):
+    def inject_gaps(agendas_list, is_ajustado=False, is_last_day=False):
+        import datetime
         result = []
         prev_fim = None
-        for a in agendas_list:
+        last_data = None
+        for i, a in enumerate(agendas_list):
             inicio = a.hora_inicio_real if is_ajustado and a.hora_inicio_real else a.hora_inicio
             fim = a.hora_fim_real if is_ajustado and a.hora_fim_real else a.hora_fim
+            data = a.data_real if is_ajustado and a.data_real else a.data
+            last_data = data
+            
+            if i == 0 and inicio:
+                inicio_dt = datetime.datetime.combine(datetime.date.today(), inicio)
+                abertura_inicio = (inicio_dt - datetime.timedelta(minutes=30)).time()
+                result.append({
+                    'is_gap': True,
+                    'hora_inicio': abertura_inicio,
+                    'hora_fim': inicio,
+                    'titulo': 'Reunião de Abertura',
+                    'data': data
+                })
             
             if prev_fim and inicio and inicio > prev_fim:
                 result.append({
@@ -5002,26 +5017,56 @@ def iso_auditoria_cronograma(request, auditoria_id):
                     'hora_inicio': prev_fim,
                     'hora_fim': inicio,
                     'titulo': 'Intervalo',
-                    'data': a.data_real if is_ajustado and a.data_real else a.data
+                    'data': data
                 })
             result.append(a)
             if fim:
                 prev_fim = fim
+                
+        if is_last_day and prev_fim and last_data:
+            prev_fim_dt = datetime.datetime.combine(datetime.date.today(), prev_fim)
+            
+            revisao_fim_dt = prev_fim_dt + datetime.timedelta(hours=1, minutes=30)
+            result.append({
+                'is_gap': True,
+                'hora_inicio': prev_fim_dt.time(),
+                'hora_fim': revisao_fim_dt.time(),
+                'titulo': 'Revisão da Auditoria com Auditores',
+                'data': last_data
+            })
+            
+            encerramento_fim_dt = revisao_fim_dt + datetime.timedelta(minutes=30)
+            result.append({
+                'is_gap': True,
+                'hora_inicio': revisao_fim_dt.time(),
+                'hora_fim': encerramento_fim_dt.time(),
+                'titulo': 'Encerramento da auditoria',
+                'data': last_data
+            })
+            
         return result
 
     progresso_por_dia = {}
     planejado_com_gaps = {}
+    datas_planejadas = sorted(cronograma_planejado.keys())
+    ultima_data_planejada = datas_planejadas[-1] if datas_planejadas else None
+    
     for data, agendas in cronograma_planejado.items():
         t = len(agendas)
         c = sum(1 for a in agendas if getattr(a, 'concluida', False))
         progresso_por_dia[data] = int((c / t) * 100) if t > 0 else 0
-        planejado_com_gaps[data] = inject_gaps(agendas, is_ajustado=False)
+        is_last = (data == ultima_data_planejada)
+        planejado_com_gaps[data] = inject_gaps(agendas, is_ajustado=False, is_last_day=is_last)
         
     ajustado_com_gaps = {}
+    datas_ajustadas = sorted(cronograma_ajustado.keys())
+    ultima_data_ajustada = datas_ajustadas[-1] if datas_ajustadas else None
+    
     for data, agendas in sorted(cronograma_ajustado.items()):
         # Sort adjusted agendas by their actual start time
         agendas_sorted = sorted(agendas, key=lambda x: x.hora_inicio_real or x.hora_inicio or datetime.min.time())
-        ajustado_com_gaps[data] = inject_gaps(agendas_sorted, is_ajustado=True)
+        is_last = (data == ultima_data_ajustada)
+        ajustado_com_gaps[data] = inject_gaps(agendas_sorted, is_ajustado=True, is_last_day=is_last)
         
     context = {
         'auditoria': auditoria,
@@ -5046,23 +5091,31 @@ def iso_agenda_toggle_conclusao(request, auditoria_id, pk):
 @require_POST
 def api_iso_agenda_quick_edit(request, auditoria_id):
     from .models import AgendaAuditoriaIso
+    from django.http import JsonResponse
+    
     agenda_id = request.POST.get('agenda_id')
-    agenda = get_object_or_404(AgendaAuditoriaIso, auditoria_id=auditoria_id, pk=agenda_id)
-    
+    aplicar_todos = request.POST.get('aplicar_todos') == 'true'
     tipo = request.POST.get('tipo')
-    if tipo == 'auditor':
-        agenda.auditores_nomes = request.POST.get('auditores_nomes', '')
-    elif tipo == 'representante':
-        agenda.representantes = request.POST.get('representantes', '')
-    else:
-        # Fallback to old behavior
-        agenda.auditores_nomes = request.POST.get('auditores_nomes', '')
-        agenda.representantes = request.POST.get('representantes', '')
-        
-    agenda.save()
     
-    messages.success(request, 'Preenchimento rápido salvo com sucesso.')
-    return redirect('auditoria:iso_auditoria_cronograma', auditoria_id=auditoria_id)
+    agendas_para_atualizar = []
+    if aplicar_todos:
+        agendas_para_atualizar = list(AgendaAuditoriaIso.objects.filter(auditoria_id=auditoria_id))
+    else:
+        agenda = get_object_or_404(AgendaAuditoriaIso, auditoria_id=auditoria_id, pk=agenda_id)
+        agendas_para_atualizar = [agenda]
+    
+    if tipo == 'auditor':
+        valor = request.POST.get('auditores_nomes', '')
+        for ag in agendas_para_atualizar:
+            ag.auditores_nomes = valor
+            ag.save(update_fields=['auditores_nomes'])
+    elif tipo == 'representante':
+        valor = request.POST.get('representantes', '')
+        for ag in agendas_para_atualizar:
+            ag.representantes = valor
+            ag.save(update_fields=['representantes'])
+            
+    return JsonResponse({'success': True, 'message': 'Preenchimento rápido salvo com sucesso.'})
 
 @login_required
 @require_POST
