@@ -5042,8 +5042,16 @@ def api_iso_agenda_quick_edit(request, auditoria_id):
     agenda_id = request.POST.get('agenda_id')
     agenda = get_object_or_404(AgendaAuditoriaIso, auditoria_id=auditoria_id, pk=agenda_id)
     
-    agenda.auditores_nomes = request.POST.get('auditores_nomes', '')
-    agenda.representantes = request.POST.get('representantes', '')
+    tipo = request.POST.get('tipo')
+    if tipo == 'auditor':
+        agenda.auditores_nomes = request.POST.get('auditores_nomes', '')
+    elif tipo == 'representante':
+        agenda.representantes = request.POST.get('representantes', '')
+    else:
+        # Fallback to old behavior
+        agenda.auditores_nomes = request.POST.get('auditores_nomes', '')
+        agenda.representantes = request.POST.get('representantes', '')
+        
     agenda.save()
     
     messages.success(request, 'Preenchimento rápido salvo com sucesso.')

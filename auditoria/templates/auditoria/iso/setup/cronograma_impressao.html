@@ -114,7 +114,7 @@
                                                 <span class="badge bg-success ms-2"><i class="bi bi-check-circle"></i> Concluído</span>
                                             {% endif %}
                                         </td>
-                                        <td class="align-middle cursor-pointer" onclick="openQuickEdit({{ agenda.id }}, '{{ agenda.auditores_nomes|default:"" }}', '{{ agenda.representantes|default:"" }}')">
+                                        <td class="align-middle cursor-pointer" onclick="openQuickEditAuditor({{ agenda.id }}, '{{ agenda.auditores_nomes|default:'' }}')">
                                             <small class="text-muted">
                                                 {% if agenda.auditores.exists %}
                                                     {% for auditor in agenda.auditores.all %}{{ auditor.get_full_name }}{% if not forloop.last %}, {% endif %}{% endfor %}
@@ -126,7 +126,7 @@
                                             </small>
                                             <i class="bi bi-pencil ms-1 no-print text-primary" style="font-size: 0.75rem;"></i>
                                         </td>
-                                        <td class="align-middle cursor-pointer" onclick="openQuickEdit({{ agenda.id }}, '{{ agenda.auditores_nomes|default:"" }}', '{{ agenda.representantes|default:"" }}')">
+                                        <td class="align-middle cursor-pointer" onclick="openQuickEditRepresentante({{ agenda.id }}, '{{ agenda.representantes|default:'' }}')">
                                             <small class="text-muted">
                                                 {{ agenda.representantes|default:"A Definir" }}
                                             </small>
@@ -212,7 +212,7 @@
                                                 <span class="badge bg-success ms-2"><i class="bi bi-check-circle"></i> Concluído</span>
                                             {% endif %}
                                         </td>
-                                        <td class="align-middle cursor-pointer" onclick="openQuickEdit({{ agenda.id }}, '{{ agenda.auditores_nomes|default:"" }}', '{{ agenda.representantes|default:"" }}')">
+                                        <td class="align-middle cursor-pointer" onclick="openQuickEditAuditor({{ agenda.id }}, '{{ agenda.auditores_nomes|default:'' }}')">
                                             <small class="text-muted">
                                                 {% if agenda.auditores.exists %}
                                                     {% for auditor in agenda.auditores.all %}{{ auditor.get_full_name }}{% if not forloop.last %}, {% endif %}{% endfor %}
@@ -224,7 +224,7 @@
                                             </small>
                                             <i class="bi bi-pencil ms-1 no-print text-primary" style="font-size: 0.75rem;"></i>
                                         </td>
-                                        <td class="align-middle cursor-pointer" onclick="openQuickEdit({{ agenda.id }}, '{{ agenda.auditores_nomes|default:"" }}', '{{ agenda.representantes|default:"" }}')">
+                                        <td class="align-middle cursor-pointer" onclick="openQuickEditRepresentante({{ agenda.id }}, '{{ agenda.representantes|default:'' }}')">
                                             <small class="text-muted">
                                                 {{ agenda.representantes|default:"A Definir" }}
                                             </small>
@@ -265,32 +265,60 @@
     </div>
 </div>
 
-<!-- Modal Quick Edit -->
-<div class="modal fade" id="quickEditModal" tabindex="-1" aria-hidden="true">
+<!-- Modal Quick Edit Auditor -->
+<div class="modal fade" id="quickEditAuditorModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form id="quickEditForm" method="POST" action="{% url 'auditoria:api_iso_agenda_quick_edit' auditoria.id %}">
+            <form id="quickEditAuditorForm" method="POST" action="{% url 'auditoria:api_iso_agenda_quick_edit' auditoria.id %}">
                 {% csrf_token %}
-                <input type="hidden" name="agenda_id" id="qe_agenda_id">
+                <input type="hidden" name="agenda_id" id="qea_agenda_id">
+                <input type="hidden" name="tipo" value="auditor">
+                <input type="hidden" name="auditores_nomes" id="qea_auditores_nomes">
                 <div class="modal-header">
-                    <h5 class="modal-title">Preenchimento Rápido</h5>
+                    <h5 class="modal-title">Preencher Auditores</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Auditor(es)</label>
-                        <input type="text" class="form-control" name="auditores_nomes" id="qe_auditores" placeholder="Ex: Vinícius e Marcos">
-                        <div class="form-text">Texto livre para identificar os auditores.</div>
+                    <label class="form-label fw-bold">Adicionar Auditor</label>
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control" id="qea_input" placeholder="Ex: Vinícius" onkeypress="if(event.key === 'Enter') { event.preventDefault(); addTag('qea'); }">
+                        <button class="btn btn-outline-secondary" type="button" onclick="addTag('qea')">Adicionar</button>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Representante(s)</label>
-                        <input type="text" class="form-control" name="representantes" id="qe_representantes" placeholder="Ex: João (Qualidade)">
-                        <div class="form-text">Texto livre para identificar quem está sendo auditado.</div>
-                    </div>
+                    <ul class="list-group" id="qea_list"></ul>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Salvar</button>
+                    <button type="button" class="btn btn-primary" onclick="submitTagForm('qea')">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Quick Edit Representante -->
+<div class="modal fade" id="quickEditRepresentanteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="quickEditRepresentanteForm" method="POST" action="{% url 'auditoria:api_iso_agenda_quick_edit' auditoria.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="agenda_id" id="qer_agenda_id">
+                <input type="hidden" name="tipo" value="representante">
+                <input type="hidden" name="representantes" id="qer_representantes">
+                <div class="modal-header">
+                    <h5 class="modal-title">Preencher Representantes</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label fw-bold">Adicionar Representante</label>
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control" id="qer_input" placeholder="Ex: João (Qualidade)" onkeypress="if(event.key === 'Enter') { event.preventDefault(); addTag('qer'); }">
+                        <button class="btn btn-outline-secondary" type="button" onclick="addTag('qer')">Adicionar</button>
+                    </div>
+                    <ul class="list-group" id="qer_list"></ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="submitTagForm('qer')">Salvar</button>
                 </div>
             </form>
         </div>
@@ -328,11 +356,53 @@
 </div>
 
 <script>
-function openQuickEdit(id, auditores, representantes) {
-    document.getElementById('qe_agenda_id').value = id;
-    document.getElementById('qe_auditores').value = auditores;
-    document.getElementById('qe_representantes').value = representantes;
-    var modal = new bootstrap.Modal(document.getElementById('quickEditModal'));
+let currentTags = { qea: [], qer: [] };
+
+function renderTags(prefix) {
+    const listEl = document.getElementById(prefix + '_list');
+    listEl.innerHTML = '';
+    currentTags[prefix].forEach((tag, index) => {
+        const li = document.createElement('li');
+        li.className = 'list-group-item d-flex justify-content-between align-items-center';
+        li.textContent = tag;
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-sm btn-danger';
+        btn.innerHTML = '<i class="bi bi-x"></i>';
+        btn.onclick = () => { currentTags[prefix].splice(index, 1); renderTags(prefix); };
+        li.appendChild(btn);
+        listEl.appendChild(li);
+    });
+}
+
+function addTag(prefix) {
+    const inputEl = document.getElementById(prefix + '_input');
+    const val = inputEl.value.trim();
+    if (val) {
+        currentTags[prefix].push(val);
+        inputEl.value = '';
+        renderTags(prefix);
+    }
+}
+
+function submitTagForm(prefix) {
+    const hiddenInput = document.getElementById(prefix === 'qea' ? 'qea_auditores_nomes' : 'qer_representantes');
+    hiddenInput.value = currentTags[prefix].join(', ');
+    document.getElementById(prefix === 'qea' ? 'quickEditAuditorForm' : 'quickEditRepresentanteForm').submit();
+}
+
+function openQuickEditAuditor(id, auditoresStr) {
+    document.getElementById('qea_agenda_id').value = id;
+    currentTags['qea'] = auditoresStr ? auditoresStr.split(',').map(s => s.trim()).filter(s => s) : [];
+    renderTags('qea');
+    var modal = new bootstrap.Modal(document.getElementById('quickEditAuditorModal'));
+    modal.show();
+}
+
+function openQuickEditRepresentante(id, representantesStr) {
+    document.getElementById('qer_agenda_id').value = id;
+    currentTags['qer'] = representantesStr ? representantesStr.split(',').map(s => s.trim()).filter(s => s) : [];
+    renderTags('qer');
+    var modal = new bootstrap.Modal(document.getElementById('quickEditRepresentanteModal'));
     modal.show();
 }
 
