@@ -76,6 +76,9 @@
     
     {% block extra_css %}
     {% endblock %}
+    {# CSS Responsivo Mobile — Módulo de Auditoria #}
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'auditoria/css/auditoria_mobile.css' %}">
 </head>
 <body>
 
@@ -960,5 +963,22 @@
 </script>
 {% block extra_js %}
 {% endblock %}
+<script>
+/* Scroll Lock Global para Modais — Mobile */
+(function() {
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.modal').forEach(function(modal) {
+            modal.addEventListener('show.bs.modal', function() {
+                document.body.style.overflow = 'hidden';
+                document.documentElement.style.overflow = 'hidden';
+            });
+            modal.addEventListener('hidden.bs.modal', function() {
+                document.body.style.overflow = '';
+                document.documentElement.style.overflow = '';
+            });
+        });
+    });
+})();
+</script>
 </body>
 </html>

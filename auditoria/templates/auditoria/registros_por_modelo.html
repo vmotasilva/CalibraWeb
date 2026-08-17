@@ -774,7 +774,7 @@
                         </div>
                         <div class="card-body p-0">
                             <div class="table-responsive">
-                                <table class="table table-striped table-hover mb-0">
+                                <table class="table table-striped table-hover mb-0 ciclos-table">
                                     <thead class="table-dark">
                                         <tr>
                                             <th>Criado em</th>
@@ -807,7 +807,7 @@
                                                     <span class="text-muted">-</span>
                                                 {% endif %}
                                             </td>
-                                            <td>
+                                            <td class="td-status">
                                                 {% if registro.status == 'CONCLUIDO' %}
                                                     <span class="badge bg-success">Concluído</span>
                                                 {% else %}
@@ -819,7 +819,7 @@
                                                     <div class="progress-bar {% if registro.progresso == 100 %}bg-success{% endif %}" role="progressbar" style="width: {{ registro.progresso }}%;" aria-valuenow="{{ registro.progresso }}" aria-valuemin="0" aria-valuemax="100">{{ registro.progresso }}%</div>
                                                 </div>
                                             </td>
-                                            <td class="text-center">
+                                            <td class="text-center td-actions">
                                                 {% if not is_read_only %}
                                                 <a href="{% url 'auditoria:registro_detail' registro.pk %}" class="btn btn-sm btn-info" title="Visualizar / Preencher">
                                                     <i class="bi bi-eye"></i>

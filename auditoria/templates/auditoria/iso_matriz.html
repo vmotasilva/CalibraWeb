@@ -17,20 +17,130 @@
         font-size: 0.85rem;
     }
 
-    /* Freeze First Column no Mobile e Tablet */
-    @media (max-width: 991.98px) {
-        .table-responsive table th:first-child,
-        .table-responsive table td:first-child {
-            position: sticky;
-            left: 0;
-            z-index: 2;
-            background-color: #ffffff;
-            border-right: 2px solid #dee2e6;
-            box-shadow: 2px 0 5px -2px rgba(0,0,0,0.1);
+    /* ============================================================
+       MOBILE — Visão Matriz em formato de Cards Empilhados
+       Ativa para smartphones (até 767px)
+    ============================================================ */
+    @media (max-width: 767.98px) {
+
+        /* 1. Ocultar o cabeçalho da tabela */
+        .matriz-table thead {
+            display: none;
         }
-        
-        .table-responsive table thead th:first-child {
-            z-index: 3;
+
+        /* 2. Converter tabela/tbody em bloco fluído */
+        .matriz-table,
+        .matriz-table tbody {
+            display: block;
+            width: 100%;
+        }
+
+        /* 3. Cada TR vira um Card empilhado */
+        .matriz-table tr {
+            display: flex;
+            flex-direction: column;
+            border-radius: 0.6rem;
+            margin-bottom: 0.65rem;
+            padding: 0.85rem 1rem;
+            border: 1px solid #dee2e6;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+            background-color: #ffffff;
+        }
+
+        /* Card de Seção Principal (Nível 1) — Banner azul */
+        .matriz-table tr.row-nivel-1 {
+            background-color: #e8f0fe;
+            border-color: #b8d0fb;
+            box-shadow: none;
+        }
+        .matriz-table tr.row-nivel-1 td:first-child {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #0b5394;
+            border-bottom: 1px solid #b8d0fb;
+            padding-bottom: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Card de Subseção (Nível 2) — Agrupador */
+        .matriz-table tr.row-nivel-2 {
+            background-color: #f8f9fa;
+            border-left: 3px solid #6c757d;
+        }
+        .matriz-table tr.row-nivel-2 td:first-child {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #495057;
+        }
+
+        /* Card de Item/Folha — Clicável */
+        .matriz-table tr.row-item-matriz-auditoria {
+            border-left: 3px solid #0d6efd;
+            cursor: pointer;
+        }
+        .matriz-table tr.row-item-matriz-auditoria:active {
+            background-color: #f0f4ff;
+        }
+
+        /* 4. Todas as TDs viram blocos 100% sem largura restritiva */
+        .matriz-table td {
+            display: block;
+            width: 100%;
+            border: none;
+            padding: 0.25rem 0;
+            text-align: left !important;
+        }
+
+        /* Remove os espaçamentos/paddings colunares */
+        .matriz-table td.ps-4 {
+            padding-left: 0 !important;
+        }
+        .matriz-table td.pe-4 {
+            padding-right: 0 !important;
+        }
+
+        /* Coluna "Perguntas Vinculadas" — rótulo antes do valor */
+        .matriz-table td.td-qtd-perguntas::before {
+            content: "Perguntas vinculadas: ";
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+        .matriz-table td.td-qtd-perguntas {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            margin-top: 0.35rem;
+        }
+
+        /* Coluna "Status" — fica no rodapé do card em destaque */
+        .matriz-table td.td-status {
+            margin-top: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid #dee2e6;
+        }
+        .matriz-table td.td-status .status-badge {
+            font-size: 0.8rem;
+            padding: 6px 14px;
+        }
+
+        /* Botão N/A vira full-width e touch-friendly */
+        .matriz-table td.td-acoes {
+            margin-top: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid #dee2e6;
+        }
+        .matriz-table td.td-acoes .btn-quick-na {
+            width: 100%;
+            min-height: 44px;
+            font-size: 0.9rem;
+        }
+
+        /* Descrição truncada — liberar no mobile */
+        .matriz-table .small.text-muted.text-truncate {
+            max-width: 100% !important;
+            white-space: normal !important;
+            overflow: visible !important;
         }
     }
 </style>
@@ -132,7 +242,7 @@
     <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover mb-0 align-middle">
+                <table class="table table-hover mb-0 align-middle matriz-table">
                     <thead class="table-light">
                         <tr>
                             <th style="width: 15%" class="ps-4">Referência</th>
@@ -146,13 +256,13 @@
                         {% if row.is_parent %}
                             {% if row.level == 1 %}
                             <!-- Nível 1: Seção Principal Banner -->
-                            <tr class="table-primary bg-primary bg-opacity-10 border-top border-bottom border-primary border-opacity-25">
+                            <tr class="table-primary bg-primary bg-opacity-10 border-top border-bottom border-primary border-opacity-25 row-nivel-1">
                                 <td class="ps-4 py-3"><strong class="fs-6 text-primary"><i class="bi bi-journal-bookmark-fill me-2"></i>Seção {{ row.referencia }}</strong></td>
                                 <td class="py-3">
                                     <strong class="fs-6 text-primary">{{ row.titulo }}</strong>
                                     <div class="small text-muted mb-0">{{ row.descricao }}</div>
                                 </td>
-                                <td colspan="2" class="text-end pe-4 py-3">
+                                <td colspan="2" class="text-end pe-4 py-3 td-acoes">
                                     <button type="button" class="btn btn-sm btn-outline-danger bg-white rounded-pill px-3 fw-bold btn-quick-na shadow-2xs" data-ref="{{ row.referencia }}" data-titulo="{{ row.titulo }}" title="Marcar todos os itens da Seção {{ row.referencia }} como Não Aplicável (Exclusão de Escopo)">
                                         <i class="bi bi-slash-circle me-1"></i> Seção {{ row.referencia }} N/A
                                     </button>
@@ -160,12 +270,12 @@
                             </tr>
                             {% else %}
                             <!-- Nível 2: Subseção Agrupadora -->
-                            <tr class="table-light border-top border-bottom fw-bold">
+                            <tr class="table-light border-top border-bottom fw-bold row-nivel-2">
                                 <td class="ps-4 py-2.5"><strong class="text-dark"><i class="bi bi-folder2 me-2 text-secondary"></i>{{ row.referencia }}</strong></td>
                                 <td class="py-2.5">
                                     <strong class="text-dark">{{ row.titulo }}</strong>
                                 </td>
-                                <td colspan="2" class="text-end pe-4 py-2.5">
+                                <td colspan="2" class="text-end pe-4 py-2.5 td-acoes">
                                     <button type="button" class="btn btn-sm btn-outline-danger bg-white rounded-pill px-2.5 py-0.5 small btn-quick-na" data-ref="{{ row.referencia }}" data-titulo="{{ row.titulo }}" title="Marcar sub-itens de {{ row.referencia }} como N/A">
                                         <i class="bi bi-slash-circle me-1"></i> {{ row.referencia }} N/A
                                     </button>
@@ -186,10 +296,10 @@
                                     <div><strong class="text-primary hover-underline">{{ row.titulo }}</strong></div>
                                     <div class="small text-muted text-truncate" style="max-width: 500px;" title="{{ row.descricao }}">{{ row.descricao }}</div>
                                 </td>
-                                <td class="text-center">
+                                <td class="text-center td-qtd-perguntas">
                                     <span class="badge bg-secondary bg-opacity-10 text-dark rounded-pill px-2.5 py-1">{{ row.qtd_perguntas }}</span>
                                 </td>
-                                <td class="text-center pe-4">
+                                <td class="text-center pe-4 td-status">
                                     <span class="status-badge status-{{ row.status }}">
                                         {% if row.status == 'C' %} ✅ Conforme
                                         {% elif row.status == 'NC' %} 🔴 Não Conforme

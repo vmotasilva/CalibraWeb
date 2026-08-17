@@ -1,0 +1,269 @@
+﻿/*
+ * ============================================================
+ *  auditoria_mobile.css
+ *  Regras responsivas centralizadas — Módulo de Auditoria
+ *  Calibra WEB
+ * ============================================================ */
+
+/* ============================================================
+   1. GLOBALS — Touch Targets e Formulários
+   ============================================================ */
+@media (max-width: 767.98px) {
+    .auditoria-module .btn,
+    .auditoria-module .form-select,
+    .auditoria-module .form-control {
+        min-height: 44px;
+        font-size: 1rem;
+    }
+    .auditoria-module .btn-sm {
+        min-height: 44px;
+        padding: 0.5rem 1rem;
+        font-size: 0.95rem;
+    }
+    .auditoria-action-bar {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+    .auditoria-action-bar .btn,
+    .auditoria-action-bar a.btn {
+        width: 100%;
+        text-align: center;
+    }
+    .auditoria-module .card-header h5,
+    .auditoria-module .card-header h6,
+    .auditoria-module .accordion-button {
+        word-break: break-word;
+        overflow-wrap: anywhere;
+        white-space: normal;
+        line-height: 1.4;
+    }
+}
+
+/* ============================================================
+   2. PADRÃO GENÉRICO DE CARDS (classe: mobile-card-table)
+   ============================================================ */
+@media (max-width: 767.98px) {
+    .mobile-card-table thead { display: none; }
+    .mobile-card-table,
+    .mobile-card-table tbody { display: block; width: 100%; }
+    .mobile-card-table tr {
+        display: flex; flex-direction: column;
+        background-color: #fff;
+        border: 1px solid #dee2e6; border-radius: 0.6rem;
+        margin-bottom: 0.75rem; padding: 0.9rem 1rem;
+        box-shadow: 0 1px 4px rgba(0,0,0,.07);
+    }
+    .mobile-card-table td {
+        display: block; width: 100%; border: none;
+        padding: 0.3rem 0; text-align: left !important;
+    }
+    .mobile-card-table td.ps-4 { padding-left: 0 !important; }
+    .mobile-card-table td.pe-4 { padding-right: 0 !important; }
+    .mobile-card-table td.td-actions,
+    .mobile-card-table td.td-status {
+        border-top: 1px solid #dee2e6;
+        margin-top: 0.5rem; padding-top: 0.6rem;
+    }
+    .mobile-card-table td.td-actions .btn,
+    .mobile-card-table td.td-actions a.btn { width: 100%; min-height: 44px; }
+    .mobile-card-table .text-truncate {
+        max-width: 100% !important;
+        white-space: normal !important;
+        overflow: visible !important;
+    }
+}
+
+/* ============================================================
+   3. VISÃO MATRIZ (iso_matriz.html — classe: matriz-table)
+   ============================================================ */
+@media (max-width: 767.98px) {
+    .matriz-table tr.row-nivel-1 {
+        background-color: #e8f0fe; border-color: #b8d0fb; box-shadow: none;
+    }
+    .matriz-table tr.row-nivel-1 td:first-child {
+        font-size: 1rem; font-weight: 700; color: #0b5394;
+        border-bottom: 1px solid #b8d0fb;
+        padding-bottom: 0.5rem; margin-bottom: 0.4rem;
+    }
+    .matriz-table tr.row-nivel-2 {
+        background-color: #f8f9fa; border-left: 3px solid #6c757d;
+    }
+    .matriz-table tr.row-nivel-2 td:first-child {
+        font-size: 0.9rem; font-weight: 700; color: #495057;
+    }
+    .matriz-table tr.row-item-matriz-auditoria {
+        border-left: 3px solid #0d6efd; cursor: pointer;
+    }
+    .matriz-table tr.row-item-matriz-auditoria:active { background-color: #f0f4ff; }
+    .matriz-table td.td-qtd-perguntas {
+        display: flex; align-items: center; gap: 0.4rem; margin-top: 0.25rem;
+    }
+    .matriz-table td.td-qtd-perguntas::before {
+        content: "Perguntas vinculadas:";
+        font-weight: 600; font-size: 0.8rem; color: #6c757d;
+    }
+    .matriz-table td.td-status .status-badge { font-size: 0.8rem; padding: 6px 14px; }
+}
+
+/* ============================================================
+   4. REVISÃO (registro_detail.html — classe: audit-table)
+   ============================================================ */
+@media (max-width: 767.98px) {
+    .audit-table thead { display: none; }
+    .audit-table, .audit-table tbody { display: block; width: 100%; }
+    .audit-table tr {
+        display: flex; flex-direction: column;
+        background-color: #fff;
+        border: 1px solid #dee2e6; border-left: 3px solid #0d6efd;
+        border-radius: 0.6rem; margin-bottom: 0.75rem;
+        padding: 0.9rem 1rem; box-shadow: 0 1px 4px rgba(0,0,0,.07);
+    }
+    .audit-table td { display: block; width: 100%; border: none; padding: 0.3rem 0; text-align: left !important; }
+    .audit-table td:first-child {
+        font-weight: 600; border-bottom: 1px solid #dee2e6;
+        padding-bottom: 0.6rem; margin-bottom: 0.4rem;
+        display: flex; align-items: center;
+    }
+    .audit-table td:first-child::before {
+        content: "Ordem: "; font-weight: 600; margin-right: 0.5rem;
+        color: #6c757d; font-size: 0.875rem;
+    }
+    .audit-table td.col-pergunta { min-width: 0; }
+    .audit-table td.col-pergunta::before {
+        content: "Pergunta:"; display: block;
+        font-weight: 600; color: #6c757d; font-size: 0.8rem; margin-bottom: 0.2rem;
+    }
+    .audit-table td.col-comentarios {
+        min-width: 0; border-top: 1px solid #dee2e6;
+        margin-top: 0.4rem; padding-top: 0.6rem;
+    }
+    .audit-table td.col-comentarios::before {
+        content: "Comentários:"; display: block;
+        font-weight: 600; color: #6c757d; font-size: 0.8rem; margin-bottom: 0.4rem;
+    }
+    .audit-table td.col-dia {
+        display: inline-block; width: auto;
+        padding: 0.25rem; text-align: center !important; margin-right: 0.25rem;
+    }
+    .audit-table td.col-dia::before {
+        content: attr(data-dia); display: block;
+        font-size: 0.7rem; color: #6c757d; margin-bottom: 0.2rem;
+    }
+}
+
+/* ============================================================
+   5. FORMULÁRIO / GRADE DE PERGUNTAS (registro_form.html)
+   ============================================================ */
+@media (max-width: 767.98px) {
+    .weekly-grid { flex-direction: column; gap: 0.75rem; }
+    .weekly-grid__item { width: 100% !important; flex: 1 1 100%; }
+    .weekly-grid__item .form-select-sm,
+    .weekly-grid__item .form-control { min-height: 44px; font-size: 1rem; }
+
+    .grid-table thead { display: none; }
+    .grid-table, .grid-table tbody { display: block; width: 100%; }
+    .grid-table tr {
+        display: flex; flex-direction: column;
+        background-color: #fff;
+        border: 1px solid #dee2e6; border-left: 3px solid #0d6efd;
+        border-radius: 0.6rem; margin-bottom: 0.75rem;
+        padding: 0.9rem 1rem; box-shadow: 0 1px 4px rgba(0,0,0,.07);
+    }
+    .grid-table td { display: block; width: 100%; border: none; padding: 0.3rem 0; }
+    .grid-table .grid-q { min-width: 0 !important; }
+    .grid-table .btn { width: 100%; min-height: 44px; }
+}
+
+/* ============================================================
+   6. LISTA DE PERGUNTAS (perguntas_list.html — classe: perguntas-table)
+   ============================================================ */
+@media (max-width: 767.98px) {
+    .perguntas-table thead { display: none; }
+    .perguntas-table, .perguntas-table tbody { display: block; width: 100%; }
+    .perguntas-table tr {
+        display: flex; flex-direction: column;
+        background-color: #fff;
+        border: 1px solid #dee2e6; border-radius: 0.6rem;
+        margin-bottom: 0.75rem; padding: 0.9rem 1rem;
+        box-shadow: 0 1px 4px rgba(0,0,0,.07);
+    }
+    .perguntas-table td { display: block; width: 100%; border: none; padding: 0.3rem 0; text-align: left !important; }
+    .perguntas-table td.td-actions {
+        border-top: 1px solid #dee2e6; margin-top: 0.5rem;
+        padding-top: 0.6rem; display: flex; flex-wrap: wrap; gap: 0.5rem;
+    }
+    .perguntas-table td.td-actions .btn { min-height: 44px; flex: 1 1 auto; }
+}
+
+/* ============================================================
+   7. LISTA DE CICLOS (registros_por_modelo.html — classe: ciclos-table)
+   ============================================================ */
+@media (max-width: 767.98px) {
+    .ciclos-table thead { display: none; }
+    .ciclos-table, .ciclos-table tbody { display: block; width: 100%; }
+    .ciclos-table tr {
+        display: flex; flex-direction: column;
+        background-color: #fff;
+        border: 1px solid #dee2e6; border-radius: 0.6rem;
+        margin-bottom: 0.75rem; padding: 0.9rem 1rem;
+        box-shadow: 0 1px 4px rgba(0,0,0,.07);
+    }
+    .ciclos-table td { display: block; width: 100%; border: none; padding: 0.3rem 0; text-align: left !important; }
+    .ciclos-table td.td-actions {
+        border-top: 1px solid #dee2e6; margin-top: 0.5rem;
+        padding-top: 0.6rem; display: flex; flex-wrap: wrap; gap: 0.5rem;
+    }
+    .ciclos-table td.td-actions .btn,
+    .ciclos-table td.td-actions a.btn { min-height: 44px; flex: 1 1 auto; text-align: center; }
+}
+
+/* ============================================================
+   8. ENTREVISTA ISO (iso_entrevista.html)
+   ============================================================ */
+@media (max-width: 767.98px) {
+    .question-card { padding: 1.25rem !important; border-radius: 0.75rem !important; }
+    .question-text { font-size: 1.2rem !important; }
+    .btn-classificacao {
+        min-height: 52px !important; width: 100% !important;
+        border-radius: 12px !important; font-size: 1rem !important; padding: 0.75rem !important;
+    }
+    .textarea-response { min-height: 120px !important; font-size: 1rem !important; }
+    #save-indicator { bottom: 70px !important; right: 16px !important; left: 16px !important; text-align: center; }
+}
+
+/* ============================================================
+   9. CRONOGRAMA ISO (classe: cronograma-table)
+   ============================================================ */
+@media (max-width: 767.98px) {
+    .cronograma-table thead { display: none; }
+    .cronograma-table, .cronograma-table tbody { display: block; width: 100%; }
+    .cronograma-table tr {
+        display: flex; flex-direction: column;
+        background-color: #fff;
+        border: 1px solid #dee2e6; border-radius: 0.6rem;
+        margin-bottom: 0.75rem; padding: 0.9rem 1rem;
+        box-shadow: 0 1px 4px rgba(0,0,0,.07);
+    }
+    .cronograma-table td.td-datetime {
+        font-size: 1rem; font-weight: 700; color: #0d6efd;
+        border-bottom: 1px solid #dee2e6;
+        padding-bottom: 0.5rem; margin-bottom: 0.4rem;
+    }
+    .cronograma-table td { display: block; width: 100%; border: none; padding: 0.3rem 0; text-align: left !important; }
+    .cronograma-table td.td-actions {
+        border-top: 1px solid #dee2e6; margin-top: 0.5rem;
+        padding-top: 0.6rem; display: flex; flex-wrap: wrap; gap: 0.5rem;
+    }
+    .cronograma-table td.td-actions .btn,
+    .cronograma-table td.td-actions a.btn { min-height: 44px; flex: 1 1 auto; text-align: center; }
+}
+
+/* ============================================================
+   10. MODAIS — Scroll Lock e Usabilidade Mobile
+   ============================================================ */
+@media (max-width: 767.98px) {
+    .modal-dialog-scrollable .modal-body {
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+    }
+}

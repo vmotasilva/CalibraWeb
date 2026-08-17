@@ -1,4 +1,4 @@
-﻿{% extends 'base.html' %}
+{% extends 'base.html' %}
 
 {% block content %}
 <div class="container mt-4">
@@ -112,7 +112,7 @@
     <div class="card shadow-sm">
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-striped mb-0" id="perguntasTable">
+                <table class="table table-striped mb-0 perguntas-table" id="perguntasTable">
                 <thead>
                     <tr>
                         <th style="width: 1%;">
@@ -139,7 +139,7 @@
                         <td>{{ pergunta.pergunta }}</td>
                         <td>{{ pergunta.get_tipo_resposta_display }}</td>
                         <td>{% if pergunta.obrigatoria %}Sim{% else %}NÃ£o{% endif %}</td>
-                        <td>
+                        <td class="td-actions">
                             <a
                                 href="{% url 'auditoria:pergunta_edit' pergunta.id %}"
                                 class="btn btn-sm btn-warning"
