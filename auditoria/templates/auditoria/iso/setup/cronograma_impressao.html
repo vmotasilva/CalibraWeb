@@ -126,7 +126,12 @@
                                                 {% endif %}
                                             </td>
                                             <td colspan="4" class="align-middle fst-italic text-center">
-                                                <i class="bi bi-cup-hot me-1"></i> {{ agenda.titulo }}
+                                                {% if agenda.titulo == 'Encerramento do Dia' %}
+                                                    <i class="bi bi-moon-stars me-1"></i>
+                                                {% else %}
+                                                    <i class="bi bi-cup-hot me-1"></i>
+                                                {% endif %}
+                                                {{ agenda.titulo }}
                                             </td>
                                             <td class="no-print text-end align-middle">
                                                 <button type="button" class="btn btn-sm btn-outline-secondary" onclick="renameGap('{{ agenda.data|date:'Y-m-d' }}', '{{ agenda.hora_inicio|time:'H:i' }}', '{{ agenda.hora_fim|time:'H:i' }}')" title="Nomear/Transformar em Bloco">
@@ -251,7 +256,12 @@
                                                 {% endif %}
                                             </td>
                                             <td colspan="4" class="align-middle fst-italic text-center">
-                                                <i class="bi bi-cup-hot me-1"></i> {{ agenda.titulo }}
+                                                {% if agenda.titulo == 'Encerramento do Dia' %}
+                                                    <i class="bi bi-moon-stars me-1"></i>
+                                                {% else %}
+                                                    <i class="bi bi-cup-hot me-1"></i>
+                                                {% endif %}
+                                                {{ agenda.titulo }}
                                             </td>
                                             <td class="no-print text-end align-middle">
                                                 <button type="button" class="btn btn-sm btn-outline-secondary" onclick="renameGap('{{ agenda.data|date:'Y-m-d' }}', '{{ agenda.hora_inicio|time:'H:i' }}', '{{ agenda.hora_fim|time:'H:i' }}', true)" title="Nomear/Transformar em Bloco">
