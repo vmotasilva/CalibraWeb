@@ -307,6 +307,8 @@ def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
                 {
                     "value": respostas_por_dia.get(k, ""),
                     "color": item["respostas_por_dia_cores"].get(k, ""),
+                    "label": dia_labels.get(k, k),
+                    "short_label": str(dia_labels.get(k, k))[:3].upper(),
                 }
                 for k in dia_keys
             ],

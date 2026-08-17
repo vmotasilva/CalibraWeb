@@ -34,6 +34,95 @@
     width: 100%;
     height: 320px;
 }
+
+/* Responsive Table as Cards for Mobile */
+@media (max-width: 767.98px) {
+    .audit-table thead {
+        display: none;
+    }
+    .audit-table, .audit-table tbody {
+        display: block;
+        width: 100%;
+    }
+    .audit-table tr {
+        display: block;
+        background-color: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+        padding: 1rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+    .audit-table td {
+        display: block;
+        width: 100%;
+        border: none;
+        padding: 0.5rem 0;
+        text-align: left !important;
+    }
+    
+    /* "Ordem" cell */
+    .audit-table td:first-child {
+        border-bottom: 1px solid #dee2e6;
+        padding-top: 0;
+        padding-bottom: 0.75rem;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+    }
+    .audit-table td:first-child::before {
+        content: "Ordem: ";
+        font-weight: 600;
+        margin-right: 0.5rem;
+        color: #6c757d;
+        font-size: 0.875rem;
+    }
+    
+    /* "Pergunta" cell */
+    .audit-table td.col-pergunta {
+        min-width: 0;
+    }
+    .audit-table td.col-pergunta::before {
+        content: "Pergunta:";
+        display: block;
+        font-weight: 600;
+        color: #6c757d;
+        font-size: 0.875rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    /* "Comentários" cell */
+    .audit-table td.col-comentarios {
+        min-width: 0;
+        border-top: 1px solid #dee2e6;
+        margin-top: 0.5rem;
+        padding-top: 0.75rem;
+    }
+    .audit-table td.col-comentarios::before {
+        content: "Comentários:";
+        display: block;
+        font-weight: 600;
+        color: #6c757d;
+        font-size: 0.875rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* "Dia" cells */
+    .audit-table td.col-dia {
+        display: inline-block;
+        width: auto;
+        padding: 0.25rem;
+        text-align: center !important;
+        margin-right: 0.25rem;
+    }
+    .audit-table td.col-dia::before {
+        content: attr(data-dia);
+        display: block;
+        font-size: 0.7rem;
+        color: #6c757d;
+        margin-bottom: 0.2rem;
+    }
+}
 </style>
 {% endblock %}
 
@@ -297,7 +386,7 @@
                             </td>
                             {% if exibir_dia_semana %}
                                 {% for dia_cell in linha.dia_cells %}
-                                <td class="col-dia">
+                                <td class="col-dia" data-dia="{{ dia_cell.short_label }}">
                                     {% if dia_cell.value %}
                                     <span
                                         class="answer-semaphore"
