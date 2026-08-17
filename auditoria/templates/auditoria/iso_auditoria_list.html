@@ -40,6 +40,10 @@
                                 <a href="{% url 'auditoria:iso_auditoria_cronograma' aud.id %}" class="btn btn-sm btn-outline-secondary" title="Cronograma / Plano de Auditoria" target="_blank">
                                     <i class="bi bi-calendar3"></i> Cronograma
                                 </a>
+                                <a href="{% url 'auditoria:iso_fechamento_presentation' aud.id %}" class="btn btn-sm btn-outline-dark" title="Gerar Apresentação de Fechamento" target="_blank"
+                                    {% if aud.status != 'CONCLUIDA' %}onclick="return confirm('A auditoria ainda não foi concluída. O relatório refletirá os dados parciais. Deseja continuar?');"{% endif %}>
+                                    <i class="bi bi-bar-chart-fill"></i> Fechamento
+                                </a>
                             </td>
                         </tr>
                         {% empty %}

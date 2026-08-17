@@ -4,6 +4,31 @@
 {% block title %}Plano de Auditoria - Cronograma{% endblock %}
 
 {% block content %}
+<style>
+    @media print {
+        @page {
+            margin: 0.5cm;
+        }
+        body {
+            font-size: 0.85rem;
+            line-height: 1.2;
+        }
+        /* Ajustar tabelas para caberem */
+        .table th, .table td {
+            padding: 0.3rem !important;
+        }
+        .badge {
+            min-width: 45px !important;
+            font-size: 0.65rem !important;
+            padding: 0.2rem !important;
+        }
+        h3 { font-size: 1.2rem !important; margin-bottom: 0.5rem !important; padding-bottom: 0.2rem !important; }
+        .card-body { padding: 0.5rem !important; }
+        .mb-4 { margin-bottom: 0.5rem !important; }
+        .mt-4 { margin-top: 0.5rem !important; }
+        .progress { height: 10px !important; }
+    }
+</style>
 <div class="container my-4" id="print-area">
     
     <!-- Botões de Ação (Ocultos na impressão) -->

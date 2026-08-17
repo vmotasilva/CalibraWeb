@@ -57,6 +57,7 @@ urlpatterns = [
 
     # ISO 13485 (Entrevista)
     path("iso/", views.iso_auditoria_list, name="iso_auditoria_list"),
+    path("iso/<int:auditoria_id>/fechamento/", views.iso_auditoria_fechamento_presentation, name="iso_fechamento_presentation"),
     path("iso/<int:auditoria_id>/entrevista/", views.iso_entrevista_view, name="iso_entrevista_view"),
     path("iso/<int:auditoria_id>/matriz/", views.iso_matriz_view, name="iso_matriz_view"),
     path("iso/<int:auditoria_id>/cronograma/", views.iso_auditoria_cronograma, name="iso_auditoria_cronograma"),

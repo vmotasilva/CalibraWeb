@@ -5229,3 +5229,45 @@ def api_iso_agenda_create_gap(request, auditoria_id):
     
     messages.success(request, f'Bloco {titulo} criado com sucesso para o intervalo.')
     return redirect('auditoria:iso_auditoria_cronograma', auditoria_id=auditoria_id)
+
+
+@login_required
+def iso_auditoria_fechamento_presentation(request, auditoria_id):
+    from .models import AuditoriaIso, RespostaEntrevistaIso
+    
+    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+    respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).select_related('pergunta')
+    
+    grupos = {
+        'conformidades': [],
+        'oportunidades': [],
+        'nc_menores': [],
+        'nc_maiores': [],
+    }
+    
+    total_aplicavel = 0
+    total_conformes = 0
+    
+    for resp in respostas:
+        if resp.classificacao in ['C', 'NC', 'OM']:
+            total_aplicavel += 1
+            if resp.classificacao == 'C':
+                total_conformes += 1
+                if resp.texto_resposta and resp.texto_resposta.strip():
+                    grupos['conformidades'].append(resp)
+            elif resp.classificacao == 'OM':
+                grupos['oportunidades'].append(resp)
+            elif resp.classificacao == 'NC':
+                grupos['nc_menores'].append(resp)
+                
+    percentual_conformidade = int((total_conformes / total_aplicavel) * 100) if total_aplicavel > 0 else 0
+    
+    context = {
+        'auditoria': auditoria,
+        'grupos': grupos,
+        'percentual_conformidade': percentual_conformidade,
+        'total_aplicavel': total_aplicavel,
+        'total_conformes': total_conformes,
+    }
+    
+    return render(request, 'auditoria/iso/fechamento_presentation.html', context)
