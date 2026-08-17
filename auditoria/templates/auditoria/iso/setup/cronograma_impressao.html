@@ -7,13 +7,20 @@
 <div class="container my-4" id="print-area">
     
     <!-- Botões de Ação (Ocultos na impressão) -->
-    <div class="d-flex justify-content-end mb-3 no-print gap-2">
-        <a href="{% url 'auditoria:iso_matriz_view' auditoria.id %}" class="btn btn-outline-primary fw-bold rounded-pill shadow-sm">
-            <i class="bi bi-grid-3x3 me-2"></i> Ver Matriz
-        </a>
-        <button onclick="window.print()" class="btn btn-primary fw-bold rounded-pill shadow-sm">
-            <i class="bi bi-printer me-2"></i> Imprimir / Gerar PDF
-        </button>
+    <div class="d-flex justify-content-between mb-3 no-print">
+        <div>
+            <a href="{% url 'auditoria:iso_auditoria_detail' auditoria.id %}" class="btn btn-outline-secondary fw-bold rounded-pill shadow-sm">
+                <i class="bi bi-arrow-left me-2"></i> Voltar à Configuração
+            </a>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'auditoria:iso_matriz_view' auditoria.id %}" class="btn btn-outline-primary fw-bold rounded-pill shadow-sm">
+                <i class="bi bi-grid-3x3 me-2"></i> Ver Matriz
+            </a>
+            <button onclick="window.print()" class="btn btn-primary fw-bold rounded-pill shadow-sm">
+                <i class="bi bi-printer me-2"></i> Imprimir / Gerar PDF
+            </button>
+        </div>
     </div>
 
     <!-- Cabeçalho (Casca do Planejamento) -->
@@ -88,19 +95,40 @@
                         <tbody>
                             {% for agenda in agendas %}
                                 {% if agenda.is_gap %}
-                                    <tr class="table-secondary text-muted">
-                                        <td class="fw-semibold text-center align-middle">
-                                            {{ agenda.hora_inicio|time:"H:i" }} <br><small>às</small><br> {{ agenda.hora_fim|time:"H:i" }}
-                                        </td>
-                                        <td colspan="4" class="align-middle fst-italic text-center">
-                                            <i class="bi bi-cup-hot me-1"></i> {{ agenda.titulo }}
-                                        </td>
-                                        <td class="no-print text-end align-middle">
-                                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="renameGap('{{ agenda.data|date:'Y-m-d' }}', '{{ agenda.hora_inicio|time:'H:i' }}', '{{ agenda.hora_fim|time:'H:i' }}')" title="Nomear/Transformar em Bloco">
-                                                <i class="bi bi-pencil-square"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
+                                    {% if agenda.special_type %}
+                                        <tr class="table-secondary text-muted">
+                                            <td class="fw-semibold text-center align-middle">
+                                                {{ agenda.hora_inicio|time:"H:i" }} <br><small>às</small><br> {{ agenda.hora_fim|time:"H:i" }}
+                                            </td>
+                                            <td class="align-middle fst-italic">
+                                                <i class="bi bi-calendar-event me-1"></i> {{ agenda.titulo }}
+                                            </td>
+                                            <td class="align-middle cursor-pointer" onclick="openQuickEditAuditor('{{ agenda.special_type }}', '{{ agenda.auditores_nomes|default:'' }}')">
+                                                <small class="text-muted">{{ agenda.auditores_nomes|default:"Equipe" }}</small>
+                                                <i class="bi bi-pencil ms-1 no-print text-primary" style="font-size: 0.75rem;"></i>
+                                            </td>
+                                            <td class="align-middle cursor-pointer" onclick="openQuickEditRepresentante('{{ agenda.special_type }}', '{{ agenda.representantes|default:'' }}')">
+                                                <small class="text-muted">{{ agenda.representantes|default:"Todos" }}</small>
+                                                <i class="bi bi-pencil ms-1 no-print text-primary" style="font-size: 0.75rem;"></i>
+                                            </td>
+                                            <td class="align-middle text-center">-</td>
+                                            <td class="no-print text-end align-middle"></td>
+                                        </tr>
+                                    {% else %}
+                                        <tr class="table-secondary text-muted">
+                                            <td class="fw-semibold text-center align-middle">
+                                                {{ agenda.hora_inicio|time:"H:i" }} <br><small>às</small><br> {{ agenda.hora_fim|time:"H:i" }}
+                                            </td>
+                                            <td colspan="4" class="align-middle fst-italic text-center">
+                                                <i class="bi bi-cup-hot me-1"></i> {{ agenda.titulo }}
+                                            </td>
+                                            <td class="no-print text-end align-middle">
+                                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="renameGap('{{ agenda.data|date:'Y-m-d' }}', '{{ agenda.hora_inicio|time:'H:i' }}', '{{ agenda.hora_fim|time:'H:i' }}')" title="Nomear/Transformar em Bloco">
+                                                    <i class="bi bi-pencil-square"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    {% endif %}
                                 {% else %}
                                     <tr class="{% if agenda.concluida %}table-success opacity-75{% endif %}">
                                         <td class="fw-semibold text-center align-middle">
@@ -186,19 +214,40 @@
                         <tbody>
                             {% for agenda in agendas %}
                                 {% if agenda.is_gap %}
-                                    <tr class="table-secondary text-muted">
-                                        <td class="fw-semibold text-center align-middle">
-                                            {{ agenda.hora_inicio|time:"H:i" }} <br><small>às</small><br> {{ agenda.hora_fim|time:"H:i" }}
-                                        </td>
-                                        <td colspan="4" class="align-middle fst-italic text-center">
-                                            <i class="bi bi-cup-hot me-1"></i> {{ agenda.titulo }}
-                                        </td>
-                                        <td class="no-print text-end align-middle">
-                                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="renameGap('{{ agenda.data|date:'Y-m-d' }}', '{{ agenda.hora_inicio|time:'H:i' }}', '{{ agenda.hora_fim|time:'H:i' }}', true)" title="Nomear/Transformar em Bloco">
-                                                <i class="bi bi-pencil-square"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
+                                    {% if agenda.special_type %}
+                                        <tr class="table-secondary text-muted">
+                                            <td class="fw-semibold text-center align-middle">
+                                                {{ agenda.hora_inicio|time:"H:i" }} <br><small>às</small><br> {{ agenda.hora_fim|time:"H:i" }}
+                                            </td>
+                                            <td class="align-middle fst-italic">
+                                                <i class="bi bi-calendar-event me-1"></i> {{ agenda.titulo }}
+                                            </td>
+                                            <td class="align-middle cursor-pointer" onclick="openQuickEditAuditor('{{ agenda.special_type }}', '{{ agenda.auditores_nomes|default:'' }}')">
+                                                <small class="text-muted">{{ agenda.auditores_nomes|default:"Equipe" }}</small>
+                                                <i class="bi bi-pencil ms-1 no-print text-primary" style="font-size: 0.75rem;"></i>
+                                            </td>
+                                            <td class="align-middle cursor-pointer" onclick="openQuickEditRepresentante('{{ agenda.special_type }}', '{{ agenda.representantes|default:'' }}')">
+                                                <small class="text-muted">{{ agenda.representantes|default:"Todos" }}</small>
+                                                <i class="bi bi-pencil ms-1 no-print text-primary" style="font-size: 0.75rem;"></i>
+                                            </td>
+                                            <td class="align-middle text-center">-</td>
+                                            <td class="no-print text-end align-middle"></td>
+                                        </tr>
+                                    {% else %}
+                                        <tr class="table-secondary text-muted">
+                                            <td class="fw-semibold text-center align-middle">
+                                                {{ agenda.hora_inicio|time:"H:i" }} <br><small>às</small><br> {{ agenda.hora_fim|time:"H:i" }}
+                                            </td>
+                                            <td colspan="4" class="align-middle fst-italic text-center">
+                                                <i class="bi bi-cup-hot me-1"></i> {{ agenda.titulo }}
+                                            </td>
+                                            <td class="no-print text-end align-middle">
+                                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="renameGap('{{ agenda.data|date:'Y-m-d' }}', '{{ agenda.hora_inicio|time:'H:i' }}', '{{ agenda.hora_fim|time:'H:i' }}', true)" title="Nomear/Transformar em Bloco">
+                                                    <i class="bi bi-pencil-square"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    {% endif %}
                                 {% else %}
                                     <tr class="{% if agenda.concluida %}table-success opacity-75{% endif %}">
                                         <td class="fw-semibold text-center align-middle">

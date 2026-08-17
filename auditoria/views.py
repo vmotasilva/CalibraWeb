@@ -5005,6 +5005,9 @@ def iso_auditoria_cronograma(request, auditoria_id):
                 abertura_inicio = (inicio_dt - datetime.timedelta(minutes=30)).time()
                 result.append({
                     'is_gap': True,
+                    'special_type': 'abertura',
+                    'auditores_nomes': getattr(auditoria, 'abertura_auditores', '') or 'Equipe',
+                    'representantes': getattr(auditoria, 'abertura_representantes', '') or 'Todos',
                     'hora_inicio': abertura_inicio,
                     'hora_fim': inicio,
                     'titulo': 'Reunião de Abertura',
@@ -5029,6 +5032,9 @@ def iso_auditoria_cronograma(request, auditoria_id):
             revisao_fim_dt = prev_fim_dt + datetime.timedelta(hours=1, minutes=30)
             result.append({
                 'is_gap': True,
+                'special_type': 'revisao',
+                'auditores_nomes': getattr(auditoria, 'revisao_auditores', '') or 'Equipe',
+                'representantes': getattr(auditoria, 'revisao_representantes', '') or 'Equipe',
                 'hora_inicio': prev_fim_dt.time(),
                 'hora_fim': revisao_fim_dt.time(),
                 'titulo': 'Revisão da Auditoria com Auditores',
@@ -5038,6 +5044,9 @@ def iso_auditoria_cronograma(request, auditoria_id):
             encerramento_fim_dt = revisao_fim_dt + datetime.timedelta(minutes=30)
             result.append({
                 'is_gap': True,
+                'special_type': 'encerramento',
+                'auditores_nomes': getattr(auditoria, 'encerramento_auditores', '') or 'Equipe',
+                'representantes': getattr(auditoria, 'encerramento_representantes', '') or 'Todos',
                 'hora_inicio': revisao_fim_dt.time(),
                 'hora_fim': encerramento_fim_dt.time(),
                 'titulo': 'Encerramento da auditoria',
@@ -5099,13 +5108,25 @@ def iso_agenda_toggle_conclusao(request, auditoria_id, pk):
 @login_required
 @require_POST
 def api_iso_agenda_quick_edit(request, auditoria_id):
-    from .models import AgendaAuditoriaIso
+    from .models import AgendaAuditoriaIso, AuditoriaIso
     from django.http import JsonResponse
     
     agenda_id = request.POST.get('agenda_id')
     aplicar_todos = request.POST.get('aplicar_todos') == 'true'
     tipo = request.POST.get('tipo')
     
+    if agenda_id in ['abertura', 'revisao', 'encerramento']:
+        auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+        if tipo == 'auditor':
+            valor = request.POST.get('auditores_nomes', '')
+            setattr(auditoria, f"{agenda_id}_auditores", valor)
+            auditoria.save(update_fields=[f"{agenda_id}_auditores"])
+        elif tipo == 'representante':
+            valor = request.POST.get('representantes', '')
+            setattr(auditoria, f"{agenda_id}_representantes", valor)
+            auditoria.save(update_fields=[f"{agenda_id}_representantes"])
+        return JsonResponse({'success': True, 'message': 'Preenchimento rápido salvo com sucesso.'})
+
     agendas_para_atualizar = []
     if aplicar_todos:
         agendas_para_atualizar = list(AgendaAuditoriaIso.objects.filter(auditoria_id=auditoria_id))
