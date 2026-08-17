@@ -4960,3 +4960,21 @@ def iso_agenda_sincronizar_modelo(request, auditoria_id, pk):
         messages.info(request, f"A agenda já está 100% atualizada e sincronizada com o modelo '{modelo.titulo}'.")
 
     return redirect('auditoria:iso_agenda_detail', auditoria_id=auditoria_id, pk=pk)
+
+@login_required
+def iso_auditoria_cronograma(request, auditoria_id):
+    from collections import defaultdict
+    from .models import AuditoriaIso
+    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+    
+    agendas_qs = auditoria.agendas.filter(data__isnull=False).order_by('data', 'hora_inicio')
+    
+    cronograma_agrupado = defaultdict(list)
+    for agenda in agendas_qs:
+        cronograma_agrupado[agenda.data].append(agenda)
+        
+    context = {
+        'auditoria': auditoria,
+        'cronograma_agrupado': dict(cronograma_agrupado),
+    }
+    return render(request, 'auditoria/iso/setup/cronograma_impressao.html', context)

@@ -40,6 +40,9 @@
                                 <a href="{% url 'auditoria:iso_matriz_view' aud.id %}" class="btn btn-sm btn-outline-info" title="Ver Matriz Consolidada">
                                     <i class="bi bi-grid-3x3"></i> Matriz
                                 </a>
+                                <a href="{% url 'auditoria:iso_auditoria_cronograma' aud.id %}" class="btn btn-sm btn-outline-secondary" title="Cronograma / Plano de Auditoria" target="_blank">
+                                    <i class="bi bi-calendar3"></i> Cronograma
+                                </a>
                             </td>
                         </tr>
                         {% empty %}
