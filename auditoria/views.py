@@ -4989,7 +4989,7 @@ def iso_auditoria_cronograma(request, auditoria_id):
         data_ajustada = agenda.data_real or agenda.data
         cronograma_ajustado[data_ajustada].append(agenda)
         
-    def inject_gaps(agendas_list, is_ajustado=False, is_last_day=False):
+    def inject_gaps(agendas_list, is_ajustado=False, is_first_day=False, is_last_day=False):
         import datetime
         result = []
         prev_fim = None
@@ -5000,7 +5000,7 @@ def iso_auditoria_cronograma(request, auditoria_id):
             data = a.data_real if is_ajustado and a.data_real else a.data
             last_data = data
             
-            if i == 0 and inicio:
+            if is_first_day and i == 0 and inicio:
                 inicio_dt = datetime.datetime.combine(datetime.date.today(), inicio)
                 abertura_inicio = (inicio_dt - datetime.timedelta(minutes=30)).time()
                 result.append({
@@ -5067,24 +5067,28 @@ def iso_auditoria_cronograma(request, auditoria_id):
     progresso_por_dia = {}
     planejado_com_gaps = {}
     datas_planejadas = sorted(cronograma_planejado.keys())
+    primeira_data_planejada = datas_planejadas[0] if datas_planejadas else None
     ultima_data_planejada = datas_planejadas[-1] if datas_planejadas else None
     
     for data, agendas in cronograma_planejado.items():
         t = len(agendas)
         c = sum(1 for a in agendas if getattr(a, 'concluida', False))
         progresso_por_dia[data] = int((c / t) * 100) if t > 0 else 0
+        is_first = (data == primeira_data_planejada)
         is_last = (data == ultima_data_planejada)
-        planejado_com_gaps[data] = inject_gaps(agendas, is_ajustado=False, is_last_day=is_last)
+        planejado_com_gaps[data] = inject_gaps(agendas, is_ajustado=False, is_first_day=is_first, is_last_day=is_last)
         
     ajustado_com_gaps = {}
     datas_ajustadas = sorted(cronograma_ajustado.keys())
+    primeira_data_ajustada = datas_ajustadas[0] if datas_ajustadas else None
     ultima_data_ajustada = datas_ajustadas[-1] if datas_ajustadas else None
     
     for data, agendas in sorted(cronograma_ajustado.items()):
         # Sort adjusted agendas by their actual start time
         agendas_sorted = sorted(agendas, key=lambda x: x.hora_inicio_real or x.hora_inicio or datetime.min.time())
+        is_first = (data == primeira_data_ajustada)
         is_last = (data == ultima_data_ajustada)
-        ajustado_com_gaps[data] = inject_gaps(agendas_sorted, is_ajustado=True, is_last_day=is_last)
+        ajustado_com_gaps[data] = inject_gaps(agendas_sorted, is_ajustado=True, is_first_day=is_first, is_last_day=is_last)
         
     context = {
         'auditoria': auditoria,
