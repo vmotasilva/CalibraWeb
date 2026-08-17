@@ -16,6 +16,23 @@
         font-weight: 600;
         font-size: 0.85rem;
     }
+
+    /* Freeze First Column no Mobile e Tablet */
+    @media (max-width: 991.98px) {
+        .table-responsive table th:first-child,
+        .table-responsive table td:first-child {
+            position: sticky;
+            left: 0;
+            z-index: 2;
+            background-color: #ffffff;
+            border-right: 2px solid #dee2e6;
+            box-shadow: 2px 0 5px -2px rgba(0,0,0,0.1);
+        }
+        
+        .table-responsive table thead th:first-child {
+            z-index: 3;
+        }
+    }
 </style>
 {% endblock %}
 
