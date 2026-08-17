@@ -139,7 +139,13 @@
                                                 <i class="bi bi-pencil ms-1 no-print text-primary" style="font-size: 0.75rem;"></i>
                                             </td>
                                             <td class="align-middle text-center">-</td>
-                                            <td class="no-print text-end align-middle"></td>
+                                            <td class="no-print text-end align-middle">
+                                                {% if agenda.special_type == 'revisao' %}
+                                                <a href="{% url 'auditoria:iso_revisao_dashboard' auditoria.id %}" class="btn btn-sm btn-outline-primary" title="Ir para Revisão da Auditoria">
+                                                    <i class="bi bi-play-circle"></i>
+                                                </a>
+                                                {% endif %}
+                                            </td>
                                         </tr>
                                     {% else %}
                                         <tr class="table-secondary text-muted">
@@ -269,7 +275,13 @@
                                                 <i class="bi bi-pencil ms-1 no-print text-primary" style="font-size: 0.75rem;"></i>
                                             </td>
                                             <td class="align-middle text-center">-</td>
-                                            <td class="no-print text-end align-middle"></td>
+                                            <td class="no-print text-end align-middle">
+                                                {% if agenda.special_type == 'revisao' %}
+                                                <a href="{% url 'auditoria:iso_revisao_dashboard' auditoria.id %}" class="btn btn-sm btn-outline-primary" title="Ir para Revisão da Auditoria">
+                                                    <i class="bi bi-play-circle"></i>
+                                                </a>
+                                                {% endif %}
+                                            </td>
                                         </tr>
                                     {% else %}
                                         <tr class="table-secondary text-muted">

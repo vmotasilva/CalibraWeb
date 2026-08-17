@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-shield-check text-primary me-2"></i> Dashboard de Revisão da Auditoria</h2>
+        <div>
+            <a href="{% url 'auditoria:iso_auditoria_cronograma' auditoria.id %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar ao Cronograma
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body bg-light">
+            <h5 class="card-title">Auditoria: {{ auditoria.norma.codigo }}</h5>
+            <p class="card-text text-muted mb-0">Período: {{ auditoria.data_inicio|date:"d/m/Y" }} a {{ auditoria.data_fim|date:"d/m/Y" }}</p>
+        </div>
+    </div>
+
+    <!-- Controles de Filtro -->
+    <div class="mb-4 bg-white p-3 border rounded d-flex align-items-center justify-content-between">
+        <div>
+            <strong>Filtros Ativos: </strong>
+            <span class="badge bg-danger">Não Conformidades (NC)</span>
+            <span class="badge bg-warning text-dark">Oportunidades (OM)</span>
+            <span class="badge bg-secondary">Pendentes (P)</span>
+        </div>
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="toggleConformes">
+            <label class="form-check-label" for="toggleConformes">Mostrar Itens Conformes (C)</label>
+        </div>
+    </div>
+
+    {% for bloco in blocos %}
+    <div class="mb-5 bloco-container">
+        <h4 class="border-bottom pb-2 mb-3 text-primary">
+            <i class="bi bi-calendar-check me-2"></i> Bloco: {{ bloco.agenda.titulo|default:"Geral" }}
+        </h4>
+        
+        <div class="accordion" id="accordionBloco{{ bloco.agenda.id }}">
+            {% for resp in bloco.respostas %}
+            <div class="accordion-item mb-2 border rounded shadow-sm item-card" data-status="{{ resp.classificacao }}">
+                <h2 class="accordion-header" id="heading{{ resp.id }}">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ resp.id }}" aria-expanded="false" aria-controls="collapse{{ resp.id }}">
+                        <div class="d-flex w-100 justify-content-between align-items-center me-3">
+                            <div>
+                                <strong>Ref:</strong> {{ resp.pergunta.item_norma.referencia|default:"-" }}
+                                <span class="ms-2 text-muted">{{ resp.pergunta.texto_pergunta|truncatechars:80 }}</span>
+                            </div>
+                            <div class="status-badge-container" id="badgeContainer{{ resp.id }}">
+                                {% if resp.classificacao == 'NC' %}
+                                    <span class="badge bg-danger fs-6">Não Conforme</span>
+                                {% elif resp.classificacao == 'OM' %}
+                                    <span class="badge bg-warning text-dark fs-6">OM</span>
+                                {% elif resp.classificacao == 'C' %}
+                                    <span class="badge bg-success fs-6">Conforme</span>
+                                {% else %}
+                                    <span class="badge bg-secondary fs-6">Pendente</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </button>
+                </h2>
+                <div id="collapse{{ resp.id }}" class="accordion-collapse collapse" aria-labelledby="heading{{ resp.id }}" data-bs-parent="#accordionBloco{{ bloco.agenda.id }}">
+                    <div class="accordion-body bg-light">
+                        <div class="mb-3">
+                            <h6 class="fw-bold">Enunciado da Pergunta:</h6>
+                            <p class="mb-2">{{ resp.pergunta.texto_pergunta }}</p>
+                            
+                            <h6 class="fw-bold text-primary mt-3">Constatação / Evidência do Auditor:</h6>
+                            <div class="p-3 bg-white border rounded">
+                                {{ resp.texto_resposta|default:"<em>Nenhuma anotação registrada.</em>"|linebreaksbr }}
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 p-3 border rounded bg-white border-info">
+                            <h6 class="fw-bold text-info"><i class="bi bi-chat-left-text me-2"></i>Direito de Resposta / Reavaliação</h6>
+                            <div class="mb-3">
+                                <label for="argumentacao_{{ resp.id }}" class="form-label text-muted small">Argumentação ou Nova Evidência do Auditado:</label>
+                                <textarea class="form-control" id="argumentacao_{{ resp.id }}" rows="3" placeholder="Descreva aqui o argumento de defesa ou a evidência apresentada..."></textarea>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-outline-secondary" onclick="reverterStatus({{ resp.id }}, '')">
+                                    <i class="bi bi-lock-fill"></i> Manter Status Atual
+                                </button>
+                                <button type="button" class="btn btn-warning" onclick="reverterStatus({{ resp.id }}, 'OM')">
+                                    <i class="bi bi-arrow-repeat"></i> Reverter para OM
+                                </button>
+                                <button type="button" class="btn btn-success" onclick="reverterStatus({{ resp.id }}, 'C')">
+                                    <i class="bi bi-check-circle-fill"></i> Reverter para Conforme
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-muted fst-italic">Nenhum item avaliado neste bloco.</div>
+            {% endfor %}
+        </div>
+    </div>
+    {% empty %}
+    <div class="alert alert-info">Não há respostas para revisar nesta auditoria ainda.</div>
+    {% endfor %}
+</div>
+
+<!-- Modal de Loading (Opcional) -->
+<div class="modal" id="loadingModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content text-center p-4">
+            <div class="spinner-border text-primary mx-auto mb-3" role="status">
+                <span class="visually-hidden">Processando...</span>
+            </div>
+            <p class="mb-0">Registrando histórico...</p>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Filtro de Visibilidade para Itens Conformes
+    document.addEventListener('DOMContentLoaded', function() {
+        const toggleBtn = document.getElementById('toggleConformes');
+        const cards = document.querySelectorAll('.item-card');
+
+        function applyFilter() {
+            const showC = toggleBtn.checked;
+            cards.forEach(card => {
+                if (card.dataset.status === 'C') {
+                    card.classList.toggle('d-none', !showC);
+                } else {
+                    card.classList.remove('d-none');
+                }
+            });
+        }
+
+        toggleBtn.addEventListener('change', applyFilter);
+        // Aplica filtro inicial (ocultando os C)
+        applyFilter();
+    });
+
+    // Função de Reversão de Status usando Fetch API
+    function reverterStatus(respostaId, novoStatus) {
+        const argumentacao = document.getElementById('argumentacao_' + respostaId).value;
+        
+        if (!argumentacao.trim()) {
+            alert('Por favor, descreva a argumentação ou evidência apresentada antes de registrar a reavaliação.');
+            return;
+        }
+
+        const btnConfirm = confirm('Confirma o registro desta reavaliação no histórico da auditoria?');
+        if (!btnConfirm) return;
+
+        const loading = new bootstrap.Modal(document.getElementById('loadingModal'));
+        loading.show();
+
+        const url = "{% url 'auditoria:api_iso_revisao_reverter' %}";
+        
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                resposta_id: respostaId,
+                novo_status: novoStatus,
+                argumentacao: argumentacao
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            loading.hide();
+            if (data.success) {
+                // Atualizar o badge e o dataset visualmente
+                const card = document.querySelector(`.item-card:has(#heading${respostaId})`);
+                if (card) card.dataset.status = data.novo_status;
+
+                const badgeContainer = document.getElementById('badgeContainer_' + respostaId) || document.getElementById('badgeContainer' + respostaId);
+                if (badgeContainer) {
+                    let badgeHtml = '';
+                    if (data.novo_status === 'NC') badgeHtml = '<span class="badge bg-danger fs-6">Não Conforme</span>';
+                    else if (data.novo_status === 'OM') badgeHtml = '<span class="badge bg-warning text-dark fs-6">OM</span>';
+                    else if (data.novo_status === 'C') badgeHtml = '<span class="badge bg-success fs-6">Conforme</span>';
+                    else badgeHtml = '<span class="badge bg-secondary fs-6">Pendente</span>';
+                    badgeContainer.innerHTML = badgeHtml;
+                }
+
+                // Limpar textarea
+                document.getElementById('argumentacao_' + respostaId).value = '';
+                
+                // Recolher accordion (opcional)
+                const collapseElement = document.getElementById('collapse' + respostaId);
+                const bsCollapse = bootstrap.Collapse.getInstance(collapseElement);
+                if (bsCollapse) bsCollapse.hide();
+
+                // Disparar o filtro novamente caso tenha mudado para C e o toggle esteja desligado
+                document.getElementById('toggleConformes').dispatchEvent(new Event('change'));
+
+                // Usar toast seria ideal, mas fallback para alert rápido se necessário
+                // alert('Status atualizado e histórico registrado com sucesso!');
+            } else {
+                alert('Erro ao atualizar: ' + data.message);
+            }
+        })
+        .catch(error => {
+            loading.hide();
+            alert('Erro de rede ao tentar reverter status.');
+            console.error(error);
+        });
+    }
+</script>
+{% endblock %}

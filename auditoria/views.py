@@ -5271,3 +5271,84 @@ def iso_auditoria_fechamento_presentation(request, auditoria_id):
     }
     
     return render(request, 'auditoria/iso/fechamento_presentation.html', context)
+
+
+@login_required
+def iso_revisao_dashboard(request, auditoria_id):
+    from .models import AuditoriaIso, RespostaEntrevistaIso, AgendaAuditoriaIso
+    from collections import defaultdict
+    
+    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+    
+    respostas = RespostaEntrevistaIso.objects.filter(
+        auditoria=auditoria
+    ).exclude(
+        classificacao='NA'
+    ).select_related('pergunta')
+    
+    agendas = AgendaAuditoriaIso.objects.filter(auditoria=auditoria).prefetch_related('perguntas')
+    
+    pergunta_agenda_map = {}
+    for agenda in agendas:
+        for p in agenda.perguntas.all():
+            if p.id not in pergunta_agenda_map:
+                pergunta_agenda_map[p.id] = agenda
+                
+    grupos_por_agenda = defaultdict(list)
+    sem_agenda = []
+    
+    for resp in respostas:
+        agenda = pergunta_agenda_map.get(resp.pergunta.id)
+        if agenda:
+            grupos_por_agenda[agenda].append(resp)
+        else:
+            sem_agenda.append(resp)
+            
+    blocos = []
+    for agenda, resps in grupos_por_agenda.items():
+        blocos.append({
+            'agenda': agenda,
+            'respostas': resps
+        })
+        
+    context = {
+        'auditoria': auditoria,
+        'blocos': blocos,
+        'sem_agenda': sem_agenda
+    }
+    
+    return render(request, 'auditoria/iso/revisao_dashboard.html', context)
+
+@login_required
+@require_POST
+def api_iso_revisao_reverter(request):
+    import json
+    from django.http import JsonResponse
+    from .models import RespostaEntrevistaIso, ComentarioRespostaAuditoria
+    
+    try:
+        data = json.loads(request.body)
+        resposta_id = data.get('resposta_id')
+        novo_status = data.get('novo_status')
+        argumentacao = data.get('argumentacao')
+        
+        resp = get_object_or_404(RespostaEntrevistaIso, pk=resposta_id)
+        status_antigo = resp.classificacao
+        
+        if novo_status and novo_status != status_antigo:
+            resp.classificacao = novo_status
+            resp.save(update_fields=['classificacao'])
+            texto_log = f"[REVISÃO DE AUDITORIA] Status alterado de {status_antigo} para {novo_status}. Argumentação/Evidência: {argumentacao}"
+        else:
+            texto_log = f"[REVISÃO DE AUDITORIA] Status mantido ({status_antigo}). Argumentação/Evidência: {argumentacao}"
+            
+        ComentarioRespostaAuditoria.objects.create(
+            pergunta=resp.pergunta,
+            autor=request.user,
+            texto=texto_log,
+            data_referencia=resp.auditoria.data_inicio
+        )
+        
+        return JsonResponse({'success': True, 'message': 'Status atualizado com sucesso.', 'novo_status': resp.classificacao})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=400)
