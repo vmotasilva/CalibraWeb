@@ -3502,14 +3502,21 @@ def iso_matriz_view(request, auditoria_id):
     respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).prefetch_related('solicitacoes')
     respostas_map = {r.pergunta_id: r for r in respostas}
     
+    # Mapeamento rápido de agendas por item da norma (usando .all() para aproveitar o prefetch)
+    agenda_item_ids_map = {agenda.id: set(item.id for item in agenda.itens_norma.all()) for agenda in agendas}
+    
+    # Pre-calcular os itens de norma de cada pergunta para evitar queries no loop triplo
+    pergunta_item_ids_map = {}
+    for agenda in agendas:
+        for p in agenda.perguntas.all():
+            if p.id not in pergunta_item_ids_map:
+                pergunta_item_ids_map[p.id] = set(item.id for item in p.itens_norma.all())
+                
     # Mapeia itens explicitamente marcados como N/A na auditoria
     na_item_ids = set(auditoria.itens_nao_aplicaveis.values_list('id', flat=True))
 
     hierarchy = {"NC": 5, "P": 4, "OM": 3, "C": 2, "NA": 1}
     reverse_hierarchy = {v: k for k, v in hierarchy.items()}
-    
-    # Mapeamento rápido de agendas por item da norma
-    agenda_item_ids_map = {agenda.id: set(agenda.itens_norma.values_list('id', flat=True)) for agenda in agendas}
     
     matriz_data = []
     
@@ -3526,7 +3533,7 @@ def iso_matriz_view(request, auditoria_id):
             # Perguntas vinculadas diretamente a este item neste bloco
             perguntas_bloco_item = []
             for p in agenda.perguntas.all():
-                p_item_ids = set(p.itens_norma.values_list('id', flat=True))
+                p_item_ids = pergunta_item_ids_map[p.id]
                 
                 # Se a pergunta tem vinculo explicito com este item OU se a pergunta nao tem vinculo e a agenda tem vinculo com este item
                 if item.id in p_item_ids or (not p_item_ids and item.id in ag_item_ids):
