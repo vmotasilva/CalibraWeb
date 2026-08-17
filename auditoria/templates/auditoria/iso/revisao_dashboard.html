@@ -36,10 +36,10 @@
     {% for bloco in blocos %}
     <div class="mb-5 bloco-container">
         <h4 class="border-bottom pb-2 mb-3 text-primary">
-            <i class="bi bi-calendar-check me-2"></i> Bloco: {{ bloco.agenda.titulo|default:"Geral" }}
+            <i class="bi bi-book-half me-2"></i> Grupo: {{ bloco.grupo_nome }}
         </h4>
         
-        <div class="accordion" id="accordionBloco{{ bloco.agenda.id }}">
+        <div class="accordion" id="accordionBloco{{ forloop.counter }}">
             {% for resp in bloco.respostas %}
             <div class="accordion-item mb-2 border rounded shadow-sm item-card" data-status="{{ resp.classificacao }}">
                 <h2 class="accordion-header" id="heading{{ resp.id }}">
@@ -63,11 +63,21 @@
                         </div>
                     </button>
                 </h2>
-                <div id="collapse{{ resp.id }}" class="accordion-collapse collapse" aria-labelledby="heading{{ resp.id }}" data-bs-parent="#accordionBloco{{ bloco.agenda.id }}">
+                <div id="collapse{{ resp.id }}" class="accordion-collapse collapse" aria-labelledby="heading{{ resp.id }}" data-bs-parent="#accordionBloco{{ forloop.parentloop.counter }}">
                     <div class="accordion-body bg-light">
                         <div class="mb-3">
                             <h6 class="fw-bold">Enunciado da Pergunta:</h6>
                             <p class="mb-2">{{ resp.pergunta.texto_pergunta }}</p>
+
+                            <!-- Origem de Avaliação -->
+                            <div class="mb-3">
+                                <span class="text-muted small">Avaliado em:</span>
+                                {% for agenda in resp.agendas_avaliadas %}
+                                    <span class="badge bg-light text-dark border ms-1"><i class="bi bi-geo-alt me-1"></i>{{ agenda.titulo|default:"Geral" }}</span>
+                                {% empty %}
+                                    <span class="badge bg-light text-dark border ms-1">Global</span>
+                                {% endfor %}
+                            </div>
                             
                             <h6 class="fw-bold text-primary mt-3">Constatação / Evidência do Auditor:</h6>
                             <div class="p-3 bg-white border rounded">
