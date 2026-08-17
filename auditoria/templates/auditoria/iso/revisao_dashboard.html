@@ -33,15 +33,14 @@
         </div>
     </div>
 
-    
-    <div class="accordion" id="accordionBlocos">
+        <div class="accordion" id="accordionBlocos">
         {% for bloco in blocos %}
         <div class="accordion-item mb-2 border rounded shadow-sm item-card" data-status="{{ bloco.pior_status }}">
             <h2 class="accordion-header" id="heading{{ bloco.item.id }}">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ bloco.item.id }}" aria-expanded="false" aria-controls="collapse{{ bloco.item.id }}">
                     <div class="d-flex w-100 justify-content-between align-items-center me-3">
                         <div>
-                            <strong>Item {{ bloco.item.referencia }}</strong> - {{ bloco.item.titulo }}
+                            <strong>Item {{ bloco.item.referencia }}</strong> - {{ bloco.item.titulo|truncatechars:80 }}
                         </div>
                         <div class="status-badge-container" id="badgeContainer{{ bloco.item.id }}">
                             {% if bloco.pior_status == 'NC' %}
@@ -66,7 +65,7 @@
                         </div>
                     </div>
                     
-                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-search me-2"></i>Constatações / Evidências de Auditoria:</h6>
+                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-search me-2"></i>Constatações / Evidências:</h6>
                     
                     {% for resp in bloco.respostas %}
                     <div class="mb-3 p-3 bg-white border rounded shadow-sm">
@@ -121,66 +120,6 @@
         <div class="alert alert-info">Não há respostas para revisar nesta auditoria ainda.</div>
         {% endfor %}
     </div>
-
-
-                            <!-- Origem de Avaliação -->
-                            <div class="mb-3">
-                                <span class="text-muted small">Avaliado em:</span>
-                                {% for agenda in resp.agendas_avaliadas %}
-                                    <span class="badge bg-light text-dark border ms-1"><i class="bi bi-geo-alt me-1"></i>{{ agenda.titulo|default:"Geral" }}</span>
-                                {% empty %}
-                                    <span class="badge bg-light text-dark border ms-1">Global</span>
-                                {% endfor %}
-                            </div>
-                            
-                            <!-- Solicitações (Se houver) -->
-                            {% if resp.solicitacoes.all %}
-                            <h6 class="fw-bold text-warning mt-3">Solicitações / Apontamentos do Auditor:</h6>
-                            <ul class="list-group mb-3">
-                                {% for sol in resp.solicitacoes.all %}
-                                <li class="list-group-item bg-light border-warning">
-                                    <i class="bi bi-pin-angle-fill text-warning me-2"></i>{{ sol.solicitacao }}
-                                </li>
-                                {% endfor %}
-                            </ul>
-                            {% endif %}
-
-                            <h6 class="fw-bold text-primary mt-3">Constatação / Evidência do Auditor:</h6>
-                            <div class="p-3 bg-white border rounded">
-                                {{ resp.texto_resposta|default:"<em>Nenhuma anotação registrada.</em>"|linebreaksbr }}
-                            </div>
-                        </div>
-                        
-                        <div class="mt-4 p-3 border rounded bg-white border-info">
-                            <h6 class="fw-bold text-info"><i class="bi bi-chat-left-text me-2"></i>Direito de Resposta / Reavaliação</h6>
-                            <div class="mb-3">
-                                <label for="argumentacao_{{ resp.id }}" class="form-label text-muted small">Argumentação ou Nova Evidência do Auditado:</label>
-                                <textarea class="form-control" id="argumentacao_{{ resp.id }}" rows="3" placeholder="Descreva aqui o argumento de defesa ou a evidência apresentada..."></textarea>
-                            </div>
-                            <div class="d-flex gap-2">
-                                <button type="button" class="btn btn-outline-secondary" onclick="reverterStatus({{ resp.id }}, '')">
-                                    <i class="bi bi-lock-fill"></i> Manter Status Atual
-                                </button>
-                                <button type="button" class="btn btn-warning" onclick="reverterStatus({{ resp.id }}, 'OM')">
-                                    <i class="bi bi-arrow-repeat"></i> Reverter para OM
-                                </button>
-                                <button type="button" class="btn btn-success" onclick="reverterStatus({{ resp.id }}, 'C')">
-                                    <i class="bi bi-check-circle-fill"></i> Reverter para Conforme
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            {% empty %}
-            <div class="text-muted fst-italic">Nenhum item avaliado neste bloco.</div>
-            {% endfor %}
-        </div>
-    </div>
-    {% empty %}
-    <div class="alert alert-info">Não há respostas para revisar nesta auditoria ainda.</div>
-    {% endfor %}
-</div>
 
 <!-- Modal de Loading (Opcional) -->
 <div class="modal" id="loadingModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
