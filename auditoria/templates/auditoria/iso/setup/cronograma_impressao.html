@@ -6,8 +6,11 @@
 {% block content %}
 <div class="container my-4" id="print-area">
     
-    <!-- Botão de Impressão (Oculto na impressão) -->
-    <div class="d-flex justify-content-end mb-3 no-print">
+    <!-- Botões de Ação (Ocultos na impressão) -->
+    <div class="d-flex justify-content-end mb-3 no-print gap-2">
+        <a href="{% url 'auditoria:iso_matriz_view' auditoria.id %}" class="btn btn-outline-primary fw-bold rounded-pill shadow-sm">
+            <i class="bi bi-grid-3x3 me-2"></i> Ver Matriz
+        </a>
         <button onclick="window.print()" class="btn btn-primary fw-bold rounded-pill shadow-sm">
             <i class="bi bi-printer me-2"></i> Imprimir / Gerar PDF
         </button>
@@ -36,80 +39,308 @@
         </div>
     </div>
 
-    <!-- Tabela Cronológica -->
-    {% for data, agendas in cronograma_agrupado.items %}
-        <div class="bg-primary text-white p-2 rounded-top fw-bold mt-4 print-header">
-            <i class="bi bi-calendar-event me-2"></i> Data: {{ data|date:"d/m/Y" }}
+    <!-- Progresso Geral -->
+    <div class="mb-4 mt-3">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+            <h5 class="mb-0 fw-bold"><i class="bi bi-bar-chart-fill me-2 text-primary"></i>Progresso Geral da Auditoria</h5>
+            <span class="badge bg-primary fs-6">{{ progresso_geral }}% Concluído</span>
         </div>
-        <div class="table-responsive">
-            <table class="table table-bordered align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th width="15%">Horário</th>
-                        <th width="25%">Área / Processo</th>
-                        <th width="15%">Auditor(es)</th>
-                        <th width="15%">Representante</th>
-                        <th width="15%">Requisitos Ref.</th>
-                        <th width="15%" class="no-print text-end">Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for agenda in agendas %}
-                    <tr class="{% if agenda.concluida %}table-success opacity-75{% endif %}">
-                        <td class="fw-semibold text-center align-middle">
-                            {% if agenda.hora_inicio %}{{ agenda.hora_inicio|time:"H:i" }}{% else %}--:--{% endif %}
-                            <br><small class="text-muted">às</small><br>
-                            {% if agenda.hora_fim %}{{ agenda.hora_fim|time:"H:i" }}{% else %}--:--{% endif %}
-                        </td>
-                        <td class="align-middle">
-                            <strong class="{% if agenda.concluida %}text-decoration-line-through text-muted{% endif %}">{{ agenda.titulo }}</strong>
-                            {% if agenda.concluida %}
-                                <span class="badge bg-success ms-2"><i class="bi bi-check-circle"></i> Concluído</span>
-                            {% endif %}
-                        </td>
-                        <td class="align-middle">
-                            <small class="text-muted">
-                                {% if agenda.auditores.exists %}
-                                    {% for auditor in agenda.auditores.all %}{{ auditor.get_full_name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+        <div class="progress" style="height: 20px;">
+            <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: {{ progresso_geral }}%;" aria-valuenow="{{ progresso_geral }}" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+    </div>
+
+    <!-- Navegação de Abas (Oculto na impressão) -->
+    <ul class="nav nav-pills mb-4 no-print" id="cronogramaTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active fw-bold px-4 rounded-pill" id="planejado-tab" data-bs-toggle="tab" data-bs-target="#planejado" type="button" role="tab" aria-controls="planejado" aria-selected="true"><i class="bi bi-calendar-check me-2"></i>Visão Planejada</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold px-4 rounded-pill ms-2" id="ajustado-tab" data-bs-toggle="tab" data-bs-target="#ajustado" type="button" role="tab" aria-controls="ajustado" aria-selected="false"><i class="bi bi-tools me-2"></i>Visão Real/Ajustada</button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="cronogramaTabsContent">
+        
+        <!-- ABA: PLANEJADO -->
+        <div class="tab-pane fade show active" id="planejado" role="tabpanel" aria-labelledby="planejado-tab">
+            {% for data, agendas in cronograma_planejado.items %}
+                {% for key, val in progresso_por_dia.items %}
+                    {% if key == data %}
+                        <div class="bg-primary text-white p-2 rounded-top fw-bold mt-4 print-header d-flex justify-content-between align-items-center">
+                            <div><i class="bi bi-calendar-event me-2"></i> Data: {{ data|date:"d/m/Y" }}</div>
+                            <span class="badge bg-light text-primary no-print">{{ val }}% Concluído Hoje</span>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th width="15%">Horário</th>
+                                <th width="25%">Área / Processo</th>
+                                <th width="15%">Auditor(es)</th>
+                                <th width="15%">Representante</th>
+                                <th width="15%">Requisitos Ref.</th>
+                                <th width="15%" class="no-print text-end">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for agenda in agendas %}
+                                {% if agenda.is_gap %}
+                                    <tr class="table-secondary text-muted">
+                                        <td class="fw-semibold text-center align-middle">
+                                            {{ agenda.hora_inicio|time:"H:i" }} <br><small>às</small><br> {{ agenda.hora_fim|time:"H:i" }}
+                                        </td>
+                                        <td colspan="4" class="align-middle fst-italic text-center">
+                                            <i class="bi bi-cup-hot me-1"></i> {{ agenda.titulo }}
+                                        </td>
+                                        <td class="no-print text-end align-middle">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="renameGap('{{ agenda.data|date:'Y-m-d' }}', '{{ agenda.hora_inicio|time:'H:i' }}', '{{ agenda.hora_fim|time:'H:i' }}')" title="Nomear/Transformar em Bloco">
+                                                <i class="bi bi-pencil-square"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
                                 {% else %}
-                                    A Definir/Equipe
+                                    <tr class="{% if agenda.concluida %}table-success opacity-75{% endif %}">
+                                        <td class="fw-semibold text-center align-middle">
+                                            {% if agenda.hora_inicio %}{{ agenda.hora_inicio|time:"H:i" }}{% else %}--:--{% endif %}
+                                            <br><small class="text-muted">às</small><br>
+                                            {% if agenda.hora_fim %}{{ agenda.hora_fim|time:"H:i" }}{% else %}--:--{% endif %}
+                                        </td>
+                                        <td class="align-middle">
+                                            <strong class="{% if agenda.concluida %}text-decoration-line-through text-muted{% endif %}">{{ agenda.titulo }}</strong>
+                                            {% if agenda.concluida %}
+                                                <span class="badge bg-success ms-2"><i class="bi bi-check-circle"></i> Concluído</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="align-middle cursor-pointer" onclick="openQuickEdit({{ agenda.id }}, '{{ agenda.auditores_nomes|default:"" }}', '{{ agenda.representantes|default:"" }}')">
+                                            <small class="text-muted">
+                                                {% if agenda.auditores.exists %}
+                                                    {% for auditor in agenda.auditores.all %}{{ auditor.get_full_name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                                                {% elif agenda.auditores_nomes %}
+                                                    {{ agenda.auditores_nomes }}
+                                                {% else %}
+                                                    A Definir/Equipe
+                                                {% endif %}
+                                            </small>
+                                            <i class="bi bi-pencil ms-1 no-print text-primary" style="font-size: 0.75rem;"></i>
+                                        </td>
+                                        <td class="align-middle cursor-pointer" onclick="openQuickEdit({{ agenda.id }}, '{{ agenda.auditores_nomes|default:"" }}', '{{ agenda.representantes|default:"" }}')">
+                                            <small class="text-muted">
+                                                {{ agenda.representantes|default:"A Definir" }}
+                                            </small>
+                                            <i class="bi bi-pencil ms-1 no-print text-primary" style="font-size: 0.75rem;"></i>
+                                        </td>
+                                        <td class="align-middle">
+                                            {% for item in agenda.itens_norma.all %}
+                                                <span class="badge bg-secondary mb-1">{{ item.referencia }}</span>
+                                            {% empty %}
+                                                <span class="text-muted small">-</span>
+                                            {% endfor %}
+                                        </td>
+                                        <td class="no-print text-end align-middle">
+                                            <div class="d-flex gap-1 justify-content-end">
+                                                <a href="{% url 'auditoria:iso_entrevista_view' auditoria.id %}?agenda_id={{ agenda.id }}" class="btn btn-sm btn-outline-primary" title="Ir para a Entrevista Deste Bloco">
+                                                    <i class="bi bi-play-circle"></i>
+                                                </a>
+                                                <form method="POST" action="{% url 'auditoria:iso_agenda_toggle_conclusao' auditoria.id agenda.id %}" style="display:inline;">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm {% if agenda.concluida %}btn-success{% else %}btn-outline-success{% endif %}" title="{% if agenda.concluida %}Desmarcar Conclusão{% else %}Marcar como Concluído{% endif %}">
+                                                        <i class="bi bi-check2-all"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
                                 {% endif %}
-                            </small>
-                        </td>
-                        <td class="align-middle">
-                            <small class="text-muted">
-                                {{ agenda.representantes|default:"A Definir" }}
-                            </small>
-                        </td>
-                        <td class="align-middle">
-                            {% for item in agenda.itens_norma.all %}
-                                <span class="badge bg-secondary mb-1">{{ item.referencia }}</span>
-                            {% empty %}
-                                <span class="text-muted small">-</span>
                             {% endfor %}
-                        </td>
-                        <td class="no-print text-end align-middle">
-                            <div class="d-flex gap-1 justify-content-end">
-                                <a href="{% url 'auditoria:iso_entrevista_view' auditoria.id %}?agenda_id={{ agenda.id }}" class="btn btn-sm btn-outline-primary" title="Ir para a Entrevista Deste Bloco">
-                                    <i class="bi bi-play-circle"></i>
-                                </a>
-                                <form method="POST" action="{% url 'auditoria:iso_agenda_toggle_conclusao' auditoria.id agenda.id %}" style="display:inline;">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-sm {% if agenda.concluida %}btn-success{% else %}btn-outline-success{% endif %}" title="{% if agenda.concluida %}Desmarcar Conclusão{% else %}Marcar como Concluído{% endif %}">
-                                        <i class="bi bi-check2-all"></i>
-                                    </button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                        </tbody>
+                    </table>
+                </div>
+            {% empty %}
+                <div class="alert alert-warning text-center mt-4">Nenhuma agenda cronológica foi cadastrada com data definida para esta auditoria ainda.</div>
+            {% endfor %}
         </div>
-    {% empty %}
-        <div class="alert alert-warning text-center mt-4">Nenhuma agenda cronológica foi cadastrada com data definida para esta auditoria ainda.</div>
-    {% endfor %}
+
+        <!-- ABA: AJUSTADO -->
+        <div class="tab-pane fade" id="ajustado" role="tabpanel" aria-labelledby="ajustado-tab">
+            {% for data, agendas in cronograma_ajustado.items %}
+                <div class="bg-warning text-dark p-2 rounded-top fw-bold mt-4 print-header d-flex justify-content-between align-items-center">
+                    <div><i class="bi bi-tools me-2"></i> Data Ajustada: {{ data|date:"d/m/Y" }}</div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th width="15%">Horário Real/Ajustado</th>
+                                <th width="25%">Área / Processo</th>
+                                <th width="15%">Auditor(es)</th>
+                                <th width="15%">Representante</th>
+                                <th width="15%">Requisitos Ref.</th>
+                                <th width="15%" class="no-print text-end">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for agenda in agendas %}
+                                {% if agenda.is_gap %}
+                                    <tr class="table-secondary text-muted">
+                                        <td class="fw-semibold text-center align-middle">
+                                            {{ agenda.hora_inicio|time:"H:i" }} <br><small>às</small><br> {{ agenda.hora_fim|time:"H:i" }}
+                                        </td>
+                                        <td colspan="4" class="align-middle fst-italic text-center">
+                                            <i class="bi bi-cup-hot me-1"></i> {{ agenda.titulo }}
+                                        </td>
+                                        <td class="no-print text-end align-middle">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="renameGap('{{ agenda.data|date:'Y-m-d' }}', '{{ agenda.hora_inicio|time:'H:i' }}', '{{ agenda.hora_fim|time:'H:i' }}', true)" title="Nomear/Transformar em Bloco">
+                                                <i class="bi bi-pencil-square"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                {% else %}
+                                    <tr class="{% if agenda.concluida %}table-success opacity-75{% endif %}">
+                                        <td class="fw-semibold text-center align-middle">
+                                            {% if agenda.hora_inicio_real %}{{ agenda.hora_inicio_real|time:"H:i" }}{% else %}{{ agenda.hora_inicio|time:"H:i" }}{% endif %}
+                                            <br><small class="text-muted">às</small><br>
+                                            {% if agenda.hora_fim_real %}{{ agenda.hora_fim_real|time:"H:i" }}{% else %}{{ agenda.hora_fim|time:"H:i" }}{% endif %}
+                                        </td>
+                                        <td class="align-middle">
+                                            <strong class="{% if agenda.concluida %}text-decoration-line-through text-muted{% endif %}">{{ agenda.titulo }}</strong>
+                                            {% if agenda.concluida %}
+                                                <span class="badge bg-success ms-2"><i class="bi bi-check-circle"></i> Concluído</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="align-middle cursor-pointer" onclick="openQuickEdit({{ agenda.id }}, '{{ agenda.auditores_nomes|default:"" }}', '{{ agenda.representantes|default:"" }}')">
+                                            <small class="text-muted">
+                                                {% if agenda.auditores.exists %}
+                                                    {% for auditor in agenda.auditores.all %}{{ auditor.get_full_name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                                                {% elif agenda.auditores_nomes %}
+                                                    {{ agenda.auditores_nomes }}
+                                                {% else %}
+                                                    A Definir/Equipe
+                                                {% endif %}
+                                            </small>
+                                            <i class="bi bi-pencil ms-1 no-print text-primary" style="font-size: 0.75rem;"></i>
+                                        </td>
+                                        <td class="align-middle cursor-pointer" onclick="openQuickEdit({{ agenda.id }}, '{{ agenda.auditores_nomes|default:"" }}', '{{ agenda.representantes|default:"" }}')">
+                                            <small class="text-muted">
+                                                {{ agenda.representantes|default:"A Definir" }}
+                                            </small>
+                                            <i class="bi bi-pencil ms-1 no-print text-primary" style="font-size: 0.75rem;"></i>
+                                        </td>
+                                        <td class="align-middle">
+                                            {% for item in agenda.itens_norma.all %}
+                                                <span class="badge bg-secondary mb-1">{{ item.referencia }}</span>
+                                            {% empty %}
+                                                <span class="text-muted small">-</span>
+                                            {% endfor %}
+                                        </td>
+                                        <td class="no-print text-end align-middle">
+                                            <div class="d-flex gap-1 justify-content-end">
+                                                <a href="{% url 'auditoria:iso_entrevista_view' auditoria.id %}?agenda_id={{ agenda.id }}" class="btn btn-sm btn-outline-primary" title="Ir para a Entrevista Deste Bloco">
+                                                    <i class="bi bi-play-circle"></i>
+                                                </a>
+                                                <form method="POST" action="{% url 'auditoria:iso_agenda_toggle_conclusao' auditoria.id agenda.id %}" style="display:inline;">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm {% if agenda.concluida %}btn-success{% else %}btn-outline-success{% endif %}" title="{% if agenda.concluida %}Desmarcar Conclusão{% else %}Marcar como Concluído{% endif %}">
+                                                        <i class="bi bi-check2-all"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% empty %}
+                <div class="alert alert-warning text-center mt-4">Nenhuma agenda real ajustada.</div>
+            {% endfor %}
+        </div>
+    </div>
 </div>
+
+<!-- Modal Quick Edit -->
+<div class="modal fade" id="quickEditModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="quickEditForm" method="POST" action="{% url 'auditoria:api_iso_agenda_quick_edit' auditoria.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="agenda_id" id="qe_agenda_id">
+                <div class="modal-header">
+                    <h5 class="modal-title">Preenchimento Rápido</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Auditor(es)</label>
+                        <input type="text" class="form-control" name="auditores_nomes" id="qe_auditores" placeholder="Ex: Vinícius e Marcos">
+                        <div class="form-text">Texto livre para identificar os auditores.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Representante(s)</label>
+                        <input type="text" class="form-control" name="representantes" id="qe_representantes" placeholder="Ex: João (Qualidade)">
+                        <div class="form-text">Texto livre para identificar quem está sendo auditado.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Create Gap -->
+<div class="modal fade" id="createGapModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="createGapForm" method="POST" action="{% url 'auditoria:api_iso_agenda_create_gap' auditoria.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="data" id="cg_data">
+                <input type="hidden" name="hora_inicio" id="cg_inicio">
+                <input type="hidden" name="hora_fim" id="cg_fim">
+                <input type="hidden" name="is_ajustado" id="cg_is_ajustado">
+                
+                <div class="modal-header">
+                    <h5 class="modal-title">Renomear Intervalo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Título do Intervalo / Bloco</label>
+                        <input type="text" class="form-control" name="titulo" required placeholder="Ex: Almoço, Coffee Break">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Criar Bloco</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function openQuickEdit(id, auditores, representantes) {
+    document.getElementById('qe_agenda_id').value = id;
+    document.getElementById('qe_auditores').value = auditores;
+    document.getElementById('qe_representantes').value = representantes;
+    var modal = new bootstrap.Modal(document.getElementById('quickEditModal'));
+    modal.show();
+}
+
+function renameGap(data, inicio, fim, isAjustado = false) {
+    document.getElementById('cg_data').value = data;
+    document.getElementById('cg_inicio').value = inicio;
+    document.getElementById('cg_fim').value = fim;
+    document.getElementById('cg_is_ajustado').value = isAjustado ? "1" : "0";
+    var modal = new bootstrap.Modal(document.getElementById('createGapModal'));
+    modal.show();
+}
+</script>
 
 <!-- CSS Específico para Impressão -->
 <style>

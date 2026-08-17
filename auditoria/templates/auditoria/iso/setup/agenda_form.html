@@ -23,21 +23,50 @@
                         </div>
 
                         {% if form.data %}
-                        <div class="row mb-3">
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold">{{ form.data.label }}</label>
-                                {{ form.data }}
-                                {{ form.data.errors }}
+                        <div class="card bg-light border-0 mb-4">
+                            <div class="card-body">
+                                <h6 class="card-title fw-bold text-secondary mb-3"><i class="bi bi-calendar-event me-2"></i>Cronograma Planejado (Original)</h6>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-semibold">{{ form.data.label }}</label>
+                                        {{ form.data }}
+                                        {{ form.data.errors }}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-semibold">{{ form.hora_inicio.label }}</label>
+                                        {{ form.hora_inicio }}
+                                        {{ form.hora_inicio.errors }}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-semibold">{{ form.hora_fim.label }}</label>
+                                        {{ form.hora_fim }}
+                                        {{ form.hora_fim.errors }}
+                                    </div>
+                                </div>
                             </div>
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold">{{ form.hora_inicio.label }}</label>
-                                {{ form.hora_inicio }}
-                                {{ form.hora_inicio.errors }}
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold">{{ form.hora_fim.label }}</label>
-                                {{ form.hora_fim }}
-                                {{ form.hora_fim.errors }}
+                        </div>
+
+                        <div class="card border-warning mb-4">
+                            <div class="card-body">
+                                <h6 class="card-title fw-bold text-warning mb-3"><i class="bi bi-tools me-2"></i>Remanejamento / Ajuste Real (Opcional)</h6>
+                                <p class="small text-muted mb-3">Preencha apenas se esta etapa foi remanejada para outra data ou horário.</p>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-semibold">{{ form.data_real.label }}</label>
+                                        {{ form.data_real }}
+                                        {{ form.data_real.errors }}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-semibold">{{ form.hora_inicio_real.label }}</label>
+                                        {{ form.hora_inicio_real }}
+                                        {{ form.hora_inicio_real.errors }}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-semibold">{{ form.hora_fim_real.label }}</label>
+                                        {{ form.hora_fim_real }}
+                                        {{ form.hora_fim_real.errors }}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         {% endif %}

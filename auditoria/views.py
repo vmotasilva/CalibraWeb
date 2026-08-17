@@ -4965,17 +4965,63 @@ def iso_agenda_sincronizar_modelo(request, auditoria_id, pk):
 def iso_auditoria_cronograma(request, auditoria_id):
     from collections import defaultdict
     from .models import AuditoriaIso
-    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+    from datetime import datetime
     
+    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
     agendas_qs = auditoria.agendas.filter(data__isnull=False).order_by('data', 'hora_inicio')
     
-    cronograma_agrupado = defaultdict(list)
+    total_agendas = agendas_qs.count()
+    total_concluidas = agendas_qs.filter(concluida=True).count()
+    progresso_geral = int((total_concluidas / total_agendas) * 100) if total_agendas > 0 else 0
+    
+    cronograma_planejado = defaultdict(list)
+    cronograma_ajustado = defaultdict(list)
+    
     for agenda in agendas_qs:
-        cronograma_agrupado[agenda.data].append(agenda)
+        cronograma_planejado[agenda.data].append(agenda)
+        data_ajustada = agenda.data_real or agenda.data
+        cronograma_ajustado[data_ajustada].append(agenda)
+        
+    def inject_gaps(agendas_list, is_ajustado=False):
+        result = []
+        prev_fim = None
+        for a in agendas_list:
+            inicio = a.hora_inicio_real if is_ajustado and a.hora_inicio_real else a.hora_inicio
+            fim = a.hora_fim_real if is_ajustado and a.hora_fim_real else a.hora_fim
+            
+            if prev_fim and inicio and inicio > prev_fim:
+                result.append({
+                    'is_gap': True,
+                    'hora_inicio': prev_fim,
+                    'hora_fim': inicio,
+                    'titulo': 'Intervalo',
+                    'data': a.data_real if is_ajustado and a.data_real else a.data
+                })
+            result.append(a)
+            if fim:
+                prev_fim = fim
+        return result
+
+    progresso_por_dia = {}
+    planejado_com_gaps = {}
+    for data, agendas in cronograma_planejado.items():
+        t = len(agendas)
+        c = sum(1 for a in agendas if getattr(a, 'concluida', False))
+        progresso_por_dia[data] = int((c / t) * 100) if t > 0 else 0
+        planejado_com_gaps[data] = inject_gaps(agendas, is_ajustado=False)
+        
+    ajustado_com_gaps = {}
+    for data, agendas in sorted(cronograma_ajustado.items()):
+        # Sort adjusted agendas by their actual start time
+        agendas_sorted = sorted(agendas, key=lambda x: x.hora_inicio_real or x.hora_inicio or datetime.min.time())
+        ajustado_com_gaps[data] = inject_gaps(agendas_sorted, is_ajustado=True)
         
     context = {
         'auditoria': auditoria,
-        'cronograma_agrupado': dict(cronograma_agrupado),
+        'cronograma_planejado': planejado_com_gaps,
+        'cronograma_ajustado': ajustado_com_gaps,
+        'progresso_geral': progresso_geral,
+        'progresso_por_dia': progresso_por_dia,
     }
     return render(request, 'auditoria/iso/setup/cronograma_impressao.html', context)
 
@@ -4987,4 +5033,55 @@ def iso_agenda_toggle_conclusao(request, auditoria_id, pk):
     agenda.concluida = not agenda.concluida
     agenda.save()
     messages.success(request, f"Status da etapa '{agenda.titulo}' atualizado.")
+    return redirect('auditoria:iso_auditoria_cronograma', auditoria_id=auditoria_id)
+
+@login_required
+@require_POST
+def api_iso_agenda_quick_edit(request, auditoria_id):
+    from .models import AgendaAuditoriaIso
+    agenda_id = request.POST.get('agenda_id')
+    agenda = get_object_or_404(AgendaAuditoriaIso, auditoria_id=auditoria_id, pk=agenda_id)
+    
+    agenda.auditores_nomes = request.POST.get('auditores_nomes', '')
+    agenda.representantes = request.POST.get('representantes', '')
+    agenda.save()
+    
+    messages.success(request, 'Preenchimento rápido salvo com sucesso.')
+    return redirect('auditoria:iso_auditoria_cronograma', auditoria_id=auditoria_id)
+
+@login_required
+@require_POST
+def api_iso_agenda_create_gap(request, auditoria_id):
+    from .models import AuditoriaIso, AgendaAuditoriaIso
+    from datetime import datetime
+    
+    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+    titulo = request.POST.get('titulo')
+    data_str = request.POST.get('data')
+    hora_inicio_str = request.POST.get('hora_inicio')
+    hora_fim_str = request.POST.get('hora_fim')
+    is_ajustado = request.POST.get('is_ajustado') == '1'
+    
+    data_obj = datetime.strptime(data_str, '%Y-%m-%d').date() if data_str else None
+    hora_inicio_obj = datetime.strptime(hora_inicio_str, '%H:%M').time() if hora_inicio_str else None
+    hora_fim_obj = datetime.strptime(hora_fim_str, '%H:%M').time() if hora_fim_str else None
+    
+    nova_agenda = AgendaAuditoriaIso(
+        auditoria=auditoria,
+        titulo=titulo,
+    )
+    
+    if is_ajustado:
+        nova_agenda.data = data_obj
+        nova_agenda.data_real = data_obj
+        nova_agenda.hora_inicio_real = hora_inicio_obj
+        nova_agenda.hora_fim_real = hora_fim_obj
+    else:
+        nova_agenda.data = data_obj
+        nova_agenda.hora_inicio = hora_inicio_obj
+        nova_agenda.hora_fim = hora_fim_obj
+        
+    nova_agenda.save()
+    
+    messages.success(request, f'Bloco {titulo} criado com sucesso para o intervalo.')
     return redirect('auditoria:iso_auditoria_cronograma', auditoria_id=auditoria_id)
