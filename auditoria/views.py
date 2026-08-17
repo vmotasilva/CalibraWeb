@@ -5044,6 +5044,15 @@ def iso_auditoria_cronograma(request, auditoria_id):
                 'data': last_data
             })
             
+        elif not is_last_day and prev_fim and last_data:
+            result.append({
+                'is_gap': True,
+                'hora_inicio': prev_fim,
+                'hora_fim': prev_fim,
+                'titulo': 'Encerramento do Dia',
+                'data': last_data
+            })
+            
         return result
 
     progresso_por_dia = {}
