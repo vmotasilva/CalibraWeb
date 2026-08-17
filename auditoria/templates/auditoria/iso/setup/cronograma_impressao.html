@@ -133,11 +133,13 @@
                                             <i class="bi bi-pencil ms-1 no-print text-primary" style="font-size: 0.75rem;"></i>
                                         </td>
                                         <td class="align-middle">
+                                            <div class="d-flex flex-wrap gap-1">
                                             {% for item in agenda.itens_norma.all %}
-                                                <span class="badge bg-secondary mb-1">{{ item.referencia }}</span>
+                                                <span class="badge bg-secondary">{{ item.referencia }}</span>
                                             {% empty %}
                                                 <span class="text-muted small">-</span>
                                             {% endfor %}
+                                            </div>
                                         </td>
                                         <td class="no-print text-end align-middle">
                                             <div class="d-flex gap-1 justify-content-end">
@@ -229,11 +231,13 @@
                                             <i class="bi bi-pencil ms-1 no-print text-primary" style="font-size: 0.75rem;"></i>
                                         </td>
                                         <td class="align-middle">
+                                            <div class="d-flex flex-wrap gap-1">
                                             {% for item in agenda.itens_norma.all %}
-                                                <span class="badge bg-secondary mb-1">{{ item.referencia }}</span>
+                                                <span class="badge bg-secondary">{{ item.referencia }}</span>
                                             {% empty %}
                                                 <span class="text-muted small">-</span>
                                             {% endfor %}
+                                            </div>
                                         </td>
                                         <td class="no-print text-end align-middle">
                                             <div class="d-flex gap-1 justify-content-end">
@@ -345,19 +349,25 @@ function renameGap(data, inicio, fim, isAjustado = false) {
 <!-- CSS Específico para Impressão -->
 <style>
 @media print {
-    body { background-color: #fff; }
+    body { background-color: #fff; font-size: 11px; }
     .no-print, .navbar, .sidebar, footer { display: none !important; }
     #print-area { width: 100%; margin: 0; padding: 0; }
-    .card { border: 1px solid #ddd !important; box-shadow: none !important; }
-    .bg-primary, .print-header { 
+    .card { border: none !important; box-shadow: none !important; margin-bottom: 10px !important; }
+    .card-body { padding: 5px 0 !important; }
+    h3 { font-size: 1.25rem !important; margin-bottom: 10px !important; padding-bottom: 5px !important; }
+    .bg-primary, .print-header, .bg-warning { 
         background-color: #e9ecef !important; 
         color: #000 !important; 
         -webkit-print-color-adjust: exact; 
         print-color-adjust: exact; 
-        border-bottom: 2px solid #000; 
+        border-bottom: 1px solid #000 !important; 
+        padding: 5px !important;
+        margin-top: 10px !important;
+        font-size: 12px !important;
     }
-    .badge.bg-secondary { border: 1px solid #666; color: #000 !important; background: transparent !important; }
-    .table th, .table td { border-color: #000 !important; }
+    .badge.bg-secondary { border: 1px solid #666; color: #000 !important; background: transparent !important; padding: 2px 4px !important; font-size: 9px !important; border-radius: 4px !important; }
+    .table th, .table td { border-color: #000 !important; padding: 4px !important; font-size: 10px !important; }
+    .table-responsive { overflow: visible !important; }
 }
 </style>
 {% endblock %}
