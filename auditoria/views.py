@@ -295,8 +295,6 @@ def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
         if nome_topico not in blocos_map:
             blocos_map[nome_topico] = {"nome": nome_topico, "caminho": nome_topico.split(" > "), "linhas": []}
 
-        blocos_map[nome_topico]["linhas"].append(item)
-
         respostas_por_dia = item["respostas_por_dia"]
         has_resposta_dia = any((respostas_por_dia.get(k) or "").strip() for k in dia_keys)
         usa_colunas_dia = has_resposta_dia
