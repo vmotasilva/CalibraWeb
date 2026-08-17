@@ -117,7 +117,11 @@
                                     {% else %}
                                         <tr class="table-secondary text-muted">
                                             <td class="fw-semibold text-center align-middle">
-                                                {{ agenda.hora_inicio|time:"H:i" }} <br><small>às</small><br> {{ agenda.hora_fim|time:"H:i" }}
+                                                {% if agenda.hora_inicio == agenda.hora_fim %}
+                                                    {{ agenda.hora_inicio|time:"H:i" }}
+                                                {% else %}
+                                                    {{ agenda.hora_inicio|time:"H:i" }} <br><small>às</small><br> {{ agenda.hora_fim|time:"H:i" }}
+                                                {% endif %}
                                             </td>
                                             <td colspan="4" class="align-middle fst-italic text-center">
                                                 <i class="bi bi-cup-hot me-1"></i> {{ agenda.titulo }}
@@ -236,7 +240,11 @@
                                     {% else %}
                                         <tr class="table-secondary text-muted">
                                             <td class="fw-semibold text-center align-middle">
-                                                {{ agenda.hora_inicio|time:"H:i" }} <br><small>às</small><br> {{ agenda.hora_fim|time:"H:i" }}
+                                                {% if agenda.hora_inicio == agenda.hora_fim %}
+                                                    {{ agenda.hora_inicio|time:"H:i" }}
+                                                {% else %}
+                                                    {{ agenda.hora_inicio|time:"H:i" }} <br><small>às</small><br> {{ agenda.hora_fim|time:"H:i" }}
+                                                {% endif %}
                                             </td>
                                             <td colspan="4" class="align-middle fst-italic text-center">
                                                 <i class="bi bi-cup-hot me-1"></i> {{ agenda.titulo }}
