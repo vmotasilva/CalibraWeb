@@ -36,7 +36,7 @@
     {% for bloco in blocos %}
     <div class="mb-5 bloco-container">
         <h4 class="border-bottom pb-2 mb-3 text-primary">
-            <i class="bi bi-book-half me-2"></i> Grupo: {{ bloco.grupo_nome }}
+            <i class="bi bi-book-half me-2"></i> {{ bloco.grupo_nome }}
         </h4>
         
         <div class="accordion" id="accordionBloco{{ forloop.counter }}">
@@ -46,7 +46,12 @@
                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ resp.id }}" aria-expanded="false" aria-controls="collapse{{ resp.id }}">
                         <div class="d-flex w-100 justify-content-between align-items-center me-3">
                             <div>
-                                <strong>Ref:</strong> {{ resp.pergunta.item_norma.referencia|default:"-" }}
+                                <strong>Ref:</strong> 
+                                {% for item in resp.pergunta.itens_norma.all %}
+                                    {{ item.referencia }}{% if not forloop.last %}, {% endif %}
+                                {% empty %}
+                                    -
+                                {% endfor %}
                                 <span class="ms-2 text-muted">{{ resp.pergunta.texto_pergunta|truncatechars:80 }}</span>
                             </div>
                             <div class="status-badge-container" id="badgeContainer{{ resp.id }}">
@@ -69,6 +74,16 @@
                             <h6 class="fw-bold">Enunciado da Pergunta:</h6>
                             <p class="mb-2">{{ resp.pergunta.texto_pergunta }}</p>
 
+                            <!-- Itens da Norma Impactados -->
+                            <div class="mb-3 mt-3">
+                                <h6 class="fw-bold">Itens da Norma Impactados:</h6>
+                                {% for item in resp.pergunta.itens_norma.all %}
+                                    <span class="badge bg-danger fs-6 me-1"><i class="bi bi-exclamation-octagon me-1"></i>{{ item.referencia }}</span>
+                                {% empty %}
+                                    <span class="text-muted small">Nenhum item mapeado</span>
+                                {% endfor %}
+                            </div>
+
                             <!-- Origem de Avaliação -->
                             <div class="mb-3">
                                 <span class="text-muted small">Avaliado em:</span>
@@ -79,6 +94,18 @@
                                 {% endfor %}
                             </div>
                             
+                            <!-- Solicitações (Se houver) -->
+                            {% if resp.solicitacoes.all %}
+                            <h6 class="fw-bold text-warning mt-3">Solicitações / Apontamentos do Auditor:</h6>
+                            <ul class="list-group mb-3">
+                                {% for sol in resp.solicitacoes.all %}
+                                <li class="list-group-item bg-light border-warning">
+                                    <i class="bi bi-pin-angle-fill text-warning me-2"></i>{{ sol.solicitacao }}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+
                             <h6 class="fw-bold text-primary mt-3">Constatação / Evidência do Auditor:</h6>
                             <div class="p-3 bg-white border rounded">
                                 {{ resp.texto_resposta|default:"<em>Nenhuma anotação registrada.</em>"|linebreaksbr }}
