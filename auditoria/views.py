@@ -4975,7 +4975,37 @@ def iso_auditoria_cronograma(request, auditoria_id):
     from datetime import datetime
     
     auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
-    agendas_qs = auditoria.agendas.filter(data__isnull=False).order_by('data', 'hora_inicio')
+    agendas_qs = auditoria.agendas.filter(data__isnull=False).order_by('data', 'hora_inicio').prefetch_related('itens_norma')
+    
+    # Pre-build hierarchy for item condensing
+    from .models import ItemNorma
+    all_norma_items = ItemNorma.objects.filter(norma=auditoria.norma).select_related('parent')
+    parent_to_children = defaultdict(list)
+    item_by_id = {}
+    for item in all_norma_items:
+        item_by_id[item.id] = item
+        if item.parent_id:
+            parent_to_children[item.parent_id].append(item.id)
+            
+    def get_condensed_items(agenda_items):
+        selected_ids = {item.id for item in agenda_items}
+        changed = True
+        while changed:
+            changed = False
+            for parent_id, children_ids in parent_to_children.items():
+                if parent_id not in selected_ids:
+                    if children_ids and all(child_id in selected_ids for child_id in children_ids):
+                        selected_ids.add(parent_id)
+                        for child_id in children_ids:
+                            selected_ids.remove(child_id)
+                        changed = True
+        condensed = [item_by_id[i] for i in selected_ids if i in item_by_id]
+        
+        def sort_key(item):
+            parts = item.referencia.split('.')
+            return [int(p) if p.isdigit() else p for p in parts]
+            
+        return sorted(condensed, key=sort_key)
     
     total_agendas = agendas_qs.count()
     total_concluidas = agendas_qs.filter(concluida=True).count()
@@ -4985,6 +5015,7 @@ def iso_auditoria_cronograma(request, auditoria_id):
     cronograma_ajustado = defaultdict(list)
     
     for agenda in agendas_qs:
+        agenda.condensed_items = get_condensed_items(agenda.itens_norma.all())
         cronograma_planejado[agenda.data].append(agenda)
         data_ajustada = agenda.data_real or agenda.data
         cronograma_ajustado[data_ajustada].append(agenda)

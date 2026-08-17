@@ -173,7 +173,7 @@
                                         </td>
                                         <td class="align-middle">
                                             <div class="d-flex flex-wrap gap-1">
-                                            {% for item in agenda.itens_norma.all %}
+                                            {% for item in agenda.condensed_items %}
                                                 <span class="badge bg-secondary text-center" style="min-width: 55px;">{{ item.referencia }}</span>
                                             {% empty %}
                                                 <span class="text-muted small">-</span>
@@ -303,7 +303,7 @@
                                         </td>
                                         <td class="align-middle">
                                             <div class="d-flex flex-wrap gap-1">
-                                            {% for item in agenda.itens_norma.all %}
+                                            {% for item in agenda.condensed_items %}
                                                 <span class="badge bg-secondary text-center" style="min-width: 55px;">{{ item.referencia }}</span>
                                             {% empty %}
                                                 <span class="text-muted small">-</span>
