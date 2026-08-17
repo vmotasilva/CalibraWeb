@@ -4978,3 +4978,13 @@ def iso_auditoria_cronograma(request, auditoria_id):
         'cronograma_agrupado': dict(cronograma_agrupado),
     }
     return render(request, 'auditoria/iso/setup/cronograma_impressao.html', context)
+
+@login_required
+@require_POST
+def iso_agenda_toggle_conclusao(request, auditoria_id, pk):
+    from .models import AgendaAuditoriaIso
+    agenda = get_object_or_404(AgendaAuditoriaIso, auditoria_id=auditoria_id, pk=pk)
+    agenda.concluida = not agenda.concluida
+    agenda.save()
+    messages.success(request, f"Status da etapa '{agenda.titulo}' atualizado.")
+    return redirect('auditoria:iso_auditoria_cronograma', auditoria_id=auditoria_id)

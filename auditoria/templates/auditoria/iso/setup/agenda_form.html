@@ -42,6 +42,24 @@
                         </div>
                         {% endif %}
 
+                        {% if form.auditores %}
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">{{ form.auditores.label }}</label>
+                            {{ form.auditores }}
+                            <div class="form-text text-muted">Selecione os auditores responsáveis por esta etapa específica.</div>
+                            {{ form.auditores.errors }}
+                        </div>
+                        {% endif %}
+
+                        {% if form.representantes %}
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">{{ form.representantes.label }}</label>
+                            {{ form.representantes }}
+                            <div class="form-text text-muted">Nomes das pessoas ou setores que serão entrevistados neste bloco.</div>
+                            {{ form.representantes.errors }}
+                        </div>
+                        {% endif %}
+
                         <div class="d-grid mt-4">
                             <button type="submit" class="btn btn-primary btn-lg">
                                 <i class="bi bi-check2-circle"></i> Salvar Bloco

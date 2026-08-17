@@ -432,12 +432,14 @@ class AgendaAuditoriaIsoCreateForm(forms.ModelForm):
 class AgendaAuditoriaIsoEditForm(forms.ModelForm):
     class Meta:
         model = AgendaAuditoriaIso
-        fields = ['titulo', 'data', 'hora_inicio', 'hora_fim']
+        fields = ['titulo', 'data', 'hora_inicio', 'hora_fim', 'auditores', 'representantes']
         widgets = {
             'titulo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Entrevista com a Diretoria'}),
             'data': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'hora_inicio': forms.TimeInput(attrs={'class': 'form-control', 'type': 'time'}),
             'hora_fim': forms.TimeInput(attrs={'class': 'form-control', 'type': 'time'}),
+            'auditores': forms.SelectMultiple(attrs={'class': 'form-select select2-multiple'}),
+            'representantes': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: João (Qualidade), Maria (Produção)'}),
         }
 
 class AgendaPerguntasForm(forms.ModelForm):

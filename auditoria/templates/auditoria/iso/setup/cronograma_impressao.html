@@ -50,28 +50,57 @@
                         <th width="15%">Auditor(es)</th>
                         <th width="15%">Representante</th>
                         <th width="15%">Requisitos Ref.</th>
-                        <th width="15%">Observações</th>
+                        <th width="15%" class="no-print text-end">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for agenda in agendas %}
-                    <tr>
-                        <td class="fw-semibold text-center">
+                    <tr class="{% if agenda.concluida %}table-success opacity-75{% endif %}">
+                        <td class="fw-semibold text-center align-middle">
                             {% if agenda.hora_inicio %}{{ agenda.hora_inicio|time:"H:i" }}{% else %}--:--{% endif %}
                             <br><small class="text-muted">às</small><br>
                             {% if agenda.hora_fim %}{{ agenda.hora_fim|time:"H:i" }}{% else %}--:--{% endif %}
                         </td>
-                        <td><strong>{{ agenda.titulo }}</strong></td>
-                        <td><small class="text-muted">A Definir/Equipe</small></td>
-                        <td><small class="text-muted">A Definir</small></td>
-                        <td>
+                        <td class="align-middle">
+                            <strong class="{% if agenda.concluida %}text-decoration-line-through text-muted{% endif %}">{{ agenda.titulo }}</strong>
+                            {% if agenda.concluida %}
+                                <span class="badge bg-success ms-2"><i class="bi bi-check-circle"></i> Concluído</span>
+                            {% endif %}
+                        </td>
+                        <td class="align-middle">
+                            <small class="text-muted">
+                                {% if agenda.auditores.exists %}
+                                    {% for auditor in agenda.auditores.all %}{{ auditor.get_full_name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                                {% else %}
+                                    A Definir/Equipe
+                                {% endif %}
+                            </small>
+                        </td>
+                        <td class="align-middle">
+                            <small class="text-muted">
+                                {{ agenda.representantes|default:"A Definir" }}
+                            </small>
+                        </td>
+                        <td class="align-middle">
                             {% for item in agenda.itens_norma.all %}
                                 <span class="badge bg-secondary mb-1">{{ item.referencia }}</span>
                             {% empty %}
                                 <span class="text-muted small">-</span>
                             {% endfor %}
                         </td>
-                        <td></td>
+                        <td class="no-print text-end align-middle">
+                            <div class="d-flex gap-1 justify-content-end">
+                                <a href="{% url 'auditoria:iso_entrevista_view' auditoria.id %}?agenda_id={{ agenda.id }}" class="btn btn-sm btn-outline-primary" title="Ir para a Entrevista Deste Bloco">
+                                    <i class="bi bi-play-circle"></i>
+                                </a>
+                                <form method="POST" action="{% url 'auditoria:iso_agenda_toggle_conclusao' auditoria.id agenda.id %}" style="display:inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm {% if agenda.concluida %}btn-success{% else %}btn-outline-success{% endif %}" title="{% if agenda.concluida %}Desmarcar Conclusão{% else %}Marcar como Concluído{% endif %}">
+                                        <i class="bi bi-check2-all"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>

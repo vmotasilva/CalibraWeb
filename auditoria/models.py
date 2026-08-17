@@ -832,6 +832,9 @@ class AgendaAuditoriaIso(models.Model):
     hora_fim = models.TimeField(null=True, blank=True, verbose_name="Hora de Término")
     itens_norma = models.ManyToManyField(ItemNorma, blank=True, related_name="agendas_vinculadas", verbose_name="Itens da Norma Observados")
     perguntas = models.ManyToManyField(BancoPergunta, blank=True, related_name="agendas_vinculadas", verbose_name="Perguntas Aplicáveis")
+    auditores = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name="agendas_iso_alocadas", verbose_name="Auditores do Bloco")
+    representantes = models.CharField(max_length=255, blank=True, verbose_name="Representantes do Local")
+    concluida = models.BooleanField(default=False, verbose_name="Etapa Concluída")
     arquivada = models.BooleanField(default=False, verbose_name="Arquivada")
     criado_em = models.DateTimeField(auto_now_add=True)
 
