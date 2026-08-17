@@ -138,6 +138,12 @@
                         <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#vincularPerguntasModeloModal">
                             <i class="bi bi-list-check me-1"></i> Selecionar Existentes
                         </button>
+                        <form method="POST" action="{% url 'auditoria:iso_modelo_bloco_sincronizar' modelo.id bloco.id %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3 fw-bold" title="Importar automaticamente perguntas baseadas nos requisitos alvo">
+                                <i class="bi bi-arrow-repeat me-1"></i> Sincronizar
+                            </button>
+                        </form>
                         <button type="button" class="btn btn-primary btn-sm rounded-pill px-3 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#novaPerguntaModeloModal">
                             <i class="bi bi-plus-lg me-1"></i> Nova Pergunta
                         </button>
@@ -1176,6 +1182,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
             chipsContainer.appendChild(chip);
         });
+
+        // Autofill Enunciado e Evidência se apenas 1 item for selecionado e os campos estiverem vazios
+        if (selectedItemsMap.size === 1) {
+            const itemId = Array.from(selectedItemsMap.keys())[0];
+            const txtPergunta = document.querySelector('textarea[name="texto_pergunta"]');
+            const txtEvidencia = document.querySelector('textarea[name="dica_resposta"]');
+            
+            if (txtPergunta && txtEvidencia && !txtPergunta.value.trim() && !txtEvidencia.value.trim()) {
+                fetch(`/auditoria/iso/setup/itens/${itemId}/json/`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.pergunta_padrao && !txtPergunta.value.trim()) {
+                            txtPergunta.value = data.pergunta_padrao;
+                        }
+                        if (data.evidencia_padrao && !txtEvidencia.value.trim()) {
+                            txtEvidencia.value = data.evidencia_padrao;
+                        }
+                    })
+                    .catch(e => console.error("Erro ao buscar pergunta padrão:", e));
+            }
+        }
     }
 
     // Controles do Modal de Escopo Alvo (Expandir, Recolher, Filtrar, Marcar Todos)

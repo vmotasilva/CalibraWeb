@@ -396,13 +396,15 @@ class NormaIsoForm(forms.ModelForm):
 class ItemNormaIsoForm(forms.ModelForm):
     class Meta:
         model = ItemNorma
-        fields = ['norma', 'parent', 'referencia', 'titulo', 'descricao', 'ordem']
+        fields = ['norma', 'parent', 'referencia', 'titulo', 'descricao', 'pergunta_padrao', 'evidencia_padrao', 'ordem']
         widgets = {
             'norma': forms.Select(attrs={'class': 'form-select'}),
             'parent': forms.Select(attrs={'class': 'form-select'}),
             'referencia': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: 4.1.1'}),
             'titulo': forms.TextInput(attrs={'class': 'form-control'}),
             'descricao': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'pergunta_padrao': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'evidencia_padrao': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'ordem': forms.NumberInput(attrs={'class': 'form-control'}),
         }
 

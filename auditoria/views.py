@@ -3906,6 +3906,8 @@ def iso_item_detail_api(request, pk):
         "referencia": item.referencia,
         "titulo": item.titulo,
         "descricao": item.descricao or "",
+        "pergunta_padrao": item.pergunta_padrao or "",
+        "evidencia_padrao": item.evidencia_padrao or "",
         "ordem": item.ordem,
         "edit_url": reverse('auditoria:iso_item_edit', args=[item.id]),
         "delete_url": reverse('auditoria:iso_item_delete', args=[item.id]),
@@ -4307,6 +4309,18 @@ def iso_modelo_bloco_pergunta_create(request, modelo_id, pk):
         if item_ids:
             nova_pergunta.itens_norma.set(item_ids)
             
+            # Auto-define como padrão para o item se for o único item vinculado e o item ainda não tiver padrão
+            if len(item_ids) == 1:
+                from .models import ItemNorma
+                try:
+                    item_unico = ItemNorma.objects.get(pk=item_ids[0])
+                    if not item_unico.pergunta_padrao:
+                        item_unico.pergunta_padrao = texto_pergunta
+                        item_unico.evidencia_padrao = dica_resposta
+                        item_unico.save(update_fields=['pergunta_padrao', 'evidencia_padrao'])
+                except ItemNorma.DoesNotExist:
+                    pass
+            
         bloco.perguntas.add(nova_pergunta)
         
     messages.success(request, f"Pergunta '{nova_pergunta.texto_pergunta[:40]}...' criada no Banco Geral e vinculada ao bloco!")
@@ -4325,6 +4339,25 @@ def iso_modelo_bloco_pergunta_create(request, modelo_id, pk):
     next_url = request.POST.get('next') or request.GET.get('next') or request.META.get('HTTP_REFERER')
     if next_url and ('modelos' in next_url or 'setup' in next_url):
         return redirect(next_url)
+    return redirect('auditoria:iso_modelo_bloco_perguntas', modelo_id=modelo_id, pk=pk)
+
+@login_required
+@require_POST
+def iso_modelo_bloco_sincronizar(request, modelo_id, pk):
+    """Sincroniza perguntas existentes no Banco Geral que cobrem os requisitos alvo do bloco."""
+    from .models import BlocoModeloIso, BancoPergunta
+    bloco = get_object_or_404(BlocoModeloIso, pk=pk, modelo_id=modelo_id)
+    
+    itens_alvo = bloco.itens_norma.all()
+    perguntas_sincronizadas = BancoPergunta.objects.filter(itens_norma__in=itens_alvo, ativa=True).distinct()
+    
+    count_antes = bloco.perguntas.count()
+    bloco.perguntas.add(*perguntas_sincronizadas)
+    count_depois = bloco.perguntas.count()
+    
+    adicionadas = count_depois - count_antes
+    messages.success(request, f"{adicionadas} pergunta(s) sincronizada(s) com sucesso a partir dos requisitos alvo deste bloco!")
+    
     return redirect('auditoria:iso_modelo_bloco_perguntas', modelo_id=modelo_id, pk=pk)
 
 @login_required

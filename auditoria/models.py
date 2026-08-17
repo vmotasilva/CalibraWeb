@@ -701,6 +701,8 @@ class ItemNorma(models.Model):
     referencia = models.CharField(max_length=50, verbose_name="Referência (ex: 4.1.6)")
     titulo = models.CharField(max_length=255, verbose_name="Título do Item")
     descricao = models.TextField(blank=True, verbose_name="Descrição / Requisito")
+    pergunta_padrao = models.TextField(blank=True, verbose_name="Pergunta Padrão")
+    evidencia_padrao = models.TextField(blank=True, verbose_name="Evidências Esperadas (Padrão)")
     ordem = models.PositiveIntegerField(default=1)
 
     class Meta:

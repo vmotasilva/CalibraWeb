@@ -93,6 +93,7 @@ urlpatterns = [
     path("iso/setup/modelos/<int:modelo_id>/blocos/<int:pk>/remover/", views.iso_modelo_bloco_delete, name="iso_modelo_bloco_delete"),
     path("iso/setup/modelos/<int:modelo_id>/blocos/<int:pk>/perguntas/", views.iso_modelo_bloco_perguntas, name="iso_modelo_bloco_perguntas"),
     path("iso/setup/modelos/<int:modelo_id>/blocos/<int:pk>/perguntas/nova/", views.iso_modelo_bloco_pergunta_create, name="iso_modelo_bloco_pergunta_create"),
+    path("iso/setup/modelos/<int:modelo_id>/blocos/<int:pk>/sincronizar/", views.iso_modelo_bloco_sincronizar, name="iso_modelo_bloco_sincronizar"),
     path("iso/setup/modelos/<int:modelo_id>/blocos/<int:pk>/alvo/", views.iso_modelo_bloco_alvo_update, name="iso_modelo_bloco_alvo_update"),
     path("iso/setup/perguntas/<int:pk>/editar/", views.iso_pergunta_edit, name="iso_pergunta_edit"),
     
