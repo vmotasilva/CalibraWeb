@@ -106,7 +106,7 @@
                     {% endif %}
                 {% endfor %}
                 <div class="table-responsive">
-                    <table class="table table-bordered align-middle mb-0">
+                    <table class="table table-bordered align-middle mb-0 cronograma-table">
                         <thead class="table-light">
                             <tr>
                                 <th width="12%">Horário</th>
@@ -122,7 +122,7 @@
                                 {% if agenda.is_gap %}
                                     {% if agenda.special_type %}
                                         <tr class="table-secondary text-muted">
-                                            <td class="fw-semibold text-center align-middle">
+                                            <td class="fw-semibold text-center align-middle td-datetime">
                                                 {{ agenda.hora_inicio|time:"H:i" }} <br><small>às</small><br> {{ agenda.hora_fim|time:"H:i" }}
                                             </td>
                                             <td class="align-middle fst-italic">
@@ -139,7 +139,7 @@
                                                 <i class="bi bi-pencil ms-1 no-print text-primary" style="font-size: 0.75rem;"></i>
                                             </td>
                                             <td class="align-middle text-center">-</td>
-                                            <td class="no-print text-end align-middle">
+                                            <td class="no-print text-end align-middle td-actions">
                                                 {% if agenda.special_type == 'revisao' %}
                                                 <a href="{% url 'auditoria:iso_revisao_dashboard' auditoria.id %}" class="btn btn-sm btn-outline-primary" title="Ir para Revisão da Auditoria">
                                                     <i class="bi bi-play-circle"></i>
@@ -149,7 +149,7 @@
                                         </tr>
                                     {% else %}
                                         <tr class="table-secondary text-muted">
-                                            <td class="fw-semibold text-center align-middle">
+                                            <td class="fw-semibold text-center align-middle td-datetime">
                                                 {% if agenda.hora_inicio == agenda.hora_fim %}
                                                     {{ agenda.hora_inicio|time:"H:i" }}
                                                 {% else %}
@@ -242,7 +242,7 @@
                     <div><i class="bi bi-tools me-2"></i> Data Ajustada: {{ data|date:"d/m/Y" }}</div>
                 </div>
                 <div class="table-responsive">
-                    <table class="table table-bordered align-middle mb-0">
+                    <table class="table table-bordered align-middle mb-0 cronograma-table">
                         <thead class="table-light">
                             <tr>
                                 <th width="12%">Horário Real/Ajustado</th>
@@ -258,7 +258,7 @@
                                 {% if agenda.is_gap %}
                                     {% if agenda.special_type %}
                                         <tr class="table-secondary text-muted">
-                                            <td class="fw-semibold text-center align-middle">
+                                            <td class="fw-semibold text-center align-middle td-datetime">
                                                 {{ agenda.hora_inicio|time:"H:i" }} <br><small>às</small><br> {{ agenda.hora_fim|time:"H:i" }}
                                             </td>
                                             <td class="align-middle fst-italic">
@@ -275,7 +275,7 @@
                                                 <i class="bi bi-pencil ms-1 no-print text-primary" style="font-size: 0.75rem;"></i>
                                             </td>
                                             <td class="align-middle text-center">-</td>
-                                            <td class="no-print text-end align-middle">
+                                            <td class="no-print text-end align-middle td-actions">
                                                 {% if agenda.special_type == 'revisao' %}
                                                 <a href="{% url 'auditoria:iso_revisao_dashboard' auditoria.id %}" class="btn btn-sm btn-outline-primary" title="Ir para Revisão da Auditoria">
                                                     <i class="bi bi-play-circle"></i>
@@ -285,7 +285,7 @@
                                         </tr>
                                     {% else %}
                                         <tr class="table-secondary text-muted">
-                                            <td class="fw-semibold text-center align-middle">
+                                            <td class="fw-semibold text-center align-middle td-datetime">
                                                 {% if agenda.hora_inicio == agenda.hora_fim %}
                                                     {{ agenda.hora_inicio|time:"H:i" }}
                                                 {% else %}

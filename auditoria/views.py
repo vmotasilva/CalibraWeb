@@ -3216,17 +3216,14 @@ def iso_entrevista_view(request, auditoria_id):
     perguntas_lista = sorted(list(perguntas), key=get_pergunta_sort_key)
     
     # Garante a existência e atualização da pergunta padrão de Identificação dos Auditados (Nome e Função)
+    texto_pergunta_auditados = f"Quais são os nomes e funções das pessoas auditadas / entrevistadas neste bloco ({agenda.titulo})?"
     pergunta_auditados, _ = BancoPergunta.objects.get_or_create(
-        texto_pergunta="Quais são os nomes e funções das pessoas auditadas / entrevistadas neste bloco?",
+        texto_pergunta=texto_pergunta_auditados,
         defaults={
             "dica_auditor": "Registre o nome completo e a função / cargo de cada participante entrevistado nesta etapa da auditoria.",
             "ativa": True
         }
     )
-    if "funções" not in pergunta_auditados.texto_pergunta.lower():
-        pergunta_auditados.texto_pergunta = "Quais são os nomes e funções das pessoas auditadas / entrevistadas neste bloco?"
-        pergunta_auditados.dica_auditor = "Registre o nome completo e a função / cargo de cada participante entrevistado nesta etapa da auditoria."
-        pergunta_auditados.save()
 
     # Prepend a pergunta de auditados na PRIMEIRA POSIÇÃO da entrevista
     perguntas_lista = [p for p in perguntas_lista if p.id != pergunta_auditados.id]

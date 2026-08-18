@@ -177,13 +177,6 @@
                             <span class="badge bg-secondary bg-opacity-10 text-dark rounded-pill px-2 py-0.5 small" id="badge-count-agenda-${b.agenda_id}">${b.total_perguntas} pergunta(s)</span>
                         </div>
                         <small class="text-muted d-block mb-2 font-monospace" style="font-size: 0.8rem;"><i class="bi bi-tag me-1"></i>Requisito em comum: ${b.itens_comum.join(', ')}</small>
-                        <button type="button" 
-                                class="btn btn-outline-primary btn-sm rounded-pill w-100 fw-bold btn-gerar-pergunta-entrevista"
-                                data-agenda-id="${b.agenda_id}"
-                                data-agenda-titulo="${b.titulo}"
-                                data-item-objects='${JSON.stringify(p.itens_objects || [])}'>
-                            <i class="bi bi-plus-lg me-1"></i> Nova Pergunta para ${b.titulo}
-                        </button>
                     </div>
                 `;
             });
