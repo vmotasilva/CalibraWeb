@@ -3285,12 +3285,17 @@ def iso_entrevista_view(request, auditoria_id):
         for pag in ag.perguntas.all():
             pag_item_ids = list(pag.itens_norma.values_list('id', flat=True))
             ag_item_ids.update(pag_item_ids)
-            itens_str = ", ".join(it.referencia for it in pag.itens_norma.all())
+            itens_sorted = sorted(pag.itens_norma.all(), key=lambda it: natural_sort_key(it.referencia))
+            itens_str = ", ".join(it.referencia for it in itens_sorted)
             perguntas_ag.append({
                 "id": pag.id,
                 "texto_curto": pag.texto_pergunta[:80] + ("..." if len(pag.texto_pergunta) > 80 else ""),
-                "itens": itens_str or "—"
+                "itens": itens_str or "—",
+                "primeira_ref": itens_sorted[0].referencia if itens_sorted else "999"
             })
+
+        # Ordena as perguntas do bloco pelo código/item da norma (ex: 6.2 antes de 7.4.1, 7.4.1 antes de 7.4.10)
+        perguntas_ag.sort(key=lambda p: (natural_sort_key(p['primeira_ref']), p['texto_curto']))
 
         agendas_para_transfer.append({
             "id": ag.id,
@@ -3736,12 +3741,17 @@ def iso_matriz_view(request, auditoria_id):
     for ag in auditoria.agendas.filter(arquivada=False).prefetch_related('perguntas', 'perguntas__itens_norma'):
         perguntas_ag = []
         for pag in ag.perguntas.all():
-            itens_str = ", ".join(it.referencia for it in pag.itens_norma.all())
+            itens_sorted = sorted(pag.itens_norma.all(), key=lambda it: natural_sort_key(it.referencia))
+            itens_str = ", ".join(it.referencia for it in itens_sorted)
             perguntas_ag.append({
                 "id": pag.id,
                 "texto_curto": pag.texto_pergunta[:80] + ("..." if len(pag.texto_pergunta) > 80 else ""),
-                "itens": itens_str or "—"
+                "itens": itens_str or "—",
+                "primeira_ref": itens_sorted[0].referencia if itens_sorted else "999"
             })
+        
+        perguntas_ag.sort(key=lambda p: (natural_sort_key(p['primeira_ref']), p['texto_curto']))
+
         agendas_para_transfer.append({
             "id": ag.id,
             "titulo": ag.titulo,
