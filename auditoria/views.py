@@ -3746,12 +3746,13 @@ def iso_matriz_view(request, auditoria_id):
     count_p = sum(1 for m in matriz_data if not m["is_parent"] and m["status"] == "P")
     count_na = sum(1 for m in matriz_data if not m["is_parent"] and m["status"] == "NA")
 
+    # Para o percentual geral, contabilizar apenas C, NC e OM (OBS não entra no cálculo)
     total_avaliados = count_c + count_obs + count_nc + count_om + count_p
-    
-    # OBS é neutro/positivo (contabiliza no lado positivo junto com C)
-    pct_c = round(((count_c + count_obs) / total_avaliados * 100), 1) if total_avaliados > 0 else 0
-    pct_nc = round((count_nc / total_avaliados * 100), 1) if total_avaliados > 0 else 0
-    pct_om = round((count_om / total_avaliados * 100), 1) if total_avaliados > 0 else 0
+    total_percentual_base = count_c + count_nc + count_om  # OBS, NA e P excluídos do percentual
+
+    pct_c = round((count_c / total_percentual_base * 100), 1) if total_percentual_base > 0 else 0
+    pct_nc = round((count_nc / total_percentual_base * 100), 1) if total_percentual_base > 0 else 0
+    pct_om = round((count_om / total_percentual_base * 100), 1) if total_percentual_base > 0 else 0
     pct_obs = round((count_obs / total_avaliados * 100), 1) if total_avaliados > 0 else 0
     pct_p = round((count_p / total_avaliados * 100), 1) if total_avaliados > 0 else 0
 
@@ -4023,8 +4024,9 @@ def iso_fechamento_presentation_view(request, auditoria_id):
             })
 
     total_avaliados = count_c + count_obs + count_om + count_nc_menor + count_nc_maior + count_p
-    # OBS é neutro e não penaliza a nota global: contabilizado no lado positivo com C
-    percentual_conformidade = round(((count_c + count_obs) / total_avaliados * 100), 1) if total_avaliados > 0 else 0.0
+    # OBS não entra no percentual geral: o percentual é C / (C + NC + OM)
+    total_percentual_base = count_c + count_om + count_nc_menor + count_nc_maior
+    percentual_conformidade = round((count_c / total_percentual_base * 100), 1) if total_percentual_base > 0 else 0.0
 
     # ── CARGA DO MOTOR DE REGRAS (ELIMINAÇÃO EM CASCATA / FAIL-FAST) ──────────
     try:

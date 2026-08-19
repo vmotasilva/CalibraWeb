@@ -178,13 +178,13 @@
                     <i class="bi bi-speedometer2 text-primary fs-4"></i>
                     <span>Índice de Conformidade & Distribuição de Respostas</span>
                 </h5>
-                <small class="text-muted">Cálculo proporcional do status dos itens da norma (excluídos os itens N/A).</small>
+                <small class="text-muted">% de Conformidade sobre C + NC + OM (OBS e N/A excluídos do cálculo).</small>
             </div>
             <div class="text-end">
                 <span class="fs-4 fw-bold {% if stats.pct_c >= 80 %}text-success{% elif stats.pct_c >= 50 %}text-warning{% else %}text-danger{% endif %}">
                     {{ stats.pct_c }}%
                 </span>
-                <small class="text-muted d-block" style="font-size: 0.75rem;">Taxa de Conformidade ({{ stats.count_c }}/{{ stats.total_avaliados }})</small>
+                <small class="text-muted d-block" style="font-size: 0.75rem;">Taxa de Conformidade ({{ stats.count_c }}/{{ stats.count_c|add:stats.count_nc|add:stats.count_om }})</small>
             </div>
         </div>
 
