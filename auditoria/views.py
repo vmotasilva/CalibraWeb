@@ -4225,6 +4225,9 @@ def iso_norma_regras_salvar(request, pk):
     from .models import RegraVeredictoNorma
     norma = get_object_or_404(Norma, pk=pk)
 
+    from django.utils import timezone
+    now = timezone.now()
+
     # 1. Apto
     RegraVeredictoNorma.objects.update_or_create(
         norma=norma,
@@ -4232,7 +4235,7 @@ def iso_norma_regras_salvar(request, pk):
         defaults={
             'min_percentual_conformidade': float(request.POST.get('apto_min_pct', 95.0) or 95.0),
             'max_nc_maior': int(request.POST.get('apto_max_nc_maior', 0) or 0),
-            'max_nc_menor': int(request.POST.get('apto_max_nc_menor', 0) or 0),
+            'max_nc_menor': int(request.POST.get('apto_max_nc_menor', 2) or 2),
             'texto_parecer_padrao': request.POST.get('apto_texto', '').strip(),
             'cor_badge': '#198754'
         }
@@ -4245,7 +4248,7 @@ def iso_norma_regras_salvar(request, pk):
         defaults={
             'min_percentual_conformidade': float(request.POST.get('ressalva_min_pct', 80.0) or 80.0),
             'max_nc_maior': int(request.POST.get('ressalva_max_nc_maior', 0) or 0),
-            'max_nc_menor': int(request.POST.get('ressalva_max_nc_menor', 3) or 3),
+            'max_nc_menor': int(request.POST.get('ressalva_max_nc_menor', 5) or 5),
             'texto_parecer_padrao': request.POST.get('ressalva_texto', '').strip(),
             'cor_badge': '#ffc107'
         }
@@ -4257,7 +4260,7 @@ def iso_norma_regras_salvar(request, pk):
         status_resultado='INAPTO',
         defaults={
             'min_percentual_conformidade': 0.0,
-            'max_nc_maior': 999,
+            'max_nc_maior': int(request.POST.get('inapto_gatilho_nc_maior', 1) or 1),
             'max_nc_menor': 999,
             'texto_parecer_padrao': request.POST.get('inapto_texto', '').strip(),
             'cor_badge': '#dc3545'

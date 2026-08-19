@@ -731,6 +731,8 @@ class RegraVeredictoNorma(models.Model):
         default="#198754", 
         verbose_name="Cor Hexadecimal / CSS"
     )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = "Regra de Veredicto da Norma"
