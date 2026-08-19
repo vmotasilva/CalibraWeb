@@ -3229,10 +3229,23 @@ def iso_entrevista_view(request, auditoria_id):
     perguntas_lista = [p for p in perguntas_lista if p.id != pergunta_auditados.id]
     perguntas_lista.insert(0, pergunta_auditados)
     
-    # Obter respostas já existentes
+    # Obter respostas já existentes e auto-migrar anotações antigas para Solicitações se necessário
     respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).prefetch_related('solicitacoes')
+    from .models import SolicitacaoEvidenciaIso
     respostas_dict = {}
     for r in respostas:
+        sols_qs = list(r.solicitacoes.all())
+        # Se existem anotações no texto_resposta livre mas nenhuma solicitação foi cadastrada ainda,
+        # converte automaticamente as anotações legadas na primeira Solicitação de Evidência
+        if not sols_qs and r.texto_resposta and r.texto_resposta.strip():
+            nova_sol = SolicitacaoEvidenciaIso.objects.create(
+                resposta=r,
+                solicitacao="Evidências / Documentos Registrados",
+                evidencia=r.texto_resposta.strip(),
+                conclusao=r.classificacao if r.classificacao in ['C', 'NC', 'OM', 'NA'] else 'P'
+            )
+            sols_qs.append(nova_sol)
+
         sols = [
             {
                 "id": s.id,
@@ -3240,7 +3253,7 @@ def iso_entrevista_view(request, auditoria_id):
                 "evidencia": s.evidencia,
                 "conclusao": s.conclusao
             }
-            for s in r.solicitacoes.all()
+            for s in sols_qs
         ]
         respostas_dict[r.pergunta_id] = {
             "classificacao": r.classificacao,
