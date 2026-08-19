@@ -135,6 +135,51 @@
                     <i class="bi bi-arrow-left-right me-1"></i> Confirmar Transferência
                 </button>
             </div>
+<!-- Modal para Visualização Plena / Edição da Solicitação e Evidência -->
+<div class="modal fade" id="modalDetalhesSolicitacao" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-primary bg-opacity-10 border-0 py-3">
+                <h5 class="modal-title fw-bold text-primary" id="modalDetalhesSolicitacaoTitle">
+                    <i class="bi bi-file-earmark-ruled me-2"></i>Detalhes da Solicitação de Evidência
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <input type="hidden" id="modalSolId">
+
+                <!-- Micro-status / Conclusão dentro do Modal -->
+                <div class="d-flex justify-content-between align-items-center mb-3 p-3 bg-light rounded-3 border">
+                    <span class="fw-bold text-dark small"><i class="bi bi-shield-check me-1 text-primary"></i>Conclusão desta Amostra:</span>
+                    <div class="btn-group" role="group">
+                        <button type="button" id="modalBtnConcl_C" class="btn btn-sm btn-outline-success px-3 fw-bold" onclick="setConclusaoModal('C')">✅ Conforme</button>
+                        <button type="button" id="modalBtnConcl_NC" class="btn btn-sm btn-outline-danger px-3 fw-bold" onclick="setConclusaoModal('NC')">🔴 Não Conforme</button>
+                        <button type="button" id="modalBtnConcl_OM" class="btn btn-sm btn-outline-warning text-dark px-3 fw-bold" onclick="setConclusaoModal('OM')">🟠 Oportunidade</button>
+                        <button type="button" id="modalBtnConcl_NA" class="btn btn-sm btn-outline-secondary px-3 fw-bold" onclick="setConclusaoModal('NA')">ℹ️ N/A</button>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-dark">
+                        <i class="bi bi-file-text me-1 text-primary"></i> Item / Documento Solicitado <span class="text-danger">*</span>
+                    </label>
+                    <input type="text" id="modalSolTexto" class="form-control form-control-lg fs-6 shadow-2xs" placeholder="Ex: Procedimento da Qualidade, Laudo Técnico, Certificado RBC...">
+                </div>
+
+                <div class="mb-2">
+                    <label class="form-label fw-bold text-dark">
+                        <i class="bi bi-card-checklist me-1 text-primary"></i> Evidência Apresentada / Constatada pelo Auditor
+                    </label>
+                    <textarea id="modalSolEvidencia" class="form-control shadow-2xs" rows="8" placeholder="Descreva plenamente o documento auditado, referências, números de laudo, datas, pessoas e evidências encontradas..." style="font-family: inherit; font-size: 0.95rem; line-height: 1.5;"></textarea>
+                    <small class="text-muted mt-1 d-block"><i class="bi bi-info-circle me-1"></i>Espaço amplo para digitação e leitura integral da evidência.</small>
+                </div>
+            </div>
+            <div class="modal-footer border-0 bg-light rounded-bottom-4">
+                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" onclick="salvarModalDetalhesSolicitacao()">
+                    <i class="bi bi-check2-circle me-1"></i> Salvar Evidência
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -405,17 +450,25 @@
 
         let html = '';
         sols.forEach((s, idx) => {
+            const hasEvidencia = s.evidencia && s.evidencia.trim().length > 0;
+            const evidenciaPreview = hasEvidencia ? s.evidencia.trim() : "Nenhuma evidência descrita ainda. Clique para detalhar...";
+            
             html += `
-                <div class="card border rounded-3 p-3 bg-light shadow-2xs position-relative" id="sol-card-${s.id}">
+                <div class="card border rounded-3 p-3 bg-white shadow-2xs mb-2.5 transition-all" id="sol-card-${s.id}">
                     <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-                        <span class="badge bg-secondary bg-opacity-10 text-dark rounded-pill px-2.5 py-1 small fw-bold">Amostra #${idx + 1}</span>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-2.5 py-1 small fw-bold">Amostra #${idx + 1}</span>
+                            <button type="button" class="btn btn-sm btn-outline-primary py-0.5 px-2 rounded-pill small fw-semibold" onclick="abrirModalDetalhesSolicitacao(${s.id})" title="Expandir e ver em detalhes no pop-up">
+                                <i class="bi bi-arrows-fullscreen me-1"></i>Ver Detalhes
+                            </button>
+                        </div>
                         <div class="d-flex align-items-center gap-1">
                             <span class="small text-muted me-1 fw-bold">Conclusão:</span>
                             <div class="btn-group btn-group-sm" role="group">
-                                <button type="button" class="btn ${s.conclusao === 'C' ? 'btn-success' : 'btn-outline-success'} px-2 py-0.5 small" onclick="setConclusaoSolicitacao(${s.id}, 'C')">✅ C</button>
-                                <button type="button" class="btn ${s.conclusao === 'NC' ? 'btn-danger' : 'btn-outline-danger'} px-2 py-0.5 small" onclick="setConclusaoSolicitacao(${s.id}, 'NC')">🔴 NC</button>
-                                <button type="button" class="btn ${s.conclusao === 'OM' ? 'btn-warning text-dark' : 'btn-outline-warning text-dark'} px-2 py-0.5 small" onclick="setConclusaoSolicitacao(${s.id}, 'OM')">🟠 OM</button>
-                                <button type="button" class="btn ${s.conclusao === 'NA' ? 'btn-secondary' : 'btn-outline-secondary'} px-2 py-0.5 small" onclick="setConclusaoSolicitacao(${s.id}, 'NA')">ℹ️ NA</button>
+                                <button type="button" class="btn ${s.conclusao === 'C' ? 'btn-success' : 'btn-outline-success'} px-2 py-0.5 small" onclick="setConclusaoSolicitacao(${s.id}, 'C')" title="Conforme">✅ C</button>
+                                <button type="button" class="btn ${s.conclusao === 'NC' ? 'btn-danger' : 'btn-outline-danger'} px-2 py-0.5 small" onclick="setConclusaoSolicitacao(${s.id}, 'NC')" title="Não Conforme">🔴 NC</button>
+                                <button type="button" class="btn ${s.conclusao === 'OM' ? 'btn-warning text-dark' : 'btn-outline-warning text-dark'} px-2 py-0.5 small" onclick="setConclusaoSolicitacao(${s.id}, 'OM')" title="Oportunidade">🟠 OM</button>
+                                <button type="button" class="btn ${s.conclusao === 'NA' ? 'btn-secondary' : 'btn-outline-secondary'} px-2 py-0.5 small" onclick="setConclusaoSolicitacao(${s.id}, 'NA')" title="Não Aplicável">ℹ️ NA</button>
                             </div>
                             <button type="button" class="btn btn-sm btn-link text-warning p-0 ms-2" onclick="abrirModalTransferir(${s.id})" title="Transferir para outro bloco">
                                 <i class="bi bi-arrow-left-right fs-6"></i>
@@ -426,14 +479,18 @@
                         </div>
                     </div>
 
+                    <!-- Item / Documento Solicitado -->
                     <div class="mb-2">
-                        <label class="form-label fw-bold text-dark mb-1 small">Item / Documento Solicitado <span class="text-danger">*</span></label>
-                        <input type="text" id="sol-texto-${s.id}" class="form-control form-control-sm bg-white border" placeholder="Ex: Certificado de Calibração, Ata de Reunião, Registro de Treinamento..." value="${s.solicitacao || ''}" onchange="salvarEdicaoSolicitacao(${s.id})">
+                        <input type="text" id="sol-texto-${s.id}" class="form-control form-control-sm bg-light border-0 fw-semibold text-dark" placeholder="Item / Documento Solicitado (ex: Certificado de Calibração...)" value="${s.solicitacao || ''}" onchange="salvarEdicaoSolicitacao(${s.id})">
                     </div>
 
-                    <div>
-                        <label class="form-label fw-bold text-dark mb-1 small">Evidência Apresentada / Constatada pelo Auditor</label>
-                        <textarea id="sol-evidencia-${s.id}" class="form-control form-control-sm bg-white border" rows="2" placeholder="Ex: Apresentado laudo #1042 emitido em 12/04 com selo RBC conforme procedimento..." onchange="salvarEdicaoSolicitacao(${s.id})">${s.evidencia || ''}</textarea>
+                    <!-- Pré-visualização resumida da Evidência que abre o Pop-up ao clicar -->
+                    <div class="bg-light rounded-2 p-2 border border-light-subtle cursor-pointer" onclick="abrirModalDetalhesSolicitacao(${s.id})" style="cursor: pointer;" title="Clique para editar ou ler a evidência completa">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <small class="text-muted fw-bold" style="font-size: 0.75rem;"><i class="bi bi-file-earmark-text me-1"></i>Evidência Constatada:</small>
+                            <small class="text-primary fw-semibold" style="font-size: 0.75rem;"><i class="bi bi-pencil-square me-1"></i>Expandir</small>
+                        </div>
+                        <div class="text-secondary small text-truncate-2" style="font-size: 0.82rem; white-space: pre-wrap; max-height: 48px; overflow: hidden;">${evidenciaPreview}</div>
                     </div>
                 </div>
             `;
@@ -500,6 +557,83 @@
             showSaveIndicatorMessage("Solicitação salva!");
         } catch(err) {
             console.error('Erro ao salvar solicitação:', err);
+        }
+    }
+
+    // Controle do Modal de Detalhes da Solicitação / Evidência
+    let modalActiveConclusao = 'P';
+    
+    function updateModalConclusaoButtons(concl) {
+        modalActiveConclusao = concl;
+        const btnC = document.getElementById('modalBtnConcl_C');
+        const btnNC = document.getElementById('modalBtnConcl_NC');
+        const btnOM = document.getElementById('modalBtnConcl_OM');
+        const btnNA = document.getElementById('modalBtnConcl_NA');
+
+        if (btnC) btnC.className = `btn btn-sm ${concl === 'C' ? 'btn-success text-white' : 'btn-outline-success'} px-3 fw-bold`;
+        if (btnNC) btnNC.className = `btn btn-sm ${concl === 'NC' ? 'btn-danger text-white' : 'btn-outline-danger'} px-3 fw-bold`;
+        if (btnOM) btnOM.className = `btn btn-sm ${concl === 'OM' ? 'btn-warning text-dark' : 'btn-outline-warning text-dark'} px-3 fw-bold`;
+        if (btnNA) btnNA.className = `btn btn-sm ${concl === 'NA' ? 'btn-secondary text-white' : 'btn-outline-secondary'} px-3 fw-bold`;
+    }
+
+    function setConclusaoModal(concl) {
+        updateModalConclusaoButtons(concl);
+    }
+
+    function abrirModalDetalhesSolicitacao(solId) {
+        const p = perguntas[currentIndex];
+        const solObj = (p.solicitacoes || []).find(s => s.id === solId);
+        if (!solObj) return;
+
+        const idx = p.solicitacoes.findIndex(s => s.id === solId);
+        document.getElementById('modalSolId').value = solId;
+        document.getElementById('modalSolTexto').value = solObj.solicitacao || '';
+        document.getElementById('modalSolEvidencia').value = solObj.evidencia || '';
+        document.getElementById('modalDetalhesSolicitacaoTitle').innerHTML = `
+            <i class="bi bi-file-earmark-ruled me-2"></i>Amostra #${idx + 1}: ${solObj.solicitacao ? solObj.solicitacao.slice(0, 45) + '...' : 'Solicitação'}
+        `;
+
+        updateModalConclusaoButtons(solObj.conclusao || 'P');
+
+        const modal = new bootstrap.Modal(document.getElementById('modalDetalhesSolicitacao'));
+        modal.show();
+    }
+
+    async function salvarModalDetalhesSolicitacao() {
+        const solId = parseInt(document.getElementById('modalSolId').value);
+        const p = perguntas[currentIndex];
+        const solObj = (p.solicitacoes || []).find(s => s.id === solId);
+        if (!solObj) return;
+
+        solObj.solicitacao = document.getElementById('modalSolTexto').value.trim();
+        solObj.evidencia = document.getElementById('modalSolEvidencia').value.trim();
+        solObj.conclusao = modalActiveConclusao;
+
+        // Auto-calcula o veredicto global
+        p.classificacao = derivarClassificacaoPorSolicitacoes(p.solicitacoes);
+        renderQuestion();
+
+        const modalEl = document.getElementById('modalDetalhesSolicitacao');
+        bootstrap.Modal.getInstance(modalEl)?.hide();
+
+        try {
+            await fetch(`/auditoria/iso/api/solicitacoes/${solId}/editar/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    solicitacao: solObj.solicitacao,
+                    evidencia: solObj.evidencia,
+                    conclusao: solObj.conclusao
+                })
+            });
+
+            doSave();
+            showSaveIndicatorMessage("Evidência e Veredicto salvos com sucesso!");
+        } catch(err) {
+            console.error('Erro ao salvar detalhes da solicitação:', err);
         }
     }
 
