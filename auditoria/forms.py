@@ -359,6 +359,7 @@ from .models import (
     AuditoriaIso,
     AgendaAuditoriaIso,
     ModeloAuditoriaIso,
+    RegraVeredictoNorma,
 )
 
 # ==========================================
