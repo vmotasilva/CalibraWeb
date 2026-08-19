@@ -3897,7 +3897,7 @@ def iso_fechamento_presentation_view(request, auditoria_id):
     total_avaliados = count_c + count_om + count_nc_menor + count_nc_maior + count_p
     percentual_conformidade = round((count_c / total_avaliados * 100), 1) if total_avaliados > 0 else 0.0
 
-    # ── CARGA DO MOTOR DE REGRAS (FAIL-FAST) ──────────────────────────────────
+    # ── CARGA DO MOTOR DE REGRAS (ELIMINAÇÃO EM CASCATA / FAIL-FAST) ──────────
     try:
         regras = {r.status_resultado: r for r in auditoria.norma.regras_veredicto.all()}
     except Exception:
@@ -3907,50 +3907,47 @@ def iso_fechamento_presentation_view(request, auditoria_id):
     regra_ressalva = regras.get('RESSALVA')
     regra_inapto = regras.get('INAPTO')
 
-    min_pct_apto = regra_apto.min_percentual_conformidade if regra_apto else 95.0
-    max_nc_menor_apto = regra_apto.max_nc_menor if regra_apto else 0
-    max_nc_maior_apto = regra_apto.max_nc_maior if regra_apto else 0
+    # 1. Card Vermelho (INADEQUADO) - Gatilhos Críticos (Teto)
+    gatilho_nc_maior_inapto = regra_inapto.max_nc_maior if (regra_inapto and regra_inapto.max_nc_maior is not None) else 4
+    gatilho_nc_menor_inapto = regra_inapto.max_nc_menor if (regra_inapto and regra_inapto.max_nc_menor is not None) else 15
 
-    min_pct_ressalva = regra_ressalva.min_percentual_conformidade if regra_ressalva else 80.0
-    max_nc_menor_ressalva = regra_ressalva.max_nc_menor if regra_ressalva else 3
-    max_nc_maior_ressalva = regra_ressalva.max_nc_maior if regra_ressalva else 0
+    # 2. Card Verde (ADEQUADO) - Gatilhos de Perfeição (Piso)
+    limite_nc_maior_apto = regra_apto.max_nc_maior if (regra_apto and regra_apto.max_nc_maior is not None) else 0
+    limite_nc_menor_apto = regra_apto.max_nc_menor if (regra_apto and regra_apto.max_nc_menor is not None) else 2
 
-    # Decisão Fail-Fast
-    if (count_nc_maior > max_nc_maior_ressalva or 
-        count_nc_menor > max_nc_menor_ressalva or 
-        percentual_conformidade < min_pct_ressalva):
-        
+    # Lógica do Motor por Cascata Estrita:
+    # 1º: Atingiu qualquer gatilho crítico? -> INADEQUADO
+    if count_nc_maior >= gatilho_nc_maior_inapto or count_nc_menor >= gatilho_nc_menor_inapto:
         veredito = {
             'status': 'INAPTO',
-            'titulo': 'INAPTO / NÃO CONFORME',
+            'titulo': 'INADEQUADO / NÃO CONFORME',
             'cor_css': 'danger',
             'cor_badge': 'bg-danger text-white',
             'icone': 'bi-x-octagon-fill',
             'parecer': regra_inapto.texto_parecer_padrao if (regra_inapto and regra_inapto.texto_parecer_padrao) else 
-                "O Sistema de Gestão auditado apresentou não conformidades críticas e índice de atendimento abaixo do mínimo exigido. Não se recomenda a concessão/manutenção da certificação no estágio atual."
+                "Sistema inadequado e com alto risco crítico. As evidências apontam falhas sistêmicas ou acúmulo excessivo de desvios que inviabilizam a recomendação neste ciclo. Recomenda-se reavaliação integral e nova auditoria."
         }
-    elif (count_nc_maior > max_nc_maior_apto or 
-          count_nc_menor > max_nc_menor_apto or 
-          percentual_conformidade < min_pct_apto):
-        
-        veredito = {
-            'status': 'RESSALVA',
-            'titulo': 'APTO COM RESSALVAS',
-            'cor_css': 'warning',
-            'cor_badge': 'bg-warning text-dark',
-            'icone': 'bi-exclamation-triangle-fill',
-            'parecer': regra_ressalva.texto_parecer_padrao if (regra_ressalva and regra_ressalva.texto_parecer_padrao) else 
-                "O Sistema de Gestão atende aos requisitos essenciais, porém foram identificados desvios pontuais que requerem o envio e aprovação formal de um Plano de Ação Corretiva (CAPA)."
-        }
-    else:
+    # 2º: Está dentro do piso de excelência? -> ADEQUADO
+    elif count_nc_maior <= limite_nc_maior_apto and count_nc_menor <= limite_nc_menor_apto:
         veredito = {
             'status': 'APTO',
-            'titulo': 'APTO / RECOMENDADO',
+            'titulo': 'ADEQUADO / CONFORME',
             'cor_css': 'success',
             'cor_badge': 'bg-success text-white',
             'icone': 'bi-check-circle-fill',
             'parecer': regra_apto.texto_parecer_padrao if (regra_apto and regra_apto.texto_parecer_padrao) else 
-                "O Sistema de Gestão auditado demonstrou alto índice de conformidade aos requisitos normativos e maturidade de seus processos, recomendando-se a certificação/manutenção sem restrições."
+                "Sistema de Gestão Adequado e Conforme. Os processos demonstram maturidade e conformidade aos requisitos normativos."
+        }
+    # 3º: Não é perfeito e não quebrou o teto crítico -> MELHORIA NECESSÁRIA (Fallback)
+    else:
+        veredito = {
+            'status': 'RESSALVA',
+            'titulo': 'MELHORIA NECESSÁRIA / RESSALVA',
+            'cor_css': 'warning',
+            'cor_badge': 'bg-warning text-dark',
+            'icone': 'bi-exclamation-triangle-fill',
+            'parecer': regra_ressalva.texto_parecer_padrao if (regra_ressalva and regra_ressalva.texto_parecer_padrao) else 
+                "Melhorias são necessárias devido ao risco encontrado nos desvios pontuais. Exige-se apresentação de plano de ação corretiva formal em prazo determinado."
         }
 
     # Paginação dos Slides: 4 cards por slide para aspecto 16:9 perfeito
@@ -4254,14 +4251,14 @@ def iso_norma_regras_salvar(request, pk):
         }
     )
 
-    # 3. Inapto
+    # 3. Inapto (Gatilhos Críticos / Teto)
     RegraVeredictoNorma.objects.update_or_create(
         norma=norma,
         status_resultado='INAPTO',
         defaults={
             'min_percentual_conformidade': 0.0,
-            'max_nc_maior': int(request.POST.get('inapto_gatilho_nc_maior', 1) or 1),
-            'max_nc_menor': 999,
+            'max_nc_maior': int(request.POST.get('inapto_gatilho_nc_maior', 4) or 4),
+            'max_nc_menor': int(request.POST.get('inapto_gatilho_nc_menor', 15) or 15),
             'texto_parecer_padrao': request.POST.get('inapto_texto', '').strip(),
             'cor_badge': '#dc3545'
         }
