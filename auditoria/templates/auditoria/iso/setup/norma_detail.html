@@ -322,6 +322,8 @@
                     </div>
                 </div>
             </div>
+        </div>
+
         <!-- REGRAS DE APROVAÇÃO (MOTOR DE VEREDICTO) TAB -->
         <div class="tab-pane fade {% if active_tab == 'regras' %}show active{% endif %}" id="regras" role="tabpanel">
             <div class="card shadow-sm border-0 rounded-4 overflow-hidden mb-4">
@@ -482,7 +484,29 @@
 
 {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+    // Sincronização e Ativação de Tabs pelo Bootstrap e URL Hash
+    const triggerTabList = document.querySelectorAll('#normaTabs button');
+    triggerTabList.forEach(triggerEl => {
+        triggerEl.addEventListener('click', function (event) {
+            event.preventDefault();
+            const tab = bootstrap.Tab.getOrCreateInstance(triggerEl);
+            tab.show();
+            const targetId = triggerEl.getAttribute('data-bs-target').replace('#', '');
+            const url = new URL(window.location);
+            url.searchParams.set('tab', targetId);
+            window.history.replaceState({}, '', url);
+        });
+    });
+
+    // Se houver parâmetro tab na URL ou active_tab do servidor, ativa explicitamente
+    const urlParams = new URLSearchParams(window.location.search);
+    const activeTabParam = urlParams.get('tab') || '{{ active_tab|default:"itens" }}';
+    const activeTabBtn = document.querySelector(`#normaTabs button[data-bs-target="#${activeTabParam}"]`);
+    if (activeTabBtn) {
+        const tabInstance = bootstrap.Tab.getOrCreateInstance(activeTabBtn);
+        tabInstance.show();
+    }
+
     // Event listener ao clicar nas linhas da tabela de Itens
     document.querySelectorAll('.item-detail-row').forEach(row => {
         row.addEventListener('click', function() {
