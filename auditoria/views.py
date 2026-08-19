@@ -3850,28 +3850,46 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                     pior_peso = peso
             status_item = reverse_hierarchy.get(pior_peso, "P")
 
-        # Coleta evidências sem duplicação de todas as perguntas deste item
+        # Coleta evidências filtradas conforme o status do item (sem misturar amostras conformes com não conformes)
         evidencias_item = []
         evidencias_vistas = set()
+        total_solicitacoes_item = 0
+        total_nc_solicitacoes_item = 0
 
         for p in todas_perguntas_item:
             r = respostas_map.get(p.id)
             if r:
                 solicitacoes_list = list(r.solicitacoes.all())
                 if solicitacoes_list:
+                    total_solicitacoes_item += len(solicitacoes_list)
                     for s in solicitacoes_list:
-                        ev_txt = ""
-                        if s.evidencia and s.evidencia.strip():
-                            if s.solicitacao and s.solicitacao.strip():
-                                ev_txt = f"{s.solicitacao.strip()}: {s.evidencia.strip()}"
-                            else:
-                                ev_txt = s.evidencia.strip()
-                        elif s.solicitacao and s.solicitacao.strip():
-                            ev_txt = s.solicitacao.strip()
+                        if s.conclusao == 'NC':
+                            total_nc_solicitacoes_item += 1
 
-                        if ev_txt and ev_txt not in evidencias_vistas:
-                            evidencias_vistas.add(ev_txt)
-                            evidencias_item.append(ev_txt)
+                        # Só adiciona no card de constatação/evidência se a amostra corresponder ao status do requisito
+                        incluir = False
+                        if status_item == 'NC' and s.conclusao == 'NC':
+                            incluir = True
+                        elif status_item == 'OBS' and s.conclusao in ['OBS', 'NC']:
+                            incluir = True
+                        elif status_item == 'OM' and s.conclusao in ['OM', 'OBS', 'NC']:
+                            incluir = True
+                        elif status_item == 'C' and s.conclusao in ['C', 'P']:
+                            incluir = True
+
+                        if incluir:
+                            ev_txt = ""
+                            if s.evidencia and s.evidencia.strip():
+                                if s.solicitacao and s.solicitacao.strip():
+                                    ev_txt = f"{s.solicitacao.strip()}: {s.evidencia.strip()}"
+                                else:
+                                    ev_txt = s.evidencia.strip()
+                            elif s.solicitacao and s.solicitacao.strip():
+                                ev_txt = s.solicitacao.strip()
+
+                            if ev_txt and ev_txt not in evidencias_vistas:
+                                evidencias_vistas.add(ev_txt)
+                                evidencias_item.append(ev_txt)
                 elif r.texto_resposta and r.texto_resposta.strip():
                     ev_txt = r.texto_resposta.strip()
                     if ev_txt not in evidencias_vistas:
@@ -3924,7 +3942,13 @@ def iso_fechamento_presentation_view(request, auditoria_id):
             if av_final and av_final.grau_nc:
                 is_maior = (av_final.grau_nc == 'MAIOR')
             else:
-                is_maior = len(evidencias_item) > 1 or any('crítica' in ev.lower() or 'grave' in ev.lower() for ev in evidencias_item)
+                # Regra inteligente de amostragem proporcional:
+                if total_solicitacoes_item > 0:
+                    # É maior se 50% ou mais das amostras falharem
+                    is_maior = (total_nc_solicitacoes_item / total_solicitacoes_item) >= 0.5
+                else:
+                    # Sem amostras explícitas, só vira maior se houver termo crítico/grave ou veredicto explicitamente maior
+                    is_maior = any('crítica' in ev.lower() or 'grave' in ev.lower() for ev in evidencias_item)
 
             if is_maior:
                 count_nc_maior += 1
