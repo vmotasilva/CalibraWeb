@@ -4177,6 +4177,9 @@ def iso_norma_detail(request, pk):
         
     perguntas = sorted(list(perguntas_qs), key=get_pergunta_sort_key)
         
+    modelos = ModeloAuditoriaIso.objects.filter(norma=norma).prefetch_related('perguntas')
+    auditorias = AuditoriaIso.objects.filter(norma=norma).order_by('-criado_em')
+
     try:
         regras_dict = {r.status_resultado: r for r in norma.regras_veredicto.all()}
     except Exception:
