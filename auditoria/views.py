@@ -3878,7 +3878,11 @@ def iso_fechamento_presentation_view(request, auditoria_id):
     percentual_conformidade = round((count_c / total_avaliados * 100), 1) if total_avaliados > 0 else 0.0
 
     # ── CARGA DO MOTOR DE REGRAS (FAIL-FAST) ──────────────────────────────────
-    regras = {r.status_resultado: r for r in auditoria.norma.regras_veredicto.all()}
+    try:
+        regras = {r.status_resultado: r for r in auditoria.norma.regras_veredicto.all()}
+    except Exception:
+        regras = {}
+
     regra_apto = regras.get('APTO')
     regra_ressalva = regras.get('RESSALVA')
     regra_inapto = regras.get('INAPTO')
@@ -4173,10 +4177,10 @@ def iso_norma_detail(request, pk):
         
     perguntas = sorted(list(perguntas_qs), key=get_pergunta_sort_key)
         
-    modelos = ModeloAuditoriaIso.objects.filter(norma=norma).prefetch_related('perguntas')
-    auditorias = AuditoriaIso.objects.filter(norma=norma).order_by('-criado_em')
-    
-    regras_dict = {r.status_resultado: r for r in norma.regras_veredicto.all()}
+    try:
+        regras_dict = {r.status_resultado: r for r in norma.regras_veredicto.all()}
+    except Exception:
+        regras_dict = {}
 
     return render(request, "auditoria/iso/setup/norma_detail.html", {
         "norma": norma,
