@@ -3,42 +3,12 @@
 
 {% block extra_css %}
 <style>
-    .interview-container {
-        max-width: 800px;
-        margin: 0 auto;
-        min-height: 70vh;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-    }
-    .question-card {
-        border-radius: 12px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        padding: 40px;
-        background: white;
-    }
-    .question-text {
-        font-size: 1.5rem;
-        font-weight: 600;
-        margin-bottom: 1rem;
-        color: #2c3e50;
-    }
-    .question-meta {
-        font-size: 0.9rem;
-        color: #7f8c8d;
-        margin-bottom: 2rem;
-    }
-    .textarea-response {
-        font-size: 1.1rem;
-        border-radius: 8px;
-        min-height: 150px;
-        resize: vertical;
-    }
     .btn-classificacao {
         border-radius: 30px;
-        padding: 10px 20px;
-        font-weight: 500;
-        transition: all 0.2s;
+        padding: 8px 18px;
+        font-weight: 600;
+        transition: all 0.2s ease-in-out;
+        font-size: 0.95rem;
     }
     .btn-classificacao.active {
         transform: scale(1.05);
@@ -56,6 +26,18 @@
         opacity: 0;
         transition: opacity 0.3s;
         box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        z-index: 10090;
+    }
+    .solicitacoes-scroll-container {
+        max-height: calc(100vh - 290px);
+        overflow-y: auto;
+    }
+    .tag-requisito-btn {
+        transition: all 0.2s;
+    }
+    .tag-requisito-btn:hover {
+        background-color: #e9ecef;
+        transform: translateY(-1px);
     }
 </style>
 {% endblock %}
@@ -64,10 +46,15 @@
 <div class="container-fluid py-4 px-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h3 class="fw-bold mb-1 text-dark"><i class="bi bi-chat-left-dots-fill text-primary me-2"></i>Auditoria ISO: {{ auditoria.norma.codigo }}{% if agenda %} ({{ agenda.titulo }}){% endif %}</h3>
+            <h3 class="fw-bold mb-1 text-dark">
+                <i class="bi bi-chat-left-dots-fill text-primary me-2"></i>Auditoria ISO: {{ auditoria.norma.codigo }}{% if agenda %} ({{ agenda.titulo }}){% endif %}
+            </h3>
             <p class="text-muted mb-0">Modo Entrevista de Auditoria</p>
         </div>
-        <div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-primary rounded-pill px-3 fw-bold" onclick="abrirDrawerRequisitos()">
+                <i class="bi bi-list-nested me-1"></i> Ver Escopo do Bloco
+            </button>
             <a href="{% url 'auditoria:iso_auditoria_cronograma' auditoria.id %}" class="btn btn-outline-secondary rounded-pill px-4 fw-bold">
                 <i class="bi bi-x-lg me-1"></i> Sair da Entrevista
             </a>
@@ -75,7 +62,7 @@
     </div>
 
     <div id="app">
-        <!-- JS irá renderizar o layout 2 colunas aqui -->
+        <!-- JS irá renderizar o layout balanceado 50/50 aqui -->
         <div class="text-center py-5">
             <div class="spinner-border text-primary" role="status">
               <span class="visually-hidden">Carregando...</span>
@@ -88,56 +75,23 @@
     </div>
 </div>
 
-<!-- Modal Criar Nova Pergunta para Outro Bloco Durante a Entrevista -->
-<div class="modal fade" id="modalNovaPerguntaEntrevista" tabindex="-1" aria-hidden="true" style="z-index: 10060;">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content shadow-lg border-0 rounded-4">
-            <form id="formNovaPerguntaEntrevista" action="" method="post">
-                {% csrf_token %}
-                <div class="modal-header bg-primary text-white py-3 border-0">
-                    <h5 class="modal-title fw-bold d-flex align-items-center gap-2">
-                        <i class="bi bi-plus-circle me-1"></i>
-                        <span>Nova Pergunta para <span id="modalEntrevistaBlocoTitulo"></span></span>
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body p-4">
-                    <div class="alert alert-info border-0 bg-primary bg-opacity-10 text-primary rounded-3 small mb-3">
-                        <i class="bi bi-lightbulb-fill me-1"></i>
-                        Insira uma nova pergunta direcionada a este bloco com base nos achados ou desdobramentos desta entrevista.
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-bold text-dark mb-1">Enunciado da Pergunta <span class="text-danger">*</span></label>
-                        <textarea name="texto_pergunta" class="form-control border-primary shadow-2xs" rows="3" placeholder="Ex: Como este processo verifica os registros gerados na etapa anterior?" required></textarea>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-bold text-dark mb-1">Evidências Esperadas / Dicas para o Auditor <span class="text-muted fw-normal small">(Opcional)</span></label>
-                        <textarea name="dica_resposta" class="form-control shadow-2xs" rows="2" placeholder="Ex: Verificar evidências de treinamento, registros de calibração..."></textarea>
-                    </div>
-
-                    <!-- Requisito Vinculado -->
-                    <div class="mb-2">
-                        <label class="form-label fw-bold text-dark mb-1">Requisito da Norma Associado</label>
-                        <div class="p-2.5 bg-light rounded-3 border d-flex flex-column gap-2" id="modalEntrevistaRequisitosContainer">
-                            <!-- Populado via JS -->
-                        </div>
-                    </div>
-
-                    <div id="hiddenItemIdsContainer"></div>
-                </div>
-                <div class="modal-footer border-0 bg-light">
-                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" id="btnSalvarPerguntaEntrevista">
-                        <i class="bi bi-check-lg me-1"></i> Adicionar Pergunta ao Bloco
-                    </button>
-                </div>
-            </form>
+<!-- ============================================================== -->
+<!-- OFFCANVAS / DRAWER: Navegação Rápida por Itens do Bloco       -->
+<!-- ============================================================== -->
+<div class="offcanvas offcanvas-start rounded-end-4 shadow-lg border-0" tabindex="-1" id="drawerRequisitos" style="width: 420px; z-index: 10080;">
+    <div class="offcanvas-header bg-primary text-white border-0 py-3">
+        <h5 class="offcanvas-title fw-bold d-flex align-items-center gap-2">
+            <i class="bi bi-list-check"></i> Escopo do Bloco
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+    </div>
+    <div class="offcanvas-body p-3 bg-light">
+        <p class="text-muted small mb-3">Clique em um requisito para navegar diretamente até a avaliação:</p>
+        <div class="list-group gap-2" id="lista-requisitos-drawer">
+            <!-- Populado dinamicamente via JS -->
         </div>
     </div>
 </div>
-
 
 <!-- Modal Transferir Solicitação para Outro Bloco -->
 <div class="modal fade" id="modalTransferirSolicitacao" tabindex="-1" aria-hidden="true" style="z-index: 10070;">
@@ -188,7 +142,6 @@
 {% csrf_token %}
 {% endblock %}
 
-
 {% block extra_js %}
 <script>
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
@@ -197,7 +150,7 @@
     const agendasDisponiveis = {{ agendas_json|safe }};
     let currentIndex = 0;
     let saveTimeout = null;
-    let transferSolId = null; // ID da solicitação sendo transferida
+    let transferSolId = null;
 
     const app = document.getElementById('app');
     const saveIndicator = document.getElementById('save-indicator');
@@ -210,98 +163,115 @@
 
         const p = perguntas[currentIndex];
 
-        // Restaura rascunho salvo do localStorage se o texto do servidor estiver vazio
-        const draftKey = `calibra_entrevista_${auditoriaId}_${p.id}`;
-        const localDraft = localStorage.getItem(draftKey);
-        if (localDraft && (!p.texto_resposta || p.texto_resposta.trim() === '')) {
-            p.texto_resposta = localDraft;
-        }
-        
-        let outrosBlocosHtml = '';
-        if (p.outros_blocos && p.outros_blocos.length > 0) {
+        // Popover content para outros blocos
+        let popoverDataContent = '';
+        let hasOutrosBlocos = (p.outros_blocos && p.outros_blocos.length > 0);
+        if (hasOutrosBlocos) {
+            let itemsHtml = '<div class="p-1" style="min-width: 240px;">';
             p.outros_blocos.forEach(b => {
-                outrosBlocosHtml += `
-                    <div class="card border rounded-3 p-3 mb-2 shadow-2xs bg-white">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span class="fw-bold text-primary small"><i class="bi bi-box-seam me-1"></i> ${b.titulo}</span>
-                            <span class="badge bg-secondary bg-opacity-10 text-dark rounded-pill px-2 py-0.5 small" id="badge-count-agenda-${b.agenda_id}">${b.total_perguntas} pergunta(s)</span>
-                        </div>
-                        <small class="text-muted d-block mb-2 font-monospace" style="font-size: 0.8rem;"><i class="bi bi-tag me-1"></i>Requisito em comum: ${b.itens_comum.join(', ')}</small>
+                itemsHtml += `
+                    <div class="py-1 border-bottom small">
+                        <div class="fw-bold text-primary"><i class="bi bi-box-seam me-1"></i>${b.titulo}</div>
+                        <div class="text-muted font-monospace" style="font-size: 0.75rem;">Requisito em comum: ${b.itens_comum.join(', ')}</div>
                     </div>
                 `;
             });
-        } else {
-            outrosBlocosHtml = `
-                <div class="alert alert-light border text-center py-4 rounded-3 text-muted small mb-0">
-                    <i class="bi bi-info-circle fs-4 d-block mb-1 text-secondary"></i>
-                    Nenhum outro bloco avalia o requisito <strong>${p.itens}</strong> nesta auditoria.
-                </div>
-            `;
+            itemsHtml += '</div>';
+            popoverDataContent = itemsHtml.replace(/"/g, '&quot;');
         }
 
         let html = `
-            <div class="row g-4 justify-content-center">
-                <!-- COLUNA 1: Card da Pergunta Atual -->
-                <div class="col-lg-7">
-                    <div class="question-card shadow-sm border rounded-4 p-4 bg-white">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-1.5 fw-bold">Pergunta ${currentIndex + 1} de ${perguntas.length}</span>
-                            <span class="badge bg-secondary bg-opacity-10 text-dark rounded-pill px-3 py-1.5 font-monospace fw-bold"><i class="bi bi-tag me-1"></i>Itens: ${p.itens}</span>
-                        </div>
-                        
-                        <div class="question-text fs-4 fw-bold text-dark mb-2" style="line-height: 1.4; white-space: pre-wrap;">${p.texto_pergunta}</div>
-                        ${p.dica_auditor ? `<div class="question-meta alert alert-info py-2 px-3 rounded-3 border-0 small mb-3"><i class="bi bi-lightbulb me-1"></i> <strong>Dica / Evidência:</strong> ${p.dica_auditor}</div>` : ''}
-                        
-                        <div class="mb-4 mt-3">
-                            <label class="form-label fw-bold text-dark mb-1">Anotações / Evidências Coletadas pelo Auditor:</label>
-                            <textarea id="resposta-text" class="form-control textarea-response shadow-2xs" rows="4" placeholder="Digite aqui os registros, documentos e evidências apresentadas pelo auditado...">${p.texto_resposta || ''}</textarea>
-                        </div>
-
-                        <div class="d-flex justify-content-center gap-2 mb-4 flex-wrap">
-                            <button type="button" class="btn btn-outline-success btn-classificacao px-3 py-2 ${p.classificacao === 'C' ? 'active btn-success text-white' : ''}" onclick="setClassificacao('C')">✅ Conforme</button>
-                            <button type="button" class="btn btn-outline-danger btn-classificacao px-3 py-2 ${p.classificacao === 'NC' ? 'active btn-danger text-white' : ''}" onclick="setClassificacao('NC')">🔴 Não Conforme</button>
-                            <button type="button" class="btn btn-outline-warning btn-classificacao px-3 py-2 ${p.classificacao === 'OM' ? 'active btn-warning text-dark' : ''}" onclick="setClassificacao('OM')">🟠 Oportunidade</button>
-                            <button type="button" class="btn btn-outline-secondary btn-classificacao px-3 py-2 ${p.classificacao === 'NA' ? 'active btn-secondary text-white' : ''}" onclick="setClassificacao('NA')">ℹ️ N/A</button>
-                        </div>
-
-                        <!-- Seção de Solicitações de Evidência -->
-                        <div class="mt-4 pt-3 border-top">
+            <div class="row g-4 align-items-stretch">
+                <!-- COLUNA ESQUERDA (50%): Pergunta, Contexto e Veredicto -->
+                <div class="col-lg-6 d-flex flex-column">
+                    <div class="card shadow-sm border rounded-4 p-4 bg-white flex-grow-1 d-flex flex-column justify-content-between">
+                        <div>
                             <div class="d-flex justify-content-between align-items-center mb-3">
-                                <div>
-                                    <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-                                        <i class="bi bi-file-earmark-check text-primary fs-5"></i>
-                                        <span>Solicitações de Evidência & Amostragens</span>
-                                        <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill small ms-1" id="solicitacoes-count-badge">${(p.solicitacoes || []).length}</span>
-                                    </h6>
-                                    <small class="text-muted d-block" style="font-size: 0.8rem;">Registre itens ou amostras solicitadas para comprovar a conformidade do requisito.</small>
+                                <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-1.5 fw-bold">
+                                    Pergunta ${currentIndex + 1} de ${perguntas.length}
+                                </span>
+                                
+                                <div class="d-flex align-items-center gap-2">
+                                    <!-- Tag Clicável para abrir o Escopo do Bloco -->
+                                    <button type="button" 
+                                            class="btn btn-sm btn-light border rounded-pill px-3 py-1 fw-bold font-monospace text-primary shadow-2xs d-flex align-items-center gap-1 tag-requisito-btn"
+                                            onclick="abrirDrawerRequisitos()" 
+                                            title="Clique para ver todos os itens e navegar">
+                                        <i class="bi bi-tag-fill text-primary"></i>
+                                        <span>Itens: ${p.itens}</span>
+                                        <i class="bi bi-chevron-down text-muted ms-1" style="font-size: 0.75rem;"></i>
+                                    </button>
+
+                                    <!-- Ícone Informativo com Popover para Outros Blocos -->
+                                    ${hasOutrosBlocos ? `
+                                        <button type="button" 
+                                                class="btn btn-sm btn-outline-info rounded-circle p-0 d-flex align-items-center justify-content-center"
+                                                style="width: 30px; height: 30px;"
+                                                id="btnPopoverOutrosBlocos"
+                                                data-bs-toggle="popover" 
+                                                data-bs-trigger="hover focus"
+                                                data-bs-placement="bottom"
+                                                data-bs-html="true"
+                                                data-bs-title="Outros Blocos com este Requisito"
+                                                data-bs-content="${popoverDataContent}">
+                                            <i class="bi bi-diagram-3"></i>
+                                        </button>
+                                    ` : ''}
                                 </div>
-                                <button type="button" class="btn btn-outline-primary btn-sm rounded-pill fw-bold px-3 shadow-2xs" onclick="adicionarSolicitacaoEvidencia()">
-                                    <i class="bi bi-plus-lg me-1"></i> Nova Solicitação
+                            </div>
+                            
+                            <div class="question-text fs-4 fw-bold text-dark mb-3" style="line-height: 1.4; white-space: pre-wrap;">${p.texto_pergunta}</div>
+                            ${p.dica_auditor ? `
+                                <div class="question-meta alert alert-info py-2 px-3 rounded-3 border-0 small mb-4">
+                                    <i class="bi bi-lightbulb-fill me-1"></i> <strong>Dica / Evidência:</strong> ${p.dica_auditor}
+                                </div>
+                            ` : ''}
+                        </div>
+
+                        <!-- Classificação / Veredicto Global do Requisito -->
+                        <div class="mt-auto pt-3 border-top">
+                            <label class="form-label text-muted small fw-bold text-uppercase d-block text-center mb-2">
+                                Classificação do Requisito
+                            </label>
+
+                            <div class="d-flex justify-content-center gap-2 mb-4 flex-wrap">
+                                <button type="button" class="btn btn-outline-success btn-classificacao ${p.classificacao === 'C' ? 'active btn-success text-white' : ''}" onclick="setClassificacao('C')">✅ Conforme</button>
+                                <button type="button" class="btn btn-outline-danger btn-classificacao ${p.classificacao === 'NC' ? 'active btn-danger text-white' : ''}" onclick="setClassificacao('NC')">🔴 Não Conforme</button>
+                                <button type="button" class="btn btn-outline-warning btn-classificacao ${p.classificacao === 'OM' ? 'active btn-warning text-dark' : ''}" onclick="setClassificacao('OM')">🟠 Oportunidade</button>
+                                <button type="button" class="btn btn-outline-secondary btn-classificacao ${p.classificacao === 'NA' ? 'active btn-secondary text-white' : ''}" onclick="setClassificacao('NA')">ℹ️ N/A</button>
+                            </div>
+
+                            <div class="d-flex justify-content-between pt-2">
+                                <button type="button" class="btn btn-light rounded-pill px-4 fw-bold border" onclick="prevQuestion()" ${currentIndex === 0 ? 'disabled' : ''}>
+                                    <i class="bi bi-arrow-left me-1"></i> Anterior
+                                </button>
+                                <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" onclick="nextQuestion()">
+                                    ${currentIndex === perguntas.length - 1 ? 'Finalizar Entrevista <i class="bi bi-check2-all ms-1"></i>' : 'Próxima <i class="bi bi-arrow-right ms-1"></i>'}
                                 </button>
                             </div>
-
-                            <div id="solicitacoes-list-container" class="d-flex flex-column gap-3">
-                                ${renderSolicitacoesList(p.solicitacoes || [])}
-                            </div>
-                        </div>
-
-                        <div class="d-flex justify-content-between pt-4 mt-4 border-top">
-                            <button type="button" class="btn btn-light rounded-pill px-4 fw-bold" onclick="prevQuestion()" ${currentIndex === 0 ? 'disabled' : ''}><i class="bi bi-arrow-left me-1"></i> Anterior</button>
-                            <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" onclick="nextQuestion()">${currentIndex === perguntas.length - 1 ? 'Finalizar Entrevista <i class="bi bi-check2-all ms-1"></i>' : 'Próxima <i class="bi bi-arrow-right ms-1"></i>'}</button>
                         </div>
                     </div>
                 </div>
 
-                <!-- COLUNA 2: Outros Blocos Associados ao Requisito Atual -->
-                <div class="col-lg-5">
-                    <div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 d-flex flex-column">
-                        <div class="mb-3">
-                            <h6 class="fw-bold text-dark mb-1"><i class="bi bi-diagram-3-fill text-primary me-2"></i>Outros Blocos com este Requisito</h6>
-                            <small class="text-muted d-block">Outros blocos da auditoria que também avaliam os requisitos desta pergunta (<strong>${p.itens}</strong>).</small>
+                <!-- COLUNA DIREITA (50%): Gestão Central de Solicitações & Amostragens -->
+                <div class="col-lg-6 d-flex flex-column">
+                    <div class="card shadow-sm border rounded-4 p-4 bg-white flex-grow-1 d-flex flex-column">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                                    <i class="bi bi-folder-check text-primary"></i>
+                                    <span>Solicitações & Amostragens</span>
+                                    <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill small ms-1" id="solicitacoes-count-badge">${(p.solicitacoes || []).length}</span>
+                                </h5>
+                                <small class="text-muted d-block" style="font-size: 0.82rem;">Registre as amostras e documentos auditados para este requisito.</small>
+                            </div>
+                            <button type="button" class="btn btn-primary btn-sm rounded-pill fw-bold px-3 shadow-sm" onclick="adicionarSolicitacaoEvidencia()">
+                                <i class="bi bi-plus-lg me-1"></i> Nova Solicitação
+                            </button>
                         </div>
-                        
-                        <div class="flex-grow-1" style="max-height: 520px; overflow-y: auto;">
-                            ${outrosBlocosHtml}
+
+                        <div id="solicitacoes-list-container" class="d-flex flex-column gap-3 solicitacoes-scroll-container pe-1">
+                            ${renderSolicitacoesList(p.solicitacoes || [])}
                         </div>
                     </div>
                 </div>
@@ -310,65 +280,78 @@
         
         app.innerHTML = html;
 
-        // Adiciona evento de digitação para Autosave + localStorage
-        const textarea = document.getElementById('resposta-text');
-        if (textarea) {
-            textarea.addEventListener('input', () => {
-                p.texto_resposta = textarea.value;
-                localStorage.setItem(draftKey, textarea.value);
-                triggerAutosave();
-            });
+        // Inicializa popover se o elemento existir
+        const popoverEl = document.getElementById('btnPopoverOutrosBlocos');
+        if (popoverEl) {
+            new bootstrap.Popover(popoverEl);
         }
+    }
 
-        // Ativa manipulador dos botões de gerar pergunta no outro bloco
-        document.querySelectorAll('.btn-gerar-pergunta-entrevista').forEach(btn => {
-            btn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                const agendaId = this.dataset.agendaId;
-                const agendaTitulo = this.dataset.agendaTitulo;
-                let itemObjects = [];
-                try {
-                    itemObjects = JSON.parse(this.dataset.itemObjects || '[]');
-                } catch(err) { itemObjects = []; }
+    // ── Navegação Direta (Random Access) ──────────────────────────────────────────
+    function goToQuestion(targetIndex) {
+        if (targetIndex < 0 || targetIndex >= perguntas.length) return;
+        doSave();
+        currentIndex = targetIndex;
+        renderQuestion();
 
-                const form = document.getElementById('formNovaPerguntaEntrevista');
-                form.action = `/auditoria/iso/setup/auditorias/${auditoriaId}/agendas/${agendaId}/perguntas/nova/`;
+        // Fecha o Offcanvas após clicar
+        const drawerEl = document.getElementById('drawerRequisitos');
+        if (drawerEl) {
+            const drawerInstance = bootstrap.Offcanvas.getInstance(drawerEl);
+            if (drawerInstance) drawerInstance.hide();
+        }
+    }
 
-                document.getElementById('modalEntrevistaBlocoTitulo').textContent = agendaTitulo;
+    function abrirDrawerRequisitos() {
+        const container = document.getElementById('lista-requisitos-drawer');
+        container.innerHTML = '';
 
-                const reqContainer = document.getElementById('modalEntrevistaRequisitosContainer');
-                const hiddenContainer = document.getElementById('hiddenItemIdsContainer');
-                reqContainer.innerHTML = '';
-                hiddenContainer.innerHTML = '';
+        perguntas.forEach((p, idx) => {
+            const isActive = idx === currentIndex;
+            
+            let statusBadge = '<span class="badge bg-secondary bg-opacity-25 text-dark border-0">Pendente</span>';
+            if (p.classificacao === 'C') statusBadge = '<span class="badge bg-success">Conforme</span>';
+            else if (p.classificacao === 'NC') statusBadge = '<span class="badge bg-danger">Não Conforme</span>';
+            else if (p.classificacao === 'OM') statusBadge = '<span class="badge bg-warning text-dark">Oportunidade</span>';
+            else if (p.classificacao === 'NA') statusBadge = '<span class="badge bg-secondary">N/A</span>';
 
-                itemObjects.forEach(io => {
-                    const span = document.createElement('div');
-                    span.className = 'badge bg-primary text-white rounded-3 p-2.5 small text-start w-100 fw-normal shadow-2xs';
-                    span.style.whiteSpace = 'normal';
-                    span.style.wordBreak = 'break-word';
-                    span.style.lineHeight = '1.4';
-                    span.innerHTML = `<strong class="fw-bold">${io.ref}</strong> - ${io.titulo}`;
-                    reqContainer.appendChild(span);
+            const totalSols = (p.solicitacoes || []).length;
+            const solsBadge = totalSols > 0 
+                ? `<span class="badge bg-primary bg-opacity-10 text-primary rounded-pill small me-1"><i class="bi bi-files me-1"></i>${totalSols}</span>` 
+                : '';
 
-                    const input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = 'itens_norma';
-                    input.value = io.id;
-                    hiddenContainer.appendChild(input);
-                });
+            const itemBtn = document.createElement('button');
+            itemBtn.type = 'button';
+            itemBtn.className = `list-group-item list-group-item-action rounded-3 border p-3 text-start d-flex justify-content-between align-items-center mb-1 shadow-2xs ${
+                isActive ? 'border-primary bg-primary bg-opacity-10 fw-bold' : 'bg-white'
+            }`;
+            
+            itemBtn.innerHTML = `
+                <div style="max-width: 72%;">
+                    <div class="d-flex align-items-center gap-1 mb-1">
+                        <span class="badge bg-dark bg-opacity-10 text-dark font-monospace fw-bold">${p.itens || 'Geral'}</span>
+                        <span class="text-muted small">#${idx + 1}</span>
+                    </div>
+                    <div class="text-dark small text-truncate" style="font-size: 0.82rem;">${p.texto_pergunta}</div>
+                </div>
+                <div class="d-flex align-items-center">
+                    ${solsBadge}
+                    ${statusBadge}
+                </div>
+            `;
 
-                const modalEl = document.getElementById('modalNovaPerguntaEntrevista');
-                if (modalEl && modalEl.parentElement !== document.body) {
-                    document.body.appendChild(modalEl);
-                }
-                const modal = new bootstrap.Modal(modalEl);
-                modal.show();
-            });
+            itemBtn.onclick = () => goToQuestion(idx);
+            container.appendChild(itemBtn);
         });
+
+        const drawerEl = document.getElementById('drawerRequisitos');
+        if (drawerEl) {
+            new bootstrap.Offcanvas(drawerEl).show();
+        }
     }
 
     function setClassificacao(val) {
-        doSave(); // Salva estado atual imediatamente antes de alterar
+        doSave();
         perguntas[currentIndex].classificacao = val;
         renderQuestion();
         triggerAutosave(true);
@@ -379,16 +362,13 @@
         if (immediate) {
             doSave();
         } else {
-            saveTimeout = setTimeout(doSave, 800); // 800ms de debounce
+            saveTimeout = setTimeout(doSave, 800);
         }
     }
 
     function doSave() {
         const p = perguntas[currentIndex];
         if (!p) return;
-
-        const draftKey = `calibra_entrevista_${auditoriaId}_${p.id}`;
-        localStorage.setItem(draftKey, p.texto_resposta || '');
 
         fetch("{% url 'auditoria:api_iso_autosave_resposta' %}", {
             method: 'POST',
@@ -407,7 +387,6 @@
         .then(data => {
             if (data.status === 'success') {
                 showSaveIndicator();
-                localStorage.removeItem(draftKey);
             }
         })
         .catch(err => console.error("Erro no autosave:", err));
@@ -416,51 +395,45 @@
     function renderSolicitacoesList(sols) {
         if (!sols || sols.length === 0) {
             return `
-                <div class="alert alert-light border text-center py-3 rounded-3 text-muted small mb-0">
-                    <i class="bi bi-inbox fs-5 d-block mb-1 text-secondary"></i>
-                    Nenhuma solicitação de evidência registrada nesta pergunta ainda.
+                <div class="alert alert-light border text-center py-4 rounded-3 text-muted small mb-0">
+                    <i class="bi bi-folder2-open fs-3 d-block mb-2 text-secondary"></i>
+                    Nenhuma solicitação ou evidência registrada para este requisito.<br>
+                    Clique em <strong>+ Nova Solicitação</strong> para registrar uma amostra.
                 </div>
             `;
         }
 
         let html = '';
         sols.forEach((s, idx) => {
-            let concBadge = '';
-            if (s.conclusao === 'C') concBadge = 'btn-success';
-            else if (s.conclusao === 'NC') concBadge = 'btn-danger';
-            else if (s.conclusao === 'OM') concBadge = 'btn-warning text-dark';
-            else if (s.conclusao === 'NA') concBadge = 'btn-secondary';
-            else concBadge = 'btn-outline-secondary';
-
             html += `
                 <div class="card border rounded-3 p-3 bg-light shadow-2xs position-relative" id="sol-card-${s.id}">
                     <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-                        <span class="badge bg-secondary bg-opacity-10 text-dark rounded-pill px-2.5 py-1 small fw-bold">Solicitação #${idx + 1}</span>
+                        <span class="badge bg-secondary bg-opacity-10 text-dark rounded-pill px-2.5 py-1 small fw-bold">Amostra #${idx + 1}</span>
                         <div class="d-flex align-items-center gap-1">
                             <span class="small text-muted me-1 fw-bold">Conclusão:</span>
                             <div class="btn-group btn-group-sm" role="group">
-                                <button type="button" class="btn ${s.conclusao === 'C' ? 'btn-success' : 'btn-outline-success'} px-2 py-0.5 small" onclick="setConclusaoSolicitacao(${s.id}, 'C')">✅ Conforme</button>
-                                <button type="button" class="btn ${s.conclusao === 'NC' ? 'btn-danger' : 'btn-outline-danger'} px-2 py-0.5 small" onclick="setConclusaoSolicitacao(${s.id}, 'NC')">🔴 Não Conforme</button>
+                                <button type="button" class="btn ${s.conclusao === 'C' ? 'btn-success' : 'btn-outline-success'} px-2 py-0.5 small" onclick="setConclusaoSolicitacao(${s.id}, 'C')">✅ C</button>
+                                <button type="button" class="btn ${s.conclusao === 'NC' ? 'btn-danger' : 'btn-outline-danger'} px-2 py-0.5 small" onclick="setConclusaoSolicitacao(${s.id}, 'NC')">🔴 NC</button>
                                 <button type="button" class="btn ${s.conclusao === 'OM' ? 'btn-warning text-dark' : 'btn-outline-warning text-dark'} px-2 py-0.5 small" onclick="setConclusaoSolicitacao(${s.id}, 'OM')">🟠 OM</button>
-                                <button type="button" class="btn ${s.conclusao === 'NA' ? 'btn-secondary' : 'btn-outline-secondary'} px-2 py-0.5 small" onclick="setConclusaoSolicitacao(${s.id}, 'NA')">ℹ️ N/A</button>
+                                <button type="button" class="btn ${s.conclusao === 'NA' ? 'btn-secondary' : 'btn-outline-secondary'} px-2 py-0.5 small" onclick="setConclusaoSolicitacao(${s.id}, 'NA')">ℹ️ NA</button>
                             </div>
-                            <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-1" onclick="removerSolicitacaoEvidencia(${s.id})" title="Excluir Solicitação">
-                                <i class="bi bi-trash3"></i>
+                            <button type="button" class="btn btn-sm btn-link text-warning p-0 ms-2" onclick="abrirModalTransferir(${s.id})" title="Transferir para outro bloco">
+                                <i class="bi bi-arrow-left-right fs-6"></i>
                             </button>
-                            <button type="button" class="btn btn-sm btn-link text-warning p-0 ms-1" onclick="abrirModalTransferir(${s.id})" title="Transferir para outro bloco">
-                                <i class="bi bi-arrow-left-right"></i>
+                            <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-1" onclick="removerSolicitacaoEvidencia(${s.id})" title="Excluir Solicitação">
+                                <i class="bi bi-trash3 fs-6"></i>
                             </button>
                         </div>
                     </div>
 
                     <div class="mb-2">
                         <label class="form-label fw-bold text-dark mb-1 small">Item / Documento Solicitado <span class="text-danger">*</span></label>
-                        <input type="text" id="sol-texto-${s.id}" class="form-control form-control-sm bg-white border" placeholder="Ex: Certificado de Calibração do Manômetro M-04..." value="${s.solicitacao || ''}" onchange="salvarEdicaoSolicitacao(${s.id})">
+                        <input type="text" id="sol-texto-${s.id}" class="form-control form-control-sm bg-white border" placeholder="Ex: Certificado de Calibração, Ata de Reunião, Registro de Treinamento..." value="${s.solicitacao || ''}" onchange="salvarEdicaoSolicitacao(${s.id})">
                     </div>
 
                     <div>
                         <label class="form-label fw-bold text-dark mb-1 small">Evidência Apresentada / Constatada pelo Auditor</label>
-                        <textarea id="sol-evidencia-${s.id}" class="form-control form-control-sm bg-white border" rows="2" placeholder="Ex: Apresentado laudo #1042/2026 emitido em 12/04 com selo RBC..." onchange="salvarEdicaoSolicitacao(${s.id})">${s.evidencia || ''}</textarea>
+                        <textarea id="sol-evidencia-${s.id}" class="form-control form-control-sm bg-white border" rows="2" placeholder="Ex: Apresentado laudo #1042 emitido em 12/04 com selo RBC conforme procedimento..." onchange="salvarEdicaoSolicitacao(${s.id})">${s.evidencia || ''}</textarea>
                     </div>
                 </div>
             `;
@@ -584,7 +557,6 @@
     function abrirModalTransferir(solId) {
         transferSolId = solId;
 
-        // Preenche select de blocos
         const selectBloco = document.getElementById('transferSelectBloco');
         const selectPergunta = document.getElementById('transferSelectPergunta');
         selectBloco.innerHTML = '<option value="" disabled selected>Selecione um bloco...</option>';
@@ -604,7 +576,7 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        // Popula perguntas ao mudar bloco
+        // Popula perguntas ao mudar bloco no modal de transferência
         const selectBloco = document.getElementById('transferSelectBloco');
         const selectPergunta = document.getElementById('transferSelectPergunta');
 
@@ -644,11 +616,9 @@
                     });
                     const data = await resp.json();
                     if (data.success) {
-                        // Remove da lista local
                         const p = perguntas[currentIndex];
                         p.solicitacoes = (p.solicitacoes || []).filter(s => s.id !== transferSolId);
                         renderQuestion();
-                        // Fecha modal
                         const modalEl = document.getElementById('modalTransferirSolicitacao');
                         bootstrap.Modal.getInstance(modalEl)?.hide();
                         showSaveIndicatorMessage(data.message || 'Solicitação transferida!');
@@ -666,72 +636,20 @@
         }
 
         renderQuestion();
-
-        const formNova = document.getElementById('formNovaPerguntaEntrevista');
-        if (formNova) {
-            formNova.addEventListener('submit', async function(e) {
-                e.preventDefault();
-                const btnSubmit = document.getElementById('btnSalvarPerguntaEntrevista');
-                const origHtml = btnSubmit.innerHTML;
-                btnSubmit.disabled = true;
-                btnSubmit.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Salvando...`;
-
-                try {
-                    const formData = new FormData(formNova);
-                    const response = await fetch(formNova.action, {
-                        method: 'POST',
-                        body: formData,
-                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                    });
-
-                    const data = await response.json();
-                    if (data.success) {
-                        // Fechar Modal
-                        const modalEl = document.getElementById('modalNovaPerguntaEntrevista');
-                        const modal = bootstrap.Modal.getInstance(modalEl);
-                        if (modal) modal.hide();
-
-                        // Limpar o formulário
-                        formNova.reset();
-
-                        // Notificação Toast
-                        showSaveIndicatorMessage(data.message || 'Pergunta adicionada com sucesso!');
-
-                        // Atualiza o contador de perguntas no card lateral se visível
-                        const badgeCount = document.getElementById(`badge-count-agenda-${data.agenda_id}`);
-                        if (badgeCount && data.total_perguntas) {
-                            badgeCount.textContent = `${data.total_perguntas} pergunta(s)`;
-                        }
-                    } else {
-                        alert(data.error || 'Erro ao salvar pergunta.');
-                    }
-                } catch (err) {
-                    console.error('Erro ao enviar formulário:', err);
-                    formNova.submit();
-                } finally {
-                    btnSubmit.disabled = false;
-                    btnSubmit.innerHTML = origHtml;
-                }
-            });
-        }
-    }); // fim DOMContentLoaded
-
+    });
 
     function nextQuestion() {
         doSave();
         if (currentIndex < perguntas.length - 1) {
-            currentIndex++;
-            renderQuestion();
+            goToQuestion(currentIndex + 1);
         } else {
             window.location.href = "{% url 'auditoria:iso_auditoria_detail' auditoria.id %}";
         }
     }
 
     function prevQuestion() {
-        doSave();
         if (currentIndex > 0) {
-            currentIndex--;
-            renderQuestion();
+            goToQuestion(currentIndex - 1);
         }
     }
 
@@ -748,3 +666,4 @@
     }
 </script>
 {% endblock %}
+
