@@ -87,7 +87,7 @@
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link {% if active_tab == 'regras' %}active{% endif %} fw-semibold" id="regras-tab" data-bs-toggle="tab" data-bs-target="#regras" type="button" role="tab">
-                <i class="bi bi-shield-shaded me-1"></i> ⚖️ Regras de Aprovação
+                <i class="bi bi-shield-check me-1"></i> 🛡️ ⚖️ Regras de Aprovação
             </button>
         </li>
     </ul>
@@ -327,112 +327,172 @@
         <!-- REGRAS DE APROVAÇÃO (MOTOR DE VEREDICTO) TAB -->
         <div class="tab-pane fade {% if active_tab == 'regras' %}show active{% endif %}" id="regras" role="tabpanel">
             <div class="card shadow-sm border-0 rounded-4 overflow-hidden mb-4">
-                <div class="card-header bg-white py-3 px-4 border-0 d-flex justify-content-between align-items-center">
+                <div class="card-header bg-white py-3.5 px-4 border-0 d-flex flex-wrap justify-content-between align-items-center gap-3">
                     <div>
-                        <h5 class="mb-1 fw-bold text-dark"><i class="bi bi-shield-check text-primary me-2"></i>Motor de Regras de Aprovação & Fechamento</h5>
-                        <p class="text-muted small mb-0">Parametrize os limiares de tolerância e mensagens oficiais para o parecer executivo desta norma ({{ norma.codigo }}).</p>
+                        <h5 class="mb-1 fw-bold text-dark d-flex align-items-center gap-2">
+                            <i class="bi bi-shield-check text-primary"></i>
+                            <span>Motor de Regras de Aprovação & Veredicto</span>
+                        </h5>
+                        <p class="text-muted small mb-0">Parametrize os limiares de risco e pareceres automáticos para as auditorias da norma <span class="fw-semibold text-primary">{{ norma.codigo }}</span>.</p>
                     </div>
                 </div>
-                <div class="card-body p-4">
+
+                <div class="card-body p-4 pt-2">
                     <form method="POST" action="{% url 'auditoria:iso_norma_regras_salvar' norma.id %}">
                         {% csrf_token %}
-                        
-                        <div class="row g-4">
-                            <!-- 1. APTO -->
+
+                        <!-- A. Toggle de Modalidade de Avaliação -->
+                        <div class="bg-light border rounded-3 p-3.5 mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="form-check form-switch fs-4 mb-0">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="toggleMatrizEstrita" name="usar_matriz_estrita" value="1" checked onchange="toggleModoEstrito(this.checked)">
+                                </div>
+                                <div>
+                                    <label class="form-check-label fw-bold text-dark fs-6 d-block" for="toggleMatrizEstrita">
+                                        Utilizar Matriz de Risco Estrita
+                                    </label>
+                                    <span class="text-muted small">Baseado exclusivamente na contagem e gravidade das Não Conformidades (NC Maior / NC Menor), ignorando a tolerância meramente percentual.</span>
+                                </div>
+                            </div>
+                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-3 py-2 fw-semibold">
+                                <i class="bi bi-cpu me-1"></i> Modo Corporativo Rígido
+                            </span>
+                        </div>
+
+                        <!-- B. Cards de Configuração dos 3 Veredictos (Grid de 3 Colunas) -->
+                        <div class="row g-4 mb-4">
+                            <!-- Card 1: ADEQUADO (Apto) -->
                             <div class="col-lg-4">
                                 <div class="card border-2 border-success h-100 rounded-4 shadow-sm">
                                     <div class="card-header bg-success text-white py-3 rounded-top-4 d-flex justify-content-between align-items-center">
-                                        <h6 class="mb-0 fw-bold"><i class="bi bi-check-circle-fill me-2"></i>[ Apto ]</h6>
-                                        <span class="badge bg-white text-success fw-bold">Verde</span>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="fs-5">🟢</span>
+                                            <h6 class="mb-0 fw-bold">ADEQUADO (Apto)</h6>
+                                        </div>
+                                        <span class="badge bg-white text-success fw-bold px-2.5 py-1">Nível 1</span>
                                     </div>
-                                    <div class="card-body p-3">
-                                        <div class="mb-3">
-                                            <label class="form-label small fw-bold text-dark">% Mínimo de Conformidade</label>
-                                            <div class="input-group input-group-sm">
-                                                <input type="number" step="0.1" min="0" max="100" name="apto_min_pct" class="form-control" value="{{ regra_apto.min_percentual_conformidade|default:'95.0' }}">
-                                                <span class="input-group-text">%</span>
-                                            </div>
-                                            <small class="text-muted" style="font-size: 0.75rem;">Índice mínimo global de conformidades.</small>
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label class="form-label small fw-bold text-dark">Máx. NC Maior Permitida</label>
-                                            <input type="number" min="0" name="apto_max_nc_maior" class="form-control form-control-sm" value="{{ regra_apto.max_nc_maior|default:'0' }}">
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label class="form-label small fw-bold text-dark">Máx. NC Menor Permitida</label>
-                                            <input type="number" min="0" name="apto_max_nc_menor" class="form-control form-control-sm" value="{{ regra_apto.max_nc_menor|default:'0' }}">
-                                        </div>
-
+                                    <div class="card-body p-3.5 d-flex flex-column justify-content-between">
                                         <div>
-                                            <label class="form-label small fw-bold text-dark">Parecer Padrão no Relatório</label>
-                                            <textarea name="apto_texto" class="form-control form-control-sm" rows="5" placeholder="Texto institucional emitido no slide final...">{{ regra_apto.texto_parecer_padrao|default:"O Sistema de Gestão auditado atende plenamente aos requisitos da norma, evidenciando maturidade e conformidade de seus processos. Recomendado para certificação." }}</textarea>
+                                            <div class="mb-3 container-pct" style="display: none;">
+                                                <label class="form-label small fw-bold text-dark">% Mínimo de Conformidade</label>
+                                                <div class="input-group input-group-sm">
+                                                    <input type="number" step="0.1" min="0" max="100" name="apto_min_pct" class="form-control" value="{{ regra_apto.min_percentual_conformidade|default:'95.0' }}">
+                                                    <span class="input-group-text">%</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label class="form-label small fw-bold text-dark d-flex align-items-center gap-1">
+                                                    <span>Máximo de NCs Maiores Permitidas</span>
+                                                    <i class="bi bi-info-circle text-muted" title="Limite estrito de falhas sistêmicas"></i>
+                                                </label>
+                                                <input type="number" min="0" name="apto_max_nc_maior" class="form-control form-control-sm fw-semibold" value="{{ regra_apto.max_nc_maior|default:'0' }}">
+                                                <small class="text-muted" style="font-size: 0.75rem;">Recomendado: 0 (Zero tolerância a falhas críticas)</small>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label class="form-label small fw-bold text-dark d-flex align-items-center gap-1">
+                                                    <span>Máximo de NCs Menores Permitidas</span>
+                                                    <i class="bi bi-info-circle text-muted" title="Limite estrito de falhas pontuais"></i>
+                                                </label>
+                                                <input type="number" min="0" name="apto_max_nc_menor" class="form-control form-control-sm fw-semibold" value="{{ regra_apto.max_nc_menor|default:'2' }}">
+                                                <small class="text-muted" style="font-size: 0.75rem;">Exemplo: tolerar no máximo 2 NCs pontuais</small>
+                                            </div>
+
+                                            <div class="mb-2">
+                                                <label class="form-label small fw-bold text-dark">Parecer Padrão no Relatório</label>
+                                                <textarea name="apto_texto" class="form-control form-control-sm" rows="5" placeholder="Texto institucional emitido no slide final...">{{ regra_apto.texto_parecer_padrao|default:"Sistema de Gestão Adequado e Conforme. Os processos demonstram maturidade e conformidade aos requisitos normativos." }}</textarea>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- 2. APTO COM RESSALVAS -->
+                            <!-- Card 2: MELHORIA NECESSÁRIA (Ressalva) -->
                             <div class="col-lg-4">
                                 <div class="card border-2 border-warning h-100 rounded-4 shadow-sm">
                                     <div class="card-header bg-warning text-dark py-3 rounded-top-4 d-flex justify-content-between align-items-center">
-                                        <h6 class="mb-0 fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>[ Apto com Ressalvas ]</h6>
-                                        <span class="badge bg-dark text-white fw-bold">Amarelo</span>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="fs-5">🟡</span>
+                                            <h6 class="mb-0 fw-bold">MELHORIA NECESSÁRIA (Ressalva)</h6>
+                                        </div>
+                                        <span class="badge bg-dark text-white fw-bold px-2.5 py-1">Nível 2</span>
                                     </div>
-                                    <div class="card-body p-3">
-                                        <div class="mb-3">
-                                            <label class="form-label small fw-bold text-dark">% Mínimo de Conformidade</label>
-                                            <div class="input-group input-group-sm">
-                                                <input type="number" step="0.1" min="0" max="100" name="ressalva_min_pct" class="form-control" value="{{ regra_ressalva.min_percentual_conformidade|default:'80.0' }}">
-                                                <span class="input-group-text">%</span>
-                                            </div>
-                                            <small class="text-muted" style="font-size: 0.75rem;">Abaixo disto passa a ser Inapto.</small>
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label class="form-label small fw-bold text-dark">Máx. NC Maior Permitida</label>
-                                            <input type="number" min="0" name="ressalva_max_nc_maior" class="form-control form-control-sm" value="{{ regra_ressalva.max_nc_maior|default:'0' }}">
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label class="form-label small fw-bold text-dark">Máx. NC Menor Permitida</label>
-                                            <input type="number" min="0" name="ressalva_max_nc_menor" class="form-control form-control-sm" value="{{ regra_ressalva.max_nc_menor|default:'3' }}">
-                                        </div>
-
+                                    <div class="card-body p-3.5 d-flex flex-column justify-content-between">
                                         <div>
-                                            <label class="form-label small fw-bold text-dark">Parecer Padrão no Relatório</label>
-                                            <textarea name="ressalva_texto" class="form-control form-control-sm" rows="5" placeholder="Texto institucional emitido no slide final...">{{ regra_ressalva.texto_parecer_padrao|default:"O Sistema de Gestão atende aos requisitos essenciais, porém foram identificadas não conformidades que requerem plano de ação corretiva formal em prazo determinado." }}</textarea>
+                                            <div class="mb-3 container-pct" style="display: none;">
+                                                <label class="form-label small fw-bold text-dark">% Mínimo de Conformidade</label>
+                                                <div class="input-group input-group-sm">
+                                                    <input type="number" step="0.1" min="0" max="100" name="ressalva_min_pct" class="form-control" value="{{ regra_ressalva.min_percentual_conformidade|default:'80.0' }}">
+                                                    <span class="input-group-text">%</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label class="form-label small fw-bold text-dark d-flex align-items-center gap-1">
+                                                    <span>Limite de NCs Maiores</span>
+                                                    <i class="bi bi-info-circle text-muted" title="Limite aceito sob ressalva"></i>
+                                                </label>
+                                                <input type="number" min="0" name="ressalva_max_nc_maior" class="form-control form-control-sm fw-semibold" value="{{ regra_ressalva.max_nc_maior|default:'0' }}">
+                                                <small class="text-muted" style="font-size: 0.75rem;">Recomendado: 0 (ou até 1 com plano de contingência)</small>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label class="form-label small fw-bold text-dark d-flex align-items-center gap-1">
+                                                    <span>Limite de NCs Menores</span>
+                                                    <i class="bi bi-info-circle text-muted" title="Quantidade tolerada antes de inviabilizar"></i>
+                                                </label>
+                                                <input type="number" min="0" name="ressalva_max_nc_menor" class="form-control form-control-sm fw-semibold" value="{{ regra_ressalva.max_nc_menor|default:'5' }}">
+                                                <small class="text-muted" style="font-size: 0.75rem;">Exemplo: aceitar entre 3 e 5 NCs menores</small>
+                                            </div>
+
+                                            <div class="mb-2">
+                                                <label class="form-label small fw-bold text-dark">Parecer Padrão no Relatório</label>
+                                                <textarea name="ressalva_texto" class="form-control form-control-sm" rows="5" placeholder="Texto institucional emitido no slide final...">{{ regra_ressalva.texto_parecer_padrao|default:"Melhorias são necessárias devido ao risco encontrado nos desvios pontuais. Exige-se apresentação de plano de ação corretiva formal em prazo determinado." }}</textarea>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- 3. INAPTO -->
+                            <!-- Card 3: INADEQUADO (Inapto) -->
                             <div class="col-lg-4">
                                 <div class="card border-2 border-danger h-100 rounded-4 shadow-sm">
                                     <div class="card-header bg-danger text-white py-3 rounded-top-4 d-flex justify-content-between align-items-center">
-                                        <h6 class="mb-0 fw-bold"><i class="bi bi-x-octagon-fill me-2"></i>[ Inapto ]</h6>
-                                        <span class="badge bg-white text-danger fw-bold">Vermelho</span>
-                                    </div>
-                                    <div class="card-body p-3">
-                                        <div class="mb-3">
-                                            <label class="form-label small fw-bold text-dark">Gatilho de Reprovação</label>
-                                            <p class="small text-muted mb-2">Acionado quando qualquer um dos critérios de Apto ou Ressalva for descumprido.</p>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="fs-5">🔴</span>
+                                            <h6 class="mb-0 fw-bold">INADEQUADO (Inapto)</h6>
                                         </div>
+                                        <span class="badge bg-white text-danger fw-bold px-2.5 py-1">Nível 3</span>
+                                    </div>
+                                    <div class="card-body p-3.5 d-flex flex-column justify-content-between">
+                                        <div>
+                                            <div class="mb-3">
+                                                <label class="form-label small fw-bold text-dark d-flex align-items-center gap-1">
+                                                    <span>Gatilho de Reprovação (NCs Maiores)</span>
+                                                    <i class="bi bi-info-circle text-muted" title="Qualquer valor a partir deste índice reprova imediatamente"></i>
+                                                </label>
+                                                <div class="input-group input-group-sm">
+                                                    <span class="input-group-text bg-light text-danger fw-bold">&ge;</span>
+                                                    <input type="number" min="1" name="inapto_gatilho_nc_maior" class="form-control form-control-sm fw-semibold" value="1">
+                                                </div>
+                                                <small class="text-muted" style="font-size: 0.75rem;">Acionado automaticamente se houver $\ge 1$ NC Maior ou extrapolar NCs Menores.</small>
+                                            </div>
 
-                                        <div class="mb-3">
-                                            <label class="form-label small fw-bold text-dark">Parecer Padrão no Relatório</label>
-                                            <textarea name="inapto_texto" class="form-control form-control-sm" rows="9" placeholder="Texto institucional emitido no slide final...">{{ regra_inapto.texto_parecer_padrao|default:"O Sistema de Gestão apresentou falhas críticas e desvios que inviabilizam a recomendação no presente momento. Recomenda-se a reavaliação dos processos e nova auditoria." }}</textarea>
+                                            <div class="mb-2">
+                                                <label class="form-label small fw-bold text-dark">Parecer Padrão no Relatório</label>
+                                                <textarea name="inapto_texto" class="form-control form-control-sm" rows="9" placeholder="Texto institucional emitido no slide final...">{{ regra_inapto.texto_parecer_padrao|default:"Sistema inadequado e com alto risco crítico. As evidências apontam falhas sistêmicas que inviabilizam a recomendação neste ciclo. Recomenda-se reavaliação integral e nova auditoria." }}</textarea>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="text-end mt-4">
-                            <button type="submit" class="btn btn-primary rounded-pill px-5 fw-bold shadow-sm">
-                                <i class="bi bi-check2-circle me-1"></i> Salvar Regras de Aprovação
+                        <!-- 3. Botão de Ação -->
+                        <div class="d-flex justify-content-end align-items-center pt-3 border-top">
+                            <button type="submit" class="btn btn-primary btn-lg rounded-pill px-5 py-2.5 fw-bold shadow">
+                                <i class="bi bi-check-circle-fill me-2"></i> Salvar Regras de Aprovação
                             </button>
                         </div>
                     </form>
@@ -484,6 +544,13 @@
 
 {% block extra_js %}
 <script>
+    // Alterna a exibição dos campos percentuais caso a Matriz Estrita seja desmarcada
+    window.toggleModoEstrito = function(checked) {
+        document.querySelectorAll('.container-pct').forEach(el => {
+            el.style.display = checked ? 'none' : 'block';
+        });
+    };
+
     // Sincronização e Ativação de Tabs pelo Bootstrap e URL Hash
     const triggerTabList = document.querySelectorAll('#normaTabs button');
     triggerTabList.forEach(triggerEl => {
