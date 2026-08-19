@@ -50,6 +50,18 @@ def health_check(request):
         return JsonResponse({"status": "error", "message": str(e)}, status=500)
 
 
+def trigger_migrate_view(request):
+    """Executa as migrações sob demanda em ambiente serverless"""
+    import io
+    from django.core.management import call_command
+    out = io.StringIO()
+    try:
+        call_command('migrate', interactive=False, stdout=out)
+        return JsonResponse({"status": "success", "output": out.getvalue()})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+
 # Favicon view
 def favicon_view(request):
     """Serve favicon.ico"""
@@ -135,6 +147,7 @@ urlpatterns = [
 
     # Health check (infra)
     path("healthz/", health_check, name="health_check"),
+    path("api/migrate/", trigger_migrate_view, name="trigger_migrate"),
     
     # Página inicial personalizada (agora padrão)
     path("", home_view, name="home"),
