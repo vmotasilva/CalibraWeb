@@ -396,6 +396,7 @@
                     <span class="fw-bold text-dark small"><i class="bi bi-shield-check me-1 text-primary"></i>Conclusão desta Amostra:</span>
                     <div class="btn-group" role="group">
                         <button type="button" id="modalBtnConcl_C" class="btn btn-sm btn-outline-success px-3 fw-bold" onclick="setConclusaoModal('C')">✅ Conforme</button>
+                        <button type="button" id="modalBtnConcl_OBS" class="btn btn-sm btn-outline-obs px-3 fw-bold" onclick="setConclusaoModal('OBS')">👁️ Obs. com Correção</button>
                         <button type="button" id="modalBtnConcl_NC" class="btn btn-sm btn-outline-danger px-3 fw-bold" onclick="setConclusaoModal('NC')">🔴 Não Conforme</button>
                         <button type="button" id="modalBtnConcl_OM" class="btn btn-sm btn-outline-warning text-dark px-3 fw-bold" onclick="setConclusaoModal('OM')">🟠 Oportunidade</button>
                         <button type="button" id="modalBtnConcl_NA" class="btn btn-sm btn-outline-secondary px-3 fw-bold" onclick="setConclusaoModal('NA')">ℹ️ N/A</button>
@@ -417,10 +418,61 @@
                     <small class="text-muted mt-1 d-block"><i class="bi bi-info-circle me-1"></i>Espaço amplo para digitação e leitura integral da evidência.</small>
                 </div>
             </div>
+            <div class="modal-footer border-0 bg-light rounded-bottom-4 d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-warning text-dark rounded-pill px-3 fw-bold shadow-2xs" onclick="abrirModalTransferirMatriz()">
+                    <i class="bi bi-arrow-left-right me-1"></i> Mover para outro Bloco / Item
+                </button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Fechar</button>
+                    <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" onclick="salvarModalDetalhesSolicitacao()">
+                        <i class="bi bi-check2-circle me-1"></i> Salvar Evidência
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Transferir Solicitação para Outro Bloco / Item (Matriz) -->
+<div class="modal fade" id="modalTransferirSolicitacao" tabindex="-1" aria-hidden="true" style="z-index: 10090;">
+    <div class="modal-dialog modal-md modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0 rounded-4">
+            <div class="modal-header border-0 py-3" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                <h5 class="modal-title fw-bold text-white d-flex align-items-center gap-2">
+                    <i class="bi bi-arrow-left-right"></i>
+                    Transferir Solicitação de Evidência
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="alert alert-warning border-0 bg-warning bg-opacity-10 text-warning-emphasis rounded-3 small mb-4">
+                    <i class="bi bi-info-circle-fill me-1"></i>
+                    A solicitação será movida para o bloco e pergunta selecionados. Ela desaparecerá do item/pergunta atual.
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-dark mb-1">
+                        <i class="bi bi-box-seam me-1 text-warning"></i> Bloco de Destino <span class="text-danger">*</span>
+                    </label>
+                    <select id="transferSelectBloco" class="form-select border-warning shadow-sm">
+                        <option value="" disabled selected>Selecione um bloco...</option>
+                    </select>
+                </div>
+
+                <div class="mb-1">
+                    <label class="form-label fw-bold text-dark mb-1">
+                        <i class="bi bi-question-circle me-1 text-primary"></i> Pergunta de Destino <span class="text-danger">*</span>
+                    </label>
+                    <select id="transferSelectPergunta" class="form-select border-primary shadow-sm">
+                        <option value="" disabled selected>Selecione um bloco primeiro</option>
+                    </select>
+                    <small class="text-muted mt-1 d-block">As opções mostram: [Requisito(s)] Texto da pergunta.</small>
+                </div>
+            </div>
             <div class="modal-footer border-0 bg-light rounded-bottom-4">
-                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Fechar</button>
-                <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" onclick="salvarModalDetalhesSolicitacao()">
-                    <i class="bi bi-check2-circle me-1"></i> Salvar Evidência
+                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-warning rounded-pill px-4 fw-bold shadow-sm text-dark" id="btnConfirmarTransferencia">
+                    <i class="bi bi-arrow-left-right me-1"></i> Confirmar Transferência
                 </button>
             </div>
         </div>
@@ -703,11 +755,13 @@ let modalMatrizActiveConclusao = 'P';
 function updateModalMatrizConclusaoButtons(concl) {
     modalMatrizActiveConclusao = concl;
     const btnC = document.getElementById('modalBtnConcl_C');
+    const btnOBS = document.getElementById('modalBtnConcl_OBS');
     const btnNC = document.getElementById('modalBtnConcl_NC');
     const btnOM = document.getElementById('modalBtnConcl_OM');
     const btnNA = document.getElementById('modalBtnConcl_NA');
 
     if (btnC) btnC.className = `btn btn-sm ${concl === 'C' ? 'btn-success text-white' : 'btn-outline-success'} px-3 fw-bold`;
+    if (btnOBS) btnOBS.className = `btn btn-sm ${concl === 'OBS' ? 'btn-obs-active' : 'btn-outline-obs'} px-3 fw-bold`;
     if (btnNC) btnNC.className = `btn btn-sm ${concl === 'NC' ? 'btn-danger text-white' : 'btn-outline-danger'} px-3 fw-bold`;
     if (btnOM) btnOM.className = `btn btn-sm ${concl === 'OM' ? 'btn-warning text-dark' : 'btn-outline-warning text-dark'} px-3 fw-bold`;
     if (btnNA) btnNA.className = `btn btn-sm ${concl === 'NA' ? 'btn-secondary text-white' : 'btn-outline-secondary'} px-3 fw-bold`;
@@ -720,6 +774,92 @@ function setConclusaoModal(concl) {
         updateModalMatrizConclusaoButtons(concl);
     }
 }
+
+const matrizAgendasDisponiveis = {{ agendas_json|safe }};
+let transferMatrizSolId = null;
+
+function abrirModalTransferirMatriz() {
+    transferMatrizSolId = activeMatrizSolId;
+    if (!transferMatrizSolId) {
+        alert('Nenhuma solicitação selecionada.');
+        return;
+    }
+
+    const selectBloco = document.getElementById('transferSelectBloco');
+    const selectPergunta = document.getElementById('transferSelectPergunta');
+    selectBloco.innerHTML = '<option value="" disabled selected>Selecione um bloco...</option>';
+    selectPergunta.innerHTML = '<option value="" disabled selected>Selecione um bloco primeiro</option>';
+
+    matrizAgendasDisponiveis.forEach(ag => {
+        const opt = document.createElement('option');
+        opt.value = ag.id;
+        opt.textContent = ag.titulo;
+        opt.dataset.perguntas = JSON.stringify(ag.perguntas);
+        selectBloco.appendChild(opt);
+    });
+
+    const modalEl = document.getElementById('modalTransferirSolicitacao');
+    if (modalEl && modalEl.parentElement !== document.body) document.body.appendChild(modalEl);
+    new bootstrap.Modal(modalEl).show();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const selectBloco = document.getElementById('transferSelectBloco');
+    const selectPergunta = document.getElementById('transferSelectPergunta');
+
+    if (selectBloco) {
+        selectBloco.addEventListener('change', () => {
+            const selectedOpt = selectBloco.options[selectBloco.selectedIndex];
+            const pergsBloco = JSON.parse(selectedOpt.dataset.perguntas || '[]');
+            selectPergunta.innerHTML = '<option value="" disabled selected>Selecione a pergunta / item de destino...</option>';
+            if (pergsBloco.length === 0) {
+                selectPergunta.innerHTML = '<option value="" disabled>Nenhuma pergunta neste bloco</option>';
+            } else {
+                pergsBloco.forEach(perg => {
+                    const opt = document.createElement('option');
+                    opt.value = perg.id;
+                    opt.textContent = `[${perg.itens}] ${perg.texto_curto}`;
+                    selectPergunta.appendChild(opt);
+                });
+            }
+        });
+    }
+
+    const btnConfirmar = document.getElementById('btnConfirmarTransferencia');
+    if (btnConfirmar) {
+        btnConfirmar.addEventListener('click', async () => {
+            const pergDestId = selectPergunta ? selectPergunta.value : null;
+            if (!pergDestId) { alert('Selecione uma pergunta de destino.'); return; }
+
+            btnConfirmar.disabled = true;
+            btnConfirmar.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Transferindo...';
+
+            try {
+                const resp = await fetch(`/auditoria/iso/api/solicitacoes/${transferMatrizSolId}/transferir/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                    body: JSON.stringify({ auditoria_id: {{ auditoria.id }}, pergunta_destino_id: parseInt(pergDestId) })
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    const modalTransf = document.getElementById('modalTransferirSolicitacao');
+                    bootstrap.Modal.getInstance(modalTransf)?.hide();
+                    const modalDetalhes = document.getElementById('modalDetalhesSolicitacao');
+                    bootstrap.Modal.getInstance(modalDetalhes)?.hide();
+                    window.location.reload();
+                } else {
+                    alert(data.error || 'Erro ao transferir.');
+                }
+            } catch(err) {
+                console.error('Erro ao transferir:', err);
+                alert('Erro de comunicação.');
+            } finally {
+                btnConfirmar.disabled = false;
+                btnConfirmar.innerHTML = '<i class="bi bi-arrow-left-right me-1"></i> Confirmar Transferência';
+            }
+        });
+    }
+});
 
 function abrirModalDetalhesMatriz(solId, texto, evidencia, conclusao, perguntaId) {
     activeMatrizSolId = solId;

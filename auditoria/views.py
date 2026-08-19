@@ -3731,10 +3731,28 @@ def iso_matriz_view(request, auditoria_id):
         "pct_p": pct_p,
     }
         
+    # Monta lista de agendas e perguntas para modal de transferência
+    agendas_para_transfer = []
+    for ag in auditoria.agendas.filter(arquivada=False).prefetch_related('perguntas', 'perguntas__itens_norma'):
+        perguntas_ag = []
+        for pag in ag.perguntas.all():
+            itens_str = ", ".join(it.referencia for it in pag.itens_norma.all())
+            perguntas_ag.append({
+                "id": pag.id,
+                "texto_curto": pag.texto_pergunta[:80] + ("..." if len(pag.texto_pergunta) > 80 else ""),
+                "itens": itens_str or "—"
+            })
+        agendas_para_transfer.append({
+            "id": ag.id,
+            "titulo": ag.titulo,
+            "perguntas": perguntas_ag
+        })
+
     context = {
         "auditoria": auditoria,
         "matriz_data": matriz_data,
-        "stats": stats
+        "stats": stats,
+        "agendas_json": json.dumps(agendas_para_transfer)
     }
     return render(request, "auditoria/iso_matriz.html", context)
 

@@ -195,11 +195,16 @@
                     <small class="text-muted mt-1 d-block"><i class="bi bi-info-circle me-1"></i>Espaço amplo para digitação e leitura integral da evidência.</small>
                 </div>
             </div>
-            <div class="modal-footer border-0 bg-light rounded-bottom-4">
-                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Fechar</button>
-                <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" onclick="salvarModalDetalhesSolicitacao()">
-                    <i class="bi bi-check2-circle me-1"></i> Salvar Evidência
+            <div class="modal-footer border-0 bg-light rounded-bottom-4 d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-warning text-dark rounded-pill px-3 fw-bold shadow-2xs" onclick="abrirModalTransferir(parseInt(document.getElementById('modalSolId').value))">
+                    <i class="bi bi-arrow-left-right me-1"></i> Mover para outro Bloco / Item
                 </button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Fechar</button>
+                    <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" onclick="salvarModalDetalhesSolicitacao()">
+                        <i class="bi bi-check2-circle me-1"></i> Salvar Evidência
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -829,6 +834,8 @@
                         renderQuestion();
                         const modalEl = document.getElementById('modalTransferirSolicitacao');
                         bootstrap.Modal.getInstance(modalEl)?.hide();
+                        const modalDetalhes = document.getElementById('modalDetalhesSolicitacao');
+                        bootstrap.Modal.getInstance(modalDetalhes)?.hide();
                         showSaveIndicatorMessage(data.message || 'Solicitação transferida!');
                     } else {
                         alert(data.error || 'Erro ao transferir.');
