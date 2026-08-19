@@ -3787,11 +3787,12 @@ def iso_fechamento_presentation_view(request, auditoria_id):
         if item.id in parent_ids:
             continue  # Apenas folhas
 
-        todas_perguntas_item = []
+        todas_perguntas_dict = {}
         for ag in agendas:
             for p in ag.perguntas.all():
                 if item in p.itens_norma.all() or (not p.itens_norma.exists() and item in ag.itens_norma.all()):
-                    todas_perguntas_item.append(p)
+                    todas_perguntas_dict[p.id] = p
+        todas_perguntas_item = list(todas_perguntas_dict.values())
 
         av_final = avaliacoes_finais_map.get(item.id)
 
@@ -3811,19 +3812,38 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                     pior_peso = peso
             status_item = reverse_hierarchy.get(pior_peso, "P")
 
-        # Coleta evidências de todas as perguntas deste item
+        # Coleta evidências sem duplicação de todas as perguntas deste item
         evidencias_item = []
+        evidencias_vistas = set()
+
         for p in todas_perguntas_item:
             r = respostas_map.get(p.id)
             if r:
-                for s in r.solicitacoes.all():
-                    if s.evidencia and s.evidencia.strip():
-                        evidencias_item.append(f"{s.solicitacao}: {s.evidencia.strip()}")
-                    elif s.solicitacao:
-                        evidencias_item.append(s.solicitacao)
+                solicitacoes_list = list(r.solicitacoes.all())
+                if solicitacoes_list:
+                    for s in solicitacoes_list:
+                        ev_txt = ""
+                        if s.evidencia and s.evidencia.strip():
+                            if s.solicitacao and s.solicitacao.strip():
+                                ev_txt = f"{s.solicitacao.strip()}: {s.evidencia.strip()}"
+                            else:
+                                ev_txt = s.evidencia.strip()
+                        elif s.solicitacao and s.solicitacao.strip():
+                            ev_txt = s.solicitacao.strip()
 
-        if av_final and av_final.justificativa:
-            evidencias_item.insert(0, f"Justificativa da Revisão: {av_final.justificativa}")
+                        if ev_txt and ev_txt not in evidencias_vistas:
+                            evidencias_vistas.add(ev_txt)
+                            evidencias_item.append(ev_txt)
+                elif r.texto_resposta and r.texto_resposta.strip():
+                    ev_txt = r.texto_resposta.strip()
+                    if ev_txt not in evidencias_vistas:
+                        evidencias_vistas.add(ev_txt)
+                        evidencias_item.append(ev_txt)
+
+        if av_final and av_final.justificativa and av_final.justificativa.strip():
+            just_txt = f"Justificativa da Revisão: {av_final.justificativa.strip()}"
+            if just_txt not in evidencias_vistas:
+                evidencias_item.insert(0, just_txt)
 
         if status_item == 'NA':
             count_na += 1
