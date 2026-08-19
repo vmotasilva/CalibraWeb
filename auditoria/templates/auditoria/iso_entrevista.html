@@ -300,6 +300,30 @@
 
         const p = perguntas[currentIndex];
 
+        // Popover content para a descrição do(s) item(ns) da norma associado(s) à pergunta
+        let itemPopoverContent = '';
+        if (p.itens_objects && p.itens_objects.length > 0) {
+            let descHtml = '<div class="p-1" style="max-width: 380px; max-height: 280px; overflow-y: auto;">';
+            p.itens_objects.forEach((it, idx) => {
+                descHtml += `
+                    <div class="${idx > 0 ? 'pt-2 mt-2 border-top' : ''}">
+                        <div class="d-flex align-items-center gap-1.5 mb-1">
+                            <span class="badge bg-primary text-white font-monospace fw-bold px-2 py-0.5">${it.ref}</span>
+                            <strong class="text-dark small">${it.titulo || 'Item da Norma'}</strong>
+                        </div>
+                        <div class="text-secondary small" style="font-size: 0.82rem; line-height: 1.45; white-space: pre-wrap;">${it.descricao || it.titulo || 'Sem descrição cadastrada.'}</div>
+                        ${it.evidencia_padrao ? `
+                            <div class="bg-light p-1.5 rounded-2 mt-1.5 border small text-muted" style="font-size: 0.76rem;">
+                                <i class="bi bi-search text-primary me-1"></i><strong>Evidência Padrão:</strong> ${it.evidencia_padrao}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+            descHtml += '</div>';
+            itemPopoverContent = descHtml.replace(/"/g, '&quot;');
+        }
+
         // Popover content para outros blocos
         let popoverDataContent = '';
         let hasOutrosBlocos = (p.outros_blocos && p.outros_blocos.length > 0);
@@ -329,11 +353,17 @@
                                 </span>
                                 
                                 <div class="d-flex align-items-center gap-2">
-                                    <!-- Tag Clicável para abrir o Escopo do Bloco -->
+                                    <!-- Tag Clicável para abrir o Escopo do Bloco + Popover ao passar o mouse -->
                                     <button type="button" 
                                             class="btn btn-sm btn-light border rounded-pill px-3 py-1 fw-bold font-monospace text-primary shadow-2xs d-flex align-items-center gap-1 tag-requisito-btn"
+                                            id="btnTagRequisito"
                                             onclick="abrirDrawerRequisitos()" 
-                                            title="Clique para ver todos os itens e navegar">
+                                            data-bs-toggle="popover"
+                                            data-bs-trigger="hover"
+                                            data-bs-placement="bottom"
+                                            data-bs-html="true"
+                                            data-bs-title="<i class='bi bi-journal-text me-1 text-primary'></i> Descrição do Requisito"
+                                            data-bs-content="${itemPopoverContent || 'Clique para ver o escopo do bloco.'}">
                                         <i class="bi bi-tag-fill text-primary"></i>
                                         <span>Itens: ${p.itens}</span>
                                         <i class="bi bi-chevron-down text-muted ms-1" style="font-size: 0.75rem;"></i>
@@ -440,7 +470,12 @@
         
         app.innerHTML = html;
 
-        // Inicializa popover se o elemento existir
+        // Inicializa popovers do cabeçalho da pergunta se os elementos existirem
+        const tagPopoverEl = document.getElementById('btnTagRequisito');
+        if (tagPopoverEl) {
+            new bootstrap.Popover(tagPopoverEl);
+        }
+
         const popoverEl = document.getElementById('btnPopoverOutrosBlocos');
         if (popoverEl) {
             new bootstrap.Popover(popoverEl);

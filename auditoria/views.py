@@ -3344,7 +3344,16 @@ def iso_entrevista_view(request, auditoria_id):
             "texto_pergunta": p.texto_pergunta,
             "dica_auditor": p.dica_auditor or "",
             "itens": itens_str,
-            "itens_objects": [{"id": item.id, "ref": item.referencia, "titulo": item.titulo} for item in itens_p],
+            "itens_objects": [
+                {
+                    "id": item.id,
+                    "ref": item.referencia,
+                    "titulo": item.titulo,
+                    "descricao": item.descricao or "",
+                    "evidencia_padrao": item.evidencia_padrao or ""
+                }
+                for item in itens_p
+            ],
             "outros_blocos": list(blocos_vistos.values()),
             "classificacao": r.get("classificacao", "P"),
             "grau_nc": r.get("grau_nc"),
