@@ -155,6 +155,159 @@ class SharedAuthPagesTests(TestCase):
         self.assertIn("Cookie", response["Vary"])
     
 
+class SharedImportUtilsTests(TestCase):
+    """Unit tests for shared.utils.imports helpers."""
+
+    def setUp(self):
+        import os
+
+        self._orig_sync = os.environ.get("SYNC_IMPORTS")
+        self.user = User.objects.create_user(username="import_user", password="pass")
+
+    def tearDown(self):
+        import os
+
+        if self._orig_sync is None:
+            os.environ.pop("SYNC_IMPORTS", None)
+        else:
+            os.environ["SYNC_IMPORTS"] = self._orig_sync
+
+    def _uploaded(self, name="planilha.xlsx", content=b"data"):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        return SimpleUploadedFile(name, content)
+
+    def test_save_uploaded_file_to_temp_writes_content_and_keeps_suffix(self):
+        import os
+
+        from shared.utils.imports import save_uploaded_file_to_temp
+
+        path = save_uploaded_file_to_temp(self._uploaded("dados.csv", b"hello"))
+        try:
+            self.assertTrue(path.endswith(".csv"))
+            with open(path, "rb") as fh:
+                self.assertEqual(fh.read(), b"hello")
+        finally:
+            os.remove(path)
+
+    def test_save_uploaded_file_defaults_suffix_when_missing(self):
+        import os
+
+        from shared.utils.imports import save_uploaded_file_to_temp
+
+        path = save_uploaded_file_to_temp(self._uploaded("semextensao", b"x"))
+        try:
+            self.assertTrue(path.endswith(".xlsx"))
+        finally:
+            os.remove(path)
+
+    def test_create_import_job_stores_authenticated_user(self):
+        from shared.utils.imports import create_import_job
+
+        job = create_import_job(
+            user=self.user,
+            uploaded=self._uploaded(),
+            job_type="INSTRUMENTOS",
+            filepath="/tmp/x.xlsx",
+        )
+        self.assertEqual(job.user, self.user)
+        self.assertEqual(job.filename, "planilha.xlsx")
+        self.assertEqual(job.job_type, "INSTRUMENTOS")
+        self.assertEqual(job.status, "PENDING")
+
+    def test_create_import_job_ignores_anonymous_user(self):
+        from django.contrib.auth.models import AnonymousUser
+
+        from shared.utils.imports import create_import_job
+
+        job = create_import_job(
+            user=AnonymousUser(),
+            uploaded=self._uploaded(),
+            job_type="FERIAS",
+            filepath="/tmp/x.xlsx",
+        )
+        self.assertIsNone(job.user)
+
+    def test_dispatch_runs_synchronously_when_forced(self):
+        import os
+
+        from shared.utils.imports import create_import_job, dispatch_import_task
+
+        os.environ["SYNC_IMPORTS"] = "1"
+        job = create_import_job(
+            user=self.user,
+            uploaded=self._uploaded(),
+            job_type="INSTRUMENTOS",
+            filepath="/tmp/x.xlsx",
+        )
+        calls = {}
+
+        def fake_task(job_id, filepath):
+            calls["args"] = (job_id, filepath)
+
+        fake_task.delay = lambda *a, **k: calls.setdefault("delay", True)
+
+        ran_sync = dispatch_import_task(fake_task, job, "/tmp/x.xlsx")
+
+        self.assertTrue(ran_sync)
+        self.assertEqual(calls["args"], (str(job.id), "/tmp/x.xlsx"))
+        self.assertNotIn("delay", calls)
+
+    def test_dispatch_enqueues_when_celery_available(self):
+        import os
+
+        from shared.utils.imports import create_import_job, dispatch_import_task
+
+        os.environ["SYNC_IMPORTS"] = "0"
+        job = create_import_job(
+            user=self.user,
+            uploaded=self._uploaded(),
+            job_type="INSTRUMENTOS",
+            filepath="/tmp/x.xlsx",
+        )
+        calls = {}
+
+        def fake_task(job_id, filepath):
+            calls["sync"] = True
+
+        fake_task.delay = lambda job_id, filepath: calls.setdefault(
+            "delay", (job_id, filepath)
+        )
+
+        ran_sync = dispatch_import_task(fake_task, job, "/tmp/x.xlsx")
+
+        self.assertFalse(ran_sync)
+        self.assertEqual(calls["delay"], (str(job.id), "/tmp/x.xlsx"))
+        self.assertNotIn("sync", calls)
+
+    def test_dispatch_falls_back_to_sync_when_delay_fails(self):
+        import os
+
+        from shared.utils.imports import create_import_job, dispatch_import_task
+
+        os.environ["SYNC_IMPORTS"] = "0"
+        job = create_import_job(
+            user=self.user,
+            uploaded=self._uploaded(),
+            job_type="INSTRUMENTOS",
+            filepath="/tmp/x.xlsx",
+        )
+        calls = {}
+
+        def fake_task(job_id, filepath):
+            calls["sync"] = (job_id, filepath)
+
+        def failing_delay(*a, **k):
+            raise RuntimeError("broker down")
+
+        fake_task.delay = failing_delay
+
+        ran_sync = dispatch_import_task(fake_task, job, "/tmp/x.xlsx")
+
+        self.assertTrue(ran_sync)
+        self.assertEqual(calls["sync"], (str(job.id), "/tmp/x.xlsx"))
+
+
 class SharedTrustedMachineTests(TestCase):
     def setUp(self):
         self.factory = RequestFactory()

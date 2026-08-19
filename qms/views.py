@@ -32,6 +32,13 @@ from .views_helpers import (
 # Import pagination utilities
 from .pagination import OffsetPaginator, PaginationHelper
 
+# Shared import-job helpers
+from shared.utils.imports import (
+    create_import_job,
+    dispatch_import_task,
+    save_uploaded_file_to_temp,
+)
+
 # Import models from correct apps
 from metrologia.models import (
     Instrumento,
@@ -955,44 +962,27 @@ def retry_import_job_view(request, job_id):
 @login_required
 def imp_instr_view(request):
     """Importa instrumentos de calibração a partir de arquivo Excel/CSV."""
-    import os
-    import tempfile
     from metrologia.forms import ImportacaoInstrumentosForm
-    
+
     if request.method == "POST":
         form = ImportacaoInstrumentosForm(request.POST, request.FILES)
         if form.is_valid():
             try:
                 uploaded = request.FILES["arquivo_excel"]
-                suffix = os.path.splitext(uploaded.name)[1] or ".xlsx"
-                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-                for chunk in uploaded.chunks():
-                    tmp.write(chunk)
-                tmp.flush()
-               
-                job = ImportJob.objects.create(
-                    user=request.user if request.user.is_authenticated else None,
-                    filename=uploaded.name,
-                    filepath=tmp.name,
+                filepath = save_uploaded_file_to_temp(uploaded)
+                job = create_import_job(
+                    user=request.user,
+                    uploaded=uploaded,
                     job_type="INSTRUMENTOS",
-                    status="PENDING",
+                    filepath=filepath,
                 )
 
                 from qms.tasks import import_instruments_task
-                force_sync = os.environ.get("SYNC_IMPORTS", "1") == "1"
-                if not force_sync:
-                    try:
-                        import_instruments_task.delay(str(job.id), tmp.name)
-                        messages.success(request, f"Importação enfileirada (job {job.id}).")
-                        return redirect("modulo_metrologia")
-                    except Exception:
-                        force_sync = True
-                
-                if force_sync:
-                    import_instruments_task(job.id, tmp.name)
-                    job.refresh_from_db()
+                if dispatch_import_task(import_instruments_task, job, filepath):
                     messages.success(request, f"Importação concluída (job {job.id}). {job.result or ''}")
-                    return redirect("modulo_metrologia")
+                else:
+                    messages.success(request, f"Importação enfileirada (job {job.id}).")
+                return redirect("modulo_metrologia")
             except Exception as e:
                 messages.error(request, f"Erro ao enfileirar importação: {str(e)}")
                 return redirect("importar_instrumentos")
@@ -1009,10 +999,8 @@ def imp_instr_view(request):
 @login_required
 def imp_historico_view(request):
     """Importa históricos de calibração a partir de arquivo Excel/CSV."""
-    import os
-    import tempfile
     import logging
-    
+
     logger = logging.getLogger(__name__)
     
     try:
@@ -1033,55 +1021,39 @@ def imp_historico_view(request):
                     jobs = ImportJob.objects.filter(job_type='HISTORICO').order_by('-created_at')[:5]
                     return render(request, 'metrologia/imports/historico.html', {'form': form, 'jobs': jobs})
                 
-                suffix = os.path.splitext(uploaded.name)[1] or ".xlsx"
-                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-                for chunk in uploaded.chunks():
-                    tmp.write(chunk)
-                tmp.flush()
-                tmp.close()
-
-                job = ImportJob.objects.create(
-                    user=request.user if request.user.is_authenticated else None,
-                    filename=uploaded.name,
-                    filepath=tmp.name,
+                filepath = save_uploaded_file_to_temp(uploaded)
+                job = create_import_job(
+                    user=request.user,
+                    uploaded=uploaded,
                     job_type="HISTORICO",
-                    status="PENDING",
+                    filepath=filepath,
                 )
 
                 from qms.tasks import import_historico_task
-                force_sync = os.environ.get("SYNC_IMPORTS", "1") == "1"
-                if not force_sync:
-                    try:
-                        import_historico_task.delay(str(job.id), tmp.name)
-                        messages.success(request, f"Importação histórico enfileirada (job {job.id}).")
-                        return redirect("modulo_metrologia")
-                    except Exception as ce:
-                        logger.warning(f"Celery não disponível, usando sync: {str(ce)}")
-                        force_sync = True
-                
-                if force_sync:
-                    import_historico_task(str(job.id), tmp.name)
-                    job.refresh_from_db()
-                    try:
-                        # Recalcula datas nos instrumentos afetados
-                        afetados = HistoricoCalibracao.objects.filter(
-                            criado_em__gte=job.created_at
-                        ).values_list("instrumento_id", flat=True).distinct()
-                        for iid in afetados:
-                            inst = Instrumento.objects.filter(id=iid).first()
-                            if inst:
-                                ultima = HistoricoCalibracao.objects.filter(instrumento=inst).order_by("-data_calibracao").first()
-                                if ultima:
-                                    inst.data_ultima_calibracao = ultima.data_calibracao
-                                    inst.data_proxima_calibracao = ultima.proxima_calibracao
-                                else:
-                                    inst.data_ultima_calibracao = None
-                                    inst.data_proxima_calibracao = None
-                                inst.save(update_fields=["data_ultima_calibracao", "data_proxima_calibracao"])
-                    except Exception as ex:
-                        logger.error(f"Erro ao recalcular datas: {str(ex)}")
-                    messages.success(request, f"Histórico importado (job {job.id}). {job.result or ''}")
+                if not dispatch_import_task(import_historico_task, job, filepath):
+                    messages.success(request, f"Importação histórico enfileirada (job {job.id}).")
                     return redirect("modulo_metrologia")
+
+                try:
+                    # Recalcula datas nos instrumentos afetados
+                    afetados = HistoricoCalibracao.objects.filter(
+                        criado_em__gte=job.created_at
+                    ).values_list("instrumento_id", flat=True).distinct()
+                    for iid in afetados:
+                        inst = Instrumento.objects.filter(id=iid).first()
+                        if inst:
+                            ultima = HistoricoCalibracao.objects.filter(instrumento=inst).order_by("-data_calibracao").first()
+                            if ultima:
+                                inst.data_ultima_calibracao = ultima.data_calibracao
+                                inst.data_proxima_calibracao = ultima.proxima_calibracao
+                            else:
+                                inst.data_ultima_calibracao = None
+                                inst.data_proxima_calibracao = None
+                            inst.save(update_fields=["data_ultima_calibracao", "data_proxima_calibracao"])
+                except Exception as ex:
+                    logger.error(f"Erro ao recalcular datas: {str(ex)}")
+                messages.success(request, f"Histórico importado (job {job.id}). {job.result or ''}")
+                return redirect("modulo_metrologia")
             except Exception as e:
                 logger.error(f"Erro na importação de histórico: {str(e)}", exc_info=True)
                 messages.error(request, f"Erro ao enfileirar importação: {str(e)}")
@@ -1106,45 +1078,27 @@ def imp_historico_view(request):
 @login_required
 def imp_colab_view(request):
     """Importa colaboradores a partir de arquivo Excel/CSV."""
-    import os
-    import tempfile
     from rh.forms import ImportacaoColaboradoresForm
-    
+
     if request.method == "POST":
         form = ImportacaoColaboradoresForm(request.POST, request.FILES)
         if form.is_valid():
             try:
                 uploaded = request.FILES["arquivo_excel"]
-                suffix = os.path.splitext(uploaded.name)[1] or ".xlsx"
-                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-                for chunk in uploaded.chunks():
-                    tmp.write(chunk)
-                tmp.flush()
-                tmp.close()
-
-                job = ImportJob.objects.create(
-                    user=request.user if request.user.is_authenticated else None,
-                    filename=uploaded.name,
-                    filepath=tmp.name,
+                filepath = save_uploaded_file_to_temp(uploaded)
+                job = create_import_job(
+                    user=request.user,
+                    uploaded=uploaded,
                     job_type="COLABORADORES",
-                    status="PENDING",
+                    filepath=filepath,
                 )
 
                 from qms.tasks import import_colab_task
-                force_sync = os.environ.get("SYNC_IMPORTS", "1") == "1"
-                if not force_sync:
-                    try:
-                        import_colab_task.delay(str(job.id), tmp.name)
-                        messages.success(request, f"Importação de colaboradores enfileirada (job {job.id}).")
-                        return redirect("modulo_rh")
-                    except Exception:
-                        force_sync = True
-                
-                if force_sync:
-                    import_colab_task(job.id, tmp.name)
-                    job.refresh_from_db()
+                if dispatch_import_task(import_colab_task, job, filepath):
                     messages.success(request, f"Colaboradores importados (job {job.id}). {job.result or ''}")
-                    return redirect("modulo_rh")
+                else:
+                    messages.success(request, f"Importação de colaboradores enfileirada (job {job.id}).")
+                return redirect("modulo_rh")
             except Exception as e:
                 messages.error(request, f"Erro ao enfileirar importação: {str(e)}")
                 return redirect("importar_colaboradores")
@@ -1159,45 +1113,27 @@ def imp_colab_view(request):
 @login_required
 def imp_hierarquia_view(request):
     """Importa hierarquia organizacional a partir de arquivo Excel/CSV."""
-    import os
-    import tempfile
     from rh.forms import ImportacaoHierarquiaForm
-    
+
     if request.method == "POST":
         form = ImportacaoHierarquiaForm(request.POST, request.FILES)
         if form.is_valid():
             try:
                 uploaded = request.FILES["arquivo_excel"]
-                suffix = os.path.splitext(uploaded.name)[1] or ".xlsx"
-                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-                for chunk in uploaded.chunks():
-                    tmp.write(chunk)
-                tmp.flush()
-                tmp.close()
-
-                job = ImportJob.objects.create(
-                    user=request.user if request.user.is_authenticated else None,
-                    filename=uploaded.name,
-                    filepath=tmp.name,
+                filepath = save_uploaded_file_to_temp(uploaded)
+                job = create_import_job(
+                    user=request.user,
+                    uploaded=uploaded,
                     job_type="HIERARQUIA",
-                    status="PENDING",
+                    filepath=filepath,
                 )
 
                 from qms.tasks import import_hierarquia_task
-                force_sync = os.environ.get("SYNC_IMPORTS", "1") == "1"
-                if not force_sync:
-                    try:
-                        import_hierarquia_task.delay(str(job.id), tmp.name)
-                        messages.success(request, f"Importação de hierarquia enfileirada (job {job.id}).")
-                        return redirect("modulo_rh")
-                    except Exception:
-                        force_sync = True
-                
-                if force_sync:
-                    import_hierarquia_task(job.id, tmp.name)
-                    job.refresh_from_db()
+                if dispatch_import_task(import_hierarquia_task, job, filepath):
                     messages.success(request, f"Hierarquia importada (job {job.id}). {job.result or ''}")
-                    return redirect("modulo_rh")
+                else:
+                    messages.success(request, f"Importação de hierarquia enfileirada (job {job.id}).")
+                return redirect("modulo_rh")
             except Exception as e:
                 messages.error(request, f"Erro ao enfileirar importação: {str(e)}")
                 return redirect("importar_hierarquia")
@@ -1212,45 +1148,27 @@ def imp_hierarquia_view(request):
 @login_required
 def imp_ferias_view(request):
     """Importa férias a partir de arquivo Excel/CSV."""
-    import os
-    import tempfile
     from rh.forms import ImportacaoFeriasForm
-    
+
     if request.method == "POST":
         form = ImportacaoFeriasForm(request.POST, request.FILES)
         if form.is_valid():
             try:
                 uploaded = request.FILES["arquivo_excel"]
-                suffix = os.path.splitext(uploaded.name)[1] or ".xlsx"
-                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-                for chunk in uploaded.chunks():
-                    tmp.write(chunk)
-                tmp.flush()
-                tmp.close()
-
-                job = ImportJob.objects.create(
-                    user=request.user if request.user.is_authenticated else None,
-                    filename=uploaded.name,
-                    filepath=tmp.name,
+                filepath = save_uploaded_file_to_temp(uploaded)
+                job = create_import_job(
+                    user=request.user,
+                    uploaded=uploaded,
                     job_type="FERIAS",
-                    status="PENDING",
+                    filepath=filepath,
                 )
 
                 from qms.tasks import import_ferias_task
-                force_sync = os.environ.get("SYNC_IMPORTS", "1") == "1"
-                if not force_sync:
-                    try:
-                        import_ferias_task.delay(str(job.id), tmp.name)
-                        messages.success(request, f"Importação de férias enfileirada (job {job.id}).")
-                        return redirect("modulo_rh")
-                    except Exception:
-                        force_sync = True
-                
-                if force_sync:
-                    import_ferias_task(job.id, tmp.name)
-                    job.refresh_from_db()
+                if dispatch_import_task(import_ferias_task, job, filepath):
                     messages.success(request, f"Férias importadas (job {job.id}). {job.result or ''}")
-                    return redirect("modulo_rh")
+                else:
+                    messages.success(request, f"Importação de férias enfileirada (job {job.id}).")
+                return redirect("modulo_rh")
             except Exception as e:
                 messages.error(request, f"Erro ao enfileirar importação: {str(e)}")
                 return redirect("importar_ferias")
