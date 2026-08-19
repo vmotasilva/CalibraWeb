@@ -3259,12 +3259,14 @@ def iso_entrevista_view(request, auditoria_id):
                 "id": s.id,
                 "solicitacao": s.solicitacao,
                 "evidencia": s.evidencia,
-                "conclusao": s.conclusao
+                "conclusao": s.conclusao,
+                "grau_nc": s.grau_nc
             }
             for s in sols_qs
         ]
         respostas_dict[r.pergunta_id] = {
             "classificacao": r.classificacao,
+            "grau_nc": r.grau_nc,
             "texto_resposta": r.texto_resposta,
             "solicitacoes": sols
         }
@@ -3345,15 +3347,31 @@ def iso_entrevista_view(request, auditoria_id):
             "itens_objects": [{"id": item.id, "ref": item.referencia, "titulo": item.titulo} for item in itens_p],
             "outros_blocos": list(blocos_vistos.values()),
             "classificacao": r.get("classificacao", "P"),
+            "grau_nc": r.get("grau_nc"),
             "texto_resposta": r.get("texto_resposta", ""),
             "solicitacoes": r.get("solicitacoes", [])
         })
+
+    # Itens de Atalho Especial da Norma para Acesso Rápido Global
+    itens_atalho_qs = ItemNorma.objects.filter(norma=auditoria.norma, atalho_especial=True).order_by('ordem', 'referencia')
+    itens_atalho_data = [
+        {
+            "id": it.id,
+            "referencia": it.referencia,
+            "titulo": it.titulo,
+            "descricao": it.descricao or "",
+            "evidencia_padrao": it.evidencia_padrao or "",
+            "pergunta_padrao": it.pergunta_padrao or ""
+        }
+        for it in itens_atalho_qs
+    ]
 
     context = {
         "auditoria": auditoria,
         "agenda": agenda if agenda_id else None,
         "perguntas_json": json.dumps(perguntas_data),
-        "agendas_json": json.dumps(agendas_para_transfer)
+        "agendas_json": json.dumps(agendas_para_transfer),
+        "itens_atalho_json": json.dumps(itens_atalho_data)
     }
     return render(request, "auditoria/iso_entrevista.html", context)
 
@@ -3366,6 +3384,7 @@ def api_iso_autosave_resposta(request):
         pergunta_id = data.get("pergunta_id")
         texto_resposta = data.get("texto_resposta", "")
         classificacao = data.get("classificacao", "P")
+        grau_nc = data.get("grau_nc") if classificacao == "NC" else None
         
         auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
         pergunta = get_object_or_404(BancoPergunta, pk=pergunta_id)
@@ -3376,6 +3395,7 @@ def api_iso_autosave_resposta(request):
             defaults={
                 "texto_resposta": texto_resposta,
                 "classificacao": classificacao,
+                "grau_nc": grau_nc,
                 "respondida_por": request.user
             }
         )
@@ -3394,6 +3414,7 @@ def api_iso_solicitacao_create(request):
         solicitacao_texto = data.get("solicitacao", "Nova Solicitação de Evidência").strip()
         evidencia_texto = data.get("evidencia", "").strip()
         conclusao = data.get("conclusao", "P")
+        grau_nc = data.get("grau_nc") if conclusao == "NC" else None
 
         auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
         pergunta = get_object_or_404(BancoPergunta, pk=pergunta_id)
@@ -3408,7 +3429,8 @@ def api_iso_solicitacao_create(request):
             resposta=resposta,
             solicitacao=solicitacao_texto,
             evidencia=evidencia_texto,
-            conclusao=conclusao
+            conclusao=conclusao,
+            grau_nc=grau_nc
         )
 
         return JsonResponse({
@@ -3417,7 +3439,8 @@ def api_iso_solicitacao_create(request):
                 "id": nova_sol.id,
                 "solicitacao": nova_sol.solicitacao,
                 "evidencia": nova_sol.evidencia,
-                "conclusao": nova_sol.conclusao
+                "conclusao": nova_sol.conclusao,
+                "grau_nc": nova_sol.grau_nc
             }
         })
     except Exception as e:
@@ -3437,6 +3460,8 @@ def api_iso_solicitacao_update(request, pk):
             sol.evidencia = data["evidencia"]
         if "conclusao" in data:
             sol.conclusao = data["conclusao"]
+        if "grau_nc" in data:
+            sol.grau_nc = data["grau_nc"] if sol.conclusao == "NC" else None
 
         sol.save()
         return JsonResponse({"success": True})
@@ -4422,8 +4447,23 @@ def iso_item_detail_api(request, pk):
         "pergunta_padrao": item.pergunta_padrao or "",
         "evidencia_padrao": item.evidencia_padrao or "",
         "ordem": item.ordem,
+        "atalho_especial": item.atalho_especial,
         "edit_url": reverse('auditoria:iso_item_edit', args=[item.id]),
         "delete_url": reverse('auditoria:iso_item_delete', args=[item.id]),
+    })
+
+@login_required
+@require_POST
+def iso_item_toggle_atalho_api(request, pk):
+    from django.http import JsonResponse
+    item = get_object_or_404(ItemNorma, pk=pk)
+    item.atalho_especial = not item.atalho_especial
+    item.save(update_fields=['atalho_especial'])
+    return JsonResponse({
+        "success": True,
+        "id": item.id,
+        "referencia": item.referencia,
+        "atalho_especial": item.atalho_especial
     })
 
 @login_required
@@ -5700,12 +5740,51 @@ def iso_auditoria_cronograma(request, auditoria_id):
         is_last = (data == ultima_data_ajustada)
         ajustado_com_gaps[data] = inject_gaps(agendas_sorted, is_ajustado=True, is_first_day=is_first, is_last_day=is_last)
         
+    # Buscar todas as solicitações de evidências da auditoria
+    sols_todas = SolicitacaoEvidenciaIso.objects.filter(
+        resposta__auditoria=auditoria
+    ).select_related(
+        'resposta__pergunta', 'resposta__respondida_por'
+    ).prefetch_related(
+        'resposta__pergunta__itens_norma',
+        'resposta__pergunta__agendas_vinculadas'
+    ).order_by('criado_em')
+
+    # Filtrar solicitações em aberto (conclusão 'P' - Pendente)
+    solicitacoes_abertas = []
+    for s in sols_todas:
+        if s.conclusao == 'P':
+            # Identificar agendas/blocos vinculados
+            agendas_vinculadas = list(s.resposta.pergunta.agendas_vinculadas.filter(auditoria=auditoria, arquivada=False))
+            primeira_agenda = agendas_vinculadas[0] if agendas_vinculadas else None
+            itens_sorted = sorted(s.resposta.pergunta.itens_norma.all(), key=lambda it: natural_sort_key(it.referencia))
+            
+            solicitacoes_abertas.append({
+                'id': s.id,
+                'solicitacao': s.solicitacao,
+                'evidencia': s.evidencia,
+                'conclusao': s.conclusao,
+                'criado_em': s.criado_em,
+                'pergunta_id': s.resposta.pergunta_id,
+                'pergunta_texto': s.resposta.pergunta.texto_pergunta,
+                'itens_norma': itens_sorted,
+                'itens_str': ", ".join(it.referencia for it in itens_sorted),
+                'agenda': primeira_agenda,
+                'agendas_vinculadas': agendas_vinculadas,
+            })
+
+    total_solicitacoes_todas = sols_todas.count()
+    total_solicitacoes_abertas = len(solicitacoes_abertas)
+
     context = {
         'auditoria': auditoria,
         'cronograma_planejado': planejado_com_gaps,
         'cronograma_ajustado': ajustado_com_gaps,
         'progresso_geral': progresso_geral,
         'progresso_por_dia': progresso_por_dia,
+        'solicitacoes_abertas': solicitacoes_abertas,
+        'total_solicitacoes_abertas': total_solicitacoes_abertas,
+        'total_solicitacoes_todas': total_solicitacoes_todas,
     }
     return render(request, 'auditoria/iso/setup/cronograma_impressao.html', context)
 

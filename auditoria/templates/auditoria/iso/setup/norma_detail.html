@@ -109,9 +109,10 @@
                             <thead class="table-light">
                                 <tr>
                                     <th class="ps-4" style="width: 110px;">Ref.</th>
-                                    <th style="width: 280px;">Título do Requisito</th>
-                                    <th style="width: 240px;">Item Pai (Raiz)</th>
+                                    <th style="width: 260px;">Título do Requisito</th>
+                                    <th style="width: 220px;">Item Pai (Raiz)</th>
                                     <th>Descrição Resumida</th>
+                                    <th class="text-center" style="width: 140px;" title="Itens acessíveis rapidamente no Modo Entrevista para criar solicitações em qualquer bloco">Atalho Especial</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -122,6 +123,7 @@
                                     data-parent="{{ item.referencia_raiz }}"
                                     data-titulo="{{ item.titulo }}" 
                                     data-descricao="{{ item.descricao|default:item.titulo }}"
+                                    data-atalho="{{ item.atalho_especial|yesno:'true,false' }}"
                                     data-edit-url="{% url 'auditoria:iso_item_edit' item.id %}"
                                     data-delete-url="{% url 'auditoria:iso_item_delete' item.id %}"
                                     title="Clique para visualizar detalhes, editar ou excluir">
@@ -129,8 +131,8 @@
                                     <td class="fw-semibold text-dark">{{ item.titulo }}</td>
                                     <td>
                                         {% if item.parent %}
-                                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-2.5 py-1 text-truncate" style="max-width: 220px;" title="{{ item.parent.referencia }} - {{ item.parent.titulo }}">
-                                                <i class="bi bi-diagram-2 me-1"></i>{{ item.parent.referencia }} - {{ item.parent.titulo|slice:":20" }}{% if item.parent.titulo|length > 20 %}...{% endif %}
+                                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-2.5 py-1 text-truncate" style="max-width: 200px;" title="{{ item.parent.referencia }} - {{ item.parent.titulo }}">
+                                                <i class="bi bi-diagram-2 me-1"></i>{{ item.parent.referencia }} - {{ item.parent.titulo|slice:":18" }}{% if item.parent.titulo|length > 18 %}...{% endif %}
                                             </span>
                                         {% elif item.referencia|length == 1 %}
                                             <span class="badge bg-secondary bg-opacity-10 text-secondary border rounded-pill px-2.5 py-1">
@@ -142,7 +144,19 @@
                                             </span>
                                         {% endif %}
                                     </td>
-                                    <td class="text-muted small">{{ item.descricao|slice:":100" }}{% if item.descricao|length > 100 %}...{% endif %}</td>
+                                    <td class="text-muted small">{{ item.descricao|slice:":80" }}{% if item.descricao|length > 80 %}...{% endif %}</td>
+                                    <td class="text-center" onclick="event.stopPropagation();">
+                                        <button type="button" class="btn btn-sm rounded-pill px-2.5 py-1 fw-bold btn-toggle-atalho {% if item.atalho_especial %}btn-warning text-dark border-warning shadow-2xs{% else %}btn-outline-secondary border-dashed opacity-75{% endif %}" 
+                                                data-id="{{ item.id }}" 
+                                                data-url="{% url 'auditoria:iso_item_toggle_atalho_api' item.id %}"
+                                                title="Clique para {% if item.atalho_especial %}remover do{% else %}adicionar ao{% endif %} atalho rápido no Modo Entrevista">
+                                            {% if item.atalho_especial %}
+                                                <i class="bi bi-lightning-charge-fill me-1"></i>Atalho
+                                            {% else %}
+                                                <i class="bi bi-lightning me-1"></i>Definir
+                                            {% endif %}
+                                        </button>
+                                    </td>
                                 </tr>
                                 {% empty %}
                                 <tr>
@@ -513,9 +527,14 @@
                 <div class="card bg-light border-0 rounded-3 p-3 text-dark" style="font-size: 0.95rem; line-height: 1.6; white-space: pre-wrap; max-height: 50vh; overflow-y: auto;" id="popItemDescricao"></div>
             </div>
             <div class="modal-footer border-0 bg-light d-flex justify-content-between rounded-bottom-4">
-                <div>
+                <div class="d-flex align-items-center gap-2">
+                    <!-- Botão Toggle Atalho Especial dentro do Pop-up -->
+                    <button type="button" id="popItemBtnToggleAtalho" class="btn btn-outline-warning text-dark rounded-pill px-3 fw-semibold shadow-2xs">
+                        <i class="bi bi-lightning-charge me-1"></i> <span id="popItemAtalhoLabel">Atalho Especial</span>
+                    </button>
+
                     <!-- Botão Editar dentro do Pop-up -->
-                    <a id="popItemBtnEditar" href="#" class="btn btn-outline-primary rounded-pill px-3 me-2 fw-semibold">
+                    <a id="popItemBtnEditar" href="#" class="btn btn-outline-primary rounded-pill px-3 fw-semibold">
                         <i class="bi bi-pencil me-1"></i> Editar Item
                     </a>
                     
@@ -537,6 +556,9 @@
 
 {% block extra_js %}
 <script>
+document.addEventListener('DOMContentLoaded', function() {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]') ? document.querySelector('[name=csrfmiddlewaretoken]').value : '';
+
     // Alterna a exibição dos campos percentuais caso a Matriz Estrita seja desmarcada
     window.toggleModoEstrito = function(checked) {
         document.querySelectorAll('.container-pct').forEach(el => {
@@ -567,12 +589,51 @@
         tabInstance.show();
     }
 
+    // Toggle rápido de Atalho Especial na tabela
+    document.querySelectorAll('.btn-toggle-atalho').forEach(btn => {
+        btn.addEventListener('click', async function(e) {
+            e.stopPropagation();
+            const url = this.dataset.url;
+            const itemId = this.dataset.id;
+            try {
+                const resp = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' }
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    if (data.atalho_especial) {
+                        this.className = 'btn btn-sm rounded-pill px-2.5 py-1 fw-bold btn-toggle-atalho btn-warning text-dark border-warning shadow-2xs';
+                        this.innerHTML = '<i class="bi bi-lightning-charge-fill me-1"></i>Atalho';
+                        this.title = 'Clique para remover do atalho rápido';
+                    } else {
+                        this.className = 'btn btn-sm rounded-pill px-2.5 py-1 fw-bold btn-toggle-atalho btn-outline-secondary border-dashed opacity-75';
+                        this.innerHTML = '<i class="bi bi-lightning me-1"></i>Definir';
+                        this.title = 'Clique para adicionar ao atalho rápido';
+                    }
+                    // Atualiza data attribute na linha
+                    const row = document.querySelector(`.item-detail-row[data-id="${itemId}"]`);
+                    if (row) row.dataset.atalho = data.atalho_especial ? 'true' : 'false';
+                }
+            } catch(err) {
+                console.error('Erro ao alternar atalho:', err);
+            }
+        });
+    });
+
     // Event listener ao clicar nas linhas da tabela de Itens
+    let currentModalItemId = null;
     document.querySelectorAll('.item-detail-row').forEach(row => {
-        row.addEventListener('click', function() {
+        row.addEventListener('click', function(e) {
+            // Se o clique foi em um botão ou link, ignora
+            if (e.target.closest('button') || e.target.closest('a')) return;
+
+            const id = this.dataset.id;
+            currentModalItemId = id;
             const ref = this.dataset.ref;
             const titulo = this.dataset.titulo;
             const desc = this.dataset.descricao;
+            const isAtalho = this.dataset.atalho === 'true';
             const editUrl = this.dataset.editUrl;
             const deleteUrl = this.dataset.deleteUrl;
 
@@ -580,13 +641,52 @@
             document.getElementById('popItemTitulo').textContent = titulo;
             document.getElementById('popItemDescricao').textContent = desc || titulo;
             
+            const btnToggleModal = document.getElementById('popItemBtnToggleAtalho');
+            const labelToggleModal = document.getElementById('popItemAtalhoLabel');
+            if (btnToggleModal) {
+                if (isAtalho) {
+                    btnToggleModal.className = 'btn btn-warning text-dark rounded-pill px-3 fw-bold shadow-2xs';
+                    labelToggleModal.textContent = 'Atalho Ativo';
+                } else {
+                    btnToggleModal.className = 'btn btn-outline-warning text-dark rounded-pill px-3 fw-semibold shadow-2xs';
+                    labelToggleModal.textContent = 'Definir como Atalho';
+                }
+            }
+
             document.getElementById('popItemBtnEditar').href = editUrl;
             document.getElementById('popItemFormExcluir').action = deleteUrl;
 
-            const modal = new bootstrap.Modal(document.getElementById('modalPopItemDetail'));
-            modal.show();
+            const modalEl = document.getElementById('modalPopItemDetail');
+            if (modalEl) {
+                const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                modal.show();
+            }
         });
     });
+
+    // Botão de toggle dentro do modal
+    const modalToggleBtn = document.getElementById('popItemBtnToggleAtalho');
+    if (modalToggleBtn) {
+        modalToggleBtn.addEventListener('click', async function() {
+            if (!currentModalItemId) return;
+            const tableBtn = document.querySelector(`.btn-toggle-atalho[data-id="${currentModalItemId}"]`);
+            if (tableBtn) {
+                tableBtn.click();
+                setTimeout(() => {
+                    const row = document.querySelector(`.item-detail-row[data-id="${currentModalItemId}"]`);
+                    const isNowAtalho = row && row.dataset.atalho === 'true';
+                    const labelToggleModal = document.getElementById('popItemAtalhoLabel');
+                    if (isNowAtalho) {
+                        modalToggleBtn.className = 'btn btn-warning text-dark rounded-pill px-3 fw-bold shadow-2xs';
+                        labelToggleModal.textContent = 'Atalho Ativo';
+                    } else {
+                        modalToggleBtn.className = 'btn btn-outline-warning text-dark rounded-pill px-3 fw-semibold shadow-2xs';
+                        labelToggleModal.textContent = 'Definir como Atalho';
+                    }
+                }, 300);
+            }
+        });
+    }
 });
 </script>
 {% endblock %}

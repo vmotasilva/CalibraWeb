@@ -752,6 +752,7 @@ class ItemNorma(models.Model):
     pergunta_padrao = models.TextField(blank=True, verbose_name="Pergunta Padrão")
     evidencia_padrao = models.TextField(blank=True, verbose_name="Evidências Esperadas (Padrão)")
     ordem = models.PositiveIntegerField(default=1)
+    atalho_especial = models.BooleanField(default=False, verbose_name="Atalho Especial (Acesso Rápido)", help_text="Permite acesso e criação de solicitações rápidas em qualquer bloco no modo entrevista")
 
     class Meta:
         verbose_name = "Item da Norma"
@@ -935,10 +936,15 @@ class RespostaEntrevistaIso(models.Model):
         ("OM", "Oportunidade de Melhoria"),
         ("P", "Pendente"),
     ]
+    GRAU_NC_CHOICES = [
+        ("MENOR", "NC Menor"),
+        ("MAIOR", "NC Maior"),
+    ]
     auditoria = models.ForeignKey(AuditoriaIso, on_delete=models.CASCADE, related_name="respostas")
     pergunta = models.ForeignKey(BancoPergunta, on_delete=models.PROTECT, related_name="respostas")
     texto_resposta = models.TextField(blank=True, verbose_name="Resposta do Auditado / Anotações")
     classificacao = models.CharField(max_length=4, choices=CLASSIFICACAO_CHOICES, default="P")
+    grau_nc = models.CharField(max_length=10, choices=GRAU_NC_CHOICES, blank=True, null=True, verbose_name="Grau da Não Conformidade")
     respondida_em = models.DateTimeField(auto_now=True)
     respondida_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
 
@@ -960,10 +966,15 @@ class SolicitacaoEvidenciaIso(models.Model):
         ("OM", "Oportunidade de Melhoria"),
         ("P", "Pendente"),
     ]
+    GRAU_NC_CHOICES = [
+        ("MENOR", "NC Menor"),
+        ("MAIOR", "NC Maior"),
+    ]
     resposta = models.ForeignKey(RespostaEntrevistaIso, on_delete=models.CASCADE, related_name="solicitacoes")
     solicitacao = models.TextField(verbose_name="Solicitação / Item Solicitado")
     evidencia = models.TextField(blank=True, verbose_name="Evidência Apresentada")
     conclusao = models.CharField(max_length=4, choices=CLASSIFICACAO_CHOICES, default="P")
+    grau_nc = models.CharField(max_length=10, choices=GRAU_NC_CHOICES, blank=True, null=True, verbose_name="Grau da Não Conformidade")
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
 

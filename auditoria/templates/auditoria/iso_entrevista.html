@@ -55,6 +55,23 @@
         background-color: #e9ecef;
         transform: translateY(-1px);
     }
+    .btn-nc-grau {
+        font-size: 0.76rem;
+        padding: 2px 8px;
+        font-weight: 700;
+        border-radius: 12px;
+        transition: all 0.15s;
+    }
+    .btn-nc-grau.active-maior {
+        background-color: #b02a37 !important;
+        color: white !important;
+        border-color: #a52834 !important;
+    }
+    .btn-nc-grau.active-menor {
+        background-color: #dc3545 !important;
+        color: white !important;
+        border-color: #b02a37 !important;
+    }
 </style>
 {% endblock %}
 
@@ -68,6 +85,9 @@
             <p class="text-muted mb-0">Modo Entrevista de Auditoria</p>
         </div>
         <div class="d-flex gap-2">
+            <button type="button" class="btn btn-warning rounded-pill px-3 fw-bold text-dark shadow-2xs" onclick="abrirModalItensAtalho()">
+                <i class="bi bi-lightning-charge-fill me-1"></i> Itens de Atalho Especial <span class="badge bg-dark text-white rounded-pill ms-1" id="badge-total-atalhos">0</span>
+            </button>
             <button type="button" class="btn btn-outline-primary rounded-pill px-3 fw-bold" onclick="abrirDrawerRequisitos()">
                 <i class="bi bi-list-nested me-1"></i> Ver Escopo do Bloco
             </button>
@@ -88,6 +108,42 @@
 
     <div id="save-indicator">
         <i class="bi bi-check-circle me-1"></i> Resposta Salva
+    </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- MODAL: ITENS DE ATALHO ESPECIAL & CRIAÇÃO RÁPIDA DE SOLICITAÇÃO -->
+<!-- ============================================================== -->
+<div class="modal fade" id="modalItensAtalho" tabindex="-1" aria-hidden="true" style="z-index: 10075;">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content shadow-lg border-0 rounded-4">
+            <div class="modal-header border-0 py-3" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                <div class="d-flex align-items-center gap-2 text-white">
+                    <i class="bi bi-lightning-charge-fill fs-4"></i>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0 text-white">Itens de Atalho Especial da Norma</h5>
+                        <small class="text-white-50">Itens parametrizados para acesso rápido e criação de solicitações em qualquer bloco</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <div class="mb-3">
+                    <div class="input-group shadow-2xs">
+                        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                        <input type="text" id="filtroItensAtalho" class="form-control border-start-0 bg-white" placeholder="Filtrar por código de referência ou título (ex: 4.1.6, 7.4.2)..." oninput="filtrarItensAtalho(this.value)">
+                    </div>
+                </div>
+
+                <div id="lista-itens-atalho-container" class="d-flex flex-column gap-3">
+                    <!-- Populado dinamicamente via JS -->
+                </div>
+            </div>
+            <div class="modal-footer border-0 bg-white rounded-bottom-4 d-flex justify-content-between">
+                <small class="text-muted"><i class="bi bi-info-circle me-1"></i>A solicitação será adicionada à pergunta atual do bloco ativo.</small>
+                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -169,14 +225,23 @@
                 <input type="hidden" id="modalSolId">
 
                 <!-- Micro-status / Conclusão dentro do Modal -->
-                <div class="d-flex justify-content-between align-items-center mb-3 p-3 bg-light rounded-3 border">
+                <div class="d-flex justify-content-between align-items-center mb-3 p-3 bg-light rounded-3 border flex-wrap gap-2">
                     <span class="fw-bold text-dark small"><i class="bi bi-shield-check me-1 text-primary"></i>Conclusão desta Amostra:</span>
-                    <div class="btn-group" role="group">
-                        <button type="button" id="modalBtnConcl_C" class="btn btn-sm btn-outline-success px-3 fw-bold" onclick="setConclusaoModal('C')">✅ Conforme</button>
-                        <button type="button" id="modalBtnConcl_OBS" class="btn btn-sm btn-outline-obs px-3 fw-bold" onclick="setConclusaoModal('OBS')">👁️ Obs. com Correção</button>
-                        <button type="button" id="modalBtnConcl_NC" class="btn btn-sm btn-outline-danger px-3 fw-bold" onclick="setConclusaoModal('NC')">🔴 Não Conforme</button>
-                        <button type="button" id="modalBtnConcl_OM" class="btn btn-sm btn-outline-warning text-dark px-3 fw-bold" onclick="setConclusaoModal('OM')">🟠 Oportunidade</button>
-                        <button type="button" id="modalBtnConcl_NA" class="btn btn-sm btn-outline-secondary px-3 fw-bold" onclick="setConclusaoModal('NA')">ℹ️ N/A</button>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <div class="btn-group" role="group">
+                            <button type="button" id="modalBtnConcl_C" class="btn btn-sm btn-outline-success px-3 fw-bold" onclick="setConclusaoModal('C')">✅ Conforme</button>
+                            <button type="button" id="modalBtnConcl_OBS" class="btn btn-sm btn-outline-obs px-3 fw-bold" onclick="setConclusaoModal('OBS')">👁️ Obs. com Correção</button>
+                            <button type="button" id="modalBtnConcl_NC" class="btn btn-sm btn-outline-danger px-3 fw-bold" onclick="setConclusaoModal('NC')">🔴 Não Conforme</button>
+                            <button type="button" id="modalBtnConcl_OM" class="btn btn-sm btn-outline-warning text-dark px-3 fw-bold" onclick="setConclusaoModal('OM')">🟠 Oportunidade</button>
+                            <button type="button" id="modalBtnConcl_NA" class="btn btn-sm btn-outline-secondary px-3 fw-bold" onclick="setConclusaoModal('NA')">ℹ️ N/A</button>
+                        </div>
+                        
+                        <!-- Sub-seletor de Grau de NC quando NC estiver ativa no Modal -->
+                        <div id="modalContainerGrauNC" class="d-none align-items-center bg-white border border-danger rounded-pill px-2 py-1 shadow-2xs gap-1">
+                            <span class="text-danger fw-bold me-1" style="font-size: 0.75rem;">Gravidade:</span>
+                            <button type="button" id="modalBtnGrau_MENOR" class="btn btn-nc-grau btn-outline-danger" onclick="setGrauModal('MENOR')">Menor</button>
+                            <button type="button" id="modalBtnGrau_MAIOR" class="btn btn-nc-grau btn-outline-danger" onclick="setGrauModal('MAIOR')">Maior</button>
+                        </div>
                     </div>
                 </div>
 
@@ -219,6 +284,7 @@
     const perguntas = {{ perguntas_json|safe }};
     const auditoriaId = {{ auditoria.id }};
     const agendasDisponiveis = {{ agendas_json|safe }};
+    const itensAtalho = {{ itens_atalho_json|safe|default:"[]" }};
     let currentIndex = 0;
     let saveTimeout = null;
     let transferSolId = null;
@@ -305,13 +371,30 @@
                                 Classificação do Requisito
                             </label>
 
-                            <div class="d-flex justify-content-center gap-2 mb-4 flex-wrap">
+                            <div class="d-flex justify-content-center gap-2 mb-2 flex-wrap">
                                 <button type="button" class="btn btn-outline-success btn-classificacao ${p.classificacao === 'C' ? 'active btn-success text-white' : ''}" onclick="setClassificacao('C')">✅ Conforme</button>
                                 <button type="button" class="btn btn-outline-obs btn-classificacao ${p.classificacao === 'OBS' ? 'active btn-obs-active' : ''}" onclick="setClassificacao('OBS')">👁️ Obs. com Correção</button>
-                                <button type="button" class="btn btn-outline-danger btn-classificacao ${p.classificacao === 'NC' ? 'active btn-danger text-white' : ''}" onclick="setClassificacao('NC')">🔴 Não Conforme</button>
+                                <button type="button" class="btn btn-outline-danger btn-classificacao ${p.classificacao === 'NC' ? 'active btn-danger text-white' : ''}" onclick="setClassificacao('NC')">
+                                    🔴 Não Conforme ${p.classificacao === 'NC' && p.grau_nc ? `(${p.grau_nc === 'MAIOR' ? 'Maior' : 'Menor'})` : ''}
+                                </button>
                                 <button type="button" class="btn btn-outline-warning btn-classificacao ${p.classificacao === 'OM' ? 'active btn-warning text-dark' : ''}" onclick="setClassificacao('OM')">🟠 Oportunidade</button>
                                 <button type="button" class="btn btn-outline-secondary btn-classificacao ${p.classificacao === 'NA' ? 'active btn-secondary text-white' : ''}" onclick="setClassificacao('NA')">ℹ️ N/A</button>
                             </div>
+
+                            <!-- Sub-seletor de Grau de NC quando a Pergunta/Requisito estiver Não Conforme -->
+                            ${p.classificacao === 'NC' ? `
+                                <div class="d-flex justify-content-center align-items-center gap-2 mb-3 animate__animated animate__fadeIn">
+                                    <div class="d-inline-flex align-items-center bg-danger bg-opacity-10 border border-danger border-opacity-25 rounded-pill px-3 py-1 gap-2 shadow-2xs">
+                                        <span class="text-danger fw-bold small"><i class="bi bi-exclamation-octagon-fill me-1"></i>Grau da NC no Requisito:</span>
+                                        <button type="button" class="btn btn-sm rounded-pill px-3 py-0.5 fw-bold ${p.grau_nc === 'MENOR' || !p.grau_nc ? 'btn-danger text-white shadow-2xs' : 'btn-outline-danger'}" onclick="setGrauRequisito('MENOR')">
+                                            NC Menor
+                                        </button>
+                                        <button type="button" class="btn btn-sm rounded-pill px-3 py-0.5 fw-bold ${p.grau_nc === 'MAIOR' ? 'btn-dark text-white shadow-2xs' : 'btn-outline-danger'}" style="${p.grau_nc === 'MAIOR' ? 'background-color: #842029; border-color: #842029;' : ''}" onclick="setGrauRequisito('MAIOR')">
+                                            NC Maior (Grave)
+                                        </button>
+                                    </div>
+                                </div>
+                            ` : ''}
 
                             <div class="d-flex justify-content-between pt-2">
                                 <button type="button" class="btn btn-light rounded-pill px-4 fw-bold border" onclick="prevQuestion()" ${currentIndex === 0 ? 'disabled' : ''}>
@@ -337,9 +420,14 @@
                                 </h5>
                                 <small class="text-muted d-block" style="font-size: 0.82rem;">Registre as amostras e documentos auditados para este requisito.</small>
                             </div>
-                            <button type="button" class="btn btn-primary btn-sm rounded-pill fw-bold px-3 shadow-sm" onclick="adicionarSolicitacaoEvidencia()">
-                                <i class="bi bi-plus-lg me-1"></i> Nova Solicitação
-                            </button>
+                            <div class="d-flex align-items-center gap-2">
+                                <button type="button" class="btn btn-outline-warning text-dark btn-sm rounded-pill fw-bold px-3 shadow-2xs" onclick="abrirModalItensAtalho()" title="Abrir itens de atalho especial para criar solicitações rápidas">
+                                    <i class="bi bi-lightning-charge-fill me-1 text-warning"></i> Atalhos Especiais
+                                </button>
+                                <button type="button" class="btn btn-primary btn-sm rounded-pill fw-bold px-3 shadow-sm" onclick="adicionarSolicitacaoEvidencia()">
+                                    <i class="bi bi-plus-lg me-1"></i> Nova Solicitação
+                                </button>
+                            </div>
                         </div>
 
                         <div id="solicitacoes-list-container" class="d-flex flex-column gap-3 solicitacoes-scroll-container pe-1">
@@ -374,6 +462,130 @@
         }
     }
 
+    // ── Itens de Atalho Especial (Acesso Rápido) ───────────────────────────────────
+    function renderListaItensAtalho(itensFiltrados) {
+        const container = document.getElementById('lista-itens-atalho-container');
+        if (!container) return;
+
+        const badgeTotal = document.getElementById('badge-total-atalhos');
+        if (badgeTotal) badgeTotal.textContent = itensAtalho.length;
+
+        if (!itensFiltrados || itensFiltrados.length === 0) {
+            container.innerHTML = `
+                <div class="alert alert-light border text-center py-4 rounded-3 text-muted small mb-0">
+                    <i class="bi bi-lightning-charge fs-2 d-block mb-2 text-warning"></i>
+                    Nenhum item da norma foi configurado como <strong>Atalho Especial</strong> ou encontrado no filtro.<br>
+                    <small>Você pode definir itens como atalho na tela de gerenciamento de requisitos da norma.</small>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+        itensFiltrados.forEach(item => {
+            const desc = item.descricao ? item.descricao.trim() : '';
+            const descPreview = desc.length > 140 ? desc.slice(0, 140) + '...' : desc;
+            const evidPadrao = item.evidencia_padrao ? item.evidencia_padrao.trim() : '';
+
+            html += `
+                <div class="card border rounded-3 p-3 bg-white shadow-2xs">
+                    <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                        <div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <span class="badge bg-warning text-dark font-monospace fw-bold px-2.5 py-1">
+                                    <i class="bi bi-tag-fill me-1"></i>${item.referencia}
+                                </span>
+                                <h6 class="fw-bold text-dark mb-0">${item.titulo}</h6>
+                            </div>
+                            ${descPreview ? `<div class="text-muted small" style="font-size: 0.84rem; line-height: 1.4;">${descPreview}</div>` : ''}
+                            ${evidPadrao ? `<div class="mt-1 small text-primary" style="font-size: 0.8rem;"><i class="bi bi-card-checklist me-1"></i><strong>Evidência esperada:</strong> ${evidPadrao.slice(0, 100)}${evidPadrao.length > 100 ? '...' : ''}</div>` : ''}
+                        </div>
+                        <button type="button" class="btn btn-primary btn-sm rounded-pill px-3 fw-bold flex-shrink-0 shadow-sm" onclick="criarSolicitacaoDeAtalho(${item.id})">
+                            <i class="bi bi-plus-lg me-1"></i> Criar Solicitação
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    }
+
+    function abrirModalItensAtalho() {
+        const inputFiltro = document.getElementById('filtroItensAtalho');
+        if (inputFiltro) inputFiltro.value = '';
+        renderListaItensAtalho(itensAtalho);
+        const modalEl = document.getElementById('modalItensAtalho');
+        if (modalEl) {
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        }
+    }
+
+    function filtrarItensAtalho(termo) {
+        if (!termo || !termo.trim()) {
+            renderListaItensAtalho(itensAtalho);
+            return;
+        }
+        const termoClean = termo.trim().toLowerCase();
+        const filtrados = itensAtalho.filter(it => {
+            return (it.referencia && it.referencia.toLowerCase().includes(termoClean)) ||
+                   (it.titulo && it.titulo.toLowerCase().includes(termoClean)) ||
+                   (it.descricao && it.descricao.toLowerCase().includes(termoClean));
+        });
+        renderListaItensAtalho(filtrados);
+    }
+
+    async function criarSolicitacaoDeAtalho(itemId) {
+        const itemObj = itensAtalho.find(it => it.id === itemId);
+        if (!itemObj) return;
+
+        const p = perguntas[currentIndex];
+        if (!p) return;
+
+        const solicitacaoTexto = `[${itemObj.referencia}] ${itemObj.titulo}`;
+        const evidenciaInicial = itemObj.evidencia_padrao ? `Evidências esperadas: ${itemObj.evidencia_padrao}\n\n` : '';
+
+        try {
+            const response = await fetch("{% url 'auditoria:api_iso_solicitacao_create' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    auditoria_id: auditoriaId,
+                    pergunta_id: p.id,
+                    solicitacao: solicitacaoTexto,
+                    evidencia: evidenciaInicial,
+                    conclusao: "P"
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                if (!p.solicitacoes) p.solicitacoes = [];
+                p.solicitacoes.push(data.solicitacao);
+                renderQuestion();
+
+                // Fecha o modal de atalhos
+                const modalEl = document.getElementById('modalItensAtalho');
+                if (modalEl) {
+                    bootstrap.Modal.getInstance(modalEl)?.hide();
+                }
+
+                showSaveIndicatorMessage(`Solicitação criada para o requisito ${itemObj.referencia}!`);
+
+                // Abre o modal de detalhes para o usuário já detalhar caso queira
+                setTimeout(() => {
+                    abrirModalDetalhesSolicitacao(data.solicitacao.id);
+                }, 350);
+            } else {
+                alert(data.error || 'Erro ao adicionar solicitação de atalho.');
+            }
+        } catch(err) {
+            console.error('Erro ao criar solicitação de atalho:', err);
+        }
+    }
+
     function abrirDrawerRequisitos() {
         const container = document.getElementById('lista-requisitos-drawer');
         container.innerHTML = '';
@@ -383,7 +595,7 @@
             
             let statusBadge = '<span class="badge bg-secondary bg-opacity-25 text-dark border-0">Pendente</span>';
             if (p.classificacao === 'C') statusBadge = '<span class="badge bg-success">Conforme</span>';
-            else if (p.classificacao === 'NC') statusBadge = '<span class="badge bg-danger">Não Conforme</span>';
+            else if (p.classificacao === 'NC') statusBadge = `<span class="badge ${p.grau_nc === 'MAIOR' ? 'bg-dark text-white border border-danger' : 'bg-danger'}">NC ${p.grau_nc === 'MAIOR' ? 'Maior' : 'Menor'}</span>`;
             else if (p.classificacao === 'OM') statusBadge = '<span class="badge bg-warning text-dark">Oportunidade</span>';
             else if (p.classificacao === 'NA') statusBadge = '<span class="badge bg-secondary">N/A</span>';
 
@@ -427,9 +639,24 @@
         // Se clicar no botão que já está selecionado, desmarca voltando para 'P' (Pendente / Livre de seleção)
         if (perguntas[currentIndex].classificacao === val) {
             perguntas[currentIndex].classificacao = 'P';
+            perguntas[currentIndex].grau_nc = null;
         } else {
             perguntas[currentIndex].classificacao = val;
+            if (val === 'NC' && !perguntas[currentIndex].grau_nc) {
+                perguntas[currentIndex].grau_nc = 'MENOR';
+            } else if (val !== 'NC') {
+                perguntas[currentIndex].grau_nc = null;
+            }
         }
+        renderQuestion();
+        triggerAutosave(true);
+    }
+
+    function setGrauRequisito(grau) {
+        if (perguntas[currentIndex].classificacao !== 'NC') {
+            perguntas[currentIndex].classificacao = 'NC';
+        }
+        perguntas[currentIndex].grau_nc = grau;
         renderQuestion();
         triggerAutosave(true);
     }
@@ -457,7 +684,8 @@
                 auditoria_id: auditoriaId,
                 pergunta_id: p.id,
                 texto_resposta: p.texto_resposta || '',
-                classificacao: p.classificacao || 'P'
+                classificacao: p.classificacao || 'P',
+                grau_nc: (p.classificacao === 'NC') ? (p.grau_nc || 'MENOR') : null
             })
         })
         .then(response => response.json())
@@ -494,7 +722,7 @@
                                 <i class="bi bi-arrows-fullscreen me-1"></i>Ver Detalhes
                             </button>
                         </div>
-                        <div class="d-flex align-items-center gap-1">
+                        <div class="d-flex align-items-center gap-1 flex-wrap">
                             <span class="small text-muted me-1 fw-bold">Conclusão:</span>
                             <div class="btn-group btn-group-sm" role="group">
                                 <button type="button" class="btn ${s.conclusao === 'C' ? 'btn-success' : 'btn-outline-success'} px-2 py-0.5 small" onclick="setConclusaoSolicitacao(${s.id}, 'C')" title="Conforme">✅ C</button>
@@ -503,6 +731,12 @@
                                 <button type="button" class="btn ${s.conclusao === 'OM' ? 'btn-warning text-dark' : 'btn-outline-warning text-dark'} px-2 py-0.5 small" onclick="setConclusaoSolicitacao(${s.id}, 'OM')" title="Oportunidade">🟠 OM</button>
                                 <button type="button" class="btn ${s.conclusao === 'NA' ? 'btn-secondary' : 'btn-outline-secondary'} px-2 py-0.5 small" onclick="setConclusaoSolicitacao(${s.id}, 'NA')" title="Não Aplicável">ℹ️ NA</button>
                             </div>
+                            ${s.conclusao === 'NC' ? `
+                                <div class="btn-group btn-group-sm ms-1 shadow-2xs" role="group" title="Grau da Não Conformidade nesta amostra">
+                                    <button type="button" class="btn btn-nc-grau ${s.grau_nc === 'MENOR' || !s.grau_nc ? 'active-menor' : 'btn-outline-danger'}" onclick="setGrauSolicitacao(${s.id}, 'MENOR')">Menor</button>
+                                    <button type="button" class="btn btn-nc-grau ${s.grau_nc === 'MAIOR' ? 'active-maior' : 'btn-outline-danger'}" onclick="setGrauSolicitacao(${s.id}, 'MAIOR')">Maior</button>
+                                </div>
+                            ` : ''}
                             <button type="button" class="btn btn-sm btn-link text-warning p-0 ms-2" onclick="abrirModalTransferir(${s.id})" title="Transferir para outro bloco">
                                 <i class="bi bi-arrow-left-right fs-6"></i>
                             </button>
@@ -595,29 +829,60 @@
 
     // Controle do Modal de Detalhes da Solicitação / Evidência
     let modalActiveConclusao = 'P';
+    let modalActiveGrauNC = 'MENOR';
     
-    function updateModalConclusaoButtons(concl) {
+    function updateModalConclusaoButtons(concl, grau) {
         modalActiveConclusao = concl;
+        modalActiveGrauNC = grau || 'MENOR';
+        
         const btnC = document.getElementById('modalBtnConcl_C');
         const btnOBS = document.getElementById('modalBtnConcl_OBS');
         const btnNC = document.getElementById('modalBtnConcl_NC');
         const btnOM = document.getElementById('modalBtnConcl_OM');
         const btnNA = document.getElementById('modalBtnConcl_NA');
+        const containerGrau = document.getElementById('modalContainerGrauNC');
+        const btnGrauMenor = document.getElementById('modalBtnGrau_MENOR');
+        const btnGrauMaior = document.getElementById('modalBtnGrau_MAIOR');
 
         if (btnC) btnC.className = `btn btn-sm ${concl === 'C' ? 'btn-success text-white' : 'btn-outline-success'} px-3 fw-bold`;
         if (btnOBS) btnOBS.className = `btn btn-sm ${concl === 'OBS' ? 'btn-obs-active' : 'btn-outline-obs'} px-3 fw-bold`;
         if (btnNC) btnNC.className = `btn btn-sm ${concl === 'NC' ? 'btn-danger text-white' : 'btn-outline-danger'} px-3 fw-bold`;
         if (btnOM) btnOM.className = `btn btn-sm ${concl === 'OM' ? 'btn-warning text-dark' : 'btn-outline-warning text-dark'} px-3 fw-bold`;
         if (btnNA) btnNA.className = `btn btn-sm ${concl === 'NA' ? 'btn-secondary text-white' : 'btn-outline-secondary'} px-3 fw-bold`;
+
+        if (containerGrau) {
+            if (concl === 'NC') {
+                containerGrau.classList.remove('d-none');
+                containerGrau.classList.add('d-flex');
+            } else {
+                containerGrau.classList.remove('d-flex');
+                containerGrau.classList.add('d-none');
+            }
+        }
+
+        if (btnGrauMenor && btnGrauMaior) {
+            if (modalActiveGrauNC === 'MAIOR') {
+                btnGrauMaior.className = 'btn btn-nc-grau active-maior';
+                btnGrauMenor.className = 'btn btn-nc-grau btn-outline-danger';
+            } else {
+                btnGrauMenor.className = 'btn btn-nc-grau active-menor';
+                btnGrauMaior.className = 'btn btn-nc-grau btn-outline-danger';
+            }
+        }
     }
 
     function setConclusaoModal(concl) {
         // Se clicar no botão que já está ativo, desmarca (volta para 'P')
         if (modalActiveConclusao === concl) {
-            updateModalConclusaoButtons('P');
+            updateModalConclusaoButtons('P', modalActiveGrauNC);
         } else {
-            updateModalConclusaoButtons(concl);
+            updateModalConclusaoButtons(concl, modalActiveGrauNC);
         }
+    }
+
+    function setGrauModal(grau) {
+        modalActiveGrauNC = grau;
+        updateModalConclusaoButtons('NC', grau);
     }
 
     function abrirModalDetalhesSolicitacao(solId) {
@@ -633,7 +898,7 @@
             <i class="bi bi-file-earmark-ruled me-2"></i>Amostra #${idx + 1}: ${solObj.solicitacao ? solObj.solicitacao.slice(0, 45) + '...' : 'Solicitação'}
         `;
 
-        updateModalConclusaoButtons(solObj.conclusao || 'P');
+        updateModalConclusaoButtons(solObj.conclusao || 'P', solObj.grau_nc || 'MENOR');
 
         const modalEl = document.getElementById('modalDetalhesSolicitacao');
         const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
@@ -649,9 +914,17 @@
         solObj.solicitacao = document.getElementById('modalSolTexto').value.trim();
         solObj.evidencia = document.getElementById('modalSolEvidencia').value.trim();
         solObj.conclusao = modalActiveConclusao;
+        solObj.grau_nc = (modalActiveConclusao === 'NC') ? (modalActiveGrauNC || 'MENOR') : null;
 
-        // Auto-calcula o veredicto global
-        p.classificacao = derivarClassificacaoPorSolicitacoes(p.solicitacoes);
+        // Auto-calcula o veredicto global e deriva o grau NC
+        const derivado = derivarClassificacaoPorSolicitacoes(p.solicitacoes);
+        p.classificacao = derivado.classificacao;
+        if (p.classificacao === 'NC') {
+            p.grau_nc = derivado.grau_nc || p.grau_nc || 'MENOR';
+        } else {
+            p.grau_nc = null;
+        }
+
         renderQuestion();
 
         const modalEl = document.getElementById('modalDetalhesSolicitacao');
@@ -667,7 +940,8 @@
                 body: JSON.stringify({
                     solicitacao: solObj.solicitacao,
                     evidencia: solObj.evidencia,
-                    conclusao: solObj.conclusao
+                    conclusao: solObj.conclusao,
+                    grau_nc: solObj.grau_nc
                 })
             });
 
@@ -680,27 +954,32 @@
 
     function derivarClassificacaoPorSolicitacoes(solicitacoes) {
         if (!solicitacoes || solicitacoes.length === 0) {
-            return 'P'; // Pendente / Não avaliado
+            return { classificacao: 'P', grau_nc: null }; // Pendente / Não avaliado
         }
         const concs = solicitacoes.map(s => s.conclusao);
 
         // 1. Falha fatal: qualquer Não Conforme (NC) torna o requisito Não Conforme
-        if (concs.includes('NC')) return 'NC';
+        if (concs.includes('NC')) {
+            const ncSols = solicitacoes.filter(s => s.conclusao === 'NC');
+            // Se houver qualquer amostra NC Maior, o requisito assume NC Maior
+            const temMaior = ncSols.some(s => s.grau_nc === 'MAIOR');
+            return { classificacao: 'NC', grau_nc: temMaior ? 'MAIOR' : 'MENOR' };
+        }
 
         // 2. Oportunidade de Melhoria (OM)
-        if (concs.includes('OM')) return 'OM';
+        if (concs.includes('OM')) return { classificacao: 'OM', grau_nc: null };
 
         // 3. Observação com Correção (OBS)
-        if (concs.includes('OBS')) return 'OBS';
+        if (concs.includes('OBS')) return { classificacao: 'OBS', grau_nc: null };
 
         // 4. Conforme se todas forem 'C' ou 'NA' (com pelo menos uma 'C')
-        if (concs.some(c => c === 'C') && concs.every(c => c === 'C' || c === 'NA')) return 'C';
+        if (concs.some(c => c === 'C') && concs.every(c => c === 'C' || c === 'NA')) return { classificacao: 'C', grau_nc: null };
 
         // 5. Todas N/A
-        if (concs.every(c => c === 'NA')) return 'NA';
+        if (concs.every(c => c === 'NA')) return { classificacao: 'NA', grau_nc: null };
 
         // 6. Caso ainda existam amostras pendentes ('P')
-        return 'P';
+        return { classificacao: 'P', grau_nc: null };
     }
 
     async function setConclusaoSolicitacao(solId, conclusaoVal) {
@@ -711,12 +990,25 @@
         // Se clicar no botão que já está selecionado, desmarca (volta para 'P' / Livre de seleção)
         if (solObj.conclusao === conclusaoVal) {
             solObj.conclusao = 'P';
+            solObj.grau_nc = null;
         } else {
             solObj.conclusao = conclusaoVal;
+            if (conclusaoVal === 'NC' && !solObj.grau_nc) {
+                solObj.grau_nc = 'MENOR';
+            } else if (conclusaoVal !== 'NC') {
+                solObj.grau_nc = null;
+            }
         }
 
         // Auto-calcula o veredicto global do requisito a partir das evidências/amostras
-        p.classificacao = derivarClassificacaoPorSolicitacoes(p.solicitacoes);
+        const derivado = derivarClassificacaoPorSolicitacoes(p.solicitacoes);
+        p.classificacao = derivado.classificacao;
+        if (p.classificacao === 'NC') {
+            p.grau_nc = derivado.grau_nc || p.grau_nc || 'MENOR';
+        } else {
+            p.grau_nc = null;
+        }
+
         renderQuestion();
 
         try {
@@ -729,7 +1021,8 @@
                 body: JSON.stringify({
                     solicitacao: solObj.solicitacao,
                     evidencia: solObj.evidencia,
-                    conclusao: solObj.conclusao
+                    conclusao: solObj.conclusao,
+                    grau_nc: solObj.grau_nc
                 })
             });
 
@@ -738,6 +1031,49 @@
             showSaveIndicatorMessage("Conclusão e Veredicto atualizados!");
         } catch(err) {
             console.error('Erro ao atualizar conclusão:', err);
+        }
+    }
+
+    async function setGrauSolicitacao(solId, grauVal) {
+        const p = perguntas[currentIndex];
+        const solObj = (p.solicitacoes || []).find(s => s.id === solId);
+        if (!solObj) return;
+
+        if (solObj.conclusao !== 'NC') {
+            solObj.conclusao = 'NC';
+        }
+        solObj.grau_nc = grauVal;
+
+        // Auto-calcula o veredicto global do requisito
+        const derivado = derivarClassificacaoPorSolicitacoes(p.solicitacoes);
+        p.classificacao = derivado.classificacao;
+        if (p.classificacao === 'NC') {
+            p.grau_nc = derivado.grau_nc || p.grau_nc || 'MENOR';
+        } else {
+            p.grau_nc = null;
+        }
+
+        renderQuestion();
+
+        try {
+            await fetch(`/auditoria/iso/api/solicitacoes/${solId}/editar/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    solicitacao: solObj.solicitacao,
+                    evidencia: solObj.evidencia,
+                    conclusao: solObj.conclusao,
+                    grau_nc: solObj.grau_nc
+                })
+            });
+
+            doSave();
+            showSaveIndicatorMessage(`Amostra definida como NC ${grauVal === 'MAIOR' ? 'Maior' : 'Menor'}!`);
+        } catch(err) {
+            console.error('Erro ao atualizar grau de NC na solicitação:', err);
         }
     }
 
@@ -756,7 +1092,13 @@
             const data = await response.json();
             if (data.success) {
                 p.solicitacoes = (p.solicitacoes || []).filter(s => s.id !== solId);
-                p.classificacao = derivarClassificacaoPorSolicitacoes(p.solicitacoes);
+                const derivado = derivarClassificacaoPorSolicitacoes(p.solicitacoes);
+                p.classificacao = derivado.classificacao;
+                if (p.classificacao === 'NC') {
+                    p.grau_nc = derivado.grau_nc || p.grau_nc || 'MENOR';
+                } else {
+                    p.grau_nc = null;
+                }
                 renderQuestion();
                 doSave();
                 showSaveIndicatorMessage("Solicitação removida!");
@@ -863,6 +1205,10 @@
                 currentIndex = targetIdx;
             }
         }
+
+        // Atualiza o contador de atalhos disponíveis no botão do header
+        const badgeTotal = document.getElementById('badge-total-atalhos');
+        if (badgeTotal) badgeTotal.textContent = itensAtalho.length;
 
         renderQuestion();
     });
