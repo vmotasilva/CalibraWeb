@@ -367,6 +367,51 @@
                 </button>
                 <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Fechar</button>
             </div>
+<!-- Modal para Visualização Plena / Edição da Solicitação e Evidência (Matriz) -->
+<div class="modal fade" id="modalDetalhesSolicitacao" tabindex="-1" aria-hidden="true" style="z-index: 10080;">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-primary bg-opacity-10 border-0 py-3">
+                <h5 class="modal-title fw-bold text-primary" id="modalDetalhesSolicitacaoTitle">
+                    <i class="bi bi-file-earmark-ruled me-2"></i>Detalhes da Solicitação de Evidência
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <input type="hidden" id="modalSolId">
+
+                <!-- Micro-status / Conclusão dentro do Modal -->
+                <div class="d-flex justify-content-between align-items-center mb-3 p-3 bg-light rounded-3 border">
+                    <span class="fw-bold text-dark small"><i class="bi bi-shield-check me-1 text-primary"></i>Conclusão desta Amostra:</span>
+                    <div class="btn-group" role="group">
+                        <button type="button" id="modalBtnConcl_C" class="btn btn-sm btn-outline-success px-3 fw-bold" onclick="setConclusaoModal('C')">✅ Conforme</button>
+                        <button type="button" id="modalBtnConcl_NC" class="btn btn-sm btn-outline-danger px-3 fw-bold" onclick="setConclusaoModal('NC')">🔴 Não Conforme</button>
+                        <button type="button" id="modalBtnConcl_OM" class="btn btn-sm btn-outline-warning text-dark px-3 fw-bold" onclick="setConclusaoModal('OM')">🟠 Oportunidade</button>
+                        <button type="button" id="modalBtnConcl_NA" class="btn btn-sm btn-outline-secondary px-3 fw-bold" onclick="setConclusaoModal('NA')">ℹ️ N/A</button>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-dark">
+                        <i class="bi bi-file-text me-1 text-primary"></i> Item / Documento Solicitado <span class="text-danger">*</span>
+                    </label>
+                    <input type="text" id="modalSolTexto" class="form-control form-control-lg fs-6 shadow-2xs" placeholder="Ex: Procedimento da Qualidade, Laudo Técnico, Certificado RBC...">
+                </div>
+
+                <div class="mb-2">
+                    <label class="form-label fw-bold text-dark">
+                        <i class="bi bi-card-checklist me-1 text-primary"></i> Evidência Apresentada / Constatada pelo Auditor
+                    </label>
+                    <textarea id="modalSolEvidencia" class="form-control shadow-2xs" rows="8" placeholder="Descreva plenamente o documento auditado, referências, números de laudo, datas, pessoas e evidências encontradas..." style="font-family: inherit; font-size: 0.95rem; line-height: 1.5;"></textarea>
+                    <small class="text-muted mt-1 d-block"><i class="bi bi-info-circle me-1"></i>Espaço amplo para digitação e leitura integral da evidência.</small>
+                </div>
+            </div>
+            <div class="modal-footer border-0 bg-light rounded-bottom-4">
+                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" onclick="salvarModalDetalhesSolicitacao()">
+                    <i class="bi bi-check2-circle me-1"></i> Salvar Evidência
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -481,7 +526,7 @@ document.addEventListener('DOMContentLoaded', function() {
             else statusHtml = '<span class="status-badge status-NA">ℹ️ Não Aplicável</span>';
             statusContainer.innerHTML = statusHtml;
 
-            // Popula Coluna 2 (Blocos e Perguntas)
+            // Popula Coluna 2 (Perguntas Unificadas com Seus Respectivos Blocos e Solicitações)
             const blocosContainer = document.getElementById('auditoriaModalBlocosContainer');
             blocosContainer.innerHTML = '';
 
@@ -493,92 +538,137 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 `;
             } else {
+                // Agrupa perguntas por texto da pergunta (para que a pergunta apareça apenas 1 vez se for a mesma)
+                const perguntasMap = {};
                 blocos.forEach(b => {
-                    const blockCard = document.createElement('div');
-                    blockCard.className = 'card border rounded-4 shadow-2xs mb-3 bg-white p-3.5';
+                    (b.perguntas || []).forEach(p => {
+                        const chave = p.texto_pergunta.trim();
+                        if (!perguntasMap[chave]) {
+                            perguntasMap[chave] = {
+                                id: p.id,
+                                texto_pergunta: p.texto_pergunta,
+                                dica_auditor: p.dica_auditor,
+                                instanciasPorBloco: []
+                            };
+                        }
+                        perguntasMap[chave].instanciasPorBloco.push({
+                            bloco_id: b.bloco_id,
+                            bloco_titulo: b.bloco_titulo,
+                            pergunta_id: p.id,
+                            classificacao: p.classificacao,
+                            texto_resposta: p.texto_resposta,
+                            solicitacoes: p.solicitacoes || []
+                        });
+                    });
+                });
 
-                    let perguntasHtml = '';
-                    if (b.perguntas && b.perguntas.length > 0) {
-                        b.perguntas.forEach(p => {
-                            let respBadge = '';
-                            if (p.classificacao === 'C') respBadge = '<span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2.5 py-1 small">✅ Conforme</span>';
-                            else if (p.classificacao === 'NC') respBadge = '<span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2.5 py-1 small">🔴 Não Conforme</span>';
-                            else if (p.classificacao === 'OM') respBadge = '<span class="badge bg-warning bg-opacity-10 text-dark rounded-pill px-2.5 py-1 small">🟠 Oportunidade</span>';
-                            else if (p.classificacao === 'NA') respBadge = '<span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2.5 py-1 small">ℹ️ Não Aplicável</span>';
-                            else respBadge = '<span class="badge bg-secondary bg-opacity-10 text-muted rounded-pill px-2.5 py-1 small">⚠️ Pendente</span>';
+                Object.values(perguntasMap).forEach(group => {
+                    const groupCard = document.createElement('div');
+                    groupCard.className = 'card border rounded-4 shadow-sm mb-4 bg-white p-3.5';
 
-                            let respostaTextoHtml = '';
-                            if (p.texto_resposta && p.texto_resposta.trim()) {
-                                respostaTextoHtml = `
-                                    <div class="mt-2 p-2.5 bg-light rounded-3 border">
-                                        <small class="fw-bold text-secondary d-block mb-1"><i class="bi bi-chat-left-text me-1"></i> Evidências / Anotações do Auditor:</small>
-                                        <div class="text-dark small font-monospace" style="white-space: pre-wrap;">${p.texto_resposta}</div>
-                                    </div>
-                                `;
-                            } else {
-                                respostaTextoHtml = `<small class="text-muted fst-italic d-block mt-1">Aguardando realização da entrevista neste bloco.</small>`;
-                            }
+                    let blocosInstanciasHtml = '';
+                    group.instanciasPorBloco.forEach(inst => {
+                        let respBadge = '';
+                        if (inst.classificacao === 'C') respBadge = '<span class="badge bg-success text-white rounded-pill px-2.5 py-1 small">✅ Conforme</span>';
+                        else if (inst.classificacao === 'NC') respBadge = '<span class="badge bg-danger text-white rounded-pill px-2.5 py-1 small">🔴 Não Conforme</span>';
+                        else if (inst.classificacao === 'OM') respBadge = '<span class="badge bg-warning text-dark rounded-pill px-2.5 py-1 small">🟠 Oportunidade</span>';
+                        else if (inst.classificacao === 'NA') respBadge = '<span class="badge bg-secondary text-white rounded-pill px-2.5 py-1 small">ℹ️ Não Aplicável</span>';
+                        else respBadge = '<span class="badge bg-secondary bg-opacity-25 text-dark rounded-pill px-2.5 py-1 small">⚠️ Pendente</span>';
 
-                            let solicitacoesHtml = '';
-                            if (p.solicitacoes && p.solicitacoes.length > 0) {
-                                let solsItems = p.solicitacoes.map(s => {
-                                    let cBadge = 'bg-secondary';
-                                    if (s.conclusao === 'C') cBadge = 'bg-success';
-                                    else if (s.conclusao === 'NC') cBadge = 'bg-danger';
-                                    else if (s.conclusao === 'OM') cBadge = 'bg-warning text-dark';
-                                    else if (s.conclusao === 'NA') cBadge = 'bg-secondary';
+                        let solicitacoesHtml = '';
+                        if (inst.solicitacoes && inst.solicitacoes.length > 0) {
+                            let solsItems = inst.solicitacoes.map((s, sIdx) => {
+                                let cBadge = 'bg-secondary';
+                                if (s.conclusao === 'C') cBadge = 'bg-success';
+                                else if (s.conclusao === 'NC') cBadge = 'bg-danger';
+                                else if (s.conclusao === 'OM') cBadge = 'bg-warning text-dark';
+                                else if (s.conclusao === 'NA') cBadge = 'bg-secondary';
 
-                                    return `
-                                        <div class="p-2 bg-light rounded-3 border mb-1.5 small">
-                                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                                <strong class="text-dark"><i class="bi bi-file-earmark-text text-primary me-1"></i>${s.solicitacao}</strong>
-                                                <span class="badge ${cBadge} rounded-pill px-2 py-0.5" style="font-size: 0.75rem;">${s.conclusao_display || 'Pendente'}</span>
+                                return `
+                                    <div class="p-2.5 bg-white rounded-3 border mb-2 shadow-2xs">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <span class="badge bg-light text-primary border font-monospace" style="font-size: 0.75rem;">Amostra #${sIdx + 1}</span>
+                                                <strong class="text-dark small">${s.solicitacao}</strong>
                                             </div>
-                                            ${s.evidencia ? `<div class="text-muted font-monospace" style="font-size: 0.8rem; white-space: pre-wrap;"><i class="bi bi-check2-square me-1"></i>Evidência: ${s.evidencia}</div>` : `<small class="text-muted fst-italic">Sem registro de evidência ainda.</small>`}
+                                            <div class="d-flex align-items-center gap-2">
+                                                <span class="badge ${cBadge} rounded-pill px-2 py-0.5" style="font-size: 0.75rem;">${s.conclusao_display || 'Pendente'}</span>
+                                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill font-monospace" style="font-size: 0.75rem;" onclick="abrirModalDetalhesMatriz(${s.id}, '${escapeJs(s.solicitacao)}', '${escapeJs(s.evidencia || '')}', '${s.conclusao || 'P'}', ${inst.pergunta_id})">
+                                                    <i class="bi bi-arrows-angle-expand me-1"></i> Expandir
+                                                </button>
+                                            </div>
                                         </div>
-                                    `;
-                                }).join('');
-
-                                solicitacoesHtml = `
-                                    <div class="mt-2.5 pt-2 border-top">
-                                        <small class="fw-bold text-dark d-block mb-1.5"><i class="bi bi-file-earmark-check text-primary me-1"></i> Solicitações de Evidência & Amostragens (${p.solicitacoes.length}):</small>
-                                        ${solsItems}
+                                        ${s.evidencia ? `<div class="text-muted font-monospace small bg-light p-2 rounded-2 mt-1" style="font-size: 0.8rem; white-space: pre-wrap;"><i class="bi bi-file-earmark-check me-1 text-primary"></i><strong>Evidência:</strong> ${s.evidencia}</div>` : `<small class="text-muted fst-italic d-block mt-1">Sem registro de evidência ainda.</small>`}
                                     </div>
                                 `;
-                            }
+                            }).join('');
 
-                            perguntasHtml += `
-                                <div class="p-3 bg-white border rounded-3 mb-2 shadow-2xs">
-                                    <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
-                                        <span class="fw-bold text-dark small" style="white-space: pre-wrap;"><i class="bi bi-question-circle text-primary me-1"></i>${p.texto_pergunta}</span>
-                                        ${respBadge}
+                            solicitacoesHtml = `
+                                <div class="mt-2.5">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <small class="fw-bold text-dark"><i class="bi bi-folder-check text-primary me-1"></i> Solicitações & Amostragens (${inst.solicitacoes.length}):</small>
+                                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill py-0.5 px-2.5 fw-bold" style="font-size: 0.75rem;" onclick="adicionarSolicitacaoMatriz(${inst.pergunta_id})">
+                                            <i class="bi bi-plus-lg me-1"></i> Nova Solicitação
+                                        </button>
                                     </div>
-                                    ${p.dica_auditor ? `<small class="text-muted d-block mb-1"><i class="bi bi-info-circle me-1"></i>Dica: ${p.dica_auditor}</small>` : ''}
-                                    ${respostaTextoHtml}
-                                    ${solicitacoesHtml}
+                                    ${solsItems}
                                 </div>
                             `;
-                        });
-                    } else {
-                        perguntasHtml = `
-                            <div class="alert alert-warning border text-center py-3 rounded-3 mb-2 small">
-                                <i class="bi bi-exclamation-triangle me-1"></i> Nenhuma pergunta criada neste bloco para este requisito ainda.
-                            </div>
-                            <a href="/auditoria/iso/setup/auditorias/{{ auditoria.id }}/agendas/${b.bloco_id}/" class="btn btn-outline-primary btn-sm rounded-pill w-100 fw-bold">
-                                <i class="bi bi-plus-lg me-1"></i> Ir para o Bloco e Adicionar Perguntas
-                            </a>
-                        `;
-                    }
+                        } else {
+                            solicitacoesHtml = `
+                                <div class="mt-2 p-2 bg-light rounded-3 border text-center">
+                                    <small class="text-muted d-block mb-1.5">Nenhuma solicitação de evidência registrada para este bloco.</small>
+                                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill py-0.5 px-3 fw-bold" style="font-size: 0.75rem;" onclick="adicionarSolicitacaoMatriz(${inst.pergunta_id})">
+                                        <i class="bi bi-plus-lg me-1"></i> Adicionar Solicitação / Amostra
+                                    </button>
+                                </div>
+                            `;
+                        }
 
-                    blockCard.innerHTML = `
-                        <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
-                            <span class="fw-bold text-primary fs-6"><i class="bi bi-box-seam me-1"></i> Bloco: ${b.bloco_titulo}</span>
-                            <span class="badge bg-secondary bg-opacity-10 text-dark rounded-pill px-2.5 py-1 small">${b.total_perguntas} pergunta(s)</span>
+                        let respostaTextoHtml = '';
+                        if (inst.texto_resposta && inst.texto_resposta.trim()) {
+                            respostaTextoHtml = `
+                                <div class="mt-2 p-2.5 bg-white rounded-3 border">
+                                    <small class="fw-bold text-secondary d-block mb-1"><i class="bi bi-chat-left-text me-1"></i> Anotações Gerais do Auditor:</small>
+                                    <div class="text-dark small font-monospace" style="white-space: pre-wrap;">${inst.texto_resposta}</div>
+                                </div>
+                            `;
+                        }
+
+                        blocosInstanciasHtml += `
+                            <div class="p-3 rounded-4 border bg-light mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bi bi-diagram-3-fill text-primary"></i>
+                                        <span class="fw-bold text-dark">${inst.bloco_titulo}</span>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <a href="/auditoria/iso/{{ auditoria.id }}/entrevista/?agenda_id=${inst.bloco_id}" target="_blank" class="btn btn-sm btn-outline-secondary rounded-pill py-0 px-2 font-monospace" style="font-size: 0.75rem;" title="Abrir Modo Entrevista">
+                                            <i class="bi bi-box-arrow-up-right me-1"></i> Entrevista
+                                        </a>
+                                        ${respBadge}
+                                    </div>
+                                </div>
+                                ${respostaTextoHtml}
+                                ${solicitacoesHtml}
+                            </div>
+                        `;
+                    });
+
+                    groupCard.innerHTML = `
+                        <div class="mb-3">
+                            <h6 class="fw-bold text-primary mb-1 d-flex align-items-start gap-2">
+                                <i class="bi bi-question-circle-fill mt-0.5"></i>
+                                <span>${group.texto_pergunta}</span>
+                            </h6>
+                            ${group.dica_auditor ? `<small class="text-muted d-block ps-4"><i class="bi bi-info-circle me-1"></i>Dica: ${group.dica_auditor}</small>` : ''}
                         </div>
-                        <div>${perguntasHtml}</div>
+                        <div class="ps-2 border-start border-primary border-3 ms-1">
+                            ${blocosInstanciasHtml}
+                        </div>
                     `;
 
-                    blocosContainer.appendChild(blockCard);
+                    blocosContainer.appendChild(groupCard);
                 });
             }
 
@@ -587,5 +677,123 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+
+// Escape string para passar em atributos inline
+function escapeJs(str) {
+    if (!str) return '';
+    return str.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, '\\n').replace(/\r/g, '');
+}
+
+// Lógica do Modal de Evidência Expandida dentro da Matriz
+let activeMatrizSolId = null;
+let activeMatrizPerguntaId = null;
+let modalMatrizActiveConclusao = 'P';
+
+function updateModalMatrizConclusaoButtons(concl) {
+    modalMatrizActiveConclusao = concl;
+    const btnC = document.getElementById('modalBtnConcl_C');
+    const btnNC = document.getElementById('modalBtnConcl_NC');
+    const btnOM = document.getElementById('modalBtnConcl_OM');
+    const btnNA = document.getElementById('modalBtnConcl_NA');
+
+    if (btnC) btnC.className = `btn btn-sm ${concl === 'C' ? 'btn-success text-white' : 'btn-outline-success'} px-3 fw-bold`;
+    if (btnNC) btnNC.className = `btn btn-sm ${concl === 'NC' ? 'btn-danger text-white' : 'btn-outline-danger'} px-3 fw-bold`;
+    if (btnOM) btnOM.className = `btn btn-sm ${concl === 'OM' ? 'btn-warning text-dark' : 'btn-outline-warning text-dark'} px-3 fw-bold`;
+    if (btnNA) btnNA.className = `btn btn-sm ${concl === 'NA' ? 'btn-secondary text-white' : 'btn-outline-secondary'} px-3 fw-bold`;
+}
+
+function setConclusaoModal(concl) {
+    if (modalMatrizActiveConclusao === concl) {
+        updateModalMatrizConclusaoButtons('P');
+    } else {
+        updateModalMatrizConclusaoButtons(concl);
+    }
+}
+
+function abrirModalDetalhesMatriz(solId, texto, evidencia, conclusao, perguntaId) {
+    activeMatrizSolId = solId;
+    activeMatrizPerguntaId = perguntaId;
+
+    document.getElementById('modalSolId').value = solId;
+    document.getElementById('modalSolTexto').value = texto || '';
+    document.getElementById('modalSolEvidencia').value = evidencia || '';
+    document.getElementById('modalDetalhesSolicitacaoTitle').innerHTML = `
+        <i class="bi bi-file-earmark-ruled me-2"></i>Amostra: ${texto ? texto.slice(0, 45) + '...' : 'Solicitação de Evidência'}
+    `;
+
+    updateModalMatrizConclusaoButtons(conclusao || 'P');
+
+    const modalEl = document.getElementById('modalDetalhesSolicitacao');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+}
+
+async function salvarModalDetalhesSolicitacao() {
+    const solId = activeMatrizSolId;
+    const solTexto = document.getElementById('modalSolTexto').value.trim();
+    const solEvidencia = document.getElementById('modalSolEvidencia').value.trim();
+    const solConclusao = modalMatrizActiveConclusao;
+
+    if (!solTexto) {
+        alert('Por favor, informe o nome/documento solicitado.');
+        return;
+    }
+
+    try {
+        const resp = await fetch(`/auditoria/iso/api/solicitacoes/${solId}/editar/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                solicitacao: solTexto,
+                evidencia: solEvidencia,
+                conclusao: solConclusao
+            })
+        });
+        const res = await resp.json();
+        if (res.success) {
+            const modalEl = document.getElementById('modalDetalhesSolicitacao');
+            bootstrap.Modal.getInstance(modalEl)?.hide();
+            // Recarrega a matriz para atualizar todas as regras e métricas
+            window.location.reload();
+        } else {
+            alert('Erro ao salvar: ' + (res.error || 'Erro desconhecido.'));
+        }
+    } catch(err) {
+        console.error('Erro ao salvar evidência:', err);
+        alert('Falha na comunicação com o servidor.');
+    }
+}
+
+async function adicionarSolicitacaoMatriz(perguntaId) {
+    const texto = prompt('Digite o Item / Documento a ser solicitado para amostragem:');
+    if (!texto || !texto.trim()) return;
+
+    try {
+        const resp = await fetch("{% url 'auditoria:api_iso_solicitacao_create' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                pergunta_id: perguntaId,
+                auditoria_id: {{ auditoria.id }},
+                solicitacao: texto.trim()
+            })
+        });
+        const res = await resp.json();
+        if (res.success) {
+            window.location.reload();
+        } else {
+            alert('Erro ao adicionar: ' + (res.error || 'Erro desconhecido.'));
+        }
+    } catch(err) {
+        console.error('Erro ao adicionar solicitação:', err);
+        alert('Falha na comunicação com o servidor.');
+    }
+}
 </script>
 {% endblock %}
