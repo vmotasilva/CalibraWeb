@@ -3908,7 +3908,19 @@ def iso_norma_detail(request, pk):
         item.nivel = item.referencia.count('.')
         itens.append(item)
         
-    perguntas = BancoPergunta.objects.filter(itens_norma__norma=norma).distinct().prefetch_related('itens_norma')
+    perguntas_qs = BancoPergunta.objects.filter(itens_norma__norma=norma).distinct().prefetch_related('itens_norma')
+    
+    def get_pergunta_sort_key(p):
+        items = list(p.itens_norma.all())
+        if items:
+            def parse_ref(ref):
+                parts = (ref or '').split('.')
+                return [int(x) if x.isdigit() else x for x in parts]
+            min_item = min(items, key=lambda it: (it.ordem or 0, parse_ref(it.referencia)))
+            return (min_item.ordem or 0, parse_ref(min_item.referencia), p.id)
+        return (999999, [], p.id)
+        
+    perguntas = sorted(list(perguntas_qs), key=get_pergunta_sort_key)
         
     modelos = ModeloAuditoriaIso.objects.filter(norma=norma).prefetch_related('perguntas')
     auditorias = AuditoriaIso.objects.filter(norma=norma).order_by('-criado_em')
@@ -4835,11 +4847,17 @@ def iso_agenda_pergunta_create(request, auditoria_id, pk):
     dica_resposta = request.POST.get("dica_resposta", "") or request.POST.get("dica_auditor", "")
     item_ids = request.POST.getlist("itens_norma")
     
-    if not texto_pergunta:
-        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({'success': False, 'error': 'O enunciado da pergunta é obrigatório.'}, status=400)
-        messages.error(request, "O enunciado da pergunta é obrigatório.")
-        return redirect('auditoria:iso_agenda_detail', auditoria_id=auditoria.id, pk=agenda.id)
+    # Validar se algum dos itens já possui pergunta cadastrada
+    if item_ids:
+        from .models import ItemNorma
+        itens_conflito = ItemNorma.objects.filter(id__in=item_ids, perguntas_vinculadas__isnull=False).distinct()
+        if itens_conflito.exists():
+            conflito_refs = ", ".join([it.referencia for it in itens_conflito])
+            err_msg = f"O(s) item(ns) da norma [{conflito_refs}] já possui(em) pergunta cadastrada no banco. Cada item deve ter no máximo 1 pergunta."
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'error': err_msg}, status=400)
+            messages.error(request, err_msg)
+            return redirect('auditoria:iso_agenda_detail', auditoria_id=auditoria.id, pk=agenda.id)
 
     nova_pergunta = BancoPergunta.objects.create(
         texto_pergunta=texto_pergunta,
