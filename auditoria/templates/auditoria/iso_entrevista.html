@@ -403,7 +403,6 @@
 
                             <div class="d-flex justify-content-center gap-2 mb-2 flex-wrap">
                                 <button type="button" class="btn btn-outline-success btn-classificacao ${p.classificacao === 'C' ? 'active btn-success text-white' : ''}" onclick="setClassificacao('C')">✅ Conforme</button>
-                                <button type="button" class="btn btn-outline-obs btn-classificacao ${p.classificacao === 'OBS' ? 'active btn-obs-active' : ''}" onclick="setClassificacao('OBS')">👁️ Obs. com Correção</button>
                                 <button type="button" class="btn btn-outline-danger btn-classificacao ${p.classificacao === 'NC' ? 'active btn-danger text-white' : ''}" onclick="setClassificacao('NC')">
                                     🔴 Não Conforme ${p.classificacao === 'NC' && p.grau_nc ? `(${p.grau_nc === 'MAIOR' ? 'Maior' : 'Menor'})` : ''}
                                 </button>
@@ -993,7 +992,8 @@
         }
         const concs = solicitacoes.map(s => s.conclusao);
 
-        // 1. Falha fatal: qualquer Não Conforme (NC) torna o requisito Não Conforme
+        // 1. Falha fatal / Não Conformidade:
+        // Qualquer Não Conforme (NC) torna o requisito Não Conforme
         if (concs.includes('NC')) {
             const ncSols = solicitacoes.filter(s => s.conclusao === 'NC');
             // Se houver qualquer amostra NC Maior, o requisito assume NC Maior
@@ -1001,11 +1001,13 @@
             return { classificacao: 'NC', grau_nc: temMaior ? 'MAIOR' : 'MENOR' };
         }
 
-        // 2. Oportunidade de Melhoria (OM)
-        if (concs.includes('OM')) return { classificacao: 'OM', grau_nc: null };
+        // 2. Se houver amostra com Observação com Correção (OBS), no requisito da norma classifica como NC Menor
+        if (concs.includes('OBS')) {
+            return { classificacao: 'NC', grau_nc: 'MENOR' };
+        }
 
-        // 3. Observação com Correção (OBS)
-        if (concs.includes('OBS')) return { classificacao: 'OBS', grau_nc: null };
+        // 3. Oportunidade de Melhoria (OM)
+        if (concs.includes('OM')) return { classificacao: 'OM', grau_nc: null };
 
         // 4. Conforme se todas forem 'C' ou 'NA' (com pelo menos uma 'C')
         if (concs.some(c => c === 'C') && concs.every(c => c === 'C' || c === 'NA')) return { classificacao: 'C', grau_nc: null };
