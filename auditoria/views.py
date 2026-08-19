@@ -3286,9 +3286,28 @@ def iso_entrevista_view(request, auditoria_id):
             "solicitacoes": r.get("solicitacoes", [])
         })
         
+    # Serializar agendas para o modal de transferência
+    agendas_para_transfer = []
+    for ag in auditoria.agendas.filter(arquivada=False).prefetch_related('perguntas', 'perguntas__itens_norma'):
+        perguntas_ag = []
+        for pag in ag.perguntas.filter(ativa=True):
+            itens_str = ", ".join(it.referencia for it in pag.itens_norma.all())
+            perguntas_ag.append({
+                "id": pag.id,
+                "texto_curto": pag.texto_pergunta[:80] + ("..." if len(pag.texto_pergunta) > 80 else ""),
+                "itens": itens_str or "—"
+            })
+        agendas_para_transfer.append({
+            "id": ag.id,
+            "titulo": ag.titulo,
+            "perguntas": perguntas_ag
+        })
+
     context = {
         "auditoria": auditoria,
-        "perguntas_json": json.dumps(perguntas_data)
+        "agenda": agenda if agenda_id else None,
+        "perguntas_json": json.dumps(perguntas_data),
+        "agendas_json": json.dumps(agendas_para_transfer)
     }
     return render(request, "auditoria/iso_entrevista.html", context)
 
@@ -3386,6 +3405,42 @@ def api_iso_solicitacao_delete(request, pk):
         sol = get_object_or_404(SolicitacaoEvidenciaIso, pk=pk)
         sol.delete()
         return JsonResponse({"success": True})
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+
+@login_required
+@require_POST
+def api_iso_solicitacao_transferir(request, pk):
+    """Transfere uma solicitação de evidência para outra pergunta/bloco."""
+    from .models import SolicitacaoEvidenciaIso, RespostaEntrevistaIso, AuditoriaIso, BancoPergunta
+    try:
+        sol = get_object_or_404(SolicitacaoEvidenciaIso, pk=pk)
+        data = json.loads(request.body)
+        auditoria_id = data.get("auditoria_id")
+        pergunta_destino_id = data.get("pergunta_destino_id")
+
+        if not auditoria_id or not pergunta_destino_id:
+            return JsonResponse({"success": False, "error": "Parâmetros insuficientes."}, status=400)
+
+        auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+        pergunta_destino = get_object_or_404(BancoPergunta, pk=pergunta_destino_id)
+
+        # Cria ou obtém a resposta de destino
+        resposta_destino, _ = RespostaEntrevistaIso.objects.get_or_create(
+            auditoria=auditoria,
+            pergunta=pergunta_destino,
+            defaults={"respondida_por": request.user}
+        )
+
+        # Move a solicitação
+        sol.resposta = resposta_destino
+        sol.save()
+
+        return JsonResponse({
+            "success": True,
+            "message": f"Solicitação transferida para '{pergunta_destino.texto_pergunta[:60]}'."
+        })
     except Exception as e:
         return JsonResponse({"success": False, "error": str(e)}, status=400)
 
