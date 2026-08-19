@@ -98,19 +98,90 @@
                     </div>
                     {% endfor %}
 
-                    <div class="mt-4 p-3 border rounded bg-white border-info">
-                        <h6 class="fw-bold text-info"><i class="bi bi-chat-left-text me-2"></i>Veredicto Final do Requisito (Direito de Resposta)</h6>
-                        <div class="mb-3">
-                            <label for="argumentacao_{{ bloco.item.id }}" class="form-label text-muted small">Argumentação ou Nova Evidência (Justificativa):</label>
-                            <textarea class="form-control" id="argumentacao_{{ bloco.item.id }}" rows="3" placeholder="Descreva aqui a argumentação da reavaliação global do requisito..."></textarea>
+                    <!-- VEREDICTO FINAL & COPILOT DE GRAVIDADE DE NC -->
+                    <div class="mt-4 p-4 border rounded-4 bg-white border-2 {% if bloco.pior_status == 'NC' %}border-danger{% else %}border-primary{% endif %} shadow-sm">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="fw-bold {% if bloco.pior_status == 'NC' %}text-danger{% else %}text-primary{% endif %} mb-0">
+                                <i class="bi bi-shield-check me-2"></i>Veredicto Final do Requisito & Gravidade
+                            </h6>
+                            <span class="badge {% if bloco.pior_status == 'NC' %}bg-danger{% elif bloco.pior_status == 'OM' %}bg-warning text-dark{% elif bloco.pior_status == 'C' %}bg-success{% else %}bg-secondary{% endif %} rounded-pill px-3 py-1.5 fw-bold" id="badgeVeredicto_{{ bloco.item.id }}">
+                                {% if bloco.pior_status == 'NC' %}
+                                    Não Conforme ({{ bloco.grau_nc_selecionado|default:"MENOR" }})
+                                {% elif bloco.pior_status == 'OM' %}
+                                    Oportunidade de Melhoria
+                                {% elif bloco.pior_status == 'C' %}
+                                    Conforme
+                                {% else %}
+                                    Pendente
+                                {% endif %}
+                            </span>
                         </div>
-                        <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-warning" onclick="reverterStatus({{ bloco.item.id }}, 'OM')">
-                                <i class="bi bi-arrow-repeat"></i> Definir como OM
-                            </button>
-                            <button type="button" class="btn btn-success" onclick="reverterStatus({{ bloco.item.id }}, 'C')">
-                                <i class="bi bi-check-circle-fill"></i> Definir como Conforme
-                            </button>
+
+                        <!-- 1. Banner Copilot de Sugestão Inteligente (Heurística de Risco) -->
+                        <div class="p-3 mb-3 rounded-3 bg-light border border-primary border-opacity-25" style="background-color: #f0f7ff !important;">
+                            <div class="d-flex align-items-start gap-2.5">
+                                <div class="fs-4 text-primary mt-0.5">
+                                    <i class="bi bi-robot"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <strong class="text-dark small">💡 Sugestão do Sistema:</strong>
+                                        {% if bloco.sugestao_ia.grau == 'MAIOR' %}
+                                            <span class="badge bg-danger text-white rounded-pill px-2.5 py-1 fw-bold">Recomendamos [ NC Maior ]</span>
+                                        {% else %}
+                                            <span class="badge bg-warning text-dark rounded-pill px-2.5 py-1 fw-bold">Recomendamos [ NC Menor ]</span>
+                                        {% endif %}
+                                        <span class="text-muted font-monospace" style="font-size: 0.75rem;">(Taxa de desvio: {{ bloco.sugestao_ia.taxa_pct }}%)</span>
+                                    </div>
+                                    <p class="mb-0 text-secondary small" style="line-height: 1.45;">
+                                        <strong>Motivo:</strong> {{ bloco.sugestao_ia.justificativa }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. Classificação e Gravidade (Radio Buttons) -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-dark small mb-2"><i class="bi bi-ui-radios me-1 text-primary"></i>Grau da Não Conformidade:</label>
+                                <div class="d-flex gap-3 p-2.5 bg-light rounded-3 border">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="grau_nc_{{ bloco.item.id }}" id="grau_menor_{{ bloco.item.id }}" value="MENOR" {% if bloco.grau_nc_selecionado == 'MENOR' or not bloco.grau_nc_selecionado %}checked{% endif %}>
+                                        <label class="form-check-label fw-bold text-dark small" for="grau_menor_{{ bloco.item.id }}">
+                                            <i class="bi bi-exclamation-triangle text-warning me-1"></i> NC Menor (Pontual)
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="grau_nc_{{ bloco.item.id }}" id="grau_maior_{{ bloco.item.id }}" value="MAIOR" {% if bloco.grau_nc_selecionado == 'MAIOR' %}checked{% endif %}>
+                                        <label class="form-check-label fw-bold text-danger small" for="grau_maior_{{ bloco.item.id }}">
+                                            <i class="bi bi-x-octagon-fill text-danger me-1"></i> NC Maior (Sistêmica)
+                                        </label>
+                                    </div>
+                                </div>
+                                <small class="text-muted" style="font-size: 0.75rem;">A sugestão do robô é consultiva. Você pode selecionar livremente.</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="argumentacao_{{ bloco.item.id }}" class="form-label fw-bold text-dark small mb-2"><i class="bi bi-pencil-square me-1 text-primary"></i>Argumentação / Justificativa:</label>
+                                <textarea class="form-control form-control-sm" id="argumentacao_{{ bloco.item.id }}" rows="2" placeholder="Descreva aqui a argumentação da reavaliação ou histórico...">{{ bloco.justificativa_final|default:'' }}</textarea>
+                            </div>
+                        </div>
+
+                        <!-- 3. Botões de Ação Final -->
+                        <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                            <div class="text-muted small">
+                                <i class="bi bi-info-circle me-1"></i>Clique no veredicto desejado para salvar:
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-sm btn-danger fw-bold rounded-pill px-3 shadow-2xs" onclick="reverterStatusComGrau({{ bloco.item.id }}, 'NC')">
+                                    <i class="bi bi-exclamation-octagon-fill me-1"></i> Salvar como NC
+                                </button>
+                                <button type="button" class="btn btn-sm btn-warning text-dark fw-bold rounded-pill px-3 shadow-2xs" onclick="reverterStatusComGrau({{ bloco.item.id }}, 'OM')">
+                                    <i class="bi bi-lightbulb-fill me-1"></i> Definir como OM
+                                </button>
+                                <button type="button" class="btn btn-sm btn-success fw-bold rounded-pill px-3 shadow-2xs" onclick="reverterStatusComGrau({{ bloco.item.id }}, 'C')">
+                                    <i class="bi bi-check-circle-fill me-1"></i> Definir como Conforme
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -124,11 +195,11 @@
 <!-- Modal de Loading (Opcional) -->
 <div class="modal" id="loadingModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered modal-sm">
-        <div class="modal-content text-center p-4">
+        <div class="modal-content text-center p-4 rounded-4 border-0 shadow">
             <div class="spinner-border text-primary mx-auto mb-3" role="status">
                 <span class="visually-hidden">Processando...</span>
             </div>
-            <p class="mb-0">Registrando histórico...</p>
+            <p class="mb-0 fw-bold text-dark">Atualizando veredicto...</p>
         </div>
     </div>
 </div>
@@ -154,21 +225,18 @@
         }
 
         toggleBtn.addEventListener('change', applyFilter);
-        // Aplica filtro inicial (ocultando os C)
         applyFilter();
     });
 
-    // Função de Reversão de Status usando Fetch API
-    function reverterStatus(itemNormaId, novoStatus) {
+    // Função Heurística de Reversão de Status com Grau de NC
+    function reverterStatusComGrau(itemNormaId, novoStatus) {
         const argumentacao = document.getElementById('argumentacao_' + itemNormaId).value;
         
-        if (!argumentacao.trim()) {
-            alert('Por favor, descreva a argumentação ou evidência apresentada antes de registrar a reavaliação.');
-            return;
+        let grauNC = null;
+        if (novoStatus === 'NC') {
+            const radioMaior = document.getElementById('grau_maior_' + itemNormaId);
+            grauNC = (radioMaior && radioMaior.checked) ? 'MAIOR' : 'MENOR';
         }
-
-        const btnConfirm = confirm('Confirma o registro desta reavaliação no histórico da auditoria?');
-        if (!btnConfirm) return;
 
         const loading = new bootstrap.Modal(document.getElementById('loadingModal'));
         loading.show();
@@ -185,6 +253,7 @@
                 item_norma_id: itemNormaId,
                 auditoria_id: {{ auditoria.id }},
                 novo_status: novoStatus,
+                grau_nc: grauNC,
                 argumentacao: argumentacao
             })
         })
@@ -192,33 +261,44 @@
         .then(data => {
             loading.hide();
             if (data.success) {
-                // Atualizar o badge e o dataset visualmente
+                // Atualiza dataset e status do card
                 const card = document.querySelector(`.item-card:has(#heading${itemNormaId})`);
                 if (card) card.dataset.status = data.novo_status;
 
-                const badgeContainer = document.getElementById('badgeContainer_' + itemNormaId) || document.getElementById('badgeContainer' + itemNormaId);
+                // Header Badge
+                const badgeContainer = document.getElementById('badgeContainer' + itemNormaId);
                 if (badgeContainer) {
                     let badgeHtml = '';
-                    if (data.novo_status === 'NC') badgeHtml = '<span class="badge bg-danger fs-6">Não Conforme</span>';
-                    else if (data.novo_status === 'OM') badgeHtml = '<span class="badge bg-warning text-dark fs-6">OM</span>';
-                    else if (data.novo_status === 'C') badgeHtml = '<span class="badge bg-success fs-6">Conforme</span>';
-                    else badgeHtml = '<span class="badge bg-secondary fs-6">Pendente</span>';
+                    if (data.novo_status === 'NC') {
+                        const grauBadge = data.grau_nc === 'MAIOR' ? 'NC Maior' : 'NC Menor';
+                        badgeHtml = `<span class="badge bg-danger fs-6">${grauBadge}</span>`;
+                    } else if (data.novo_status === 'OM') {
+                        badgeHtml = '<span class="badge bg-warning text-dark fs-6">OM</span>';
+                    } else if (data.novo_status === 'C') {
+                        badgeHtml = '<span class="badge bg-success fs-6">Conforme</span>';
+                    } else {
+                        badgeHtml = '<span class="badge bg-secondary fs-6">Pendente</span>';
+                    }
                     badgeContainer.innerHTML = badgeHtml;
                 }
 
-                // Limpar textarea
-                document.getElementById('argumentacao_' + itemNormaId).value = '';
-                
-                // Recolher accordion (opcional)
-                const collapseElement = document.getElementById('collapse' + itemNormaId);
-                const bsCollapse = bootstrap.Collapse.getInstance(collapseElement);
-                if (bsCollapse) bsCollapse.hide();
+                // Inner Veredicto Badge
+                const badgeVeredicto = document.getElementById('badgeVeredicto_' + itemNormaId);
+                if (badgeVeredicto) {
+                    if (data.novo_status === 'NC') {
+                        badgeVeredicto.className = 'badge bg-danger rounded-pill px-3 py-1.5 fw-bold';
+                        badgeVeredicto.textContent = `Não Conforme (${data.grau_nc || 'MENOR'})`;
+                    } else if (data.novo_status === 'OM') {
+                        badgeVeredicto.className = 'badge bg-warning text-dark rounded-pill px-3 py-1.5 fw-bold';
+                        badgeVeredicto.textContent = 'Oportunidade de Melhoria';
+                    } else if (data.novo_status === 'C') {
+                        badgeVeredicto.className = 'badge bg-success text-white rounded-pill px-3 py-1.5 fw-bold';
+                        badgeVeredicto.textContent = 'Conforme';
+                    }
+                }
 
-                // Disparar o filtro novamente caso tenha mudado para C e o toggle esteja desligado
+                // Atualiza filtro se necessário
                 document.getElementById('toggleConformes').dispatchEvent(new Event('change'));
-
-                // Usar toast seria ideal, mas fallback para alert rápido se necessário
-                // alert('Status atualizado e histórico registrado com sucesso!');
             } else {
                 alert('Erro ao atualizar: ' + data.message);
             }
@@ -228,6 +308,11 @@
             alert('Erro de rede ao tentar reverter status.');
             console.error(error);
         });
+    }
+
+    // Compatibilidade com chamadas legadas
+    function reverterStatus(itemNormaId, novoStatus) {
+        reverterStatusComGrau(itemNormaId, novoStatus);
     }
 </script>
 {% endblock %}

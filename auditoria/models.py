@@ -981,9 +981,14 @@ class AvaliacaoFinalRequisitoIso(models.Model):
         ("OM", "Oportunidade de Melhoria"),
         ("P", "Pendente"),
     ]
+    GRAU_NC_CHOICES = [
+        ("MENOR", "NC Menor"),
+        ("MAIOR", "NC Maior"),
+    ]
     auditoria = models.ForeignKey(AuditoriaIso, on_delete=models.CASCADE, related_name="avaliacoes_finais")
     item_norma = models.ForeignKey(ItemNorma, on_delete=models.CASCADE, related_name="avaliacoes_finais")
     classificacao = models.CharField(max_length=2, choices=CLASSIFICACAO_CHOICES)
+    grau_nc = models.CharField(max_length=10, choices=GRAU_NC_CHOICES, blank=True, null=True, verbose_name="Grau da Não Conformidade")
     justificativa = models.TextField(blank=True, verbose_name="Argumentação / Justificativa da Reversão")
     atualizado_em = models.DateTimeField(auto_now=True)
     atualizado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)

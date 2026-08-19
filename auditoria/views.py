@@ -3761,6 +3761,12 @@ def iso_fechamento_presentation_view(request, auditoria_id):
     respostas_map = {r.pergunta_id: r for r in respostas}
     na_item_ids = set(auditoria.itens_nao_aplicaveis.values_list('id', flat=True))
 
+    from .models import AvaliacaoFinalRequisitoIso
+    avaliacoes_finais_map = {
+        av.item_norma_id: av
+        for av in AvaliacaoFinalRequisitoIso.objects.filter(auditoria=auditoria)
+    }
+
     hierarchy = {"NC": 5, "P": 4, "OM": 3, "C": 2, "NA": 1}
     reverse_hierarchy = {v: k for k, v in hierarchy.items()}
 
@@ -3784,7 +3790,11 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                 if item in p.itens_norma.all() or (not p.itens_norma.exists() and item in ag.itens_norma.all()):
                     todas_perguntas_item.append(p)
 
-        if item.id in na_item_ids:
+        av_final = avaliacoes_finais_map.get(item.id)
+
+        if av_final:
+            status_item = av_final.classificacao
+        elif item.id in na_item_ids:
             status_item = "NA"
         elif not todas_perguntas_item:
             status_item = "P" if any(item in ag.itens_norma.all() for ag in agendas) else "NA"
@@ -3808,6 +3818,9 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                         evidencias_item.append(f"{s.solicitacao}: {s.evidencia.strip()}")
                     elif s.solicitacao:
                         evidencias_item.append(s.solicitacao)
+
+        if av_final and av_final.justificativa:
+            evidencias_item.insert(0, f"Justificativa da Revisão: {av_final.justificativa}")
 
         if status_item == 'NA':
             count_na += 1
@@ -3833,8 +3846,11 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                 'evidencias': evidencias_item[:3] or ["Oportunidade de aprimoramento identificada no processo."]
             })
         elif status_item == 'NC':
-            # Se possui múltiplas falhas ou anotação crítica -> NC Maior
-            is_maior = len(evidencias_item) > 1 or any('crítica' in ev.lower() or 'grave' in ev.lower() for ev in evidencias_item)
+            if av_final and av_final.grau_nc:
+                is_maior = (av_final.grau_nc == 'MAIOR')
+            else:
+                is_maior = len(evidencias_item) > 1 or any('crítica' in ev.lower() or 'grave' in ev.lower() for ev in evidencias_item)
+
             if is_maior:
                 count_nc_maior += 1
                 tipo_nc = 'NC_MAIOR'
@@ -5741,7 +5757,7 @@ def iso_revisao_dashboard(request, auditoria_id):
         auditoria=auditoria
     ).exclude(
         classificacao='NA'
-    ).select_related('pergunta')
+    ).select_related('pergunta').prefetch_related('solicitacoes', 'pergunta__itens_norma')
     
     agendas = AgendaAuditoriaIso.objects.filter(auditoria=auditoria).prefetch_related('perguntas')
     
@@ -5751,7 +5767,7 @@ def iso_revisao_dashboard(request, auditoria_id):
             pergunta_agendas_map[p.id].append(agenda)
             
     avaliacoes_finais = {
-        av.item_norma_id: av.classificacao
+        av.item_norma_id: av
         for av in AvaliacaoFinalRequisitoIso.objects.filter(auditoria=auditoria)
     }
                 
@@ -5767,7 +5783,10 @@ def iso_revisao_dashboard(request, auditoria_id):
                 itens_map[item.id] = {
                     'item': item,
                     'respostas': [],
-                    'pior_status': 'C'
+                    'pior_status': 'C',
+                    'grau_nc_selecionado': None,
+                    'justificativa_final': '',
+                    'sugestao_ia': None,
                 }
             itens_map[item.id]['respostas'].append(resp)
             
@@ -5779,14 +5798,61 @@ def iso_revisao_dashboard(request, auditoria_id):
             if peso.get(novo_status, 0) > peso.get(status_atual, 0):
                 itens_map[item.id]['pior_status'] = novo_status
 
-    # Sobrescreve com avaliação final, se existir
+    # Sobrescreve com avaliação final e calcula Heurística de Risco (Motor de Sugestão de NC)
     for item_id, data in itens_map.items():
         if item_id in avaliacoes_finais:
-            data['pior_status'] = avaliacoes_finais[item_id]
+            av = avaliacoes_finais[item_id]
+            data['pior_status'] = av.classificacao
+            data['grau_nc_selecionado'] = av.grau_nc
+            data['justificativa_final'] = av.justificativa
+
+        # Coleta todas as solicitações/amostragens deste requisito
+        todas_solicitacoes = []
+        for r in data['respostas']:
+            todas_solicitacoes.extend(list(r.solicitacoes.all()))
+
+        # Cálculo da Heurística de Sugestão Inteligente
+        T = len(todas_solicitacoes)
+        F = sum(1 for s in todas_solicitacoes if s.conclusao == 'NC')
+        
+        if T == 0:
+            # Sem solicitações cadastradas, avalia pelas respostas brutas
+            nc_resps = sum(1 for r in data['respostas'] if r.classificacao == 'NC')
+            tot_resps = len(data['respostas'])
+            if tot_resps <= 1 or (tot_resps > 0 and (nc_resps / tot_resps) >= 0.5):
+                grau_sugestao = 'MAIOR'
+                taxa_pct = round((nc_resps / max(tot_resps, 1)) * 100)
+                justificativa = "A ausência de evidências ou reprovação na totalidade dos blocos indica ausência ou colapso sistêmico do controle normativo."
+            else:
+                grau_sugestao = 'MENOR'
+                taxa_pct = round((nc_resps / max(tot_resps, 1)) * 100)
+                justificativa = f"Apenas {nc_resps} de {tot_resps} blocos apresentaram apontamento ({taxa_pct}% de falha), caracterizando desvio pontual."
+        else:
+            taxa_falha = F / T
+            taxa_pct = round(taxa_falha * 100)
+            
+            if (T == 1 and F == 1) or taxa_falha >= 0.5:
+                grau_sugestao = 'MAIOR'
+                justificativa = f"Foram avaliadas {T} amostra(s) neste requisito e {F} falharam ({taxa_pct}% de falha). A ausência da única evidência requerida ou taxa de reprovação ≥ 50% indica colapso sistêmico do controle e quebra de conformidade estrutural."
+            else:
+                grau_sugestao = 'MENOR'
+                justificativa = f"Foram avaliadas {T} amostras neste requisito, e apenas {F} falhou ({taxa_pct}% de falha). O processo estrutural se mantém funcional na maioria dos registros, caracterizando desvio pontual."
+
+        data['sugestao_ia'] = {
+            'grau': grau_sugestao,
+            'total_amostras': T,
+            'total_falhas': F,
+            'taxa_pct': taxa_pct,
+            'justificativa': justificativa
+        }
+
+        # Se for NC e ainda não tiver grau selecionado, default para a sugestão
+        if data['pior_status'] == 'NC' and not data['grau_nc_selecionado']:
+            data['grau_nc_selecionado'] = grau_sugestao
                 
     # Converte dicionário em lista ordenada
     blocos = []
-    for item_id, data in sorted(itens_map.items(), key=lambda x: x[1]['item'].referencia):
+    for item_id, data in sorted(itens_map.items(), key=lambda x: natural_sort_key(x[1]['item'].referencia)):
         blocos.append(data)
         
     context = {
@@ -5795,6 +5861,7 @@ def iso_revisao_dashboard(request, auditoria_id):
     }
     
     return render(request, 'auditoria/iso/revisao_dashboard.html', context)
+
 
 @login_required
 @require_POST
@@ -5808,7 +5875,8 @@ def api_iso_revisao_reverter(request):
         item_norma_id = data.get('item_norma_id')
         auditoria_id = data.get('auditoria_id')
         novo_status = data.get('novo_status')
-        argumentacao = data.get('argumentacao')
+        grau_nc = data.get('grau_nc')  # 'MENOR' | 'MAIOR' | None
+        argumentacao = data.get('argumentacao', '').strip()
         
         item_norma = get_object_or_404(ItemNorma, pk=item_norma_id)
         auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
@@ -5818,12 +5886,14 @@ def api_iso_revisao_reverter(request):
             item_norma=item_norma,
             defaults={
                 'classificacao': novo_status,
+                'grau_nc': grau_nc if novo_status == 'NC' else None,
                 'justificativa': argumentacao,
                 'atualizado_por': request.user
             }
         )
         
-        texto_log = f"[VEREDICTO FINAL] Requisito {item_norma.referencia} definido como {novo_status}. Argumentação: {argumentacao}"
+        grau_txt = f" ({grau_nc})" if (novo_status == 'NC' and grau_nc) else ""
+        texto_log = f"[VEREDICTO FINAL] Requisito {item_norma.referencia} definido como {novo_status}{grau_txt}. Argumentação: {argumentacao}"
             
         ComentarioRespostaAuditoria.objects.create(
             autor=request.user,
@@ -5831,6 +5901,12 @@ def api_iso_revisao_reverter(request):
             data_referencia=auditoria.data_inicio
         )
             
-        return JsonResponse({'success': True, 'message': 'Status final atualizado com sucesso.', 'novo_status': novo_status})
+        return JsonResponse({
+            'success': True, 
+            'message': 'Status final e gravidade atualizados com sucesso.', 
+            'novo_status': novo_status,
+            'grau_nc': grau_nc
+        })
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
