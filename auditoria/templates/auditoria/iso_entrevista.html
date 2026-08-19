@@ -503,12 +503,37 @@
         }
     }
 
+    function derivarClassificacaoPorSolicitacoes(solicitacoes) {
+        if (!solicitacoes || solicitacoes.length === 0) {
+            return 'P'; // Pendente / Não avaliado
+        }
+        const concs = solicitacoes.map(s => s.conclusao);
+
+        // 1. Falha fatal: qualquer Não Conforme (NC) torna o requisito Não Conforme
+        if (concs.includes('NC')) return 'NC';
+
+        // 2. Oportunidade de Melhoria (OM)
+        if (concs.includes('OM')) return 'OM';
+
+        // 3. Conforme se todas forem 'C' ou 'NA' (com pelo menos uma 'C')
+        if (concs.some(c => c === 'C') && concs.every(c => c === 'C' || c === 'NA')) return 'C';
+
+        // 4. Todas N/A
+        if (concs.every(c => c === 'NA')) return 'NA';
+
+        // 5. Caso ainda existam amostras pendentes ('P')
+        return 'P';
+    }
+
     async function setConclusaoSolicitacao(solId, conclusaoVal) {
         const p = perguntas[currentIndex];
         const solObj = (p.solicitacoes || []).find(s => s.id === solId);
         if (!solObj) return;
 
         solObj.conclusao = conclusaoVal;
+
+        // Auto-calcula o veredicto global do requisito a partir das evidências/amostras
+        p.classificacao = derivarClassificacaoPorSolicitacoes(p.solicitacoes);
         renderQuestion();
 
         try {
@@ -524,7 +549,10 @@
                     conclusao: solObj.conclusao
                 })
             });
-            showSaveIndicatorMessage("Conclusão atualizada!");
+
+            // Dispara autosave da classificação da pergunta
+            doSave();
+            showSaveIndicatorMessage("Conclusão e Veredicto atualizados!");
         } catch(err) {
             console.error('Erro ao atualizar conclusão:', err);
         }
@@ -545,7 +573,9 @@
             const data = await response.json();
             if (data.success) {
                 p.solicitacoes = (p.solicitacoes || []).filter(s => s.id !== solId);
+                p.classificacao = derivarClassificacaoPorSolicitacoes(p.solicitacoes);
                 renderQuestion();
+                doSave();
                 showSaveIndicatorMessage("Solicitação removida!");
             }
         } catch(err) {

@@ -3269,59 +3269,79 @@ def iso_entrevista_view(request, auditoria_id):
             "solicitacoes": sols
         }
         
-    agendas_outras_todas = list(auditoria.agendas.all().prefetch_related('itens_norma', 'perguntas'))
+    # Otimização de Performance: pré-indexação em memória das outras agendas e requisitos
+    agendas_outras_todas = list(
+        auditoria.agendas.filter(arquivada=False).prefetch_related('itens_norma', 'perguntas__itens_norma')
+    )
 
-    perguntas_data = []
-    for p in perguntas_lista:
-        r = respostas_dict.get(p.id, {})
-        
-        itens_p = list(p.itens_norma.all())
-        outros_blocos_info = []
-        if itens_p:
-            for ag in agendas_outras_todas:
-                if agenda_id and str(ag.id) == str(agenda_id):
-                    continue
-                # Se o bloco tem algum dos itens da norma desta pergunta
-                itens_em_comum = [item for item in itens_p if item in ag.itens_norma.all() or any(item in p_ag.itens_norma.all() for p_ag in ag.perguntas.all())]
-                if itens_em_comum:
-                    outros_blocos_info.append({
-                        'agenda_id': ag.id,
-                        'titulo': ag.titulo,
-                        'itens_comum': [it.referencia for it in itens_em_comum],
-                        'total_perguntas': ag.perguntas.count()
-                    })
-
-        itens_str = ", ".join([item.referencia for item in p.itens_norma.all()])
-        if p.id == pergunta_auditados.id and not itens_str:
-            itens_str = "Identificação / Auditados"
-
-        perguntas_data.append({
-            "id": p.id,
-            "texto_pergunta": p.texto_pergunta,
-            "dica_auditor": p.dica_auditor,
-            "itens": itens_str,
-            "itens_objects": [{"id": item.id, "ref": item.referencia, "titulo": item.titulo} for item in p.itens_norma.all()],
-            "outros_blocos": outros_blocos_info,
-            "classificacao": r.get("classificacao", "P"),
-            "texto_resposta": r.get("texto_resposta", ""),
-            "solicitacoes": r.get("solicitacoes", [])
-        })
-        
-    # Serializar agendas para o modal de transferência
+    # Mapeamento rápido: item_id -> lista de dicts de agendas
+    item_to_agendas = {}
     agendas_para_transfer = []
-    for ag in auditoria.agendas.filter(arquivada=False).prefetch_related('perguntas', 'perguntas__itens_norma'):
+    
+    for ag in agendas_outras_todas:
         perguntas_ag = []
-        for pag in ag.perguntas.filter(ativa=True):
+        ag_item_ids = set(ag.itens_norma.values_list('id', flat=True))
+        
+        for pag in ag.perguntas.all():
+            pag_item_ids = list(pag.itens_norma.values_list('id', flat=True))
+            ag_item_ids.update(pag_item_ids)
             itens_str = ", ".join(it.referencia for it in pag.itens_norma.all())
             perguntas_ag.append({
                 "id": pag.id,
                 "texto_curto": pag.texto_pergunta[:80] + ("..." if len(pag.texto_pergunta) > 80 else ""),
                 "itens": itens_str or "—"
             })
+
         agendas_para_transfer.append({
             "id": ag.id,
             "titulo": ag.titulo,
             "perguntas": perguntas_ag
+        })
+
+        if not agenda_id or str(ag.id) != str(agenda_id):
+            for i_id in ag_item_ids:
+                if i_id not in item_to_agendas:
+                    item_to_agendas[i_id] = []
+                item_to_agendas[i_id].append({
+                    'agenda_id': ag.id,
+                    'titulo': ag.titulo,
+                    'total_perguntas': len(perguntas_ag)
+                })
+
+    perguntas_data = []
+    for p in perguntas_lista:
+        r = respostas_dict.get(p.id, {})
+        itens_p = list(p.itens_norma.all())
+        
+        # Agrupa outros blocos rapidamente
+        blocos_vistos = {}
+        for item in itens_p:
+            for ag_info in item_to_agendas.get(item.id, []):
+                b_id = ag_info['agenda_id']
+                if b_id not in blocos_vistos:
+                    blocos_vistos[b_id] = {
+                        'agenda_id': b_id,
+                        'titulo': ag_info['titulo'],
+                        'itens_comum': [],
+                        'total_perguntas': ag_info['total_perguntas']
+                    }
+                if item.referencia not in blocos_vistos[b_id]['itens_comum']:
+                    blocos_vistos[b_id]['itens_comum'].append(item.referencia)
+
+        itens_str = ", ".join([item.referencia for item in itens_p])
+        if p.id == pergunta_auditados.id and not itens_str:
+            itens_str = "Identificação / Auditados"
+
+        perguntas_data.append({
+            "id": p.id,
+            "texto_pergunta": p.texto_pergunta,
+            "dica_auditor": p.dica_auditor or "",
+            "itens": itens_str,
+            "itens_objects": [{"id": item.id, "ref": item.referencia, "titulo": item.titulo} for item in itens_p],
+            "outros_blocos": list(blocos_vistos.values()),
+            "classificacao": r.get("classificacao", "P"),
+            "texto_resposta": r.get("texto_resposta", ""),
+            "solicitacoes": r.get("solicitacoes", [])
         })
 
     context = {

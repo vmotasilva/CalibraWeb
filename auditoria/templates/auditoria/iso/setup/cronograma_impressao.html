@@ -205,15 +205,14 @@
                                         <td class="align-middle">
                                             <div class="d-flex flex-wrap gap-1">
                                             {% for item in agenda.condensed_items %}
-                                                <button type="button" 
-                                                        class="badge {{ item.css_class }} text-center border-0 cursor-pointer shadow-2xs" 
-                                                        style="min-width: 55px; cursor: pointer; transition: transform 0.15s ease-in-out;" 
-                                                        onmouseover="this.style.transform='scale(1.1)'"
-                                                        onmouseout="this.style.transform='scale(1)'"
-                                                        onclick="confirmarNavegacaoEntrevista('{{ agenda.id }}', '{{ agenda.titulo|escapejs }}', '{{ item.referencia|escapejs }}')"
-                                                        title="Clique para ir à entrevista de {{ agenda.titulo }} no requisito {{ item.referencia }}">
+                                                <a href="{% url 'auditoria:iso_entrevista_view' auditoria.id %}?agenda_id={{ agenda.id }}&item={{ item.referencia|urlencode }}" 
+                                                   class="badge {{ item.css_class }} text-center border-0 text-decoration-none shadow-2xs" 
+                                                   style="min-width: 55px; cursor: pointer; transition: transform 0.1s ease-in-out;" 
+                                                   onmouseover="this.style.transform='scale(1.12)'"
+                                                   onmouseout="this.style.transform='scale(1)'"
+                                                   title="Abrir entrevista de {{ agenda.titulo }} no requisito {{ item.referencia }}">
                                                     {{ item.referencia }}
-                                                </button>
+                                                </a>
                                             {% empty %}
                                                 <span class="text-muted small">-</span>
                                             {% endfor %}
@@ -349,15 +348,14 @@
                                         <td class="align-middle">
                                             <div class="d-flex flex-wrap gap-1">
                                             {% for item in agenda.condensed_items %}
-                                                <button type="button" 
-                                                        class="badge {{ item.css_class }} text-center border-0 cursor-pointer shadow-2xs" 
-                                                        style="min-width: 55px; cursor: pointer; transition: transform 0.15s ease-in-out;" 
-                                                        onmouseover="this.style.transform='scale(1.1)'"
-                                                        onmouseout="this.style.transform='scale(1)'"
-                                                        onclick="confirmarNavegacaoEntrevista('{{ agenda.id }}', '{{ agenda.titulo|escapejs }}', '{{ item.referencia|escapejs }}')"
-                                                        title="Clique para ir à entrevista de {{ agenda.titulo }} no requisito {{ item.referencia }}">
+                                                <a href="{% url 'auditoria:iso_entrevista_view' auditoria.id %}?agenda_id={{ agenda.id }}&item={{ item.referencia|urlencode }}" 
+                                                   class="badge {{ item.css_class }} text-center border-0 text-decoration-none shadow-2xs" 
+                                                   style="min-width: 55px; cursor: pointer; transition: transform 0.1s ease-in-out;" 
+                                                   onmouseover="this.style.transform='scale(1.12)'"
+                                                   onmouseout="this.style.transform='scale(1)'"
+                                                   title="Abrir entrevista de {{ agenda.titulo }} no requisito {{ item.referencia }}">
                                                     {{ item.referencia }}
-                                                </button>
+                                                </a>
                                             {% empty %}
                                                 <span class="text-muted small">-</span>
                                             {% endfor %}
