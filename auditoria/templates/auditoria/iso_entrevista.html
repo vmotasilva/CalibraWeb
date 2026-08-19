@@ -135,8 +135,12 @@
                     <i class="bi bi-arrow-left-right me-1"></i> Confirmar Transferência
                 </button>
             </div>
+        </div>
+    </div>
+</div>
+
 <!-- Modal para Visualização Plena / Edição da Solicitação e Evidência -->
-<div class="modal fade" id="modalDetalhesSolicitacao" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="modalDetalhesSolicitacao" tabindex="-1" aria-hidden="true" style="z-index: 10080;">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg rounded-4">
             <div class="modal-header bg-primary bg-opacity-10 border-0 py-3">
@@ -605,7 +609,8 @@
 
         updateModalConclusaoButtons(solObj.conclusao || 'P');
 
-        const modal = new bootstrap.Modal(document.getElementById('modalDetalhesSolicitacao'));
+        const modalEl = document.getElementById('modalDetalhesSolicitacao');
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
         modal.show();
     }
 
