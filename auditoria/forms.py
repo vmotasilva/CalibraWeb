@@ -419,20 +419,6 @@ class BancoPerguntaIsoForm(forms.ModelForm):
             'itens_norma': forms.SelectMultiple(attrs={'class': 'form-select', 'size': 6}),
         }
 
-    def clean_itens_norma(self):
-        itens = self.cleaned_data.get('itens_norma')
-        if itens:
-            for item in itens:
-                qs = item.perguntas_vinculadas.all()
-                if self.instance and self.instance.pk:
-                    qs = qs.exclude(pk=self.instance.pk)
-                if qs.exists():
-                    primeira_p = qs.first()
-                    raise forms.ValidationError(
-                        f"O item da norma '{item.referencia}' já possui a pergunta cadastrada: \"{primeira_p.texto_pergunta[:60]}...\". Cada item da norma deve possuir no máximo 1 pergunta."
-                    )
-        return itens
-
 
 class AgendaAuditoriaIsoCreateForm(forms.ModelForm):
     class Meta:

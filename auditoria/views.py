@@ -3213,7 +3213,15 @@ def iso_entrevista_view(request, auditoria_id):
             return (min_ordem, min_ref, p.id)
         return (999999, '', p.id)
 
-    perguntas_lista = sorted(list(perguntas), key=get_pergunta_sort_key)
+    # Desduplicação Automática no Bloco: cada item é avaliado apenas 1 vez neste bloco
+    itens_vistos_entrevista = set()
+    perguntas_lista = []
+    for p in sorted(list(perguntas), key=get_pergunta_sort_key):
+        item_ids_p = set(p.itens_norma.values_list('id', flat=True))
+        if item_ids_p and item_ids_p.issubset(itens_vistos_entrevista):
+            continue
+        itens_vistos_entrevista.update(item_ids_p)
+        perguntas_lista.append(p)
     
     # Garante a existência e atualização da pergunta padrão de Identificação dos Auditados (Nome e Função)
     texto_pergunta_auditados = f"Quais são os nomes e funções das pessoas auditadas / entrevistadas neste bloco ({agenda.titulo})?"
@@ -4801,8 +4809,26 @@ def iso_agenda_detail(request, auditoria_id, pk):
             return (item.ordem or 0, natural_sort_key(item.referencia))
         return (999, [])
 
-    perguntas_lista = list(agenda.perguntas.all().prefetch_related('itens_norma'))
-    perguntas_ordenadas = sorted(perguntas_lista, key=get_pergunta_sort_key)
+    # Desduplicação Automática: garante que o mesmo item da norma ou pergunta não se repita no mesmo bloco
+    perguntas_raw = list(agenda.perguntas.all().prefetch_related('itens_norma'))
+    itens_vistos = set()
+    perguntas_unicas = []
+    perguntas_remover_ids = []
+    
+    for p in perguntas_raw:
+        item_ids_p = set(p.itens_norma.values_list('id', flat=True))
+        # Se todos os itens desta pergunta já foram cobertos por outra pergunta anterior neste bloco, é duplicata
+        if item_ids_p and item_ids_p.issubset(itens_vistos):
+            perguntas_remover_ids.append(p.id)
+        else:
+            itens_vistos.update(item_ids_p)
+            perguntas_unicas.append(p)
+
+    # Desvincula automaticamente as duplicadas do bloco
+    if perguntas_remover_ids:
+        agenda.perguntas.remove(*perguntas_remover_ids)
+
+    perguntas_ordenadas = sorted(perguntas_unicas, key=get_pergunta_sort_key)
 
     return render(request, "auditoria/iso/setup/agenda_detail.html", {
         "auditoria": auditoria,
@@ -4847,13 +4873,16 @@ def iso_agenda_pergunta_create(request, auditoria_id, pk):
     dica_resposta = request.POST.get("dica_resposta", "") or request.POST.get("dica_auditor", "")
     item_ids = request.POST.getlist("itens_norma")
     
-    # Validar se algum dos itens já possui pergunta cadastrada
+    # Validar se este bloco (agenda) já possui uma pergunta cobrindo o mesmo item
     if item_ids:
         from .models import ItemNorma
-        itens_conflito = ItemNorma.objects.filter(id__in=item_ids, perguntas_vinculadas__isnull=False).distinct()
-        if itens_conflito.exists():
-            conflito_refs = ", ".join([it.referencia for it in itens_conflito])
-            err_msg = f"O(s) item(ns) da norma [{conflito_refs}] já possui(em) pergunta cadastrada no banco. Cada item deve ter no máximo 1 pergunta."
+        itens_no_bloco = ItemNorma.objects.filter(
+            id__in=item_ids, 
+            perguntas_vinculadas__agendas_vinculadas=agenda
+        ).distinct()
+        if itens_no_bloco.exists():
+            conflito_refs = ", ".join([it.referencia for it in itens_no_bloco])
+            err_msg = f"Este bloco ({agenda.titulo}) já possui pergunta avaliando o(s) item(ns) [{conflito_refs}]. O mesmo item não pode ser repetido dentro do mesmo bloco."
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return JsonResponse({'success': False, 'error': err_msg}, status=400)
             messages.error(request, err_msg)
