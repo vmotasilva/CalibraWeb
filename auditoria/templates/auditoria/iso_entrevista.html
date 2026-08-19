@@ -397,7 +397,12 @@
 
     function setClassificacao(val) {
         doSave();
-        perguntas[currentIndex].classificacao = val;
+        // Se clicar no botão que já está selecionado, desmarca voltando para 'P' (Pendente / Livre de seleção)
+        if (perguntas[currentIndex].classificacao === val) {
+            perguntas[currentIndex].classificacao = 'P';
+        } else {
+            perguntas[currentIndex].classificacao = val;
+        }
         renderQuestion();
         triggerAutosave(true);
     }
@@ -577,7 +582,12 @@
     }
 
     function setConclusaoModal(concl) {
-        updateModalConclusaoButtons(concl);
+        // Se clicar no botão que já está ativo, desmarca (volta para 'P')
+        if (modalActiveConclusao === concl) {
+            updateModalConclusaoButtons('P');
+        } else {
+            updateModalConclusaoButtons(concl);
+        }
     }
 
     function abrirModalDetalhesSolicitacao(solId) {
@@ -664,7 +674,12 @@
         const solObj = (p.solicitacoes || []).find(s => s.id === solId);
         if (!solObj) return;
 
-        solObj.conclusao = conclusaoVal;
+        // Se clicar no botão que já está selecionado, desmarca (volta para 'P' / Livre de seleção)
+        if (solObj.conclusao === conclusaoVal) {
+            solObj.conclusao = 'P';
+        } else {
+            solObj.conclusao = conclusaoVal;
+        }
 
         // Auto-calcula o veredicto global do requisito a partir das evidências/amostras
         p.classificacao = derivarClassificacaoPorSolicitacoes(p.solicitacoes);
