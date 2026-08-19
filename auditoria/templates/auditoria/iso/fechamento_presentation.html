@@ -342,6 +342,16 @@
                                                 <li>{{ ev }}</li>
                                             {% endfor %}
                                         </ul>
+                                        {% if item.amostras_conformes %}
+                                        <div class="border-top pt-2 mt-2">
+                                            <div class="text-success fw-bold mb-1" style="font-size: 0.73rem;"><i class="bi bi-check-circle-fill me-1"></i>Demais Amostras Avaliadas e Conformes:</div>
+                                            <ul class="mb-0 ps-3 text-muted" style="font-size: 0.78rem; line-height: 1.35;">
+                                                {% for ev_c in item.amostras_conformes %}
+                                                    <li>{{ ev_c }}</li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                        {% endif %}
                                     </div>
                                 </div>
                             </div>

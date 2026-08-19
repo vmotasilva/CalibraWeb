@@ -3850,9 +3850,11 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                     pior_peso = peso
             status_item = reverse_hierarchy.get(pior_peso, "P")
 
-        # Coleta evidências filtradas conforme o status do item (sem misturar amostras conformes com não conformes)
+        # Coleta evidências filtradas separando as reprovadas das conformes
         evidencias_item = []
         evidencias_vistas = set()
+        amostras_conformes = []
+        amostras_conformes_vistas = set()
         total_solicitacoes_item = 0
         total_nc_solicitacoes_item = 0
 
@@ -3866,28 +3868,40 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                         if s.conclusao == 'NC':
                             total_nc_solicitacoes_item += 1
 
-                        # Só adiciona no card de constatação/evidência se a amostra corresponder ao status do requisito
-                        incluir = False
-                        if status_item == 'NC' and s.conclusao == 'NC':
-                            incluir = True
-                        elif status_item == 'OBS' and s.conclusao in ['OBS', 'NC']:
-                            incluir = True
-                        elif status_item == 'OM' and s.conclusao in ['OM', 'OBS', 'NC']:
-                            incluir = True
-                        elif status_item == 'C' and s.conclusao in ['C', 'P']:
-                            incluir = True
+                        # Texto formatado da evidência
+                        ev_txt = ""
+                        if s.evidencia and s.evidencia.strip():
+                            if s.solicitacao and s.solicitacao.strip():
+                                ev_txt = f"{s.solicitacao.strip()}: {s.evidencia.strip()}"
+                            else:
+                                ev_txt = s.evidencia.strip()
+                        elif s.solicitacao and s.solicitacao.strip():
+                            ev_txt = s.solicitacao.strip()
 
-                        if incluir:
-                            ev_txt = ""
-                            if s.evidencia and s.evidencia.strip():
-                                if s.solicitacao and s.solicitacao.strip():
-                                    ev_txt = f"{s.solicitacao.strip()}: {s.evidencia.strip()}"
-                                else:
-                                    ev_txt = s.evidencia.strip()
-                            elif s.solicitacao and s.solicitacao.strip():
-                                ev_txt = s.solicitacao.strip()
-
-                            if ev_txt and ev_txt not in evidencias_vistas:
+                        # Categoriza conforme status do requisito
+                        if status_item == 'NC':
+                            if s.conclusao == 'NC' and ev_txt and ev_txt not in evidencias_vistas:
+                                evidencias_vistas.add(ev_txt)
+                                evidencias_item.append(ev_txt)
+                            elif s.conclusao == 'C' and ev_txt and ev_txt not in amostras_conformes_vistas:
+                                amostras_conformes_vistas.add(ev_txt)
+                                amostras_conformes.append(ev_txt)
+                        elif status_item == 'OBS':
+                            if s.conclusao in ['OBS', 'NC'] and ev_txt and ev_txt not in evidencias_vistas:
+                                evidencias_vistas.add(ev_txt)
+                                evidencias_item.append(ev_txt)
+                            elif s.conclusao == 'C' and ev_txt and ev_txt not in amostras_conformes_vistas:
+                                amostras_conformes_vistas.add(ev_txt)
+                                amostras_conformes.append(ev_txt)
+                        elif status_item == 'OM':
+                            if s.conclusao in ['OM', 'OBS', 'NC'] and ev_txt and ev_txt not in evidencias_vistas:
+                                evidencias_vistas.add(ev_txt)
+                                evidencias_item.append(ev_txt)
+                            elif s.conclusao == 'C' and ev_txt and ev_txt not in amostras_conformes_vistas:
+                                amostras_conformes_vistas.add(ev_txt)
+                                amostras_conformes.append(ev_txt)
+                        elif status_item == 'C':
+                            if s.conclusao in ['C', 'P'] and ev_txt and ev_txt not in evidencias_vistas:
                                 evidencias_vistas.add(ev_txt)
                                 evidencias_item.append(ev_txt)
                 elif r.texto_resposta and r.texto_resposta.strip():
@@ -3923,7 +3937,8 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                 'icone': 'bi-eye-fill',
                 'referencia': item.referencia,
                 'titulo': item.titulo,
-                'evidencias': evidencias_item[:3] or ["Fragilidade apontada no processo que exige plano de ação corretiva."]
+                'evidencias': evidencias_item[:3] or ["Fragilidade apontada no processo que exige plano de ação corretiva."],
+                'amostras_conformes': amostras_conformes[:2]
             })
         elif status_item == 'OM':
             count_om += 1
@@ -3936,7 +3951,8 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                 'icone': 'bi-lightbulb-fill',
                 'referencia': item.referencia,
                 'titulo': item.titulo,
-                'evidencias': evidencias_item[:3] or ["Oportunidade de aprimoramento identificada no processo."]
+                'evidencias': evidencias_item[:3] or ["Oportunidade de aprimoramento identificada no processo."],
+                'amostras_conformes': amostras_conformes[:2]
             })
         elif status_item == 'NC':
             if av_final and av_final.grau_nc:
@@ -3968,7 +3984,8 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                 'icone': 'bi-exclamation-triangle-fill',
                 'referencia': item.referencia,
                 'titulo': item.titulo,
-                'evidencias': evidencias_item[:3] or ["Evidência objetiva de não conformidade ao requisito."]
+                'evidencias': evidencias_item[:3] or ["Evidência objetiva de não conformidade ao requisito."],
+                'amostras_conformes': amostras_conformes[:2]
             })
 
     total_avaliados = count_c + count_obs + count_om + count_nc_menor + count_nc_maior + count_p
