@@ -3727,6 +3727,9 @@ def iso_matriz_view(request, auditoria_id):
         "matriz_data": matriz_data,
         "stats": stats
     }
+    return render(request, "auditoria/iso_matriz.html", context)
+
+
 def chunks_list(lst, n):
     """Divide uma lista em pedaços de tamanho n para evitar overflow em slides"""
     for i in range(0, len(lst), n):
