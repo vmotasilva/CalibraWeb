@@ -4,6 +4,7 @@
 {% block extra_css %}
 <style>
     .status-C { background-color: #198754; color: white; }
+    .status-OBS { background-color: #d4e157; color: #2e440f; }
     .status-NC { background-color: #dc3545; color: white; }
     .status-OM { background-color: #fd7e14; color: white; }
     .status-P { background-color: #6c757d; color: white; }
@@ -190,6 +191,7 @@
         <!-- Barra de Distribuição Multissegmento -->
         <div class="progress rounded-pill mb-3 shadow-2xs" style="height: 12px; background-color: #f1f5f9;">
             <div class="progress-bar bg-success" role="progressbar" style="width: {{ stats.pct_c }}%" title="Conforme: {{ stats.pct_c }}%"></div>
+            <div class="progress-bar" role="progressbar" style="width: {{ stats.pct_obs }}%; background-color: #d4e157;" title="Obs. com Correção: {{ stats.pct_obs }}%"></div>
             <div class="progress-bar bg-danger" role="progressbar" style="width: {{ stats.pct_nc }}%" title="Não Conforme: {{ stats.pct_nc }}%"></div>
             <div class="progress-bar bg-warning text-dark" role="progressbar" style="width: {{ stats.pct_om }}%" title="Oportunidade: {{ stats.pct_om }}%"></div>
             <div class="progress-bar bg-secondary bg-opacity-75" role="progressbar" style="width: {{ stats.pct_p }}%" title="Pendente: {{ stats.pct_p }}%"></div>
@@ -197,7 +199,7 @@
 
         <!-- Cards com Percentual Individual -->
         <div class="row g-2 text-center">
-            <div class="col-md-3 col-6">
+            <div class="col-md col-6">
                 <div class="p-2.5 rounded-3 bg-success bg-opacity-10 border border-success border-opacity-25">
                     <small class="fw-bold text-success d-block mb-0.5">✅ Conforme</small>
                     <span class="fs-5 fw-bold text-success">{{ stats.count_c }}</span>
@@ -205,7 +207,15 @@
                 </div>
             </div>
 
-            <div class="col-md-3 col-6">
+            <div class="col-md col-6">
+                <div class="p-2.5 rounded-3 border" style="background-color: rgba(212, 225, 87, 0.2); border-color: rgba(175, 180, 43, 0.4) !important;">
+                    <small class="fw-bold d-block mb-0.5" style="color: #4a5c13;">👁️ Obs. Correção</small>
+                    <span class="fs-5 fw-bold" style="color: #334d11;">{{ stats.count_obs }}</span>
+                    <span class="badge rounded-pill ms-1 text-dark" style="font-size: 0.75rem; background-color: #d4e157;">{{ stats.pct_obs }}%</span>
+                </div>
+            </div>
+
+            <div class="col-md col-6">
                 <div class="p-2.5 rounded-3 bg-danger bg-opacity-10 border border-danger border-opacity-25">
                     <small class="fw-bold text-danger d-block mb-0.5">🔴 Não Conforme</small>
                     <span class="fs-5 fw-bold text-danger">{{ stats.count_nc }}</span>
@@ -213,7 +223,7 @@
                 </div>
             </div>
 
-            <div class="col-md-3 col-6">
+            <div class="col-md col-6">
                 <div class="p-2.5 rounded-3 bg-warning bg-opacity-15 border border-warning border-opacity-25">
                     <small class="fw-bold text-dark d-block mb-0.5">🟠 Oportunidade (OM)</small>
                     <span class="fs-5 fw-bold text-dark">{{ stats.count_om }}</span>
@@ -221,7 +231,7 @@
                 </div>
             </div>
 
-            <div class="col-md-3 col-6">
+            <div class="col-md col-6">
                 <div class="p-2.5 rounded-3 bg-secondary bg-opacity-10 border border-secondary border-opacity-25">
                     <small class="fw-bold text-secondary d-block mb-0.5">⚠️ Pendente</small>
                     <span class="fs-5 fw-bold text-dark">{{ stats.count_p }}</span>
@@ -302,6 +312,7 @@
                                 <td class="text-center pe-4 td-status">
                                     <span class="status-badge status-{{ row.status }}">
                                         {% if row.status == 'C' %} ✅ Conforme
+                                        {% elif row.status == 'OBS' %} 👁️ Obs. com Correção
                                         {% elif row.status == 'NC' %} 🔴 Não Conforme
                                         {% elif row.status == 'OM' %} 🟠 Oportunidade
                                         {% elif row.status == 'P' %} ⚠️ Pendente

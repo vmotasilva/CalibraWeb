@@ -134,6 +134,11 @@
             background: #f0fdf4;
         }
 
+        .req-card-obs {
+            border-left: 6px solid #afb42b;
+            background: #f9fbe7;
+        }
+
         .req-card-warning {
             border-left: 6px solid var(--warning);
             background: #fffbeb;
@@ -142,6 +147,10 @@
         .req-card-danger {
             border-left: 6px solid var(--danger);
             background: #fef2f2;
+        }
+
+        .bg-obs {
+            background-color: #d4e157 !important;
         }
 
         .metric-tile {
@@ -303,7 +312,7 @@
         </div>
         {% endfor %}
 
-        <!-- ── SLIDE(S) 4: PONTOS A MELHORAR (NCs e OMs Chunked) ── -->
+        <!-- ── SLIDE(S) 4: PONTOS A MELHORAR (NCs, OBS e OMs Chunked) ── -->
         {% if slides_pontos_melhorar %}
             {% for lote in slides_pontos_melhorar %}
             <div class="slide">
@@ -324,10 +333,10 @@
                                             <span class="badge bg-{{ item.cor }} text-{{ item.cor_text }} font-monospace fs-6 px-2.5 py-1">{{ item.referencia }}</span>
                                             <span class="fw-bold text-dark fs-6 text-truncate">{{ item.titulo }}</span>
                                         </div>
-                                        <span class="badge bg-{{ item.cor }} text-{{ item.cor_text }} rounded-pill px-2.5 py-1 small fw-bold">{{ item.badge }}</span>
+                                        <span class="badge bg-{{ item.cor }} text-{{ item.cor_text }} rounded-pill px-2.5 py-1 small fw-bold" style="{% if item.bg_badge %}background-color: {{ item.bg_badge }} !important;{% endif %}">{{ item.badge }}</span>
                                     </div>
                                     <div class="bg-white p-2.5 rounded-3 border small text-dark mt-2">
-                                        <div class="text-danger fw-bold mb-1" style="font-size: 0.75rem;"><i class="bi bi-search me-1"></i>Evidência de Falha / Oportunidade:</div>
+                                        <div class="{% if item.tipo == 'OBS' %}text-dark{% else %}text-danger{% endif %} fw-bold mb-1" style="font-size: 0.75rem;"><i class="bi bi-search me-1"></i>{% if item.tipo == 'OBS' %}Fragilidade / Ação Corretiva Exigida:{% elif item.tipo == 'OM' %}Oportunidade de Melhoria:{% else %}Evidência de Não Conformidade:{% endif %}</div>
                                         <ul class="mb-0 ps-3 text-secondary" style="font-size: 0.82rem; line-height: 1.4;">
                                             {% for ev in item.evidencias %}
                                                 <li>{{ ev }}</li>
@@ -341,7 +350,7 @@
                     </div>
                 </div>
                 <div class="slide-footer">
-                    <span>{{ auditoria.norma.codigo }} — Desvios e Oportunidades</span>
+                    <span>{{ auditoria.norma.codigo }} — Desvios, Observações e Oportunidades</span>
                     <span>Calibra WEB</span>
                 </div>
             </div>
@@ -350,7 +359,7 @@
             <div class="slide d-flex justify-content-center align-items-center text-center">
                 <div>
                     <i class="bi bi-award-fill text-success" style="font-size: 5rem;"></i>
-                    <h2 class="fw-bold text-success mt-3">Nenhuma Não Conformidade Apontada</h2>
+                    <h2 class="fw-bold text-success mt-3">Nenhum Desvio ou Observação Apontada</h2>
                     <p class="text-muted fs-5">Todos os requisitos avaliados demonstraram pleno cumprimento às diretrizes normativas.</p>
                 </div>
                 <div class="slide-footer">
@@ -368,34 +377,41 @@
             </div>
             <div class="slide-content d-flex flex-column justify-content-between">
                 
-                <!-- Dashboard de Indicadores -->
-                <div class="row g-3 text-center">
-                    <div class="col-3">
-                        <div class="metric-tile">
-                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.75rem;">Índice Global</small>
-                            <div class="display-6 fw-bold text-primary my-1">{{ metricas.percentual_conformidade }}%</div>
-                            <small class="text-secondary">Conformidade</small>
+                <!-- Dashboard de Indicadores (5 Colunas) -->
+                <div class="row g-2 text-center">
+                    <div class="col">
+                        <div class="metric-tile p-3">
+                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.72rem;">Índice Global</small>
+                            <div class="display-6 fw-bold text-primary my-1" style="font-size: 2.2rem;">{{ metricas.percentual_conformidade }}%</div>
+                            <small class="text-secondary" style="font-size: 0.8rem;">Conformidade</small>
                         </div>
                     </div>
-                    <div class="col-3">
-                        <div class="metric-tile">
-                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.75rem;">Conformes (C)</small>
-                            <div class="display-6 fw-bold text-success my-1">{{ metricas.total_c }}</div>
-                            <small class="text-secondary">Requisitos Atendidos</small>
+                    <div class="col">
+                        <div class="metric-tile p-3">
+                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.72rem;">Conformes (C)</small>
+                            <div class="display-6 fw-bold text-success my-1" style="font-size: 2.2rem;">{{ metricas.total_c }}</div>
+                            <small class="text-secondary" style="font-size: 0.8rem;">Atendidos</small>
                         </div>
                     </div>
-                    <div class="col-3">
-                        <div class="metric-tile">
-                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.75rem;">Oportunidades (OM)</small>
-                            <div class="display-6 fw-bold text-warning my-1">{{ metricas.total_om }}</div>
-                            <small class="text-secondary">Sugestões de Melhoria</small>
+                    <div class="col">
+                        <div class="metric-tile p-3" style="background-color: #fbfde8; border-color: #e6ee9c;">
+                            <small class="text-uppercase fw-bold" style="font-size: 0.72rem; color: #556b2f;">Obs. Correção (OBS)</small>
+                            <div class="display-6 fw-bold my-1" style="font-size: 2.2rem; color: #689f38;">{{ metricas.total_obs }}</div>
+                            <small class="text-secondary" style="font-size: 0.8rem;">Requer Plano de Ação</small>
                         </div>
                     </div>
-                    <div class="col-3">
-                        <div class="metric-tile">
-                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.75rem;">Não Conformes (NC)</small>
-                            <div class="display-6 fw-bold text-danger my-1">{{ metricas.total_nc }}</div>
-                            <small class="text-secondary">{{ metricas.total_nc_maior }} Maior / {{ metricas.total_nc_menor }} Menor</small>
+                    <div class="col">
+                        <div class="metric-tile p-3">
+                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.72rem;">Oportunidades (OM)</small>
+                            <div class="display-6 fw-bold text-warning my-1" style="font-size: 2.2rem;">{{ metricas.total_om }}</div>
+                            <small class="text-secondary" style="font-size: 0.8rem;">Melhorias</small>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="metric-tile p-3">
+                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.72rem;">Não Conformes (NC)</small>
+                            <div class="display-6 fw-bold text-danger my-1" style="font-size: 2.2rem;">{{ metricas.total_nc }}</div>
+                            <small class="text-secondary" style="font-size: 0.8rem;">{{ metricas.total_nc_maior }} Maior / {{ metricas.total_nc_menor }} Menor</small>
                         </div>
                     </div>
                 </div>

@@ -14,6 +14,22 @@
         transform: scale(1.05);
         box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
+    .btn-outline-obs {
+        color: #556b2f;
+        border-color: #c0ca33;
+        background-color: transparent;
+    }
+    .btn-outline-obs:hover {
+        background-color: #d4e157;
+        color: #334d11;
+        border-color: #c0ca33;
+    }
+    .btn-obs-active {
+        background-color: #d4e157 !important;
+        color: #2e440f !important;
+        border-color: #afb42b !important;
+        font-weight: 700;
+    }
     #save-indicator {
         position: fixed;
         bottom: 20px;
@@ -157,6 +173,7 @@
                     <span class="fw-bold text-dark small"><i class="bi bi-shield-check me-1 text-primary"></i>Conclusão desta Amostra:</span>
                     <div class="btn-group" role="group">
                         <button type="button" id="modalBtnConcl_C" class="btn btn-sm btn-outline-success px-3 fw-bold" onclick="setConclusaoModal('C')">✅ Conforme</button>
+                        <button type="button" id="modalBtnConcl_OBS" class="btn btn-sm btn-outline-obs px-3 fw-bold" onclick="setConclusaoModal('OBS')">👁️ Obs. com Correção</button>
                         <button type="button" id="modalBtnConcl_NC" class="btn btn-sm btn-outline-danger px-3 fw-bold" onclick="setConclusaoModal('NC')">🔴 Não Conforme</button>
                         <button type="button" id="modalBtnConcl_OM" class="btn btn-sm btn-outline-warning text-dark px-3 fw-bold" onclick="setConclusaoModal('OM')">🟠 Oportunidade</button>
                         <button type="button" id="modalBtnConcl_NA" class="btn btn-sm btn-outline-secondary px-3 fw-bold" onclick="setConclusaoModal('NA')">ℹ️ N/A</button>
@@ -285,6 +302,7 @@
 
                             <div class="d-flex justify-content-center gap-2 mb-4 flex-wrap">
                                 <button type="button" class="btn btn-outline-success btn-classificacao ${p.classificacao === 'C' ? 'active btn-success text-white' : ''}" onclick="setClassificacao('C')">✅ Conforme</button>
+                                <button type="button" class="btn btn-outline-obs btn-classificacao ${p.classificacao === 'OBS' ? 'active btn-obs-active' : ''}" onclick="setClassificacao('OBS')">👁️ Obs. com Correção</button>
                                 <button type="button" class="btn btn-outline-danger btn-classificacao ${p.classificacao === 'NC' ? 'active btn-danger text-white' : ''}" onclick="setClassificacao('NC')">🔴 Não Conforme</button>
                                 <button type="button" class="btn btn-outline-warning btn-classificacao ${p.classificacao === 'OM' ? 'active btn-warning text-dark' : ''}" onclick="setClassificacao('OM')">🟠 Oportunidade</button>
                                 <button type="button" class="btn btn-outline-secondary btn-classificacao ${p.classificacao === 'NA' ? 'active btn-secondary text-white' : ''}" onclick="setClassificacao('NA')">ℹ️ N/A</button>
@@ -475,6 +493,7 @@
                             <span class="small text-muted me-1 fw-bold">Conclusão:</span>
                             <div class="btn-group btn-group-sm" role="group">
                                 <button type="button" class="btn ${s.conclusao === 'C' ? 'btn-success' : 'btn-outline-success'} px-2 py-0.5 small" onclick="setConclusaoSolicitacao(${s.id}, 'C')" title="Conforme">✅ C</button>
+                                <button type="button" class="btn ${s.conclusao === 'OBS' ? 'btn-obs-active' : 'btn-outline-obs'} px-2 py-0.5 small" onclick="setConclusaoSolicitacao(${s.id}, 'OBS')" title="Observação com Correção">👁️ OBS</button>
                                 <button type="button" class="btn ${s.conclusao === 'NC' ? 'btn-danger' : 'btn-outline-danger'} px-2 py-0.5 small" onclick="setConclusaoSolicitacao(${s.id}, 'NC')" title="Não Conforme">🔴 NC</button>
                                 <button type="button" class="btn ${s.conclusao === 'OM' ? 'btn-warning text-dark' : 'btn-outline-warning text-dark'} px-2 py-0.5 small" onclick="setConclusaoSolicitacao(${s.id}, 'OM')" title="Oportunidade">🟠 OM</button>
                                 <button type="button" class="btn ${s.conclusao === 'NA' ? 'btn-secondary' : 'btn-outline-secondary'} px-2 py-0.5 small" onclick="setConclusaoSolicitacao(${s.id}, 'NA')" title="Não Aplicável">ℹ️ NA</button>
@@ -575,11 +594,13 @@
     function updateModalConclusaoButtons(concl) {
         modalActiveConclusao = concl;
         const btnC = document.getElementById('modalBtnConcl_C');
+        const btnOBS = document.getElementById('modalBtnConcl_OBS');
         const btnNC = document.getElementById('modalBtnConcl_NC');
         const btnOM = document.getElementById('modalBtnConcl_OM');
         const btnNA = document.getElementById('modalBtnConcl_NA');
 
         if (btnC) btnC.className = `btn btn-sm ${concl === 'C' ? 'btn-success text-white' : 'btn-outline-success'} px-3 fw-bold`;
+        if (btnOBS) btnOBS.className = `btn btn-sm ${concl === 'OBS' ? 'btn-obs-active' : 'btn-outline-obs'} px-3 fw-bold`;
         if (btnNC) btnNC.className = `btn btn-sm ${concl === 'NC' ? 'btn-danger text-white' : 'btn-outline-danger'} px-3 fw-bold`;
         if (btnOM) btnOM.className = `btn btn-sm ${concl === 'OM' ? 'btn-warning text-dark' : 'btn-outline-warning text-dark'} px-3 fw-bold`;
         if (btnNA) btnNA.className = `btn btn-sm ${concl === 'NA' ? 'btn-secondary text-white' : 'btn-outline-secondary'} px-3 fw-bold`;
@@ -664,13 +685,16 @@
         // 2. Oportunidade de Melhoria (OM)
         if (concs.includes('OM')) return 'OM';
 
-        // 3. Conforme se todas forem 'C' ou 'NA' (com pelo menos uma 'C')
+        // 3. Observação com Correção (OBS)
+        if (concs.includes('OBS')) return 'OBS';
+
+        // 4. Conforme se todas forem 'C' ou 'NA' (com pelo menos uma 'C')
         if (concs.some(c => c === 'C') && concs.every(c => c === 'C' || c === 'NA')) return 'C';
 
-        // 4. Todas N/A
+        // 5. Todas N/A
         if (concs.every(c => c === 'NA')) return 'NA';
 
-        // 5. Caso ainda existam amostras pendentes ('P')
+        // 6. Caso ainda existam amostras pendentes ('P')
         return 'P';
     }
 

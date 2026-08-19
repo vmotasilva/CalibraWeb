@@ -929,6 +929,7 @@ class AgendaAuditoriaIso(models.Model):
 class RespostaEntrevistaIso(models.Model):
     CLASSIFICACAO_CHOICES = [
         ("C", "Conforme"),
+        ("OBS", "Observação com Correção"),
         ("NC", "Não Conforme"),
         ("NA", "Não Aplicável"),
         ("OM", "Oportunidade de Melhoria"),
@@ -937,7 +938,7 @@ class RespostaEntrevistaIso(models.Model):
     auditoria = models.ForeignKey(AuditoriaIso, on_delete=models.CASCADE, related_name="respostas")
     pergunta = models.ForeignKey(BancoPergunta, on_delete=models.PROTECT, related_name="respostas")
     texto_resposta = models.TextField(blank=True, verbose_name="Resposta do Auditado / Anotações")
-    classificacao = models.CharField(max_length=2, choices=CLASSIFICACAO_CHOICES, default="P")
+    classificacao = models.CharField(max_length=4, choices=CLASSIFICACAO_CHOICES, default="P")
     respondida_em = models.DateTimeField(auto_now=True)
     respondida_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
 
@@ -953,6 +954,7 @@ class RespostaEntrevistaIso(models.Model):
 class SolicitacaoEvidenciaIso(models.Model):
     CLASSIFICACAO_CHOICES = [
         ("C", "Conforme"),
+        ("OBS", "Observação com Correção"),
         ("NC", "Não Conforme"),
         ("NA", "Não Aplicável"),
         ("OM", "Oportunidade de Melhoria"),
@@ -961,7 +963,7 @@ class SolicitacaoEvidenciaIso(models.Model):
     resposta = models.ForeignKey(RespostaEntrevistaIso, on_delete=models.CASCADE, related_name="solicitacoes")
     solicitacao = models.TextField(verbose_name="Solicitação / Item Solicitado")
     evidencia = models.TextField(blank=True, verbose_name="Evidência Apresentada")
-    conclusao = models.CharField(max_length=2, choices=CLASSIFICACAO_CHOICES, default="P")
+    conclusao = models.CharField(max_length=4, choices=CLASSIFICACAO_CHOICES, default="P")
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
 
@@ -978,6 +980,7 @@ class SolicitacaoEvidenciaIso(models.Model):
 class AvaliacaoFinalRequisitoIso(models.Model):
     CLASSIFICACAO_CHOICES = [
         ("C", "Conforme"),
+        ("OBS", "Observação com Correção"),
         ("NC", "Não Conforme"),
         ("NA", "Não Aplicável"),
         ("OM", "Oportunidade de Melhoria"),
@@ -989,7 +992,7 @@ class AvaliacaoFinalRequisitoIso(models.Model):
     ]
     auditoria = models.ForeignKey(AuditoriaIso, on_delete=models.CASCADE, related_name="avaliacoes_finais")
     item_norma = models.ForeignKey(ItemNorma, on_delete=models.CASCADE, related_name="avaliacoes_finais")
-    classificacao = models.CharField(max_length=2, choices=CLASSIFICACAO_CHOICES)
+    classificacao = models.CharField(max_length=4, choices=CLASSIFICACAO_CHOICES)
     grau_nc = models.CharField(max_length=10, choices=GRAU_NC_CHOICES, blank=True, null=True, verbose_name="Grau da Não Conformidade")
     justificativa = models.TextField(blank=True, verbose_name="Argumentação / Justificativa da Reversão")
     atualizado_em = models.DateTimeField(auto_now=True)

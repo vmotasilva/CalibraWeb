@@ -3664,7 +3664,11 @@ def iso_matriz_view(request, auditoria_id):
                     'total_perguntas': len(perguntas_info),
                     'perguntas': perguntas_info
                 })
-                    
+        
+        # Hierarquia: NC > P > OM > OBS > C > NA
+        hierarchy = {"NC": 6, "P": 5, "OM": 4, "OBS": 3, "C": 2, "NA": 1}
+        reverse_hierarchy = {v: k for k, v in hierarchy.items()}
+        
         # Status Calculado (Apenas para os níveis finais/folhas dos itens da norma)
         if is_parent:
             status_item = ""
@@ -3677,7 +3681,7 @@ def iso_matriz_view(request, auditoria_id):
             for p_id in todas_perguntas_item_set:
                 r = respostas_map.get(p_id)
                 classificacao = r.classificacao if r else "P"
-                peso = hierarchy.get(classificacao, 4)
+                peso = hierarchy.get(classificacao, 5)
                 if peso > pior_peso:
                     pior_peso = peso
             status_item = reverse_hierarchy.get(pior_peso, "P")
@@ -3697,26 +3701,31 @@ def iso_matriz_view(request, auditoria_id):
 
     # Calcula as métricas e estatísticas do relatório (desconsiderando N/A)
     count_c = sum(1 for m in matriz_data if not m["is_parent"] and m["status"] == "C")
+    count_obs = sum(1 for m in matriz_data if not m["is_parent"] and m["status"] == "OBS")
     count_nc = sum(1 for m in matriz_data if not m["is_parent"] and m["status"] == "NC")
     count_om = sum(1 for m in matriz_data if not m["is_parent"] and m["status"] == "OM")
     count_p = sum(1 for m in matriz_data if not m["is_parent"] and m["status"] == "P")
     count_na = sum(1 for m in matriz_data if not m["is_parent"] and m["status"] == "NA")
 
-    total_avaliados = count_c + count_nc + count_om + count_p
+    total_avaliados = count_c + count_obs + count_nc + count_om + count_p
     
-    pct_c = round((count_c / total_avaliados * 100), 1) if total_avaliados > 0 else 0
+    # OBS é neutro/positivo (contabiliza no lado positivo junto com C)
+    pct_c = round(((count_c + count_obs) / total_avaliados * 100), 1) if total_avaliados > 0 else 0
     pct_nc = round((count_nc / total_avaliados * 100), 1) if total_avaliados > 0 else 0
     pct_om = round((count_om / total_avaliados * 100), 1) if total_avaliados > 0 else 0
+    pct_obs = round((count_obs / total_avaliados * 100), 1) if total_avaliados > 0 else 0
     pct_p = round((count_p / total_avaliados * 100), 1) if total_avaliados > 0 else 0
 
     stats = {
         "count_c": count_c,
+        "count_obs": count_obs,
         "count_nc": count_nc,
         "count_om": count_om,
         "count_p": count_p,
         "count_na": count_na,
         "total_avaliados": total_avaliados,
         "pct_c": pct_c,
+        "pct_obs": pct_obs,
         "pct_nc": pct_nc,
         "pct_om": pct_om,
         "pct_p": pct_p,
@@ -3770,13 +3779,14 @@ def iso_fechamento_presentation_view(request, auditoria_id):
         for av in AvaliacaoFinalRequisitoIso.objects.filter(auditoria=auditoria)
     }
 
-    hierarchy = {"NC": 5, "P": 4, "OM": 3, "C": 2, "NA": 1}
+    hierarchy = {"NC": 6, "P": 5, "OM": 4, "OBS": 3, "C": 2, "NA": 1}
     reverse_hierarchy = {v: k for k, v in hierarchy.items()}
 
     destaques_conformes = []
     pontos_a_melhorar = []
     
     count_c = 0
+    count_obs = 0
     count_om = 0
     count_nc_menor = 0
     count_nc_maior = 0
@@ -3807,7 +3817,7 @@ def iso_fechamento_presentation_view(request, auditoria_id):
             for p in todas_perguntas_item:
                 r = respostas_map.get(p.id)
                 c = r.classificacao if r else "P"
-                peso = hierarchy.get(c, 4)
+                peso = hierarchy.get(c, 5)
                 if peso > pior_peso:
                     pior_peso = peso
             status_item = reverse_hierarchy.get(pior_peso, "P")
@@ -3856,6 +3866,19 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                 'titulo': item.titulo,
                 'evidencias': evidencias_item[:3] or ["Processo e evidências documentais em conformidade."]
             })
+        elif status_item == 'OBS':
+            count_obs += 1
+            pontos_a_melhorar.append({
+                'tipo': 'OBS',
+                'badge': 'Observação com Correção',
+                'cor': 'obs',
+                'cor_text': 'dark',
+                'bg_badge': '#d4e157',
+                'icone': 'bi-eye-fill',
+                'referencia': item.referencia,
+                'titulo': item.titulo,
+                'evidencias': evidencias_item[:3] or ["Fragilidade apontada no processo que exige plano de ação corretiva."]
+            })
         elif status_item == 'OM':
             count_om += 1
             pontos_a_melhorar.append({
@@ -3863,6 +3886,7 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                 'badge': 'Oportunidade',
                 'cor': 'warning',
                 'cor_text': 'dark',
+                'bg_badge': '#ffc107',
                 'icone': 'bi-lightbulb-fill',
                 'referencia': item.referencia,
                 'titulo': item.titulo,
@@ -3888,14 +3912,16 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                 'badge': badge_nc,
                 'cor': 'danger',
                 'cor_text': 'white',
+                'bg_badge': '#dc3545',
                 'icone': 'bi-exclamation-triangle-fill',
                 'referencia': item.referencia,
                 'titulo': item.titulo,
                 'evidencias': evidencias_item[:3] or ["Evidência objetiva de não conformidade ao requisito."]
             })
 
-    total_avaliados = count_c + count_om + count_nc_menor + count_nc_maior + count_p
-    percentual_conformidade = round((count_c / total_avaliados * 100), 1) if total_avaliados > 0 else 0.0
+    total_avaliados = count_c + count_obs + count_om + count_nc_menor + count_nc_maior + count_p
+    # OBS é neutro e não penaliza a nota global: contabilizado no lado positivo com C
+    percentual_conformidade = round(((count_c + count_obs) / total_avaliados * 100), 1) if total_avaliados > 0 else 0.0
 
     # ── CARGA DO MOTOR DE REGRAS (ELIMINAÇÃO EM CASCATA / FAIL-FAST) ──────────
     try:
@@ -3916,7 +3942,7 @@ def iso_fechamento_presentation_view(request, auditoria_id):
     limite_nc_menor_apto = regra_apto.max_nc_menor if (regra_apto and regra_apto.max_nc_menor is not None) else 2
 
     # Lógica do Motor por Cascata Estrita:
-    # 1º: Atingiu qualquer gatilho crítico? -> INADEQUADO
+    # 1º: Atingiu qualquer gatilho crítico? -> INADEQUADO (OBS NÃO impacta gatilhos de NC)
     if count_nc_maior >= gatilho_nc_maior_inapto or count_nc_menor >= gatilho_nc_menor_inapto:
         veredito = {
             'status': 'INAPTO',
@@ -3961,6 +3987,7 @@ def iso_fechamento_presentation_view(request, auditoria_id):
             'total_avaliados': total_avaliados,
             'percentual_conformidade': percentual_conformidade,
             'total_c': count_c,
+            'total_obs': count_obs,
             'total_om': count_om,
             'total_nc_menor': count_nc_menor,
             'total_nc_maior': count_nc_maior,
@@ -5820,11 +5847,11 @@ def iso_revisao_dashboard(request, auditoria_id):
                 }
             itens_map[item.id]['respostas'].append(resp)
             
-            # Atualiza o pior status do campo (bruto) (P > NC > OM > C)
+            # Atualiza o pior status do campo (bruto) (P > NC > OM > OBS > C)
             status_atual = itens_map[item.id]['pior_status']
             novo_status = resp.classificacao
             
-            peso = {'P': 4, 'NC': 3, 'OM': 2, 'C': 1}
+            peso = {'P': 5, 'NC': 4, 'OM': 3, 'OBS': 2, 'C': 1}
             if peso.get(novo_status, 0) > peso.get(status_atual, 0):
                 itens_map[item.id]['pior_status'] = novo_status
 

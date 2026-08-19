@@ -47,6 +47,8 @@
                                 <span class="badge bg-danger fs-6">Não Conforme</span>
                             {% elif bloco.pior_status == 'OM' %}
                                 <span class="badge bg-warning text-dark fs-6">OM</span>
+                            {% elif bloco.pior_status == 'OBS' %}
+                                <span class="badge fs-6 text-dark" style="background-color: #d4e157;">Obs. com Correção</span>
                             {% elif bloco.pior_status == 'C' %}
                                 <span class="badge bg-success fs-6">Conforme</span>
                             {% else %}
@@ -65,28 +67,43 @@
                         </div>
                     </div>
                     
-                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-search me-2"></i>Constatações / Evidências:</h6>
+                    <h6 class="border-bottom pb-2 fw-bold"><i class="bi bi-chat-left-text me-2"></i>Perguntas e Respostas da Entrevista:</h6>
                     
                     {% for resp in bloco.respostas %}
-                    <div class="mb-3 p-3 bg-white border rounded shadow-sm">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="badge {% if resp.classificacao == 'NC' %}bg-danger{% elif resp.classificacao == 'OM' %}bg-warning text-dark{% elif resp.classificacao == 'C' %}bg-success{% else %}bg-secondary{% endif %}">Status Origem: {{ resp.get_classificacao_display }}</span>
+                    <div class="p-3 mb-3 bg-white border rounded shadow-2xs">
+                        <div class="d-flex justify-content-between">
+                            <strong>{{ resp.pergunta.texto_pergunta }}</strong>
                             <div>
-                                <span class="text-muted small">Avaliado em:</span>
-                                {% for agenda in resp.agendas_avaliadas %}
-                                    <span class="badge bg-light text-dark border ms-1"><i class="bi bi-geo-alt me-1"></i>{{ agenda.titulo|default:"Geral" }}</span>
-                                {% empty %}
-                                    <span class="badge bg-light text-dark border ms-1">Global</span>
-                                {% endfor %}
+                                {% if resp.classificacao == 'NC' %}
+                                    <span class="badge bg-danger">NC</span>
+                                {% elif resp.classificacao == 'OM' %}
+                                    <span class="badge bg-warning text-dark">OM</span>
+                                {% elif resp.classificacao == 'OBS' %}
+                                    <span class="badge text-dark" style="background-color: #d4e157;">OBS</span>
+                                {% elif resp.classificacao == 'C' %}
+                                    <span class="badge bg-success">C</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">P</span>
+                                {% endif %}
                             </div>
                         </div>
-                        <p class="mb-2 small text-muted"><strong>Pergunta Base:</strong> {{ resp.pergunta.texto_pergunta }}</p>
-                        <div class="p-2 bg-light border rounded">
-                            {{ resp.texto_resposta|default:"<em>Nenhuma anotação registrada.</em>"|linebreaksbr }}
+                        <div class="text-muted mt-2 small">
+                            <em>Resposta:</em> {{ resp.texto_resposta|default:"Sem anotações" }}
                         </div>
                         
-                        {% if resp.solicitacoes.all %}
-                        <div class="mt-2">
+                        <!-- Agenda(s) em que foi avaliada -->
+                        {% if resp.agendas_avaliadas %}
+                        <div class="mt-2 text-primary small">
+                            <i class="bi bi-calendar-event me-1"></i>Avaliado no(s) Bloco(s): 
+                            {% for ag in resp.agendas_avaliadas %}
+                                <span class="badge bg-light text-primary border me-1">{{ ag.titulo }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        <!-- Solicitações de evidências anexadas a esta pergunta -->
+                        {% if resp.solicitacoes.exists %}
+                        <div class="mt-2 pt-2 border-top">
                             <span class="text-warning small fw-bold"><i class="bi bi-pin-angle-fill me-1"></i>Solicitações associadas:</span>
                             <ul class="list-unstyled ms-3 mt-1 small">
                                 {% for sol in resp.solicitacoes.all %}
@@ -104,11 +121,13 @@
                             <h6 class="fw-bold {% if bloco.pior_status == 'NC' %}text-danger{% else %}text-primary{% endif %} mb-0">
                                 <i class="bi bi-shield-check me-2"></i>Veredicto Final do Requisito & Gravidade
                             </h6>
-                            <span class="badge {% if bloco.pior_status == 'NC' %}bg-danger{% elif bloco.pior_status == 'OM' %}bg-warning text-dark{% elif bloco.pior_status == 'C' %}bg-success{% else %}bg-secondary{% endif %} rounded-pill px-3 py-1.5 fw-bold" id="badgeVeredicto_{{ bloco.item.id }}">
+                            <span class="badge {% if bloco.pior_status == 'NC' %}bg-danger{% elif bloco.pior_status == 'OM' %}bg-warning text-dark{% elif bloco.pior_status == 'OBS' %}text-dark{% elif bloco.pior_status == 'C' %}bg-success{% else %}bg-secondary{% endif %} rounded-pill px-3 py-1.5 fw-bold" {% if bloco.pior_status == 'OBS' %}style="background-color: #d4e157;"{% endif %} id="badgeVeredicto_{{ bloco.item.id }}">
                                 {% if bloco.pior_status == 'NC' %}
                                     Não Conforme ({{ bloco.grau_nc_selecionado|default:"MENOR" }})
                                 {% elif bloco.pior_status == 'OM' %}
                                     Oportunidade de Melhoria
+                                {% elif bloco.pior_status == 'OBS' %}
+                                    Observação com Correção
                                 {% elif bloco.pior_status == 'C' %}
                                     Conforme
                                 {% else %}
@@ -171,9 +190,12 @@
                             <div class="text-muted small">
                                 <i class="bi bi-info-circle me-1"></i>Clique no veredicto desejado para salvar:
                             </div>
-                            <div class="d-flex gap-2">
+                            <div class="d-flex gap-2 flex-wrap">
                                 <button type="button" class="btn btn-sm btn-danger fw-bold rounded-pill px-3 shadow-2xs" onclick="reverterStatusComGrau({{ bloco.item.id }}, 'NC')">
                                     <i class="bi bi-exclamation-octagon-fill me-1"></i> Salvar como NC
+                                </button>
+                                <button type="button" class="btn btn-sm fw-bold rounded-pill px-3 shadow-2xs text-dark" style="background-color: #d4e157; border: 1px solid #afb42b;" onclick="reverterStatusComGrau({{ bloco.item.id }}, 'OBS')">
+                                    <i class="bi bi-eye-fill me-1"></i> Obs. com Correção
                                 </button>
                                 <button type="button" class="btn btn-sm btn-warning text-dark fw-bold rounded-pill px-3 shadow-2xs" onclick="reverterStatusComGrau({{ bloco.item.id }}, 'OM')">
                                     <i class="bi bi-lightbulb-fill me-1"></i> Definir como OM
@@ -274,6 +296,8 @@
                         badgeHtml = `<span class="badge bg-danger fs-6">${grauBadge}</span>`;
                     } else if (data.novo_status === 'OM') {
                         badgeHtml = '<span class="badge bg-warning text-dark fs-6">OM</span>';
+                    } else if (data.novo_status === 'OBS') {
+                        badgeHtml = '<span class="badge fs-6 text-dark" style="background-color: #d4e157;">Obs. com Correção</span>';
                     } else if (data.novo_status === 'C') {
                         badgeHtml = '<span class="badge bg-success fs-6">Conforme</span>';
                     } else {
@@ -285,12 +309,17 @@
                 // Inner Veredicto Badge
                 const badgeVeredicto = document.getElementById('badgeVeredicto_' + itemNormaId);
                 if (badgeVeredicto) {
+                    badgeVeredicto.removeAttribute('style');
                     if (data.novo_status === 'NC') {
                         badgeVeredicto.className = 'badge bg-danger rounded-pill px-3 py-1.5 fw-bold';
                         badgeVeredicto.textContent = `Não Conforme (${data.grau_nc || 'MENOR'})`;
                     } else if (data.novo_status === 'OM') {
                         badgeVeredicto.className = 'badge bg-warning text-dark rounded-pill px-3 py-1.5 fw-bold';
                         badgeVeredicto.textContent = 'Oportunidade de Melhoria';
+                    } else if (data.novo_status === 'OBS') {
+                        badgeVeredicto.className = 'badge text-dark rounded-pill px-3 py-1.5 fw-bold';
+                        badgeVeredicto.style.backgroundColor = '#d4e157';
+                        badgeVeredicto.textContent = 'Observação com Correção';
                     } else if (data.novo_status === 'C') {
                         badgeVeredicto.className = 'badge bg-success text-white rounded-pill px-3 py-1.5 fw-bold';
                         badgeVeredicto.textContent = 'Conforme';
