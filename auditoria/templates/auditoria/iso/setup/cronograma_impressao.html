@@ -205,7 +205,15 @@
                                         <td class="align-middle">
                                             <div class="d-flex flex-wrap gap-1">
                                             {% for item in agenda.condensed_items %}
-                                                <span class="badge {{ item.css_class }} text-center" style="min-width: 55px;" title="{{ item.referencia }}">{{ item.referencia }}</span>
+                                                <button type="button" 
+                                                        class="badge {{ item.css_class }} text-center border-0 cursor-pointer shadow-2xs" 
+                                                        style="min-width: 55px; cursor: pointer; transition: transform 0.15s ease-in-out;" 
+                                                        onmouseover="this.style.transform='scale(1.1)'"
+                                                        onmouseout="this.style.transform='scale(1)'"
+                                                        onclick="confirmarNavegacaoEntrevista('{{ agenda.id }}', '{{ agenda.titulo|escapejs }}', '{{ item.referencia|escapejs }}')"
+                                                        title="Clique para ir à entrevista de {{ agenda.titulo }} no requisito {{ item.referencia }}">
+                                                    {{ item.referencia }}
+                                                </button>
                                             {% empty %}
                                                 <span class="text-muted small">-</span>
                                             {% endfor %}
@@ -341,7 +349,15 @@
                                         <td class="align-middle">
                                             <div class="d-flex flex-wrap gap-1">
                                             {% for item in agenda.condensed_items %}
-                                                <span class="badge {{ item.css_class }} text-center" style="min-width: 55px;" title="{{ item.referencia }}">{{ item.referencia }}</span>
+                                                <button type="button" 
+                                                        class="badge {{ item.css_class }} text-center border-0 cursor-pointer shadow-2xs" 
+                                                        style="min-width: 55px; cursor: pointer; transition: transform 0.15s ease-in-out;" 
+                                                        onmouseover="this.style.transform='scale(1.1)'"
+                                                        onmouseout="this.style.transform='scale(1)'"
+                                                        onclick="confirmarNavegacaoEntrevista('{{ agenda.id }}', '{{ agenda.titulo|escapejs }}', '{{ item.referencia|escapejs }}')"
+                                                        title="Clique para ir à entrevista de {{ agenda.titulo }} no requisito {{ item.referencia }}">
+                                                    {{ item.referencia }}
+                                                </button>
                                             {% empty %}
                                                 <span class="text-muted small">-</span>
                                             {% endfor %}
@@ -573,7 +589,46 @@ function renameGap(data, inicio, fim, isAjustado = false) {
     var modal = new bootstrap.Modal(document.getElementById('createGapModal'));
     modal.show();
 }
+
+function confirmarNavegacaoEntrevista(agendaId, agendaTitulo, itemRef) {
+    document.getElementById('navModalBlocoNome').textContent = agendaTitulo;
+    document.getElementById('navModalItemRef').textContent = itemRef;
+    const urlEntrevista = `{% url 'auditoria:iso_entrevista_view' auditoria.id %}?agenda_id=${agendaId}&item=${encodeURIComponent(itemRef)}`;
+    document.getElementById('btnConfirmarIrEntrevista').href = urlEntrevista;
+    
+    var modal = new bootstrap.Modal(document.getElementById('modalConfirmarNavegacaoItem'));
+    modal.show();
+}
 </script>
+
+<!-- Modal de Confirmação para Navegar até a Entrevista do Requisito -->
+<div class="modal fade" id="modalConfirmarNavegacaoItem" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0 rounded-4">
+            <div class="modal-header bg-primary text-white border-0 py-3">
+                <h5 class="modal-title fw-bold d-flex align-items-center gap-2">
+                    <i class="bi bi-box-arrow-in-right"></i> Abrir Modo Entrevista
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <div class="mb-3">
+                    <span class="badge bg-primary bg-opacity-10 text-primary font-monospace fs-4 px-3 py-2 rounded-3" id="navModalItemRef">5.1</span>
+                </div>
+                <h6 class="fw-bold text-dark mb-2">Deseja abrir a avaliação deste requisito?</h6>
+                <p class="text-muted small mb-0">
+                    Você será direcionado para o bloco <strong id="navModalBlocoNome" class="text-primary"></strong> diretamente na tela de entrevista deste item da norma.
+                </p>
+            </div>
+            <div class="modal-footer border-0 bg-light rounded-bottom-4 d-flex justify-content-center gap-2">
+                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                <a href="#" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" id="btnConfirmarIrEntrevista">
+                    <i class="bi bi-play-circle-fill me-1"></i> Ir para Entrevista
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- CSS Específico para Impressão -->
 <style>

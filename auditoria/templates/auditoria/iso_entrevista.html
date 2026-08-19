@@ -635,6 +635,20 @@
             });
         }
 
+        // Se foi passado ?item=X na URL, navega diretamente para a primeira pergunta deste item
+        const urlParams = new URLSearchParams(window.location.search);
+        const itemParam = urlParams.get('item');
+        if (itemParam) {
+            const cleanParam = itemParam.trim().toLowerCase();
+            const targetIdx = perguntas.findIndex(p => {
+                const itensStr = (p.itens || '').toLowerCase();
+                return itensStr.split(',').map(s => s.trim()).includes(cleanParam) || itensStr.includes(cleanParam);
+            });
+            if (targetIdx !== -1) {
+                currentIndex = targetIdx;
+            }
+        }
+
         renderQuestion();
     });
 
