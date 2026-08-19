@@ -420,6 +420,20 @@ class BancoPerguntaIsoForm(forms.ModelForm):
         }
 
 
+class RegraVeredictoNormaForm(forms.ModelForm):
+    class Meta:
+        model = RegraVeredictoNorma
+        fields = ['status_resultado', 'min_percentual_conformidade', 'max_nc_maior', 'max_nc_menor', 'texto_parecer_padrao', 'cor_badge']
+        widgets = {
+            'status_resultado': forms.Select(attrs={'class': 'form-select'}),
+            'min_percentual_conformidade': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.1', 'min': '0', 'max': '100'}),
+            'max_nc_maior': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
+            'max_nc_menor': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
+            'texto_parecer_padrao': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': 'Texto institucional que sairá no laudo final...'}),
+            'cor_badge': forms.TextInput(attrs={'class': 'form-control', 'type': 'color'}),
+        }
+
+
 class AgendaAuditoriaIsoCreateForm(forms.ModelForm):
     class Meta:
         model = AgendaAuditoriaIso

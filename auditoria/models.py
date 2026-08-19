@@ -695,6 +695,52 @@ class Norma(models.Model):
         return self.codigo
 
 
+class RegraVeredictoNorma(models.Model):
+    """
+    Parametrização do Motor de Aprovação por Norma.
+    Define as regras e tolerâncias para: APTO, RESSALVA e INAPTO.
+    """
+    STATUS_CHOICES = [
+        ('APTO', 'Apto (Recomendado)'),
+        ('RESSALVA', 'Apto com Ressalvas'),
+        ('INAPTO', 'Inapto / Não Conforme'),
+    ]
+
+    norma = models.ForeignKey(Norma, on_delete=models.CASCADE, related_name="regras_veredicto")
+    status_resultado = models.CharField(max_length=20, choices=STATUS_CHOICES, verbose_name="Status do Parecer")
+    
+    min_percentual_conformidade = models.FloatField(
+        default=90.0,
+        verbose_name="Índice Mínimo de Conformidade (%)",
+        help_text="Abaixo deste percentual, o status não é concedido."
+    )
+    max_nc_maior = models.PositiveIntegerField(
+        default=0, 
+        verbose_name="Qtd Máxima de NC Maior Tolerada"
+    )
+    max_nc_menor = models.PositiveIntegerField(
+        default=2, 
+        verbose_name="Qtd Máxima de NC Menor Tolerada"
+    )
+    texto_parecer_padrao = models.TextField(
+        verbose_name="Texto do Parecer Padrão no Relatório",
+        help_text="Texto institucional que será exibido no slide de fechamento."
+    )
+    cor_badge = models.CharField(
+        max_length=20, 
+        default="#198754", 
+        verbose_name="Cor Hexadecimal / CSS"
+    )
+
+    class Meta:
+        verbose_name = "Regra de Veredicto da Norma"
+        verbose_name_plural = "Regras de Veredicto das Normas"
+        unique_together = ('norma', 'status_resultado')
+
+    def __str__(self):
+        return f"[{self.norma.codigo}] {self.get_status_resultado_display()}"
+
+
 class ItemNorma(models.Model):
     norma = models.ForeignKey(Norma, on_delete=models.CASCADE, related_name="itens")
     parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name="subitens")

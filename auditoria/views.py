@@ -3727,8 +3727,212 @@ def iso_matriz_view(request, auditoria_id):
         "matriz_data": matriz_data,
         "stats": stats
     }
+def chunks_list(lst, n):
+    """Divide uma lista em pedaços de tamanho n para evitar overflow em slides"""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
+
+
+@login_required
+def iso_fechamento_presentation_view(request, auditoria_id):
+    """
+    MOTOR DE ENCERRAMENTO & APRESENTAÇÃO EXECUTIVA (16:9 SLIDE DECK)
+    Calcula as métricas da auditoria, roda o Motor de Decisão (Fail-Fast)
+    e gera a apresentação em formato de slides corporativos.
+    """
+    from .models import AuditoriaIso, RespostaEntrevistaIso, ItemNorma
+    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+    agendas = list(auditoria.agendas.all().prefetch_related('perguntas', 'itens_norma', 'perguntas__itens_norma'))
+
+    # Coleta de Itens do Escopo
+    itens_escopo = auditoria.escopo_itens.all()
+    if not itens_escopo.exists():
+        itens_escopo = ItemNorma.objects.filter(norma=auditoria.norma)
+    itens_escopo_list = list(itens_escopo)
+
+    # Itens Pais (que possuem filhos)
+    parent_ids = set()
+    for item in itens_escopo_list:
+        prefix = item.referencia + '.'
+        if any(other.referencia.startswith(prefix) for other in itens_escopo_list):
+            parent_ids.add(item.id)
+
+    respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).prefetch_related('solicitacoes', 'pergunta__itens_norma')
+    respostas_map = {r.pergunta_id: r for r in respostas}
+    na_item_ids = set(auditoria.itens_nao_aplicaveis.values_list('id', flat=True))
+
+    hierarchy = {"NC": 5, "P": 4, "OM": 3, "C": 2, "NA": 1}
+    reverse_hierarchy = {v: k for k, v in hierarchy.items()}
+
+    destaques_conformes = []
+    pontos_a_melhorar = []
     
-    return render(request, "auditoria/iso_matriz.html", context)
+    count_c = 0
+    count_om = 0
+    count_nc_menor = 0
+    count_nc_maior = 0
+    count_p = 0
+    count_na = 0
+
+    for item in sorted(itens_escopo_list, key=lambda x: (x.ordem or 0, natural_sort_key(x.referencia))):
+        if item.id in parent_ids:
+            continue  # Apenas folhas
+
+        todas_perguntas_item = []
+        for ag in agendas:
+            for p in ag.perguntas.all():
+                if item in p.itens_norma.all() or (not p.itens_norma.exists() and item in ag.itens_norma.all()):
+                    todas_perguntas_item.append(p)
+
+        if item.id in na_item_ids:
+            status_item = "NA"
+        elif not todas_perguntas_item:
+            status_item = "P" if any(item in ag.itens_norma.all() for ag in agendas) else "NA"
+        else:
+            pior_peso = 0
+            for p in todas_perguntas_item:
+                r = respostas_map.get(p.id)
+                c = r.classificacao if r else "P"
+                peso = hierarchy.get(c, 4)
+                if peso > pior_peso:
+                    pior_peso = peso
+            status_item = reverse_hierarchy.get(pior_peso, "P")
+
+        # Coleta evidências de todas as perguntas deste item
+        evidencias_item = []
+        for p in todas_perguntas_item:
+            r = respostas_map.get(p.id)
+            if r:
+                for s in r.solicitacoes.all():
+                    if s.evidencia and s.evidencia.strip():
+                        evidencias_item.append(f"{s.solicitacao}: {s.evidencia.strip()}")
+                    elif s.solicitacao:
+                        evidencias_item.append(s.solicitacao)
+
+        if status_item == 'NA':
+            count_na += 1
+        elif status_item == 'P':
+            count_p += 1
+        elif status_item == 'C':
+            count_c += 1
+            destaques_conformes.append({
+                'referencia': item.referencia,
+                'titulo': item.titulo,
+                'evidencias': evidencias_item[:3] or ["Processo e evidências documentais em conformidade."]
+            })
+        elif status_item == 'OM':
+            count_om += 1
+            pontos_a_melhorar.append({
+                'tipo': 'OM',
+                'badge': 'Oportunidade',
+                'cor': 'warning',
+                'cor_text': 'dark',
+                'icone': 'bi-lightbulb-fill',
+                'referencia': item.referencia,
+                'titulo': item.titulo,
+                'evidencias': evidencias_item[:3] or ["Oportunidade de aprimoramento identificada no processo."]
+            })
+        elif status_item == 'NC':
+            # Se possui múltiplas falhas ou anotação crítica -> NC Maior
+            is_maior = len(evidencias_item) > 1 or any('crítica' in ev.lower() or 'grave' in ev.lower() for ev in evidencias_item)
+            if is_maior:
+                count_nc_maior += 1
+                tipo_nc = 'NC_MAIOR'
+                badge_nc = 'NC Maior'
+            else:
+                count_nc_menor += 1
+                tipo_nc = 'NC_MENOR'
+                badge_nc = 'NC Menor'
+
+            pontos_a_melhorar.append({
+                'tipo': tipo_nc,
+                'badge': badge_nc,
+                'cor': 'danger',
+                'cor_text': 'white',
+                'icone': 'bi-exclamation-triangle-fill',
+                'referencia': item.referencia,
+                'titulo': item.titulo,
+                'evidencias': evidencias_item[:3] or ["Evidência objetiva de não conformidade ao requisito."]
+            })
+
+    total_avaliados = count_c + count_om + count_nc_menor + count_nc_maior + count_p
+    percentual_conformidade = round((count_c / total_avaliados * 100), 1) if total_avaliados > 0 else 0.0
+
+    # ── CARGA DO MOTOR DE REGRAS (FAIL-FAST) ──────────────────────────────────
+    regras = {r.status_resultado: r for r in auditoria.norma.regras_veredicto.all()}
+    regra_apto = regras.get('APTO')
+    regra_ressalva = regras.get('RESSALVA')
+    regra_inapto = regras.get('INAPTO')
+
+    min_pct_apto = regra_apto.min_percentual_conformidade if regra_apto else 95.0
+    max_nc_menor_apto = regra_apto.max_nc_menor if regra_apto else 0
+    max_nc_maior_apto = regra_apto.max_nc_maior if regra_apto else 0
+
+    min_pct_ressalva = regra_ressalva.min_percentual_conformidade if regra_ressalva else 80.0
+    max_nc_menor_ressalva = regra_ressalva.max_nc_menor if regra_ressalva else 3
+    max_nc_maior_ressalva = regra_ressalva.max_nc_maior if regra_ressalva else 0
+
+    # Decisão Fail-Fast
+    if (count_nc_maior > max_nc_maior_ressalva or 
+        count_nc_menor > max_nc_menor_ressalva or 
+        percentual_conformidade < min_pct_ressalva):
+        
+        veredito = {
+            'status': 'INAPTO',
+            'titulo': 'INAPTO / NÃO CONFORME',
+            'cor_css': 'danger',
+            'cor_badge': 'bg-danger text-white',
+            'icone': 'bi-x-octagon-fill',
+            'parecer': regra_inapto.texto_parecer_padrao if (regra_inapto and regra_inapto.texto_parecer_padrao) else 
+                "O Sistema de Gestão auditado apresentou não conformidades críticas e índice de atendimento abaixo do mínimo exigido. Não se recomenda a concessão/manutenção da certificação no estágio atual."
+        }
+    elif (count_nc_maior > max_nc_maior_apto or 
+          count_nc_menor > max_nc_menor_apto or 
+          percentual_conformidade < min_pct_apto):
+        
+        veredito = {
+            'status': 'RESSALVA',
+            'titulo': 'APTO COM RESSALVAS',
+            'cor_css': 'warning',
+            'cor_badge': 'bg-warning text-dark',
+            'icone': 'bi-exclamation-triangle-fill',
+            'parecer': regra_ressalva.texto_parecer_padrao if (regra_ressalva and regra_ressalva.texto_parecer_padrao) else 
+                "O Sistema de Gestão atende aos requisitos essenciais, porém foram identificados desvios pontuais que requerem o envio e aprovação formal de um Plano de Ação Corretiva (CAPA)."
+        }
+    else:
+        veredito = {
+            'status': 'APTO',
+            'titulo': 'APTO / RECOMENDADO',
+            'cor_css': 'success',
+            'cor_badge': 'bg-success text-white',
+            'icone': 'bi-check-circle-fill',
+            'parecer': regra_apto.texto_parecer_padrao if (regra_apto and regra_apto.texto_parecer_padrao) else 
+                "O Sistema de Gestão auditado demonstrou alto índice de conformidade aos requisitos normativos e maturidade de seus processos, recomendando-se a certificação/manutenção sem restrições."
+        }
+
+    # Paginação dos Slides: 4 cards por slide para aspecto 16:9 perfeito
+    slides_pontos_fortes = list(chunks_list(destaques_conformes, 4))
+    slides_pontos_melhorar = list(chunks_list(pontos_a_melhorar, 4))
+
+    context = {
+        'auditoria': auditoria,
+        'agendas': agendas,
+        'metricas': {
+            'total_avaliados': total_avaliados,
+            'percentual_conformidade': percentual_conformidade,
+            'total_c': count_c,
+            'total_om': count_om,
+            'total_nc_menor': count_nc_menor,
+            'total_nc_maior': count_nc_maior,
+            'total_nc': count_nc_menor + count_nc_maior,
+            'total_na': count_na,
+            'total_p': count_p,
+        },
+        'veredito': veredito,
+        'slides_pontos_fortes': slides_pontos_fortes,
+        'slides_pontos_melhorar': slides_pontos_melhorar,
+    }
+    return render(request, "auditoria/iso/fechamento_presentation.html", context)
 
 
 @login_required
@@ -3953,14 +4157,69 @@ def iso_norma_detail(request, pk):
     modelos = ModeloAuditoriaIso.objects.filter(norma=norma).prefetch_related('perguntas')
     auditorias = AuditoriaIso.objects.filter(norma=norma).order_by('-criado_em')
     
+    regras_dict = {r.status_resultado: r for r in norma.regras_veredicto.all()}
+
     return render(request, "auditoria/iso/setup/norma_detail.html", {
         "norma": norma,
         "itens": itens,
         "perguntas": perguntas,
         "modelos": modelos,
         "auditorias": auditorias,
+        "regra_apto": regras_dict.get('APTO'),
+        "regra_ressalva": regras_dict.get('RESSALVA'),
+        "regra_inapto": regras_dict.get('INAPTO'),
         "active_tab": request.GET.get('tab', 'itens')
     })
+
+
+@login_required
+@require_POST
+def iso_norma_regras_salvar(request, pk):
+    """Salva a parametrização do Motor de Aprovação para a Norma"""
+    from .models import RegraVeredictoNorma
+    norma = get_object_or_404(Norma, pk=pk)
+
+    # 1. Apto
+    RegraVeredictoNorma.objects.update_or_create(
+        norma=norma,
+        status_resultado='APTO',
+        defaults={
+            'min_percentual_conformidade': float(request.POST.get('apto_min_pct', 95.0) or 95.0),
+            'max_nc_maior': int(request.POST.get('apto_max_nc_maior', 0) or 0),
+            'max_nc_menor': int(request.POST.get('apto_max_nc_menor', 0) or 0),
+            'texto_parecer_padrao': request.POST.get('apto_texto', '').strip(),
+            'cor_badge': '#198754'
+        }
+    )
+
+    # 2. Ressalva
+    RegraVeredictoNorma.objects.update_or_create(
+        norma=norma,
+        status_resultado='RESSALVA',
+        defaults={
+            'min_percentual_conformidade': float(request.POST.get('ressalva_min_pct', 80.0) or 80.0),
+            'max_nc_maior': int(request.POST.get('ressalva_max_nc_maior', 0) or 0),
+            'max_nc_menor': int(request.POST.get('ressalva_max_nc_menor', 3) or 3),
+            'texto_parecer_padrao': request.POST.get('ressalva_texto', '').strip(),
+            'cor_badge': '#ffc107'
+        }
+    )
+
+    # 3. Inapto
+    RegraVeredictoNorma.objects.update_or_create(
+        norma=norma,
+        status_resultado='INAPTO',
+        defaults={
+            'min_percentual_conformidade': 0.0,
+            'max_nc_maior': 999,
+            'max_nc_menor': 999,
+            'texto_parecer_padrao': request.POST.get('inapto_texto', '').strip(),
+            'cor_badge': '#dc3545'
+        }
+    )
+
+    messages.success(request, f"Regras de Aprovação e Fechamento da norma '{norma.codigo}' salvas com sucesso!")
+    return redirect(f"{reverse('auditoria:iso_norma_detail', kwargs={'pk': norma.id})}?tab=regras")
 
 # --- Norma CRUD ---
 @login_required

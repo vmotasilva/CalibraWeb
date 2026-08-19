@@ -57,7 +57,7 @@ urlpatterns = [
 
     # ISO 13485 (Entrevista)
     path("iso/", views.iso_auditoria_list, name="iso_auditoria_list"),
-    path("iso/<int:auditoria_id>/fechamento/", views.iso_auditoria_fechamento_presentation, name="iso_fechamento_presentation"),
+    path("iso/<int:auditoria_id>/fechamento/", views.iso_fechamento_presentation_view, name="iso_fechamento_presentation"),
     path("iso/<int:auditoria_id>/entrevista/", views.iso_entrevista_view, name="iso_entrevista_view"),
     path("iso/<int:auditoria_id>/revisao/", views.iso_revisao_dashboard, name="iso_revisao_dashboard"),
     path("iso/api/revisao/reverter/", views.api_iso_revisao_reverter, name="api_iso_revisao_reverter"),
@@ -78,6 +78,7 @@ urlpatterns = [
     
     path("iso/setup/normas/nova/", views.iso_norma_create, name="iso_norma_create"),
     path("iso/setup/normas/<int:pk>/", views.iso_norma_detail, name="iso_norma_detail"),
+    path("iso/setup/normas/<int:pk>/regras/salvar/", views.iso_norma_regras_salvar, name="iso_norma_regras_salvar"),
     path("iso/setup/normas/<int:pk>/editar/", views.iso_norma_edit, name="iso_norma_edit"),
     path("iso/setup/normas/<int:pk>/arquivar/", views.iso_norma_archive, name="iso_norma_archive"),
     path("iso/setup/normas/<int:pk>/remover/", views.iso_norma_delete, name="iso_norma_delete"),

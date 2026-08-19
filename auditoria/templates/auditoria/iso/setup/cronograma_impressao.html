@@ -39,6 +39,9 @@
             </a>
         </div>
         <div class="d-flex gap-2">
+            <a href="{% url 'auditoria:iso_fechamento_presentation' auditoria.id %}" class="btn btn-outline-success fw-bold rounded-pill shadow-sm" target="_blank">
+                <i class="bi bi-easel2-fill me-1"></i> 📊 Apresentação de Fechamento
+            </a>
             <a href="{% url 'auditoria:iso_matriz_view' auditoria.id %}" class="btn btn-outline-primary fw-bold rounded-pill shadow-sm">
                 <i class="bi bi-grid-3x3 me-2"></i> Ver Matriz
             </a>
