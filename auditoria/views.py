@@ -5100,24 +5100,24 @@ def iso_auditoria_cronograma(request, auditoria_id):
             parent_to_children[item.parent_id].append(item.id)
             
     def get_condensed_items(agenda_items):
-        selected_ids = {item.id for item in agenda_items}
-        changed = True
-        while changed:
-            changed = False
-            for parent_id, children_ids in parent_to_children.items():
-                if parent_id not in selected_ids:
-                    if children_ids and all(child_id in selected_ids for child_id in children_ids):
-                        selected_ids.add(parent_id)
-                        for child_id in children_ids:
-                            selected_ids.remove(child_id)
-                        changed = True
-        condensed = [item_by_id[i] for i in selected_ids if i in item_by_id]
+        selected_items = list(agenda_items)
+        if not selected_items:
+            return []
+
+        # Identifica e descarta itens que são pais/prefixos de outros itens na mesma sequência (mantém apenas as folhas / último nível)
+        parent_ids = set()
+        for item in selected_items:
+            prefix = item.referencia + '.'
+            if any(other.referencia.startswith(prefix) for other in selected_items if other.id != item.id):
+                parent_ids.add(item.id)
+
+        folhas = [item for item in selected_items if item.id not in parent_ids]
         
         def sort_key(item):
             parts = item.referencia.split('.')
-            return [int(p) if p.isdigit() else p for p in parts]
+            return ((item.ordem or 0), [int(p) if p.isdigit() else p for p in parts])
             
-        return sorted(condensed, key=sort_key)
+        return sorted(folhas, key=sort_key)
     
     total_agendas = agendas_qs.count()
     total_concluidas = agendas_qs.filter(concluida=True).count()
