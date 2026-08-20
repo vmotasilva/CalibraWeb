@@ -4291,7 +4291,8 @@ def iso_fechamento_presentation_view(request, auditoria_id):
     veredito['gatilho_nc_maior_inapto'] = gatilho_nc_maior_inapto
     veredito['gatilho_nc_menor_inapto'] = gatilho_nc_menor_inapto
 
-    # Paginação dos Slides: 4 cards por slide para aspecto 16:9 perfeito
+    # Paginação dos Slides: 6 agendas por slide e 4 cards por slide para aspecto 16:9 perfeito
+    slides_agendas = list(chunks_list(agendas, 6))
     slides_pontos_fortes = list(chunks_list(destaques_conformes, 4))
     slides_pontos_melhorar = list(chunks_list(pontos_a_melhorar, 4))
     slides_conselhos = list(chunks_list(conselhos_por_item, 4))
@@ -4299,6 +4300,7 @@ def iso_fechamento_presentation_view(request, auditoria_id):
     context = {
         'auditoria': auditoria,
         'agendas': agendas,
+        'slides_agendas': slides_agendas,
         'metricas': {
             'total_avaliados': total_avaliados,
             'percentual_conformidade': percentual_conformidade,

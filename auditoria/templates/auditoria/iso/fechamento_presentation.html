@@ -244,15 +244,22 @@
             </div>
         </div>
 
-        <!-- ── SLIDE 2: CRONOGRAMA & MATRIZ DE PROCESSOS ── -->
+        <!-- ── SLIDES DE MATRIZ DE PROCESSOS & CRONOGRAMA (PAGINADOS) ── -->
+        {% for lote_agendas in slides_agendas %}
         <div class="slide">
             <div class="slide-header">
                 <h2 class="slide-title"><i class="bi bi-calendar-check text-primary"></i>Matriz de Processos & Áreas Auditadas</h2>
-                <span class="badge bg-light text-secondary border px-3 py-1.5 rounded-pill font-monospace">Slide 02</span>
+                <span class="badge bg-light text-secondary border px-3 py-1.5 rounded-pill font-monospace">
+                    {% if slides_agendas|length > 1 %}
+                        Cronograma ({{ forloop.counter }}/{{ slides_agendas|length }})
+                    {% else %}
+                        Slide 02
+                    {% endif %}
+                </span>
             </div>
             <div class="slide-content">
-                <div class="row row-cols-2 g-3">
-                    {% for agenda in agendas %}
+                <div class="row row-cols-2 g-3 h-100 align-content-start">
+                    {% for agenda in lote_agendas %}
                     <div class="col">
                         <div class="p-3 bg-light rounded-4 border h-100 d-flex flex-column justify-content-between">
                             <div>
@@ -281,6 +288,7 @@
                 <span>Calibra WEB</span>
             </div>
         </div>
+        {% endfor %}
 
         <!-- ── SLIDE(S) 3: PONTOS FORTES E DESTAQUES (Chunked) ── -->
         {% for lote in slides_pontos_fortes %}
