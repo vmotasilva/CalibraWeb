@@ -1020,12 +1020,11 @@
 
     function derivarClassificacaoPorSolicitacoes(solicitacoes) {
         if (!solicitacoes || solicitacoes.length === 0) {
-            return { classificacao: 'P', grau_nc: null }; // Pendente / Não avaliado
+            return { classificacao: 'P', grau_nc: null };
         }
         const concs = solicitacoes.map(s => s.conclusao);
 
-        // 1. Falha fatal / Não Conformidade:
-        // Qualquer Não Conforme (NC) torna o requisito Não Conforme
+        // 1. Falha fatal / Não Conformidade: qualquer NC torna o requisito Não Conforme
         if (concs.includes('NC')) {
             const ncSols = solicitacoes.filter(s => s.conclusao === 'NC');
             const temMaior = ncSols.some(s => s.grau_nc === 'MAIOR');
@@ -1033,22 +1032,21 @@
         }
 
         // 2. Oportunidade de Melhoria (OM)
-        if (concs.includes('OM')) return { classificacao: 'OM', grau_nc: null };
+        if (concs.includes('OM')) {
+            return { classificacao: 'OM', grau_nc: null };
+        }
 
-        // 3. Caso ainda existam amostras pendentes ('P')
-        if (concs.includes('P')) return { classificacao: 'P', grau_nc: null };
-
-        // 4. Conforme se houver 'C' ou se só existirem 'C', 'NA', 'OBS' (OBS não altera o status)
-        if (concs.some(c => c === 'C') || concs.every(c => c === 'OBS')) {
+        // 3. Conforme se houver 'C' ou 'OBS' (OBS é considerado como Conforme/Conselho prático)
+        if (concs.some(c => c === 'C' || c === 'OBS')) {
             return { classificacao: 'C', grau_nc: null };
         }
 
-        // 5. Todas N/A
-        if (concs.every(c => c === 'NA' || c === 'OBS')) {
+        // 4. Todas N/A
+        if (concs.length > 0 && concs.every(c => c === 'NA')) {
             return { classificacao: 'NA', grau_nc: null };
         }
 
-        return { classificacao: 'C', grau_nc: null };
+        return { classificacao: 'P', grau_nc: null };
     }
 
     async function setConclusaoSolicitacao(solId, conclusaoVal) {
@@ -1284,6 +1282,17 @@
                 currentIndex = targetIdx;
             }
         }
+
+        // Sincroniza a classificação de todas as perguntas baseado nas solicitações já registradas
+        perguntas.forEach(p => {
+            if (p.solicitacoes && p.solicitacoes.length > 0) {
+                const derivado = derivarClassificacaoPorSolicitacoes(p.solicitacoes);
+                p.classificacao = derivado.classificacao;
+                if (p.classificacao === 'NC') {
+                    p.grau_nc = derivado.grau_nc || p.grau_nc || 'MENOR';
+                }
+            }
+        });
 
         // Atualiza o contador de atalhos disponíveis no botão do header
         const badgeTotal = document.getElementById('badge-total-atalhos');

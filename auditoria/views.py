@@ -3464,6 +3464,23 @@ def iso_entrevista_view(request, auditoria_id):
         if p.id == pergunta_auditados.id and not itens_str:
             itens_str = "Identificação / Auditados"
 
+        # Calcula status dinâmico a partir das solicitações consolidadas do item
+        if sols_consolidadas:
+            conclusoes = [s["conclusao"] for s in sols_consolidadas]
+            if "NC" in conclusoes:
+                classificacao_final = "NC"
+            elif "OM" in conclusoes:
+                classificacao_final = "OM"
+            elif any(c in ["C", "OBS"] for c in conclusoes):
+                classificacao_final = "C"
+            elif all(c == "NA" for c in conclusoes):
+                classificacao_final = "NA"
+            else:
+                classificacao_final = "P"
+        else:
+            raw_c = r.get("classificacao", "P")
+            classificacao_final = "C" if raw_c == "OBS" else raw_c
+
         perguntas_data.append({
             "id": p.id,
             "texto_pergunta": p.texto_pergunta,
@@ -3480,7 +3497,7 @@ def iso_entrevista_view(request, auditoria_id):
                 for item in itens_p
             ],
             "outros_blocos": list(blocos_vistos.values()),
-            "classificacao": r.get("classificacao", "P"),
+            "classificacao": classificacao_final,
             "grau_nc": r.get("grau_nc"),
             "texto_resposta": r.get("texto_resposta", ""),
             "solicitacoes": sols_consolidadas
