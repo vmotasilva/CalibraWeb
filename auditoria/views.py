@@ -4326,8 +4326,8 @@ def iso_fechamento_presentation_view(request, auditoria_id):
         dia_num += 1
 
     slides_pontos_fortes = list(chunks_list(destaques_conformes, 4))
-    slides_pontos_melhorar = list(chunks_list(pontos_a_melhorar, 2))
-    slides_conselhos = list(chunks_list(conselhos_por_item, 2))
+    slides_pontos_melhorar = list(chunks_list(pontos_a_melhorar, 3))
+    slides_conselhos = list(chunks_list(conselhos_por_item, 3))
 
     context = {
         'auditoria': auditoria,
