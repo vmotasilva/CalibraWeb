@@ -3539,8 +3539,6 @@ def api_iso_autosave_resposta(request):
 
 @login_required
 @require_POST
-@login_required
-@require_POST
 def api_iso_solicitacao_create(request):
     from .models import SolicitacaoEvidenciaIso, RespostaEntrevistaIso, AuditoriaIso, BancoPergunta, AgendaAuditoriaIso
     try:
@@ -3799,22 +3797,31 @@ def iso_matriz_view(request, auditoria_id):
         
         # Encontra todos os blocos (agendas) e perguntas associadas a este item
         blocos_associados = []
+        blocos_vistos_item = set()
         todas_perguntas_item_set = set()
         
         for agenda in agendas:
+            if agenda.id in blocos_vistos_item:
+                continue
+
             ag_item_ids = agenda_item_ids_map[agenda.id]
             
             # Perguntas vinculadas diretamente a este item neste bloco
             perguntas_bloco_item = []
+            perguntas_vistas_bloco = set()
             for p in agenda.perguntas.all():
+                if p.id in perguntas_vistas_bloco:
+                    continue
                 p_item_ids = pergunta_item_ids_map[p.id]
                 
                 # Se a pergunta tem vinculo explicito com este item OU se a pergunta nao tem vinculo e a agenda tem vinculo com este item
                 if item.id in p_item_ids or (not p_item_ids and item.id in ag_item_ids):
+                    perguntas_vistas_bloco.add(p.id)
                     perguntas_bloco_item.append(p)
                     todas_perguntas_item_set.add(p.id)
                     
             if perguntas_bloco_item or (item.id in ag_item_ids):
+                blocos_vistos_item.add(agenda.id)
                 perguntas_info = []
                 for p in perguntas_bloco_item:
                     resp = respostas_map.get(p.id)

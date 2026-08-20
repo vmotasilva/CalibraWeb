@@ -614,14 +614,32 @@ document.addEventListener('DOMContentLoaded', function() {
                                 instanciasPorBloco: []
                             };
                         }
-                        perguntasMap[chave].instanciasPorBloco.push({
-                            bloco_id: b.bloco_id,
-                            bloco_titulo: b.bloco_titulo,
-                            pergunta_id: p.id,
-                            classificacao: p.classificacao,
-                            texto_resposta: p.texto_resposta,
-                            solicitacoes: p.solicitacoes || []
-                        });
+
+                        // Verifica se este bloco já foi registrado neste grupo de pergunta
+                        let instExistente = perguntasMap[chave].instanciasPorBloco.find(inst => inst.bloco_id === b.bloco_id);
+                        if (!instExistente) {
+                            perguntasMap[chave].instanciasPorBloco.push({
+                                bloco_id: b.bloco_id,
+                                bloco_titulo: b.bloco_titulo,
+                                pergunta_id: p.id,
+                                classificacao: p.classificacao,
+                                texto_resposta: p.texto_resposta,
+                                solicitacoes: [...(p.solicitacoes || [])]
+                            });
+                        } else {
+                            // Mescla solicitações evitando duplicação
+                            (p.solicitacoes || []).forEach(s => {
+                                if (!instExistente.solicitacoes.some(es => es.id === s.id)) {
+                                    instExistente.solicitacoes.push(s);
+                                }
+                            });
+                            if (p.texto_resposta && !instExistente.texto_resposta) {
+                                instExistente.texto_resposta = p.texto_resposta;
+                            }
+                            if (p.classificacao && p.classificacao !== 'P') {
+                                instExistente.classificacao = p.classificacao;
+                            }
+                        }
                     });
                 });
 
