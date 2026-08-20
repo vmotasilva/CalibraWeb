@@ -6445,13 +6445,95 @@ def iso_revisao_dashboard(request, auditoria_id):
     blocos = []
     for item_id, data in sorted(itens_map.items(), key=lambda x: natural_sort_key(x[1]['item'].referencia)):
         blocos.append(data)
+
+    todos_itens_norma = list(ItemNorma.objects.filter(norma=auditoria.norma).order_by('ordem', 'referencia'))
         
     context = {
         'auditoria': auditoria,
         'blocos': blocos,
+        'agendas': agendas,
+        'todos_itens_norma': todos_itens_norma,
     }
     
     return render(request, 'auditoria/iso/revisao_dashboard.html', context)
+
+
+@login_required
+@require_POST
+def api_iso_revisao_criar_obs(request):
+    """
+    Registra uma nova Observação com Correção (Conselho/Recomendação Prática)
+    a partir da Reunião de Fechamento / Revisão de Auditoria.
+    """
+    import json
+    from django.http import JsonResponse
+    from .models import ItemNorma, AuditoriaIso, SolicitacaoEvidenciaIso, RespostaEntrevistaIso, PerguntaIso, AgendaAuditoriaIso, ComentarioRespostaAuditoria
+    
+    try:
+        data = json.loads(request.body)
+        auditoria_id = data.get('auditoria_id')
+        item_norma_id = data.get('item_norma_id')
+        solicitacao_txt = data.get('solicitacao', '').strip() or "Observação com Correção (Reunião de Auditores)"
+        evidencia_txt = data.get('evidencia', '').strip()
+        agenda_id = data.get('agenda_id')
+        
+        if not item_norma_id:
+            return JsonResponse({'success': False, 'message': 'Selecione o Requisito / Item da Norma.'}, status=400)
+        if not evidencia_txt:
+            return JsonResponse({'success': False, 'message': 'Descreva o conteúdo da recomendação / observação com correção.'}, status=400)
+            
+        auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+        item_norma = get_object_or_404(ItemNorma, pk=item_norma_id)
+        
+        agenda = None
+        if agenda_id:
+            agenda = AgendaAuditoriaIso.objects.filter(pk=agenda_id, auditoria=auditoria).first()
+
+        # Encontra ou cria uma resposta de entrevista para este item
+        resp = RespostaEntrevistaIso.objects.filter(
+            auditoria=auditoria,
+            pergunta__itens_norma=item_norma
+        ).first()
+
+        if not resp:
+            pergunta = PerguntaIso.objects.filter(itens_norma=item_norma).first()
+            if not pergunta:
+                pergunta = PerguntaIso.objects.create(
+                    texto_pergunta=f"Avaliação do Requisito {item_norma.referencia}",
+                    ordem=1
+                )
+                pergunta.itens_norma.add(item_norma)
+
+            resp, _ = RespostaEntrevistaIso.objects.get_or_create(
+                auditoria=auditoria,
+                pergunta=pergunta,
+                defaults={'classificacao': 'C'}
+            )
+
+        # Cria a solicitação como OBS
+        sol = SolicitacaoEvidenciaIso.objects.create(
+            resposta=resp,
+            agenda=agenda,
+            solicitacao=solicitacao_txt,
+            evidencia=evidencia_txt,
+            conclusao='OBS',
+            responsavel=request.user
+        )
+
+        texto_log = f"[OBSERVAÇÃO COM CORREÇÃO ADICIONADA] Requisito {item_norma.referencia} - {solicitacao_txt}: {evidencia_txt}"
+        ComentarioRespostaAuditoria.objects.create(
+            autor=request.user,
+            texto=texto_log,
+            data_referencia=auditoria.data_inicio
+        )
+
+        return JsonResponse({
+            'success': True,
+            'message': f'Observação com Correção registrada com sucesso para o Item {item_norma.referencia}.',
+            'solicitacao_id': sol.id
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=400)
 
 
 @login_required

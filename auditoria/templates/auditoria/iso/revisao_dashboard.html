@@ -3,10 +3,19 @@
 
 {% block content %}
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="bi bi-shield-check text-primary me-2"></i> Dashboard de Revisão da Auditoria</h2>
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <div>
-            <a href="{% url 'auditoria:iso_auditoria_cronograma' auditoria.id %}" class="btn btn-outline-secondary">
+            <h2><i class="bi bi-shield-check text-primary me-2"></i> Dashboard de Revisão da Auditoria</h2>
+            <small class="text-muted">Revisão executiva, veredicto final e consolidação de conselhos da auditoria.</small>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn text-dark fw-bold rounded-pill px-3.5 shadow-sm d-flex align-items-center gap-1.5" style="background-color: #d4e157; border: 1px solid #afb42b;" onclick="abrirModalNovaObs()">
+                <i class="bi bi-lightbulb-fill text-dark"></i> + Adicionar Observação com Correção
+            </button>
+            <a href="{% url 'auditoria:iso_fechamento_presentation' auditoria.id %}" target="_blank" class="btn btn-outline-primary rounded-pill px-3 shadow-2xs fw-bold">
+                <i class="bi bi-play-circle-fill me-1"></i> Apresentação
+            </a>
+            <a href="{% url 'auditoria:iso_auditoria_cronograma' auditoria.id %}" class="btn btn-outline-secondary rounded-pill px-3">
                 <i class="bi bi-arrow-left"></i> Voltar ao Cronograma
             </a>
         </div>
@@ -205,6 +214,13 @@
                                 </button>
                             </div>
                         </div>
+                        <!-- Botão Inline de Adicionar Observação com Correção -->
+                        <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
+                            <span class="text-secondary small fw-bold"><i class="bi bi-lightbulb-fill text-warning me-1"></i>Observações com Correção (Conselhos):</span>
+                            <button type="button" class="btn btn-sm rounded-pill px-3 fw-bold text-dark" style="background-color: #f4f8d3; border: 1px dashed #afb42b; font-size: 0.78rem;" onclick="abrirModalNovaObs({{ bloco.item.id }})">
+                                <i class="bi bi-plus-lg me-1"></i> + Adicionar Obs. com Correção
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -214,6 +230,74 @@
         {% endfor %}
     </div>
 
+<!-- Modal de Registro de Nova Observação com Correção (Conselho) -->
+<div class="modal fade" id="modalCriarObsRevisao" tabindex="-1" aria-labelledby="modalCriarObsRevisaoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header border-bottom py-3 px-4" style="background-color: #fbfcfa;">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-circle p-2 d-flex align-items-center justify-content-center" style="background-color: #f4f8d3; color: #4a5c13;">
+                        <i class="bi bi-lightbulb-fill fs-5"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold text-dark mb-0" id="modalCriarObsRevisaoLabel">Nova Observação com Correção (Conselho)</h5>
+                        <small class="text-muted">Recomendação prática de auditoria para o slide de conselhos.</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="formNovaObsRevisao" onsubmit="event.preventDefault(); salvarNovaObsRevisao();">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-7">
+                            <label for="obsItemNormaSelect" class="form-label fw-bold small text-dark">
+                                <i class="bi bi-bookmark-check text-primary me-1"></i>Requisito / Item da Norma: <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select form-select-sm" id="obsItemNormaSelect" required>
+                                <option value="">-- Selecione o Requisito --</option>
+                                {% for item in todos_itens_norma %}
+                                    <option value="{{ item.id }}">Item {{ item.referencia }} - {{ item.titulo|truncatechars:70 }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-5">
+                            <label for="obsAgendaSelect" class="form-label fw-bold small text-dark">
+                                <i class="bi bi-calendar-event text-primary me-1"></i>Bloco / Processo (Opcional):
+                            </label>
+                            <select class="form-select form-select-sm" id="obsAgendaSelect">
+                                <option value="">Geral / Reunião de Auditores</option>
+                                {% for ag in agendas %}
+                                    <option value="{{ ag.id }}">{{ ag.titulo }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="obsSolicitacaoInput" class="form-label fw-bold small text-dark">
+                            <i class="bi bi-tag text-primary me-1"></i>Título / Identificação do Conselho:
+                        </label>
+                        <input type="text" class="form-control form-control-sm" id="obsSolicitacaoInput" placeholder="Ex: Reunião de Fechamento com Auditores / Capacitação de Equipe" value="Observação com Correção (Reunião com Auditores)">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="obsEvidenciaTextarea" class="form-label fw-bold small text-dark">
+                            <i class="bi bi-pencil-square text-primary me-1"></i>Recomendação Prática / Ação Sugerida: <span class="text-danger">*</span>
+                        </label>
+                        <textarea class="form-control" id="obsEvidenciaTextarea" rows="4" placeholder="Descreva de forma clara e detalhada a orientação ou conselho sugerido para a organização..." required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-top px-4 py-3 bg-light">
+                <button type="button" class="btn btn-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn fw-bold rounded-pill px-4 text-dark shadow-sm" style="background-color: #d4e157; border: 1px solid #afb42b;" onclick="salvarNovaObsRevisao()">
+                    <i class="bi bi-check-circle-fill me-1"></i> Salvar Observação com Correção
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Modal de Loading (Opcional) -->
 <div class="modal" id="loadingModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered modal-sm">
@@ -221,7 +305,7 @@
             <div class="spinner-border text-primary mx-auto mb-3" role="status">
                 <span class="visually-hidden">Processando...</span>
             </div>
-            <p class="mb-0 fw-bold text-dark">Atualizando veredicto...</p>
+            <p class="mb-0 fw-bold text-dark">Processando requisição...</p>
         </div>
     </div>
 </div>
@@ -249,6 +333,71 @@
         toggleBtn.addEventListener('change', applyFilter);
         applyFilter();
     });
+
+    // Abre Modal de Nova Observação com Correção
+    function abrirModalNovaObs(itemNormaId = null) {
+        const selectItem = document.getElementById('obsItemNormaSelect');
+        if (itemNormaId) {
+            selectItem.value = itemNormaId;
+        } else {
+            selectItem.selectedIndex = 0;
+        }
+        document.getElementById('obsEvidenciaTextarea').value = '';
+        const modal = new bootstrap.Modal(document.getElementById('modalCriarObsRevisao'));
+        modal.show();
+    }
+
+    // Salva Nova Observação com Correção via API
+    function salvarNovaObsRevisao() {
+        const itemNormaId = document.getElementById('obsItemNormaSelect').value;
+        const agendaId = document.getElementById('obsAgendaSelect').value || null;
+        const solicitacao = document.getElementById('obsSolicitacaoInput').value.trim();
+        const evidencia = document.getElementById('obsEvidenciaTextarea').value.trim();
+
+        if (!itemNormaId) {
+            alert('Por favor, selecione o Requisito da Norma.');
+            return;
+        }
+        if (!evidencia) {
+            alert('Por favor, preencha a recomendação prática / observação com correção.');
+            return;
+        }
+
+        const loading = new bootstrap.Modal(document.getElementById('loadingModal'));
+        loading.show();
+
+        fetch("{% url 'auditoria:api_iso_revisao_criar_obs' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                auditoria_id: {{ auditoria.id }},
+                item_norma_id: itemNormaId,
+                agenda_id: agendaId,
+                solicitacao: solicitacao,
+                evidencia: evidencia
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            loading.hide();
+            if (data.success) {
+                const modalElem = document.getElementById('modalCriarObsRevisao');
+                const modalInstance = bootstrap.Modal.getInstance(modalElem);
+                if (modalInstance) modalInstance.hide();
+                window.location.reload();
+            } else {
+                alert('Erro: ' + data.message);
+            }
+        })
+        .catch(err => {
+            loading.hide();
+            alert('Erro de conexão ao salvar observação.');
+            console.error(err);
+        });
+    }
 
     // Função Heurística de Reversão de Status com Grau de NC
     function reverterStatusComGrau(itemNormaId, novoStatus) {

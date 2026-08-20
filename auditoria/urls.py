@@ -61,6 +61,7 @@ urlpatterns = [
     path("iso/<int:auditoria_id>/entrevista/", views.iso_entrevista_view, name="iso_entrevista_view"),
     path("iso/<int:auditoria_id>/revisao/", views.iso_revisao_dashboard, name="iso_revisao_dashboard"),
     path("iso/api/revisao/reverter/", views.api_iso_revisao_reverter, name="api_iso_revisao_reverter"),
+    path("iso/api/revisao/criar-obs/", views.api_iso_revisao_criar_obs, name="api_iso_revisao_criar_obs"),
     path("iso/<int:auditoria_id>/matriz/", views.iso_matriz_view, name="iso_matriz_view"),
     path("iso/<int:auditoria_id>/cronograma/", views.iso_auditoria_cronograma, name="iso_auditoria_cronograma"),
     path("iso/<int:auditoria_id>/agenda/<int:pk>/concluir/", views.iso_agenda_toggle_conclusao, name="iso_agenda_toggle_conclusao"),
