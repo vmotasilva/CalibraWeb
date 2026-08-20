@@ -338,36 +338,41 @@
                     </span>
                 </div>
                 <div class="slide-content">
-                    <div class="row row-cols-2 g-4 h-100">
+                    <div class="d-flex flex-column gap-3 h-100 justify-content-start">
                         {% for item in lote %}
-                        <div class="col">
-                            <div class="req-card req-card-{{ item.cor }}">
-                                <div>
-                                    <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
-                                        <div class="d-flex align-items-start gap-2" style="max-width: 80%;">
-                                            <span class="badge bg-{{ item.cor }} text-{{ item.cor_text }} font-monospace fs-6 px-2.5 py-1 flex-shrink-0">{{ item.referencia }}</span>
-                                            <span class="fw-bold text-dark fs-6 text-truncate-2" title="{{ item.titulo }}">{{ item.titulo }}</span>
+                        <div class="req-card req-card-{{ item.cor }} p-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-{{ item.cor }} text-{{ item.cor_text }} font-monospace fs-6 px-3 py-1 flex-shrink-0">{{ item.referencia }}</span>
+                                    <span class="fw-bold text-dark fs-6" title="{{ item.titulo }}">{{ item.titulo }}</span>
+                                </div>
+                                <span class="badge bg-{{ item.cor }} text-{{ item.cor_text }} rounded-pill px-3 py-1 small fw-bold flex-shrink-0" style="{% if item.bg_badge %}background-color: {{ item.bg_badge }} !important;{% endif %}">{{ item.badge }}</span>
+                            </div>
+                            
+                            <div class="bg-white p-3 rounded-3 border small text-dark">
+                                <div class="row g-3">
+                                    <div class="{% if item.amostras_conformes %}col-md-7 border-end{% else %}col-12{% endif %}">
+                                        <div class="{% if item.tipo == 'OBS' %}text-dark{% else %}text-danger{% endif %} fw-bold mb-1" style="font-size: 0.78rem;">
+                                            <i class="bi bi-search me-1"></i>{% if item.tipo == 'OBS' %}Fragilidade / Ação Corretiva Exigida:{% elif item.tipo == 'OM' %}Oportunidade de Melhoria:{% else %}Evidência de Não Conformidade:{% endif %}
                                         </div>
-                                        <span class="badge bg-{{ item.cor }} text-{{ item.cor_text }} rounded-pill px-2.5 py-1 small fw-bold flex-shrink-0" style="{% if item.bg_badge %}background-color: {{ item.bg_badge }} !important;{% endif %}">{{ item.badge }}</span>
-                                    </div>
-                                    <div class="bg-white p-2.5 rounded-3 border small text-dark mt-2">
-                                        <div class="{% if item.tipo == 'OBS' %}text-dark{% else %}text-danger{% endif %} fw-bold mb-1" style="font-size: 0.75rem;"><i class="bi bi-search me-1"></i>{% if item.tipo == 'OBS' %}Fragilidade / Ação Corretiva Exigida:{% elif item.tipo == 'OM' %}Oportunidade de Melhoria:{% else %}Evidência de Não Conformidade:{% endif %}</div>
-                                        <ul class="mb-0 ps-3 text-secondary" style="font-size: 0.82rem; line-height: 1.4;">
+                                        <ul class="mb-0 ps-3 text-secondary" style="font-size: 0.84rem; line-height: 1.45;">
                                             {% for ev in item.evidencias %}
                                                 <li>{{ ev }}</li>
                                             {% endfor %}
                                         </ul>
-                                        {% if item.amostras_conformes %}
-                                        <div class="border-top pt-2 mt-2">
-                                            <div class="text-success fw-bold mb-1" style="font-size: 0.73rem;"><i class="bi bi-check-circle-fill me-1"></i>Demais Amostras Avaliadas e Conformes:</div>
-                                            <ul class="mb-0 ps-3 text-muted" style="font-size: 0.78rem; line-height: 1.35;">
-                                                {% for ev_c in item.amostras_conformes %}
-                                                    <li>{{ ev_c }}</li>
-                                                {% endfor %}
-                                            </ul>
-                                        </div>
-                                        {% endif %}
                                     </div>
+                                    {% if item.amostras_conformes %}
+                                    <div class="col-md-5">
+                                        <div class="text-success fw-bold mb-1" style="font-size: 0.78rem;">
+                                            <i class="bi bi-check-circle-fill me-1"></i>Demais Amostras Avaliadas e Conformes:
+                                        </div>
+                                        <ul class="mb-0 ps-3 text-muted" style="font-size: 0.80rem; line-height: 1.4;">
+                                            {% for ev_c in item.amostras_conformes %}
+                                                <li>{{ ev_c }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endif %}
                                 </div>
                             </div>
                         </div>
@@ -405,29 +410,25 @@
                     </span>
                 </div>
                 <div class="slide-content">
-                    <div class="row row-cols-2 g-4 h-100">
+                    <div class="d-flex flex-column gap-3 h-100 justify-content-start">
                         {% for item in lote %}
-                        <div class="col">
-                            <div class="req-card req-card-obs">
-                                <div>
-                                    <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
-                                        <div class="d-flex align-items-start gap-2" style="max-width: 80%;">
-                                            <span class="badge bg-obs text-dark font-monospace fs-6 px-2.5 py-1 flex-shrink-0">{{ item.referencia }}</span>
-                                            <span class="fw-bold text-dark fs-6 text-truncate-2" title="{{ item.titulo }}">{{ item.titulo }}</span>
-                                        </div>
-                                        <span class="badge bg-obs text-dark rounded-pill px-2.5 py-1 small fw-bold flex-shrink-0">Conselho</span>
-                                    </div>
-                                    <div class="bg-white p-2.5 rounded-3 border small text-dark mt-2">
-                                        <div class="fw-bold mb-1" style="font-size: 0.75rem; color: #4a5c13;">
-                                            <i class="bi bi-tools me-1 text-success"></i>Recomendações Práticas Identificadas:
-                                        </div>
-                                        <ul class="mb-0 ps-3 text-secondary" style="font-size: 0.82rem; line-height: 1.45;">
-                                            {% for c in item.conselhos %}
-                                                <li>{{ c }}</li>
-                                            {% endfor %}
-                                        </ul>
-                                    </div>
+                        <div class="req-card req-card-obs p-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-obs text-dark font-monospace fs-6 px-3 py-1 flex-shrink-0">{{ item.referencia }}</span>
+                                    <span class="fw-bold text-dark fs-6" title="{{ item.titulo }}">{{ item.titulo }}</span>
                                 </div>
+                                <span class="badge bg-obs text-dark rounded-pill px-3 py-1 small fw-bold flex-shrink-0">Conselho</span>
+                            </div>
+                            <div class="bg-white p-3 rounded-3 border small text-dark">
+                                <div class="fw-bold mb-1" style="font-size: 0.78rem; color: #4a5c13;">
+                                    <i class="bi bi-tools me-1 text-success"></i>Recomendações Práticas Identificadas:
+                                </div>
+                                <ul class="mb-0 ps-3 text-secondary" style="font-size: 0.84rem; line-height: 1.45;">
+                                    {% for c in item.conselhos %}
+                                        <li>{{ c }}</li>
+                                    {% endfor %}
+                                </ul>
                             </div>
                         </div>
                         {% endfor %}
