@@ -122,11 +122,15 @@
             background: #ffffff;
             border: 1px solid #e2e8f0;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-            padding: 18px 22px;
-            height: 100%;
+            padding: 16px 20px;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
+            justify-content: flex-start;
+            gap: 10px;
+        }
+
+        .row-cols-2 .req-card {
+            height: 100%;
         }
 
         .req-card-success {
@@ -394,21 +398,21 @@
                     </span>
                 </div>
                 <div class="slide-content">
-                    <div class="d-flex flex-column gap-3 h-100 justify-content-start">
+                    <div class="d-flex flex-column gap-2.5 justify-content-start">
                         {% for item in lote %}
                         <div class="req-card req-card-obs p-3">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <div class="d-flex align-items-center gap-2">
+                            <div class="d-flex justify-content-between align-items-center mb-1.5">
+                                <div class="d-flex align-items-center gap-2" style="max-width: 85%;">
                                     <span class="badge bg-obs text-dark font-monospace fs-6 px-3 py-1 flex-shrink-0">{{ item.referencia }}</span>
-                                    <span class="fw-bold text-dark fs-6" title="{{ item.titulo }}">{{ item.titulo }}</span>
+                                    <span class="fw-bold text-dark fs-6 text-truncate" title="{{ item.titulo }}">{{ item.titulo }}</span>
                                 </div>
                                 <span class="badge bg-obs text-dark rounded-pill px-3 py-1 small fw-bold flex-shrink-0">Conselho</span>
                             </div>
-                            <div class="bg-white p-3 rounded-3 border small text-dark">
+                            <div class="bg-white p-2.5 rounded-3 border text-dark">
                                 <div class="fw-bold mb-1" style="font-size: 0.78rem; color: #4a5c13;">
                                     <i class="bi bi-tools me-1 text-success"></i>Recomendações Práticas Identificadas:
                                 </div>
-                                <ul class="mb-0 ps-3 text-secondary" style="font-size: 0.84rem; line-height: 1.45;">
+                                <ul class="mb-0 ps-3 text-secondary" style="font-size: 0.82rem; line-height: 1.4;">
                                     {% for c in item.conselhos %}
                                         <li>{{ c }}</li>
                                     {% endfor %}
