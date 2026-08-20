@@ -5914,46 +5914,68 @@ def iso_auditoria_cronograma(request, auditoria_id):
     total_concluidas = agendas_qs.filter(concluida=True).count()
     progresso_geral = int((total_concluidas / total_agendas) * 100) if total_agendas > 0 else 0
 
-    # Pré-calcular cores dos itens por agenda (baseado nas conclusões das solicitações)
-    from .models import SolicitacaoEvidenciaIso
-    # Prioridade de pior conclusão: NC > OM > C > P/outros
-    CONCLUSAO_PRIORIDADE = {'NC': 3, 'OM': 2, 'C': 1}
-    CONCLUSAO_CSS = {'NC': 'bg-danger', 'OM': 'bg-warning text-dark', 'C': 'bg-success'}
+    # Pré-calcular cores globais dos itens da norma na auditoria (baseado nas solicitações e respostas)
+    from .models import SolicitacaoEvidenciaIso, RespostaEntrevistaIso
 
-    def get_item_css_for_agenda(agenda):
-        """Retorna dict {item_id: css_class} com a cor baseada na pior conclusão das solicitações."""
-        # Busca todas as solicitações das perguntas desta agenda
-        sols = SolicitacaoEvidenciaIso.objects.filter(
-            resposta__auditoria=auditoria,
-            resposta__pergunta__agendas_vinculadas=agenda
-        ).select_related('resposta__pergunta').prefetch_related('resposta__pergunta__itens_norma')
+    # 1. Coleta todas as solicitações registradas na auditoria
+    sols_todas = SolicitacaoEvidenciaIso.objects.filter(
+        resposta__auditoria=auditoria
+    ).select_related('resposta__pergunta').prefetch_related('resposta__pergunta__itens_norma')
 
-        # Para cada item da norma, pega a pior conclusão entre todas as solicitações
-        item_pior = {}  # item_id -> pior_prioridade
-        for sol in sols:
-            for item in sol.resposta.pergunta.itens_norma.all():
-                prioridade = CONCLUSAO_PRIORIDADE.get(sol.conclusao, 0)
-                if prioridade > item_pior.get(item.id, 0):
-                    item_pior[item.id] = prioridade
+    item_pior_global = {}
+    for sol in sols_todas:
+        concl = sol.conclusao
+        prio = 0
+        if concl == 'NC':
+            prio = 4
+        elif concl == 'OM':
+            prio = 3
+        elif concl in ['C', 'OBS']:
+            prio = 2
+        elif concl == 'NA':
+            prio = 1
+            
+        for item in sol.resposta.pergunta.itens_norma.all():
+            if prio > item_pior_global.get(item.id, 0):
+                item_pior_global[item.id] = prio
 
-        # Converte prioridade de volta para CSS
-        item_css = {}
-        for item_id, prio in item_pior.items():
-            for conclusao, p in CONCLUSAO_PRIORIDADE.items():
-                if p == prio:
-                    item_css[item_id] = CONCLUSAO_CSS[conclusao]
-                    break
-        return item_css
+    # 2. Respostas diretas sem solicitações ou cadastradas no veredicto
+    respostas_todas = RespostaEntrevistaIso.objects.filter(
+        auditoria=auditoria
+    ).prefetch_related('pergunta__itens_norma')
+    for resp in respostas_todas:
+        cls = resp.classificacao
+        prio = 0
+        if cls == 'NC':
+            prio = 4
+        elif cls == 'OM':
+            prio = 3
+        elif cls in ['C', 'OBS']:
+            prio = 2
+        elif cls == 'NA':
+            prio = 1
+        for item in resp.pergunta.itens_norma.all():
+            if item.id not in item_pior_global or item_pior_global[item.id] == 0:
+                if prio > item_pior_global.get(item.id, 0):
+                    item_pior_global[item.id] = prio
+
+    PRIO_TO_CSS = {
+        4: 'bg-danger',
+        3: 'bg-warning text-dark',
+        2: 'bg-success',
+        1: 'bg-secondary',
+        0: 'bg-secondary'
+    }
+    item_css_global = {item_id: PRIO_TO_CSS.get(prio, 'bg-secondary') for item_id, prio in item_pior_global.items()}
 
     cronograma_planejado = defaultdict(list)
     cronograma_ajustado = defaultdict(list)
 
     for agenda in agendas_qs:
         agenda.condensed_items = get_condensed_items(agenda.itens_norma.all())
-        # Anexa css_class a cada item condensado
-        item_css = get_item_css_for_agenda(agenda)
+        # Anexa css_class a cada item condensado refletindo a avaliação do item na auditoria
         for ci in agenda.condensed_items:
-            ci.css_class = item_css.get(ci.id, 'bg-secondary')
+            ci.css_class = item_css_global.get(ci.id, 'bg-secondary')
         cronograma_planejado[agenda.data].append(agenda)
         data_ajustada = agenda.data_real or agenda.data
         cronograma_ajustado[data_ajustada].append(agenda)
