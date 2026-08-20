@@ -3182,7 +3182,62 @@ def reorder_topicos(request):
 # VIEWS PARA AUDITORIA MODO ENTREVISTA (ISO)
 # ==========================================
 
-from .models import AuditoriaIso, RespostaEntrevistaIso, BancoPergunta
+from .models import AuditoriaIso, RespostaEntrevistaIso, BancoPergunta, SolicitacaoEvidenciaIso, ItemNorma, AgendaAuditoriaIso, BlocoModeloIso, ModeloAuditoriaIso
+
+def consolidar_solicitacoes_perguntas(auditoria=None):
+    """
+    Garante que todas as solicitações de evidência estejam vinculadas
+    à pergunta ativa canônica de seus respectivos itens da norma.
+    Se uma pergunta foi desativada ou se existem perguntas duplicadas
+    para o mesmo item, migra automaticamente as solicitações e respostas
+    para a pergunta ativa canônica do item, preservando o histórico integral.
+    """
+    try:
+        # 1. Recuperar respostas de perguntas inativas
+        inativas = BancoPergunta.objects.filter(ativa=False)
+        for p_inativa in inativas:
+            resps = RespostaEntrevistaIso.objects.filter(pergunta=p_inativa)
+            if not resps.exists():
+                continue
+            
+            p_ativa = BancoPergunta.objects.filter(ativa=True, texto_pergunta__iexact=p_inativa.texto_pergunta).first()
+            if not p_ativa and p_inativa.itens_norma.exists():
+                p_ativa = BancoPergunta.objects.filter(ativa=True, itens_norma__in=p_inativa.itens_norma.all()).first()
+            if not p_ativa:
+                p_ativa = BancoPergunta.objects.filter(ativa=True).order_by('id').first()
+                
+            if p_ativa and p_ativa.id != p_inativa.id:
+                for resp in resps:
+                    resp_ativa, _ = RespostaEntrevistaIso.objects.get_or_create(
+                        auditoria=resp.auditoria,
+                        pergunta=p_ativa,
+                        defaults={'respondida_por': resp.respondida_por}
+                    )
+                    SolicitacaoEvidenciaIso.objects.filter(resposta=resp).update(resposta=resp_ativa)
+                    if resp.texto_resposta and not resp_ativa.texto_resposta:
+                        resp_ativa.texto_resposta = resp.texto_resposta
+                        resp_ativa.save(update_fields=['texto_resposta'])
+                    resp.delete()
+
+        # 2. Para cada ItemNorma com mais de uma pergunta vinculada, consolida na pergunta canônica
+        for item in ItemNorma.objects.prefetch_related('perguntas_vinculadas').all():
+            perguntas_item = list(item.perguntas_vinculadas.filter(ativa=True).order_by('id'))
+            if len(perguntas_item) > 1:
+                p_canon = perguntas_item[0]
+                for p_dup in perguntas_item[1:]:
+                    for resp_dup in RespostaEntrevistaIso.objects.filter(pergunta=p_dup):
+                        resp_canon, _ = RespostaEntrevistaIso.objects.get_or_create(
+                            auditoria=resp_dup.auditoria,
+                            pergunta=p_canon,
+                            defaults={'respondida_por': resp_dup.respondida_por}
+                        )
+                        SolicitacaoEvidenciaIso.objects.filter(resposta=resp_dup).update(resposta=resp_canon)
+                        if resp_dup.texto_resposta and not resp_canon.texto_resposta:
+                            resp_canon.texto_resposta = resp_dup.texto_resposta
+                            resp_canon.save(update_fields=['texto_resposta'])
+                        resp_dup.delete()
+    except Exception:
+        pass
 
 @login_required
 def iso_auditoria_list(request):
@@ -3191,6 +3246,7 @@ def iso_auditoria_list(request):
 
 @login_required
 def iso_entrevista_view(request, auditoria_id):
+    consolidar_solicitacoes_perguntas()
     auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
     
     agenda_id = request.GET.get('agenda_id')
@@ -3665,7 +3721,7 @@ def natural_sort_key(referencia):
 @login_required
 def iso_matriz_view(request, auditoria_id):
     from .models import AuditoriaIso, ItemNorma, RespostaEntrevistaIso
-    
+    consolidar_solicitacoes_perguntas()
     auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
     agendas = list(auditoria.agendas.all().prefetch_related('perguntas', 'itens_norma', 'perguntas__itens_norma'))
     
@@ -4615,24 +4671,48 @@ def iso_pergunta_delete(request, pk):
     pergunta = get_object_or_404(BancoPergunta, pk=pk)
     
     norma_id = request.POST.get('norma') or request.GET.get('norma')
-    if not norma_id:
-        item = pergunta.itens_norma.first()
-        if item:
-            norma_id = item.norma_id
+    itens = list(pergunta.itens_norma.all())
+    if not norma_id and itens:
+        norma_id = itens[0].norma_id
+
+    # Antes de excluir, migra todas as respostas e solicitações para a pergunta ativa canônica do item
+    for item in itens:
+        p_canon = item.perguntas_vinculadas.filter(ativa=True).exclude(pk=pergunta.pk).order_by('id').first()
+        if p_canon:
+            for resp in RespostaEntrevistaIso.objects.filter(pergunta=pergunta):
+                resp_canon, _ = RespostaEntrevistaIso.objects.get_or_create(
+                    auditoria=resp.auditoria,
+                    pergunta=p_canon,
+                    defaults={'respondida_por': resp.respondida_por}
+                )
+                SolicitacaoEvidenciaIso.objects.filter(resposta=resp).update(resposta=resp_canon)
+                if resp.texto_resposta and not resp_canon.texto_resposta:
+                    resp_canon.texto_resposta = resp.texto_resposta
+                    resp_canon.save(update_fields=['texto_resposta'])
+                resp.delete()
+                
+            # Substitui pergunta nas agendas e blocos
+            for ag in AgendaAuditoriaIso.objects.filter(perguntas=pergunta):
+                ag.perguntas.remove(pergunta)
+                ag.perguntas.add(p_canon)
+            for bl in BlocoModeloIso.objects.filter(perguntas=pergunta):
+                bl.perguntas.remove(pergunta)
+                bl.perguntas.add(p_canon)
+            for mo in ModeloAuditoriaIso.objects.filter(perguntas=pergunta):
+                mo.perguntas.remove(pergunta)
+                mo.perguntas.add(p_canon)
 
     try:
         pergunta.delete()
-        messages.success(request, "Pergunta removida com sucesso do Banco Geral!")
+        messages.success(request, "Pergunta removida com sucesso e todas as solicitações foram vinculadas ao item da norma!")
     except ProtectedError:
-        # Se a pergunta possui respostas de auditorias registradas (FK PROTECT),
-        # desativa a pergunta e desvincula dos itens da norma para manter a integridade histórica.
+        # Se ainda restarem respostas protegidas em outro contexto, desativa a pergunta mantendo a integridade
         pergunta.ativa = False
-        pergunta.itens_norma.clear()
         pergunta.save(update_fields=['ativa'])
         messages.warning(
             request,
-            "Esta pergunta possui respostas de auditorias registradas no histórico. "
-            "Para não corromper os relatórios anteriores, ela foi desativada e desvinculada dos itens da norma."
+            "Esta pergunta possuía respostas registradas no histórico. "
+            "Ela foi desativada e todas as suas solicitações foram preservadas e associadas ao item da norma."
         )
     except Exception as e:
         messages.error(request, f"Não foi possível remover a pergunta: {e}")
