@@ -6149,29 +6149,40 @@ def iso_auditoria_cronograma(request, auditoria_id):
 
     # Filtrar solicitações em aberto (conclusão 'P' - Pendente)
     solicitacoes_abertas = []
+    # Filtrar solicitações tratadas com desvios (conclusão NC, OM, OBS)
+    solicitacoes_com_desvios = []
+
     for s in sols_todas:
+        agendas_vinculadas = list(s.resposta.pergunta.agendas_vinculadas.filter(auditoria=auditoria, arquivada=False))
+        primeira_agenda = s.agenda if s.agenda else (agendas_vinculadas[0] if agendas_vinculadas else None)
+        itens_sorted = sorted(s.resposta.pergunta.itens_norma.all(), key=lambda it: natural_sort_key(it.referencia))
+
+        item_dict = {
+            'id': s.id,
+            'solicitacao': s.solicitacao,
+            'evidencia': s.evidencia,
+            'conclusao': s.conclusao,
+            'grau_nc': s.grau_nc,
+            'criado_em': s.criado_em,
+            'pergunta_id': s.resposta.pergunta_id,
+            'pergunta_texto': s.resposta.pergunta.texto_pergunta,
+            'itens_norma': itens_sorted,
+            'itens_str': ", ".join(it.referencia for it in itens_sorted),
+            'agenda': primeira_agenda,
+            'agendas_vinculadas': agendas_vinculadas,
+        }
+
         if s.conclusao == 'P':
-            # Identificar agendas/blocos vinculados
-            agendas_vinculadas = list(s.resposta.pergunta.agendas_vinculadas.filter(auditoria=auditoria, arquivada=False))
-            primeira_agenda = agendas_vinculadas[0] if agendas_vinculadas else None
-            itens_sorted = sorted(s.resposta.pergunta.itens_norma.all(), key=lambda it: natural_sort_key(it.referencia))
-            
-            solicitacoes_abertas.append({
-                'id': s.id,
-                'solicitacao': s.solicitacao,
-                'evidencia': s.evidencia,
-                'conclusao': s.conclusao,
-                'criado_em': s.criado_em,
-                'pergunta_id': s.resposta.pergunta_id,
-                'pergunta_texto': s.resposta.pergunta.texto_pergunta,
-                'itens_norma': itens_sorted,
-                'itens_str': ", ".join(it.referencia for it in itens_sorted),
-                'agenda': primeira_agenda,
-                'agendas_vinculadas': agendas_vinculadas,
-            })
+            solicitacoes_abertas.append(item_dict)
+        elif s.conclusao in ['NC', 'OM', 'OBS']:
+            solicitacoes_com_desvios.append(item_dict)
 
     total_solicitacoes_todas = sols_todas.count()
     total_solicitacoes_abertas = len(solicitacoes_abertas)
+    total_solicitacoes_desvios = len(solicitacoes_com_desvios)
+    total_desvios_nc = sum(1 for s in solicitacoes_com_desvios if s['conclusao'] == 'NC')
+    total_desvios_om = sum(1 for s in solicitacoes_com_desvios if s['conclusao'] == 'OM')
+    total_desvios_obs = sum(1 for s in solicitacoes_com_desvios if s['conclusao'] == 'OBS')
 
     context = {
         'auditoria': auditoria,
@@ -6181,6 +6192,11 @@ def iso_auditoria_cronograma(request, auditoria_id):
         'progresso_por_dia': progresso_por_dia,
         'solicitacoes_abertas': solicitacoes_abertas,
         'total_solicitacoes_abertas': total_solicitacoes_abertas,
+        'solicitacoes_com_desvios': solicitacoes_com_desvios,
+        'total_solicitacoes_desvios': total_solicitacoes_desvios,
+        'total_desvios_nc': total_desvios_nc,
+        'total_desvios_om': total_desvios_om,
+        'total_desvios_obs': total_desvios_obs,
         'total_solicitacoes_todas': total_solicitacoes_todas,
     }
     return render(request, 'auditoria/iso/setup/cronograma_impressao.html', context)
