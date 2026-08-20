@@ -347,9 +347,9 @@
                                 <div class="{% if item.tipo == 'OBS' %}text-dark{% else %}text-danger{% endif %} fw-bold mb-1" style="font-size: 0.76rem;">
                                     <i class="bi bi-search me-1"></i>{% if item.tipo == 'OBS' %}Fragilidade / Ação Corretiva Exigida:{% elif item.tipo == 'OM' %}Oportunidade de Melhoria:{% else %}Evidência de Não Conformidade:{% endif %}
                                 </div>
-                                <ul class="mb-0 ps-3 text-secondary" style="font-size: 0.82rem; line-height: 1.4;">
+                                <ul class="mb-0 ps-3 text-secondary" style="font-size: 0.82rem; line-height: 1.4; white-space: pre-line;">
                                     {% for ev in item.evidencias %}
-                                        <li>{{ ev }}</li>
+                                        <li style="white-space: pre-line;">{{ ev }}</li>
                                     {% endfor %}
                                 </ul>
                             </div>
@@ -402,9 +402,9 @@
                                 <div class="fw-bold mb-1" style="font-size: 0.78rem; color: #4a5c13;">
                                     <i class="bi bi-tools me-1 text-success"></i>Recomendações Práticas Identificadas:
                                 </div>
-                                <ul class="mb-0 ps-3 text-secondary" style="font-size: 0.82rem; line-height: 1.4;">
+                                <ul class="mb-0 ps-3 text-secondary" style="font-size: 0.82rem; line-height: 1.4; white-space: pre-line;">
                                     {% for c in item.conselhos %}
-                                        <li>{{ c }}</li>
+                                        <li style="white-space: pre-line;">{{ c }}</li>
                                     {% endfor %}
                                 </ul>
                             </div>
