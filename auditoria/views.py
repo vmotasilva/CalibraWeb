@@ -6408,15 +6408,21 @@ def iso_revisao_dashboard(request, auditoria_id):
                 }
             itens_map[item.id]['respostas'].append(resp)
             
-            # Atualiza o pior status do campo (bruto) (P > NC > OM > C) - OBS não afeta o item
+            # Atualiza o pior status bruto (P > NC > OM > OBS > C)
+            peso = {'P': 5, 'NC': 4, 'OM': 3, 'OBS': 2, 'C': 1}
             status_atual = itens_map[item.id]['pior_status']
-            novo_status = resp.classificacao
-            if novo_status == 'OBS':
-                novo_status = 'C'
             
-            peso = {'P': 4, 'NC': 3, 'OM': 2, 'C': 1}
+            # Status da resposta
+            novo_status = resp.classificacao
             if peso.get(novo_status, 0) > peso.get(status_atual, 0):
                 itens_map[item.id]['pior_status'] = novo_status
+                status_atual = novo_status
+
+            # Status das solicitações/amostragens vinculadas
+            for sol in resp.solicitacoes.all():
+                if peso.get(sol.conclusao, 0) > peso.get(status_atual, 0):
+                    itens_map[item.id]['pior_status'] = sol.conclusao
+                    status_atual = sol.conclusao
 
     # Sobrescreve com avaliação final e calcula Heurística de Risco (Motor de Sugestão de NC)
     for item_id, data in itens_map.items():

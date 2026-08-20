@@ -26,19 +26,18 @@
             <h5 class="card-title">Auditoria: {{ auditoria.norma.codigo }}</h5>
             <p class="card-text text-muted mb-0">Período: {{ auditoria.data_inicio|date:"d/m/Y" }} a {{ auditoria.data_fim|date:"d/m/Y" }}</p>
         </div>
-    </div>
-
-    <!-- Controles de Filtro -->
-    <div class="mb-4 bg-white p-3 border rounded d-flex align-items-center justify-content-between">
-        <div>
+       <!-- Controles de Filtro -->
+    <div class="mb-4 bg-white p-3 border rounded d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-1.5 flex-wrap">
             <strong>Filtros Ativos: </strong>
             <span class="badge bg-danger">Não Conformidades (NC)</span>
             <span class="badge bg-warning text-dark">Oportunidades (OM)</span>
+            <span class="badge text-dark fw-bold" style="background-color: #d4e157;">Observações com Correção (OBS)</span>
             <span class="badge bg-secondary">Pendentes (P)</span>
         </div>
         <div class="form-check form-switch">
             <input class="form-check-input" type="checkbox" id="toggleConformes">
-            <label class="form-check-label" for="toggleConformes">Mostrar Itens Conformes (C)</label>
+            <label class="form-check-label fw-semibold text-dark small" for="toggleConformes">Mostrar Itens 100% Conformes (C)</label>
         </div>
     </div>
 
@@ -57,7 +56,7 @@
                             {% elif bloco.pior_status == 'OM' %}
                                 <span class="badge bg-warning text-dark fs-6">OM</span>
                             {% elif bloco.pior_status == 'OBS' %}
-                                <span class="badge fs-6 text-dark" style="background-color: #d4e157;">Obs. com Correção</span>
+                                <span class="badge fs-6 text-dark fw-bold" style="background-color: #d4e157;">Obs. com Correção</span>
                             {% elif bloco.pior_status == 'C' %}
                                 <span class="badge bg-success fs-6">Conforme</span>
                             {% else %}
@@ -69,56 +68,89 @@
             </h2>
             <div id="collapse{{ bloco.item.id }}" class="accordion-collapse collapse" aria-labelledby="heading{{ bloco.item.id }}" data-bs-parent="#accordionBlocos">
                 <div class="accordion-body bg-light">
-                    <div class="mb-4">
-                        <h6 class="fw-bold text-secondary"><i class="bi bi-card-text me-2"></i>Requisito da Norma:</h6>
-                        <div class="p-3 bg-white border rounded text-muted">
-                            {{ bloco.item.descricao|default:"<em>Sem descrição registrada.</em>"|linebreaksbr }}
+                    <!-- Requisito da Norma (Texto Integral) -->
+                    <div class="card mb-3 border-0 shadow-2xs">
+                        <div class="card-body">
+                            <h6 class="fw-bold text-secondary mb-2"><i class="bi bi-card-text me-1"></i> Requisito da Norma:</h6>
+                            <div class="text-dark small font-monospace" style="white-space: pre-wrap; line-height: 1.6;">{{ bloco.item.requisito }}</div>
                         </div>
                     </div>
-                    
-                    <h6 class="border-bottom pb-2 fw-bold"><i class="bi bi-chat-left-text me-2"></i>Perguntas e Respostas da Entrevista:</h6>
-                    
+
+                    <!-- Respostas Coletadas nas Entrevistas -->
+                    <h6 class="fw-bold text-secondary mt-3 mb-2"><i class="bi bi-chat-left-dots-fill me-1"></i> Respostas Coletadas nas Entrevistas:</h6>
                     {% for resp in bloco.respostas %}
-                    <div class="p-3 mb-3 bg-white border rounded shadow-2xs">
-                        <div class="d-flex justify-content-between">
-                            <strong>{{ resp.pergunta.texto_pergunta }}</strong>
+                    <div class="p-3 mb-2 rounded border bg-white shadow-2xs">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <span class="badge bg-primary me-1">Pergunta ID #{{ resp.pergunta.id }}</span>
+                                <strong class="text-dark">{{ resp.pergunta.texto_pergunta }}</strong>
+                            </div>
                             <div>
                                 {% if resp.classificacao == 'NC' %}
-                                    <span class="badge bg-danger">NC</span>
+                                    <span class="badge bg-danger">Não Conforme</span>
                                 {% elif resp.classificacao == 'OM' %}
-                                    <span class="badge bg-warning text-dark">OM</span>
+                                    <span class="badge bg-warning text-dark">Oportunidade</span>
                                 {% elif resp.classificacao == 'OBS' %}
-                                    <span class="badge text-dark" style="background-color: #d4e157;">OBS</span>
+                                    <span class="badge text-dark fw-bold" style="background-color: #d4e157;">Obs. com Correção</span>
                                 {% elif resp.classificacao == 'C' %}
-                                    <span class="badge bg-success">C</span>
+                                    <span class="badge bg-success">Conforme</span>
                                 {% else %}
-                                    <span class="badge bg-secondary">P</span>
+                                    <span class="badge bg-secondary">Pendente</span>
                                 {% endif %}
                             </div>
                         </div>
-                        <div class="text-muted mt-2 small">
+
+                        {% if resp.texto_resposta %}
+                        <div class="mb-2">
                             <em>Resposta:</em> {{ resp.texto_resposta|default:"Sem anotações" }}
                         </div>
-                        
-                        <!-- Agenda(s) em que foi avaliada -->
+                        {% endif %}
+
+                        <!-- Agendas / Processos vinculados a esta pergunta -->
                         {% if resp.agendas_avaliadas %}
-                        <div class="mt-2 text-primary small">
-                            <i class="bi bi-calendar-event me-1"></i>Avaliado no(s) Bloco(s): 
-                            {% for ag in resp.agendas_avaliadas %}
-                                <span class="badge bg-light text-primary border me-1">{{ ag.titulo }}</span>
-                            {% endfor %}
+                        <div class="mb-2">
+                            <span class="text-muted small">Processos / Blocos da Agenda vinculados:</span>
+                            <div class="d-flex flex-wrap gap-1 mt-1">
+                                {% for ag in resp.agendas_avaliadas %}
+                                <a href="{% url 'auditoria:iso_entrevista_view' auditoria.id %}?agenda_id={{ ag.id }}&item={{ bloco.item.referencia|urlencode }}" 
+                                   class="badge bg-info bg-opacity-10 text-dark border border-info border-opacity-25 text-decoration-none"
+                                   target="_blank">
+                                    <i class="bi bi-box-arrow-up-right me-1"></i>{{ ag.titulo }} ({{ ag.data|date:"d/m" }})
+                                </a>
+                                {% endfor %}
+                            </div>
                         </div>
                         {% endif %}
 
                         <!-- Solicitações de evidências anexadas a esta pergunta -->
                         {% if resp.solicitacoes.exists %}
                         <div class="mt-2 pt-2 border-top">
-                            <span class="text-warning small fw-bold"><i class="bi bi-pin-angle-fill me-1"></i>Solicitações associadas:</span>
-                            <ul class="list-unstyled ms-3 mt-1 small">
+                            <span class="text-primary small fw-bold"><i class="bi bi-pin-angle-fill me-1"></i>Solicitações / Amostras / Observações associadas:</span>
+                            <div class="d-flex flex-column gap-1.5 ms-2 mt-1.5">
                                 {% for sol in resp.solicitacoes.all %}
-                                <li>- {{ sol.solicitacao }}</li>
+                                <div class="p-2 rounded bg-light border d-flex justify-content-between align-items-start gap-2">
+                                    <div>
+                                        <div class="fw-semibold text-dark small">{{ sol.solicitacao }}</div>
+                                        {% if sol.evidencia %}
+                                            <div class="text-secondary small font-monospace mt-0.5" style="font-size: 0.78rem;">{{ sol.evidencia }}</div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="flex-shrink-0">
+                                        {% if sol.conclusao == 'NC' %}
+                                            <span class="badge bg-danger rounded-pill px-2 py-0.5 font-monospace" style="font-size: 0.72rem;">NC</span>
+                                        {% elif sol.conclusao == 'OM' %}
+                                            <span class="badge bg-warning text-dark rounded-pill px-2 py-0.5 font-monospace" style="font-size: 0.72rem;">OM</span>
+                                        {% elif sol.conclusao == 'OBS' %}
+                                            <span class="badge text-dark rounded-pill px-2 py-0.5 font-monospace fw-bold" style="background-color: #d4e157; font-size: 0.72rem;">Obs. Correção</span>
+                                        {% elif sol.conclusao == 'C' %}
+                                            <span class="badge bg-success rounded-pill px-2 py-0.5 font-monospace" style="font-size: 0.72rem;">Conforme</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary rounded-pill px-2 py-0.5 font-monospace" style="font-size: 0.72rem;">Pendente</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
                                 {% endfor %}
-                            </ul>
+                            </div>
                         </div>
                         {% endif %}
                     </div>
