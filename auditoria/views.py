@@ -4852,29 +4852,56 @@ def iso_modelo_bloco_perguntas(request, modelo_id, pk):
 @login_required
 @require_POST
 def iso_modelo_bloco_pergunta_create(request, modelo_id, pk):
-    """Cria uma nova pergunta no Banco Geral e a vincula atomicamente ao Bloco do Modelo"""
+    """Cria (ou reutiliza) uma pergunta no Banco Geral e a vincula atomicamente ao Bloco do Modelo.
+    Usa get_or_create por texto normalizado para evitar duplicatas.
+    """
     from .models import BlocoModeloIso, BancoPergunta
     from django.db import transaction
+    import re, unicodedata
     bloco = get_object_or_404(BlocoModeloIso, pk=pk, modelo_id=modelo_id)
     
-    texto_pergunta = request.POST.get("texto_pergunta")
+    texto_pergunta = (request.POST.get("texto_pergunta") or "").strip()
     dica_resposta = request.POST.get("dica_resposta", "")
     item_ids = request.POST.getlist("itens_norma")
     
     if not texto_pergunta:
         messages.error(request, "O enunciado da pergunta é obrigatório.")
         return redirect('auditoria:iso_modelo_bloco_perguntas', modelo_id=modelo_id, pk=pk)
-        
+
+    # Normaliza para busca anti-duplicata
+    texto_norm = re.sub(r"\s+", " ", unicodedata.normalize("NFKC", texto_pergunta).strip().lower())
+
     with transaction.atomic():
-        nova_pergunta = BancoPergunta.objects.create(
-            texto_pergunta=texto_pergunta,
-            dica_auditor=dica_resposta
-        )
+        # Tenta encontrar uma pergunta existente com mesmo texto (case-insensitive)
+        existente = BancoPergunta.objects.filter(texto_pergunta__iexact=texto_pergunta).first()
+        if not existente:
+            # Busca por normalização mais robusta (espaços, acento etc.)
+            for bp in BancoPergunta.objects.all():
+                bp_norm = re.sub(r"\s+", " ", unicodedata.normalize("NFKC", bp.texto_pergunta).strip().lower())
+                if bp_norm == texto_norm:
+                    existente = bp
+                    break
+
+        if existente:
+            nova_pergunta = existente
+            # Atualiza dica se a existente estiver em branco
+            if not nova_pergunta.dica_auditor and dica_resposta:
+                nova_pergunta.dica_auditor = dica_resposta
+                nova_pergunta.save(update_fields=['dica_auditor'])
+            foi_criada = False
+        else:
+            nova_pergunta = BancoPergunta.objects.create(
+                texto_pergunta=texto_pergunta,
+                dica_auditor=dica_resposta
+            )
+            foi_criada = True
+
         if item_ids:
-            nova_pergunta.itens_norma.set(item_ids)
+            # Adiciona itens novos sem remover os já existentes (union)
+            nova_pergunta.itens_norma.add(*item_ids)
             
             # Auto-define como padrão para o item se for o único item vinculado e o item ainda não tiver padrão
-            if len(item_ids) == 1:
+            if len(item_ids) == 1 and foi_criada:
                 from .models import ItemNorma
                 try:
                     item_unico = ItemNorma.objects.get(pk=item_ids[0])
@@ -4884,10 +4911,11 @@ def iso_modelo_bloco_pergunta_create(request, modelo_id, pk):
                         item_unico.save(update_fields=['pergunta_padrao', 'evidencia_padrao'])
                 except ItemNorma.DoesNotExist:
                     pass
-            
+
         bloco.perguntas.add(nova_pergunta)
-        
-    messages.success(request, f"Pergunta '{nova_pergunta.texto_pergunta[:40]}...' criada no Banco Geral e vinculada ao bloco!")
+
+    acao = "criada" if foi_criada else "já existia (reutilizada)"
+    messages.success(request, f"Pergunta '{nova_pergunta.texto_pergunta[:40]}...' {acao} e vinculada ao bloco!")
     
     if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.POST.get('is_ajax') == 'true':
         from django.http import JsonResponse
@@ -4895,9 +4923,10 @@ def iso_modelo_bloco_pergunta_create(request, modelo_id, pk):
             'success': True,
             'pergunta_id': nova_pergunta.id,
             'texto_pergunta': nova_pergunta.texto_pergunta,
+            'foi_criada': foi_criada,
             'bloco_id': bloco.id,
             'bloco_titulo': bloco.titulo,
-            'message': f"Pergunta criada e vinculada ao bloco '{bloco.titulo}' com sucesso!"
+            'message': f"Pergunta {acao} e vinculada ao bloco '{bloco.titulo}'!"
         })
 
     next_url = request.POST.get('next') or request.GET.get('next') or request.META.get('HTTP_REFERER')
@@ -5338,49 +5367,80 @@ def iso_agenda_alvo_update(request, auditoria_id, pk):
 def iso_agenda_pergunta_create(request, auditoria_id, pk):
     from .models import AgendaAuditoriaIso, AuditoriaIso, BancoPergunta
     from django.http import JsonResponse
+    import re, unicodedata
     auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
     agenda = get_object_or_404(AgendaAuditoriaIso, pk=pk, auditoria=auditoria)
     
-    texto_pergunta = request.POST.get("texto_pergunta")
+    texto_pergunta = (request.POST.get("texto_pergunta") or "").strip()
     dica_resposta = request.POST.get("dica_resposta", "") or request.POST.get("dica_auditor", "")
     item_ids = request.POST.getlist("itens_norma")
-    
-    # Validar se este bloco (agenda) já possui uma pergunta cobrindo o mesmo item
-    if item_ids:
+
+    if not texto_pergunta:
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'error': 'O enunciado da pergunta é obrigatório.'}, status=400)
+        messages.error(request, "O enunciado da pergunta é obrigatório.")
+        return redirect('auditoria:iso_agenda_detail', auditoria_id=auditoria.id, pk=agenda.id)
+
+    # Normaliza para busca anti-duplicata
+    texto_norm = re.sub(r"\s+", " ", unicodedata.normalize("NFKC", texto_pergunta).strip().lower())
+
+    # Busca pergunta existente com mesmo texto (anti-duplicata global)
+    existente = BancoPergunta.objects.filter(texto_pergunta__iexact=texto_pergunta).first()
+    if not existente:
+        for bp in BancoPergunta.objects.all():
+            bp_norm = re.sub(r"\s+", " ", unicodedata.normalize("NFKC", bp.texto_pergunta).strip().lower())
+            if bp_norm == texto_norm:
+                existente = bp
+                break
+
+    if existente:
+        nova_pergunta = existente
+        if not nova_pergunta.dica_auditor and dica_resposta:
+            nova_pergunta.dica_auditor = dica_resposta
+            nova_pergunta.save(update_fields=['dica_auditor'])
+        foi_criada = False
+    else:
+        nova_pergunta = BancoPergunta.objects.create(
+            texto_pergunta=texto_pergunta,
+            dica_auditor=dica_resposta
+        )
+        foi_criada = True
+
+    # Valida conflito de item no bloco SOMENTE para perguntas que ainda não estão no bloco
+    if item_ids and not agenda.perguntas.filter(pk=nova_pergunta.pk).exists():
         from .models import ItemNorma
         itens_no_bloco = ItemNorma.objects.filter(
-            id__in=item_ids, 
+            id__in=item_ids,
             perguntas_vinculadas__agendas_vinculadas=agenda
         ).distinct()
         if itens_no_bloco.exists():
             conflito_refs = ", ".join([it.referencia for it in itens_no_bloco])
-            err_msg = f"Este bloco ({agenda.titulo}) já possui pergunta avaliando o(s) item(ns) [{conflito_refs}]. O mesmo item não pode ser repetido dentro do mesmo bloco."
+            err_msg = f"Este bloco ({agenda.titulo}) já possui pergunta avaliando o(s) item(ns) [{conflito_refs}]."
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return JsonResponse({'success': False, 'error': err_msg}, status=400)
             messages.error(request, err_msg)
             return redirect('auditoria:iso_agenda_detail', auditoria_id=auditoria.id, pk=agenda.id)
 
-    nova_pergunta = BancoPergunta.objects.create(
-        texto_pergunta=texto_pergunta,
-        dica_auditor=dica_resposta
-    )
     if item_ids:
-        nova_pergunta.itens_norma.set(item_ids)
-        
+        # Adiciona itens sem remover os já existentes (union)
+        nova_pergunta.itens_norma.add(*item_ids)
+
     agenda.perguntas.add(nova_pergunta)
-    
+
+    acao = "criada" if foi_criada else "já existia (reutilizada)"
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         return JsonResponse({
             'success': True,
             'pergunta_id': nova_pergunta.id,
             'texto_pergunta': nova_pergunta.texto_pergunta,
+            'foi_criada': foi_criada,
             'agenda_id': agenda.id,
             'agenda_titulo': agenda.titulo,
             'total_perguntas': agenda.perguntas.count(),
-            'message': f"Pergunta criada com sucesso e vinculada ao bloco '{agenda.titulo}'!"
+            'message': f"Pergunta {acao} e vinculada ao bloco '{agenda.titulo}'!"
         })
 
-    messages.success(request, "Pergunta criada e vinculada com sucesso!")
+    messages.success(request, f"Pergunta {acao} e vinculada com sucesso!")
     return redirect('auditoria:iso_agenda_detail', auditoria_id=auditoria.id, pk=agenda.id)
 
 @login_required
