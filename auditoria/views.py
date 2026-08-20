@@ -4178,13 +4178,23 @@ def iso_fechamento_presentation_view(request, auditoria_id):
             if av_final and av_final.grau_nc:
                 is_maior = (av_final.grau_nc == 'MAIOR')
             else:
-                # Regra inteligente de amostragem proporcional:
-                if total_solicitacoes_item > 0:
-                    # É maior se 50% ou mais das amostras falharem
-                    is_maior = (total_nc_solicitacoes_item / total_solicitacoes_item) >= 0.5
+                # 1. Verifica se nas respostas ou solicitações do requisito o auditor marcou explicitamente grau_nc
+                graus_definidos = []
+                for p in todas_perguntas_item:
+                    r = respostas_map.get(p.id)
+                    if r and r.grau_nc:
+                        graus_definidos.append(r.grau_nc)
+                    if r:
+                        for s in r.solicitacoes.all():
+                            if s.conclusao == 'NC' and s.grau_nc:
+                                graus_definidos.append(s.grau_nc)
+
+                if graus_definidos:
+                    # Se o auditor definiu grau explicitamente, respeita a decisão do auditor: vira MAIOR apenas se houver 'MAIOR'
+                    is_maior = any(g == 'MAIOR' for g in graus_definidos)
                 else:
-                    # Sem amostras explícitas, só vira maior se houver termo crítico/grave ou veredicto explicitamente maior
-                    is_maior = any('crítica' in ev.lower() or 'grave' in ev.lower() for ev in evidencias_item)
+                    # Padrão normativo: NC Menor (desvio pontual), a menos que haja termo crítico/grave no apontamento
+                    is_maior = any('crítica' in ev.lower() or 'grave' in ev.lower() or 'sistêmica' in ev.lower() for ev in evidencias_item)
 
             if is_maior:
                 count_nc_maior += 1
