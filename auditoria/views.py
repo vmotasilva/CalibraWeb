@@ -4852,39 +4852,31 @@ def iso_modelo_bloco_perguntas(request, modelo_id, pk):
 @login_required
 @require_POST
 def iso_modelo_bloco_pergunta_create(request, modelo_id, pk):
-    """Cria (ou reutiliza) uma pergunta no Banco Geral e a vincula atomicamente ao Bloco do Modelo.
-    Usa get_or_create por texto normalizado para evitar duplicatas.
+    """Cria (ou reutiliza) uma pergunta no Banco Geral e a vincula ao Bloco do Modelo.
+    Anti-duplicata por ItemNorma: se o item já tem uma BancoPergunta vinculada, reutiliza ela.
     """
-    from .models import BlocoModeloIso, BancoPergunta
+    from .models import BlocoModeloIso, BancoPergunta, ItemNorma
     from django.db import transaction
-    import re, unicodedata
     bloco = get_object_or_404(BlocoModeloIso, pk=pk, modelo_id=modelo_id)
-    
+
     texto_pergunta = (request.POST.get("texto_pergunta") or "").strip()
     dica_resposta = request.POST.get("dica_resposta", "")
     item_ids = request.POST.getlist("itens_norma")
-    
+
     if not texto_pergunta:
         messages.error(request, "O enunciado da pergunta é obrigatório.")
         return redirect('auditoria:iso_modelo_bloco_perguntas', modelo_id=modelo_id, pk=pk)
 
-    # Normaliza para busca anti-duplicata
-    texto_norm = re.sub(r"\s+", " ", unicodedata.normalize("NFKC", texto_pergunta).strip().lower())
-
     with transaction.atomic():
-        # Tenta encontrar uma pergunta existente com mesmo texto (case-insensitive)
-        existente = BancoPergunta.objects.filter(texto_pergunta__iexact=texto_pergunta).first()
-        if not existente:
-            # Busca por normalização mais robusta (espaços, acento etc.)
-            for bp in BancoPergunta.objects.all():
-                bp_norm = re.sub(r"\s+", " ", unicodedata.normalize("NFKC", bp.texto_pergunta).strip().lower())
-                if bp_norm == texto_norm:
-                    existente = bp
-                    break
+        # Anti-duplicata por item: se algum dos itens informados já tem uma pergunta, reutiliza a primeira
+        existente = None
+        if item_ids:
+            existente = BancoPergunta.objects.filter(
+                itens_norma__id__in=item_ids
+            ).order_by('id').first()
 
         if existente:
             nova_pergunta = existente
-            # Atualiza dica se a existente estiver em branco
             if not nova_pergunta.dica_auditor and dica_resposta:
                 nova_pergunta.dica_auditor = dica_resposta
                 nova_pergunta.save(update_fields=['dica_auditor'])
@@ -4897,12 +4889,11 @@ def iso_modelo_bloco_pergunta_create(request, modelo_id, pk):
             foi_criada = True
 
         if item_ids:
-            # Adiciona itens novos sem remover os já existentes (union)
+            # Adiciona itens sem remover os já existentes (union)
             nova_pergunta.itens_norma.add(*item_ids)
-            
-            # Auto-define como padrão para o item se for o único item vinculado e o item ainda não tiver padrão
+
+            # Auto-define como padrão para o item se unitário e sem padrão definido
             if len(item_ids) == 1 and foi_criada:
-                from .models import ItemNorma
                 try:
                     item_unico = ItemNorma.objects.get(pk=item_ids[0])
                     if not item_unico.pergunta_padrao:
@@ -4916,7 +4907,7 @@ def iso_modelo_bloco_pergunta_create(request, modelo_id, pk):
 
     acao = "criada" if foi_criada else "já existia (reutilizada)"
     messages.success(request, f"Pergunta '{nova_pergunta.texto_pergunta[:40]}...' {acao} e vinculada ao bloco!")
-    
+
     if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.POST.get('is_ajax') == 'true':
         from django.http import JsonResponse
         return JsonResponse({
@@ -5365,12 +5356,14 @@ def iso_agenda_alvo_update(request, auditoria_id, pk):
 @login_required
 @require_POST
 def iso_agenda_pergunta_create(request, auditoria_id, pk):
-    from .models import AgendaAuditoriaIso, AuditoriaIso, BancoPergunta
+    """Cria (ou reutiliza) uma pergunta no Banco Geral e a vincula à Agenda.
+    Anti-duplicata por ItemNorma: se o item já tem uma BancoPergunta, reutiliza ela.
+    """
+    from .models import AgendaAuditoriaIso, AuditoriaIso, BancoPergunta, ItemNorma
     from django.http import JsonResponse
-    import re, unicodedata
     auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
     agenda = get_object_or_404(AgendaAuditoriaIso, pk=pk, auditoria=auditoria)
-    
+
     texto_pergunta = (request.POST.get("texto_pergunta") or "").strip()
     dica_resposta = request.POST.get("dica_resposta", "") or request.POST.get("dica_auditor", "")
     item_ids = request.POST.getlist("itens_norma")
@@ -5381,17 +5374,12 @@ def iso_agenda_pergunta_create(request, auditoria_id, pk):
         messages.error(request, "O enunciado da pergunta é obrigatório.")
         return redirect('auditoria:iso_agenda_detail', auditoria_id=auditoria.id, pk=agenda.id)
 
-    # Normaliza para busca anti-duplicata
-    texto_norm = re.sub(r"\s+", " ", unicodedata.normalize("NFKC", texto_pergunta).strip().lower())
-
-    # Busca pergunta existente com mesmo texto (anti-duplicata global)
-    existente = BancoPergunta.objects.filter(texto_pergunta__iexact=texto_pergunta).first()
-    if not existente:
-        for bp in BancoPergunta.objects.all():
-            bp_norm = re.sub(r"\s+", " ", unicodedata.normalize("NFKC", bp.texto_pergunta).strip().lower())
-            if bp_norm == texto_norm:
-                existente = bp
-                break
+    # Anti-duplicata por item: se o item já tem uma pergunta no banco, reutiliza a mais antiga
+    existente = None
+    if item_ids:
+        existente = BancoPergunta.objects.filter(
+            itens_norma__id__in=item_ids
+        ).order_by('id').first()
 
     if existente:
         nova_pergunta = existente
@@ -5408,7 +5396,6 @@ def iso_agenda_pergunta_create(request, auditoria_id, pk):
 
     # Valida conflito de item no bloco SOMENTE para perguntas que ainda não estão no bloco
     if item_ids and not agenda.perguntas.filter(pk=nova_pergunta.pk).exists():
-        from .models import ItemNorma
         itens_no_bloco = ItemNorma.objects.filter(
             id__in=item_ids,
             perguntas_vinculadas__agendas_vinculadas=agenda
