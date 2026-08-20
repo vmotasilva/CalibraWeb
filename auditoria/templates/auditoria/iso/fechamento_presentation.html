@@ -423,26 +423,28 @@
                     </span>
                 </div>
                 <div class="slide-content">
-                    <div class="d-flex flex-column gap-2 justify-content-start">
+                    <div class="row row-cols-{{ lote|length }} g-3.5 h-100 align-items-stretch">
                         {% for item in lote %}
-                        <div class="req-card req-card-{{ item.cor }}">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <div class="d-flex align-items-center gap-2" style="max-width: 82%;">
-                                    <span class="badge bg-{{ item.cor }} text-{{ item.cor_text }} font-monospace px-2.5 py-0.5 flex-shrink-0" style="font-size: 0.82rem;">{{ item.referencia }}</span>
-                                    <span class="fw-bold text-dark text-truncate" style="font-size: 0.88rem;" title="{{ item.titulo }}">{{ item.titulo }}</span>
+                        <div class="col h-100">
+                            <div class="req-card req-card-{{ item.cor }} h-100 d-flex flex-column justify-content-between p-3">
+                                <div>
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="badge bg-{{ item.cor }} text-{{ item.cor_text }} font-monospace px-2.5 py-1 flex-shrink-0" style="font-size: 0.85rem;">{{ item.referencia }}</span>
+                                        <span class="badge bg-{{ item.cor }} text-{{ item.cor_text }} rounded-pill px-2.5 py-1 fw-bold flex-shrink-0" style="font-size: 0.74rem; {% if item.bg_badge %}background-color: {{ item.bg_badge }} !important;{% endif %}">{{ item.badge }}</span>
+                                    </div>
+                                    <h6 class="fw-bold text-dark mb-2" style="font-size: 0.90rem; line-height: 1.35;" title="{{ item.titulo }}">{{ item.titulo }}</h6>
                                 </div>
-                                <span class="badge bg-{{ item.cor }} text-{{ item.cor_text }} rounded-pill px-2.5 py-0.5 fw-bold flex-shrink-0" style="font-size: 0.72rem; {% if item.bg_badge %}background-color: {{ item.bg_badge }} !important;{% endif %}">{{ item.badge }}</span>
-                            </div>
-                            
-                            <div class="bg-white p-2 rounded-3 border text-dark">
-                                <div class="{% if item.tipo == 'OBS' %}text-dark{% else %}text-danger{% endif %} fw-bold mb-0.5" style="font-size: 0.74rem;">
-                                    <i class="bi bi-search me-1"></i>{% if item.tipo == 'OBS' %}Fragilidade / Ação Corretiva Exigida:{% elif item.tipo == 'OM' %}Oportunidade de Melhoria:{% else %}Evidência de Não Conformidade:{% endif %}
+                                
+                                <div class="bg-white p-2.5 rounded-3 border text-dark flex-grow-1 overflow-auto mt-1">
+                                    <div class="{% if item.tipo == 'OBS' %}text-dark{% else %}text-danger{% endif %} fw-bold mb-1" style="font-size: 0.76rem;">
+                                        <i class="bi bi-search me-1"></i>{% if item.tipo == 'OBS' %}Fragilidade / Ação Corretiva Exigida:{% elif item.tipo == 'OM' %}Oportunidade de Melhoria:{% else %}Evidência de Não Conformidade:{% endif %}
+                                    </div>
+                                    <ul class="mb-0 ps-3 text-secondary" style="font-size: 0.80rem; line-height: 1.4; white-space: pre-line;">
+                                        {% for ev in item.evidencias %}
+                                            <li style="white-space: pre-line;">{{ ev }}</li>
+                                        {% endfor %}
+                                    </ul>
                                 </div>
-                                <ul class="mb-0 ps-3 text-secondary" style="font-size: 0.79rem; line-height: 1.35; white-space: pre-line;">
-                                    {% for ev in item.evidencias %}
-                                        <li style="white-space: pre-line;">{{ ev }}</li>
-                                    {% endfor %}
-                                </ul>
                             </div>
                         </div>
                         {% endfor %}
@@ -479,25 +481,27 @@
                     </span>
                 </div>
                 <div class="slide-content">
-                    <div class="d-flex flex-column gap-2 justify-content-start">
+                    <div class="row row-cols-{{ lote|length }} g-3.5 h-100 align-items-stretch">
                         {% for item in lote %}
-                        <div class="req-card req-card-obs">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <div class="d-flex align-items-center gap-2" style="max-width: 85%;">
-                                    <span class="badge bg-obs text-dark font-monospace fs-6 px-2.5 py-0.5 flex-shrink-0" style="font-size: 0.82rem;">{{ item.referencia }}</span>
-                                    <span class="fw-bold text-dark text-truncate" style="font-size: 0.88rem;" title="{{ item.titulo }}">{{ item.titulo }}</span>
+                        <div class="col h-100">
+                            <div class="req-card req-card-obs h-100 d-flex flex-column justify-content-between p-3">
+                                <div>
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="badge bg-obs text-dark font-monospace fs-6 px-2.5 py-1 flex-shrink-0">{{ item.referencia }}</span>
+                                        <span class="badge bg-obs text-dark rounded-pill px-2.5 py-1 small fw-bold flex-shrink-0">Conselho</span>
+                                    </div>
+                                    <h6 class="fw-bold text-dark mb-2" style="font-size: 0.90rem; line-height: 1.35;" title="{{ item.titulo }}">{{ item.titulo }}</h6>
                                 </div>
-                                <span class="badge bg-obs text-dark rounded-pill px-2.5 py-0.5 small fw-bold flex-shrink-0">Conselho</span>
-                            </div>
-                            <div class="bg-white p-2 rounded-3 border text-dark">
-                                <div class="fw-bold mb-0.5" style="font-size: 0.74rem; color: #4a5c13;">
-                                    <i class="bi bi-tools me-1 text-success"></i>Recomendações Práticas Identificadas:
+                                <div class="bg-white p-2.5 rounded-3 border text-dark flex-grow-1 overflow-auto mt-1">
+                                    <div class="fw-bold mb-1" style="font-size: 0.76rem; color: #4a5c13;">
+                                        <i class="bi bi-tools me-1 text-success"></i>Recomendações Práticas Identificadas:
+                                    </div>
+                                    <ul class="mb-0 ps-3 text-secondary" style="font-size: 0.80rem; line-height: 1.4; white-space: pre-line;">
+                                        {% for c in item.conselhos %}
+                                            <li style="white-space: pre-line;">{{ c }}</li>
+                                        {% endfor %}
+                                    </ul>
                                 </div>
-                                <ul class="mb-0 ps-3 text-secondary" style="font-size: 0.79rem; line-height: 1.35; white-space: pre-line;">
-                                    {% for c in item.conselhos %}
-                                        <li style="white-space: pre-line;">{{ c }}</li>
-                                    {% endfor %}
-                                </ul>
                             </div>
                         </div>
                         {% endfor %}
