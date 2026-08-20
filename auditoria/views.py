@@ -3191,10 +3191,22 @@ def consolidar_solicitacoes_perguntas(auditoria=None):
     Se uma pergunta foi desativada ou se existem perguntas duplicadas
     para o mesmo item, migra automaticamente as solicitações e respostas
     para a pergunta ativa canônica do item, preservando o histórico integral.
+    Também remove perguntas inativas de agendas, blocos e modelos.
     """
     try:
-        # 1. Recuperar respostas de perguntas inativas
-        inativas = BancoPergunta.objects.filter(ativa=False)
+        # 1. Recuperar respostas de perguntas inativas e desvinculá-las de agendas/blocos
+        inativas = list(BancoPergunta.objects.filter(ativa=False))
+        inativas_ids = [p.id for p in inativas]
+        
+        if inativas_ids:
+            # Desvincula de todas as agendas, blocos e modelos
+            for ag in AgendaAuditoriaIso.objects.filter(perguntas__in=inativas_ids):
+                ag.perguntas.remove(*inativas_ids)
+            for bl in BlocoModeloIso.objects.filter(perguntas__in=inativas_ids):
+                bl.perguntas.remove(*inativas_ids)
+            for mo in ModeloAuditoriaIso.objects.filter(perguntas__in=inativas_ids):
+                mo.perguntas.remove(*inativas_ids)
+
         for p_inativa in inativas:
             resps = RespostaEntrevistaIso.objects.filter(pergunta=p_inativa)
             if not resps.exists():
@@ -4929,7 +4941,12 @@ def iso_modelo_bloco_perguntas(request, modelo_id, pk):
             return (item.ordem or 0, natural_sort_key(item.referencia))
         return (999, [])
 
-    perguntas_vinculadas = sorted(list(bloco.perguntas.all().prefetch_related('itens_norma')), key=get_pergunta_sort_key)
+    # Remove perguntas inativas do bloco se houver
+    inativas_ids = list(bloco.perguntas.filter(ativa=False).values_list('id', flat=True))
+    if inativas_ids:
+        bloco.perguntas.remove(*inativas_ids)
+
+    perguntas_vinculadas = sorted(list(bloco.perguntas.filter(ativa=True).prefetch_related('itens_norma')), key=get_pergunta_sort_key)
     perguntas_vinculadas_ids = set(p.id for p in perguntas_vinculadas)
     
     # Análise de Cobertura de Escopo Planejado para o Bloco do Modelo (Ordenação Natural de Requisitos)
@@ -5466,8 +5483,12 @@ def iso_agenda_detail(request, auditoria_id, pk):
             return (item.ordem or 0, natural_sort_key(item.referencia))
         return (999, [])
 
-    # Desduplicação Automática: garante que o mesmo item da norma ou pergunta não se repita no mesmo bloco
-    perguntas_raw = list(agenda.perguntas.all().prefetch_related('itens_norma'))
+    # Desduplicação Automática e Filtro de Ativas: garante que apenas perguntas ativas e não-duplicadas sejam exibidas no bloco
+    inativas_ids = list(agenda.perguntas.filter(ativa=False).values_list('id', flat=True))
+    if inativas_ids:
+        agenda.perguntas.remove(*inativas_ids)
+
+    perguntas_raw = list(agenda.perguntas.filter(ativa=True).prefetch_related('itens_norma'))
     itens_vistos = set()
     perguntas_unicas = []
     perguntas_remover_ids = []
