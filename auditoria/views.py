@@ -3704,8 +3704,8 @@ def iso_matriz_view(request, auditoria_id):
                     'perguntas': perguntas_info
                 })
         
-        # Hierarquia: NC > P > OM > OBS > C > NA
-        hierarchy = {"NC": 6, "P": 5, "OM": 4, "OBS": 3, "C": 2, "NA": 1}
+        # Hierarquia: NC > P > OM > C > NA (OBS não define status do item da norma)
+        hierarchy = {"NC": 5, "P": 4, "OM": 3, "C": 2, "NA": 1}
         reverse_hierarchy = {v: k for k, v in hierarchy.items()}
         
         # Status Calculado (Apenas para os níveis finais/folhas dos itens da norma)
@@ -3720,7 +3720,9 @@ def iso_matriz_view(request, auditoria_id):
             for p_id in todas_perguntas_item_set:
                 r = respostas_map.get(p_id)
                 classificacao = r.classificacao if r else "P"
-                peso = hierarchy.get(classificacao, 5)
+                if classificacao == "OBS":
+                    classificacao = "C"  # OBS não afeta o status do item
+                peso = hierarchy.get(classificacao, 2)
                 if peso > pior_peso:
                     pior_peso = peso
             status_item = reverse_hierarchy.get(pior_peso, "P")
@@ -3738,22 +3740,22 @@ def iso_matriz_view(request, auditoria_id):
             "blocos_associados_json": json.dumps(blocos_associados)
         })
 
-    # Calcula as métricas e estatísticas do relatório (desconsiderando N/A)
+    # Calcula as métricas e estatísticas do relatório (desconsiderando N/A e OBS)
     count_c = sum(1 for m in matriz_data if not m["is_parent"] and m["status"] == "C")
-    count_obs = sum(1 for m in matriz_data if not m["is_parent"] and m["status"] == "OBS")
+    count_obs = 0
     count_nc = sum(1 for m in matriz_data if not m["is_parent"] and m["status"] == "NC")
     count_om = sum(1 for m in matriz_data if not m["is_parent"] and m["status"] == "OM")
     count_p = sum(1 for m in matriz_data if not m["is_parent"] and m["status"] == "P")
     count_na = sum(1 for m in matriz_data if not m["is_parent"] and m["status"] == "NA")
 
-    # Para o percentual geral, contabilizar apenas C, NC e OM (OBS não entra no cálculo)
-    total_avaliados = count_c + count_obs + count_nc + count_om + count_p
-    total_percentual_base = count_c + count_nc + count_om  # OBS, NA e P excluídos do percentual
+    # Contabilizar apenas C, NC e OM (OBS, NA e P excluídos do percentual)
+    total_avaliados = count_c + count_nc + count_om + count_p
+    total_percentual_base = count_c + count_nc + count_om
 
     pct_c = round((count_c / total_percentual_base * 100), 1) if total_percentual_base > 0 else 0
     pct_nc = round((count_nc / total_percentual_base * 100), 1) if total_percentual_base > 0 else 0
     pct_om = round((count_om / total_percentual_base * 100), 1) if total_percentual_base > 0 else 0
-    pct_obs = round((count_obs / total_avaliados * 100), 1) if total_avaliados > 0 else 0
+    pct_obs = 0
     pct_p = round((count_p / total_avaliados * 100), 1) if total_avaliados > 0 else 0
 
     stats = {
@@ -3842,7 +3844,7 @@ def iso_fechamento_presentation_view(request, auditoria_id):
         for av in AvaliacaoFinalRequisitoIso.objects.filter(auditoria=auditoria)
     }
 
-    hierarchy = {"NC": 6, "P": 5, "OM": 4, "OBS": 3, "C": 2, "NA": 1}
+    hierarchy = {"NC": 5, "P": 4, "OM": 3, "C": 2, "NA": 1}
     reverse_hierarchy = {v: k for k, v in hierarchy.items()}
 
     destaques_conformes = []
@@ -3880,7 +3882,9 @@ def iso_fechamento_presentation_view(request, auditoria_id):
             for p in todas_perguntas_item:
                 r = respostas_map.get(p.id)
                 c = r.classificacao if r else "P"
-                peso = hierarchy.get(c, 5)
+                if c == "OBS":
+                    c = "C"  # OBS não afeta o status do item
+                peso = hierarchy.get(c, 2)
                 if peso > pior_peso:
                     pior_peso = peso
             status_item = reverse_hierarchy.get(pior_peso, "P")
@@ -3921,22 +3925,15 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                             elif s.conclusao == 'C' and ev_txt and ev_txt not in amostras_conformes_vistas:
                                 amostras_conformes_vistas.add(ev_txt)
                                 amostras_conformes.append(ev_txt)
-                        elif status_item == 'OBS':
-                            if s.conclusao in ['OBS', 'NC'] and ev_txt and ev_txt not in evidencias_vistas:
-                                evidencias_vistas.add(ev_txt)
-                                evidencias_item.append(ev_txt)
-                            elif s.conclusao == 'C' and ev_txt and ev_txt not in amostras_conformes_vistas:
-                                amostras_conformes_vistas.add(ev_txt)
-                                amostras_conformes.append(ev_txt)
                         elif status_item == 'OM':
-                            if s.conclusao in ['OM', 'OBS', 'NC'] and ev_txt and ev_txt not in evidencias_vistas:
+                            if s.conclusao in ['OM', 'NC'] and ev_txt and ev_txt not in evidencias_vistas:
                                 evidencias_vistas.add(ev_txt)
                                 evidencias_item.append(ev_txt)
                             elif s.conclusao == 'C' and ev_txt and ev_txt not in amostras_conformes_vistas:
                                 amostras_conformes_vistas.add(ev_txt)
                                 amostras_conformes.append(ev_txt)
                         elif status_item == 'C':
-                            if s.conclusao in ['C', 'P'] and ev_txt and ev_txt not in evidencias_vistas:
+                            if s.conclusao in ['C', 'P', 'OBS'] and ev_txt and ev_txt not in evidencias_vistas:
                                 evidencias_vistas.add(ev_txt)
                                 evidencias_item.append(ev_txt)
                 elif r.texto_resposta and r.texto_resposta.strip():
@@ -3960,20 +3957,6 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                 'referencia': item.referencia,
                 'titulo': item.titulo,
                 'evidencias': evidencias_item[:3] or ["Processo e evidências documentais em conformidade."]
-            })
-        elif status_item == 'OBS':
-            count_obs += 1
-            pontos_a_melhorar.append({
-                'tipo': 'OBS',
-                'badge': 'Observação com Correção',
-                'cor': 'obs',
-                'cor_text': 'dark',
-                'bg_badge': '#d4e157',
-                'icone': 'bi-eye-fill',
-                'referencia': item.referencia,
-                'titulo': item.titulo,
-                'evidencias': evidencias_item[:3] or ["Fragilidade apontada no processo que exige plano de ação corretiva."],
-                'amostras_conformes': amostras_conformes[:2]
             })
         elif status_item == 'OM':
             count_om += 1
@@ -4023,8 +4006,8 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                 'amostras_conformes': amostras_conformes[:2]
             })
 
-    total_avaliados = count_c + count_obs + count_om + count_nc_menor + count_nc_maior + count_p
-    # OBS não entra no percentual geral: o percentual é C / (C + NC + OM)
+    total_avaliados = count_c + count_om + count_nc_menor + count_nc_maior + count_p
+    # OBS não entra no percentual nem nos status de itens: o percentual é C / (C + NC + OM)
     total_percentual_base = count_c + count_om + count_nc_menor + count_nc_maior
     percentual_conformidade = round((count_c / total_percentual_base * 100), 1) if total_percentual_base > 0 else 0.0
 
@@ -6078,11 +6061,13 @@ def iso_revisao_dashboard(request, auditoria_id):
                 }
             itens_map[item.id]['respostas'].append(resp)
             
-            # Atualiza o pior status do campo (bruto) (P > NC > OM > OBS > C)
+            # Atualiza o pior status do campo (bruto) (P > NC > OM > C) - OBS não afeta o item
             status_atual = itens_map[item.id]['pior_status']
             novo_status = resp.classificacao
+            if novo_status == 'OBS':
+                novo_status = 'C'
             
-            peso = {'P': 5, 'NC': 4, 'OM': 3, 'OBS': 2, 'C': 1}
+            peso = {'P': 4, 'NC': 3, 'OM': 2, 'C': 1}
             if peso.get(novo_status, 0) > peso.get(status_atual, 0):
                 itens_map[item.id]['pior_status'] = novo_status
 

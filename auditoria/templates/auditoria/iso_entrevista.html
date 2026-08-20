@@ -996,27 +996,27 @@
         // Qualquer Não Conforme (NC) torna o requisito Não Conforme
         if (concs.includes('NC')) {
             const ncSols = solicitacoes.filter(s => s.conclusao === 'NC');
-            // Se houver qualquer amostra NC Maior, o requisito assume NC Maior
             const temMaior = ncSols.some(s => s.grau_nc === 'MAIOR');
             return { classificacao: 'NC', grau_nc: temMaior ? 'MAIOR' : 'MENOR' };
         }
 
-        // 2. Se houver amostra com Observação com Correção (OBS), no requisito da norma classifica como NC Menor
-        if (concs.includes('OBS')) {
-            return { classificacao: 'NC', grau_nc: 'MENOR' };
-        }
-
-        // 3. Oportunidade de Melhoria (OM)
+        // 2. Oportunidade de Melhoria (OM)
         if (concs.includes('OM')) return { classificacao: 'OM', grau_nc: null };
 
-        // 4. Conforme se todas forem 'C' ou 'NA' (com pelo menos uma 'C')
-        if (concs.some(c => c === 'C') && concs.every(c => c === 'C' || c === 'NA')) return { classificacao: 'C', grau_nc: null };
+        // 3. Caso ainda existam amostras pendentes ('P')
+        if (concs.includes('P')) return { classificacao: 'P', grau_nc: null };
+
+        // 4. Conforme se houver 'C' ou se só existirem 'C', 'NA', 'OBS' (OBS não altera o status)
+        if (concs.some(c => c === 'C') || concs.every(c => c === 'OBS')) {
+            return { classificacao: 'C', grau_nc: null };
+        }
 
         // 5. Todas N/A
-        if (concs.every(c => c === 'NA')) return { classificacao: 'NA', grau_nc: null };
+        if (concs.every(c => c === 'NA' || c === 'OBS')) {
+            return { classificacao: 'NA', grau_nc: null };
+        }
 
-        // 6. Caso ainda existam amostras pendentes ('P')
-        return { classificacao: 'P', grau_nc: null };
+        return { classificacao: 'C', grau_nc: null };
     }
 
     async function setConclusaoSolicitacao(solId, conclusaoVal) {
