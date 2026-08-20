@@ -387,6 +387,53 @@
             </div>
         {% endif %}
 
+        <!-- ── SLIDE(S) CONSELHOS E RECOMENDAÇÕES DE CORREÇÃO (OBS) ── -->
+        {% if slides_conselhos %}
+            {% for lote in slides_conselhos %}
+            <div class="slide">
+                <div class="slide-header">
+                    <h2 class="slide-title" style="color: #4a5c13;"><i class="bi bi-lightbulb-fill text-warning me-2"></i>Conselhos & Recomendações Práticas ({{ forloop.counter }}/{{ slides_conselhos|length }})</h2>
+                    <span class="badge rounded-pill px-3 py-1.5 fw-bold" style="background-color: #d4e157; color: #2e440f;">
+                        Orientações e Ações a Implementar
+                    </span>
+                </div>
+                <div class="slide-content">
+                    <div class="row row-cols-2 g-4 h-100">
+                        {% for item in lote %}
+                        <div class="col">
+                            <div class="req-card req-card-obs">
+                                <div>
+                                    <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                        <div class="d-flex align-items-start gap-2" style="max-width: 80%;">
+                                            <span class="badge bg-obs text-dark font-monospace fs-6 px-2.5 py-1 flex-shrink-0">{{ item.referencia }}</span>
+                                            <span class="fw-bold text-dark fs-6 text-truncate-2" title="{{ item.titulo }}">{{ item.titulo }}</span>
+                                        </div>
+                                        <span class="badge bg-obs text-dark rounded-pill px-2.5 py-1 small fw-bold flex-shrink-0">Conselho</span>
+                                    </div>
+                                    <div class="bg-white p-2.5 rounded-3 border small text-dark mt-2">
+                                        <div class="fw-bold mb-1" style="font-size: 0.75rem; color: #4a5c13;">
+                                            <i class="bi bi-tools me-1 text-success"></i>Recomendações Práticas Identificadas:
+                                        </div>
+                                        <ul class="mb-0 ps-3 text-secondary" style="font-size: 0.82rem; line-height: 1.45;">
+                                            {% for c in item.conselhos %}
+                                                <li>{{ c }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="slide-footer">
+                    <span>{{ auditoria.norma.codigo }} — Conselhos e Recomendações de Boas Práticas</span>
+                    <span>Calibra WEB</span>
+                </div>
+            </div>
+            {% endfor %}
+        {% endif %}
+
         <!-- ── SLIDE FINAL: RESUMO EXECUTIVO E VEREDICTO FINAL DO MOTOR ── -->
         <div class="slide">
             <div class="slide-header">
@@ -413,9 +460,9 @@
                     </div>
                     <div class="col">
                         <div class="metric-tile p-3" style="background-color: #fbfde8; border-color: #e6ee9c;">
-                            <small class="text-uppercase fw-bold" style="font-size: 0.72rem; color: #556b2f;">Obs. Correção (OBS)</small>
+                            <small class="text-uppercase fw-bold" style="font-size: 0.72rem; color: #556b2f;">Conselhos / Obs (OBS)</small>
                             <div class="display-6 fw-bold my-1" style="font-size: 2.2rem; color: #689f38;">{{ metricas.total_obs }}</div>
-                            <small class="text-secondary" style="font-size: 0.8rem;">Requer Plano de Ação</small>
+                            <small class="text-secondary" style="font-size: 0.8rem;">Orientações Práticas</small>
                         </div>
                     </div>
                     <div class="col">

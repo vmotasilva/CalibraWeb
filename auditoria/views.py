@@ -3849,6 +3849,8 @@ def iso_fechamento_presentation_view(request, auditoria_id):
 
     destaques_conformes = []
     pontos_a_melhorar = []
+    conselhos_por_item = []
+    conselhos_map = {}
     
     count_c = 0
     count_obs = 0
@@ -3906,6 +3908,26 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                     for s in solicitacoes_list:
                         if s.conclusao == 'NC':
                             total_nc_solicitacoes_item += 1
+                        elif s.conclusao == 'OBS':
+                            count_obs += 1
+                            obs_txt = ""
+                            if s.evidencia and s.evidencia.strip():
+                                if s.solicitacao and s.solicitacao.strip():
+                                    obs_txt = f"{s.solicitacao.strip()}: {s.evidencia.strip()}"
+                                else:
+                                    obs_txt = s.evidencia.strip()
+                            elif s.solicitacao and s.solicitacao.strip():
+                                obs_txt = s.solicitacao.strip()
+
+                            if obs_txt:
+                                if item.referencia not in conselhos_map:
+                                    conselhos_map[item.referencia] = {
+                                        'referencia': item.referencia,
+                                        'titulo': item.titulo,
+                                        'conselhos': []
+                                    }
+                                    conselhos_por_item.append(conselhos_map[item.referencia])
+                                conselhos_map[item.referencia]['conselhos'].append(obs_txt)
 
                         # Texto formatado da evidência
                         ev_txt = ""
@@ -4067,6 +4089,7 @@ def iso_fechamento_presentation_view(request, auditoria_id):
     # Paginação dos Slides: 4 cards por slide para aspecto 16:9 perfeito
     slides_pontos_fortes = list(chunks_list(destaques_conformes, 4))
     slides_pontos_melhorar = list(chunks_list(pontos_a_melhorar, 4))
+    slides_conselhos = list(chunks_list(conselhos_por_item, 4))
 
     context = {
         'auditoria': auditoria,
@@ -4086,6 +4109,7 @@ def iso_fechamento_presentation_view(request, auditoria_id):
         'veredito': veredito,
         'slides_pontos_fortes': slides_pontos_fortes,
         'slides_pontos_melhorar': slides_pontos_melhorar,
+        'slides_conselhos': slides_conselhos,
     }
     return render(request, "auditoria/iso/fechamento_presentation.html", context)
 
