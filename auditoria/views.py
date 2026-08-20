@@ -6292,76 +6292,7 @@ def api_iso_agenda_create_gap(request, auditoria_id):
     return redirect('auditoria:iso_auditoria_cronograma', auditoria_id=auditoria_id)
 
 
-@login_required
-def iso_auditoria_fechamento_presentation(request, auditoria_id):
-    from .models import AuditoriaIso, RespostaEntrevistaIso, AvaliacaoFinalRequisitoIso
-    from collections import defaultdict
-    
-    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
-    respostas_brutas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).select_related('pergunta')
-    avaliacoes_finais = {av.item_norma_id: av for av in AvaliacaoFinalRequisitoIso.objects.filter(auditoria=auditoria)}
-    
-    # Agrupa respostas por item da norma para consolidar os blocos
-    itens_map = {}
-    
-    for resp in respostas_brutas:
-        if resp.classificacao == 'NA':
-            continue
-        for item in resp.pergunta.itens_norma.all():
-            if item.id not in itens_map:
-                itens_map[item.id] = {
-                    'item': item,
-                    'respostas': [],
-                    'classificacao_final': 'C', # Default temporario
-                    'justificativa': None
-                }
-            itens_map[item.id]['respostas'].append(resp)
-            
-            # Pior status bruto
-            peso = {'P': 4, 'NC': 3, 'OM': 2, 'C': 1}
-            status_atual = itens_map[item.id]['classificacao_final']
-            novo_status = resp.classificacao
-            if peso.get(novo_status, 0) > peso.get(status_atual, 0):
-                itens_map[item.id]['classificacao_final'] = novo_status
-                
-    # Aplica o overriding do veredicto final
-    for item_id, data in itens_map.items():
-        if item_id in avaliacoes_finais:
-            data['classificacao_final'] = avaliacoes_finais[item_id].classificacao
-            data['justificativa'] = avaliacoes_finais[item_id].justificativa
-            
-    grupos = {
-        'conformidades': [],
-        'oportunidades': [],
-        'nc_menores': [],
-        'nc_maiores': [],
-    }
-    
-    total_aplicavel = len(itens_map)
-    total_conformes = 0
-    
-    for item_id, data in itens_map.items():
-        cls = data['classificacao_final']
-        if cls == 'C':
-            total_conformes += 1
-            # Para exibição, vamos passar o próprio dicionário 'data'
-            grupos['conformidades'].append(data)
-        elif cls == 'OM':
-            grupos['oportunidades'].append(data)
-        elif cls == 'NC':
-            grupos['nc_menores'].append(data)
-            
-    percentual_conformidade = int((total_conformes / total_aplicavel) * 100) if total_aplicavel > 0 else 0
-    
-    context = {
-        'auditoria': auditoria,
-        'grupos': grupos,
-        'percentual_conformidade': percentual_conformidade,
-        'total_aplicavel': total_aplicavel,
-        'total_conformes': total_conformes,
-    }
-    
-    return render(request, 'auditoria/iso/fechamento_presentation.html', context)
+
 
 
 
