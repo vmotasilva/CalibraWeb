@@ -4174,6 +4174,12 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                 'evidencias': evidencias_item[:3] or ["Oportunidade de aprimoramento identificada no processo."],
                 'amostras_conformes': amostras_conformes[:2]
             })
+            if amostras_conformes:
+                destaques_conformes.append({
+                    'referencia': item.referencia,
+                    'titulo': item.titulo,
+                    'evidencias': amostras_conformes[:3]
+                })
         elif status_item == 'NC':
             if av_final and av_final.grau_nc:
                 is_maior = (av_final.grau_nc == 'MAIOR')
@@ -4217,6 +4223,12 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                 'evidencias': evidencias_item[:3] or ["Evidência objetiva de não conformidade ao requisito."],
                 'amostras_conformes': amostras_conformes[:2]
             })
+            if amostras_conformes:
+                destaques_conformes.append({
+                    'referencia': item.referencia,
+                    'titulo': item.titulo,
+                    'evidencias': amostras_conformes[:3]
+                })
 
     total_avaliados = count_c + count_om + count_nc_menor + count_nc_maior + count_p
     # OBS não entra no percentual nem nos status de itens: o percentual é C / (C + NC + OM)
@@ -4325,6 +4337,7 @@ def iso_fechamento_presentation_view(request, auditoria_id):
             })
         dia_num += 1
 
+    destaques_conformes.sort(key=lambda x: natural_sort_key(x['referencia']))
     slides_pontos_fortes = list(chunks_list(destaques_conformes, 4))
     slides_pontos_melhorar = list(chunks_list(pontos_a_melhorar, 3))
     slides_conselhos = list(chunks_list(conselhos_por_item, 3))
