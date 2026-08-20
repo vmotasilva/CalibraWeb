@@ -326,7 +326,7 @@
             {% for lote in slides_pontos_melhorar %}
             <div class="slide">
                 <div class="slide-header">
-                    <h2 class="slide-title text-danger"><i class="bi bi-exclamation-triangle-fill"></i>Pontos a Melhorar & Constatações ({{ forloop.counter }}/{{ slides_pontos_melhorar|length }})</h2>
+                    <h2 class="slide-title text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i>Não Conformidades ({{ forloop.counter }}/{{ slides_pontos_melhorar|length }})</h2>
                     <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-3 py-1.5 rounded-pill">
                         Requer Plano de Ação (CAPA)
                     </span>
@@ -358,7 +358,7 @@
                     </div>
                 </div>
                 <div class="slide-footer">
-                    <span>{{ auditoria.norma.codigo }} — Desvios, Observações e Oportunidades</span>
+                    <span>{{ auditoria.norma.codigo }} — Não Conformidades Apontadas</span>
                     <span>Calibra WEB</span>
                 </div>
             </div>
