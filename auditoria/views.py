@@ -4291,8 +4291,30 @@ def iso_fechamento_presentation_view(request, auditoria_id):
     veredito['gatilho_nc_maior_inapto'] = gatilho_nc_maior_inapto
     veredito['gatilho_nc_menor_inapto'] = gatilho_nc_menor_inapto
 
-    # Paginação dos Slides: 6 agendas por slide e 4 cards por slide para aspecto 16:9 perfeito
-    slides_agendas = list(chunks_list(agendas, 6))
+    # Agrupamento das Agendas por Dia da Auditoria (Separados por Dia)
+    from collections import defaultdict
+    agendas_por_dia = defaultdict(list)
+    for ag in auditoria.agendas.all().order_by('data', 'hora_inicio').prefetch_related('perguntas', 'itens_norma', 'perguntas__itens_norma'):
+        data_chave = ag.data_real or ag.data
+        agendas_por_dia[data_chave].append(ag)
+
+    slides_agendas = []
+    dia_num = 1
+    for data_dia, ag_list in sorted(agendas_por_dia.items(), key=lambda x: (x[0] is None, x[0])):
+        lotes_dia = list(chunks_list(ag_list, 6))
+        total_lotes_dia = len(lotes_dia)
+        for sub_idx, lote in enumerate(lotes_dia):
+            sub_label = f" (Parte {sub_idx + 1}/{total_lotes_dia})" if total_lotes_dia > 1 else ""
+            data_formatada = data_dia.strftime("%d/%m/%Y") if data_dia else "Geral"
+            slides_agendas.append({
+                'data': data_dia,
+                'data_formatada': data_formatada,
+                'dia_label': f"Dia {dia_num}: {data_formatada}{sub_label}",
+                'agendas': lote,
+                'total_requisitos_dia': sum(a.perguntas.count() for a in ag_list)
+            })
+        dia_num += 1
+
     slides_pontos_fortes = list(chunks_list(destaques_conformes, 4))
     slides_pontos_melhorar = list(chunks_list(pontos_a_melhorar, 4))
     slides_conselhos = list(chunks_list(conselhos_por_item, 4))

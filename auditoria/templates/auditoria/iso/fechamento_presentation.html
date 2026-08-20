@@ -244,22 +244,21 @@
             </div>
         </div>
 
-        <!-- ── SLIDES DE MATRIZ DE PROCESSOS & CRONOGRAMA (PAGINADOS) ── -->
-        {% for lote_agendas in slides_agendas %}
+        <!-- ── SLIDES DE MATRIZ DE PROCESSOS & CRONOGRAMA (SEPARADOS POR DIA) ── -->
+        {% for lote_slide in slides_agendas %}
         <div class="slide">
             <div class="slide-header">
-                <h2 class="slide-title"><i class="bi bi-calendar-check text-primary"></i>Matriz de Processos & Áreas Auditadas</h2>
-                <span class="badge bg-light text-secondary border px-3 py-1.5 rounded-pill font-monospace">
-                    {% if slides_agendas|length > 1 %}
-                        Cronograma ({{ forloop.counter }}/{{ slides_agendas|length }})
-                    {% else %}
-                        Slide 02
-                    {% endif %}
+                <h2 class="slide-title">
+                    <i class="bi bi-calendar-check text-primary"></i>Matriz de Processos & Áreas Auditadas
+                    <span class="text-secondary fw-normal fs-5 ms-2">({{ lote_slide.dia_label }})</span>
+                </h2>
+                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-3 py-1.5 rounded-pill font-monospace">
+                    <i class="bi bi-calendar3 me-1"></i>{{ lote_slide.data_formatada }}
                 </span>
             </div>
             <div class="slide-content">
                 <div class="row row-cols-2 g-3 h-100 align-content-start">
-                    {% for agenda in lote_agendas %}
+                    {% for agenda in lote_slide.agendas %}
                     <div class="col">
                         <div class="p-3 bg-light rounded-4 border h-100 d-flex flex-column justify-content-between">
                             <div>
@@ -284,7 +283,7 @@
                 </div>
             </div>
             <div class="slide-footer">
-                <span>{{ auditoria.norma.codigo }} — Escopo e Cronograma Executado</span>
+                <span>{{ auditoria.norma.codigo }} — Cronograma: {{ lote_slide.dia_label }}</span>
                 <span>Calibra WEB</span>
             </div>
         </div>
