@@ -6502,7 +6502,7 @@ def api_iso_revisao_criar_obs(request):
     """
     import json
     from django.http import JsonResponse
-    from .models import ItemNorma, AuditoriaIso, SolicitacaoEvidenciaIso, RespostaEntrevistaIso, PerguntaIso, AgendaAuditoriaIso, ComentarioRespostaAuditoria
+    from .models import ItemNorma, AuditoriaIso, SolicitacaoEvidenciaIso, RespostaEntrevistaIso, PerguntaIso, AgendaAuditoriaIso, AvaliacaoFinalRequisitoIso
     
     try:
         data = json.loads(request.body)
@@ -6521,8 +6521,8 @@ def api_iso_revisao_criar_obs(request):
         item_norma = get_object_or_404(ItemNorma, pk=item_norma_id)
         
         agenda = None
-        if agenda_id:
-            agenda = AgendaAuditoriaIso.objects.filter(pk=agenda_id, auditoria=auditoria).first()
+        if agenda_id and str(agenda_id).strip().isdigit():
+            agenda = AgendaAuditoriaIso.objects.filter(pk=int(agenda_id), auditoria=auditoria).first()
 
         # Encontra ou cria uma resposta de entrevista para este item
         resp = RespostaEntrevistaIso.objects.filter(
@@ -6551,16 +6551,19 @@ def api_iso_revisao_criar_obs(request):
             agenda=agenda,
             solicitacao=solicitacao_txt,
             evidencia=evidencia_txt,
-            conclusao='OBS',
-            responsavel=request.user
+            conclusao='OBS'
         )
 
-        texto_log = f"[OBSERVAÇÃO COM CORREÇÃO ADICIONADA] Requisito {item_norma.referencia} - {solicitacao_txt}: {evidencia_txt}"
-        ComentarioRespostaAuditoria.objects.create(
-            autor=request.user,
-            texto=texto_log,
-            data_referencia=auditoria.data_inicio
-        )
+        # Atualiza a avaliação final do requisito se ainda não tiver veredicto definido
+        av_existente = AvaliacaoFinalRequisitoIso.objects.filter(auditoria=auditoria, item_norma=item_norma).first()
+        if not av_existente:
+            AvaliacaoFinalRequisitoIso.objects.create(
+                auditoria=auditoria,
+                item_norma=item_norma,
+                classificacao='OBS',
+                justificativa=f"Observação com Correção adicionada na reunião de revisão: {solicitacao_txt}",
+                atualizado_por=request.user if request.user.is_authenticated else None
+            )
 
         return JsonResponse({
             'success': True,
@@ -6568,6 +6571,8 @@ def api_iso_revisao_criar_obs(request):
             'solicitacao_id': sol.id
         })
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'success': False, 'message': str(e)}, status=400)
 
 
@@ -6576,7 +6581,7 @@ def api_iso_revisao_criar_obs(request):
 def api_iso_revisao_reverter(request):
     import json
     from django.http import JsonResponse
-    from .models import ItemNorma, AvaliacaoFinalRequisitoIso, AuditoriaIso, ComentarioRespostaAuditoria
+    from .models import ItemNorma, AvaliacaoFinalRequisitoIso, AuditoriaIso
     
     try:
         data = json.loads(request.body)
@@ -6596,17 +6601,8 @@ def api_iso_revisao_reverter(request):
                 'classificacao': novo_status,
                 'grau_nc': grau_nc if novo_status == 'NC' else None,
                 'justificativa': argumentacao,
-                'atualizado_por': request.user
+                'atualizado_por': request.user if request.user.is_authenticated else None
             }
-        )
-        
-        grau_txt = f" ({grau_nc})" if (novo_status == 'NC' and grau_nc) else ""
-        texto_log = f"[VEREDICTO FINAL] Requisito {item_norma.referencia} definido como {novo_status}{grau_txt}. Argumentação: {argumentacao}"
-            
-        ComentarioRespostaAuditoria.objects.create(
-            autor=request.user,
-            texto=texto_log,
-            data_referencia=auditoria.data_inicio
         )
             
         return JsonResponse({
@@ -6616,5 +6612,7 @@ def api_iso_revisao_reverter(request):
             'grau_nc': grau_nc
         })
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'success': False, 'message': str(e)}, status=400)
 
