@@ -712,16 +712,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             `;
                         }
 
-                        let respostaTextoHtml = '';
-                        if (inst.texto_resposta && inst.texto_resposta.trim()) {
-                            respostaTextoHtml = `
-                                <div class="mt-2 p-2.5 bg-white rounded-3 border">
-                                    <small class="fw-bold text-secondary d-block mb-1"><i class="bi bi-chat-left-text me-1"></i> Anotações Gerais do Auditor:</small>
-                                    <div class="text-dark small font-monospace" style="white-space: pre-wrap;">${inst.texto_resposta}</div>
-                                </div>
-                            `;
-                        }
-
                         blocosInstanciasHtml += `
                             <div class="p-3 rounded-4 border bg-light mb-3">
                                 <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
@@ -736,7 +726,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                         ${respBadge}
                                     </div>
                                 </div>
-                                ${respostaTextoHtml}
                                 ${solicitacoesHtml}
                             </div>
                         `;
