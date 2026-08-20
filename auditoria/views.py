@@ -4359,6 +4359,7 @@ def iso_fechamento_presentation_view(request, auditoria_id):
             'total_p': count_p,
         },
         'veredito': veredito,
+        'itens_conformes': destaques_conformes,
         'slides_pontos_fortes': slides_pontos_fortes,
         'slides_pontos_melhorar': slides_pontos_melhorar,
         'slides_conselhos': slides_conselhos,

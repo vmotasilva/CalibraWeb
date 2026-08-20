@@ -293,43 +293,33 @@
         </div>
         {% endfor %}
 
-        <!-- ── SLIDE(S) 3: PONTOS FORTES E DESTAQUES (Chunked) ── -->
-        {% for lote in slides_pontos_fortes %}
+        <!-- ── SLIDE 3: CONFORMIDADES (1 Único Slide Consolidado) ── -->
+        {% if itens_conformes %}
         <div class="slide">
             <div class="slide-header">
-                <h2 class="slide-title text-success"><i class="bi bi-shield-fill-check"></i>Pontos Fortes & Destaques de Conformidade ({{ forloop.counter }}/{{ slides_pontos_fortes|length }})</h2>
-                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-3 py-1.5 rounded-pill">
-                    {{ metricas.total_c }} Requisitos Conformes
+                <h2 class="slide-title text-success"><i class="bi bi-shield-fill-check me-2"></i>Conformidades</h2>
+                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-3.5 py-1.5 rounded-pill font-monospace fw-bold" style="font-size: 0.9rem;">
+                    {{ itens_conformes|length }} Requisitos Atendidos
                 </span>
             </div>
             <div class="slide-content">
-                <div class="row row-cols-2 g-4 h-100">
-                    {% for item in lote %}
-                    <div class="col">
-                        <div class="req-card req-card-success">
-                            <div>
-                                <div class="d-flex align-items-start gap-2 mb-2">
-                                    <span class="badge bg-success text-white font-monospace fs-6 px-2.5 py-1 flex-shrink-0">{{ item.referencia }}</span>
-                                    <span class="fw-bold text-dark fs-6 text-truncate-2" title="{{ item.titulo }}">{{ item.titulo }}</span>
-                                </div>
-                                <div class="text-muted small mb-1 fw-bold text-uppercase" style="font-size: 0.72rem;">Evidências Comprovadas:</div>
-                                <ul class="mb-0 ps-3 small text-secondary" style="line-height: 1.5;">
-                                    {% for ev in item.evidencias %}
-                                        <li>{{ ev|truncatechars:120 }}</li>
-                                    {% endfor %}
-                                </ul>
-                            </div>
+                <div class="p-3.5 bg-white rounded-4 border shadow-2xs h-100 d-flex flex-column justify-content-start overflow-hidden">
+                    <div class="d-flex flex-wrap gap-2 align-content-start overflow-auto pe-1" style="max-height: 100%;">
+                        {% for item in itens_conformes %}
+                        <div class="d-inline-flex align-items-center gap-2 px-2.5 py-1 rounded-3 border border-success border-opacity-25 bg-success bg-opacity-10 text-dark" style="font-size: 0.80rem;" title="{{ item.titulo }}">
+                            <span class="badge bg-success text-white font-monospace px-2 py-0.5" style="font-size: 0.76rem;">{{ item.referencia }}</span>
+                            <span class="fw-semibold text-truncate" style="max-width: 170px;">{{ item.titulo }}</span>
                         </div>
+                        {% endfor %}
                     </div>
-                    {% endfor %}
                 </div>
             </div>
             <div class="slide-footer">
-                <span>{{ auditoria.norma.codigo }} — Pontos Fortes e Conformidades</span>
-                <span>Slide {{ forloop.counter|add:2 }}</span>
+                <span>{{ auditoria.norma.codigo }} — Requisitos em Conformidade Plena</span>
+                <span>Calibra WEB</span>
             </div>
         </div>
-        {% endfor %}
+        {% endif %}
 
         <!-- ── SLIDE(S) 4: PONTOS A MELHORAR (NCs, OBS e OMs Chunked) ── -->
         {% if slides_pontos_melhorar %}
