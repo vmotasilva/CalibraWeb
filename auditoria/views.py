@@ -4312,7 +4312,7 @@ def iso_norma_detail(request, pk):
         item.nivel = item.referencia.count('.')
         itens.append(item)
         
-    perguntas_qs = BancoPergunta.objects.filter(itens_norma__norma=norma).distinct().prefetch_related('itens_norma')
+    perguntas_qs = BancoPergunta.objects.filter(itens_norma__norma=norma, ativa=True).distinct().prefetch_related('itens_norma')
     
     def get_pergunta_sort_key(p):
         items = list(p.itens_norma.all())
@@ -4551,9 +4551,34 @@ def iso_pergunta_edit(request, pk):
 @login_required
 @require_POST
 def iso_pergunta_delete(request, pk):
+    from django.db.models.deletion import ProtectedError
     pergunta = get_object_or_404(BancoPergunta, pk=pk)
-    pergunta.delete()
-    messages.success(request, "Pergunta removida com sucesso!")
+    
+    norma_id = request.POST.get('norma') or request.GET.get('norma')
+    if not norma_id:
+        item = pergunta.itens_norma.first()
+        if item:
+            norma_id = item.norma_id
+
+    try:
+        pergunta.delete()
+        messages.success(request, "Pergunta removida com sucesso do Banco Geral!")
+    except ProtectedError:
+        # Se a pergunta possui respostas de auditorias registradas (FK PROTECT),
+        # desativa a pergunta e desvincula dos itens da norma para manter a integridade histórica.
+        pergunta.ativa = False
+        pergunta.itens_norma.clear()
+        pergunta.save(update_fields=['ativa'])
+        messages.warning(
+            request,
+            "Esta pergunta possui respostas de auditorias registradas no histórico. "
+            "Para não corromper os relatórios anteriores, ela foi desativada e desvinculada dos itens da norma."
+        )
+    except Exception as e:
+        messages.error(request, f"Não foi possível remover a pergunta: {e}")
+
+    if norma_id:
+        return redirect(reverse('auditoria:iso_norma_detail', args=[norma_id]) + "?tab=perguntas")
     return redirect(reverse('auditoria:iso_setup_dashboard') + "?tab=perguntas")
 
 # --- ModeloAuditoriaIso CRUD ---
