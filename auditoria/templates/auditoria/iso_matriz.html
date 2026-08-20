@@ -676,7 +676,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <div class="mt-2.5">
                                     <div class="d-flex justify-content-between align-items-center mb-2">
                                         <small class="fw-bold text-dark"><i class="bi bi-folder-check text-primary me-1"></i> Solicitações & Amostragens (${inst.solicitacoes.length}):</small>
-                                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill py-0.5 px-2.5 fw-bold" style="font-size: 0.75rem;" onclick="adicionarSolicitacaoMatriz(${inst.pergunta_id})">
+                                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill py-0.5 px-2.5 fw-bold" style="font-size: 0.75rem;" onclick="adicionarSolicitacaoMatriz(${inst.pergunta_id}, ${inst.bloco_id})">
                                             <i class="bi bi-plus-lg me-1"></i> Nova Solicitação
                                         </button>
                                     </div>
@@ -687,7 +687,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             solicitacoesHtml = `
                                 <div class="mt-2 p-2 bg-light rounded-3 border text-center">
                                     <small class="text-muted d-block mb-1.5">Nenhuma solicitação de evidência registrada para este bloco.</small>
-                                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill py-0.5 px-3 fw-bold" style="font-size: 0.75rem;" onclick="adicionarSolicitacaoMatriz(${inst.pergunta_id})">
+                                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill py-0.5 px-3 fw-bold" style="font-size: 0.75rem;" onclick="adicionarSolicitacaoMatriz(${inst.pergunta_id}, ${inst.bloco_id})">
                                         <i class="bi bi-plus-lg me-1"></i> Adicionar Solicitação / Amostra
                                     </button>
                                 </div>
@@ -834,8 +834,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnConfirmar = document.getElementById('btnConfirmarTransferencia');
     if (btnConfirmar) {
         btnConfirmar.addEventListener('click', async () => {
+            const blocoDestId = selectBloco ? selectBloco.value : null;
             const pergDestId = selectPergunta ? selectPergunta.value : null;
-            if (!pergDestId) { alert('Selecione uma pergunta de destino.'); return; }
+            if (!pergDestId) { alert('Selecione uma pergunta / item de destino.'); return; }
 
             btnConfirmar.disabled = true;
             btnConfirmar.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Transferindo...';
@@ -844,7 +845,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const resp = await fetch(`/auditoria/iso/api/solicitacoes/${transferMatrizSolId}/transferir/`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
-                    body: JSON.stringify({ auditoria_id: {{ auditoria.id }}, pergunta_destino_id: parseInt(pergDestId) })
+                    body: JSON.stringify({
+                        auditoria_id: {{ auditoria.id }},
+                        agenda_id: blocoDestId ? parseInt(blocoDestId) : null,
+                        pergunta_destino_id: parseInt(pergDestId)
+                    })
                 });
                 const data = await resp.json();
                 if (data.success) {
@@ -924,7 +929,7 @@ async function salvarModalDetalhesSolicitacao() {
     }
 }
 
-async function adicionarSolicitacaoMatriz(perguntaId) {
+async function adicionarSolicitacaoMatriz(perguntaId, blocoId) {
     const texto = prompt('Digite o Item / Documento a ser solicitado para amostragem:');
     if (!texto || !texto.trim()) return;
 
@@ -937,6 +942,7 @@ async function adicionarSolicitacaoMatriz(perguntaId) {
             },
             body: JSON.stringify({
                 pergunta_id: perguntaId,
+                agenda_id: blocoId || null,
                 auditoria_id: {{ auditoria.id }},
                 solicitacao: texto.trim()
             })

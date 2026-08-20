@@ -971,6 +971,7 @@ class SolicitacaoEvidenciaIso(models.Model):
         ("MAIOR", "NC Maior"),
     ]
     resposta = models.ForeignKey(RespostaEntrevistaIso, on_delete=models.CASCADE, related_name="solicitacoes")
+    agenda = models.ForeignKey('AgendaAuditoriaIso', on_delete=models.SET_NULL, null=True, blank=True, related_name="solicitacoes_registradas", verbose_name="Bloco da Agenda de Origem")
     solicitacao = models.TextField(verbose_name="Solicitação / Item Solicitado")
     evidencia = models.TextField(blank=True, verbose_name="Evidência Apresentada")
     conclusao = models.CharField(max_length=4, choices=CLASSIFICACAO_CHOICES, default="P")

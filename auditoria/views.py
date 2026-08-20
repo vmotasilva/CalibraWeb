@@ -3338,28 +3338,32 @@ def iso_entrevista_view(request, auditoria_id):
             )
             sols_qs.append(nova_sol)
 
-        ag_list = pergunta_to_agendas_map.get(r.pergunta_id, [])
-        if agenda_id:
-            tem_atual = any(str(ag['id']) == str(agenda_id) for ag in ag_list)
-            bloco_nome = agenda.titulo if tem_atual else (ag_list[0]['titulo'] if ag_list else "Geral")
-            is_bloco_atual = tem_atual
-        else:
-            bloco_nome = ", ".join(ag['titulo'] for ag in ag_list) if ag_list else "Geral"
-            is_bloco_atual = True
+        sols = []
+        for s in sols_qs:
+            if s.agenda:
+                bloco_nome_s = s.agenda.titulo
+                is_bloco_atual_s = (str(s.agenda_id) == str(agenda_id)) if agenda_id else True
+            else:
+                ag_list = pergunta_to_agendas_map.get(r.pergunta_id, [])
+                if agenda_id:
+                    tem_atual = any(str(ag['id']) == str(agenda_id) for ag in ag_list)
+                    bloco_nome_s = agenda.titulo if tem_atual else (ag_list[0]['titulo'] if ag_list else "Geral")
+                    is_bloco_atual_s = tem_atual
+                else:
+                    bloco_nome_s = ", ".join(ag['titulo'] for ag in ag_list) if ag_list else "Geral"
+                    is_bloco_atual_s = True
 
-        sols = [
-            {
+            sols.append({
                 "id": s.id,
                 "solicitacao": s.solicitacao,
                 "evidencia": s.evidencia,
                 "conclusao": s.conclusao,
                 "grau_nc": s.grau_nc,
                 "pergunta_id": r.pergunta_id,
-                "bloco_nome": bloco_nome,
-                "is_bloco_atual": is_bloco_atual
-            }
-            for s in sols_qs
-        ]
+                "bloco_nome": bloco_nome_s,
+                "is_bloco_atual": is_bloco_atual_s
+            })
+
         respostas_dict[r.pergunta_id] = {
             "classificacao": r.classificacao,
             "grau_nc": r.grau_nc,
@@ -3535,12 +3539,15 @@ def api_iso_autosave_resposta(request):
 
 @login_required
 @require_POST
+@login_required
+@require_POST
 def api_iso_solicitacao_create(request):
-    from .models import SolicitacaoEvidenciaIso, RespostaEntrevistaIso, AuditoriaIso, BancoPergunta
+    from .models import SolicitacaoEvidenciaIso, RespostaEntrevistaIso, AuditoriaIso, BancoPergunta, AgendaAuditoriaIso
     try:
         data = json.loads(request.body)
         auditoria_id = data.get("auditoria_id")
         pergunta_id = data.get("pergunta_id")
+        agenda_id = data.get("agenda_id")
         solicitacao_texto = data.get("solicitacao", "Nova Solicitação de Evidência").strip()
         evidencia_texto = data.get("evidencia", "").strip()
         conclusao = data.get("conclusao", "P")
@@ -3548,6 +3555,7 @@ def api_iso_solicitacao_create(request):
 
         auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
         pergunta = get_object_or_404(BancoPergunta, pk=pergunta_id)
+        agenda = AgendaAuditoriaIso.objects.filter(pk=agenda_id, auditoria=auditoria).first() if agenda_id else None
 
         resposta, _ = RespostaEntrevistaIso.objects.get_or_create(
             auditoria=auditoria,
@@ -3557,6 +3565,7 @@ def api_iso_solicitacao_create(request):
 
         nova_sol = SolicitacaoEvidenciaIso.objects.create(
             resposta=resposta,
+            agenda=agenda,
             solicitacao=solicitacao_texto,
             evidencia=evidencia_texto,
             conclusao=conclusao,
@@ -3570,7 +3579,9 @@ def api_iso_solicitacao_create(request):
                 "solicitacao": nova_sol.solicitacao,
                 "evidencia": nova_sol.evidencia,
                 "conclusao": nova_sol.conclusao,
-                "grau_nc": nova_sol.grau_nc
+                "grau_nc": nova_sol.grau_nc,
+                "bloco_nome": agenda.titulo if agenda else "Geral",
+                "is_bloco_atual": True
             }
         })
     except Exception as e:
@@ -3614,12 +3625,13 @@ def api_iso_solicitacao_delete(request, pk):
 @require_POST
 def api_iso_solicitacao_transferir(request, pk):
     """Transfere uma solicitação de evidência para outra pergunta/bloco."""
-    from .models import SolicitacaoEvidenciaIso, RespostaEntrevistaIso, AuditoriaIso, BancoPergunta
+    from .models import SolicitacaoEvidenciaIso, RespostaEntrevistaIso, AuditoriaIso, BancoPergunta, AgendaAuditoriaIso
     try:
         sol = get_object_or_404(SolicitacaoEvidenciaIso, pk=pk)
         data = json.loads(request.body)
         auditoria_id = data.get("auditoria_id")
         pergunta_destino_id = data.get("pergunta_destino_id")
+        agenda_destino_id = data.get("agenda_id") or data.get("bloco_id")
 
         if not auditoria_id or not pergunta_destino_id:
             return JsonResponse({"success": False, "error": "Parâmetros insuficientes."}, status=400)
@@ -3634,13 +3646,22 @@ def api_iso_solicitacao_transferir(request, pk):
             defaults={"respondida_por": request.user}
         )
 
-        # Move a solicitação
+        # Atualiza a agenda de destino se informada
+        if agenda_destino_id:
+            agenda_dest = AgendaAuditoriaIso.objects.filter(pk=agenda_destino_id, auditoria=auditoria).first()
+            if agenda_dest:
+                sol.agenda = agenda_dest
+
+        # Move a solicitação para a nova resposta
         sol.resposta = resposta_destino
         sol.save()
 
+        bloco_nome = sol.agenda.titulo if sol.agenda else "Geral"
+
         return JsonResponse({
             "success": True,
-            "message": f"Solicitação transferida para '{pergunta_destino.texto_pergunta[:60]}'."
+            "message": f"Solicitação transferida com sucesso para o bloco '{bloco_nome}'!",
+            "bloco_nome": bloco_nome
         })
     except Exception as e:
         return JsonResponse({"success": False, "error": str(e)}, status=400)
@@ -3800,12 +3821,16 @@ def iso_matriz_view(request, auditoria_id):
                     sols_list = []
                     if resp:
                         for s in resp.solicitacoes.all():
+                            # Se a solicitação pertence especificamente a outra agenda, não a duplica neste bloco
+                            if s.agenda_id and s.agenda_id != agenda.id:
+                                continue
                             sols_list.append({
                                 'id': s.id,
                                 'solicitacao': s.solicitacao,
                                 'evidencia': s.evidencia or '',
                                 'conclusao': s.conclusao,
-                                'conclusao_display': s.get_conclusao_display()
+                                'conclusao_display': s.get_conclusao_display(),
+                                'bloco_origem': s.agenda.titulo if s.agenda else agenda.titulo
                             })
 
                     perguntas_info.append({

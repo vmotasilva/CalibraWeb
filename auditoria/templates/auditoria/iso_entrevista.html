@@ -283,6 +283,7 @@
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
     const perguntas = {{ perguntas_json|safe }};
     const auditoriaId = {{ auditoria.id }};
+    const currentAgendaId = {% if agenda %}{{ agenda.id }}{% else %}null{% endif %};
     const agendasDisponiveis = {{ agendas_json|safe }};
     const itensAtalho = {{ itens_atalho_json|safe|default:"[]" }};
     let currentIndex = 0;
@@ -608,6 +609,7 @@
                 },
                 body: JSON.stringify({
                     auditoria_id: auditoriaId,
+                    agenda_id: currentAgendaId,
                     pergunta_id: p.id,
                     solicitacao: solicitacaoTexto,
                     evidencia: evidenciaInicial,
@@ -836,6 +838,7 @@
                 },
                 body: JSON.stringify({
                     auditoria_id: auditoriaId,
+                    agenda_id: currentAgendaId,
                     pergunta_id: p.id,
                     solicitacao: "Nova Solicitação de Evidência",
                     evidencia: "",
@@ -1223,8 +1226,9 @@
         const btnConfirmar = document.getElementById('btnConfirmarTransferencia');
         if (btnConfirmar) {
             btnConfirmar.addEventListener('click', async () => {
+                const blocoDestId = selectBloco ? selectBloco.value : null;
                 const pergDestId = selectPergunta ? selectPergunta.value : null;
-                if (!pergDestId) { alert('Selecione uma pergunta de destino.'); return; }
+                if (!pergDestId) { alert('Selecione uma pergunta / item de destino.'); return; }
 
                 btnConfirmar.disabled = true;
                 btnConfirmar.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Transferindo...';
@@ -1233,7 +1237,11 @@
                     const resp = await fetch(`/auditoria/iso/api/solicitacoes/${transferSolId}/transferir/`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-                        body: JSON.stringify({ auditoria_id: auditoriaId, pergunta_destino_id: parseInt(pergDestId) })
+                        body: JSON.stringify({
+                            auditoria_id: auditoriaId,
+                            agenda_id: blocoDestId ? parseInt(blocoDestId) : null,
+                            pergunta_destino_id: parseInt(pergDestId)
+                        })
                     });
                     const data = await resp.json();
                     if (data.success) {
