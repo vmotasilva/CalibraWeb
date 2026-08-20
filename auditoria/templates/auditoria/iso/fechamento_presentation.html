@@ -482,16 +482,46 @@
                 </div>
 
                 <!-- Card de Veredicto Calculado pelo Motor -->
-                <div class="p-4 rounded-4 bg-{{ veredito.cor_css }} bg-opacity-10 border border-2 border-{{ veredito.cor_css }} text-center my-3 shadow-sm">
-                    <div class="d-flex justify-content-center align-items-center gap-2 mb-2">
-                        <i class="bi {{ veredito.icone }} fs-2 text-{{ veredito.cor_css }}"></i>
-                        <h2 class="fw-extrabold text-{{ veredito.cor_css }} mb-0" style="font-weight: 800; letter-spacing: -0.5px;">
+                <div class="p-3.5 rounded-4 bg-{{ veredito.cor_css }} bg-opacity-10 border border-2 border-{{ veredito.cor_css }} text-center my-2 shadow-sm">
+                    <div class="d-flex justify-content-center align-items-center gap-2 mb-1.5">
+                        <i class="bi {{ veredito.icone }} fs-3 text-{{ veredito.cor_css }}"></i>
+                        <h3 class="fw-extrabold text-{{ veredito.cor_css }} mb-0" style="font-weight: 800; letter-spacing: -0.5px;">
                             {{ veredito.titulo }}
-                        </h2>
+                        </h3>
                     </div>
-                    <p class="fs-5 text-dark max-w-3xl mx-auto mb-0" style="line-height: 1.6; max-width: 900px;">
+                    <p class="fs-6 text-dark max-w-3xl mx-auto mb-2.5 fw-medium" style="line-height: 1.5; max-width: 860px;">
                         "{{ veredito.parecer }}"
                     </p>
+
+                    <!-- Box com Explicação da Regra e Critérios Normativos -->
+                    <div class="bg-white rounded-3 p-2.5 border text-start mx-auto shadow-2xs" style="max-width: 920px;">
+                        <div class="d-flex align-items-center gap-2 mb-1.5">
+                            <span class="badge bg-dark text-white rounded-pill px-2.5 py-0.5" style="font-size: 0.75rem;">
+                                <i class="bi bi-info-circle me-1"></i>Explicação da Regra & Enquadramento
+                            </span>
+                            <span class="text-secondary small fw-semibold" style="font-size: 0.82rem;">
+                                {{ veredito.explicacao_regra }}
+                            </span>
+                        </div>
+                        
+                        <!-- Linha com os Critérios Normativos de Decisão -->
+                        <div class="d-flex justify-content-between align-items-center gap-2 pt-1.5 border-top flex-wrap" style="font-size: 0.75rem;">
+                            <div class="text-muted">
+                                <i class="bi bi-sliders me-1"></i><strong>Critérios da Norma ({{ auditoria.norma.codigo }}):</strong>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-2 py-0.5">
+                                    🟢 Apto: máx. {{ veredito.limite_nc_maior_apto }} Maior / até {{ veredito.limite_nc_menor_apto }} Menor
+                                </span>
+                                <span class="badge bg-warning bg-opacity-10 text-dark border border-warning border-opacity-50 rounded-pill px-2 py-0.5 fw-bold">
+                                    🟡 Ressalva: Plano de Ação requerido
+                                </span>
+                                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill px-2 py-0.5">
+                                    🔴 Inapto: ≥ {{ veredito.gatilho_nc_maior_inapto }} Maior ou ≥ {{ veredito.gatilho_nc_menor_inapto }} Menor
+                                </span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Rodapé de Encerramento e Assinaturas -->

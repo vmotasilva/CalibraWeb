@@ -4266,6 +4266,31 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                 "Melhorias são necessárias devido ao risco encontrado nos desvios pontuais. Exige-se apresentação de plano de ação corretiva formal em prazo determinado."
         }
 
+    # Explicação Resumida da Regra / Motivo do Enquadramento
+    if veredito['status'] == 'INAPTO':
+        motivos = []
+        if count_nc_maior >= gatilho_nc_maior_inapto:
+            motivos.append(f"{count_nc_maior} Não Conformidade(s) Maior(es) (limite de reprovação: ≥ {gatilho_nc_maior_inapto})")
+        if count_nc_menor >= gatilho_nc_menor_inapto:
+            motivos.append(f"{count_nc_menor} Não Conformidade(s) Menor(es) (limite de reprovação: ≥ {gatilho_nc_menor_inapto})")
+        explicacao = f"Enquadrado como Inadequado por atingir o limite crítico de desvios: {' e '.join(motivos)}."
+    elif veredito['status'] == 'APTO':
+        explicacao = f"Enquadrado como Adequado/Conforme por atender todos os requisitos e manter os desvios dentro do piso de tolerância da norma (máximo de {limite_nc_maior_apto} NC Maior e até {limite_nc_menor_apto} NC Menor)."
+    else:
+        motivos = []
+        if count_nc_maior > limite_nc_maior_apto:
+            motivos.append(f"{count_nc_maior} NC Maior (limite para aprovação direta: máx. {limite_nc_maior_apto})")
+        if count_nc_menor > limite_nc_menor_apto:
+            motivos.append(f"{count_nc_menor} NC Menor (limite para aprovação direta: máx. {limite_nc_menor_apto})")
+        motivo_str = f" ({', '.join(motivos)})" if motivos else ""
+        explicacao = f"Enquadrado em Ressalva{motivo_str}: desvios identificados exigem plano de ação corretiva formal dentro do prazo estabelecido, sem inviabilizar a recomendação do sistema."
+
+    veredito['explicacao_regra'] = explicacao
+    veredito['limite_nc_maior_apto'] = limite_nc_maior_apto
+    veredito['limite_nc_menor_apto'] = limite_nc_menor_apto
+    veredito['gatilho_nc_maior_inapto'] = gatilho_nc_maior_inapto
+    veredito['gatilho_nc_menor_inapto'] = gatilho_nc_menor_inapto
+
     # Paginação dos Slides: 4 cards por slide para aspecto 16:9 perfeito
     slides_pontos_fortes = list(chunks_list(destaques_conformes, 4))
     slides_pontos_melhorar = list(chunks_list(pontos_a_melhorar, 4))
