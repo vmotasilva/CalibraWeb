@@ -3825,28 +3825,38 @@ def iso_matriz_view(request, auditoria_id):
                     'perguntas': perguntas_info
                 })
         
-        # Hierarquia: NC > P > OM > C > NA (OBS não define status do item da norma)
-        hierarchy = {"NC": 5, "P": 4, "OM": 3, "C": 2, "NA": 1}
-        reverse_hierarchy = {v: k for k, v in hierarchy.items()}
-        
-        # Status Calculado (Apenas para os níveis finais/folhas dos itens da norma)
+        # Coleta todas as solicitações de evidência de todas as perguntas que cobrem este item
+        sols_do_item = []
+        for p_id in todas_perguntas_item_set:
+            r = respostas_map.get(p_id)
+            if r:
+                for s in r.solicitacoes.all():
+                    sols_do_item.append(s)
+
+        # Status Calculado baseado estritamente nas solicitações de evidência do item
         if is_parent:
             status_item = ""
         elif item.id in na_item_ids:
             status_item = "NA"
-        elif not todas_perguntas_item_set:
-            status_item = "P" if blocos_associados else "NA"
+        elif sols_do_item:
+            conclusoes = [s.conclusao for s in sols_do_item]
+            if "NC" in conclusoes:
+                status_item = "NC"
+            elif "OM" in conclusoes:
+                status_item = "OM"
+            elif any(c in ["C", "OBS"] for c in conclusoes):
+                # Se houver amostras C ou OBS (sem NC/OM), o item está Conforme
+                if all(c == "P" for c in conclusoes):
+                    status_item = "P"
+                else:
+                    status_item = "C"
+            elif all(c == "NA" for c in conclusoes):
+                status_item = "NA"
+            else:
+                status_item = "P"
         else:
-            pior_peso = 0
-            for p_id in todas_perguntas_item_set:
-                r = respostas_map.get(p_id)
-                classificacao = r.classificacao if r else "P"
-                if classificacao == "OBS":
-                    classificacao = "C"  # OBS não afeta o status do item
-                peso = hierarchy.get(classificacao, 2)
-                if peso > pior_peso:
-                    pior_peso = peso
-            status_item = reverse_hierarchy.get(pior_peso, "P")
+            # Sem solicitações registradas para o item
+            status_item = "P" if blocos_associados else "NA"
             
         matriz_data.append({
             "id": item.id,

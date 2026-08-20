@@ -521,10 +521,16 @@
             const descPreview = desc.length > 140 ? desc.slice(0, 140) + '...' : desc;
             const evidPadrao = item.evidencia_padrao ? item.evidencia_padrao.trim() : '';
 
+            // Descobre se o item está nas perguntas deste bloco atual
+            const pIdxNesteBloco = perguntas.findIndex(p => {
+                return (p.itens_objects || []).some(it => it.id === item.id || it.ref === item.referencia) ||
+                       (p.itens || '').includes(item.referencia);
+            });
+
             html += `
                 <div class="card border rounded-3 p-3 bg-white shadow-2xs">
-                    <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
-                        <div>
+                    <div class="d-flex justify-content-between align-items-start gap-2 mb-2 flex-wrap">
+                        <div style="max-width: 60%;">
                             <div class="d-flex align-items-center gap-2 mb-1">
                                 <span class="badge bg-warning text-dark font-monospace fw-bold px-2.5 py-1">
                                     <i class="bi bi-tag-fill me-1"></i>${item.referencia}
@@ -534,14 +540,29 @@
                             ${descPreview ? `<div class="text-muted small" style="font-size: 0.84rem; line-height: 1.4;">${descPreview}</div>` : ''}
                             ${evidPadrao ? `<div class="mt-1 small text-primary" style="font-size: 0.8rem;"><i class="bi bi-card-checklist me-1"></i><strong>Evidência esperada:</strong> ${evidPadrao.slice(0, 100)}${evidPadrao.length > 100 ? '...' : ''}</div>` : ''}
                         </div>
-                        <button type="button" class="btn btn-primary btn-sm rounded-pill px-3 fw-bold flex-shrink-0 shadow-sm" onclick="criarSolicitacaoDeAtalho(${item.id})">
-                            <i class="bi bi-plus-lg me-1"></i> Criar Solicitação
-                        </button>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            ${pIdxNesteBloco !== -1 ? `
+                                <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold flex-shrink-0" onclick="navegarParaItemAtalho(${pIdxNesteBloco})">
+                                    <i class="bi bi-arrow-right-circle me-1"></i> Ir para Requisito
+                                </button>
+                            ` : ''}
+                            <button type="button" class="btn btn-primary btn-sm rounded-pill px-3 fw-bold flex-shrink-0 shadow-sm" onclick="criarSolicitacaoDeAtalho(${item.id})">
+                                <i class="bi bi-plus-lg me-1"></i> + Amostra
+                            </button>
+                        </div>
                     </div>
                 </div>
             `;
         });
         container.innerHTML = html;
+    }
+
+    function navegarParaItemAtalho(targetIdx) {
+        const modalEl = document.getElementById('modalItensAtalho');
+        if (modalEl) {
+            bootstrap.Modal.getInstance(modalEl)?.hide();
+        }
+        goToQuestion(targetIdx);
     }
 
     function abrirModalItensAtalho() {
@@ -1243,8 +1264,13 @@
         if (itemParam) {
             const cleanParam = itemParam.trim().toLowerCase();
             const targetIdx = perguntas.findIndex(p => {
+                const hasInObjects = (p.itens_objects || []).some(it => {
+                    const r = (it.ref || '').trim().toLowerCase();
+                    return r === cleanParam || r.startsWith(cleanParam + '.') || cleanParam.startsWith(r + '.');
+                });
                 const itensStr = (p.itens || '').toLowerCase();
-                return itensStr.split(',').map(s => s.trim()).includes(cleanParam) || itensStr.includes(cleanParam);
+                const hasInStr = itensStr.split(',').map(s => s.trim()).some(s => s === cleanParam || s.startsWith(cleanParam + '.'));
+                return hasInObjects || hasInStr;
             });
             if (targetIdx !== -1) {
                 currentIndex = targetIdx;
