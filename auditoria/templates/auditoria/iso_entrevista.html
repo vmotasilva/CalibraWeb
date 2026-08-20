@@ -750,8 +750,13 @@
             html += `
                 <div class="card border rounded-3 p-3 bg-white shadow-2xs mb-2.5 transition-all" id="sol-card-${s.id}">
                     <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-                        <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
                             <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-2.5 py-1 small fw-bold">Amostra #${idx + 1}</span>
+                            ${s.bloco_nome ? `
+                                <span class="badge ${s.is_bloco_atual ? 'bg-primary text-white' : 'bg-info bg-opacity-10 text-dark border border-info border-opacity-25'} rounded-pill px-2.5 py-1 small fw-semibold" title="Bloco associado a esta amostra">
+                                    <i class="bi bi-diagram-3 me-1"></i>${s.is_bloco_atual ? `Este Bloco (${s.bloco_nome})` : `Bloco: ${s.bloco_nome}`}
+                                </span>
+                            ` : ''}
                             <button type="button" class="btn btn-sm btn-outline-primary py-0.5 px-2 rounded-pill small fw-semibold" onclick="abrirModalDetalhesSolicitacao(${s.id})" title="Expandir e ver em detalhes no pop-up">
                                 <i class="bi bi-arrows-fullscreen me-1"></i>Ver Detalhes
                             </button>
@@ -820,6 +825,8 @@
             const data = await response.json();
             if (data.success) {
                 if (!p.solicitacoes) p.solicitacoes = [];
+                data.solicitacao.bloco_nome = "{{ agenda.titulo|default:'Geral'|escapejs }}";
+                data.solicitacao.is_bloco_atual = true;
                 p.solicitacoes.push(data.solicitacao);
                 renderQuestion();
                 showSaveIndicatorMessage("Solicitação criada com sucesso!");
@@ -929,7 +936,8 @@
         document.getElementById('modalSolTexto').value = solObj.solicitacao || '';
         document.getElementById('modalSolEvidencia').value = solObj.evidencia || '';
         document.getElementById('modalDetalhesSolicitacaoTitle').innerHTML = `
-            <i class="bi bi-file-earmark-ruled me-2"></i>Amostra #${idx + 1}: ${solObj.solicitacao ? solObj.solicitacao.slice(0, 45) + '...' : 'Solicitação'}
+            <i class="bi bi-file-earmark-ruled me-2"></i>Amostra #${idx + 1}: ${solObj.solicitacao ? solObj.solicitacao.slice(0, 35) + '...' : 'Solicitação'}
+            ${solObj.bloco_nome ? `<span class="badge ${solObj.is_bloco_atual ? 'bg-primary text-white' : 'bg-info bg-opacity-10 text-dark border border-info border-opacity-25'} rounded-pill ms-2 fs-6 fw-normal"><i class="bi bi-diagram-3 me-1"></i>Bloco: ${solObj.bloco_nome}</span>` : ''}
         `;
 
         updateModalConclusaoButtons(solObj.conclusao || 'P', solObj.grau_nc || 'MENOR');

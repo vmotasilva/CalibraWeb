@@ -3237,10 +3237,26 @@ def iso_entrevista_view(request, auditoria_id):
     perguntas_lista = [p for p in perguntas_lista if p.id != pergunta_auditados.id]
     perguntas_lista.insert(0, pergunta_auditados)
     
+    # Pré-carrega todas as agendas da auditoria para mapeamento de blocos de origem
+    agendas_auditoria = list(
+        auditoria.agendas.filter(arquivada=False).prefetch_related('itens_norma', 'perguntas')
+    )
+    pergunta_to_agendas_map = {}
+    for ag in agendas_auditoria:
+        for pag in ag.perguntas.all():
+            if pag.id not in pergunta_to_agendas_map:
+                pergunta_to_agendas_map[pag.id] = []
+            pergunta_to_agendas_map[pag.id].append({
+                'id': ag.id,
+                'titulo': ag.titulo
+            })
+
     # Obter respostas já existentes e auto-migrar anotações antigas para Solicitações se necessário
-    respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).prefetch_related('solicitacoes')
+    respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).prefetch_related('solicitacoes', 'pergunta__itens_norma')
     from .models import SolicitacaoEvidenciaIso
     respostas_dict = {}
+    solicitacoes_por_item = {}
+
     for r in respostas:
         sols_qs = list(r.solicitacoes.all())
         # Se existem anotações no texto_resposta livre mas nenhuma solicitação foi cadastrada ainda,
@@ -3254,13 +3270,25 @@ def iso_entrevista_view(request, auditoria_id):
             )
             sols_qs.append(nova_sol)
 
+        ag_list = pergunta_to_agendas_map.get(r.pergunta_id, [])
+        if agenda_id:
+            tem_atual = any(str(ag['id']) == str(agenda_id) for ag in ag_list)
+            bloco_nome = agenda.titulo if tem_atual else (ag_list[0]['titulo'] if ag_list else "Geral")
+            is_bloco_atual = tem_atual
+        else:
+            bloco_nome = ", ".join(ag['titulo'] for ag in ag_list) if ag_list else "Geral"
+            is_bloco_atual = True
+
         sols = [
             {
                 "id": s.id,
                 "solicitacao": s.solicitacao,
                 "evidencia": s.evidencia,
                 "conclusao": s.conclusao,
-                "grau_nc": s.grau_nc
+                "grau_nc": s.grau_nc,
+                "pergunta_id": r.pergunta_id,
+                "bloco_nome": bloco_nome,
+                "is_bloco_atual": is_bloco_atual
             }
             for s in sols_qs
         ]
@@ -3270,6 +3298,14 @@ def iso_entrevista_view(request, auditoria_id):
             "texto_resposta": r.texto_resposta,
             "solicitacoes": sols
         }
+
+        # Indexa as solicitações por cada item da norma vinculado à pergunta
+        for it in r.pergunta.itens_norma.all():
+            if it.id not in solicitacoes_por_item:
+                solicitacoes_por_item[it.id] = []
+            for s in sols:
+                if not any(exist['id'] == s['id'] for exist in solicitacoes_por_item[it.id]):
+                    solicitacoes_por_item[it.id].append(s)
         
     # Otimização de Performance: pré-indexação em memória das outras agendas e requisitos
     agendas_outras_todas = list(
@@ -3320,6 +3356,23 @@ def iso_entrevista_view(request, auditoria_id):
         r = respostas_dict.get(p.id, {})
         itens_p = list(p.itens_norma.all())
         
+        # Consolida todas as solicitações dos itens da norma avaliados nesta pergunta
+        sols_consolidadas = []
+        sols_ids_vistos = set()
+
+        # 1. Solicitações diretas da pergunta atual
+        for s in r.get("solicitacoes", []):
+            if s["id"] not in sols_ids_vistos:
+                sols_ids_vistos.add(s["id"])
+                sols_consolidadas.append(s)
+
+        # 2. Solicitações de outros blocos/perguntas vinculadas aos mesmos itens da norma
+        for item in itens_p:
+            for s in solicitacoes_por_item.get(item.id, []):
+                if s["id"] not in sols_ids_vistos:
+                    sols_ids_vistos.add(s["id"])
+                    sols_consolidadas.append(s)
+        
         # Agrupa outros blocos rapidamente
         blocos_vistos = {}
         for item in itens_p:
@@ -3358,7 +3411,7 @@ def iso_entrevista_view(request, auditoria_id):
             "classificacao": r.get("classificacao", "P"),
             "grau_nc": r.get("grau_nc"),
             "texto_resposta": r.get("texto_resposta", ""),
-            "solicitacoes": r.get("solicitacoes", [])
+            "solicitacoes": sols_consolidadas
         })
 
     # Itens de Atalho Especial da Norma para Acesso Rápido Global
