@@ -501,33 +501,18 @@
                         "{{ veredito.parecer }}"
                     </p>
 
-                    <!-- Box com Explicação da Regra e Critérios Normativos -->
-                    <div class="bg-white rounded-3 p-2.5 border text-start mx-auto shadow-2xs" style="max-width: 920px;">
-                        <div class="d-flex align-items-center gap-2 mb-1.5">
-                            <span class="badge bg-dark text-white rounded-pill px-2.5 py-0.5" style="font-size: 0.75rem;">
-                                <i class="bi bi-info-circle me-1"></i>Explicação da Regra & Enquadramento
+                    <!-- Box com Critérios Simplificados da Regra -->
+                    <div class="bg-white rounded-3 p-2.5 border text-center mx-auto shadow-2xs" style="max-width: 840px;">
+                        <div class="d-flex justify-content-center align-items-center gap-3 flex-wrap">
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3 py-1.5 fw-semibold" style="font-size: 0.82rem;">
+                                🟢 <strong>Apto:</strong> máx. 0 Maior / até 2 Menor
                             </span>
-                            <span class="text-secondary small fw-semibold" style="font-size: 0.82rem;">
-                                {{ veredito.explicacao_regra }}
+                            <span class="badge bg-warning bg-opacity-15 text-dark border border-warning border-opacity-50 rounded-pill px-3 py-1.5 fw-bold" style="font-size: 0.82rem;">
+                                🟡 <strong>Ressalva:</strong> até 3 Maior / ≥ 3 Menores
                             </span>
-                        </div>
-                        
-                        <!-- Linha com os Critérios Normativos de Decisão -->
-                        <div class="d-flex justify-content-between align-items-center gap-2 pt-1.5 border-top flex-wrap" style="font-size: 0.75rem;">
-                            <div class="text-muted">
-                                <i class="bi bi-sliders me-1"></i><strong>Critérios da Norma ({{ auditoria.norma.codigo }}):</strong>
-                            </div>
-                            <div class="d-flex gap-2">
-                                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-2 py-0.5">
-                                    🟢 Apto: máx. {{ veredito.limite_nc_maior_apto }} Maior / até {{ veredito.limite_nc_menor_apto }} Menor
-                                </span>
-                                <span class="badge bg-warning bg-opacity-10 text-dark border border-warning border-opacity-50 rounded-pill px-2 py-0.5 fw-bold">
-                                    🟡 Ressalva: Plano de Ação requerido
-                                </span>
-                                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill px-2 py-0.5">
-                                    🔴 Inapto: ≥ {{ veredito.gatilho_nc_maior_inapto }} Maior ou ≥ {{ veredito.gatilho_nc_menor_inapto }} Menor
-                                </span>
-                            </div>
+                            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill px-3 py-1.5 fw-semibold" style="font-size: 0.82rem;">
+                                🔴 <strong>Inapto:</strong> ≥ 4 Maior
+                            </span>
                         </div>
                     </div>
                 </div>
