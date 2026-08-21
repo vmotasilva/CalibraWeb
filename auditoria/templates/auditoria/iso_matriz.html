@@ -19,14 +19,20 @@
     }
 
     /* ============================================================
-       MOBILE — Visão Matriz em formato de Cards Empilhados
+       MOBILE — Visão Matriz Limpa, Focada e Clicável
        Ativa para smartphones (até 767px)
     ============================================================ */
     @media (max-width: 767.98px) {
 
-        /* 1. Ocultar o cabeçalho da tabela */
-        .matriz-table thead {
-            display: none;
+        /* 1. Ocultar elementos desnecessários no mobile */
+        .matriz-table thead,
+        .matriz-table .td-item-ref,
+        .matriz-table .td-qtd-perguntas,
+        .matriz-table .item-desc-text,
+        .matriz-table .row-nivel-1 .small,
+        .matriz-table .row-nivel-1 .td-acoes,
+        .matriz-table .row-nivel-2 .td-acoes {
+            display: none !important;
         }
 
         /* 2. Converter tabela/tbody em bloco fluído */
@@ -36,112 +42,99 @@
             width: 100%;
         }
 
-        /* 3. Cada TR vira um Card empilhado */
-        .matriz-table tr {
-            display: flex;
-            flex-direction: column;
-            border-radius: 0.6rem;
-            margin-bottom: 0.65rem;
-            padding: 0.85rem 1rem;
-            border: 1px solid #dee2e6;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.07);
-            background-color: #ffffff;
-        }
-
-        /* Card de Seção Principal (Nível 1) — Banner azul */
+        /* 3. Seções Agrupadoras no Mobile (Super Clean) */
         .matriz-table tr.row-nivel-1 {
-            background-color: #e8f0fe;
-            border-color: #b8d0fb;
+            display: block;
+            background: #e0f2fe !important;
+            border: 1px solid #bae6fd !important;
+            border-radius: 0.65rem;
+            margin-top: 0.9rem;
+            margin-bottom: 0.4rem;
+            padding: 0.55rem 0.85rem;
             box-shadow: none;
         }
-        .matriz-table tr.row-nivel-1 td:first-child {
-            font-size: 1rem;
-            font-weight: 700;
-            color: #0b5394;
-            border-bottom: 1px solid #b8d0fb;
-            padding-bottom: 0.5rem;
-            margin-bottom: 0.5rem;
+        .matriz-table tr.row-nivel-1 td {
+            display: block;
+            padding: 0 !important;
+            border: none !important;
+        }
+        .matriz-table tr.row-nivel-1 strong {
+            font-size: 0.92rem;
+            color: #0369a1 !important;
         }
 
-        /* Card de Subseção (Nível 2) — Agrupador */
         .matriz-table tr.row-nivel-2 {
-            background-color: #f8f9fa;
-            border-left: 3px solid #6c757d;
+            display: block;
+            background: #f1f5f9 !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 0.5rem;
+            margin-top: 0.55rem;
+            margin-bottom: 0.35rem;
+            padding: 0.45rem 0.75rem;
+            box-shadow: none;
         }
-        .matriz-table tr.row-nivel-2 td:first-child {
-            font-size: 0.9rem;
-            font-weight: 700;
-            color: #495057;
+        .matriz-table tr.row-nivel-2 td {
+            display: block;
+            padding: 0 !important;
+            border: none !important;
+        }
+        .matriz-table tr.row-nivel-2 strong {
+            font-size: 0.85rem;
+            color: #475569 !important;
         }
 
-        /* Card de Item/Folha — Clicável */
+        /* 4. Card de Item da Matriz — Limpo e Clicável (Abre Pop-up de Tratativa) */
         .matriz-table tr.row-item-matriz-auditoria {
-            border-left: 3px solid #0d6efd;
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.6rem;
+            border-radius: 0.75rem;
+            margin-bottom: 0.45rem;
+            padding: 0.75rem 0.9rem;
+            border: 1px solid #e2e8f0;
+            border-left: 4px solid #0d6efd;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            background-color: #ffffff;
             cursor: pointer;
+            transition: transform 0.1s ease, background-color 0.15s ease;
         }
         .matriz-table tr.row-item-matriz-auditoria:active {
-            background-color: #f0f4ff;
+            background-color: #f1f5f9;
+            transform: scale(0.985);
         }
 
-        /* 4. Todas as TDs viram blocos 100% sem largura restritiva */
-        .matriz-table td {
+        .matriz-table tr.row-item-matriz-auditoria td.td-item-info {
             display: block;
-            width: 100%;
+            flex: 1;
+            min-width: 0;
+            padding: 0 !important;
             border: none;
-            padding: 0.25rem 0;
-            text-align: left !important;
+        }
+        .matriz-table tr.row-item-matriz-auditoria .item-title-text {
+            font-size: 0.86rem;
+            color: #1e293b !important;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            line-height: 1.35;
         }
 
-        /* Remove os espaçamentos/paddings colunares */
-        .matriz-table td.ps-4 {
-            padding-left: 0 !important;
+        .matriz-table tr.row-item-matriz-auditoria td.td-status {
+            display: block;
+            flex-shrink: 0;
+            padding: 0 !important;
+            border: none !important;
+            margin: 0 !important;
+            text-align: right !important;
         }
-        .matriz-table td.pe-4 {
-            padding-right: 0 !important;
-        }
-
-        /* Coluna "Perguntas Vinculadas" — rótulo antes do valor */
-        .matriz-table td.td-qtd-perguntas::before {
-            content: "Perguntas vinculadas: ";
-            font-weight: 600;
-            font-size: 0.8rem;
-            color: #6c757d;
-        }
-        .matriz-table td.td-qtd-perguntas {
-            display: flex;
-            align-items: center;
-            gap: 0.4rem;
-            margin-top: 0.35rem;
-        }
-
-        /* Coluna "Status" — fica no rodapé do card em destaque */
-        .matriz-table td.td-status {
-            margin-top: 0.5rem;
-            padding-top: 0.5rem;
-            border-top: 1px solid #dee2e6;
-        }
-        .matriz-table td.td-status .status-badge {
-            font-size: 0.8rem;
-            padding: 6px 14px;
-        }
-
-        /* Botão N/A vira full-width e touch-friendly */
-        .matriz-table td.td-acoes {
-            margin-top: 0.5rem;
-            padding-top: 0.5rem;
-            border-top: 1px solid #dee2e6;
-        }
-        .matriz-table td.td-acoes .btn-quick-na {
-            width: 100%;
-            min-height: 44px;
-            font-size: 0.9rem;
-        }
-
-        /* Descrição truncada — liberar no mobile */
-        .matriz-table .small.text-muted.text-truncate {
-            max-width: 100% !important;
-            white-space: normal !important;
-            overflow: visible !important;
+        .matriz-table tr.row-item-matriz-auditoria .status-badge {
+            font-size: 0.76rem;
+            padding: 4px 10px;
+            border-radius: 12px;
+            white-space: nowrap;
         }
     }
 </style>
@@ -301,10 +294,13 @@
                                 data-desc="{{ row.descricao }}"
                                 data-status="{{ row.status }}">
                                 <script class="blocos-json-data" type="application/json">{{ row.blocos_associados_json|safe }}</script>
-                                <td class="ps-4"><strong>{{ row.referencia }}</strong></td>
-                                <td>
-                                    <div><strong class="text-primary hover-underline">{{ row.titulo }}</strong></div>
-                                    <div class="small text-muted text-truncate" style="max-width: 500px;" title="{{ row.descricao }}">{{ row.descricao }}</div>
+                                <td class="ps-4 td-item-ref"><strong>{{ row.referencia }}</strong></td>
+                                <td class="td-item-info">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="badge bg-primary text-white font-monospace d-md-none px-2 py-0.5" style="font-size: 0.75rem;">{{ row.referencia }}</span>
+                                        <strong class="text-primary hover-underline item-title-text">{{ row.titulo }}</strong>
+                                    </div>
+                                    <div class="small text-muted text-truncate item-desc-text d-none d-md-block" style="max-width: 500px;" title="{{ row.descricao }}">{{ row.descricao }}</div>
                                 </td>
                                 <td class="text-center td-qtd-perguntas">
                                     <span class="badge bg-secondary bg-opacity-10 text-dark rounded-pill px-2.5 py-1">{{ row.qtd_perguntas }}</span>
