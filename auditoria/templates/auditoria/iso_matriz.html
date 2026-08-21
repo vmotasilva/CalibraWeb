@@ -150,8 +150,8 @@
 
         <!-- Ações Desktop (d-none d-md-flex) -->
         <div class="d-none d-md-flex gap-2 flex-wrap">
-            <a href="{% url 'auditoria:iso_auditoria_detail' auditoria.id %}" class="btn btn-outline-secondary rounded-pill px-3 fw-bold">
-                <i class="bi bi-arrow-left me-1"></i> Voltar à Auditoria
+            <a href="{% url 'auditoria:iso_auditoria_list' %}" class="btn btn-outline-secondary rounded-pill px-3 fw-bold">
+                <i class="bi bi-arrow-left me-1"></i> Voltar
             </a>
             <a href="{% url 'auditoria:iso_auditoria_cronograma' auditoria.id %}" class="btn btn-outline-primary rounded-pill px-3 fw-bold shadow-2xs">
                 <i class="bi bi-calendar-event me-1"></i> Ver Cronograma
@@ -166,7 +166,7 @@
 
         <!-- Ações Mobile (d-flex d-md-none) -->
         <div class="d-flex d-md-none gap-2 align-items-center w-100 justify-content-between mt-1">
-            <a href="{% url 'auditoria:iso_auditoria_detail' auditoria.id %}" class="btn btn-outline-secondary rounded-pill px-3 fw-bold btn-sm">
+            <a href="{% url 'auditoria:iso_auditoria_list' %}" class="btn btn-outline-secondary rounded-pill px-3 fw-bold btn-sm">
                 <i class="bi bi-arrow-left me-1"></i> Voltar
             </a>
             <div class="dropdown">

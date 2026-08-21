@@ -19,14 +19,17 @@ def get_template_path() -> str:
     if not base_dir:
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     templates_dir = os.path.join(str(base_dir), 'auditoria', 'templates_excel')
-    os.makedirs(templates_dir, exist_ok=True)
+    try:
+        os.makedirs(templates_dir, exist_ok=True)
+    except OSError:
+        pass
     return os.path.join(templates_dir, 'checklist_norma_template.xlsx')
 
 
-def create_base_template_file(template_path: str):
+def create_base_template_workbook() -> openpyxl.Workbook:
     """
-    Gera um arquivo de template base inicial com formatações e fórmulas preservadas
-    nas abas 'Check-List' e 'Resultados'.
+    Gera um objeto openpyxl.Workbook base com formatações e fórmulas preservadas
+    nas abas 'Check-List' e 'Resultados' diretamente em memória.
     """
     wb = openpyxl.Workbook()
     
@@ -231,16 +234,28 @@ def create_base_template_file(template_path: str):
     card_val.alignment = Alignment(horizontal="center", vertical="center")
     card_val.fill = PatternFill(start_color="DCFCE7", end_color="DCFCE7", fill_type="solid")
 
-    wb.save(template_path)
-    return template_path
+    return wb
 
 
-def get_or_create_template_path() -> str:
-    """Obtém ou gera o template .xlsx."""
+def load_template_workbook() -> openpyxl.Workbook:
+    """
+    Carrega o template .xlsx se existir em disco;
+    caso contrário (ou se estiver em ambiente read-only como Vercel),
+    cria a estrutura base diretamente em memória.
+    """
     template_path = get_template_path()
-    if not os.path.exists(template_path):
-        create_base_template_file(template_path)
-    return template_path
+    if os.path.exists(template_path):
+        try:
+            return openpyxl.load_workbook(template_path, data_only=False)
+        except Exception:
+            pass
+
+    wb = create_base_template_workbook()
+    try:
+        wb.save(template_path)
+    except OSError:
+        pass
+    return wb
 
 
 def generate_auditoria_excel_buffer(auditoria) -> io.BytesIO:
@@ -254,9 +269,7 @@ def generate_auditoria_excel_buffer(auditoria) -> io.BytesIO:
         AvaliacaoFinalRequisitoIso,
     )
 
-    template_path = get_or_create_template_path()
-    # Carrega workbook sem avaliar fórmulas (data_only=False preserva as fórmulas)
-    wb = openpyxl.load_workbook(template_path, data_only=False)
+    wb = load_template_workbook()
 
     # Identifica a aba Check-List
     if "Check-List" in wb.sheetnames:
