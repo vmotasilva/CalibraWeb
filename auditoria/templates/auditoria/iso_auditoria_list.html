@@ -2,59 +2,155 @@
 {% load static %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Auditorias ISO 13485 (Modo Entrevista)</h2>
+<div class="container py-3 py-md-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-4">
+        <div>
+            <h2 class="fw-bold text-dark mb-1 fs-3 fs-md-2">
+                <i class="bi bi-shield-check text-primary me-2"></i>Auditorias ISO 13485 (Modo Entrevista)
+            </h2>
+            <p class="text-muted small mb-0">Gestão de entrevistas, matriz de requisitos, revisão e apresentação executiva</p>
+        </div>
     </div>
 
-    <div class="card shadow-sm">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0 align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Norma</th>
-                            <th>Data Prevista</th>
-                            <th>Status</th>
-                            <th class="text-end">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for aud in auditorias %}
-                        <tr>
-                            <td><strong>{{ aud.norma.codigo }}</strong></td>
-                            <td>{{ aud.data_inicio|date:"d/m/Y" }} a {{ aud.data_fim|date:"d/m/Y" }}</td>
-                            <td>
-                                {% if aud.status == 'PLANEJADA' %}
-                                    <span class="badge bg-secondary">Planejada</span>
-                                {% elif aud.status == 'EM_ANDAMENTO' %}
-                                    <span class="badge bg-primary">Em Andamento</span>
-                                {% else %}
-                                    <span class="badge bg-success">Concluída</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-end">
-                                <a href="{% url 'auditoria:iso_matriz_view' aud.id %}" class="btn btn-sm btn-outline-info" title="Ver Matriz Consolidada">
-                                    <i class="bi bi-grid-3x3"></i> Matriz
-                                </a>
-                                <a href="{% url 'auditoria:iso_auditoria_cronograma' aud.id %}" class="btn btn-sm btn-outline-secondary" title="Cronograma / Plano de Auditoria" target="_blank">
-                                    <i class="bi bi-calendar3"></i> Cronograma
-                                </a>
-                                <a href="{% url 'auditoria:iso_fechamento_presentation' aud.id %}" class="btn btn-sm btn-outline-dark" title="Gerar Apresentação de Fechamento" target="_blank"
-                                    {% if aud.status != 'CONCLUIDA' %}onclick="return confirm('A auditoria ainda não foi concluída. O relatório refletirá os dados parciais. Deseja continuar?');"{% endif %}>
-                                    <i class="bi bi-bar-chart-fill"></i> Fechamento
-                                </a>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="4" class="text-center text-muted py-4">Nenhuma auditoria cadastrada. Cadastre através do Admin.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+    <!-- ── LISTAGEM EM TABELA (DESKTOP) ── -->
+    <div class="d-none d-md-block">
+        <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Norma</th>
+                                <th>Período / Datas</th>
+                                <th>Status</th>
+                                <th class="text-end pe-4">Ações & Relatórios</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for aud in auditorias %}
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="fw-bold text-dark fs-6">{{ aud.norma.codigo }}</div>
+                                    <small class="text-muted">{{ aud.norma.titulo|default:"Sistema de Gestão" }}</small>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2 text-secondary small">
+                                        <i class="bi bi-calendar3 text-primary"></i>
+                                        <span>{{ aud.data_inicio|date:"d/m/Y" }} a {{ aud.data_fim|date:"d/m/Y" }}</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if aud.status == 'PLANEJADA' %}
+                                        <span class="badge bg-secondary rounded-pill px-3 py-1.5">Planejada</span>
+                                    {% elif aud.status == 'EM_ANDAMENTO' %}
+                                        <span class="badge bg-primary rounded-pill px-3 py-1.5">Em Andamento</span>
+                                    {% else %}
+                                        <span class="badge bg-success rounded-pill px-3 py-1.5">Concluída</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end pe-4">
+                                    <div class="btn-group shadow-2xs">
+                                        <a href="{% url 'auditoria:iso_matriz_view' aud.id %}" class="btn btn-sm btn-outline-info" title="Ver Matriz Consolidada">
+                                            <i class="bi bi-grid-3x3 me-1"></i> Matriz
+                                        </a>
+                                        <a href="{% url 'auditoria:iso_auditoria_cronograma' aud.id %}" class="btn btn-sm btn-outline-secondary" title="Cronograma / Plano de Auditoria" target="_blank">
+                                            <i class="bi bi-calendar3 me-1"></i> Cronograma
+                                        </a>
+                                        <a href="{% url 'auditoria:iso_revisao_dashboard' aud.id %}" class="btn btn-sm btn-outline-primary" title="Dashboard de Revisão & Heurística">
+                                            <i class="bi bi-ui-checks-grid me-1"></i> Revisão
+                                        </a>
+                                        <a href="{% url 'auditoria:iso_fechamento_presentation' aud.id %}" class="btn btn-sm btn-dark" title="Gerar Apresentação de Fechamento" target="_blank"
+                                            {% if aud.status != 'CONCLUIDA' %}onclick="return confirm('A auditoria ainda não foi concluída. O relatório refletirá os dados parciais. Deseja continuar?');"{% endif %}>
+                                            <i class="bi bi-easel-fill me-1"></i> Fechamento
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-5">
+                                    <i class="bi bi-inbox fs-2 d-block text-secondary mb-2"></i>
+                                    Nenhuma auditoria cadastrada. Cadastre através do painel de administração.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
+    </div>
+
+    <!-- ── LISTAGEM EM CARDS MODERNOS (MOBILE) ── -->
+    <div class="d-md-none d-flex flex-column gap-3">
+        {% for aud in auditorias %}
+        <div class="card shadow-sm border rounded-4 overflow-hidden">
+            <div class="card-header bg-white border-bottom p-3 d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-primary text-white font-monospace px-2.5 py-1 fs-6">
+                        {{ aud.norma.codigo }}
+                    </span>
+                </div>
+                <div>
+                    {% if aud.status == 'PLANEJADA' %}
+                        <span class="badge bg-secondary rounded-pill px-2.5 py-1 small">Planejada</span>
+                    {% elif aud.status == 'EM_ANDAMENTO' %}
+                        <span class="badge bg-primary rounded-pill px-2.5 py-1 small">Em Andamento</span>
+                    {% else %}
+                        <span class="badge bg-success rounded-pill px-2.5 py-1 small">Concluída</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-body p-3">
+                <div class="text-muted small mb-3">
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <i class="bi bi-calendar-event text-primary"></i>
+                        <span class="fw-semibold text-dark">Período:</span>
+                        <span>{{ aud.data_inicio|date:"d/m/Y" }} a {{ aud.data_fim|date:"d/m/Y" }}</span>
+                    </div>
+                    {% if aud.norma.titulo %}
+                    <div class="d-flex align-items-center gap-2 text-secondary">
+                        <i class="bi bi-bookmark text-secondary"></i>
+                        <span>{{ aud.norma.titulo }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="d-grid gap-2">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <a href="{% url 'auditoria:iso_matriz_view' aud.id %}" class="btn btn-outline-info btn-sm w-100 py-2 rounded-3 fw-semibold">
+                                <i class="bi bi-grid-3x3 me-1"></i> Matriz
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="{% url 'auditoria:iso_auditoria_cronograma' aud.id %}" class="btn btn-outline-secondary btn-sm w-100 py-2 rounded-3 fw-semibold" target="_blank">
+                                <i class="bi bi-calendar3 me-1"></i> Cronograma
+                            </a>
+                        </div>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <a href="{% url 'auditoria:iso_revisao_dashboard' aud.id %}" class="btn btn-outline-primary btn-sm w-100 py-2 rounded-3 fw-semibold">
+                                <i class="bi bi-ui-checks-grid me-1"></i> Revisão
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="{% url 'auditoria:iso_fechamento_presentation' aud.id %}" class="btn btn-dark btn-sm w-100 py-2 rounded-3 fw-semibold" target="_blank"
+                               {% if aud.status != 'CONCLUIDA' %}onclick="return confirm('A auditoria ainda não foi concluída. O relatório refletirá os dados parciais. Deseja continuar?');"{% endif %}>
+                                <i class="bi bi-easel-fill me-1"></i> Fechamento
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="p-4 text-center text-muted bg-white rounded-4 border">
+            <i class="bi bi-inbox fs-2 d-block text-secondary mb-2"></i>
+            Nenhuma auditoria cadastrada.
+        </div>
+        {% endfor %}
     </div>
 </div>
 {% endblock %}
