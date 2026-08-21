@@ -313,18 +313,26 @@
         <div class="tab-pane fade" id="ajustado" role="tabpanel" aria-labelledby="ajustado-tab">
             {% for data, agendas in cronograma_ajustado.items %}
                 <div class="bg-warning text-dark p-2 rounded-top fw-bold mt-4 print-header d-flex justify-content-between align-items-center">
-                    <div><i class="bi bi-tools me-2"></i> Data Ajustada: {{ data|date:"d/m/Y" }}</div>
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-tools"></i>
+                        <span>Data Ajustada: {{ data|date:"d/m/Y" }}</span>
+                    </div>
+                    <div class="no-print d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-sm btn-dark rounded-pill px-3 fw-bold shadow-2xs d-flex align-items-center gap-1" onclick="openCriarAtividadeAjustadaModal('{{ data|date:'Y-m-d' }}')">
+                            <i class="bi bi-plus-circle"></i> + Adicionar Atividade / Ajuste
+                        </button>
+                    </div>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-bordered align-middle mb-0 cronograma-table">
                         <thead class="table-light">
                             <tr>
-                                <th width="12%">Horário Real/Ajustado</th>
+                                <th width="14%">Horário Real/Ajustado</th>
                                 <th width="20%">Área / Processo</th>
                                 <th width="auto">Auditor(es)</th>
                                 <th width="auto">Representante</th>
-                                <th width="35%">Requisitos Ref.</th>
-                                <th width="8%" class="no-print text-end">Ações</th>
+                                <th width="33%">Requisitos Ref.</th>
+                                <th width="10%" class="no-print text-end">Ações</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -393,10 +401,23 @@
                                     {% endif %}
                                 {% else %}
                                     <tr class="{% if agenda.concluida %}table-success opacity-75{% endif %}">
-                                        <td class="fw-semibold text-center align-middle">
-                                            {% if agenda.hora_inicio_real %}{{ agenda.hora_inicio_real|time:"H:i" }}{% else %}{{ agenda.hora_inicio|time:"H:i" }}{% endif %}
-                                            <br><small class="text-muted">às</small><br>
-                                            {% if agenda.hora_fim_real %}{{ agenda.hora_fim_real|time:"H:i" }}{% else %}{{ agenda.hora_fim|time:"H:i" }}{% endif %}
+                                        <td class="fw-semibold text-center align-middle cursor-pointer td-datetime" 
+                                            onclick="openAjustarHorarioModal({{ agenda.id }}, '{{ agenda.titulo|escapejs }}', '{{ agenda.data_real|default:agenda.data|date:'Y-m-d' }}', '{{ agenda.hora_inicio_real|default:agenda.hora_inicio|time:'H:i' }}', '{{ agenda.hora_fim_real|default:agenda.hora_fim|time:'H:i' }}', '{{ agenda.data|date:'Y-m-d' }}', '{{ agenda.hora_inicio|time:'H:i' }}', '{{ agenda.hora_fim|time:'H:i' }}', {{ agenda.concluida|yesno:'true,false' }})"
+                                            title="Clique para ajustar data e horário real de execução">
+                                            <div class="d-inline-flex flex-column align-items-center">
+                                                <span>
+                                                    {% if agenda.hora_inicio_real %}{{ agenda.hora_inicio_real|time:"H:i" }}{% else %}{{ agenda.hora_inicio|time:"H:i" }}{% endif %}
+                                                    <small class="text-muted">às</small>
+                                                    {% if agenda.hora_fim_real %}{{ agenda.hora_fim_real|time:"H:i" }}{% else %}{{ agenda.hora_fim|time:"H:i" }}{% endif %}
+                                                    <i class="bi bi-pencil-square text-primary no-print ms-1" style="font-size: 0.75rem;"></i>
+                                                </span>
+                                                {% if agenda.hora_inicio_real or agenda.hora_fim_real or agenda.data_real %}
+                                                    <span class="badge bg-warning text-dark border border-warning-subtle rounded-pill mt-0.5 no-print" style="font-size: 0.65rem;">
+                                                        <i class="bi bi-clock-history"></i> Ajustado
+                                                    </span>
+                                                    <small class="text-muted fst-italic no-print" style="font-size: 0.68rem;">(Prev: {{ agenda.hora_inicio|time:"H:i" }}-{{ agenda.hora_fim|time:"H:i" }})</small>
+                                                {% endif %}
+                                            </div>
                                         </td>
                                         <td class="align-middle">
                                             <strong class="{% if agenda.concluida %}text-decoration-line-through text-muted{% endif %}">{{ agenda.titulo }}</strong>
@@ -439,7 +460,12 @@
                                             </div>
                                         </td>
                                         <td class="no-print text-end align-middle">
-                                            <div class="d-flex gap-1 justify-content-end">
+                                            <div class="d-flex gap-1 justify-content-end align-items-center">
+                                                <button type="button" class="btn btn-sm btn-outline-warning text-dark shadow-2xs" 
+                                                        onclick="openAjustarHorarioModal({{ agenda.id }}, '{{ agenda.titulo|escapejs }}', '{{ agenda.data_real|default:agenda.data|date:'Y-m-d' }}', '{{ agenda.hora_inicio_real|default:agenda.hora_inicio|time:'H:i' }}', '{{ agenda.hora_fim_real|default:agenda.hora_fim|time:'H:i' }}', '{{ agenda.data|date:'Y-m-d' }}', '{{ agenda.hora_inicio|time:'H:i' }}', '{{ agenda.hora_fim|time:'H:i' }}', {{ agenda.concluida|yesno:'true,false' }})"
+                                                        title="Ajustar data e horário real de execução">
+                                                    <i class="bi bi-clock-history"></i>
+                                                </button>
                                                 <a href="{% url 'auditoria:iso_entrevista_view' auditoria.id %}?agenda_id={{ agenda.id }}" class="btn btn-sm btn-outline-primary" title="Ir para a Entrevista Deste Bloco">
                                                     <i class="bi bi-play-circle"></i>
                                                 </a>
@@ -449,6 +475,14 @@
                                                         <i class="bi bi-check2-all"></i>
                                                     </button>
                                                 </form>
+                                                {% if not agenda.modelo_base %}
+                                                <form method="POST" action="{% url 'auditoria:api_iso_agenda_excluir_ajustada' auditoria.id agenda.id %}" style="display:inline;" onsubmit="return confirm('Deseja realmente remover esta atividade ajustada?');">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Remover atividade do cronograma">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </form>
+                                                {% endif %}
                                             </div>
                                         </td>
                                     </tr>
@@ -1019,8 +1053,246 @@
     </div>
 </div>
 
+<!-- Modal Ajustar Horário / Data Real de Execução -->
+<div class="modal fade" id="modalAjustarHorarioReal" tabindex="-1" aria-hidden="true" style="z-index: 10070;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-warning text-dark py-3 px-4 border-0">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="bg-dark bg-opacity-10 rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                        <i class="bi bi-clock-history fs-5"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0">Ajustar Cronograma Real / Execução</h5>
+                        <small class="text-muted">Ajuste de horário e data conforme a necessidade da auditoria</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <input type="hidden" id="ahr_agenda_id">
+                
+                <div class="bg-white p-3 rounded-3 border mb-3 shadow-2xs">
+                    <small class="text-muted fw-bold text-uppercase d-block mb-1 font-monospace" style="font-size: 0.72rem;">Atividade / Processo Auditado:</small>
+                    <div class="text-dark fw-bold fs-6" id="ahr_bloco_nome">Nome do Bloco</div>
+                    <div class="text-secondary small mt-1" id="ahr_previsao_original">Previsão Planejada: --:-- às --:--</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-dark small"><i class="bi bi-calendar-event me-1 text-warning"></i>Data Real / Ajustada</label>
+                    <input type="date" id="ahr_data_real" class="form-control shadow-2xs">
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label fw-bold text-dark small"><i class="bi bi-play-circle me-1 text-primary"></i>Início Real</label>
+                        <div class="input-group input-group-sm">
+                            <input type="time" id="ahr_hora_inicio_real" class="form-control shadow-2xs">
+                            <button type="button" class="btn btn-outline-secondary" onclick="setHorarioRealAgora('inicio')" title="Definir horário atual">
+                                <i class="bi bi-clock"></i> Agora
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-bold text-dark small"><i class="bi bi-stop-circle me-1 text-danger"></i>Término Real</label>
+                        <div class="input-group input-group-sm">
+                            <input type="time" id="ahr_hora_fim_real" class="form-control shadow-2xs">
+                            <button type="button" class="btn btn-outline-secondary" onclick="setHorarioRealAgora('fim')" title="Definir horário atual">
+                                <i class="bi bi-clock"></i> Agora
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-check p-3 bg-white border rounded-3 shadow-2xs mb-2">
+                    <input class="form-check-input ms-0 me-2" type="checkbox" id="ahr_marcar_concluida">
+                    <label class="form-check-label fw-semibold text-dark small" for="ahr_marcar_concluida">
+                        <i class="bi bi-check2-all text-success me-1"></i> Marcar etapa como concluída após salvar
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer bg-white border-top p-3 d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3" onclick="salvarAjusteHorarioReal(true)" title="Limpar ajustes e voltar para a previsão original planejada">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i> Restaurar Planejado
+                </button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-warning text-dark fw-bold rounded-pill px-4 shadow-sm" id="btnSalvarAjusteHorario" onclick="salvarAjusteHorarioReal(false)">
+                        <i class="bi bi-check2-circle me-1"></i> Salvar Ajuste
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Adicionar Atividade no Cronograma Ajustado -->
+<div class="modal fade" id="modalCriarAtividadeAjustada" tabindex="-1" aria-hidden="true" style="z-index: 10070;">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <form method="POST" action="{% url 'auditoria:api_iso_agenda_criar_ajustada' auditoria.id %}">
+                {% csrf_token %}
+                <div class="modal-header text-white py-3 px-4 border-0" style="background: linear-gradient(135deg, #0B2545 0%, #134074 100%);">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="bg-white bg-opacity-20 rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                            <i class="bi bi-plus-circle fs-5 text-white"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold mb-0 text-white">+ Nova Atividade no Cronograma Ajustado</h5>
+                            <small class="text-white-50">Adicione uma etapa, entrevista complementar ou ajuste de escopo</small>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body p-4 bg-light">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark small"><i class="bi bi-tag-fill me-1 text-primary"></i>Título da Atividade / Área Auditada <span class="text-danger">*</span></label>
+                        <input type="text" name="titulo" class="form-control form-control-lg fs-6 shadow-2xs" required placeholder="Ex: Entrevista Extraordinária de Almoxarifado, Verificação de Ação Corretiva...">
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-dark small"><i class="bi bi-calendar-event me-1 text-primary"></i>Data</label>
+                            <input type="date" name="data_real" id="caa_data_real" class="form-control shadow-2xs" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-dark small"><i class="bi bi-clock me-1 text-primary"></i>Hora Início</label>
+                            <input type="time" name="hora_inicio_real" class="form-control shadow-2xs" placeholder="09:00">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-dark small"><i class="bi bi-clock-history me-1 text-primary"></i>Hora Término</label>
+                            <input type="time" name="hora_fim_real" class="form-control shadow-2xs" placeholder="10:30">
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark small"><i class="bi bi-person-badge me-1 text-primary"></i>Auditor(es)</label>
+                            <input type="text" name="auditores_nomes" class="form-control shadow-2xs" placeholder="Ex: Vinícius">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark small"><i class="bi bi-people me-1 text-primary"></i>Representante(s) Auditado(s)</label>
+                            <input type="text" name="representantes" class="form-control shadow-2xs" placeholder="Ex: Carlos (Gestor), Ana (Operação)">
+                        </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label fw-bold text-dark small"><i class="bi bi-card-checklist me-1 text-primary"></i>Requisitos da Norma Vinculados (Opcional)</label>
+                        <div class="p-3 bg-white rounded-3 border shadow-2xs" style="max-height: 160px; overflow-y: auto;">
+                            <div class="row g-2">
+                                {% for it in itens_norma_todos %}
+                                <div class="col-6 col-md-4 col-lg-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="itens_norma" value="{{ it.id }}" id="caa_it_{{ it.id }}">
+                                        <label class="form-check-label font-monospace small" for="caa_it_{{ it.id }}" title="{{ it.titulo }}">
+                                            <strong>{{ it.referencia }}</strong>
+                                        </label>
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <div class="col-12 text-muted small">Todos os requisitos da norma já estão vinculados.</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-white border-top p-3 d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">
+                        <i class="bi bi-plus-circle me-1"></i> Adicionar Atividade
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
 let currentTags = { qea: [], qer: [] };
+
+function openAjustarHorarioModal(agendaId, titulo, dataReal, horaInicioReal, horaFimReal, dataPlan, horaInicioPlan, horaFimPlan, concluida) {
+    document.getElementById('ahr_agenda_id').value = agendaId;
+    document.getElementById('ahr_bloco_nome').textContent = titulo || 'Etapa de Auditoria';
+    
+    const prevText = `Previsão Planejada: ${dataPlan || '--/--/----'} • ${horaInicioPlan || '--:--'} às ${horaFimPlan || '--:--'}`;
+    document.getElementById('ahr_previsao_original').textContent = prevText;
+    
+    document.getElementById('ahr_data_real').value = dataReal || dataPlan || '';
+    document.getElementById('ahr_hora_inicio_real').value = horaInicioReal || horaInicioPlan || '';
+    document.getElementById('ahr_hora_fim_real').value = horaFimReal || horaFimPlan || '';
+    document.getElementById('ahr_marcar_concluida').checked = !!concluida;
+    
+    const modalEl = document.getElementById('modalAjustarHorarioReal');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+}
+
+function setHorarioRealAgora(tipo) {
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const timeStr = `${hours}:${minutes}`;
+    
+    if (tipo === 'inicio') {
+        document.getElementById('ahr_hora_inicio_real').value = timeStr;
+    } else if (tipo === 'fim') {
+        document.getElementById('ahr_hora_fim_real').value = timeStr;
+    }
+}
+
+async function salvarAjusteHorarioReal(restaurar = false) {
+    const agendaId = document.getElementById('ahr_agenda_id').value;
+    if (!agendaId) return;
+    
+    const btn = document.getElementById('btnSalvarAjusteHorario');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Salvando...';
+    btn.disabled = true;
+
+    const formData = new FormData();
+    formData.append('agenda_id', agendaId);
+    if (restaurar) {
+        formData.append('restaurar_planejado', 'true');
+    } else {
+        formData.append('data_real', document.getElementById('ahr_data_real').value);
+        formData.append('hora_inicio_real', document.getElementById('ahr_hora_inicio_real').value);
+        formData.append('hora_fim_real', document.getElementById('ahr_hora_fim_real').value);
+        formData.append('marcar_concluida', document.getElementById('ahr_marcar_concluida').checked ? 'true' : 'false');
+    }
+
+    try {
+        const response = await fetch('{% url "auditoria:api_iso_agenda_ajustar_horario" auditoria.id %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData
+        });
+        const data = await response.json();
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert(data.error || 'Erro ao salvar o ajuste de horário.');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    } catch (err) {
+        console.error('Erro ao ajustar horário:', err);
+        alert('Erro de comunicação ao salvar o ajuste.');
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+function openCriarAtividadeAjustadaModal(dataPadrao) {
+    if (dataPadrao) {
+        document.getElementById('caa_data_real').value = dataPadrao;
+    }
+    const modalEl = document.getElementById('modalCriarAtividadeAjustada');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+}
 
 function renderTags(prefix) {
     const listEl = document.getElementById(prefix + '_list');

@@ -6223,6 +6223,8 @@ def iso_auditoria_cronograma(request, auditoria_id):
     total_atendidas_c = sum(1 for s in solicitacoes_atendidas if s['conclusao'] == 'C')
     total_atendidas_na = sum(1 for s in solicitacoes_atendidas if s['conclusao'] == 'NA')
 
+    itens_norma_todos = list(ItemNorma.objects.filter(norma=auditoria.norma).order_by('ordem', 'referencia'))
+
     context = {
         'auditoria': auditoria,
         'cronograma_planejado': planejado_com_gaps,
@@ -6241,6 +6243,7 @@ def iso_auditoria_cronograma(request, auditoria_id):
         'total_atendidas_c': total_atendidas_c,
         'total_atendidas_na': total_atendidas_na,
         'total_solicitacoes_todas': total_solicitacoes_todas,
+        'itens_norma_todos': itens_norma_todos,
     }
     return render(request, 'auditoria/iso/setup/cronograma_impressao.html', context)
 
@@ -6309,6 +6312,145 @@ def api_iso_agenda_quick_edit(request, auditoria_id):
             ag.save(update_fields=['representantes'])
             
     return JsonResponse({'success': True, 'message': 'Preenchimento rápido salvo com sucesso.'})
+
+@login_required
+@require_POST
+def api_iso_agenda_ajustar_horario(request, auditoria_id):
+    """
+    Salva o ajuste dinâmico de cronograma na Visão Real/Ajustada.
+    Permite alterar data_real, hora_inicio_real, hora_fim_real ou restaurar ao planejado.
+    """
+    from .models import AgendaAuditoriaIso, AuditoriaIso
+    from django.http import JsonResponse
+    from datetime import datetime
+
+    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+    agenda_id = request.POST.get('agenda_id')
+    restaurar_planejado = request.POST.get('restaurar_planejado') == 'true'
+
+    if agenda_id in ['abertura', 'revisao', 'encerramento']:
+        return JsonResponse({'success': True, 'message': 'Evento de cerimônia mantido.'})
+
+    agenda = get_object_or_404(AgendaAuditoriaIso, auditoria=auditoria, pk=agenda_id)
+
+    if restaurar_planejado:
+        agenda.data_real = None
+        agenda.hora_inicio_real = None
+        agenda.hora_fim_real = None
+        agenda.save(update_fields=['data_real', 'hora_inicio_real', 'hora_fim_real'])
+        return JsonResponse({'success': True, 'message': 'Horário restaurado para a previsão planejada.'})
+
+    data_real_str = request.POST.get('data_real', '').strip()
+    hora_inicio_real_str = request.POST.get('hora_inicio_real', '').strip()
+    hora_fim_real_str = request.POST.get('hora_fim_real', '').strip()
+    marcar_concluida = request.POST.get('marcar_concluida') == 'true'
+
+    if data_real_str:
+        try:
+            agenda.data_real = datetime.strptime(data_real_str, '%Y-%m-%d').date()
+        except ValueError:
+            pass
+
+    if hora_inicio_real_str:
+        try:
+            agenda.hora_inicio_real = datetime.strptime(hora_inicio_real_str, '%H:%M').time()
+        except ValueError:
+            pass
+    elif hora_inicio_real_str == '':
+        agenda.hora_inicio_real = None
+
+    if hora_fim_real_str:
+        try:
+            agenda.hora_fim_real = datetime.strptime(hora_fim_real_str, '%H:%M').time()
+        except ValueError:
+            pass
+    elif hora_fim_real_str == '':
+        agenda.hora_fim_real = None
+
+    if marcar_concluida:
+        agenda.concluida = True
+
+    agenda.save()
+    return JsonResponse({'success': True, 'message': 'Horário ajustado com sucesso no cronograma real.'})
+
+@login_required
+@require_POST
+def api_iso_agenda_criar_ajustada(request, auditoria_id):
+    """
+    Cria uma nova atividade/etapa dinâmica diretamente no cronograma ajustado.
+    """
+    from .models import AgendaAuditoriaIso, AuditoriaIso, ItemNorma
+    from datetime import datetime
+
+    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+    titulo = request.POST.get('titulo', '').strip()
+    if not titulo:
+        messages.error(request, 'O título da atividade ajustada é obrigatório.')
+        return redirect('auditoria:iso_auditoria_cronograma', auditoria_id=auditoria_id)
+
+    data_str = request.POST.get('data_real', '').strip()
+    hora_inicio_str = request.POST.get('hora_inicio_real', '').strip()
+    hora_fim_str = request.POST.get('hora_fim_real', '').strip()
+    auditores_nomes = request.POST.get('auditores_nomes', '').strip()
+    representantes = request.POST.get('representantes', '').strip()
+    itens_ids = request.POST.getlist('itens_norma')
+
+    data_obj = None
+    if data_str:
+        try:
+            data_obj = datetime.strptime(data_str, '%Y-%m-%d').date()
+        except ValueError:
+            data_obj = auditoria.data_inicio
+    else:
+        data_obj = auditoria.data_inicio
+
+    hora_inicio_obj = None
+    if hora_inicio_str:
+        try:
+            hora_inicio_obj = datetime.strptime(hora_inicio_str, '%H:%M').time()
+        except ValueError:
+            pass
+
+    hora_fim_obj = None
+    if hora_fim_str:
+        try:
+            hora_fim_obj = datetime.strptime(hora_fim_str, '%H:%M').time()
+        except ValueError:
+            pass
+
+    nova_agenda = AgendaAuditoriaIso.objects.create(
+        auditoria=auditoria,
+        titulo=titulo,
+        data=data_obj,
+        data_real=data_obj,
+        hora_inicio=hora_inicio_obj,
+        hora_inicio_real=hora_inicio_obj,
+        hora_fim=hora_fim_obj,
+        hora_fim_real=hora_fim_obj,
+        auditores_nomes=auditores_nomes,
+        representantes=representantes,
+    )
+
+    if itens_ids:
+        itens = ItemNorma.objects.filter(id__in=itens_ids, norma=auditoria.norma)
+        nova_agenda.itens_norma.set(itens)
+
+    messages.success(request, f"Atividade '{titulo}' adicionada ao cronograma ajustado.")
+    return redirect('auditoria:iso_auditoria_cronograma', auditoria_id=auditoria_id)
+
+@login_required
+@require_POST
+def api_iso_agenda_excluir_ajustada(request, auditoria_id, pk):
+    """
+    Remove uma atividade do cronograma.
+    """
+    from .models import AgendaAuditoriaIso, AuditoriaIso
+    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+    agenda = get_object_or_404(AgendaAuditoriaIso, auditoria=auditoria, pk=pk)
+    titulo = agenda.titulo
+    agenda.delete()
+    messages.success(request, f"Atividade '{titulo}' removida do cronograma.")
+    return redirect('auditoria:iso_auditoria_cronograma', auditoria_id=auditoria_id)
 
 @login_required
 @require_POST
