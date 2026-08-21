@@ -6202,6 +6202,20 @@ def iso_agenda_toggle_conclusao(request, auditoria_id, pk):
 
 @login_required
 @require_POST
+def iso_auditoria_toggle_conclusao(request, auditoria_id):
+    from .models import AuditoriaIso
+    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+    if auditoria.status == "CONCLUIDA":
+        auditoria.status = "EM_ANDAMENTO"
+        messages.info(request, f"Status da auditoria '{auditoria.norma.codigo}' alterado para Em Andamento.")
+    else:
+        auditoria.status = "CONCLUIDA"
+        messages.success(request, f"Auditoria '{auditoria.norma.codigo}' marcada como Concluída com sucesso!")
+    auditoria.save()
+    return redirect('auditoria:iso_auditoria_cronograma', auditoria_id=auditoria_id)
+
+@login_required
+@require_POST
 def api_iso_agenda_quick_edit(request, auditoria_id):
     from .models import AgendaAuditoriaIso, AuditoriaIso
     from django.http import JsonResponse

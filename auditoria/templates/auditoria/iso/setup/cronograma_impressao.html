@@ -171,12 +171,15 @@
                             {% for agenda in agendas %}
                                 {% if agenda.is_gap %}
                                     {% if agenda.special_type %}
-                                        <tr class="table-secondary text-muted">
+                                        <tr class="table-secondary text-muted {% if agenda.special_type == 'encerramento' and auditoria.status == 'CONCLUIDA' %}table-success opacity-75{% endif %}">
                                             <td class="fw-semibold text-center align-middle td-datetime">
                                                 {{ agenda.hora_inicio|time:"H:i" }} <br><small>às</small><br> {{ agenda.hora_fim|time:"H:i" }}
                                             </td>
                                             <td class="align-middle fst-italic">
                                                 <i class="bi bi-calendar-event me-1"></i> {{ agenda.titulo }}
+                                                {% if agenda.special_type == 'encerramento' and auditoria.status == 'CONCLUIDA' %}
+                                                    <span class="badge bg-success ms-2"><i class="bi bi-check-circle me-1"></i> Concluído</span>
+                                                {% endif %}
                                             </td>
                                             <td class="align-middle cursor-pointer" onclick="openQuickEditAuditor('{{ agenda.special_type }}', '{{ agenda.auditores_nomes|default:'' }}')">
                                                 <small class="text-muted">{{ agenda.auditores_nomes|default:"Equipe" }}</small>
@@ -194,6 +197,13 @@
                                                 <a href="{% url 'auditoria:iso_revisao_dashboard' auditoria.id %}" class="btn btn-sm btn-outline-primary" title="Ir para Revisão da Auditoria">
                                                     <i class="bi bi-play-circle"></i>
                                                 </a>
+                                                {% elif agenda.special_type == 'encerramento' %}
+                                                <form method="POST" action="{% url 'auditoria:iso_auditoria_toggle_conclusao' auditoria.id %}" style="display:inline;">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm {% if auditoria.status == 'CONCLUIDA' %}btn-success{% else %}btn-outline-success{% endif %}" title="{% if auditoria.status == 'CONCLUIDA' %}Auditoria Concluída (Clique para reabrir){% else %}Mudar status para Concluído{% endif %}">
+                                                        <i class="bi bi-check-circle{% if auditoria.status == 'CONCLUIDA' %}-fill{% endif %}"></i>
+                                                    </button>
+                                                </form>
                                                 {% endif %}
                                             </td>
                                         </tr>
@@ -314,12 +324,15 @@
                             {% for agenda in agendas %}
                                 {% if agenda.is_gap %}
                                     {% if agenda.special_type %}
-                                        <tr class="table-secondary text-muted">
+                                        <tr class="table-secondary text-muted {% if agenda.special_type == 'encerramento' and auditoria.status == 'CONCLUIDA' %}table-success opacity-75{% endif %}">
                                             <td class="fw-semibold text-center align-middle td-datetime">
                                                 {{ agenda.hora_inicio|time:"H:i" }} <br><small>às</small><br> {{ agenda.hora_fim|time:"H:i" }}
                                             </td>
                                             <td class="align-middle fst-italic">
                                                 <i class="bi bi-calendar-event me-1"></i> {{ agenda.titulo }}
+                                                {% if agenda.special_type == 'encerramento' and auditoria.status == 'CONCLUIDA' %}
+                                                    <span class="badge bg-success ms-2"><i class="bi bi-check-circle me-1"></i> Concluído</span>
+                                                {% endif %}
                                             </td>
                                             <td class="align-middle cursor-pointer" onclick="openQuickEditAuditor('{{ agenda.special_type }}', '{{ agenda.auditores_nomes|default:'' }}')">
                                                 <small class="text-muted">{{ agenda.auditores_nomes|default:"Equipe" }}</small>
@@ -337,6 +350,13 @@
                                                 <a href="{% url 'auditoria:iso_revisao_dashboard' auditoria.id %}" class="btn btn-sm btn-outline-primary" title="Ir para Revisão da Auditoria">
                                                     <i class="bi bi-play-circle"></i>
                                                 </a>
+                                                {% elif agenda.special_type == 'encerramento' %}
+                                                <form method="POST" action="{% url 'auditoria:iso_auditoria_toggle_conclusao' auditoria.id %}" style="display:inline;">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm {% if auditoria.status == 'CONCLUIDA' %}btn-success{% else %}btn-outline-success{% endif %}" title="{% if auditoria.status == 'CONCLUIDA' %}Auditoria Concluída (Clique para reabrir){% else %}Mudar status para Concluído{% endif %}">
+                                                        <i class="bi bi-check-circle{% if auditoria.status == 'CONCLUIDA' %}-fill{% endif %}"></i>
+                                                    </button>
+                                                </form>
                                                 {% endif %}
                                             </td>
                                         </tr>
