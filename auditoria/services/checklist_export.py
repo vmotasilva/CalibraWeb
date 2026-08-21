@@ -335,7 +335,7 @@ def load_template_workbook() -> openpyxl.Workbook:
 
 def generate_auditoria_excel_buffer(auditoria) -> io.BytesIO:
     """
-    Lê o arquivo .xlsx de template e injeta os dados da auditoria nas células
+    Lê o arquivo .xlsx de template (da Norma ou template mestre) e injeta os dados da auditoria nas células
     especificadas, preservando fórmulas, gráficos e estrutura da aba Resultados.
     """
     from ..models import (
@@ -344,7 +344,24 @@ def generate_auditoria_excel_buffer(auditoria) -> io.BytesIO:
         AvaliacaoFinalRequisitoIso,
     )
 
-    wb = load_template_workbook()
+    norma = auditoria.norma
+    wb = None
+
+    if norma.template_xlsx and norma.template_xlsx.name:
+        try:
+            wb = openpyxl.load_workbook(norma.template_xlsx.path)
+        except Exception:
+            try:
+                norma.template_xlsx.open('rb')
+                wb = openpyxl.load_workbook(norma.template_xlsx.file)
+            except Exception:
+                wb = None
+
+    if wb is None:
+        wb = load_template_workbook()
+
+    if wb is None:
+        raise ValueError("Nenhum template encontrado. Solicite ao administrador que faça o upload na aba Modelos (Uploads).")
 
     # Identifica a aba Check-List
     if "Check-List" in wb.sheetnames:

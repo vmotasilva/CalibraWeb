@@ -870,19 +870,36 @@ def populate_gaps_table_loop(table, gaps_list: List[Dict[str, Any]]):
 def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
     """
     Motor principal de exportação do Relatório de Auditoria Interna DOCX.
-    Utiliza Template Injection com layout EssilorLuxottica (GQS-POL-017),
-    cálculo rigoroso de métricas (zero-bug fix), injeção de Exclusões Justificadas,
+    Utiliza Template Engine com injeção de dados no arquivo .docx cadastrado na Norma,
+    com fallback automático para o template mestre da aplicação, injeção de Exclusões Justificadas,
     Síntese Narrativa WYSIWYG e Table Row Looping para os Gaps da auditoria.
     """
-    # 1. Assegura que o template base existe no disco
-    template_path = ensure_master_template_docx_exists()
-    doc = Document(template_path)
+    # 1. Obtém o template da norma ou template mestre
+    norma = auditoria.norma
+    doc = None
+
+    if norma.template_docx and norma.template_docx.name:
+        try:
+            doc = Document(norma.template_docx.path)
+        except Exception:
+            try:
+                norma.template_docx.open('rb')
+                doc = Document(norma.template_docx.file)
+            except Exception:
+                doc = None
+
+    if doc is None:
+        template_path = ensure_master_template_docx_exists()
+        if template_path and os.path.exists(template_path):
+            doc = Document(template_path)
+        else:
+            raise ValueError("Nenhum template encontrado. Solicite ao administrador que faça o upload na aba Modelos (Uploads).")
 
     # 2. Extrai métricas consolidadas e listas de dados
     dados = compute_auditoria_metricas_completas(auditoria)
 
     # 3. Formata variáveis de cabeçalho e metadados
-    unidade_str = getattr(auditoria, 'empresa_auditada', '') or "Tecnolens"
+    unidade_str = getattr(auditoria, 'empresa_auditada', '') or "Unidade Auditada"
     auditores_list = [a.get_full_name() or a.username for a in auditoria.auditores.all()]
     auditores_str = ", ".join(auditores_list) if auditores_list else (auditoria.abertura_auditores or "Equipe Auditora Designada")
     
@@ -891,7 +908,7 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
     datas_str = f"{dt_ini} a {dt_fim}" if (dt_ini and dt_fim and dt_ini != dt_fim) else (dt_ini or dt_fim or "Em andamento")
     rep_str = auditoria.encerramento_representantes or auditoria.abertura_representantes or "Representantes da Unidade Auditada"
     norma_desc = getattr(auditoria.norma, 'descricao', '') or ''
-    escopo_str = f"{auditoria.norma.codigo}" + (f" - {norma_desc}" if norma_desc else " - Sistema de Gestão da Qualidade")
+    escopo_str = getattr(auditoria, 'escopo', '') or (f"{auditoria.norma.codigo}" + (f" - {norma_desc}" if norma_desc else " - Sistema de Gestão da Qualidade"))
 
     conclusao_custom = getattr(auditoria, 'conclusao_texto', '') or ""
     if not conclusao_custom:
@@ -901,9 +918,11 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
             "Recomenda-se o acompanhamento dos prazos de implementação dos planos de ação para as oportunidades identificadas."
         )
 
-    # Dicionário de Injeção de Tags
+    # Dicionário de Injeção de Tags (com sinônimos suportados)
     tag_dict = {
         '{{unidade}}': unidade_str,
+        '{{nome_unidade}}': unidade_str,
+        '{{empresa_auditada}}': unidade_str,
         '{{norma_codigo}}': auditoria.norma.codigo,
         '{{norma_descricao}}': norma_desc or "Sistema de Gestão da Qualidade",
         '{{escopo}}': escopo_str,
@@ -911,6 +930,9 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
         '{{data_fim}}': dt_fim,
         '{{data_auditoria}}': datas_str,
         '{{auditores}}': auditores_str,
+        '{{nome_auditor}}': auditores_str,
+        '{{auditor_lider}}': auditores_str,
+        '{{equipe_auditora}}': auditores_str,
         '{{representantes}}': rep_str,
         '{{status}}': auditoria.get_status_display() if hasattr(auditoria, 'get_status_display') else "Concluída",
         '{{data_relatorio}}': dt_fim or dt_ini or "Hoje",
@@ -931,8 +953,11 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
         '{{pct_na}}': str(dados['pct_na']),
         '{{total_avaliados}}': str(dados['total_avaliados']),
         '{{pct_conformidade}}': str(dados['pct_conformidade']),
+        '{{taxa_conformidade}}': f"{dados['pct_conformidade']}%",
         '{{veredito_status}}': dados['veredito_status'],
         '{{veredito_parecer}}': dados['veredito_parecer'],
+        '{{parecer_conclusao}}': dados['veredito_parecer'],
+        '{{conclusao_parecer}}': dados['veredito_parecer'],
         '{{conclusao_texto}}': conclusao_custom,
     }
 

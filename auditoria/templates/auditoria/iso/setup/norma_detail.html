@@ -90,6 +90,11 @@
                 <i class="bi bi-shield-check me-1"></i> 🛡️ ⚖️ Regras de Aprovação
             </button>
         </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link {% if active_tab == 'uploads' %}active{% endif %} fw-semibold" id="uploads-tab" data-bs-toggle="tab" data-bs-target="#uploads" type="button" role="tab">
+                <i class="bi bi-cloud-arrow-up-fill me-1 text-primary"></i> Modelos (Uploads)
+            </button>
+        </li>
     </ul>
 
     <div class="tab-content" id="normaTabsContent">
@@ -497,19 +502,437 @@
                             </div>
                         </div>
 
-                        <!-- 3. Botão de Ação -->
-                        <div class="d-flex justify-content-end align-items-center pt-3 border-top">
-                            <button type="submit" class="btn btn-primary btn-lg rounded-pill px-5 py-2.5 fw-bold shadow">
-                                <i class="bi bi-check-circle-fill me-2"></i> Salvar Regras de Aprovação
-                            </button>
+        <!-- MODELOS (UPLOADS) TAB -->
+        <div class="tab-pane fade {% if active_tab == 'uploads' %}show active{% endif %}" id="uploads" role="tabpanel">
+            <div class="row g-4">
+                <!-- Coluna Esquerda: Blocos de Upload DOCX e XLSX -->
+                <div class="col-lg-7">
+                    
+                    <!-- Banner Informativo -->
+                    <div class="p-3.5 bg-white rounded-4 border shadow-2xs mb-4">
+                        <div class="d-flex align-items-start gap-3">
+                            <div class="p-2.5 bg-primary bg-opacity-10 text-primary rounded-circle flex-shrink-0">
+                                <i class="bi bi-cpu-fill fs-4"></i>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold text-dark mb-1">Motor de Exportação Baseado em Template Engine</h6>
+                                <p class="text-secondary small mb-0" style="line-height: 1.45;">
+                                    Suba os modelos oficiais da sua organização com as tags correspondentes. Quando o auditor exportar o relatório, o sistema injetará automaticamente todos os dados, métricas, imagens e tabelas no layout configurado.
+                                </p>
+                            </div>
                         </div>
-                    </form>
+                    </div>
+
+                    <!-- Bloco 1: Template de Relatório Executivo (.docx) -->
+                    <div class="card shadow-sm border-0 rounded-4 overflow-hidden mb-4">
+                        <div class="card-header bg-white py-3 px-4 border-0 d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="bi bi-file-earmark-word-fill text-primary fs-4"></i>
+                                <div>
+                                    <h6 class="fw-bold text-dark mb-0">Template de Relatório Executivo (.docx)</h6>
+                                    <small class="text-muted">Documento Word oficial com timbre, cabeçalho e formatações corporativas</small>
+                                </div>
+                            </div>
+                            {% if norma.template_docx %}
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3 py-1.5 font-monospace fw-bold">
+                                <i class="bi bi-check2-circle me-1"></i>Template Ativo
+                            </span>
+                            {% else %}
+                            <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 rounded-pill px-3 py-1.5 font-monospace">
+                                Padrão do Sistema
+                            </span>
+                            {% endif %}
+                        </div>
+                        <div class="card-body p-4 pt-2">
+                            {% if norma.template_docx %}
+                            <!-- Informações do Arquivo Atual -->
+                            <div class="p-3.5 bg-light rounded-4 border mb-3">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="p-2.5 rounded-3 bg-white border text-primary shadow-2xs">
+                                            <i class="bi bi-filetype-docx fs-3"></i>
+                                        </div>
+                                        <div>
+                                            <strong class="text-dark d-block font-monospace" style="font-size: 0.92rem;">
+                                                {{ norma.template_docx_nome_original|default:"Template_Relatorio_Executivo.docx" }}
+                                            </strong>
+                                            <small class="text-muted d-block" style="font-size: 0.78rem;">
+                                                <i class="bi bi-clock me-1"></i>Última atualização: {{ norma.template_docx_atualizado_em|date:"d/m/Y \à\s H:i"|default:"Recentemente" }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-1.5">
+                                        <a href="{% url 'auditoria:iso_norma_download_template' norma.id 'docx' %}" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold shadow-2xs">
+                                            <i class="bi bi-download me-1"></i> Baixar Atual
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold shadow-2xs" onclick="toggleSubstituir('docx')">
+                                            <i class="bi bi-arrow-repeat me-1"></i> Substituir
+                                        </button>
+                                        <form method="POST" action="{% url 'auditoria:iso_norma_delete_template' norma.id 'docx' %}" style="display:inline;" onsubmit="return confirm('Deseja excluir este template? O sistema passará a usar o modelo mestre padrão.');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-circle p-1.5 shadow-2xs" title="Excluir este template">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <!-- Dropzone / Formulário de Upload -->
+                            <div id="dropzoneDocx" {% if norma.template_docx %}style="display:none;"{% endif %}>
+                                <form method="POST" action="{% url 'auditoria:iso_norma_upload_template' norma.id %}" enctype="multipart/form-data">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="tipo" value="docx">
+                                    <div class="p-4 border-2 border-dashed rounded-4 text-center bg-light position-relative mb-3 upload-drop-area" style="border-color: #cbd5e1 !important; transition: all 0.2s ease;">
+                                        <i class="bi bi-cloud-arrow-up-fill text-primary" style="font-size: 2.5rem;"></i>
+                                        <h6 class="fw-bold text-dark mt-2 mb-1">Arraste seu arquivo .docx aqui ou clique para selecionar</h6>
+                                        <p class="text-muted small mb-3">Tamanho máximo suportado: 25MB (.docx)</p>
+                                        <input type="file" name="arquivo" id="fileInputDocx" accept=".docx" class="form-control d-none" onchange="this.form.submit()">
+                                        <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" onclick="document.getElementById('fileInputDocx').click()">
+                                            <i class="bi bi-folder2-open me-1"></i> Selecionar Arquivo (.docx)
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <!-- Atalho para Baixar Modelo Base -->
+                            <div class="d-flex justify-content-between align-items-center pt-2">
+                                <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Precisa de um ponto de partida?</small>
+                                <a href="{% url 'auditoria:iso_norma_download_template_padrao' 'docx' %}" class="btn btn-sm btn-link text-decoration-none fw-semibold p-0">
+                                    <i class="bi bi-file-earmark-arrow-down me-1"></i> Baixar Template Base com Tags (.docx)
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bloco 2: Upload do Template de Checklist (.xlsx) -->
+                    <div class="card shadow-sm border-0 rounded-4 overflow-hidden mb-4">
+                        <div class="card-header bg-white py-3 px-4 border-0 d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="bi bi-file-earmark-excel-fill text-success fs-4"></i>
+                                <div>
+                                    <h6 class="fw-bold text-dark mb-0">Template de Checklist (.xlsx)</h6>
+                                    <small class="text-muted">Planilha Excel com abas de dashboard, fórmulas automáticas e gráficos</small>
+                                </div>
+                            </div>
+                            {% if norma.template_xlsx %}
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3 py-1.5 font-monospace fw-bold">
+                                <i class="bi bi-check2-circle me-1"></i>Template Ativo
+                            </span>
+                            {% else %}
+                            <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 rounded-pill px-3 py-1.5 font-monospace">
+                                Padrão do Sistema
+                            </span>
+                            {% endif %}
+                        </div>
+                        <div class="card-body p-4 pt-2">
+                            {% if norma.template_xlsx %}
+                            <!-- Informações do Arquivo Atual -->
+                            <div class="p-3.5 bg-light rounded-4 border mb-3">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="p-2.5 rounded-3 bg-white border text-success shadow-2xs">
+                                            <i class="bi bi-filetype-xlsx fs-3"></i>
+                                        </div>
+                                        <div>
+                                            <strong class="text-dark d-block font-monospace" style="font-size: 0.92rem;">
+                                                {{ norma.template_xlsx_nome_original|default:"Template_Checklist_Completo.xlsx" }}
+                                            </strong>
+                                            <small class="text-muted d-block" style="font-size: 0.78rem;">
+                                                <i class="bi bi-clock me-1"></i>Última atualização: {{ norma.template_xlsx_atualizado_em|date:"d/m/Y \à\s H:i"|default:"Recentemente" }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-1.5">
+                                        <a href="{% url 'auditoria:iso_norma_download_template' norma.id 'xlsx' %}" class="btn btn-sm btn-outline-success rounded-pill px-3 fw-bold shadow-2xs">
+                                            <i class="bi bi-download me-1"></i> Baixar Atual
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold shadow-2xs" onclick="toggleSubstituir('xlsx')">
+                                            <i class="bi bi-arrow-repeat me-1"></i> Substituir
+                                        </button>
+                                        <form method="POST" action="{% url 'auditoria:iso_norma_delete_template' norma.id 'xlsx' %}" style="display:inline;" onsubmit="return confirm('Deseja excluir este template de checklist? O sistema passará a usar a planilha padrão.');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-circle p-1.5 shadow-2xs" title="Excluir este template">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <!-- Dropzone / Formulário de Upload -->
+                            <div id="dropzoneXlsx" {% if norma.template_xlsx %}style="display:none;"{% endif %}>
+                                <form method="POST" action="{% url 'auditoria:iso_norma_upload_template' norma.id %}" enctype="multipart/form-data">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="tipo" value="xlsx">
+                                    <div class="p-4 border-2 border-dashed rounded-4 text-center bg-light position-relative mb-3 upload-drop-area" style="border-color: #cbd5e1 !important; transition: all 0.2s ease;">
+                                        <i class="bi bi-file-earmark-spreadsheet-fill text-success" style="font-size: 2.5rem;"></i>
+                                        <h6 class="fw-bold text-dark mt-2 mb-1">Arraste sua planilha .xlsx aqui ou clique para selecionar</h6>
+                                        <p class="text-muted small mb-3">Tamanho máximo suportado: 25MB (.xlsx)</p>
+                                        <input type="file" name="arquivo" id="fileInputXlsx" accept=".xlsx" class="form-control d-none" onchange="this.form.submit()">
+                                        <button type="button" class="btn btn-success rounded-pill px-4 fw-bold shadow-sm" onclick="document.getElementById('fileInputXlsx').click()">
+                                            <i class="bi bi-folder2-open me-1"></i> Selecionar Planilha (.xlsx)
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <!-- Atalho para Baixar Modelo Base -->
+                            <div class="d-flex justify-content-between align-items-center pt-2">
+                                <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Precisa da planilha com as fórmulas de cálculo?</small>
+                                <a href="{% url 'auditoria:iso_norma_download_template_padrao' 'xlsx' %}" class="btn btn-sm btn-link text-decoration-none fw-semibold p-0 text-success">
+                                    <i class="bi bi-file-earmark-arrow-down me-1"></i> Baixar Planilha Base de Exemplo (.xlsx)
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Coluna Direita: Dicionário de Variáveis Suportadas (Accordion) -->
+                <div class="col-lg-5">
+                    <div class="card shadow-sm border-0 rounded-4 sticky-top" style="top: 20px;">
+                        <div class="card-header bg-dark text-white py-3 px-4 border-0 d-flex justify-content-between align-items-center rounded-top-4">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="bi bi-code-square text-warning fs-5"></i>
+                                <h6 class="fw-bold mb-0 text-white">Dicionário de Variáveis</h6>
+                            </div>
+                            <span class="badge bg-white bg-opacity-20 text-white rounded-pill px-2.5 py-1 font-monospace" style="font-size: 0.75rem;">
+                                Injeção Dinâmica
+                            </span>
+                        </div>
+                        <div class="card-body p-4 bg-light">
+                            <p class="text-muted small mb-3" style="line-height: 1.45;">
+                                Insira as tags abaixo no seu arquivo do Word ou Excel. Ao exportar, o sistema fará a substituição automática pelos dados reais.
+                            </p>
+
+                            <div class="accordion accordion-flush rounded-3 border overflow-hidden bg-white shadow-2xs" id="accordionTags">
+                                
+                                <!-- 1. Metadados Gerais -->
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="flush-headingOne">
+                                        <button class="accordion-button fw-bold text-dark py-2.5 px-3" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseOne" aria-expanded="true">
+                                            <i class="bi bi-tag-fill text-primary me-2"></i> 1. Metadados Gerais
+                                        </button>
+                                    </h2>
+                                    <div id="flush-collapseOne" class="accordion-collapse collapse show" data-bs-parent="#accordionTags">
+                                        <div class="accordion-body p-2.5">
+                                            <div class="list-group list-group-flush gap-1">
+                                                <div class="list-group-item px-2 py-1.5 border-0 rounded-2 bg-light d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <code class="fw-bold text-primary font-monospace" style="font-size: 0.85rem;">&#123;&#123;nome_unidade&#125;&#125;</code>
+                                                        <small class="text-muted d-block" style="font-size: 0.73rem;">Empresa / Laboratório auditado</small>
+                                                    </div>
+                                                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0.5" onclick="copiarTextoTag('&#123;&#123;nome_unidade&#125;&#125;', this)" style="font-size: 0.72rem;">Copiar</button>
+                                                </div>
+
+                                                <div class="list-group-item px-2 py-1.5 border-0 rounded-2 bg-light d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <code class="fw-bold text-primary font-monospace" style="font-size: 0.85rem;">&#123;&#123;escopo&#125;&#125;</code>
+                                                        <small class="text-muted d-block" style="font-size: 0.73rem;">Escopo da auditoria</small>
+                                                    </div>
+                                                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0.5" onclick="copiarTextoTag('&#123;&#123;escopo&#125;&#125;', this)" style="font-size: 0.72rem;">Copiar</button>
+                                                </div>
+
+                                                <div class="list-group-item px-2 py-1.5 border-0 rounded-2 bg-light d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <code class="fw-bold text-primary font-monospace" style="font-size: 0.85rem;">&#123;&#123;data_auditoria&#125;&#125;</code>
+                                                        <small class="text-muted d-block" style="font-size: 0.73rem;">Período da auditoria (ex: 18/08/2026 a 20/08/2026)</small>
+                                                    </div>
+                                                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0.5" onclick="copiarTextoTag('&#123;&#123;data_auditoria&#125;&#125;', this)" style="font-size: 0.72rem;">Copiar</button>
+                                                </div>
+
+                                                <div class="list-group-item px-2 py-1.5 border-0 rounded-2 bg-light d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <code class="fw-bold text-primary font-monospace" style="font-size: 0.85rem;">&#123;&#123;nome_auditor&#125;&#125;</code>
+                                                        <small class="text-muted d-block" style="font-size: 0.73rem;">Auditor líder ou equipe auditora</small>
+                                                    </div>
+                                                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0.5" onclick="copiarTextoTag('&#123;&#123;nome_auditor&#125;&#125;', this)" style="font-size: 0.72rem;">Copiar</button>
+                                                </div>
+
+                                                <div class="list-group-item px-2 py-1.5 border-0 rounded-2 bg-light d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <code class="fw-bold text-primary font-monospace" style="font-size: 0.85rem;">&#123;&#123;representantes&#125;&#125;</code>
+                                                        <small class="text-muted d-block" style="font-size: 0.73rem;">Representantes presentes na reunião</small>
+                                                    </div>
+                                                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0.5" onclick="copiarTextoTag('&#123;&#123;representantes&#125;&#125;', this)" style="font-size: 0.72rem;">Copiar</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 2. Indicadores & Métricas -->
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="flush-headingTwo">
+                                        <button class="accordion-button collapsed fw-bold text-dark py-2.5 px-3" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseTwo">
+                                            <i class="bi bi-pie-chart-fill text-success me-2"></i> 2. Indicadores & Avaliação Geral
+                                        </button>
+                                    </h2>
+                                    <div id="flush-collapseTwo" class="accordion-collapse collapse" data-bs-parent="#accordionTags">
+                                        <div class="accordion-body p-2.5">
+                                            <div class="list-group list-group-flush gap-1">
+                                                <div class="list-group-item px-2 py-1.5 border-0 rounded-2 bg-light d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <code class="fw-bold text-success font-monospace" style="font-size: 0.85rem;">&#123;&#123;total_avaliados&#125;&#125;</code>
+                                                        <small class="text-muted d-block" style="font-size: 0.73rem;">Total de amostras / requisitos avaliados</small>
+                                                    </div>
+                                                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0.5" onclick="copiarTextoTag('&#123;&#123;total_avaliados&#125;&#125;', this)" style="font-size: 0.72rem;">Copiar</button>
+                                                </div>
+
+                                                <div class="list-group-item px-2 py-1.5 border-0 rounded-2 bg-light d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <code class="fw-bold text-success font-monospace" style="font-size: 0.85rem;">&#123;&#123;taxa_conformidade&#125;&#125;</code>
+                                                        <small class="text-muted d-block" style="font-size: 0.73rem;">Taxa percentual calculada (ex: 94.7%)</small>
+                                                    </div>
+                                                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0.5" onclick="copiarTextoTag('&#123;&#123;taxa_conformidade&#125;&#125;', this)" style="font-size: 0.72rem;">Copiar</button>
+                                                </div>
+
+                                                <div class="list-group-item px-2 py-1.5 border-0 rounded-2 bg-light d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <code class="fw-bold text-success font-monospace" style="font-size: 0.85rem;">&#123;&#123;total_c&#125;&#125;</code> | <code class="fw-bold text-success font-monospace" style="font-size: 0.85rem;">&#123;&#123;pct_c&#125;&#125;</code>
+                                                        <small class="text-muted d-block" style="font-size: 0.73rem;">Conformidades (qtd e %)</small>
+                                                    </div>
+                                                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0.5" onclick="copiarTextoTag('&#123;&#123;total_c&#125;&#125;', this)" style="font-size: 0.72rem;">Copiar</button>
+                                                </div>
+
+                                                <div class="list-group-item px-2 py-1.5 border-0 rounded-2 bg-light d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <code class="fw-bold text-danger font-monospace" style="font-size: 0.85rem;">&#123;&#123;total_nc_maior&#125;&#125;</code> | <code class="fw-bold text-danger font-monospace" style="font-size: 0.85rem;">&#123;&#123;pct_nc_maior&#125;&#125;</code>
+                                                        <small class="text-muted d-block" style="font-size: 0.73rem;">Não Conformidades Maiores (qtd e %)</small>
+                                                    </div>
+                                                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0.5" onclick="copiarTextoTag('&#123;&#123;total_nc_maior&#125;&#125;', this)" style="font-size: 0.72rem;">Copiar</button>
+                                                </div>
+
+                                                <div class="list-group-item px-2 py-1.5 border-0 rounded-2 bg-light d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <code class="fw-bold text-danger font-monospace" style="font-size: 0.85rem;">&#123;&#123;total_nc_menor&#125;&#125;</code> | <code class="fw-bold text-danger font-monospace" style="font-size: 0.85rem;">&#123;&#123;pct_nc_menor&#125;&#125;</code>
+                                                        <small class="text-muted d-block" style="font-size: 0.73rem;">Não Conformidades Menores (qtd e %)</small>
+                                                    </div>
+                                                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0.5" onclick="copiarTextoTag('&#123;&#123;total_nc_menor&#125;&#125;', this)" style="font-size: 0.72rem;">Copiar</button>
+                                                </div>
+
+                                                <div class="list-group-item px-2 py-1.5 border-0 rounded-2 bg-light d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <code class="fw-bold text-warning text-dark font-monospace" style="font-size: 0.85rem;">&#123;&#123;total_om&#125;&#125;</code> | <code class="fw-bold text-warning text-dark font-monospace" style="font-size: 0.85rem;">&#123;&#123;total_obs&#125;&#125;</code>
+                                                        <small class="text-muted d-block" style="font-size: 0.73rem;">Oportunidades de Melhoria e Obs. Correção</small>
+                                                    </div>
+                                                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0.5" onclick="copiarTextoTag('&#123;&#123;total_om&#125;&#125;', this)" style="font-size: 0.72rem;">Copiar</button>
+                                                </div>
+
+                                                <div class="list-group-item px-2 py-1.5 border-0 rounded-2 bg-light d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <code class="fw-bold text-dark font-monospace" style="font-size: 0.85rem;">&#123;&#123;veredito_status&#125;&#125;</code>
+                                                        <small class="text-muted d-block" style="font-size: 0.73rem;">Status conclusivo (Apto / Ressalvas / Inapto)</small>
+                                                    </div>
+                                                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0.5" onclick="copiarTextoTag('&#123;&#123;veredito_status&#125;&#125;', this)" style="font-size: 0.72rem;">Copiar</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 3. Síntese Narrativa & Conteúdo -->
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="flush-headingThree">
+                                        <button class="accordion-button collapsed fw-bold text-dark py-2.5 px-3" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseThree">
+                                            <i class="bi bi-journal-richtext text-info me-2"></i> 3. Síntese & Textos Ricos
+                                        </button>
+                                    </h2>
+                                    <div id="flush-collapseThree" class="accordion-collapse collapse" data-bs-parent="#accordionTags">
+                                        <div class="accordion-body p-2.5">
+                                            <div class="list-group list-group-flush gap-1">
+                                                <div class="list-group-item px-2 py-1.5 border-0 rounded-2 bg-light d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <code class="fw-bold text-primary font-monospace" style="font-size: 0.85rem;">&#123;&#123;sintese_narrativa&#125;&#125;</code>
+                                                        <small class="text-muted d-block" style="font-size: 0.73rem;">Injeta todo o HTML do editor rico (títulos, listas, imagens, tabelas)</small>
+                                                    </div>
+                                                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0.5" onclick="copiarTextoTag('&#123;&#123;sintese_narrativa&#125;&#125;', this)" style="font-size: 0.72rem;">Copiar</button>
+                                                </div>
+
+                                                <div class="list-group-item px-2 py-1.5 border-0 rounded-2 bg-light d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <code class="fw-bold text-primary font-monospace" style="font-size: 0.85rem;">&#123;&#123;conclusao_texto&#125;&#125;</code>
+                                                        <small class="text-muted d-block" style="font-size: 0.73rem;">Parecer e conclusão final complementar</small>
+                                                    </div>
+                                                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0.5" onclick="copiarTextoTag('&#123;&#123;conclusao_texto&#125;&#125;', this)" style="font-size: 0.72rem;">Copiar</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 4. Tabelas Dinâmicas (Linhas Automáticas) -->
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="flush-headingFour">
+                                        <button class="accordion-button collapsed fw-bold text-dark py-2.5 px-3" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseFour">
+                                            <i class="bi bi-table text-secondary me-2"></i> 4. Tabelas Dinâmicas
+                                        </button>
+                                    </h2>
+                                    <div id="flush-collapseFour" class="accordion-collapse collapse" data-bs-parent="#accordionTags">
+                                        <div class="accordion-body p-2.5">
+                                            <div class="list-group list-group-flush gap-1">
+                                                <div class="list-group-item px-2 py-1.5 border-0 rounded-2 bg-light d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <code class="fw-bold text-dark font-monospace" style="font-size: 0.85rem;">&#123;&#123;exclusoes_justificadas&#125;&#125;</code>
+                                                        <small class="text-muted d-block" style="font-size: 0.73rem;">Gera tabela de 3 colunas com itens Não Aplicáveis e justificativas</small>
+                                                    </div>
+                                                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0.5" onclick="copiarTextoTag('&#123;&#123;exclusoes_justificadas&#125;&#125;', this)" style="font-size: 0.72rem;">Copiar</button>
+                                                </div>
+
+                                                <div class="list-group-item px-2 py-1.5 border-0 rounded-2 bg-light d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <code class="fw-bold text-dark font-monospace" style="font-size: 0.85rem;">&#123;&#123;tabela_resumo_areas&#125;&#125;</code>
+                                                        <small class="text-muted d-block" style="font-size: 0.73rem;">Gera tabela de 4 colunas com desvios agrupados por área funcional</small>
+                                                    </div>
+                                                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0.5" onclick="copiarTextoTag('&#123;&#123;tabela_resumo_areas&#125;&#125;', this)" style="font-size: 0.72rem;">Copiar</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
     </div>
 </div>
+
+<script>
+function toggleSubstituir(tipo) {
+    if (tipo === 'docx') {
+        const drop = document.getElementById('dropzoneDocx');
+        drop.style.display = drop.style.display === 'none' ? 'block' : 'none';
+        if (drop.style.display === 'block') {
+            document.getElementById('fileInputDocx').click();
+        }
+    } else if (tipo === 'xlsx') {
+        const drop = document.getElementById('dropzoneXlsx');
+        drop.style.display = drop.style.display === 'none' ? 'block' : 'none';
+        if (drop.style.display === 'block') {
+            document.getElementById('fileInputXlsx').click();
+        }
+    }
+}
+
+function copiarTextoTag(texto, btnEl) {
+    navigator.clipboard.writeText(texto).then(() => {
+        const originalText = btnEl.textContent;
+        btnEl.textContent = 'Copiado!';
+        btnEl.className = 'btn btn-xs btn-success text-white rounded-pill px-2 py-0.5';
+        setTimeout(() => {
+            btnEl.textContent = originalText;
+            btnEl.className = 'btn btn-xs btn-outline-secondary rounded-pill px-2 py-0.5';
+        }, 1800);
+    });
+}
+</script>
 
 <!-- Modal Pop-up de Detalhes do Item da Norma (Contém Editar e Excluir) -->
 <div class="modal fade" id="modalPopItemDetail" tabindex="-1" aria-hidden="true">

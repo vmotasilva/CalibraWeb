@@ -95,6 +95,10 @@ urlpatterns = [
     
     path("iso/setup/normas/nova/", views.iso_norma_create, name="iso_norma_create"),
     path("iso/setup/normas/<int:pk>/", views.iso_norma_detail, name="iso_norma_detail"),
+    path("iso/setup/normas/<int:pk>/templates/upload/", views.iso_norma_upload_template, name="iso_norma_upload_template"),
+    path("iso/setup/normas/<int:pk>/templates/<str:tipo>/remover/", views.iso_norma_delete_template, name="iso_norma_delete_template"),
+    path("iso/setup/normas/<int:pk>/templates/<str:tipo>/download/", views.iso_norma_download_template, name="iso_norma_download_template"),
+    path("iso/setup/templates/padrao/<str:tipo>/download/", views.iso_norma_download_template_padrao, name="iso_norma_download_template_padrao"),
     path("iso/setup/normas/<int:pk>/regras/salvar/", views.iso_norma_regras_salvar, name="iso_norma_regras_salvar"),
     path("iso/setup/normas/<int:pk>/editar/", views.iso_norma_edit, name="iso_norma_edit"),
     path("iso/setup/normas/<int:pk>/arquivar/", views.iso_norma_archive, name="iso_norma_archive"),

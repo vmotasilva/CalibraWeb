@@ -687,6 +687,43 @@ class Norma(models.Model):
     descricao = models.TextField(blank=True, verbose_name="Descrição")
     ativa = models.BooleanField(default=True)
 
+    # Templates de Exportação Vinculados à Norma (Template Engine)
+    template_docx = models.FileField(
+        upload_to="auditoria/templates_norma/docx/",
+        blank=True,
+        null=True,
+        verbose_name="Template de Relatório Executivo (.docx)"
+    )
+    template_docx_nome_original = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="Nome Original do DOCX"
+    )
+    template_docx_atualizado_em = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Data de Atualização do DOCX"
+    )
+
+    template_xlsx = models.FileField(
+        upload_to="auditoria/templates_norma/xlsx/",
+        blank=True,
+        null=True,
+        verbose_name="Template de Checklist (.xlsx)"
+    )
+    template_xlsx_nome_original = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="Nome Original do XLSX"
+    )
+    template_xlsx_atualizado_em = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Data de Atualização do XLSX"
+    )
+
     class Meta:
         verbose_name = "Norma"
         verbose_name_plural = "Normas"
