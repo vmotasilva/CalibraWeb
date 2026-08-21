@@ -772,6 +772,11 @@ class AuditoriaIsoExcelExportTemplateInjectionTests(TestCase):
         self.assertEqual(ws_check["B15"].value, "4.1.2")
         self.assertIn("Ajustar referências cruzadas", str(ws_check["I15"].value))
 
+        # Aba Evidências presente
+        self.assertIn("Evidências", wb.sheetnames)
+        ws_evid = wb["Evidências"]
+        self.assertEqual(ws_evid["B3"].value, "EVIDÊNCIAS COM IMAGENS")
+
         # Aba Resultados: Fórmulas preservadas
         ws_res = wb["Resultados"]
         self.assertIn("COUNTIF", str(ws_res["D6"].value))

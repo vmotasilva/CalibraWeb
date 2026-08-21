@@ -134,7 +134,34 @@ def create_base_template_workbook() -> openpyxl.Workbook:
     ws_check.row_dimensions[12].height = 28
 
     # -------------------------------------------------------------
-    # 2. ABA 'Resultados' (com fórmulas e painéis automáticos)
+    # 2. ABA 'Evidências' (Evidências com Imagens)
+    # -------------------------------------------------------------
+    ws_evid = wb.create_sheet(title="Evidências")
+    ws_evid.views.sheetView[0].showGridLines = True
+
+    # Dimensões de colunas
+    ws_evid.column_dimensions['A'].width = 4
+    ws_evid.column_dimensions['B'].width = 18
+    ws_evid.column_dimensions['C'].width = 38
+    ws_evid.column_dimensions['D'].width = 38
+    ws_evid.column_dimensions['E'].width = 38
+    ws_evid.column_dimensions['F'].width = 38
+
+    # Banner Superior: EVIDÊNCIAS COM IMAGENS
+    ws_evid.merge_cells('B3:F3')
+    evid_hdr = ws_evid['B3']
+    evid_hdr.value = "EVIDÊNCIAS COM IMAGENS"
+    evid_hdr.font = Font(name="Segoe UI", size=10, bold=True, color="000000")
+    evid_hdr.fill = PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid")
+    evid_hdr.alignment = Alignment(horizontal="center", vertical="center")
+    
+    gray_border_side = Side(style='thin', color="94A3B8")
+    box_border = Border(left=gray_border_side, right=gray_border_side, top=gray_border_side, bottom=gray_border_side)
+    for col in ['B', 'C', 'D', 'E', 'F']:
+        ws_evid[f'{col}3'].border = box_border
+
+    # -------------------------------------------------------------
+    # 3. ABA 'Resultados' (com fórmulas e painéis automáticos)
     # -------------------------------------------------------------
     ws_res = wb.create_sheet(title="Resultados")
     ws_res.views.sheetView[0].showGridLines = True
@@ -235,6 +262,54 @@ def create_base_template_workbook() -> openpyxl.Workbook:
     card_val.fill = PatternFill(start_color="DCFCE7", end_color="DCFCE7", fill_type="solid")
 
     return wb
+
+
+def process_and_add_excel_image(ws, img_obj, cell_coord, max_width=380, max_height=260) -> bool:
+    """
+    Processa imagem salva em base64 ou arquivo e a insere na planilha na célula especificada.
+    """
+    import base64
+    try:
+        from openpyxl.drawing.image import Image as OpenpyxlImage
+        from PIL import Image as PILImage
+    except ImportError:
+        return False
+
+    try:
+        pil_img = None
+        if img_obj.arquivo_base64:
+            raw_b64 = img_obj.arquivo_base64
+            if "," in raw_b64:
+                raw_b64 = raw_b64.split(",", 1)[1]
+            img_bytes = base64.b64decode(raw_b64)
+            pil_img = PILImage.open(io.BytesIO(img_bytes))
+        elif img_obj.arquivo:
+            try:
+                pil_img = PILImage.open(img_obj.arquivo)
+            except Exception:
+                pass
+
+        if not pil_img:
+            return False
+
+        # Converte para RGB se necessário
+        if pil_img.mode in ("RGBA", "P", "LA"):
+            pil_img = pil_img.convert("RGB")
+
+        # Redimensiona proporcionalmente mantendo alta qualidade
+        resample_method = getattr(PILImage, 'Resampling', PILImage).LANCZOS
+        pil_img.thumbnail((max_width, max_height), resample_method)
+
+        out_buffer = io.BytesIO()
+        pil_img.save(out_buffer, format="JPEG", quality=85)
+        out_buffer.seek(0)
+
+        xl_img = OpenpyxlImage(out_buffer)
+        xl_img.width, xl_img.height = pil_img.size
+        ws.add_image(xl_img, cell_coord)
+        return True
+    except Exception:
+        return False
 
 
 def load_template_workbook() -> openpyxl.Workbook:
@@ -477,6 +552,118 @@ def generate_auditoria_excel_buffer(auditoria) -> io.BytesIO:
             ws.row_dimensions[current_row].height = 20
 
         current_row += 1
+
+    # -------------------------------------------------------------
+    # 2. ABA 'Evidências' (Injeção de Fotos e Imagens)
+    # -------------------------------------------------------------
+    if "Evidências" in wb.sheetnames:
+        ws_evid = wb["Evidências"]
+    elif "Evidencias" in wb.sheetnames:
+        ws_evid = wb["Evidencias"]
+    else:
+        ws_evid = wb.create_sheet(title="Evidências", index=1)
+        ws_evid.views.sheetView[0].showGridLines = True
+        ws_evid.column_dimensions['A'].width = 4
+        ws_evid.column_dimensions['B'].width = 18
+        ws_evid.column_dimensions['C'].width = 38
+        ws_evid.column_dimensions['D'].width = 38
+        ws_evid.column_dimensions['E'].width = 38
+        ws_evid.column_dimensions['F'].width = 38
+        ws_evid.merge_cells('B3:F3')
+        evid_hdr = ws_evid['B3']
+        evid_hdr.value = "EVIDÊNCIAS COM IMAGENS"
+        evid_hdr.font = Font(name="Segoe UI", size=10, bold=True, color="000000")
+        evid_hdr.fill = PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid")
+        evid_hdr.alignment = Alignment(horizontal="center", vertical="center")
+
+    from ..models import ImagemSolicitacaoIso
+    imagens_auditoria = list(
+        ImagemSolicitacaoIso.objects.filter(
+            solicitacao__resposta__auditoria=auditoria
+        ).select_related(
+            'solicitacao',
+            'solicitacao__resposta',
+            'solicitacao__resposta__pergunta'
+        ).prefetch_related(
+            'solicitacao__resposta__pergunta__itens_norma'
+        ).order_by('criado_em')
+    )
+
+    # Índice de Requisitos na Coluna B (a partir da linha 4)
+    ws_evid['B4'].value = "Item / Req."
+    ws_evid['B4'].font = Font(name="Segoe UI", size=9, bold=True)
+    ws_evid['B4'].fill = PatternFill(start_color="F1F5F9", end_color="F1F5F9", fill_type="solid")
+    ws_evid['B4'].alignment = Alignment(horizontal="center", vertical="center")
+    ws_evid['B4'].border = border_cell
+
+    b_row = 5
+    itens_com_imagem = set()
+    for img in imagens_auditoria:
+        sol = img.solicitacao
+        if sol and sol.resposta and sol.resposta.pergunta:
+            for it in sol.resposta.pergunta.itens_norma.all():
+                itens_com_imagem.add(it.referencia)
+
+    for it in sorted(itens_list, key=lambda x: (x.ordem or 0, natural_sort_key(x.referencia)))[:35]:
+        c_b = ws_evid[f'B{b_row}']
+        c_b.value = it.referencia
+        c_b.font = Font(name="Segoe UI", size=8.5, bold=(it.referencia in itens_com_imagem))
+        c_b.alignment = Alignment(horizontal="center", vertical="center")
+        c_b.border = border_cell
+        if it.referencia in itens_com_imagem:
+            c_b.fill = PatternFill(start_color="DCFCE7", end_color="DCFCE7", fill_type="solid")
+        b_row += 1
+
+    if imagens_auditoria:
+        evid_row = 5
+        for idx, img in enumerate(imagens_auditoria, 1):
+            sol = img.solicitacao
+            pergunta = sol.resposta.pergunta if (sol and sol.resposta) else None
+            itens_str = ", ".join([it.referencia for it in pergunta.itens_norma.all()]) if (pergunta and pergunta.itens_norma.exists()) else "Geral"
+            concl_str = sol.get_conclusao_display() if sol else "Pendente"
+            sol_texto = sol.solicitacao if sol else "Solicitação"
+
+            # Cabeçalho do Card
+            ws_evid.merge_cells(f'C{evid_row}:F{evid_row}')
+            card_title = ws_evid[f'C{evid_row}']
+            card_title.value = f"Evidência #{idx} | Requisito: {itens_str} — {sol_texto} [{concl_str}]"
+            card_title.font = Font(name="Segoe UI", size=9.5, bold=True, color="FFFFFF")
+            card_title.fill = PatternFill(start_color="134074", end_color="134074", fill_type="solid")
+            card_title.alignment = Alignment(horizontal="left", vertical="center", indent=1)
+            ws_evid.row_dimensions[evid_row].height = 22
+
+            # Metadados da Imagem
+            ws_evid.merge_cells(f'C{evid_row+1}:F{evid_row+1}')
+            card_sub = ws_evid[f'C{evid_row+1}']
+            legenda_txt = f"Legenda: {img.legenda}" if img.legenda else f"Arquivo: {img.nome_arquivo or 'foto_evidencia.jpg'}"
+            data_txt = f" | Data: {img.criado_em.strftime('%d/%m/%Y %H:%M')}" if img.criado_em else ""
+            card_sub.value = f"{legenda_txt}{data_txt}"
+            card_sub.font = Font(name="Segoe UI", size=8.5, italic=True, color="475569")
+            card_sub.fill = PatternFill(start_color="F8FAFC", end_color="F8FAFC", fill_type="solid")
+            card_sub.alignment = Alignment(horizontal="left", vertical="center", indent=1)
+            ws_evid.row_dimensions[evid_row+1].height = 18
+
+            # Inserção da Imagem
+            img_coord = f'C{evid_row+2}'
+            ws_evid.merge_cells(f'C{evid_row+2}:F{evid_row+2}')
+            ws_evid.row_dimensions[evid_row+2].height = 160
+            
+            added = process_and_add_excel_image(ws_evid, img, img_coord, max_width=420, max_height=200)
+            if not added:
+                c_fallback = ws_evid[img_coord]
+                c_fallback.value = "[Imagem anexada no sistema - visualização disponível no portal CalibraWeb]"
+                c_fallback.font = Font(name="Segoe UI", size=9, italic=True, color="64748B")
+                c_fallback.alignment = Alignment(horizontal="center", vertical="center")
+
+            ws_evid.row_dimensions[evid_row+3].height = 10
+            evid_row += 4
+    else:
+        ws_evid.merge_cells('C5:F7')
+        msg_cell = ws_evid['C5']
+        msg_cell.value = "Nenhuma foto de evidência foi anexada às solicitações desta auditoria até o momento.\nPara incluir registros fotográficos neste relatório, utilize o botão de anexo na tela de entrevista ou na matriz."
+        msg_cell.font = Font(name="Segoe UI", size=9.5, italic=True, color="64748B")
+        msg_cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        msg_cell.fill = PatternFill(start_color="F8FAFC", end_color="F8FAFC", fill_type="solid")
 
     buffer = io.BytesIO()
     wb.save(buffer)
