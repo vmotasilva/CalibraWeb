@@ -260,7 +260,7 @@
                 <div class="col-md-4">
                     <div class="p-3.5 bg-white bg-opacity-10 rounded-4 border border-white border-opacity-10 backdrop-blur">
                         <small class="text-white-50 text-uppercase fw-bold d-block mb-1" style="font-size: 0.72rem;">Líder da Auditoria</small>
-                        <h5 class="fw-bold text-white mb-0">{{ auditoria.auditor_lider.get_full_name|default:auditoria.auditor_lider.username|default:"Vinicius Mota" }}</h5>
+                        <h5 class="fw-bold text-white mb-0">{% if auditoria.auditores.first %}{{ auditoria.auditores.first.get_full_name|default:auditoria.auditores.first.username }}{% else %}{{ auditoria.abertura_auditores|default:auditoria.encerramento_auditores|default:"Vinicius Mota" }}{% endif %}</h5>
                     </div>
                 </div>
             </div>
