@@ -207,8 +207,8 @@
                                                 {% elif agenda.special_type == 'encerramento' %}
                                                 <form method="POST" action="{% url 'auditoria:iso_auditoria_toggle_conclusao' auditoria.id %}" style="display:inline;">
                                                     {% csrf_token %}
-                                                    <button type="submit" class="btn btn-sm {% if auditoria.status == 'CONCLUIDA' %}btn-success{% else %}btn-outline-success{% endif %}" title="{% if auditoria.status == 'CONCLUIDA' %}Auditoria Concluída (Clique para reabrir){% else %}Mudar status para Concluído{% endif %}">
-                                                        <i class="bi bi-check-circle{% if auditoria.status == 'CONCLUIDA' %}-fill{% endif %}"></i>
+                                                    <button type="submit" class="btn btn-sm {% if auditoria.status == 'CONCLUIDA' %}btn-success text-white shadow-2xs{% else %}btn-outline-success{% endif %} rounded-pill px-2.5 fw-bold" title="{% if auditoria.status == 'CONCLUIDA' %}Auditoria Concluída! Clique para reabrir se necessário{% else %}Marcar Encerramento como Concluído e finalizar Auditoria{% endif %}">
+                                                        <i class="bi bi-check2-circle me-1"></i>{% if auditoria.status == 'CONCLUIDA' %}Concluída{% else %}Concluir{% endif %}
                                                     </button>
                                                 </form>
                                                 {% endif %}
@@ -360,8 +360,8 @@
                                                 {% elif agenda.special_type == 'encerramento' %}
                                                 <form method="POST" action="{% url 'auditoria:iso_auditoria_toggle_conclusao' auditoria.id %}" style="display:inline;">
                                                     {% csrf_token %}
-                                                    <button type="submit" class="btn btn-sm {% if auditoria.status == 'CONCLUIDA' %}btn-success{% else %}btn-outline-success{% endif %}" title="{% if auditoria.status == 'CONCLUIDA' %}Auditoria Concluída (Clique para reabrir){% else %}Mudar status para Concluído{% endif %}">
-                                                        <i class="bi bi-check-circle{% if auditoria.status == 'CONCLUIDA' %}-fill{% endif %}"></i>
+                                                    <button type="submit" class="btn btn-sm {% if auditoria.status == 'CONCLUIDA' %}btn-success text-white shadow-2xs{% else %}btn-outline-success{% endif %} rounded-pill px-2.5 fw-bold" title="{% if auditoria.status == 'CONCLUIDA' %}Auditoria Concluída! Clique para reabrir se necessário{% else %}Marcar Encerramento como Concluído e finalizar Auditoria{% endif %}">
+                                                        <i class="bi bi-check2-circle me-1"></i>{% if auditoria.status == 'CONCLUIDA' %}Concluída{% else %}Concluir{% endif %}
                                                     </button>
                                                 </form>
                                                 {% endif %}

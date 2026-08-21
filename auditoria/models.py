@@ -1075,3 +1075,26 @@ class AvaliacaoFinalRequisitoIso(models.Model):
 
     def __str__(self):
         return f"{self.auditoria} - {self.item_norma.referencia} ({self.classificacao})"
+
+
+class SinteseSecaoAuditoriaIso(models.Model):
+    """
+    Síntese / Notas livres registradas pelo auditor por Seção / Macroárea funcional da Norma.
+    Ex: Seção 4 (Sistema de Gestão), Seção 5 (Responsabilidade da Direção), etc.
+    """
+    auditoria = models.ForeignKey(AuditoriaIso, on_delete=models.CASCADE, related_name="sinteses_secao")
+    secao_referencia = models.CharField(max_length=20, verbose_name="Referência da Seção (ex: 4, 5, 7.1)")
+    secao_titulo = models.CharField(max_length=255, verbose_name="Título da Seção / Área")
+    conteudo_html = models.TextField(blank=True, default="", verbose_name="Síntese da Seção (HTML)")
+    atualizado_em = models.DateTimeField(auto_now=True)
+    atualizado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Síntese por Seção da Auditoria"
+        verbose_name_plural = "Sínteses por Seção da Auditoria"
+        unique_together = ('auditoria', 'secao_referencia')
+        ordering = ['secao_referencia']
+
+    def __str__(self):
+        return f"{self.auditoria} - Seção {self.secao_referencia}: {self.secao_titulo}"
+

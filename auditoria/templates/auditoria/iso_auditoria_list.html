@@ -45,25 +45,62 @@
                                     {% elif aud.status == 'EM_ANDAMENTO' %}
                                         <span class="badge bg-primary rounded-pill px-3 py-1.5">Em Andamento</span>
                                     {% else %}
-                                        <span class="badge bg-success rounded-pill px-3 py-1.5">Concluída</span>
+                                        <span class="badge text-white rounded-pill px-3 py-1.5 fw-bold shadow-2xs" style="background-color: #14532d;">Concluída</span>
                                     {% endif %}
                                 </td>
                                 <td class="text-end pe-4">
-                                    <div class="btn-group shadow-2xs">
-                                        <a href="{% url 'auditoria:iso_matriz_view' aud.id %}" class="btn btn-sm btn-outline-info" title="Ver Matriz Consolidada">
-                                            <i class="bi bi-grid-3x3 me-1"></i> Matriz
-                                        </a>
-                                        <a href="{% url 'auditoria:iso_auditoria_cronograma' aud.id %}" class="btn btn-sm btn-outline-secondary" title="Cronograma / Plano de Auditoria" target="_blank">
-                                            <i class="bi bi-calendar3 me-1"></i> Cronograma
-                                        </a>
-                                        <a href="{% url 'auditoria:iso_revisao_dashboard' aud.id %}" class="btn btn-sm btn-outline-primary" title="Dashboard de Revisão & Heurística">
-                                            <i class="bi bi-ui-checks-grid me-1"></i> Revisão
-                                        </a>
-                                        <a href="{% url 'auditoria:iso_fechamento_presentation' aud.id %}" class="btn btn-sm btn-dark" title="Gerar Apresentação de Fechamento" target="_blank"
-                                            {% if aud.status != 'CONCLUIDA' %}onclick="return confirm('A auditoria ainda não foi concluída. O relatório refletirá os dados parciais. Deseja continuar?');"{% endif %}>
-                                            <i class="bi bi-easel-fill me-1"></i> Fechamento
-                                        </a>
-                                    </div>
+                                    {% if aud.status == 'CONCLUIDA' %}
+                                        <div class="d-flex justify-content-end align-items-center gap-2">
+                                            <a href="{% url 'auditoria:iso_matriz_view' aud.id %}" class="btn btn-sm btn-outline-secondary rounded-pill px-2.5 fw-semibold" title="Ver Matriz Consolidada (Apenas Leitura)">
+                                                <i class="bi bi-grid-3x3 me-1"></i> Matriz
+                                            </a>
+                                            <a href="{% url 'auditoria:iso_auditoria_cronograma' aud.id %}" class="btn btn-sm btn-outline-secondary rounded-pill px-2.5 fw-semibold" title="Cronograma / Plano de Auditoria (Apenas Leitura)" target="_blank">
+                                                <i class="bi bi-calendar3 me-1"></i> Cronograma
+                                            </a>
+                                            <a href="{% url 'auditoria:iso_auditoria_sintese' aud.id %}" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold shadow-sm" title="Wizard de Repasse e Síntese da Auditoria">
+                                                <i class="bi bi-journal-richtext me-1"></i> 📝 Repasse e Síntese
+                                            </a>
+                                            <div class="dropdown">
+                                                <button class="btn btn-sm btn-success rounded-pill px-3 fw-bold shadow-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="bi bi-download me-1"></i> ⬇️ Exportar
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-4 p-2" style="min-width: 220px;">
+                                                    <li>
+                                                        <a class="dropdown-item py-2 fw-semibold d-flex align-items-center gap-2 rounded-3 text-primary" href="{% url 'auditoria:iso_auditoria_export_docx' aud.id %}">
+                                                            <i class="bi bi-file-earmark-word text-primary"></i> 📄 Relatório Executivo (DOCX)
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item py-2 fw-semibold d-flex align-items-center gap-2 rounded-3 text-success" href="{% url 'auditoria:iso_auditoria_export_excel' aud.id %}">
+                                                            <i class="bi bi-file-earmark-excel text-success"></i> 📊 Checklist Completo (XLSX)
+                                                        </a>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider my-1"></li>
+                                                    <li>
+                                                        <a class="dropdown-item py-2 fw-semibold d-flex align-items-center gap-2 rounded-3 text-dark" href="{% url 'auditoria:iso_fechamento_presentation' aud.id %}" target="_blank">
+                                                            <i class="bi bi-easel-fill text-dark"></i> 📊 Apresentação de Fechamento
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    {% else %}
+                                        <div class="btn-group shadow-2xs">
+                                            <a href="{% url 'auditoria:iso_matriz_view' aud.id %}" class="btn btn-sm btn-outline-info" title="Ver Matriz Consolidada">
+                                                <i class="bi bi-grid-3x3 me-1"></i> Matriz
+                                            </a>
+                                            <a href="{% url 'auditoria:iso_auditoria_cronograma' aud.id %}" class="btn btn-sm btn-outline-secondary" title="Cronograma / Plano de Auditoria" target="_blank">
+                                                <i class="bi bi-calendar3 me-1"></i> Cronograma
+                                            </a>
+                                            <a href="{% url 'auditoria:iso_revisao_dashboard' aud.id %}" class="btn btn-sm btn-outline-primary" title="Dashboard de Revisão & Heurística">
+                                                <i class="bi bi-ui-checks-grid me-1"></i> Revisão
+                                            </a>
+                                            <a href="{% url 'auditoria:iso_fechamento_presentation' aud.id %}" class="btn btn-sm btn-dark" title="Gerar Apresentação de Fechamento" target="_blank"
+                                                onclick="return confirm('A auditoria ainda não foi concluída. O relatório refletirá os dados parciais. Deseja continuar?');">
+                                                <i class="bi bi-easel-fill me-1"></i> Fechamento
+                                            </a>
+                                        </div>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% empty %}
@@ -97,7 +134,7 @@
                     {% elif aud.status == 'EM_ANDAMENTO' %}
                         <span class="badge bg-primary rounded-pill px-2.5 py-1 small">Em Andamento</span>
                     {% else %}
-                        <span class="badge bg-success rounded-pill px-2.5 py-1 small">Concluída</span>
+                        <span class="badge text-white rounded-pill px-2.5 py-1 small fw-bold" style="background-color: #14532d;">Concluída</span>
                     {% endif %}
                 </div>
             </div>
@@ -108,52 +145,81 @@
                         <span class="fw-semibold text-dark">Período:</span>
                         <span>{{ aud.data_inicio|date:"d/m/Y" }} a {{ aud.data_fim|date:"d/m/Y" }}</span>
                     </div>
-                    {% if aud.norma.titulo %}
+                    {% if aud.norma.descricao %}
                     <div class="d-flex align-items-center gap-2 text-secondary">
                         <i class="bi bi-bookmark text-secondary"></i>
-                        <span>{{ aud.norma.titulo }}</span>
+                        <span>{{ aud.norma.descricao }}</span>
                     </div>
                     {% endif %}
                 </div>
 
                 <div class="d-grid gap-2">
-                    <div class="row g-2">
-                        <div class="col-6">
-                            <a href="{% url 'auditoria:iso_matriz_view' aud.id %}" class="btn btn-outline-info btn-sm w-100 py-2 rounded-3 fw-semibold">
-                                <i class="bi bi-grid-3x3 me-1"></i> Matriz
-                            </a>
+                    {% if aud.status == 'CONCLUIDA' %}
+                        <a href="{% url 'auditoria:iso_auditoria_sintese' aud.id %}" class="btn btn-primary btn-sm w-100 py-2 rounded-3 fw-bold shadow-sm">
+                            <i class="bi bi-journal-richtext me-1"></i> 📝 Repasse e Síntese
+                        </a>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <a href="{% url 'auditoria:iso_matriz_view' aud.id %}" class="btn btn-outline-secondary btn-sm w-100 py-2 rounded-3 fw-semibold">
+                                    <i class="bi bi-grid-3x3 me-1"></i> Matriz
+                                </a>
+                            </div>
+                            <div class="col-6">
+                                <a href="{% url 'auditoria:iso_auditoria_cronograma' aud.id %}" class="btn btn-outline-secondary btn-sm w-100 py-2 rounded-3 fw-semibold" target="_blank">
+                                    <i class="bi bi-calendar3 me-1"></i> Cronograma
+                                </a>
+                            </div>
                         </div>
-                        <div class="col-6">
-                            <a href="{% url 'auditoria:iso_auditoria_cronograma' aud.id %}" class="btn btn-outline-secondary btn-sm w-100 py-2 rounded-3 fw-semibold" target="_blank">
-                                <i class="bi bi-calendar3 me-1"></i> Cronograma
-                            </a>
+                        <div class="dropdown">
+                            <button class="btn btn-success btn-sm w-100 py-2 rounded-3 fw-bold shadow-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-download me-1"></i> ⬇️ Exportar Relatórios
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-4 p-2 w-100" style="min-width: 220px;">
+                                <li>
+                                    <a class="dropdown-item py-2 fw-semibold d-flex align-items-center gap-2 rounded-3 text-primary" href="{% url 'auditoria:iso_auditoria_export_docx' aud.id %}">
+                                        <i class="bi bi-file-earmark-word text-primary"></i> 📄 Relatório Executivo (DOCX)
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item py-2 fw-semibold d-flex align-items-center gap-2 rounded-3 text-success" href="{% url 'auditoria:iso_auditoria_export_excel' aud.id %}">
+                                        <i class="bi bi-file-earmark-excel text-success"></i> 📊 Checklist Completo (XLSX)
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider my-1"></li>
+                                <li>
+                                    <a class="dropdown-item py-2 fw-semibold d-flex align-items-center gap-2 rounded-3 text-dark" href="{% url 'auditoria:iso_fechamento_presentation' aud.id %}" target="_blank">
+                                        <i class="bi bi-easel-fill text-dark"></i> 📊 Apresentação de Fechamento
+                                    </a>
+                                </li>
+                            </ul>
                         </div>
-                    </div>
-                    <div class="row g-2">
-                        <div class="col-6">
-                            <a href="{% url 'auditoria:iso_revisao_dashboard' aud.id %}" class="btn btn-outline-primary btn-sm w-100 py-2 rounded-3 fw-semibold">
-                                <i class="bi bi-ui-checks-grid me-1"></i> Revisão
-                            </a>
+                    {% else %}
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <a href="{% url 'auditoria:iso_matriz_view' aud.id %}" class="btn btn-outline-info btn-sm w-100 py-2 rounded-3 fw-semibold">
+                                    <i class="bi bi-grid-3x3 me-1"></i> Matriz
+                                </a>
+                            </div>
+                            <div class="col-6">
+                                <a href="{% url 'auditoria:iso_auditoria_cronograma' aud.id %}" class="btn btn-outline-secondary btn-sm w-100 py-2 rounded-3 fw-semibold" target="_blank">
+                                    <i class="bi bi-calendar3 me-1"></i> Cronograma
+                                </a>
+                            </div>
                         </div>
-                        <div class="col-6">
-                            <a href="{% url 'auditoria:iso_fechamento_presentation' aud.id %}" class="btn btn-dark btn-sm w-100 py-2 rounded-3 fw-semibold" target="_blank"
-                               {% if aud.status != 'CONCLUIDA' %}onclick="return confirm('A auditoria ainda não foi concluída. O relatório refletirá os dados parciais. Deseja continuar?');"{% endif %}>
-                                <i class="bi bi-easel-fill me-1"></i> Fechamento
-                            </a>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <a href="{% url 'auditoria:iso_revisao_dashboard' aud.id %}" class="btn btn-outline-primary btn-sm w-100 py-2 rounded-3 fw-semibold">
+                                    <i class="bi bi-ui-checks-grid me-1"></i> Revisão
+                                </a>
+                            </div>
+                            <div class="col-6">
+                                <a href="{% url 'auditoria:iso_fechamento_presentation' aud.id %}" class="btn btn-dark btn-sm w-100 py-2 rounded-3 fw-semibold" target="_blank"
+                                   onclick="return confirm('A auditoria ainda não foi concluída. O relatório refletirá os dados parciais. Deseja continuar?');">
+                                    <i class="bi bi-easel-fill me-1"></i> Fechamento
+                                </a>
+                            </div>
                         </div>
-                    </div>
-                    <div class="row g-2 mt-1">
-                        <div class="col-6">
-                            <a href="{% url 'auditoria:iso_auditoria_export_docx' aud.id %}" class="btn btn-primary btn-sm w-100 py-1.5 rounded-3 fw-semibold font-monospace" style="font-size: 0.78rem;" title="Baixar Relatório Word (.DOCX)">
-                                <i class="bi bi-file-earmark-word me-1"></i> Word (.docx)
-                            </a>
-                        </div>
-                        <div class="col-6">
-                            <a href="{% url 'auditoria:iso_auditoria_export_excel' aud.id %}" class="btn btn-success btn-sm w-100 py-1.5 rounded-3 fw-semibold font-monospace" style="font-size: 0.78rem;" title="Baixar Checklist Excel (.XLSX)">
-                                <i class="bi bi-file-earmark-excel me-1"></i> Excel (.xlsx)
-                            </a>
-                        </div>
-                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>

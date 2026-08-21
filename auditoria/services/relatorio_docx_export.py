@@ -654,13 +654,46 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
     sec2_title = doc.add_paragraph()
     sec2_title.paragraph_format.space_before = Pt(8)
     sec2_title.paragraph_format.space_after = Pt(4)
-    r_sec2 = sec2_title.add_run("2. SÍNTESE EXECUTIVA DA AUDITORIA")
+    r_sec2 = sec2_title.add_run("2. SÍNTESE EXECUTIVA DA AUDITORIA & NOTAS POR ÁREA FUNCIONAL")
     r_sec2.bold = True
     r_sec2.font.size = Pt(12)
     r_sec2.font.color.rgb = RGBColor(11, 37, 69)
 
-    sintese_html = getattr(auditoria, 'sintese', '') or ""
-    inject_html_to_docx(doc, sintese_html)
+    sinteses_secoes = list(auditoria.sinteses_secao.all())
+    sinteses_secoes = sorted(sinteses_secoes, key=lambda s: natural_sort_key(s.secao_referencia))
+    sintese_global_html = getattr(auditoria, 'sintese', '') or ""
+
+    tem_sintese_secao = any(bool(s.conteudo_html and s.conteudo_html.strip()) for s in sinteses_secoes)
+
+    if sintese_global_html and sintese_global_html.strip():
+        inject_html_to_docx(doc, sintese_global_html)
+        doc.add_paragraph().paragraph_format.space_after = Pt(4)
+
+    if tem_sintese_secao:
+        sec_num = 1
+        for s in sinteses_secoes:
+            if s.conteudo_html and s.conteudo_html.strip():
+                p_shdr = doc.add_paragraph()
+                p_shdr.paragraph_format.space_before = Pt(8)
+                p_shdr.paragraph_format.space_after = Pt(2)
+                r_shdr = p_shdr.add_run(f"2.{sec_num} Seção {s.secao_referencia} — {s.secao_titulo}")
+                r_shdr.bold = True
+                r_shdr.font.size = Pt(10.5)
+                r_shdr.font.color.rgb = RGBColor(30, 58, 138)
+                
+                inject_html_to_docx(doc, s.conteudo_html)
+                doc.add_paragraph().paragraph_format.space_after = Pt(4)
+                sec_num += 1
+    elif not (sintese_global_html and sintese_global_html.strip()):
+        p_def = doc.add_paragraph()
+        p_def.paragraph_format.space_after = Pt(4)
+        r_def = p_def.add_run(
+            "A auditoria interna foi executada por amostragem abrangendo os processos críticos, "
+            "infraestrutura, controles operacionais e registros documentais da qualidade conforme escopo planejado."
+        )
+        r_def.font.size = Pt(9.5)
+        r_def.font.italic = True
+        r_def.font.color.rgb = RGBColor(71, 85, 105)
 
     doc.add_paragraph().paragraph_format.space_after = Pt(10)
 

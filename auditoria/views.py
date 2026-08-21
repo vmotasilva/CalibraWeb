@@ -6594,3 +6594,190 @@ def api_iso_revisao_reverter(request):
         traceback.print_exc()
         return JsonResponse({'success': False, 'message': str(e)}, status=400)
 
+
+@login_required
+def iso_auditoria_sintese_wizard(request, auditoria_id):
+    """
+    TELA DE REPASSE E SÍNTESE (WIZARD DO AUDITOR)
+    Permite ao auditor navegar pelas Seções da Norma, visualizar as falhas/gaps daquela seção
+    e redigir Notas Livres / Síntese específica com editor WYSIWYG completo.
+    """
+    from collections import defaultdict
+    from .models import (
+        AuditoriaIso, ItemNorma, RespostaEntrevistaIso,
+        AvaliacaoFinalRequisitoIso, SinteseSecaoAuditoriaIso
+    )
+
+    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+    itens_escopo = list(auditoria.escopo_itens.all().order_by('referencia'))
+    
+    if not itens_escopo:
+        itens_escopo = list(ItemNorma.objects.filter(norma=auditoria.norma).order_by('referencia'))
+
+    respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).prefetch_related(
+        'solicitacoes', 'solicitacoes__imagens', 'pergunta__itens_norma'
+    )
+    respostas_map = {r.pergunta_id: r for r in respostas}
+    avaliacoes_finais = {av.item_norma_id: av for av in AvaliacaoFinalRequisitoIso.objects.filter(auditoria=auditoria)}
+
+    pergunta_itens_map = {}
+    for ag in auditoria.agendas.all():
+        for p in ag.perguntas.all():
+            if p.id not in pergunta_itens_map:
+                pergunta_itens_map[p.id] = set(it.id for it in p.itens_norma.all())
+
+    secoes_dict = {}
+    all_root_items = {it.referencia: it for it in ItemNorma.objects.filter(norma=auditoria.norma)}
+    sinteses_salvas = {s.secao_referencia: s for s in auditoria.sinteses_secao.all()}
+
+    for item in itens_escopo:
+        ref_parts = item.referencia.split('.')
+        sec_ref = ref_parts[0] if ref_parts else item.referencia
+        
+        if sec_ref not in secoes_dict:
+            root_item = all_root_items.get(sec_ref)
+            sec_titulo = root_item.titulo if root_item else f"Requisitos da Seção {sec_ref}"
+            secoes_dict[sec_ref] = {
+                'referencia': sec_ref,
+                'titulo': sec_titulo,
+                'nome_completo': f"Seção {sec_ref} - {sec_titulo}",
+                'itens': [],
+                'count_nc_maior': 0,
+                'count_nc_menor': 0,
+                'count_om': 0,
+                'count_c': 0,
+                'count_na': 0,
+                'total_avaliados': 0,
+                'gaps': [],
+                'sintese_obj': sinteses_salvas.get(sec_ref),
+                'conteudo_html': sinteses_salvas[sec_ref].conteudo_html if sec_ref in sinteses_salvas else "",
+                'has_sintese': bool(sinteses_salvas.get(sec_ref) and sinteses_salvas[sec_ref].conteudo_html.strip()),
+                'atualizado_em': sinteses_salvas[sec_ref].atualizado_em if sec_ref in sinteses_salvas else None,
+            }
+
+        sec_data = secoes_dict[sec_ref]
+        sec_data['itens'].append(item)
+
+        av_final = avaliacoes_finais.get(item.id)
+        perguntas_do_item = [p_id for p_id, ids in pergunta_itens_map.items() if item.id in ids]
+        sols_do_item = []
+        for p_id in perguntas_do_item:
+            r = respostas_map.get(p_id)
+            if r:
+                for s in r.solicitacoes.all():
+                    sols_do_item.append(s)
+
+        if av_final and av_final.classificacao:
+            status = av_final.classificacao
+            grau = av_final.grau_nc
+            justif = av_final.justificativa
+        elif sols_do_item:
+            conclusoes = [s.conclusao for s in sols_do_item]
+            if 'NC' in conclusoes:
+                status = 'NC'
+                grau = 'MAIOR' if any(s.grau_nc == 'MAIOR' for s in sols_do_item if s.conclusao == 'NC') else 'MENOR'
+            elif 'OM' in conclusoes:
+                status = 'OM'
+                grau = None
+            elif any(c == 'C' for c in conclusoes):
+                status = 'C'
+                grau = None
+            elif all(c == 'NA' for c in conclusoes):
+                status = 'NA'
+                grau = None
+            else:
+                status = 'P'
+                grau = None
+            justif = ""
+        else:
+            status = 'C'
+            grau = None
+            justif = ""
+
+        if status == 'NC':
+            if grau == 'MAIOR':
+                sec_data['count_nc_maior'] += 1
+            else:
+                sec_data['count_nc_menor'] += 1
+        elif status == 'OM':
+            sec_data['count_om'] += 1
+        elif status == 'C':
+            sec_data['count_c'] += 1
+        elif status == 'NA':
+            sec_data['count_na'] += 1
+
+        sec_data['total_avaliados'] += 1
+
+        if status in ['NC', 'OM']:
+            sec_data['gaps'].append({
+                'item_referencia': item.referencia,
+                'item_titulo': item.titulo,
+                'status': status,
+                'grau': grau,
+                'grau_label': "NC Maior" if grau == 'MAIOR' else ("NC Menor" if status == 'NC' else "Oportunidade de Melhoria"),
+                'justificativa': justif,
+                'solicitacoes': sols_do_item,
+            })
+
+    secoes_lista = sorted(secoes_dict.values(), key=lambda s: natural_sort_key(s['referencia']))
+
+    for s in secoes_lista:
+        s['total_gaps'] = s['count_nc_maior'] + s['count_nc_menor'] + s['count_om']
+
+    secao_ativa_ref = request.GET.get('secao')
+    secao_ativa = None
+    if secao_ativa_ref:
+        secao_ativa = next((s for s in secoes_lista if s['referencia'] == secao_ativa_ref), None)
+    if not secao_ativa and secoes_lista:
+        secao_ativa = secoes_lista[0]
+
+    context = {
+        'auditoria': auditoria,
+        'secoes': secoes_lista,
+        'secao_ativa': secao_ativa,
+    }
+    return render(request, 'auditoria/iso/sintese_wizard.html', context)
+
+
+@login_required
+@require_POST
+def api_iso_sintese_salvar_secao(request, auditoria_id):
+    """
+    Salva a síntese / notas livres de uma seção específica da auditoria via JSON.
+    """
+    import json
+    from django.http import JsonResponse
+    from .models import AuditoriaIso, SinteseSecaoAuditoriaIso
+
+    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+    try:
+        data = json.loads(request.body)
+        secao_referencia = str(data.get('secao_referencia', '')).strip()
+        secao_titulo = str(data.get('secao_titulo', '')).strip()
+        conteudo_html = str(data.get('conteudo_html', '')).strip()
+
+        if not secao_referencia:
+            return JsonResponse({'success': False, 'error': 'Referência da seção obrigatória.'}, status=400)
+
+        sintese, created = SinteseSecaoAuditoriaIso.objects.update_or_create(
+            auditoria=auditoria,
+            secao_referencia=secao_referencia,
+            defaults={
+                'secao_titulo': secao_titulo,
+                'conteudo_html': conteudo_html,
+                'atualizado_por': request.user if request.user.is_authenticated else None,
+            }
+        )
+
+        return JsonResponse({
+            'success': True,
+            'secao_referencia': secao_referencia,
+            'atualizado_em': sintese.atualizado_em.strftime('%d/%m/%Y %H:%M'),
+            'message': f'Síntese da Seção {secao_referencia} salva com sucesso!'
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+

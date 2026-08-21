@@ -1062,6 +1062,87 @@ class AuditoriaIsoDocxExportTests(TestCase):
         self.assertIn('id="atendidas"', content)
         self.assertIn("Solicitações Atendidas / Conformes", content)
 
+    def test_auditoria_toggle_conclusao_status(self):
+        self.client.force_login(self.user)
+        self.auditoria.status = "EM_ANDAMENTO"
+        self.auditoria.save()
+
+        toggle_url = reverse("auditoria:iso_auditoria_toggle_conclusao", args=[self.auditoria.id])
+        response = self.client.post(toggle_url)
+        self.assertEqual(response.status_code, 302)
+        self.auditoria.refresh_from_db()
+        self.assertEqual(self.auditoria.status, "CONCLUIDA")
+
+        # Reabertura
+        response2 = self.client.post(toggle_url)
+        self.assertEqual(response2.status_code, 302)
+        self.auditoria.refresh_from_db()
+        self.assertEqual(self.auditoria.status, "EM_ANDAMENTO")
+
+    def test_sintese_wizard_view(self):
+        self.client.force_login(self.user)
+        url = reverse("auditoria:iso_auditoria_sintese", args=[self.auditoria.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("secoes", response.context)
+        self.assertTrue(len(response.context["secoes"]) > 0)
+        self.assertIn("secao_ativa", response.context)
+
+        content = response.content.decode("utf-8")
+        self.assertIn("Repasse & Síntese da Auditoria", content)
+        self.assertIn("Seção 4", content)
+        self.assertIn("Seção 7", content)
+
+    def test_api_sintese_salvar_secao(self):
+        self.client.force_login(self.user)
+        from auditoria.models import SinteseSecaoAuditoriaIso
+
+        url = reverse("auditoria:api_iso_sintese_salvar_secao", args=[self.auditoria.id])
+        response = self.client.post(
+            url,
+            data=json.dumps({
+                "secao_referencia": "7",
+                "secao_titulo": "Realização do Produto",
+                "conteudo_html": "<h4>Processos de Fabricação</h4><p>Entrevistados: João e Maria.</p>",
+            }),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["success"])
+        self.assertEqual(data["secao_referencia"], "7")
+
+        sintese_obj = SinteseSecaoAuditoriaIso.objects.get(auditoria=self.auditoria, secao_referencia="7")
+        self.assertEqual(sintese_obj.secao_titulo, "Realização do Produto")
+        self.assertIn("Processos de Fabricação", sintese_obj.conteudo_html)
+
+    def test_docx_export_includes_sintese_secoes(self):
+        from auditoria.models import SinteseSecaoAuditoriaIso
+        from auditoria.services.relatorio_docx_export import generate_relatorio_docx_buffer
+
+        SinteseSecaoAuditoriaIso.objects.create(
+            auditoria=self.auditoria,
+            secao_referencia="4",
+            secao_titulo="Sistema de Gestão",
+            conteudo_html="<p>SGQ auditado com base nos procedimentos operacionais.</p>",
+        )
+        SinteseSecaoAuditoriaIso.objects.create(
+            auditoria=self.auditoria,
+            secao_referencia="7",
+            secao_titulo="Realização do Produto",
+            conteudo_html="<p>Lote piloto inspecionado com sucesso.</p>",
+        )
+
+        buffer = generate_relatorio_docx_buffer(self.auditoria)
+        doc = Document(io.BytesIO(buffer.getvalue()))
+        doc_text = " ".join([p.text for p in doc.paragraphs])
+
+        self.assertIn("Seção 4 — Sistema de Gestão", doc_text)
+        self.assertIn("SGQ auditado com base nos procedimentos", doc_text)
+        self.assertIn("Seção 7 — Realização do Produto", doc_text)
+        self.assertIn("Lote piloto inspecionado", doc_text)
+
+
 
 
 
