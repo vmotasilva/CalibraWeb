@@ -71,6 +71,7 @@ urlpatterns = [
     path("iso/<int:auditoria_id>/sintese/", views.iso_auditoria_sintese_wizard, name="iso_auditoria_sintese"),
     path("iso/<int:auditoria_id>/sintese/salvar-secao/", views.api_iso_sintese_salvar_secao, name="api_iso_sintese_salvar_secao"),
     path("iso/<int:auditoria_id>/api/fechamento/salvar/", views.api_iso_fechamento_salvar, name="api_iso_fechamento_salvar"),
+    path("iso/<int:auditoria_id>/api/editar-planejamento/", views.api_iso_auditoria_editar_planejamento, name="api_iso_auditoria_editar_planejamento"),
     path("iso/<int:auditoria_id>/api/pontos-fortes/adicionar/", views.api_iso_pontos_fortes_adicionar, name="api_iso_pontos_fortes_adicionar"),
     path("iso/<int:auditoria_id>/api/pontos-fortes/<int:pk>/remover/", views.api_iso_pontos_fortes_remover, name="api_iso_pontos_fortes_remover"),
     path("iso/<int:auditoria_id>/api/pontos-fortes/listar/", views.api_iso_pontos_fortes_listar, name="api_iso_pontos_fortes_listar"),

@@ -4535,6 +4535,42 @@ def iso_fechamento_presentation_view(request, auditoria_id):
 
     slides_descobertas_positivas = list(chunks_list(pontos_fortes_qs, 4))
 
+    # Reúne as respostas de Pessoas Auditadas / Entrevistadas de todos os blocos
+    pessoas_auditadas_por_bloco = []
+    for ag in auditoria.agendas.filter(arquivada=False).order_by('data', 'hora_inicio').prefetch_related('perguntas'):
+        perguntas_bloco = list(ag.perguntas.all())
+        p_auditados = None
+        for p in perguntas_bloco:
+            p_txt = p.texto_pergunta.lower()
+            p_dica = (p.dica_auditor or "").lower()
+            if "auditadas" in p_txt or "entrevistadas" in p_txt or "nomes e funções" in p_txt or "participante" in p_dica:
+                p_auditados = p
+                break
+        if not p_auditados and perguntas_bloco:
+            p_auditados = perguntas_bloco[0]
+
+        if p_auditados:
+            resp = RespostaEntrevistaIso.objects.filter(auditoria=auditoria, pergunta=p_auditados).first()
+            resp_txt = ""
+            if resp:
+                if resp.texto_resposta and resp.texto_resposta.strip():
+                    resp_txt = resp.texto_resposta.strip()
+                elif resp.solicitacoes.exists():
+                    sols = [s.descricao.strip() for s in resp.solicitacoes.all() if s.descricao and s.descricao.strip()]
+                    if sols:
+                        resp_txt = "; ".join(sols)
+            
+            if resp_txt:
+                pessoas_auditadas_por_bloco.append({
+                    "bloco_id": ag.id,
+                    "bloco_titulo": ag.titulo,
+                    "data": ag.data.strftime("%d/%m/%Y") if ag.data else "",
+                    "horario": f"{ag.hora_inicio.strftime('%H:%M')} às {ag.hora_fim.strftime('%H:%M')}" if ag.hora_inicio and ag.hora_fim else "",
+                    "auditados": resp_txt
+                })
+
+    slides_pessoas_auditadas = list(chunks_list(pessoas_auditadas_por_bloco, 4))
+
     destaques_conformes.sort(key=lambda x: natural_sort_key(x['referencia']))
     slides_pontos_fortes = list(chunks_list(destaques_conformes, 4))
     slides_pontos_melhorar = list(chunks_list(pontos_a_melhorar, 3))
@@ -4544,6 +4580,8 @@ def iso_fechamento_presentation_view(request, auditoria_id):
         'auditoria': auditoria,
         'agendas': agendas,
         'slides_agendas': slides_agendas,
+        'pessoas_auditadas_por_bloco': pessoas_auditadas_por_bloco,
+        'slides_pessoas_auditadas': slides_pessoas_auditadas,
         'metricas': {
             'total_avaliados': total_avaliados,
             'percentual_conformidade': percentual_conformidade,
@@ -4689,9 +4727,42 @@ def api_iso_fechamento_salvar(request, auditoria_id):
             auditoria.encerramento_auditores = data.get("encerramento_auditores", "").strip()
         if "empresa_auditada" in data:
             auditoria.empresa_auditada = data.get("empresa_auditada", "").strip()
+        if "escopo" in data:
+            auditoria.escopo = data.get("escopo", "").strip()
 
         auditoria.save()
         return JsonResponse({"success": True, "message": "Dados do relatório salvos com sucesso!"})
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+@login_required
+@require_POST
+def api_iso_auditoria_editar_planejamento(request, auditoria_id):
+    """
+    Edição rápida dos dados de planejamento da Auditoria ISO
+    (Empresa/Laboratório auditado, Escopo, Período, etc.).
+    """
+    from .models import AuditoriaIso
+    try:
+        auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+        data = json.loads(request.body)
+        
+        if "empresa_auditada" in data:
+            auditoria.empresa_auditada = data.get("empresa_auditada", "").strip()
+        if "escopo" in data:
+            auditoria.escopo = data.get("escopo", "").strip()
+        if "data_inicio" in data and data["data_inicio"]:
+            auditoria.data_inicio = data["data_inicio"]
+        if "data_fim" in data and data["data_fim"]:
+            auditoria.data_fim = data["data_fim"]
+
+        auditoria.save()
+        return JsonResponse({
+            "success": True,
+            "message": "Planejamento da auditoria atualizado com sucesso!",
+            "empresa_auditada": auditoria.empresa_auditada,
+            "escopo": auditoria.escopo
+        })
     except Exception as e:
         return JsonResponse({"success": False, "error": str(e)}, status=400)
 

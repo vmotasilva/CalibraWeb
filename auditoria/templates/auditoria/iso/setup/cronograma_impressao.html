@@ -79,23 +79,42 @@
     </div>
 
     <!-- Cabeçalho (Casca do Planejamento) -->
-    <div class="card shadow-sm border-0 mb-4">
+    <div class="card shadow-sm border-0 mb-4 position-relative">
         <div class="card-body p-4 bg-light rounded">
-            <h3 class="fw-bold text-dark text-center mb-4 border-bottom pb-3">Plano de Auditoria Interna</h3>
+            <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+                <h3 class="fw-bold text-dark mb-0">Plano de Auditoria Interna</h3>
+                <button type="button" class="btn btn-sm btn-outline-primary fw-bold rounded-pill px-3 no-print shadow-2xs" data-bs-toggle="modal" data-bs-target="#modalEditarPlanejamento">
+                    <i class="bi bi-pencil-square me-1"></i> Editar Dados da Auditoria
+                </button>
+            </div>
             
-            <div class="row">
-                <div class="col-md-6 mb-2">
-                    <strong>Norma / Referência:</strong> {{ auditoria.norma.codigo }}
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <small class="text-muted text-uppercase fw-bold d-block" style="font-size: 0.72rem;">Empresa / Laboratório Auditado</small>
+                    <strong class="text-dark fs-6" id="lblEmpresaAuditada">{{ auditoria.empresa_auditada|default:"Não especificado" }}</strong>
                 </div>
-                <div class="col-md-6 mb-2">
-                    <strong>Período Previsto:</strong> {{ auditoria.data_inicio|date:"d/m/Y" }} a {{ auditoria.data_fim|date:"d/m/Y" }}
+                <div class="col-md-4">
+                    <small class="text-muted text-uppercase fw-bold d-block" style="font-size: 0.72rem;">Escopo da Auditoria</small>
+                    <strong class="text-dark fs-6" id="lblEscopoAuditado">{{ auditoria.escopo|default:"Fabricação de Lentes Oftálmicas" }}</strong>
                 </div>
-                <div class="col-md-6 mb-2">
-                    <strong>Auditor(es):</strong> 
-                    {% for auditor in auditoria.auditores.all %}{{ auditor.get_full_name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                <div class="col-md-4">
+                    <small class="text-muted text-uppercase fw-bold d-block" style="font-size: 0.72rem;">Norma / Referência</small>
+                    <strong class="text-dark fs-6">{{ auditoria.norma.codigo }}</strong>
                 </div>
-                <div class="col-md-6 mb-2">
-                    <strong>Status:</strong> {{ auditoria.get_status_display }}
+
+                <div class="col-md-4">
+                    <small class="text-muted text-uppercase fw-bold d-block" style="font-size: 0.72rem;">Período Previsto</small>
+                    <span class="text-dark" id="lblPeriodoPrevisto">{{ auditoria.data_inicio|date:"d/m/Y" }} a {{ auditoria.data_fim|date:"d/m/Y" }}</span>
+                </div>
+                <div class="col-md-4">
+                    <small class="text-muted text-uppercase fw-bold d-block" style="font-size: 0.72rem;">Auditor(es)</small> 
+                    <span class="text-dark">
+                        {% for auditor in auditoria.auditores.all %}{{ auditor.get_full_name }}{% if not forloop.last %}, {% endif %}{% empty %}{{ auditoria.abertura_auditores|default:"Vinicius Mota" }}{% endfor %}
+                    </span>
+                </div>
+                <div class="col-md-4">
+                    <small class="text-muted text-uppercase fw-bold d-block" style="font-size: 0.72rem;">Status Geral</small> 
+                    <span class="badge bg-secondary rounded-pill">{{ auditoria.get_status_display }}</span>
                 </div>
             </div>
         </div>
@@ -1796,6 +1815,88 @@ async function salvarModalDetalhesAberto() {
         </div>
     </div>
 </div>
+
+<!-- Modal de Edição de Dados do Planejamento -->
+<div class="modal fade no-print" id="modalEditarPlanejamento" tabindex="-1" aria-labelledby="modalEditarPlanejamentoTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-dark text-white px-4 py-3 border-0">
+                <h5 class="modal-title fw-bold" id="modalEditarPlanejamentoTitle">
+                    <i class="bi bi-pencil-square text-primary me-2"></i>Editar Dados da Auditoria
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="formPlanejamentoAuditoria">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">Empresa / Laboratório Auditado</label>
+                        <input type="text" class="form-control rounded-3" id="inputPlanEmpresaAuditada" value="{{ auditoria.empresa_auditada|default:'' }}" placeholder="Ex: Laboratório Óptico Central">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">Escopo da Auditoria</label>
+                        <input type="text" class="form-control rounded-3" id="inputPlanEscopoAuditado" value="{{ auditoria.escopo|default:'Fabricação de Lentes Oftálmicas' }}" placeholder="Ex: Fabricação e Montagem de Dispositivos Médicos">
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label fw-bold small text-muted">Data de Início</label>
+                            <input type="date" class="form-control rounded-3" id="inputPlanDataInicio" value="{{ auditoria.data_inicio|date:'Y-m-d' }}">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold small text-muted">Data Prevista de Fim</label>
+                            <input type="date" class="form-control rounded-3" id="inputPlanDataFim" value="{{ auditoria.data_fim|date:'Y-m-d' }}">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-light px-4 py-3 border-top d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" id="btnSalvarPlanAuditoria" onclick="salvarPlanejamentoAuditoria()">
+                    <i class="bi bi-check-lg me-1"></i> Salvar Dados
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function salvarPlanejamentoAuditoria() {
+    const btn = document.getElementById('btnSalvarPlanAuditoria');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Salvando...';
+
+    const payload = {
+        empresa_auditada: document.getElementById('inputPlanEmpresaAuditada').value.trim(),
+        escopo: document.getElementById('inputPlanEscopoAuditado').value.trim(),
+        data_inicio: document.getElementById('inputPlanDataInicio').value,
+        data_fim: document.getElementById('inputPlanDataFim').value
+    };
+
+    try {
+        const response = await fetch("{% url 'auditoria:api_iso_auditoria_editar_planejamento' auditoria.id %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify(payload)
+        });
+        const res = await response.json();
+        if (res.success) {
+            const modalEl = document.getElementById('modalEditarPlanejamento');
+            bootstrap.Modal.getInstance(modalEl)?.hide();
+            window.location.reload();
+        } else {
+            alert('Erro ao salvar planejamento: ' + (res.error || 'Erro desconhecido.'));
+        }
+    } catch(err) {
+        console.error('Erro:', err);
+        alert('Erro de comunicação com o servidor.');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Salvar Dados';
+    }
+}
+</script>
 
 <!-- CSS Específico para Impressão -->
 <style>

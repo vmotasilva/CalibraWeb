@@ -245,8 +245,8 @@
             <div class="row g-4 my-auto">
                 <div class="col-md-4">
                     <div class="p-3.5 bg-white bg-opacity-10 rounded-4 border border-white border-opacity-10 backdrop-blur">
-                        <small class="text-white-50 text-uppercase fw-bold d-block mb-1" style="font-size: 0.72rem;">Empresa Auditada</small>
-                        <h5 class="fw-bold text-white mb-0">{{ auditoria.empresa_auditada|default:"Tecnolens" }}</h5>
+                        <small class="text-white-50 text-uppercase fw-bold d-block mb-1" style="font-size: 0.72rem;">Empresa / Laboratório Auditado</small>
+                        <h5 class="fw-bold text-white mb-0">{{ auditoria.empresa_auditada|default:"Não especificado" }}</h5>
                     </div>
                 </div>
                 <div class="col-md-4">
@@ -327,6 +327,64 @@
             </div>
         </div>
         {% endfor %}
+
+        <!-- ── SLIDES DE PESSOAS AUDITADAS / ENTREVISTADOS POR BLOCO ── -->
+        {% if slides_pessoas_auditadas %}
+            {% for lote_pa in slides_pessoas_auditadas %}
+            <div class="slide">
+                <div class="slide-header">
+                    <h2 class="slide-title text-dark">
+                        <i class="bi bi-people-fill text-primary me-2"></i>Pessoas Auditadas & Participantes
+                        {% if slides_pessoas_auditadas|length > 1 %}
+                            <span class="text-secondary fw-normal fs-5 ms-2">({{ forloop.counter }}/{{ slides_pessoas_auditadas|length }})</span>
+                        {% endif %}
+                    </h2>
+                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-3.5 py-1.5 rounded-pill font-monospace fw-bold" style="font-size: 0.88rem;">
+                        Entrevistados nos Blocos
+                    </span>
+                </div>
+                <div class="slide-content">
+                    <div class="h-100 d-flex flex-column justify-content-start gap-3">
+                        <div class="p-3 bg-light rounded-4 border">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-primary text-white px-2.5 py-1 rounded-pill">
+                                    <i class="bi bi-person-lines-fill me-1"></i>Registro de Entrevistas
+                                </span>
+                                <span class="text-secondary small fw-semibold">Profissionais entrevistados em cada etapa e processo avaliado:</span>
+                            </div>
+                        </div>
+
+                        <div class="row row-cols-2 g-3 flex-grow-1">
+                            {% for item in lote_pa %}
+                            <div class="col">
+                                <div class="p-3.5 bg-white rounded-4 border h-100 shadow-2xs d-flex gap-3 align-items-start">
+                                    <div class="p-2.5 rounded-circle bg-primary bg-opacity-10 text-primary flex-shrink-0">
+                                        <i class="bi bi-person-badge-fill fs-4"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <h6 class="fw-bold text-dark mb-0 font-monospace" style="font-size: 0.9rem;">{{ item.bloco_titulo }}</h6>
+                                            {% if item.horario %}
+                                            <span class="badge bg-light text-secondary border small font-monospace">{{ item.horario }}</span>
+                                            {% endif %}
+                                        </div>
+                                        <p class="text-dark small mb-0 fw-semibold" style="line-height: 1.45; font-size: 0.84rem;">
+                                            {{ item.auditados }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="slide-footer">
+                    <span>{{ auditoria.norma.codigo }} — Pessoas Auditadas / Entrevistados</span>
+                    <span>Calibra WEB</span>
+                </div>
+            </div>
+            {% endfor %}
+        {% endif %}
 
         <!-- ── SLIDE(S): CONSTATAÇÕES DE AUDITORIA (DESCOBERTAS POSITIVAS) ── -->
         {% if slides_descobertas_positivas %}
@@ -648,15 +706,43 @@
                 <div class="modal-body p-4">
                     <form id="formFechamento">
                         <div class="row g-3 mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold small text-muted">Empresa / Unidade Auditada</label>
-                                <input type="text" class="form-control rounded-3" id="inputEmpresaAuditada" value="{{ auditoria.empresa_auditada|default:'Tecnolens' }}">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold small text-muted">Empresa / Laboratório Auditado</label>
+                                <input type="text" class="form-control rounded-3" id="inputEmpresaAuditada" value="{{ auditoria.empresa_auditada|default:'' }}" placeholder="Ex: Laboratório Óptico Central">
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold small text-muted">Escopo da Auditoria</label>
+                                <input type="text" class="form-control rounded-3" id="inputEscopoAuditado" value="{{ auditoria.escopo|default:'Fabricação de Lentes Oftálmicas' }}" placeholder="Ex: Fabricação de Dispositivos Médicos">
+                            </div>
+                            <div class="col-md-4">
                                 <label class="form-label fw-bold small text-muted">Representantes Presentes no Encerramento</label>
                                 <input type="text" class="form-control rounded-3" id="inputEncerramentoRep" value="{{ auditoria.encerramento_representantes|default:'' }}" placeholder="Ex: Maria Souza (Coord. Qualidade), Carlos (Gerente)">
                             </div>
                         </div>
+
+                        <!-- Painel com Pessoas Auditadas Coletadas de Todos os Blocos -->
+                        {% if pessoas_auditadas_por_bloco %}
+                        <div class="mb-3 p-3 bg-light rounded-4 border">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <small class="fw-bold text-dark d-flex align-items-center gap-1.5">
+                                    <i class="bi bi-people-fill text-primary"></i> Pessoas Auditadas Registradas nos Blocos ({{ pessoas_auditadas_por_bloco|length }} blocos)
+                                </small>
+                                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-bold" onclick="copiarAuditadosParaRepresentantes()" style="font-size: 0.78rem;">
+                                    <i class="bi bi-arrow-up-right-circle me-1"></i> Copiar Nomes para Representantes
+                                </button>
+                            </div>
+                            <div class="row g-2" style="max-height: 140px; overflow-y: auto;">
+                                {% for pa in pessoas_auditadas_por_bloco %}
+                                <div class="col-md-6">
+                                    <div class="p-2 bg-white rounded-3 border shadow-2xs small">
+                                        <strong class="text-primary font-monospace d-block" style="font-size: 0.78rem;">{{ pa.bloco_titulo }}</strong>
+                                        <span class="text-dark" style="font-size: 0.77rem;">{{ pa.auditados }}</span>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
 
                         <!-- Editor WYSIWYG para Síntese da Auditoria -->
                         <div class="mb-3">
@@ -820,6 +906,20 @@
             });
         });
 
+        function copiarAuditadosParaRepresentantes() {
+            const auditadosTextos = [
+                {% for pa in pessoas_auditadas_por_bloco %}
+                "{{ pa.auditados|escapejs }}",
+                {% endfor %}
+            ];
+            const nomesUnicos = Array.from(new Set(auditadosTextos.filter(Boolean)));
+            const inputRep = document.getElementById('inputEncerramentoRep');
+            if (nomesUnicos.length > 0) {
+                const textoFinal = nomesUnicos.join(', ');
+                inputRep.value = inputRep.value ? (inputRep.value + ', ' + textoFinal) : textoFinal;
+            }
+        }
+
         async function salvarDadosFechamento() {
             const btn = document.getElementById('btnSalvarFechamento');
             btn.disabled = true;
@@ -828,6 +928,7 @@
             const sinteseHtml = quill ? quill.root.innerHTML : '';
             const payload = {
                 empresa_auditada: document.getElementById('inputEmpresaAuditada').value.trim(),
+                escopo: document.getElementById('inputEscopoAuditado').value.trim(),
                 encerramento_representantes: document.getElementById('inputEncerramentoRep').value.trim(),
                 conclusao_texto: document.getElementById('inputConclusaoTexto').value.trim(),
                 sintese: sinteseHtml

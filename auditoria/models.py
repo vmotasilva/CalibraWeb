@@ -831,6 +831,9 @@ class AuditoriaIso(models.Model):
     revisao_representantes = models.CharField(max_length=255, blank=True, verbose_name="Representantes (Revisão)")
     encerramento_auditores = models.CharField(max_length=255, blank=True, verbose_name="Auditores (Encerramento)")
     encerramento_representantes = models.CharField(max_length=255, blank=True, verbose_name="Representantes (Encerramento)")
+
+    empresa_auditada = models.CharField(max_length=255, blank=True, default="", verbose_name="Empresa / Laboratório Auditado")
+    escopo = models.CharField(max_length=500, blank=True, default="Fabricação de Lentes Oftálmicas", verbose_name="Escopo da Auditoria")
     
     sintese = models.TextField(blank=True, default="", verbose_name="Síntese da Auditoria", help_text="Síntese executiva formatada em HTML/WYSIWYG com tabelas e imagens")
     conclusao_texto = models.TextField(blank=True, default="", verbose_name="Conclusão / Parecer Final da Auditoria")
