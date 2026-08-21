@@ -1047,5 +1047,21 @@ class AuditoriaIsoDocxExportTests(TestCase):
         self.assertEqual(self.auditoria.conclusao_texto, "Parecer de recomendação emitido.")
         self.assertIn("Nova Síntese", self.auditoria.sintese)
 
+    def test_cronograma_solicitacoes_atendidas_tab(self):
+        self.client.force_login(self.user)
+        url = reverse("auditoria:iso_auditoria_cronograma", args=[self.auditoria.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("solicitacoes_atendidas", response.context)
+        self.assertEqual(len(response.context["solicitacoes_atendidas"]), 1)
+        self.assertEqual(response.context["total_solicitacoes_atendidas"], 1)
+        self.assertEqual(response.context["total_atendidas_c"], 1)
+
+        content = response.content.decode("utf-8")
+        self.assertIn('id="atendidas-tab"', content)
+        self.assertIn('id="atendidas"', content)
+        self.assertIn("Solicitações Atendidas / Conformes", content)
+
+
 
 

@@ -6163,13 +6163,16 @@ def iso_auditoria_cronograma(request, auditoria_id):
         'resposta__pergunta', 'resposta__respondida_por'
     ).prefetch_related(
         'resposta__pergunta__itens_norma',
-        'resposta__pergunta__agendas_vinculadas'
+        'resposta__pergunta__agendas_vinculadas',
+        'imagens'
     ).order_by('criado_em')
 
     # Filtrar solicitações em aberto (conclusão 'P' - Pendente)
     solicitacoes_abertas = []
     # Filtrar solicitações tratadas com desvios (conclusão NC, OM, OBS)
     solicitacoes_com_desvios = []
+    # Filtrar solicitações resolvidas e atendidas (conclusão C, NA)
+    solicitacoes_atendidas = []
 
     for s in sols_todas:
         agendas_vinculadas = list(s.resposta.pergunta.agendas_vinculadas.filter(auditoria=auditoria, arquivada=False))
@@ -6189,12 +6192,15 @@ def iso_auditoria_cronograma(request, auditoria_id):
             'itens_str': ", ".join(it.referencia for it in itens_sorted),
             'agenda': primeira_agenda,
             'agendas_vinculadas': agendas_vinculadas,
+            'imagens': list(s.imagens.all()),
         }
 
         if s.conclusao == 'P':
             solicitacoes_abertas.append(item_dict)
         elif s.conclusao in ['NC', 'OM', 'OBS']:
             solicitacoes_com_desvios.append(item_dict)
+        elif s.conclusao in ['C', 'NA']:
+            solicitacoes_atendidas.append(item_dict)
 
     total_solicitacoes_todas = sols_todas.count()
     total_solicitacoes_abertas = len(solicitacoes_abertas)
@@ -6202,6 +6208,10 @@ def iso_auditoria_cronograma(request, auditoria_id):
     total_desvios_nc = sum(1 for s in solicitacoes_com_desvios if s['conclusao'] == 'NC')
     total_desvios_om = sum(1 for s in solicitacoes_com_desvios if s['conclusao'] == 'OM')
     total_desvios_obs = sum(1 for s in solicitacoes_com_desvios if s['conclusao'] == 'OBS')
+
+    total_solicitacoes_atendidas = len(solicitacoes_atendidas)
+    total_atendidas_c = sum(1 for s in solicitacoes_atendidas if s['conclusao'] == 'C')
+    total_atendidas_na = sum(1 for s in solicitacoes_atendidas if s['conclusao'] == 'NA')
 
     context = {
         'auditoria': auditoria,
@@ -6216,6 +6226,10 @@ def iso_auditoria_cronograma(request, auditoria_id):
         'total_desvios_nc': total_desvios_nc,
         'total_desvios_om': total_desvios_om,
         'total_desvios_obs': total_desvios_obs,
+        'solicitacoes_atendidas': solicitacoes_atendidas,
+        'total_solicitacoes_atendidas': total_solicitacoes_atendidas,
+        'total_atendidas_c': total_atendidas_c,
+        'total_atendidas_na': total_atendidas_na,
         'total_solicitacoes_todas': total_solicitacoes_todas,
     }
     return render(request, 'auditoria/iso/setup/cronograma_impressao.html', context)

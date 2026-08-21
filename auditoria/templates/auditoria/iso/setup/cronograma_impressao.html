@@ -140,6 +140,13 @@
                 <span class="badge {% if total_solicitacoes_desvios > 0 %}bg-danger text-white{% else %}bg-secondary{% endif %} rounded-pill font-monospace" style="font-size: 0.75rem;">{{ total_solicitacoes_desvios }}</span>
             </button>
         </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold px-3 px-md-4 rounded-pill d-flex align-items-center justify-content-center gap-1 gap-md-2" id="atendidas-tab" data-bs-toggle="tab" data-bs-target="#atendidas" type="button" role="tab" aria-controls="atendidas" aria-selected="false" title="Solicitações Resolvidas e Atendidas">
+                <i class="bi bi-check-circle-fill text-success"></i>
+                <span class="d-none d-md-inline">Solicitações Atendidas / Conformes</span>
+                <span class="badge {% if total_solicitacoes_atendidas > 0 %}bg-success text-white{% else %}bg-secondary{% endif %} rounded-pill font-monospace" style="font-size: 0.75rem;">{{ total_solicitacoes_atendidas }}</span>
+            </button>
+        </li>
     </ul>
 
     <div class="tab-content" id="cronogramaTabsContent">
@@ -732,6 +739,159 @@
                         </div>
                         <h5 class="fw-bold text-dark mb-1">Nenhuma Solicitação com Desvio!</h5>
                         <p class="text-muted small mb-0">Todas as solicitações de evidência e amostras tratadas estão conformes.</p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- ABA: SOLICITAÇÕES RESOLVIDAS E ATENDIDAS -->
+        <div class="tab-pane fade" id="atendidas" role="tabpanel" aria-labelledby="atendidas-tab">
+            <div class="d-flex justify-content-between align-items-center bg-light p-3 rounded-top border mt-4 flex-wrap gap-2">
+                <div>
+                    <h5 class="mb-1 fw-bold text-dark d-flex align-items-center gap-2">
+                        <i class="bi bi-check-circle-fill text-success"></i>
+                        <span>Solicitações Resolvidas & Atendidas</span>
+                    </h5>
+                    <small class="text-muted">Amostras, documentos e evidências apresentadas que atenderam satisfatoriamente aos requisitos normativos.</small>
+                </div>
+                <div class="d-flex gap-2 align-items-center flex-wrap">
+                    <span class="badge bg-success text-white px-3 py-1.5 rounded-pill font-monospace fw-bold" style="font-size: 0.85rem;">
+                        <i class="bi bi-check2 me-1"></i>{{ total_atendidas_c }} Conforme{{ total_atendidas_c|pluralize:"s" }}
+                    </span>
+                    {% if total_atendidas_na > 0 %}
+                    <span class="badge bg-secondary text-white px-3 py-1.5 rounded-pill font-monospace fw-bold" style="font-size: 0.85rem;">
+                        {{ total_atendidas_na }} N/A
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if solicitacoes_atendidas %}
+                <div class="table-responsive border border-top-0 rounded-bottom bg-white shadow-2xs mb-4">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th width="12%">Status / Conclusão</th>
+                                <th width="18%">Bloco / Processo</th>
+                                <th width="14%">Requisito(s)</th>
+                                <th width="24%">Item / Amostra Solicitada</th>
+                                <th width="22%">Evidência Registrada & Anexos</th>
+                                <th width="10%" class="no-print text-end">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sol in solicitacoes_atendidas %}
+                                <tr id="sol-atendida-row-{{ sol.id }}">
+                                    <td class="align-middle">
+                                        {% if sol.conclusao == 'C' %}
+                                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-2.5 py-1 fw-bold font-monospace d-inline-flex align-items-center gap-1">
+                                                <i class="bi bi-check-circle-fill"></i> Conforme
+                                            </span>
+                                        {% elif sol.conclusao == 'NA' %}
+                                            <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 rounded-pill px-2.5 py-1 fw-bold font-monospace d-inline-flex align-items-center gap-1">
+                                                <i class="bi bi-dash-circle"></i> Não Aplicável
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-success rounded-pill px-2.5 py-1 fw-bold font-monospace">{{ sol.conclusao }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="align-middle">
+                                        {% if sol.agenda %}
+                                            <a href="{% url 'auditoria:iso_entrevista_view' auditoria.id %}?agenda_id={{ sol.agenda.id }}" class="fw-bold text-decoration-none text-primary d-flex align-items-center gap-1.5" title="Ir para a entrevista deste bloco">
+                                                <i class="bi bi-box-seam text-secondary"></i>
+                                                <span>{{ sol.agenda.titulo }}</span>
+                                            </a>
+                                            {% if sol.agenda.data %}
+                                                <div class="small text-muted font-monospace mt-0.5">
+                                                    <i class="bi bi-calendar3 me-1"></i>{{ sol.agenda.data|date:"d/m/Y" }}
+                                                    {% if sol.agenda.hora_inicio %} • {{ sol.agenda.hora_inicio|time:"H:i" }}{% endif %}
+                                                </div>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="badge bg-secondary bg-opacity-10 text-secondary">Auditoria Geral</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="align-middle">
+                                        <div class="d-flex flex-wrap gap-1">
+                                            {% for it in sol.itens_norma %}
+                                                {% if sol.agenda %}
+                                                    <a href="{% url 'auditoria:iso_entrevista_view' auditoria.id %}?agenda_id={{ sol.agenda.id }}&item={{ it.referencia|urlencode }}" 
+                                                       class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 font-monospace text-decoration-none px-2 py-1"
+                                                       title="{{ it.titulo }}">
+                                                        {{ it.referencia }}
+                                                    </a>
+                                                {% else %}
+                                                    <span class="badge bg-secondary font-monospace px-2 py-1" title="{{ it.titulo }}">
+                                                        {{ it.referencia }}
+                                                    </span>
+                                                {% endif %}
+                                            {% empty %}
+                                                <span class="text-muted small">-</span>
+                                            {% endfor %}
+                                        </div>
+                                        <div class="small text-muted text-truncate mt-1" style="max-width: 170px;" title="{{ sol.pergunta_texto }}">
+                                            {{ sol.pergunta_texto }}
+                                        </div>
+                                    </td>
+                                    <td class="align-middle">
+                                        <div class="fw-semibold text-dark mb-1">
+                                            {{ sol.solicitacao|default:"Solicitação de Evidência" }}
+                                        </div>
+                                        <small class="text-muted d-block">
+                                            <i class="bi bi-clock-history me-1"></i>Registrado em {{ sol.criado_em|date:"d/m/Y H:i" }}
+                                        </small>
+                                    </td>
+                                    <td class="align-middle">
+                                        <div class="p-2 rounded bg-light border border-light-subtle cursor-pointer" 
+                                             style="cursor: pointer; min-height: 42px;" 
+                                             onclick="abrirModalDetalhesAberto({{ sol.id }}, '{{ sol.solicitacao|escapejs }}', '{{ sol.evidencia|escapejs }}', '{{ sol.conclusao }}', '{{ sol.pergunta_texto|escapejs }}', '{{ sol.itens_str|escapejs }}')"
+                                             title="Clique para ler ou editar a evidência">
+                                            {% if sol.evidencia %}
+                                                <div class="text-dark small" style="white-space: pre-wrap; font-size: 0.82rem; max-height: 60px; overflow-y: auto;">{{ sol.evidencia }}</div>
+                                            {% else %}
+                                                <span class="text-muted small fst-italic"><i class="bi bi-check2 me-1"></i>Evidência atendida. Clique para detalhar...</span>
+                                            {% endif %}
+
+                                            {% if sol.imagens %}
+                                                <div class="d-flex align-items-center gap-1 mt-1.5 flex-wrap">
+                                                    <span class="badge bg-info bg-opacity-10 text-primary border border-info border-opacity-25 rounded-pill px-2 py-0.5" style="font-size: 0.72rem;">
+                                                        <i class="bi bi-images me-1"></i>{{ sol.imagens|length }} imagem{{ sol.imagens|length|pluralize:"s" }}
+                                                    </span>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td class="no-print text-end align-middle">
+                                        <div class="d-flex gap-1 justify-content-end align-items-center">
+                                            <button type="button" 
+                                                    class="btn btn-sm btn-outline-primary rounded-pill px-2.5 fw-semibold shadow-2xs d-flex align-items-center gap-1" 
+                                                    onclick="abrirModalDetalhesAberto({{ sol.id }}, '{{ sol.solicitacao|escapejs }}', '{{ sol.evidencia|escapejs }}', '{{ sol.conclusao }}', '{{ sol.pergunta_texto|escapejs }}', '{{ sol.itens_str|escapejs }}')"
+                                                    title="Reavaliar ou Editar Solicitação">
+                                                <i class="bi bi-pencil-square"></i>
+                                                <span>Editar</span>
+                                            </button>
+                                            {% if sol.agenda %}
+                                                <a href="{% url 'auditoria:iso_entrevista_view' auditoria.id %}?agenda_id={{ sol.agenda.id }}{% if sol.itens_norma %}&item={{ sol.itens_norma.0.referencia|urlencode }}{% endif %}" 
+                                                   class="btn btn-sm btn-outline-secondary rounded-circle" 
+                                                   title="Abrir no Modo Entrevista">
+                                                    <i class="bi bi-box-arrow-up-right"></i>
+                                                </a>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="card border-0 shadow-sm rounded-4 text-center p-5 mt-4 bg-white">
+                    <div class="py-4">
+                        <div class="bg-secondary bg-opacity-10 text-secondary rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 70px; height: 70px;">
+                            <i class="bi bi-inbox fs-1"></i>
+                        </div>
+                        <h5 class="fw-bold text-dark mb-1">Nenhuma Solicitação Conforme Registrada</h5>
+                        <p class="text-muted small mb-0">As solicitações avaliadas como conformes e atendidas aparecerão listadas nesta aba.</p>
                     </div>
                 </div>
             {% endif %}
