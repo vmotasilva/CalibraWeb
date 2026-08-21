@@ -252,12 +252,39 @@
                     <input type="text" id="modalSolTexto" class="form-control form-control-lg fs-6 shadow-2xs" placeholder="Ex: Procedimento da Qualidade, Laudo Técnico, Certificado RBC...">
                 </div>
 
-                <div class="mb-2">
+                <div class="mb-3">
                     <label class="form-label fw-bold text-dark">
                         <i class="bi bi-card-checklist me-1 text-primary"></i> Evidência Apresentada / Constatada pelo Auditor
                     </label>
-                    <textarea id="modalSolEvidencia" class="form-control shadow-2xs" rows="8" placeholder="Descreva plenamente o documento auditado, referências, números de laudo, datas, pessoas e evidências encontradas..." style="font-family: inherit; font-size: 0.95rem; line-height: 1.5;"></textarea>
+                    <textarea id="modalSolEvidencia" class="form-control shadow-2xs" rows="6" placeholder="Descreva plenamente o documento auditado, referências, números de laudo, datas, pessoas e evidências encontradas..." style="font-family: inherit; font-size: 0.95rem; line-height: 1.5;"></textarea>
                     <small class="text-muted mt-1 d-block"><i class="bi bi-info-circle me-1"></i>Espaço amplo para digitação e leitura integral da evidência.</small>
+                </div>
+
+                <!-- Seção de Fotos e Imagens da Evidência -->
+                <div class="mb-2 p-3 bg-light rounded-3 border">
+                    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <label class="form-label fw-bold text-dark mb-0">
+                                <i class="bi bi-camera me-1 text-primary"></i> Fotos e Imagens da Evidência
+                            </label>
+                            <span id="modalImagensCount" class="badge bg-primary bg-opacity-10 text-primary rounded-pill small fw-bold">0</span>
+                        </div>
+                        <div>
+                            <label class="btn btn-sm btn-primary rounded-pill px-3 fw-bold shadow-2xs mb-0 cursor-pointer" for="inputUploadImagemEvidencia" style="cursor: pointer;">
+                                <i class="bi bi-cloud-arrow-up me-1"></i> Anexar Foto / Imagem
+                            </label>
+                            <input type="file" id="inputUploadImagemEvidencia" class="d-none" accept="image/*" multiple onchange="fazerUploadImagensSolicitacao(this)">
+                        </div>
+                    </div>
+                    <div id="modalImagensLoading" class="d-none text-center py-2 text-primary small">
+                        <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Enviando e processando imagem...
+                    </div>
+                    <div id="modalImagensGaleria" class="d-flex flex-wrap gap-2 pt-1" style="min-height: 48px;">
+                        <!-- Imagens renderizadas dinamicamente via JS -->
+                    </div>
+                    <small class="text-muted d-block mt-2" style="font-size: 0.78rem;">
+                        <i class="bi bi-info-circle me-1"></i>Fotos e evidências anexadas ficam salvas com segurança para inclusão em relatórios, matriz e apresentações.
+                    </small>
                 </div>
             </div>
             <div class="modal-footer border-0 bg-light rounded-bottom-4 d-flex justify-content-between">
@@ -270,6 +297,25 @@
                         <i class="bi bi-check2-circle me-1"></i> Salvar Evidência
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Lightbox para Pré-Visualização Ampliada da Imagem -->
+<div class="modal fade" id="modalPreviewImagemEvidencia" tabindex="-1" aria-hidden="true" style="z-index: 10100;">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 bg-dark text-white shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header border-0 py-2 px-3 bg-black bg-opacity-50">
+                <h6 class="modal-title small text-truncate" id="modalPreviewImagemTitulo">Pré-visualização da Evidência</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0 text-center bg-black d-flex align-items-center justify-content-center" style="min-height: 350px; max-height: 75vh;">
+                <img id="modalPreviewImagemSrc" src="" alt="Evidência" class="img-fluid" style="max-height: 75vh; object-fit: contain;">
+            </div>
+            <div class="modal-footer border-0 py-2 px-3 bg-black bg-opacity-50 justify-content-between">
+                <small class="text-white-50" id="modalPreviewImagemLegenda"></small>
+                <button type="button" class="btn btn-sm btn-outline-light rounded-pill px-3" data-bs-dismiss="modal">Fechar</button>
             </div>
         </div>
     </div>
@@ -769,12 +815,30 @@
         sols.forEach((s, idx) => {
             const hasEvidencia = s.evidencia && s.evidencia.trim().length > 0;
             const evidenciaPreview = hasEvidencia ? s.evidencia.trim() : "Nenhuma evidência descrita ainda. Clique para detalhar...";
+            const fotosCount = (s.imagens || []).length;
+            const fotosBadge = fotosCount > 0
+                ? `<span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-2 py-1 small fw-semibold" title="${fotosCount} foto(s) anexada(s)"><i class="bi bi-camera-fill me-1"></i>${fotosCount} foto${fotosCount > 1 ? 's' : ''}</span>`
+                : '';
             
+            let fotosThumbnailsHtml = '';
+            if (fotosCount > 0) {
+                fotosThumbnailsHtml = `
+                    <div class="d-flex align-items-center gap-2 mt-2 flex-wrap">
+                        ${s.imagens.map(img => `
+                            <div class="position-relative" style="cursor: pointer;" onclick="abrirLightboxImagem('${escapeJs(img.url)}', '${escapeJs(img.legenda || s.solicitacao || 'Evidência')}', event)" title="${img.legenda || img.nome || 'Ver foto em tela cheia'}">
+                                <img src="${img.url}" alt="${img.legenda || 'Foto'}" class="rounded-2 border object-fit-cover shadow-2xs" style="width: 44px; height: 44px; object-fit: cover;">
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
             html += `
                 <div class="card border rounded-3 p-3 bg-white shadow-2xs mb-2.5 transition-all" id="sol-card-${s.id}">
                     <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
                         <div class="d-flex align-items-center gap-2 flex-wrap">
                             <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-2.5 py-1 small fw-bold">Amostra #${idx + 1}</span>
+                            ${fotosBadge}
                             ${s.bloco_nome ? `
                                 <span class="badge ${s.is_bloco_atual ? 'bg-primary text-white' : 'bg-info bg-opacity-10 text-dark border border-info border-opacity-25'} rounded-pill px-2.5 py-1 small fw-semibold" title="Bloco associado a esta amostra">
                                     <i class="bi bi-diagram-3 me-1"></i>${s.is_bloco_atual ? `Este Bloco (${s.bloco_nome})` : `Bloco: ${s.bloco_nome}`}
@@ -821,6 +885,9 @@
                         </div>
                         <div class="text-secondary small text-truncate-2" style="font-size: 0.82rem; white-space: pre-wrap; max-height: 48px; overflow: hidden;">${evidenciaPreview}</div>
                     </div>
+
+                    <!-- Miniaturas das Fotos Anexadas -->
+                    ${fotosThumbnailsHtml}
                 </div>
             `;
         });
@@ -851,6 +918,7 @@
                 if (!p.solicitacoes) p.solicitacoes = [];
                 data.solicitacao.bloco_nome = "{{ agenda.titulo|default:'Geral'|escapejs }}";
                 data.solicitacao.is_bloco_atual = true;
+                data.solicitacao.imagens = [];
                 p.solicitacoes.push(data.solicitacao);
                 renderQuestion();
                 showSaveIndicatorMessage("Solicitação criada com sucesso!");
@@ -950,6 +1018,150 @@
         updateModalConclusaoButtons('NC', grau);
     }
 
+    function escapeJs(str) {
+        return (str || '').toString().replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    }
+
+    function abrirLightboxImagem(url, legenda, event) {
+        if (event) event.stopPropagation();
+        const modalEl = document.getElementById('modalPreviewImagemEvidencia');
+        if (!modalEl) return;
+        document.getElementById('modalPreviewImagemSrc').src = url;
+        document.getElementById('modalPreviewImagemLegenda').textContent = legenda || '';
+        document.getElementById('modalPreviewImagemTitulo').textContent = legenda || 'Foto de Evidência';
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+    }
+
+    function renderModalImagensGaleria(imagens, solId) {
+        const galeria = document.getElementById('modalImagensGaleria');
+        const countBadge = document.getElementById('modalImagensCount');
+        if (countBadge) countBadge.textContent = (imagens || []).length;
+        if (!galeria) return;
+
+        if (!imagens || imagens.length === 0) {
+            galeria.innerHTML = `
+                <div class="text-muted small py-2 w-100 text-center" style="font-size: 0.82rem;">
+                    <i class="bi bi-images me-1"></i>Nenhuma foto ou imagem anexada ainda a esta solicitação.
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+        imagens.forEach(img => {
+            html += `
+                <div class="card border rounded-3 p-1.5 bg-white shadow-2xs position-relative" style="width: 140px;" id="modal-img-card-${img.id}">
+                    <div class="position-relative overflow-hidden rounded-2" style="height: 90px; cursor: pointer;" onclick="abrirLightboxImagem('${escapeJs(img.url)}', '${escapeJs(img.legenda || img.nome || 'Evidência')}', event)">
+                        <img src="${img.url}" class="w-100 h-100 object-fit-cover rounded-2" alt="${img.legenda || 'Evidência'}">
+                        <span class="position-absolute top-0 end-0 m-1 badge bg-dark bg-opacity-75 rounded-circle p-1" title="Ver foto ampliada">
+                            <i class="bi bi-zoom-in" style="font-size: 0.7rem;"></i>
+                        </span>
+                    </div>
+                    <div class="mt-1.5 d-flex flex-column gap-1">
+                        <input type="text" class="form-control form-control-sm px-1.5 py-0 text-muted" style="font-size: 0.72rem; height: 22px;" placeholder="Legenda..." value="${escapeJs(img.legenda || '')}" onchange="salvarLegendaImagem(${img.id}, this)">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted text-truncate" style="font-size: 0.68rem; max-width: 85px;">${img.nome || 'Foto'}</small>
+                            <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="removerImagemSolicitacao(${img.id}, ${solId})" title="Excluir imagem">
+                                <i class="bi bi-trash3" style="font-size: 0.78rem;"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        galeria.innerHTML = html;
+    }
+
+    async function fazerUploadImagensSolicitacao(inputEl) {
+        const solId = parseInt(document.getElementById('modalSolId').value);
+        const p = perguntas[currentIndex];
+        const solObj = (p.solicitacoes || []).find(s => s.id === solId);
+        if (!solObj || !inputEl.files || inputEl.files.length === 0) return;
+
+        const loadingEl = document.getElementById('modalImagensLoading');
+        if (loadingEl) loadingEl.classList.remove('d-none');
+
+        const files = Array.from(inputEl.files);
+        for (const file of files) {
+            const formData = new FormData();
+            formData.append('imagem', file);
+            formData.append('nome', file.name);
+
+            try {
+                const response = await fetch(`/auditoria/iso/api/solicitacoes/${solId}/imagens/upload/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: formData
+                });
+                const data = await response.json();
+                if (data.success && data.imagem) {
+                    if (!solObj.imagens) solObj.imagens = [];
+                    solObj.imagens.push(data.imagem);
+                    renderModalImagensGaleria(solObj.imagens, solId);
+                    showSaveIndicatorMessage("Imagem anexada com sucesso!");
+                } else {
+                    alert(data.error || 'Erro ao enviar imagem.');
+                }
+            } catch(err) {
+                console.error('Erro no upload de imagem:', err);
+                alert('Erro de comunicação durante upload.');
+            }
+        }
+
+        if (loadingEl) loadingEl.classList.add('d-none');
+        inputEl.value = '';
+        renderQuestion();
+    }
+
+    async function removerImagemSolicitacao(imgId, solId) {
+        if (!confirm("Deseja realmente remover esta imagem de evidência?")) return;
+        const p = perguntas[currentIndex];
+        const solObj = (p.solicitacoes || []).find(s => s.id === solId);
+
+        try {
+            const response = await fetch(`/auditoria/iso/api/solicitacoes/imagens/${imgId}/deletar/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                }
+            });
+            const data = await response.json();
+            if (data.success) {
+                if (solObj) {
+                    solObj.imagens = (solObj.imagens || []).filter(img => img.id !== imgId);
+                    renderModalImagensGaleria(solObj.imagens, solId);
+                    renderQuestion();
+                }
+                showSaveIndicatorMessage("Imagem removida!");
+            } else {
+                alert(data.error || 'Erro ao remover imagem.');
+            }
+        } catch(err) {
+            console.error('Erro ao remover imagem:', err);
+        }
+    }
+
+    async function salvarLegendaImagem(imgId, inputEl) {
+        const legendaTexto = inputEl.value.trim();
+        try {
+            await fetch(`/auditoria/iso/api/solicitacoes/imagens/${imgId}/legenda/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ legenda: legendaTexto })
+            });
+            showSaveIndicatorMessage("Legenda da imagem atualizada!");
+        } catch(err) {
+            console.error('Erro ao salvar legenda:', err);
+        }
+    }
+
     function abrirModalDetalhesSolicitacao(solId) {
         const p = perguntas[currentIndex];
         const solObj = (p.solicitacoes || []).find(s => s.id === solId);
@@ -965,6 +1177,7 @@
         `;
 
         updateModalConclusaoButtons(solObj.conclusao || 'P', solObj.grau_nc || 'MENOR');
+        renderModalImagensGaleria(solObj.imagens || [], solId);
 
         const modalEl = document.getElementById('modalDetalhesSolicitacao');
         const modal = bootstrap.Modal.getOrCreateInstance(modalEl);

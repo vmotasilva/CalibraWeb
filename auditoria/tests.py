@@ -799,3 +799,107 @@ class AuditoriaIsoExcelExportTemplateInjectionTests(TestCase):
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
+
+class AuditoriaIsoImagensEvidenciaTests(TestCase):
+    def setUp(self):
+        user_model = get_user_model()
+        self.user = user_model.objects.create_user(
+            username="auditor_img",
+            email="auditor_img@example.com",
+            password="senha-forte-123",
+            is_staff=True,
+        )
+        self.norma = Norma.objects.create(
+            codigo="ISO 13485:2016",
+            titulo="Dispositivos Médicos",
+            ativa=True,
+        )
+        self.item = ItemNorma.objects.create(
+            norma=self.norma,
+            referencia="7.5.1",
+            titulo="Controle de produção e fornecimento de serviço",
+            ordem=1,
+        )
+        self.auditoria = AuditoriaIso.objects.create(
+            norma=self.norma,
+            titulo="Auditoria Imagens",
+            empresa_auditada="Unidade Teste",
+            criado_por=self.user,
+        )
+        self.auditoria.escopo_itens.add(self.item)
+        self.pergunta = BancoPergunta.objects.create(
+            texto_pergunta="Os processos de produção são controlados?",
+            ativa=True,
+        )
+        self.pergunta.itens_norma.add(self.item)
+        self.resposta = RespostaEntrevistaIso.objects.create(
+            auditoria=self.auditoria,
+            pergunta=self.pergunta,
+            classificacao="C",
+            respondida_por=self.user,
+        )
+        self.solicitacao = SolicitacaoEvidenciaIso.objects.create(
+            resposta=self.resposta,
+            solicitacao="Ordem de Produção OP-2026-001",
+            evidencia="OP auditada na linha de montagem",
+            conclusao="C",
+        )
+
+    def test_upload_imagem_via_base64_and_properties(self):
+        self.client.force_login(self.user)
+        url = reverse("auditoria:api_iso_solicitacao_upload_imagem", args=[self.solicitacao.id])
+        
+        sample_b64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        response = self.client.post(
+            url,
+            data=json.dumps({
+                "base64": sample_b64,
+                "nome": "op_foto.png",
+                "legenda": "Foto da OP assinada",
+            }),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["success"])
+        self.assertEqual(data["imagem"]["legenda"], "Foto da OP assinada")
+        self.assertEqual(data["imagem"]["nome"], "op_foto.png")
+        self.assertTrue(data["imagem"]["url"].startswith("data:image/png;base64,"))
+
+        from auditoria.models import ImagemSolicitacaoIso
+        img_obj = ImagemSolicitacaoIso.objects.get(pk=data["imagem"]["id"])
+        self.assertEqual(img_obj.url_imagem, sample_b64)
+
+    def test_update_legenda_imagem(self):
+        self.client.force_login(self.user)
+        from auditoria.models import ImagemSolicitacaoIso
+        img_obj = ImagemSolicitacaoIso.objects.create(
+            solicitacao=self.solicitacao,
+            arquivo_base64="data:image/jpeg;base64,fake",
+            nome_arquivo="teste.jpg",
+            legenda="Legenda inicial",
+        )
+        url = reverse("auditoria:api_iso_solicitacao_update_legenda_imagem", args=[img_obj.id])
+        response = self.client.post(
+            url,
+            data=json.dumps({"legenda": "Legenda atualizada pelo auditor"}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        img_obj.refresh_from_db()
+        self.assertEqual(img_obj.legenda, "Legenda atualizada pelo auditor")
+
+    def test_delete_imagem(self):
+        self.client.force_login(self.user)
+        from auditoria.models import ImagemSolicitacaoIso
+        img_obj = ImagemSolicitacaoIso.objects.create(
+            solicitacao=self.solicitacao,
+            arquivo_base64="data:image/jpeg;base64,fake",
+            nome_arquivo="teste.jpg",
+        )
+        url = reverse("auditoria:api_iso_solicitacao_delete_imagem", args=[img_obj.id])
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(ImagemSolicitacaoIso.objects.filter(pk=img_obj.id).exists())
+
+

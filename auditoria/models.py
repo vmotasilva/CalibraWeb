@@ -988,6 +988,61 @@ class SolicitacaoEvidenciaIso(models.Model):
         return f"Solicitação: {self.solicitacao[:30]} ({self.conclusao})"
 
 
+class ImagemSolicitacaoIso(models.Model):
+    solicitacao = models.ForeignKey(
+        SolicitacaoEvidenciaIso,
+        on_delete=models.CASCADE,
+        related_name="imagens",
+        verbose_name="Solicitação de Evidência",
+    )
+    arquivo = models.ImageField(
+        upload_to="auditoria/solicitacoes/%Y/%m/",
+        blank=True,
+        null=True,
+        verbose_name="Arquivo de Imagem",
+    )
+    arquivo_base64 = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Dados Base64",
+        help_text="Backup base64 para persistência garantida em ambientes serverless",
+    )
+    nome_arquivo = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="Nome do Arquivo",
+    )
+    legenda = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="Legenda / Descrição da Evidência",
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Imagem da Solicitação ISO"
+        verbose_name_plural = "Imagens das Solicitações ISO"
+        ordering = ["criado_em"]
+
+    def __str__(self):
+        return f"Imagem {self.id} - {self.solicitacao.solicitacao[:30]}"
+
+    @property
+    def url_imagem(self) -> str:
+        """Retorna a URL acessível da imagem (preferindo media URL, com fallback para Data URI base64)."""
+        if self.arquivo_base64 and self.arquivo_base64.startswith("data:"):
+            return self.arquivo_base64
+        if self.arquivo and hasattr(self.arquivo, "url"):
+            try:
+                return self.arquivo.url
+            except Exception:
+                pass
+        if self.arquivo_base64:
+            return f"data:image/jpeg;base64,{self.arquivo_base64}"
+        return ""
+
 
 class AvaliacaoFinalRequisitoIso(models.Model):
     CLASSIFICACAO_CHOICES = [

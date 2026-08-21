@@ -326,7 +326,7 @@ def generate_auditoria_excel_buffer(auditoria) -> io.BytesIO:
         if any(other.referencia.startswith(prefix) for other in itens_list):
             parent_ids.add(item.id)
 
-    respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).prefetch_related('solicitacoes', 'pergunta__itens_norma')
+    respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).prefetch_related('solicitacoes', 'solicitacoes__imagens', 'pergunta__itens_norma')
     respostas_map = {r.pergunta_id: r for r in respostas}
     na_item_ids = set(auditoria.itens_nao_aplicaveis.values_list('id', flat=True))
 
@@ -357,35 +357,26 @@ def generate_auditoria_excel_buffer(auditoria) -> io.BytesIO:
         bottom=Side(style='thin', color=gray_border)
     )
 
-    current_row = 13
+    current_row = 13  # Linha inicial dos itens de checklist
 
     for item in sorted(itens_list, key=lambda x: (x.ordem or 0, natural_sort_key(x.referencia))):
         is_parent = item.id in parent_ids
 
-        # Coleta perguntas associadas
-        perguntas_do_item = []
-        for ag in agendas:
-            ag_items = agenda_item_ids_map.get(ag.id, set())
-            for p in ag.perguntas.all():
-                p_items = pergunta_item_ids_map.get(p.id, set())
-                if item.id in p_items or (not p_items and item.id in ag_items):
-                    if p not in perguntas_do_item:
-                        perguntas_do_item.append(p)
-
-        # Coleta solicitações / amostras
+        # Perguntas e Solicitações vinculadas a este item
+        perguntas_do_item = [p_id for p_id, item_ids in pergunta_item_ids_map.items() if item.id in item_ids]
         sols_do_item = []
-        for p in perguntas_do_item:
-            r = respostas_map.get(p.id)
+        for p_id in perguntas_do_item:
+            r = respostas_map.get(p_id)
             if r:
                 for s in r.solicitacoes.all():
                     sols_do_item.append(s)
 
-        # Determinação do Status Final
+        # Determinação do Status / Classificação do Item
         av_final = avaliacoes_finais_map.get(item.id)
-        if is_parent:
-            status_item = ""
-        elif av_final:
+        if av_final and av_final.classificacao:
             status_item = av_final.classificacao
+        elif is_parent:
+            status_item = ""
         elif item.id in na_item_ids:
             status_item = "NA"
         elif sols_do_item:
@@ -395,7 +386,7 @@ def generate_auditoria_excel_buffer(auditoria) -> io.BytesIO:
             elif "OM" in conclusoes:
                 status_item = "OM"
             elif any(c in ["C", "OBS"] for c in conclusoes):
-                status_item = "C"
+                status_item = "P" if all(c == "P" for c in conclusoes) else "C"
             elif all(c == "NA" for c in conclusoes):
                 status_item = "NA"
             else:
@@ -411,13 +402,15 @@ def generate_auditoria_excel_buffer(auditoria) -> io.BytesIO:
             sol_nome = (s.solicitacao or "").strip()
             evid_desc = (s.evidencia or "").strip()
             concl = s.get_conclusao_display()
+            imgs_count = len(s.imagens.all()) if hasattr(s, 'imagens') else 0
+            img_suffix = f" [📷 {imgs_count} foto(s)]" if imgs_count > 0 else ""
             
             if sol_nome and evid_desc:
-                evidencias_textos.append(f"• [{concl}] {sol_nome}: {evid_desc}")
+                evidencias_textos.append(f"• [{concl}] {sol_nome}: {evid_desc}{img_suffix}")
             elif sol_nome:
-                evidencias_textos.append(f"• [{concl}] {sol_nome}")
+                evidencias_textos.append(f"• [{concl}] {sol_nome}{img_suffix}")
             elif evid_desc:
-                evidencias_textos.append(f"• [{concl}] {evid_desc}")
+                evidencias_textos.append(f"• [{concl}] {evid_desc}{img_suffix}")
 
         # Se não houver amostras registradas, incluir resposta/anotação geral se existir
         if not evidencias_textos:

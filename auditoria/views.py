@@ -3321,7 +3321,7 @@ def iso_entrevista_view(request, auditoria_id):
             })
 
     # Obter respostas já existentes e auto-migrar anotações antigas para Solicitações se necessário
-    respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).prefetch_related('solicitacoes', 'pergunta__itens_norma')
+    respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).prefetch_related('solicitacoes', 'solicitacoes__imagens', 'pergunta__itens_norma')
     from .models import SolicitacaoEvidenciaIso
     respostas_dict = {}
     solicitacoes_por_item = {}
@@ -3354,6 +3354,17 @@ def iso_entrevista_view(request, auditoria_id):
                     bloco_nome_s = ", ".join(ag['titulo'] for ag in ag_list) if ag_list else "Geral"
                     is_bloco_atual_s = True
 
+            imgs_s = [
+                {
+                    "id": img.id,
+                    "url": img.url_imagem,
+                    "legenda": img.legenda,
+                    "nome": img.nome_arquivo,
+                    "criado_em": img.criado_em.strftime("%d/%m/%Y %H:%M")
+                }
+                for img in s.imagens.all()
+            ]
+
             sols.append({
                 "id": s.id,
                 "solicitacao": s.solicitacao,
@@ -3362,7 +3373,8 @@ def iso_entrevista_view(request, auditoria_id):
                 "grau_nc": s.grau_nc,
                 "pergunta_id": r.pergunta_id,
                 "bloco_nome": bloco_nome_s,
-                "is_bloco_atual": is_bloco_atual_s
+                "is_bloco_atual": is_bloco_atual_s,
+                "imagens": imgs_s
             })
 
         respostas_dict[r.pergunta_id] = {
@@ -3597,7 +3609,8 @@ def api_iso_solicitacao_create(request):
                 "conclusao": nova_sol.conclusao,
                 "grau_nc": nova_sol.grau_nc,
                 "bloco_nome": agenda.titulo if agenda else "Geral",
-                "is_bloco_atual": True
+                "is_bloco_atual": True,
+                "imagens": []
             }
         })
     except Exception as e:
@@ -3633,6 +3646,114 @@ def api_iso_solicitacao_delete(request, pk):
         sol = get_object_or_404(SolicitacaoEvidenciaIso, pk=pk)
         sol.delete()
         return JsonResponse({"success": True})
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+
+@login_required
+@require_POST
+def api_iso_solicitacao_upload_imagem(request, pk):
+    """
+    Upload de fotos e imagens vinculadas a uma Solicitação de Evidência.
+    Processa arquivos normais (multipart/form-data) ou payloads base64,
+    gerando backup persistente no banco PostgreSQL para resiliência serverless.
+    """
+    import base64
+    from .models import SolicitacaoEvidenciaIso, ImagemSolicitacaoIso
+    try:
+        sol = get_object_or_404(SolicitacaoEvidenciaIso, pk=pk)
+        legenda = request.POST.get("legenda", "").strip()
+        nome_arquivo = ""
+        arquivo_base64 = ""
+        uploaded_file = request.FILES.get("imagem") or request.FILES.get("arquivo") or request.FILES.get("file")
+
+        if uploaded_file:
+            nome_arquivo = uploaded_file.name
+            file_bytes = uploaded_file.read()
+            uploaded_file.seek(0)
+            content_type = getattr(uploaded_file, 'content_type', 'image/jpeg') or 'image/jpeg'
+            b64_str = base64.b64encode(file_bytes).decode('utf-8')
+            arquivo_base64 = f"data:{content_type};base64,{b64_str}"
+
+            try:
+                img_obj = ImagemSolicitacaoIso.objects.create(
+                    solicitacao=sol,
+                    arquivo=uploaded_file,
+                    arquivo_base64=arquivo_base64,
+                    nome_arquivo=nome_arquivo,
+                    legenda=legenda,
+                )
+            except OSError:
+                img_obj = ImagemSolicitacaoIso.objects.create(
+                    solicitacao=sol,
+                    arquivo=None,
+                    arquivo_base64=arquivo_base64,
+                    nome_arquivo=nome_arquivo,
+                    legenda=legenda,
+                )
+        else:
+            try:
+                data = json.loads(request.body)
+                arquivo_base64 = data.get("base64", "").strip()
+                nome_arquivo = data.get("nome", "evidencia.jpg").strip()
+                legenda = data.get("legenda", "").strip()
+            except Exception:
+                arquivo_base64 = request.POST.get("base64", "").strip()
+                nome_arquivo = request.POST.get("nome", "evidencia.jpg").strip()
+
+            if not arquivo_base64:
+                return JsonResponse({"success": False, "error": "Nenhuma imagem informada."}, status=400)
+
+            img_obj = ImagemSolicitacaoIso.objects.create(
+                solicitacao=sol,
+                arquivo_base64=arquivo_base64,
+                nome_arquivo=nome_arquivo,
+                legenda=legenda,
+            )
+
+        return JsonResponse({
+            "success": True,
+            "imagem": {
+                "id": img_obj.id,
+                "url": img_obj.url_imagem,
+                "legenda": img_obj.legenda,
+                "nome": img_obj.nome_arquivo,
+                "criado_em": img_obj.criado_em.strftime("%d/%m/%Y %H:%M")
+            }
+        })
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+
+@login_required
+@require_POST
+def api_iso_solicitacao_delete_imagem(request, pk):
+    """Exclui uma imagem de evidência."""
+    from .models import ImagemSolicitacaoIso
+    try:
+        img_obj = get_object_or_404(ImagemSolicitacaoIso, pk=pk)
+        if img_obj.arquivo:
+            try:
+                img_obj.arquivo.delete(save=False)
+            except Exception:
+                pass
+        img_obj.delete()
+        return JsonResponse({"success": True})
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+
+@login_required
+@require_POST
+def api_iso_solicitacao_update_legenda_imagem(request, pk):
+    """Atualiza a legenda descritiva de uma imagem."""
+    from .models import ImagemSolicitacaoIso
+    try:
+        img_obj = get_object_or_404(ImagemSolicitacaoIso, pk=pk)
+        data = json.loads(request.body)
+        img_obj.legenda = data.get("legenda", "").strip()
+        img_obj.save()
+        return JsonResponse({"success": True, "legenda": img_obj.legenda})
     except Exception as e:
         return JsonResponse({"success": False, "error": str(e)}, status=400)
 
@@ -3789,7 +3910,7 @@ def iso_matriz_view(request, auditoria_id):
             parent_ids.add(item.id)
             
     # Respostas já preenchidas
-    respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).prefetch_related('solicitacoes')
+    respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).prefetch_related('solicitacoes', 'solicitacoes__imagens')
     respostas_map = {r.pergunta_id: r for r in respostas}
     
     # Mapeamento rápido de agendas por item da norma (usando .all() para aproveitar o prefetch)
@@ -3855,7 +3976,17 @@ def iso_matriz_view(request, auditoria_id):
                                 'evidencia': s.evidencia or '',
                                 'conclusao': s.conclusao,
                                 'conclusao_display': s.get_conclusao_display(),
-                                'bloco_origem': s.agenda.titulo if s.agenda else agenda.titulo
+                                'bloco_origem': s.agenda.titulo if s.agenda else agenda.titulo,
+                                'imagens': [
+                                    {
+                                        'id': img.id,
+                                        'url': img.url_imagem,
+                                        'legenda': img.legenda,
+                                        'nome': img.nome_arquivo,
+                                        'criado_em': img.criado_em.strftime("%d/%m/%Y %H:%M")
+                                    }
+                                    for img in s.imagens.all()
+                                ]
                             })
 
                     perguntas_info.append({

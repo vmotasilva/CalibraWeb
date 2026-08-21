@@ -438,12 +438,39 @@
                     <input type="text" id="modalSolTexto" class="form-control form-control-lg fs-6 shadow-2xs" placeholder="Ex: Procedimento da Qualidade, Laudo Técnico, Certificado RBC...">
                 </div>
 
-                <div class="mb-2">
+                <div class="mb-3">
                     <label class="form-label fw-bold text-dark">
                         <i class="bi bi-card-checklist me-1 text-primary"></i> Evidência Apresentada / Constatada pelo Auditor
                     </label>
-                    <textarea id="modalSolEvidencia" class="form-control shadow-2xs" rows="8" placeholder="Descreva plenamente o documento auditado, referências, números de laudo, datas, pessoas e evidências encontradas..." style="font-family: inherit; font-size: 0.95rem; line-height: 1.5;"></textarea>
+                    <textarea id="modalSolEvidencia" class="form-control shadow-2xs" rows="6" placeholder="Descreva plenamente o documento auditado, referências, números de laudo, datas, pessoas e evidências encontradas..." style="font-family: inherit; font-size: 0.95rem; line-height: 1.5;"></textarea>
                     <small class="text-muted mt-1 d-block"><i class="bi bi-info-circle me-1"></i>Espaço amplo para digitação e leitura integral da evidência.</small>
+                </div>
+
+                <!-- Seção de Fotos e Imagens da Evidência -->
+                <div class="mb-2 p-3 bg-light rounded-3 border">
+                    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <label class="form-label fw-bold text-dark mb-0">
+                                <i class="bi bi-camera me-1 text-primary"></i> Fotos e Imagens da Evidência
+                            </label>
+                            <span id="modalImagensCount" class="badge bg-primary bg-opacity-10 text-primary rounded-pill small fw-bold">0</span>
+                        </div>
+                        <div>
+                            <label class="btn btn-sm btn-primary rounded-pill px-3 fw-bold shadow-2xs mb-0 cursor-pointer" for="inputUploadImagemMatriz" style="cursor: pointer;">
+                                <i class="bi bi-cloud-arrow-up me-1"></i> Anexar Foto / Imagem
+                            </label>
+                            <input type="file" id="inputUploadImagemMatriz" class="d-none" accept="image/*" multiple onchange="fazerUploadImagensMatriz(this)">
+                        </div>
+                    </div>
+                    <div id="modalImagensLoading" class="d-none text-center py-2 text-primary small">
+                        <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Enviando e processando imagem...
+                    </div>
+                    <div id="modalImagensGaleria" class="d-flex flex-wrap gap-2 pt-1" style="min-height: 48px;">
+                        <!-- Imagens renderizadas dinamicamente via JS -->
+                    </div>
+                    <small class="text-muted d-block mt-2" style="font-size: 0.78rem;">
+                        <i class="bi bi-info-circle me-1"></i>Fotos e evidências anexadas ficam salvas com segurança para inclusão em relatórios, matriz e apresentações.
+                    </small>
                 </div>
             </div>
             <div class="modal-footer border-0 bg-light rounded-bottom-4 d-flex justify-content-between">
@@ -456,6 +483,25 @@
                         <i class="bi bi-check2-circle me-1"></i> Salvar Evidência
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Lightbox para Pré-Visualização Ampliada da Imagem (Matriz) -->
+<div class="modal fade" id="modalPreviewImagemMatriz" tabindex="-1" aria-hidden="true" style="z-index: 10100;">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 bg-dark text-white shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header border-0 py-2 px-3 bg-black bg-opacity-50">
+                <h6 class="modal-title small text-truncate" id="modalPreviewImagemMatrizTitulo">Pré-visualização da Evidência</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0 text-center bg-black d-flex align-items-center justify-content-center" style="min-height: 350px; max-height: 75vh;">
+                <img id="modalPreviewImagemMatrizSrc" src="" alt="Evidência" class="img-fluid" style="max-height: 75vh; object-fit: contain;">
+            </div>
+            <div class="modal-footer border-0 py-2 px-3 bg-black bg-opacity-50 justify-content-between">
+                <small class="text-white-50" id="modalPreviewImagemMatrizLegenda"></small>
+                <button type="button" class="btn btn-sm btn-outline-light rounded-pill px-3" data-bs-dismiss="modal">Fechar</button>
             </div>
         </div>
     </div>
@@ -698,22 +744,44 @@ document.addEventListener('DOMContentLoaded', function() {
                                 else if (s.conclusao === 'NA') cBadge = 'bg-secondary';
                                 else if (s.conclusao === 'OBS') cBadge = 'bg-obs text-dark';
 
+                                let fotosCount = (s.imagens || []).length;
+                                let fotosBadge = fotosCount > 0
+                                    ? `<span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-2 py-0.5 small fw-semibold" title="${fotosCount} foto(s) anexada(s)"><i class="bi bi-camera-fill me-1"></i>${fotosCount} foto${fotosCount > 1 ? 's' : ''}</span>`
+                                    : '';
+
+                                let fotosThumbnailsHtml = '';
+                                if (fotosCount > 0) {
+                                    fotosThumbnailsHtml = `
+                                        <div class="d-flex align-items-center gap-2 mt-2 flex-wrap">
+                                            ${s.imagens.map(img => `
+                                                <div class="position-relative" style="cursor: pointer;" onclick="abrirLightboxImagemMatriz('${escapeJs(img.url)}', '${escapeJs(img.legenda || s.solicitacao || 'Evidência')}', event)" title="${img.legenda || img.nome || 'Ver foto'}">
+                                                    <img src="${img.url}" alt="${img.legenda || 'Foto'}" class="rounded-2 border object-fit-cover shadow-2xs" style="width: 40px; height: 40px; object-fit: cover;">
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    `;
+                                }
+
+                                const imagensSafe = JSON.stringify(s.imagens || []).replace(/"/g, '&quot;');
+
                                 return `
                                     <div class="p-2.5 bg-white rounded-3 border mb-2 shadow-2xs">
                                         <div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-2">
                                             <div class="d-flex align-items-center gap-2 flex-wrap">
                                                 <span class="badge bg-light text-primary border font-monospace" style="font-size: 0.75rem;">Amostra #${sIdx + 1}</span>
+                                                ${fotosBadge}
                                                 <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-2 py-0.5" style="font-size: 0.72rem;"><i class="bi bi-diagram-3 me-1"></i>${inst.bloco_titulo}</span>
                                                 <strong class="text-dark small">${s.solicitacao}</strong>
                                             </div>
                                             <div class="d-flex align-items-center gap-2">
                                                 <span class="badge ${cBadge} rounded-pill px-2 py-0.5" style="font-size: 0.75rem;">${s.conclusao_display || 'Pendente'}</span>
-                                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill font-monospace" style="font-size: 0.75rem;" onclick="abrirModalDetalhesMatriz(${s.id}, '${escapeJs(s.solicitacao)}', '${escapeJs(s.evidencia || '')}', '${s.conclusao || 'P'}', ${inst.pergunta_id})">
+                                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill font-monospace" style="font-size: 0.75rem;" onclick="abrirModalDetalhesMatriz(${s.id}, '${escapeJs(s.solicitacao)}', '${escapeJs(s.evidencia || '')}', '${s.conclusao || 'P'}', ${inst.pergunta_id}, ${imagensSafe})">
                                                     <i class="bi bi-arrows-angle-expand me-1"></i> Expandir
                                                 </button>
                                             </div>
                                         </div>
                                         ${s.evidencia ? `<div class="text-muted font-monospace small bg-light p-2 rounded-2 mt-1" style="font-size: 0.8rem; white-space: pre-wrap;"><i class="bi bi-file-earmark-check me-1 text-primary"></i><strong>Evidência:</strong> ${s.evidencia}</div>` : `<small class="text-muted fst-italic d-block mt-1">Sem registro de evidência ainda.</small>`}
+                                        ${fotosThumbnailsHtml}
                                     </div>
                                 `;
                             }).join('');
@@ -782,16 +850,15 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Escape string para passar em atributos inline
 function escapeJs(str) {
     if (!str) return '';
     return str.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, '\\n').replace(/\r/g, '');
 }
 
-// Lógica do Modal de Evidência Expandida dentro da Matriz
 let activeMatrizSolId = null;
 let activeMatrizPerguntaId = null;
 let modalMatrizActiveConclusao = 'P';
+let currentModalImagensMatriz = [];
 
 function updateModalMatrizConclusaoButtons(concl) {
     modalMatrizActiveConclusao = concl;
@@ -907,9 +974,130 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-function abrirModalDetalhesMatriz(solId, texto, evidencia, conclusao, perguntaId) {
+function abrirLightboxImagemMatriz(url, legenda, event) {
+    if (event) event.stopPropagation();
+    const modalEl = document.getElementById('modalPreviewImagemMatriz');
+    if (!modalEl) return;
+    document.getElementById('modalPreviewImagemMatrizSrc').src = url;
+    document.getElementById('modalPreviewImagemMatrizLegenda').textContent = legenda || '';
+    document.getElementById('modalPreviewImagemMatrizTitulo').textContent = legenda || 'Foto de Evidência';
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+}
+
+function renderModalImagensGaleriaMatriz(imagens) {
+    const galeria = document.getElementById('modalImagensGaleria');
+    const countBadge = document.getElementById('modalImagensCount');
+    if (countBadge) countBadge.textContent = (imagens || []).length;
+    if (!galeria) return;
+
+    if (!imagens || imagens.length === 0) {
+        galeria.innerHTML = `
+            <div class="text-muted small py-2 w-100 text-center" style="font-size: 0.82rem;">
+                <i class="bi bi-images me-1"></i>Nenhuma foto ou imagem anexada ainda a esta solicitação.
+            </div>
+        `;
+        return;
+    }
+
+    let html = '';
+    imagens.forEach(img => {
+        html += `
+            <div class="card border rounded-3 p-1.5 bg-white shadow-2xs position-relative" style="width: 140px;" id="modal-matriz-img-card-${img.id}">
+                <div class="position-relative overflow-hidden rounded-2" style="height: 90px; cursor: pointer;" onclick="abrirLightboxImagemMatriz('${escapeJs(img.url)}', '${escapeJs(img.legenda || img.nome || 'Evidência')}', event)">
+                    <img src="${img.url}" class="w-100 h-100 object-fit-cover rounded-2" alt="${img.legenda || 'Evidência'}">
+                    <span class="position-absolute top-0 end-0 m-1 badge bg-dark bg-opacity-75 rounded-circle p-1" title="Ver foto ampliada">
+                        <i class="bi bi-zoom-in" style="font-size: 0.7rem;"></i>
+                    </span>
+                </div>
+                <div class="mt-1.5 d-flex flex-column gap-1">
+                    <input type="text" class="form-control form-control-sm px-1.5 py-0 text-muted" style="font-size: 0.72rem; height: 22px;" placeholder="Legenda..." value="${escapeJs(img.legenda || '')}" onchange="salvarLegendaImagemMatriz(${img.id}, this)">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted text-truncate" style="font-size: 0.68rem; max-width: 85px;">${img.nome || 'Foto'}</small>
+                        <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="removerImagemMatriz(${img.id})" title="Excluir imagem">
+                            <i class="bi bi-trash3" style="font-size: 0.78rem;"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    galeria.innerHTML = html;
+}
+
+async function fazerUploadImagensMatriz(inputEl) {
+    const solId = activeMatrizSolId;
+    if (!solId || !inputEl.files || inputEl.files.length === 0) return;
+
+    const loadingEl = document.getElementById('modalImagensLoading');
+    if (loadingEl) loadingEl.classList.remove('d-none');
+
+    const files = Array.from(inputEl.files);
+    for (const file of files) {
+        const formData = new FormData();
+        formData.append('imagem', file);
+        formData.append('nome', file.name);
+
+        try {
+            const response = await fetch(`/auditoria/iso/api/solicitacoes/${solId}/imagens/upload/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                body: formData
+            });
+            const data = await response.json();
+            if (data.success && data.imagem) {
+                currentModalImagensMatriz.push(data.imagem);
+                renderModalImagensGaleriaMatriz(currentModalImagensMatriz);
+            } else {
+                alert(data.error || 'Erro ao enviar imagem.');
+            }
+        } catch(err) {
+            console.error('Erro no upload de imagem:', err);
+            alert('Erro de comunicação durante upload.');
+        }
+    }
+
+    if (loadingEl) loadingEl.classList.add('d-none');
+    inputEl.value = '';
+}
+
+async function removerImagemMatriz(imgId) {
+    if (!confirm("Deseja realmente remover esta imagem de evidência?")) return;
+
+    try {
+        const response = await fetch(`/auditoria/iso/api/solicitacoes/imagens/${imgId}/deletar/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' }
+        });
+        const data = await response.json();
+        if (data.success) {
+            currentModalImagensMatriz = currentModalImagensMatriz.filter(img => img.id !== imgId);
+            renderModalImagensGaleriaMatriz(currentModalImagensMatriz);
+        } else {
+            alert(data.error || 'Erro ao remover imagem.');
+        }
+    } catch(err) {
+        console.error('Erro ao remover imagem:', err);
+    }
+}
+
+async function salvarLegendaImagemMatriz(imgId, inputEl) {
+    const legendaTexto = inputEl.value.trim();
+    try {
+        await fetch(`/auditoria/iso/api/solicitacoes/imagens/${imgId}/legenda/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+            body: JSON.stringify({ legenda: legendaTexto })
+        });
+    } catch(err) {
+        console.error('Erro ao salvar legenda:', err);
+    }
+}
+
+function abrirModalDetalhesMatriz(solId, texto, evidencia, conclusao, perguntaId, imagens) {
     activeMatrizSolId = solId;
     activeMatrizPerguntaId = perguntaId;
+    currentModalImagensMatriz = Array.isArray(imagens) ? [...imagens] : [];
 
     document.getElementById('modalSolId').value = solId;
     document.getElementById('modalSolTexto').value = texto || '';
@@ -919,6 +1107,7 @@ function abrirModalDetalhesMatriz(solId, texto, evidencia, conclusao, perguntaId
     `;
 
     updateModalMatrizConclusaoButtons(conclusao || 'P');
+    renderModalImagensGaleriaMatriz(currentModalImagensMatriz);
 
     const modalEl = document.getElementById('modalDetalhesSolicitacao');
     const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
@@ -953,7 +1142,6 @@ async function salvarModalDetalhesSolicitacao() {
         if (res.success) {
             const modalEl = document.getElementById('modalDetalhesSolicitacao');
             bootstrap.Modal.getInstance(modalEl)?.hide();
-            // Recarrega a matriz para atualizar todas as regras e métricas
             window.location.reload();
         } else {
             alert('Erro ao salvar: ' + (res.error || 'Erro desconhecido.'));
