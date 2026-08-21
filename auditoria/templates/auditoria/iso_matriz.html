@@ -224,9 +224,9 @@
         <!-- Barra de Distribuição Multissegmento -->
         <div class="progress rounded-pill mb-3 shadow-2xs" style="height: 12px; background-color: #f1f5f9;">
             <div class="progress-bar bg-success" role="progressbar" style="width: {{ stats.pct_c }}%" title="Conforme: {{ stats.pct_c }}%"></div>
-            <div class="progress-bar" role="progressbar" style="width: {{ stats.pct_obs }}%; background-color: #d4e157;" title="Obs. com Correção: {{ stats.pct_obs }}%"></div>
             <div class="progress-bar bg-danger" role="progressbar" style="width: {{ stats.pct_nc }}%" title="Não Conforme: {{ stats.pct_nc }}%"></div>
             <div class="progress-bar bg-warning text-dark" role="progressbar" style="width: {{ stats.pct_om }}%" title="Oportunidade: {{ stats.pct_om }}%"></div>
+            <div class="progress-bar" role="progressbar" style="width: {{ stats.pct_obs }}%; background-color: #d4e157;" title="Obs. com Correção: {{ stats.pct_obs }}%"></div>
             <div class="progress-bar bg-secondary bg-opacity-75" role="progressbar" style="width: {{ stats.pct_p }}%" title="Pendente: {{ stats.pct_p }}%"></div>
         </div>
 
@@ -237,14 +237,6 @@
                     <small class="fw-bold text-success d-block mb-0.5">✅ Conforme</small>
                     <span class="fs-5 fw-bold text-success">{{ stats.count_c }}</span>
                     <span class="badge bg-success text-white rounded-pill ms-1" style="font-size: 0.75rem;">{{ stats.pct_c }}%</span>
-                </div>
-            </div>
-
-            <div class="col-md col-6">
-                <div class="p-2.5 rounded-3 border" style="background-color: rgba(212, 225, 87, 0.2); border-color: rgba(175, 180, 43, 0.4) !important;">
-                    <small class="fw-bold d-block mb-0.5" style="color: #4a5c13;">👁️ Obs. Correção</small>
-                    <span class="fs-5 fw-bold" style="color: #334d11;">{{ stats.count_obs }}</span>
-                    <span class="badge rounded-pill ms-1 text-dark" style="font-size: 0.75rem; background-color: #d4e157;">{{ stats.pct_obs }}%</span>
                 </div>
             </div>
 
@@ -261,6 +253,14 @@
                     <small class="fw-bold text-dark d-block mb-0.5">🟠 Oportunidade (OM)</small>
                     <span class="fs-5 fw-bold text-dark">{{ stats.count_om }}</span>
                     <span class="badge bg-warning text-dark rounded-pill ms-1" style="font-size: 0.75rem;">{{ stats.pct_om }}%</span>
+                </div>
+            </div>
+
+            <div class="col-md col-6">
+                <div class="p-2.5 rounded-3 border" style="background-color: rgba(212, 225, 87, 0.2); border-color: rgba(175, 180, 43, 0.4) !important;">
+                    <small class="fw-bold d-block mb-0.5" style="color: #4a5c13;">👁️ Obs. Correção</small>
+                    <span class="fs-5 fw-bold" style="color: #334d11;">{{ stats.count_obs }}</span>
+                    <span class="badge rounded-pill ms-1 text-dark" style="font-size: 0.75rem; background-color: #d4e157;">{{ stats.pct_obs }}%</span>
                 </div>
             </div>
 

@@ -588,10 +588,10 @@
                         </div>
                     </div>
                     <div class="col">
-                        <div class="metric-tile p-3" style="background-color: #fbfde8; border-color: #e6ee9c;">
-                            <small class="text-uppercase fw-bold" style="font-size: 0.72rem; color: #556b2f;">Conselhos / Obs (OBS)</small>
-                            <div class="display-6 fw-bold my-1" style="font-size: 2.2rem; color: #689f38;">{{ metricas.total_obs }}</div>
-                            <small class="text-secondary" style="font-size: 0.8rem;">Orientações Práticas</small>
+                        <div class="metric-tile p-3">
+                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.72rem;">Não Conformes (NC)</small>
+                            <div class="display-6 fw-bold text-danger my-1" style="font-size: 2.2rem;">{{ metricas.total_nc }}</div>
+                            <small class="text-secondary" style="font-size: 0.8rem;">{{ metricas.total_nc_maior }} Maior / {{ metricas.total_nc_menor }} Menor</small>
                         </div>
                     </div>
                     <div class="col">
@@ -602,10 +602,10 @@
                         </div>
                     </div>
                     <div class="col">
-                        <div class="metric-tile p-3">
-                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.72rem;">Não Conformes (NC)</small>
-                            <div class="display-6 fw-bold text-danger my-1" style="font-size: 2.2rem;">{{ metricas.total_nc }}</div>
-                            <small class="text-secondary" style="font-size: 0.8rem;">{{ metricas.total_nc_maior }} Maior / {{ metricas.total_nc_menor }} Menor</small>
+                        <div class="metric-tile p-3" style="background-color: #fbfde8; border-color: #e6ee9c;">
+                            <small class="text-uppercase fw-bold" style="font-size: 0.72rem; color: #556b2f;">Conselhos / Obs (OBS)</small>
+                            <div class="display-6 fw-bold my-1" style="font-size: 2.2rem; color: #689f38;">{{ metricas.total_obs }}</div>
+                            <small class="text-secondary" style="font-size: 0.8rem;">Orientações Práticas</small>
                         </div>
                     </div>
                 </div>
