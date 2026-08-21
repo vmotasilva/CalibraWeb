@@ -142,12 +142,14 @@
 
 {% block content %}
 <div class="container-fluid py-4 px-4">
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+    <div class="d-flex justify-content-between align-items-center mb-3 mb-md-4 flex-wrap gap-2">
         <div>
-            <h3 class="fw-bold mb-1 text-dark"><i class="bi bi-grid-3x3-gap-fill text-primary me-2"></i>Matriz de Conformidade: {{ auditoria.norma.codigo }}</h3>
-            <p class="text-muted mb-0">Clique em qualquer item da matriz para visualizar os blocos associados, perguntas e respostas preenchidas na auditoria.</p>
+            <h3 class="fw-bold mb-1 text-dark fs-4 fs-md-3"><i class="bi bi-grid-3x3-gap-fill text-primary me-2"></i>Matriz de Conformidade: {{ auditoria.norma.codigo }}</h3>
+            <p class="text-muted mb-0 d-none d-md-block">Clique em qualquer item da matriz para visualizar os blocos associados, perguntas e respostas preenchidas na auditoria.</p>
         </div>
-        <div class="d-flex gap-2 flex-wrap">
+
+        <!-- Ações Desktop (d-none d-md-flex) -->
+        <div class="d-none d-md-flex gap-2 flex-wrap">
             <a href="{% url 'auditoria:iso_auditoria_detail' auditoria.id %}" class="btn btn-outline-secondary rounded-pill px-3 fw-bold">
                 <i class="bi bi-arrow-left me-1"></i> Voltar à Auditoria
             </a>
@@ -161,6 +163,36 @@
                 <i class="bi bi-printer me-1"></i> Imprimir PDF
             </button>
         </div>
+
+        <!-- Ações Mobile (d-flex d-md-none) -->
+        <div class="d-flex d-md-none gap-2 align-items-center w-100 justify-content-between mt-1">
+            <a href="{% url 'auditoria:iso_auditoria_detail' auditoria.id %}" class="btn btn-outline-secondary rounded-pill px-3 fw-bold btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Voltar
+            </a>
+            <div class="dropdown">
+                <button class="btn btn-primary fw-bold rounded-pill shadow-sm dropdown-toggle px-3 btn-sm" type="button" id="dropdownAcoesMatriz" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-gear-fill me-1"></i> Ações
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-4 p-2" aria-labelledby="dropdownAcoesMatriz" style="min-width: 200px;">
+                    <li>
+                        <a class="dropdown-item py-2 fw-semibold d-flex align-items-center gap-2 rounded-3 text-primary" href="{% url 'auditoria:iso_auditoria_cronograma' auditoria.id %}">
+                            <i class="bi bi-calendar-event"></i> Ver Cronograma
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item py-2 fw-semibold d-flex align-items-center gap-2 rounded-3 text-success" href="{% url 'auditoria:iso_auditoria_export_excel' auditoria.id %}">
+                            <i class="bi bi-file-earmark-excel"></i> Exportar Excel
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider my-1"></li>
+                    <li>
+                        <button class="dropdown-item py-2 fw-semibold d-flex align-items-center gap-2 rounded-3 text-dark" type="button" onclick="window.print()">
+                            <i class="bi bi-printer text-secondary"></i> Imprimir PDF
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
     </div>
 
     <!-- Painel de Indicadores & Métricas de Conformidade (Score Dashboard Topo) -->
@@ -171,7 +203,7 @@
                     <i class="bi bi-speedometer2 text-primary fs-4"></i>
                     <span>Índice de Conformidade & Distribuição de Respostas</span>
                 </h5>
-                <small class="text-muted">% de Conformidade sobre C + NC + OM (OBS e N/A excluídos do cálculo).</small>
+                <small class="text-muted d-none d-md-block">% de Conformidade sobre C + NC + OM (OBS e N/A excluídos do cálculo).</small>
             </div>
             <div class="text-end">
                 <span class="fs-4 fw-bold {% if stats.pct_c >= 80 %}text-success{% elif stats.pct_c >= 50 %}text-warning{% else %}text-danger{% endif %}">
