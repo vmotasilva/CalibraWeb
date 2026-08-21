@@ -211,7 +211,7 @@
         </div>
         <div class="d-flex align-items-center gap-2 flex-wrap">
             <button type="button" class="btn btn-sm btn-light rounded-pill px-3 fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalEditarFechamento">
-                <i class="bi bi-pencil-square text-primary me-1"></i> Editar Síntese & Fechamento
+                <i class="bi bi-pencil-square text-primary me-1"></i> Editar Dados de Fechamento
             </button>
             <a href="{% url 'auditoria:iso_auditoria_export_docx' auditoria.id %}" class="btn btn-sm btn-primary rounded-pill px-3.5 fw-bold shadow-sm" title="Baixar Relatório Completo em formato Word">
                 <i class="bi bi-file-earmark-word-fill me-1"></i> Relatório Word (.DOCX)
@@ -228,25 +228,47 @@
     <div class="slide-deck">
 
         <!-- ── SLIDE 1: CAPA OFICIAL ── -->
-        <div class="slide d-flex justify-content-center align-items-center text-white" style="background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%);">
-            <div class="text-center" style="max-width: 900px;">
-                <span class="badge bg-primary bg-opacity-25 border border-primary text-light px-4 py-2 rounded-pill fw-bold text-uppercase mb-4" style="letter-spacing: 2px;">
-                    Reunião de Fechamento de Auditoria
-                </span>
-                <h1 class="display-3 fw-extrabold mb-3" style="font-weight: 800; letter-spacing: -1px;">
-                    Auditoria {{ auditoria.norma.codigo }}
+        <div class="slide bg-dark text-white d-flex flex-column justify-content-between p-5" style="background: linear-gradient(135deg, #0B2545 0%, #134074 100%) !important;">
+            <div>
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <span class="badge bg-primary px-3 py-2 fs-6 rounded-pill">Reunião de Encerramento</span>
+                    <span class="text-white-50 font-monospace">{{ auditoria.data_inicio|date:"d/m/Y" }} {% if auditoria.data_fim and auditoria.data_fim != auditoria.data_inicio %}a {{ auditoria.data_fim|date:"d/m/Y" }}{% endif %}</span>
+                </div>
+                <h1 class="display-4 fw-extrabold text-white mb-2" style="font-weight: 800; letter-spacing: -1px;">
+                    Relatório Executivo da Auditoria Interna
                 </h1>
-                <p class="fs-4 text-white-50 mb-5">
-                    {{ auditoria.empresa_auditada|default:"Apresentação dos Resultados & Parecer Executivo" }}
+                <p class="fs-4 text-white-50 mb-0">
+                    Avaliação da Conformidade com base na norma <strong class="text-white">{{ auditoria.norma.nome }} ({{ auditoria.norma.codigo }})</strong>
                 </p>
+            </div>
 
-                <div class="d-flex justify-content-center gap-5 text-white-50 border-top border-white border-opacity-10 pt-4">
-                    <div class="d-flex align-items-center gap-2">
-                        <i class="bi bi-calendar3 fs-5 text-primary"></i>
-                        <span class="text-white">{{ auditoria.data_inicio|date:"d/m/Y"|default:"18/08/2026" }}</span>
+            <div class="row g-4 my-auto">
+                <div class="col-md-4">
+                    <div class="p-3.5 bg-white bg-opacity-10 rounded-4 border border-white border-opacity-10 backdrop-blur">
+                        <small class="text-white-50 text-uppercase fw-bold d-block mb-1" style="font-size: 0.72rem;">Empresa Auditada</small>
+                        <h5 class="fw-bold text-white mb-0">{{ auditoria.empresa_auditada|default:"Tecnolens" }}</h5>
                     </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3.5 bg-white bg-opacity-10 rounded-4 border border-white border-opacity-10 backdrop-blur">
+                        <small class="text-white-50 text-uppercase fw-bold d-block mb-1" style="font-size: 0.72rem;">Escopo Auditado</small>
+                        <h5 class="fw-bold text-white mb-0 text-truncate" title="{{ auditoria.escopo|default:'Fabricação de Lentes Oftálmicas' }}">
+                            {{ auditoria.escopo|default:"Fabricação de Lentes Oftálmicas" }}
+                        </h5>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3.5 bg-white bg-opacity-10 rounded-4 border border-white border-opacity-10 backdrop-blur">
+                        <small class="text-white-50 text-uppercase fw-bold d-block mb-1" style="font-size: 0.72rem;">Líder da Auditoria</small>
+                        <h5 class="fw-bold text-white mb-0">{{ auditoria.auditor_lider.get_full_name|default:auditoria.auditor_lider.username|default:"Vinicius Mota" }}</h5>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="d-flex justify-content-between align-items-center pt-3 border-top border-white border-opacity-10 small text-white-50">
                     <div class="d-flex align-items-center gap-2">
-                        <i class="bi bi-person-badge fs-5 text-primary"></i>
+                        <i class="bi bi-people-fill fs-5 text-primary"></i>
                         <span class="text-white">Auditor(es): {{ auditoria.encerramento_auditores|default:auditoria.abertura_auditores|default:"Vinicius Mota" }}</span>
                     </div>
                     <div class="d-flex align-items-center gap-2">
@@ -258,42 +280,6 @@
             <div class="slide-footer text-white-50 border-white border-opacity-10">
                 <span>Calibra Auditoria & Gestão da Qualidade</span>
                 <span>Slide 01</span>
-            </div>
-        </div>
-
-        <!-- ── SLIDE 2: SÍNTESE EXECUTIVA DA AUDITORIA ── -->
-        <div class="slide">
-            <div class="slide-header">
-                <h2 class="slide-title">
-                    <i class="bi bi-journal-text text-primary"></i>Síntese Executiva da Auditoria
-                </h2>
-                <div class="d-flex align-items-center gap-2 no-print">
-                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 font-monospace" data-bs-toggle="modal" data-bs-target="#modalEditarFechamento">
-                        <i class="bi bi-pencil me-1"></i>Editar Síntese
-                    </button>
-                </div>
-            </div>
-            <div class="slide-content overflow-auto pe-2">
-                {% if auditoria.sintese %}
-                    <div class="p-3.5 bg-light rounded-4 border sintese-rendered" style="font-size: 0.95rem; line-height: 1.6;">
-                        {{ auditoria.sintese|safe }}
-                    </div>
-                {% else %}
-                    <div class="d-flex flex-column align-items-center justify-content-center h-100 text-center p-4 bg-light rounded-4 border border-dashed">
-                        <i class="bi bi-file-earmark-text display-4 text-muted mb-2"></i>
-                        <h5 class="fw-bold text-dark">Nenhuma Síntese Registrada Ainda</h5>
-                        <p class="text-muted small max-w-md mx-auto mb-3" style="max-width: 500px;">
-                            Utilize o editor WYSIWYG completo para registrar listas de entrevistados, colar organogramas, fotos e descrever o cenário executivo da auditoria.
-                        </p>
-                        <button type="button" class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#modalEditarFechamento">
-                            <i class="bi bi-pencil-square me-1"></i> Escrever Síntese da Auditoria
-                        </button>
-                    </div>
-                {% endif %}
-            </div>
-            <div class="slide-footer">
-                <span>Relatório Executivo ISO {{ auditoria.norma.codigo }}</span>
-                <span>Slide 02</span>
             </div>
         </div>
 
