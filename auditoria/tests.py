@@ -908,3 +908,144 @@ class AuditoriaIsoImagensEvidenciaTests(TestCase):
         self.assertFalse(ImagemSolicitacaoIso.objects.filter(pk=img_obj.id).exists())
 
 
+class AuditoriaIsoDocxExportTests(TestCase):
+    def setUp(self):
+        user_model = get_user_model()
+        self.user = user_model.objects.create_user(
+            username="auditor_docx",
+            email="auditor_docx@example.com",
+            password="senha-forte-123",
+            is_staff=True,
+        )
+        self.norma = Norma.objects.create(
+            codigo="ISO 13485:2016",
+            titulo="Dispositivos Médicos",
+            ativa=True,
+        )
+        self.item_sec4 = ItemNorma.objects.create(
+            norma=self.norma,
+            referencia="4",
+            titulo="Sistema de Gestão da Qualidade",
+            ordem=1,
+        )
+        self.item_41 = ItemNorma.objects.create(
+            norma=self.norma,
+            referencia="4.1.1",
+            titulo="Requisitos gerais de documentação",
+            ordem=2,
+        )
+        self.item_sec7 = ItemNorma.objects.create(
+            norma=self.norma,
+            referencia="7",
+            titulo="Realização do Produto",
+            ordem=3,
+        )
+        self.item_75 = ItemNorma.objects.create(
+            norma=self.norma,
+            referencia="7.5.1",
+            titulo="Controle de produção",
+            ordem=4,
+        )
+        self.auditoria = AuditoriaIso.objects.create(
+            norma=self.norma,
+            titulo="Auditoria DOCX",
+            empresa_auditada="Unidade Teste DOCX",
+            sintese="<h2>Síntese Geral</h2><p>A auditoria transcorreu em <strong>conformidade</strong>.</p><ul><li>Item auditado 1</li><li>Item auditado 2</li></ul>",
+            conclusao_texto="Recomendação de aprovação com plano de ação corretiva.",
+            criado_por=self.user,
+        )
+        self.auditoria.escopo_itens.add(self.item_41, self.item_75)
+
+        # Resposta com Não Conformidade (NC) em 7.5.1
+        self.p_75 = BancoPergunta.objects.create(texto_pergunta="Controle de produção é seguido?", ativa=True)
+        self.p_75.itens_norma.add(self.item_75)
+        self.r_75 = RespostaEntrevistaIso.objects.create(
+            auditoria=self.auditoria,
+            pergunta=self.p_75,
+            classificacao="NC",
+            grau_nc="MENOR",
+            respondida_por=self.user,
+        )
+        self.sol_75 = SolicitacaoEvidenciaIso.objects.create(
+            resposta=self.r_75,
+            solicitacao="Ordem de Produção OP-001",
+            evidencia="Falta de preenchimento do campo de lote",
+            conclusao="NC",
+        )
+
+        # Resposta com Conforme em 4.1.1
+        self.p_41 = BancoPergunta.objects.create(texto_pergunta="Manual da qualidade existe?", ativa=True)
+        self.p_41.itens_norma.add(self.item_41)
+        self.r_41 = RespostaEntrevistaIso.objects.create(
+            auditoria=self.auditoria,
+            pergunta=self.p_41,
+            classificacao="C",
+            respondida_por=self.user,
+        )
+        self.sol_41 = SolicitacaoEvidenciaIso.objects.create(
+            resposta=self.r_41,
+            solicitacao="Manual da Qualidade",
+            evidencia="Manual rev. 4 auditado e em conformidade",
+            conclusao="C",
+        )
+
+    def test_generate_relatorio_docx_buffer(self):
+        from auditoria.services.relatorio_docx_export import generate_relatorio_docx_buffer
+        buffer = generate_relatorio_docx_buffer(self.auditoria)
+        self.assertIsNotNone(buffer)
+        docx_bytes = buffer.getvalue()
+        self.assertTrue(len(docx_bytes) > 1000)
+
+        # Valida que o DOCX gerado pode ser lido pelo docx.Document
+        doc = Document(io.BytesIO(docx_bytes))
+        self.assertTrue(len(doc.paragraphs) > 0)
+        self.assertTrue(len(doc.tables) > 0)
+
+        # Verifica presença de texto nos parágrafos e tabelas
+        doc_text = " ".join([p.text for p in doc.paragraphs])
+        for t in doc.tables:
+            for row in t.rows:
+                for cell in row.cells:
+                    doc_text += " " + cell.text
+
+        self.assertIn("RELATÓRIO DE AUDITORIA INTERNA DA QUALIDADE", doc_text)
+        self.assertIn("Unidade Teste DOCX", doc_text)
+        self.assertIn("Síntese Geral", doc_text)
+        self.assertIn("NC Menor", doc_text)
+
+    def test_export_docx_view_endpoint(self):
+        self.client.force_login(self.user)
+        url = reverse("auditoria:iso_auditoria_export_docx", args=[self.auditoria.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+        self.assertIn(".docx", response["Content-Disposition"])
+
+    def test_save_fechamento_endpoint(self):
+        self.client.force_login(self.user)
+        url = reverse("auditoria:api_iso_fechamento_salvar", args=[self.auditoria.id])
+        response = self.client.post(
+            url,
+            data=json.dumps({
+                "sintese": "<h3>Nova Síntese</h3><p>Organograma revisado.</p>",
+                "empresa_auditada": "Tecnolens Filial 1",
+                "encerramento_representantes": "Carlos Gerente",
+                "conclusao_texto": "Parecer de recomendação emitido.",
+            }),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["success"])
+
+        self.auditoria.refresh_from_db()
+        self.assertEqual(self.auditoria.empresa_auditada, "Tecnolens Filial 1")
+        self.assertEqual(self.auditoria.encerramento_representantes, "Carlos Gerente")
+        self.assertEqual(self.auditoria.conclusao_texto, "Parecer de recomendação emitido.")
+        self.assertIn("Nova Síntese", self.auditoria.sintese)
+
+
+

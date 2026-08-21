@@ -832,6 +832,9 @@ class AuditoriaIso(models.Model):
     encerramento_auditores = models.CharField(max_length=255, blank=True, verbose_name="Auditores (Encerramento)")
     encerramento_representantes = models.CharField(max_length=255, blank=True, verbose_name="Representantes (Encerramento)")
     
+    sintese = models.TextField(blank=True, default="", verbose_name="Síntese da Auditoria", help_text="Síntese executiva formatada em HTML/WYSIWYG com tabelas e imagens")
+    conclusao_texto = models.TextField(blank=True, default="", verbose_name="Conclusão / Parecer Final da Auditoria")
+    
     arquivada = models.BooleanField(default=False, verbose_name="Arquivada")
     criado_em = models.DateTimeField(auto_now_add=True)
 

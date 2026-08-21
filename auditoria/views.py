@@ -4512,6 +4512,60 @@ def iso_auditoria_export_excel(request, auditoria_id):
     return response
 
 
+@login_required
+def iso_auditoria_export_docx(request, auditoria_id):
+    """
+    Exportação do Relatório de Auditoria Interna em formato Word (.docx),
+    com injeção de conteúdos complexos (HTML da Síntese, Imagens, Agrupamento por Área Funcional
+    e Tabela Nativa de Avaliação Geral).
+    """
+    from django.http import HttpResponse
+    from .models import AuditoriaIso
+    from .services.relatorio_docx_export import generate_relatorio_docx_buffer
+
+    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+    docx_buffer = generate_relatorio_docx_buffer(auditoria)
+
+    codigo_norma = re.sub(r'[^a-zA-Z0-9_-]', '_', auditoria.norma.codigo)
+    data_str = auditoria.data_inicio.strftime('%Y%m%d') if auditoria.data_inicio else str(auditoria.id)
+    filename = f"Relatorio_Auditoria_{codigo_norma}_{data_str}.docx"
+
+    response = HttpResponse(
+        docx_buffer.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+@login_required
+@require_POST
+def api_iso_fechamento_salvar(request, auditoria_id):
+    """
+    Salva a Síntese Executiva (HTML WYSIWYG) e metadados de fechamento da auditoria.
+    """
+    from .models import AuditoriaIso
+    try:
+        auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+        data = json.loads(request.body)
+        
+        if "sintese" in data:
+            auditoria.sintese = data.get("sintese", "").strip()
+        if "conclusao_texto" in data:
+            auditoria.conclusao_texto = data.get("conclusao_texto", "").strip()
+        if "encerramento_representantes" in data:
+            auditoria.encerramento_representantes = data.get("encerramento_representantes", "").strip()
+        if "encerramento_auditores" in data:
+            auditoria.encerramento_auditores = data.get("encerramento_auditores", "").strip()
+        if "empresa_auditada" in data:
+            auditoria.empresa_auditada = data.get("empresa_auditada", "").strip()
+
+        auditoria.save()
+        return JsonResponse({"success": True, "message": "Dados do relatório salvos com sucesso!"})
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+
 # ==========================================
 # VIEWS SETUP ISO 13485 (CRUD FRONTEND)
 # ==========================================

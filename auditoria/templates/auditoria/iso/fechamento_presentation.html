@@ -9,6 +9,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Quill.js WYSIWYG Editor -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <style>
         @page {
@@ -203,11 +207,20 @@
             <a href="{% url 'auditoria:iso_auditoria_cronograma' auditoria.id %}" class="btn btn-sm btn-outline-light rounded-pill px-3">
                 <i class="bi bi-arrow-left me-1"></i> Cronograma
             </a>
-            <span class="text-white fw-bold"><i class="bi bi-easel2-fill text-primary me-2"></i>Apresentação de Fechamento (16:9)</span>
+            <span class="text-white fw-bold"><i class="bi bi-easel2-fill text-primary me-2"></i>Apresentação & Relatório Executivo</span>
         </div>
-        <div class="d-flex align-items-center gap-2">
-            <button onclick="window.print()" class="btn btn-sm btn-primary rounded-pill px-4 fw-bold shadow-sm">
-                <i class="bi bi-printer me-1"></i> Imprimir / Salvar PDF
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <button type="button" class="btn btn-sm btn-light rounded-pill px-3 fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalEditarFechamento">
+                <i class="bi bi-pencil-square text-primary me-1"></i> Editar Síntese & Fechamento
+            </button>
+            <a href="{% url 'auditoria:iso_auditoria_export_docx' auditoria.id %}" class="btn btn-sm btn-primary rounded-pill px-3.5 fw-bold shadow-sm" title="Baixar Relatório Completo em formato Word">
+                <i class="bi bi-file-earmark-word-fill me-1"></i> Relatório Word (.DOCX)
+            </a>
+            <a href="{% url 'auditoria:iso_auditoria_export_excel' auditoria.id %}" class="btn btn-sm btn-success rounded-pill px-3.5 fw-bold shadow-sm" title="Baixar Checklist Completo em formato Excel">
+                <i class="bi bi-file-earmark-excel-fill me-1"></i> Checklist (.XLSX)
+            </a>
+            <button onclick="window.print()" class="btn btn-sm btn-outline-light rounded-pill px-3 fw-bold shadow-sm">
+                <i class="bi bi-printer me-1"></i> Imprimir / PDF
             </button>
         </div>
     </div>
@@ -245,6 +258,42 @@
             <div class="slide-footer text-white-50 border-white border-opacity-10">
                 <span>Calibra Auditoria & Gestão da Qualidade</span>
                 <span>Slide 01</span>
+            </div>
+        </div>
+
+        <!-- ── SLIDE 2: SÍNTESE EXECUTIVA DA AUDITORIA ── -->
+        <div class="slide">
+            <div class="slide-header">
+                <h2 class="slide-title">
+                    <i class="bi bi-journal-text text-primary"></i>Síntese Executiva da Auditoria
+                </h2>
+                <div class="d-flex align-items-center gap-2 no-print">
+                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 font-monospace" data-bs-toggle="modal" data-bs-target="#modalEditarFechamento">
+                        <i class="bi bi-pencil me-1"></i>Editar Síntese
+                    </button>
+                </div>
+            </div>
+            <div class="slide-content overflow-auto pe-2">
+                {% if auditoria.sintese %}
+                    <div class="p-3.5 bg-light rounded-4 border sintese-rendered" style="font-size: 0.95rem; line-height: 1.6;">
+                        {{ auditoria.sintese|safe }}
+                    </div>
+                {% else %}
+                    <div class="d-flex flex-column align-items-center justify-content-center h-100 text-center p-4 bg-light rounded-4 border border-dashed">
+                        <i class="bi bi-file-earmark-text display-4 text-muted mb-2"></i>
+                        <h5 class="fw-bold text-dark">Nenhuma Síntese Registrada Ainda</h5>
+                        <p class="text-muted small max-w-md mx-auto mb-3" style="max-width: 500px;">
+                            Utilize o editor WYSIWYG completo para registrar listas de entrevistados, colar organogramas, fotos e descrever o cenário executivo da auditoria.
+                        </p>
+                        <button type="button" class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#modalEditarFechamento">
+                            <i class="bi bi-pencil-square me-1"></i> Escrever Síntese da Auditoria
+                        </button>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="slide-footer">
+                <span>Relatório Executivo ISO {{ auditoria.norma.codigo }}</span>
+                <span>Slide 02</span>
             </div>
         </div>
 
@@ -603,5 +652,118 @@
 
     </div>
 
+    <!-- Modal de Edição de Síntese e Fechamento -->
+    <div class="modal fade no-print" id="modalEditarFechamento" tabindex="-1" aria-labelledby="modalEditarFechamentoTitle" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header bg-dark text-white px-4 py-3 border-0">
+                    <h5 class="modal-title fw-bold" id="modalEditarFechamentoTitle">
+                        <i class="bi bi-pencil-square text-primary me-2"></i>Editar Síntese Executiva & Dados de Fechamento
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="formFechamento">
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted">Empresa / Unidade Auditada</label>
+                                <input type="text" class="form-control rounded-3" id="inputEmpresaAuditada" value="{{ auditoria.empresa_auditada|default:'Tecnolens' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted">Representantes Presentes no Encerramento</label>
+                                <input type="text" class="form-control rounded-3" id="inputEncerramentoRep" value="{{ auditoria.encerramento_representantes|default:'' }}" placeholder="Ex: Maria Souza (Coord. Qualidade), Carlos (Gerente)">
+                            </div>
+                        </div>
+
+                        <!-- Editor WYSIWYG para Síntese da Auditoria -->
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1.5">
+                                <label class="form-label fw-bold small text-dark mb-0">
+                                    <i class="bi bi-journal-richtext text-primary me-1"></i>Síntese da Auditoria (Editor Rico WYSIWYG)
+                                </label>
+                                <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Permite colar imagens, listas, títulos, organogramas e tabelas</small>
+                            </div>
+                            <div id="quillEditorContainer" style="min-height: 250px; font-family: inherit; font-size: 14px;" class="bg-white rounded-bottom-3 border">
+                                {{ auditoria.sintese|safe }}
+                            </div>
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="form-label fw-bold small text-muted">Conclusão / Parecer Final Complementar</label>
+                            <textarea class="form-control rounded-3" id="inputConclusaoTexto" rows="2" placeholder="Observações finais da liderança da auditoria...">{{ auditoria.conclusao_texto|default:'' }}</textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer bg-light px-4 py-3 border-top d-flex justify-content-between">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary rounded-pill px-5 fw-bold shadow-sm" id="btnSalvarFechamento" onclick="salvarDadosFechamento()">
+                        <i class="bi bi-check-lg me-1"></i> Salvar e Atualizar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let quill;
+        document.addEventListener('DOMContentLoaded', function() {
+            const toolbarOptions = [
+                [{ 'header': [1, 2, 3, false] }],
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                [{ 'align': [] }],
+                ['blockquote', 'code-block'],
+                ['image', 'link'],
+                ['clean']
+            ];
+
+            quill = new Quill('#quillEditorContainer', {
+                theme: 'snow',
+                modules: {
+                    toolbar: toolbarOptions
+                },
+                placeholder: 'Escreva a síntese da auditoria, liste os entrevistados, cole imagens/organogramas...'
+            });
+        });
+
+        async function salvarDadosFechamento() {
+            const btn = document.getElementById('btnSalvarFechamento');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Salvando...';
+
+            const sinteseHtml = quill ? quill.root.innerHTML : '';
+            const payload = {
+                empresa_auditada: document.getElementById('inputEmpresaAuditada').value.trim(),
+                encerramento_representantes: document.getElementById('inputEncerramentoRep').value.trim(),
+                conclusao_texto: document.getElementById('inputConclusaoTexto').value.trim(),
+                sintese: sinteseHtml
+            };
+
+            try {
+                const response = await fetch("{% url 'auditoria:api_iso_fechamento_salvar' auditoria.id %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                const res = await response.json();
+                if (res.success) {
+                    const modalEl = document.getElementById('modalEditarFechamento');
+                    bootstrap.Modal.getInstance(modalEl)?.hide();
+                    window.location.reload();
+                } else {
+                    alert('Erro ao salvar: ' + (res.error || 'Erro desconhecido.'));
+                }
+            } catch(err) {
+                console.error('Erro ao salvar fechamento:', err);
+                alert('Erro de comunicação com o servidor.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Salvar e Atualizar';
+            }
+        }
+    </script>
 </body>
 </html>
