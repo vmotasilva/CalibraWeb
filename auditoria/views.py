@@ -6179,6 +6179,15 @@ def iso_auditoria_cronograma(request, auditoria_id):
         primeira_agenda = s.agenda if s.agenda else (agendas_vinculadas[0] if agendas_vinculadas else None)
         itens_sorted = sorted(s.resposta.pergunta.itens_norma.all(), key=lambda it: natural_sort_key(it.referencia))
 
+        imagens_list = []
+        for img in s.imagens.all():
+            imagens_list.append({
+                'id': img.id,
+                'url': img.url_imagem,
+                'nome': img.nome_arquivo,
+                'legenda': img.legenda or '',
+            })
+
         item_dict = {
             'id': s.id,
             'solicitacao': s.solicitacao,
@@ -6192,7 +6201,8 @@ def iso_auditoria_cronograma(request, auditoria_id):
             'itens_str': ", ".join(it.referencia for it in itens_sorted),
             'agenda': primeira_agenda,
             'agendas_vinculadas': agendas_vinculadas,
-            'imagens': list(s.imagens.all()),
+            'imagens': imagens_list,
+            'imagens_json': json.dumps(imagens_list),
         }
 
         if s.conclusao == 'P':

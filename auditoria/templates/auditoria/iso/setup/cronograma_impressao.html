@@ -543,12 +543,20 @@
                                     <td class="align-middle">
                                         <div class="p-2 rounded bg-light border border-light-subtle cursor-pointer" 
                                              style="cursor: pointer; min-height: 42px;" 
-                                             onclick="abrirModalDetalhesAberto({{ sol.id }}, '{{ sol.solicitacao|escapejs }}', '{{ sol.evidencia|escapejs }}', '{{ sol.conclusao }}', '{{ sol.pergunta_texto|escapejs }}', '{{ sol.itens_str|escapejs }}')"
+                                             onclick="abrirModalDetalhesAberto({{ sol.id }}, '{{ sol.solicitacao|escapejs }}', '{{ sol.evidencia|escapejs }}', '{{ sol.conclusao }}', '{{ sol.pergunta_texto|escapejs }}', '{{ sol.itens_str|escapejs }}', {{ sol.imagens_json|safe }})"
                                              title="Clique para ler ou editar a evidência">
                                             {% if sol.evidencia %}
                                                 <div class="text-dark small" style="white-space: pre-wrap; font-size: 0.82rem; max-height: 60px; overflow-y: auto;" id="sol-ev-display-{{ sol.id }}">{{ sol.evidencia }}</div>
                                             {% else %}
                                                 <span class="text-muted small fst-italic" id="sol-ev-display-{{ sol.id }}"><i class="bi bi-pencil me-1"></i>Nenhuma evidência registrada ainda. Clique para adicionar...</span>
+                                            {% endif %}
+
+                                            {% if sol.imagens %}
+                                                <div class="d-flex align-items-center gap-1 mt-1.5 flex-wrap">
+                                                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-2 py-0.5" style="font-size: 0.72rem;">
+                                                        <i class="bi bi-images me-1"></i>{{ sol.imagens|length }} anexo{{ sol.imagens|length|pluralize:"s" }}
+                                                    </span>
+                                                </div>
                                             {% endif %}
                                         </div>
                                     </td>
@@ -556,7 +564,7 @@
                                         <div class="d-flex gap-1 justify-content-end align-items-center">
                                             <button type="button" 
                                                     class="btn btn-sm btn-primary rounded-pill px-2.5 fw-semibold shadow-2xs d-flex align-items-center gap-1" 
-                                                    onclick="abrirModalDetalhesAberto({{ sol.id }}, '{{ sol.solicitacao|escapejs }}', '{{ sol.evidencia|escapejs }}', '{{ sol.conclusao }}', '{{ sol.pergunta_texto|escapejs }}', '{{ sol.itens_str|escapejs }}')"
+                                                    onclick="abrirModalDetalhesAberto({{ sol.id }}, '{{ sol.solicitacao|escapejs }}', '{{ sol.evidencia|escapejs }}', '{{ sol.conclusao }}', '{{ sol.pergunta_texto|escapejs }}', '{{ sol.itens_str|escapejs }}', {{ sol.imagens_json|safe }})"
                                                     title="Avaliar e Definir Conclusão">
                                                 <i class="bi bi-check2-circle"></i>
                                                 <span>Avaliar</span>
@@ -699,12 +707,20 @@
                                     <td class="align-middle">
                                         <div class="p-2 rounded bg-light border border-light-subtle cursor-pointer" 
                                              style="cursor: pointer; min-height: 42px;" 
-                                             onclick="abrirModalDetalhesAberto({{ sol.id }}, '{{ sol.solicitacao|escapejs }}', '{{ sol.evidencia|escapejs }}', '{{ sol.conclusao }}', '{{ sol.pergunta_texto|escapejs }}', '{{ sol.itens_str|escapejs }}')"
+                                             onclick="abrirModalDetalhesAberto({{ sol.id }}, '{{ sol.solicitacao|escapejs }}', '{{ sol.evidencia|escapejs }}', '{{ sol.conclusao }}', '{{ sol.pergunta_texto|escapejs }}', '{{ sol.itens_str|escapejs }}', {{ sol.imagens_json|safe }})"
                                              title="Clique para ler ou editar a evidência">
                                             {% if sol.evidencia %}
                                                 <div class="text-dark small" style="white-space: pre-wrap; font-size: 0.82rem; max-height: 60px; overflow-y: auto;">{{ sol.evidencia }}</div>
                                             {% else %}
                                                 <span class="text-muted small fst-italic"><i class="bi bi-pencil me-1"></i>Nenhum detalhe adicional. Clique para editar...</span>
+                                            {% endif %}
+
+                                            {% if sol.imagens %}
+                                                <div class="d-flex align-items-center gap-1 mt-1.5 flex-wrap">
+                                                    <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill px-2 py-0.5" style="font-size: 0.72rem;">
+                                                        <i class="bi bi-images me-1"></i>{{ sol.imagens|length }} anexo{{ sol.imagens|length|pluralize:"s" }} com foto
+                                                    </span>
+                                                </div>
                                             {% endif %}
                                         </div>
                                     </td>
@@ -712,7 +728,7 @@
                                         <div class="d-flex gap-1 justify-content-end align-items-center">
                                             <button type="button" 
                                                     class="btn btn-sm btn-outline-primary rounded-pill px-2.5 fw-semibold shadow-2xs d-flex align-items-center gap-1" 
-                                                    onclick="abrirModalDetalhesAberto({{ sol.id }}, '{{ sol.solicitacao|escapejs }}', '{{ sol.evidencia|escapejs }}', '{{ sol.conclusao }}', '{{ sol.pergunta_texto|escapejs }}', '{{ sol.itens_str|escapejs }}')"
+                                                    onclick="abrirModalDetalhesAberto({{ sol.id }}, '{{ sol.solicitacao|escapejs }}', '{{ sol.evidencia|escapejs }}', '{{ sol.conclusao }}', '{{ sol.pergunta_texto|escapejs }}', '{{ sol.itens_str|escapejs }}', {{ sol.imagens_json|safe }})"
                                                     title="Reavaliar ou Editar Solicitação">
                                                 <i class="bi bi-pencil-square"></i>
                                                 <span>Editar</span>
@@ -844,7 +860,7 @@
                                     <td class="align-middle">
                                         <div class="p-2 rounded bg-light border border-light-subtle cursor-pointer" 
                                              style="cursor: pointer; min-height: 42px;" 
-                                             onclick="abrirModalDetalhesAberto({{ sol.id }}, '{{ sol.solicitacao|escapejs }}', '{{ sol.evidencia|escapejs }}', '{{ sol.conclusao }}', '{{ sol.pergunta_texto|escapejs }}', '{{ sol.itens_str|escapejs }}')"
+                                             onclick="abrirModalDetalhesAberto({{ sol.id }}, '{{ sol.solicitacao|escapejs }}', '{{ sol.evidencia|escapejs }}', '{{ sol.conclusao }}', '{{ sol.pergunta_texto|escapejs }}', '{{ sol.itens_str|escapejs }}', {{ sol.imagens_json|safe }})"
                                              title="Clique para ler ou editar a evidência">
                                             {% if sol.evidencia %}
                                                 <div class="text-dark small" style="white-space: pre-wrap; font-size: 0.82rem; max-height: 60px; overflow-y: auto;">{{ sol.evidencia }}</div>
@@ -865,7 +881,7 @@
                                         <div class="d-flex gap-1 justify-content-end align-items-center">
                                             <button type="button" 
                                                     class="btn btn-sm btn-outline-primary rounded-pill px-2.5 fw-semibold shadow-2xs d-flex align-items-center gap-1" 
-                                                    onclick="abrirModalDetalhesAberto({{ sol.id }}, '{{ sol.solicitacao|escapejs }}', '{{ sol.evidencia|escapejs }}', '{{ sol.conclusao }}', '{{ sol.pergunta_texto|escapejs }}', '{{ sol.itens_str|escapejs }}')"
+                                                    onclick="abrirModalDetalhesAberto({{ sol.id }}, '{{ sol.solicitacao|escapejs }}', '{{ sol.evidencia|escapejs }}', '{{ sol.conclusao }}', '{{ sol.pergunta_texto|escapejs }}', '{{ sol.itens_str|escapejs }}', {{ sol.imagens_json|safe }})"
                                                     title="Reavaliar ou Editar Solicitação">
                                                 <i class="bi bi-pencil-square"></i>
                                                 <span>Editar</span>
@@ -1110,8 +1126,9 @@ function confirmarNavegacaoEntrevista(agendaId, agendaTitulo, itemRef) {
     modal.show();
 }
 
-// ── Gestão de Solicitações em Aberto na Agenda ─────────────────────────────
+// ── Gestão de Solicitações e Anexo de Imagens no Cronograma ────────────────
 let modalAbertoActiveConclusao = 'P';
+let modalAbertoCurrentImagens = [];
 
 function updateModalAbertoConclusaoButtons(concl) {
     modalAbertoActiveConclusao = concl;
@@ -1136,7 +1153,59 @@ function setConclusaoModalAberto(concl) {
     }
 }
 
-function abrirModalDetalhesAberto(solId, texto, evidencia, conclusao, perguntaTexto, itensStr) {
+function renderModalAbertoImagensGaleria(imagens) {
+    const galeria = document.getElementById('modalAbertoImagensGaleria');
+    const badgeCount = document.getElementById('modalAbertoImagensCount');
+    if (badgeCount) badgeCount.textContent = (imagens || []).length;
+    
+    if (!galeria) return;
+
+    if (!imagens || imagens.length === 0) {
+        galeria.innerHTML = `
+            <div class="col-12">
+                <div class="p-3 text-center border rounded-3 bg-white text-muted small">
+                    <i class="bi bi-images fs-3 text-secondary d-block mb-1"></i>
+                    Nenhuma foto de evidência anexada a esta solicitação.<br>
+                    <span class="text-primary fw-semibold">Clique em "Anexar Fotos" acima ou cole um print do teclado (Ctrl+V).</span>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    let html = '';
+    imagens.forEach((img, idx) => {
+        const legendaEsc = (img.legenda || '').replace(/"/g, '&quot;');
+        const nomeEsc = (img.nome || `Evidência ${idx + 1}`).replace(/"/g, '&quot;');
+        html += `
+            <div class="col-6 col-md-4" id="img-card-${img.id}">
+                <div class="card h-100 shadow-2xs border rounded-3 overflow-hidden bg-white">
+                    <div class="position-relative bg-dark" style="height: 115px; cursor: pointer;" onclick="abrirModalZoomImagem('${img.url}', '${nomeEsc}')" title="Clique para ampliar">
+                        <img src="${img.url}" class="w-100 h-100" style="object-fit: cover;" alt="${nomeEsc}">
+                        <div class="position-absolute top-0 end-0 p-1.5">
+                            <button type="button" class="btn btn-sm btn-danger py-0 px-1.5 rounded-circle shadow-sm" onclick="event.stopPropagation(); removerImagemAberto(${img.id})" title="Remover imagem">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                        <div class="position-absolute bottom-0 start-0 w-100 p-1 bg-dark bg-opacity-50 text-white small font-monospace text-truncate px-2" style="font-size: 0.7rem;">
+                            <i class="bi bi-zoom-in me-1"></i>${nomeEsc}
+                        </div>
+                    </div>
+                    <div class="p-2">
+                        <input type="text" class="form-control form-control-sm text-dark" 
+                               style="font-size: 0.78rem;" 
+                               placeholder="Legenda / Descrição..." 
+                               value="${legendaEsc}" 
+                               onblur="salvarLegendaImagemAberto(${img.id}, this)">
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    galeria.innerHTML = html;
+}
+
+function abrirModalDetalhesAberto(solId, texto, evidencia, conclusao, perguntaTexto, itensStr, imagens) {
     document.getElementById('modalAbertoSolId').value = solId;
     document.getElementById('modalAbertoSolTexto').value = texto || '';
     document.getElementById('modalAbertoSolEvidencia').value = evidencia || '';
@@ -1145,9 +1214,141 @@ function abrirModalDetalhesAberto(solId, texto, evidencia, conclusao, perguntaTe
 
     updateModalAbertoConclusaoButtons(conclusao || 'P');
 
+    modalAbertoCurrentImagens = Array.isArray(imagens) ? [...imagens] : [];
+    renderModalAbertoImagensGaleria(modalAbertoCurrentImagens);
+
     const modalEl = document.getElementById('modalDetalhesSolicitacaoAberto');
     const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     modal.show();
+}
+
+async function fazerUploadImagensAberto(inputEl) {
+    const solId = parseInt(document.getElementById('modalAbertoSolId').value);
+    if (!solId || !inputEl.files || inputEl.files.length === 0) return;
+
+    const loadingEl = document.getElementById('modalAbertoImagensLoading');
+    if (loadingEl) loadingEl.classList.remove('d-none');
+
+    const files = Array.from(inputEl.files);
+    for (const file of files) {
+        const formData = new FormData();
+        formData.append('imagem', file);
+        formData.append('nome', file.name);
+
+        try {
+            const response = await fetch(`/auditoria/iso/api/solicitacoes/${solId}/imagens/upload/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                body: formData
+            });
+            const data = await response.json();
+            if (data.success && data.imagem) {
+                modalAbertoCurrentImagens.push(data.imagem);
+                renderModalAbertoImagensGaleria(modalAbertoCurrentImagens);
+            } else {
+                alert(data.error || 'Erro ao enviar imagem.');
+            }
+        } catch(err) {
+            console.error('Erro no upload de imagem:', err);
+            alert('Erro de comunicação durante upload.');
+        }
+    }
+
+    if (loadingEl) loadingEl.classList.add('d-none');
+    inputEl.value = '';
+}
+
+async function uploadSingleBlobAberto(blob, fileName) {
+    const solId = parseInt(document.getElementById('modalAbertoSolId').value);
+    if (!solId || !blob) return;
+
+    const loadingEl = document.getElementById('modalAbertoImagensLoading');
+    if (loadingEl) loadingEl.classList.remove('d-none');
+
+    const formData = new FormData();
+    formData.append('imagem', blob, fileName || 'print_evidencia.png');
+    formData.append('nome', fileName || 'print_evidencia.png');
+
+    try {
+        const response = await fetch(`/auditoria/iso/api/solicitacoes/${solId}/imagens/upload/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+            body: formData
+        });
+        const data = await response.json();
+        if (data.success && data.imagem) {
+            modalAbertoCurrentImagens.push(data.imagem);
+            renderModalAbertoImagensGaleria(modalAbertoCurrentImagens);
+        } else {
+            alert(data.error || 'Erro ao enviar imagem colada.');
+        }
+    } catch(err) {
+        console.error('Erro no upload do print:', err);
+    } finally {
+        if (loadingEl) loadingEl.classList.add('d-none');
+    }
+}
+
+// Suporte a colar imagem (Ctrl+V) direto no modal de solicitação
+document.addEventListener('paste', function(e) {
+    const modalEl = document.getElementById('modalDetalhesSolicitacaoAberto');
+    if (!modalEl || !modalEl.classList.contains('show')) return;
+
+    const items = (e.clipboardData || window.clipboardData)?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+        if (items[i].type && items[i].type.indexOf('image') !== -1) {
+            const blob = items[i].getAsFile();
+            if (blob) {
+                const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 14);
+                uploadSingleBlobAberto(blob, `print_evidencia_${timestamp}.png`);
+                e.preventDefault();
+                break;
+            }
+        }
+    }
+});
+
+async function removerImagemAberto(imgId) {
+    if (!confirm("Deseja realmente remover esta foto de evidência?")) return;
+
+    try {
+        const response = await fetch(`/auditoria/iso/api/solicitacoes/imagens/${imgId}/deletar/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' }
+        });
+        const data = await response.json();
+        if (data.success) {
+            modalAbertoCurrentImagens = modalAbertoCurrentImagens.filter(img => img.id !== imgId);
+            renderModalAbertoImagensGaleria(modalAbertoCurrentImagens);
+        } else {
+            alert(data.error || 'Erro ao remover imagem.');
+        }
+    } catch(err) {
+        console.error('Erro ao remover imagem:', err);
+    }
+}
+
+async function salvarLegendaImagemAberto(imgId, inputEl) {
+    const legendaTexto = inputEl.value.trim();
+    try {
+        await fetch(`/auditoria/iso/api/solicitacoes/imagens/${imgId}/legenda/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+            body: JSON.stringify({ legenda: legendaTexto })
+        });
+    } catch(err) {
+        console.error('Erro ao salvar legenda:', err);
+    }
+}
+
+function abrirModalZoomImagem(url, titulo) {
+    document.getElementById('zoomModalImg').src = url;
+    document.getElementById('zoomModalTitle').textContent = titulo || 'Visualização da Evidência';
+    const zoomModalEl = document.getElementById('modalZoomEvidencia');
+    const zoomModal = bootstrap.Modal.getOrCreateInstance(zoomModalEl);
+    zoomModal.show();
 }
 
 async function salvarModalDetalhesAberto() {
@@ -1177,7 +1378,7 @@ async function salvarModalDetalhesAberto() {
 
         const data = await resp.json();
         if (data.success) {
-            // Se a conclusão foi alterada de 'P' para outra, recarrega a página para atualizar o cronograma e os badges
+            // Recarrega a página para atualizar o cronograma, abas, badges de imagens e contadores
             window.location.reload();
         } else {
             alert(data.error || 'Erro ao salvar solicitação.');
@@ -1206,7 +1407,7 @@ async function salvarModalDetalhesAberto() {
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-4">
+            <div class="modal-body p-4" style="max-height: 80vh; overflow-y: auto;">
                 <input type="hidden" id="modalAbertoSolId">
 
                 <div class="bg-light p-3 rounded-3 border mb-3">
@@ -1233,12 +1434,41 @@ async function salvarModalDetalhesAberto() {
                     <input type="text" id="modalAbertoSolTexto" class="form-control form-control-lg fs-6 shadow-2xs" placeholder="Ex: Procedimento da Qualidade, Laudo Técnico, Certificado RBC...">
                 </div>
 
-                <div class="mb-2">
+                <div class="mb-3">
                     <label class="form-label fw-bold text-dark">
                         <i class="bi bi-card-checklist me-1 text-primary"></i> Evidência Apresentada / Constatada
                     </label>
-                    <textarea id="modalAbertoSolEvidencia" class="form-control shadow-2xs" rows="6" placeholder="Descreva o documento auditado, referências, números de laudo, datas, pessoas e evidências encontradas..." style="font-family: inherit; font-size: 0.95rem; line-height: 1.5;"></textarea>
+                    <textarea id="modalAbertoSolEvidencia" class="form-control shadow-2xs" rows="5" placeholder="Descreva o documento auditado, referências, números de laudo, datas, pessoas e evidências encontradas..." style="font-family: inherit; font-size: 0.95rem; line-height: 1.5;"></textarea>
                     <small class="text-muted mt-1 d-block"><i class="bi bi-info-circle me-1"></i>Ao definir uma conclusão (ex: Conforme, NC, etc.), a solicitação será automaticamente baixada desta lista de pendências.</small>
+                </div>
+
+                <!-- ── Seção de Anexo de Imagens & Fotos de Evidências ── -->
+                <div class="p-3 bg-light rounded-3 border">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-camera-fill text-primary fs-5"></i>
+                            <div>
+                                <span class="fw-bold text-dark small d-block">Fotos & Evidências Anexadas</span>
+                                <span class="text-muted" style="font-size: 0.74rem;">Laudos, registros fotográficos, ordens de produção ou prints colados (Ctrl+V)</span>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-primary rounded-pill px-2.5 py-1" id="modalAbertoImagensCount">0</span>
+                            <input type="file" id="modalAbertoFileInput" accept="image/*" multiple style="display: none;" onchange="fazerUploadImagensAberto(this)">
+                            <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold shadow-2xs" onclick="document.getElementById('modalAbertoFileInput').click()">
+                                <i class="bi bi-cloud-arrow-up-fill me-1"></i> Anexar Fotos
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="modalAbertoImagensLoading" class="d-none text-center py-2">
+                        <div class="spinner-border spinner-border-sm text-primary me-1" role="status"></div>
+                        <span class="small text-primary fw-semibold">Enviando imagem...</span>
+                    </div>
+
+                    <div id="modalAbertoImagensGaleria" class="row g-2 mt-1">
+                        <!-- Renderizado via JS -->
+                    </div>
                 </div>
             </div>
             <div class="modal-footer border-0 bg-light rounded-bottom-4 d-flex justify-content-end gap-2">
@@ -1246,6 +1476,21 @@ async function salvarModalDetalhesAberto() {
                 <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" id="btnSalvarSolicitacaoAberto" onclick="salvarModalDetalhesAberto()">
                     <i class="bi bi-check2-circle me-1"></i> Salvar e Atualizar
                 </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Lightbox / Zoom da Imagem de Evidência -->
+<div class="modal fade" id="modalZoomEvidencia" tabindex="-1" aria-hidden="true" style="z-index: 10090;">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content bg-dark border-0 shadow-lg text-white rounded-4 overflow-hidden">
+            <div class="modal-header border-0 bg-dark bg-opacity-75 py-2 px-3">
+                <h6 class="modal-title font-monospace text-truncate" id="zoomModalTitle">Evidência</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0 text-center bg-black d-flex align-items-center justify-content-center" style="min-height: 400px; max-height: 80vh;">
+                <img id="zoomModalImg" src="" class="img-fluid" style="max-height: 80vh; object-fit: contain;" alt="Evidência Ampliada">
             </div>
         </div>
     </div>
