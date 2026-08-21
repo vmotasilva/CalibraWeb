@@ -418,7 +418,8 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
     p_sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p_sub.paragraph_format.space_before = Pt(0)
     p_sub.paragraph_format.space_after = Pt(0)
-    norma_str = f"Norma de Referência: {auditoria.norma.codigo}" + (f" — {auditoria.norma.titulo}" if auditoria.norma.titulo else "")
+    norma_desc = getattr(auditoria.norma, 'descricao', '') or ''
+    norma_str = f"Norma de Referência: {auditoria.norma.codigo}" + (f" — {norma_desc}" if norma_desc else "")
     r_sub = p_sub.add_run(norma_str)
     r_sub.font.size = Pt(10)
     r_sub.font.color.rgb = RGBColor(226, 232, 240)
@@ -444,7 +445,7 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
     meta_data = [
         ("Unidade / Empresa:", unidade_str, "Data da Auditoria:", datas_str),
         ("Auditor(es) Líder(es):", auditores_str, "Representantes Auditados:", rep_str),
-        ("Escopo da Auditoria:", f"{auditoria.norma.codigo} - Dispositivos Médicos", "Modalidade:", "Presencial e Amostragem Documental"),
+        ("Escopo da Auditoria:", f"{auditoria.norma.codigo}" + (f" - {norma_desc}" if norma_desc else " - Sistema de Gestão"), "Modalidade:", "Presencial e Amostragem Documental"),
         ("Status do Ciclo:", auditoria.get_status_display() if hasattr(auditoria, 'get_status_display') else "Concluída", "Data do Relatório:", dt_fim or dt_ini or "Hoje"),
     ]
 

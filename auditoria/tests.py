@@ -919,7 +919,7 @@ class AuditoriaIsoDocxExportTests(TestCase):
         )
         self.norma = Norma.objects.create(
             codigo="ISO 13485:2016",
-            titulo="Dispositivos Médicos",
+            descricao="Dispositivos Médicos",
             ativa=True,
         )
         self.item_sec4 = ItemNorma.objects.create(
