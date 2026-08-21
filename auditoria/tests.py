@@ -635,3 +635,167 @@ class RelatorioCompartilhadoDirecionadoTests(TestCase):
         self.assertEqual(response.status_code, 200)
         content = response.content.decode("utf-8")
         self.assertIn("Relatórios Compartilhados Comigo", content)
+
+
+class AuditoriaIsoExcelExportTemplateInjectionTests(TestCase):
+    def setUp(self):
+        user_model = get_user_model()
+        self.user = user_model.objects.create_user(
+            username="auditor_chefe",
+            first_name="Carlos",
+            last_name="Silva",
+            email="carlos@example.com",
+            password="senha-segura-123",
+            is_staff=True,
+        )
+        try:
+            from django_otp.plugins.otp_static.models import StaticDevice
+            StaticDevice.objects.create(user=self.user, name="test-device", confirmed=True)
+        except Exception:
+            pass
+
+        from .models import (
+            Norma,
+            ItemNorma,
+            AuditoriaIso,
+            AgendaAuditoriaIso,
+            BancoPergunta,
+            RespostaEntrevistaIso,
+            SolicitacaoEvidenciaIso,
+            AvaliacaoFinalRequisitoIso,
+        )
+
+        self.norma = Norma.objects.create(
+            codigo="ISO 13485:2016",
+            descricao="Dispositivos Médicos - Sistema de Gestão da Qualidade"
+        )
+        self.item_pai = ItemNorma.objects.create(
+            norma=self.norma,
+            referencia="4",
+            titulo="Sistema de Gestão da Qualidade",
+            ordem=1
+        )
+        self.item_filho_1 = ItemNorma.objects.create(
+            norma=self.norma,
+            parent=self.item_pai,
+            referencia="4.1.1",
+            titulo="Requisitos Gerais e Documentação",
+            ordem=2
+        )
+        self.item_filho_2 = ItemNorma.objects.create(
+            norma=self.norma,
+            parent=self.item_pai,
+            referencia="4.1.2",
+            titulo="Papel Assumido pela Organização",
+            ordem=3
+        )
+
+        self.auditoria = AuditoriaIso.objects.create(
+            norma=self.norma,
+            data_inicio=date(2026, 6, 9),
+            data_fim=date(2026, 6, 11),
+            status="EM_ANDAMENTO",
+            abertura_auditores="Carlos Silva (Líder)",
+        )
+        self.auditoria.auditores.add(self.user)
+        self.auditoria.escopo_itens.add(self.item_pai, self.item_filho_1, self.item_filho_2)
+
+        self.agenda = AgendaAuditoriaIso.objects.create(
+            auditoria=self.auditoria,
+            titulo="Bloco 1 - Gestão da Qualidade",
+            data=date(2026, 6, 9),
+        )
+        self.agenda.itens_norma.add(self.item_filho_1, self.item_filho_2)
+
+        self.pergunta = BancoPergunta.objects.create(
+            texto_pergunta="Existe documentação do SGQ conforme os requisitos?",
+            dica_auditor="Verificar manual da qualidade e procedimentos.",
+        )
+        self.pergunta.itens_norma.add(self.item_filho_1)
+        self.agenda.perguntas.add(self.pergunta)
+
+        self.resposta = RespostaEntrevistaIso.objects.create(
+            auditoria=self.auditoria,
+            pergunta=self.pergunta,
+            texto_resposta="Procedimento PQ-001 revisado e aprovado.",
+            classificacao="C"
+        )
+        self.solicitacao = SolicitacaoEvidenciaIso.objects.create(
+            resposta=self.resposta,
+            agenda=self.agenda,
+            solicitacao="Apresentar cópia do Manual da Qualidade MQ-01",
+            evidencia="Manual da Qualidade rev 04 apresentado em formato digital",
+            conclusao="C"
+        )
+
+        # Segundo item com avaliação final gravada
+        AvaliacaoFinalRequisitoIso.objects.create(
+            auditoria=self.auditoria,
+            item_norma=self.item_filho_2,
+            classificacao="OBS",
+            justificativa="Ajustar referências cruzadas no fluxo de processos.",
+            atualizado_por=self.user
+        )
+
+    def test_generate_auditoria_excel_buffer_injects_metadata_and_preserves_formulas(self):
+        import openpyxl
+        from .services.checklist_export import generate_auditoria_excel_buffer
+
+        buffer = generate_auditoria_excel_buffer(self.auditoria)
+        self.assertIsNotNone(buffer)
+        self.assertGreater(buffer.getbuffer().nbytes, 0)
+
+        # Lê o Excel gerado
+        wb = openpyxl.load_workbook(buffer, data_only=False)
+        self.assertIn("Check-List", wb.sheetnames)
+        self.assertIn("Resultados", wb.sheetnames)
+
+        ws_check = wb["Check-List"]
+        # Metadados no cabeçalho
+        self.assertEqual(ws_check["C5"].value, "Tecnolens")
+        self.assertIn("Carlos Silva", str(ws_check["C6"].value))
+        self.assertEqual(ws_check["C7"].value, "09/06/2026 a 11/06/2026")
+        self.assertIn("ISO 13485:2016", str(ws_check["C8"].value))
+        self.assertEqual(ws_check["H6"].value, "X")  # Presencial
+
+        # Linhas de Itens
+        # 4 (Pai), 4.1.1 (Conforme), 4.1.2 (OBS)
+        # Linha 13: 4
+        self.assertEqual(ws_check["B13"].value, "4")
+        # Linha 14: 4.1.1
+        self.assertEqual(ws_check["B14"].value, "4.1.1")
+        self.assertEqual(ws_check["D14"].value, "X")  # Coluna D = C (Conforme)
+        self.assertEqual(ws_check["E14"].value, "")   # Coluna E = NC
+        self.assertIn("Manual da Qualidade", str(ws_check["H14"].value))
+
+        # Linha 15: 4.1.2
+        self.assertEqual(ws_check["B15"].value, "4.1.2")
+        self.assertIn("Ajustar referências cruzadas", str(ws_check["I15"].value))
+
+        # Aba Resultados: Fórmulas preservadas
+        ws_res = wb["Resultados"]
+        self.assertIn("COUNTIF", str(ws_res["D6"].value))
+        self.assertIn("COUNTA", str(ws_res["D10"].value))
+
+    def test_export_excel_endpoints(self):
+        self.client.force_login(self.user)
+
+        # Endpoint tradicional ISO
+        url_iso = reverse("auditoria:iso_auditoria_export_excel", args=[self.auditoria.id])
+        response_iso = self.client.get(url_iso)
+        self.assertEqual(response_iso.status_code, 200)
+        self.assertEqual(
+            response_iso["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        self.assertIn("Checklist_Auditoria_ISO_13485_2016", response_iso["Content-Disposition"])
+
+        # Endpoint API alias
+        url_api = reverse("auditoria:api_auditoria_exportar_planilha", args=[self.auditoria.id])
+        response_api = self.client.get(url_api)
+        self.assertEqual(response_api.status_code, 200)
+        self.assertEqual(
+            response_api["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+

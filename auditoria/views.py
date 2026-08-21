@@ -4357,182 +4357,26 @@ def iso_fechamento_presentation_view(request, auditoria_id):
 
 @login_required
 def iso_auditoria_export_excel(request, auditoria_id):
-    """Gera e exporta relatório em Excel (.xlsx) completo da Auditoria com 4 abas estruturadas"""
-    import openpyxl
-    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-    from openpyxl.utils import get_column_letter
+    """
+    Exportação do Relatório Excel (Checklist da Norma) utilizando a estratégia
+    de Template Injection para preservar formatações e fórmulas da aba Resultados.
+    """
     from django.http import HttpResponse
-    from .models import AuditoriaIso, RespostaEntrevistaIso, ItemNorma
+    from .models import AuditoriaIso
+    from .services.checklist_export import generate_auditoria_excel_buffer
 
     auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
-    agendas = list(auditoria.agendas.all().prefetch_related('perguntas', 'itens_norma', 'perguntas__itens_norma'))
-    
-    respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).prefetch_related('solicitacoes')
-    respostas_map = {r.pergunta_id: r for r in respostas}
+    excel_buffer = generate_auditoria_excel_buffer(auditoria)
 
-    wb = openpyxl.Workbook()
-    
-    # Estilos visuais
-    font_header = Font(name="Arial", size=11, bold=True, color="FFFFFF")
-    fill_header = PatternFill(start_color="1E3A8A", end_color="1E3A8A", fill_type="solid")
-    fill_sub_header = PatternFill(start_color="E0E7FF", end_color="E0E7FF", fill_type="solid")
-    font_sub_header = Font(name="Arial", size=10, bold=True, color="1E3A8A")
-    font_title = Font(name="Arial", size=14, bold=True, color="1E3A8A")
+    # Nome amigável do arquivo
+    codigo_norma = re.sub(r'[^a-zA-Z0-9_-]', '_', auditoria.norma.codigo)
+    filename = f"Checklist_Auditoria_{codigo_norma}_{auditoria.id}.xlsx"
 
-    fill_c = PatternFill(start_color="DCFCE7", end_color="DCFCE7", fill_type="solid")
-    fill_nc = PatternFill(start_color="FEE2E2", end_color="FEE2E2", fill_type="solid")
-    fill_om = PatternFill(start_color="FEF9C3", end_color="FEF9C3", fill_type="solid")
-    fill_na = PatternFill(start_color="F3F4F6", end_color="F3F4F6", fill_type="solid")
-    fill_p = PatternFill(start_color="FFEDD5", end_color="FFEDD5", fill_type="solid")
-
-    font_c = Font(name="Arial", size=10, bold=True, color="166534")
-    font_nc = Font(name="Arial", size=10, bold=True, color="991B1B")
-    font_om = Font(name="Arial", size=10, bold=True, color="854D0E")
-    font_na = Font(name="Arial", size=10, bold=True, color="374151")
-    font_p = Font(name="Arial", size=10, bold=True, color="9A3412")
-
-    def apply_status_style(cell, val):
-        val_upper = str(val).upper()
-        if 'CONFORME' in val_upper and 'NÃO' not in val_upper:
-            cell.fill, cell.font = fill_c, font_c
-        elif 'NÃO CONFORME' in val_upper or 'NC' in val_upper:
-            cell.fill, cell.font = fill_nc, font_nc
-        elif 'OPORTUNIDADE' in val_upper or 'OM' in val_upper:
-            cell.fill, cell.font = fill_om, font_om
-        elif 'PENDENTE' in val_upper or 'P' in val_upper:
-            cell.fill, cell.font = fill_p, font_p
-        else:
-            cell.fill, cell.font = fill_na, font_na
-
-    # 1. Resumo Executivo
-    ws_resumo = wb.active
-    ws_resumo.title = "Resumo Executivo"
-    ws_resumo['A1'] = f"RELATÓRIO DE AUDITORIA DE CONFORMIDADE ({auditoria.norma.codigo})"
-    ws_resumo['A1'].font = font_title
-    ws_resumo.merge_cells('A1:E1')
-
-    meta_info = [
-        ("Código da Auditoria", f"AUD-ISO-{auditoria.id}"),
-        ("Norma de Referência", f"{auditoria.norma.codigo} - {auditoria.norma.descricao}"),
-        ("Data de Início", auditoria.data_inicio.strftime('%d/%m/%Y')),
-        ("Data de Fim Prevista", auditoria.data_fim.strftime('%d/%m/%Y')),
-        ("Status Geral", auditoria.get_status_display()),
-        ("Auditores Responsáveis", ", ".join([a.get_full_name() or a.username for a in auditoria.auditores.all()])),
-    ]
-
-    for idx, (label, val) in enumerate(meta_info, start=3):
-        c_lbl = ws_resumo.cell(row=idx, column=1, value=label)
-        c_lbl.font = font_sub_header
-        c_lbl.fill = fill_sub_header
-        ws_resumo.cell(row=idx, column=2, value=val).font = Font(name="Arial", size=10, bold=True)
-
-    # 2. Matriz de Conformidade
-    ws_matriz = wb.create_sheet(title="Matriz de Conformidade")
-    headers_matriz = ["Referência", "Título do Requisito da Norma", "Qtd. Perguntas", "Status Calculado"]
-    ws_matriz.append(headers_matriz)
-    for col_idx in range(1, len(headers_matriz) + 1):
-        cell = ws_matriz.cell(row=1, column=col_idx)
-        cell.font = font_header
-        cell.fill = fill_header
-
-    itens_escopo = auditoria.escopo_itens.all()
-    if not itens_escopo.exists():
-        itens_escopo = ItemNorma.objects.filter(norma=auditoria.norma)
-    itens_escopo_list = list(itens_escopo)
-
-    status_display_map = {"C": "Conforme", "NC": "Não Conforme", "OM": "Oportunidade", "NA": "Não Aplicável", "P": "Pendente"}
-    hierarchy = {"NC": 5, "P": 4, "OM": 3, "C": 2, "NA": 1}
-    reverse_hierarchy = {v: k for k, v in hierarchy.items()}
-
-    for item in sorted(itens_escopo_list, key=lambda x: (x.ordem or 0, natural_sort_key(x.referencia))):
-        todas_perguntas_item_set = set()
-        for agenda in agendas:
-            for p in agenda.perguntas.all():
-                if item in p.itens_norma.all():
-                    todas_perguntas_item_set.add(p.id)
-                    
-        pior_peso = 0
-        if todas_perguntas_item_set:
-            for p_id in todas_perguntas_item_set:
-                r = respostas_map.get(p_id)
-                c = r.classificacao if r else "P"
-                peso = hierarchy.get(c, 4)
-                if peso > pior_peso:
-                    pior_peso = peso
-            st = reverse_hierarchy.get(pior_peso, "P")
-        else:
-            st = "P" if any(item in ag.itens_norma.all() for ag in agendas) else "NA"
-
-        st_disp = status_display_map.get(st, "Pendente")
-        ws_matriz.append([item.referencia, item.titulo, len(todas_perguntas_item_set), st_disp])
-        r_idx = ws_matriz.max_row
-        c_st = ws_matriz.cell(row=r_idx, column=4)
-        apply_status_style(c_st, st_disp)
-        c_st.alignment = Alignment(horizontal="center")
-
-    # 3. Checklist & Evidências
-    ws_checklist = wb.create_sheet(title="Checklist & Evidências")
-    headers_check = ["Bloco / Agenda", "Requisito(s)", "Enunciado da Pergunta", "Dica do Auditor", "Classificação", "Evidências / Anotações"]
-    ws_checklist.append(headers_check)
-    for col_idx in range(1, len(headers_check) + 1):
-        cell = ws_checklist.cell(row=1, column=col_idx)
-        cell.font = font_header
-        cell.fill = fill_header
-
-    for agenda in agendas:
-        for p in agenda.perguntas.all():
-            r = respostas_map.get(p.id)
-            classif_disp = r.get_classificacao_display() if r else "Pendente"
-            evid_texto = r.texto_resposta if (r and r.texto_resposta) else "Aguardando preenchimento"
-            itens_str = ", ".join([it.referencia for it in p.itens_norma.all()]) or "Identificação / Geral"
-            
-            ws_checklist.append([
-                agenda.titulo,
-                itens_str,
-                p.texto_pergunta,
-                p.dica_auditor or "",
-                classif_disp,
-                evid_texto
-            ])
-            r_idx = ws_checklist.max_row
-            c_cl = ws_checklist.cell(row=r_idx, column=5)
-            apply_status_style(c_cl, classif_disp)
-
-    # 4. Solicitações de Evidência
-    ws_sols = wb.create_sheet(title="Solicitações & Amostragens")
-    headers_sols = ["Bloco / Agenda", "Pergunta Relacionada", "Item / Documento Solicitado", "Evidência Constatada", "Conclusão da Amostra"]
-    ws_sols.append(headers_sols)
-    for col_idx in range(1, len(headers_sols) + 1):
-        cell = ws_sols.cell(row=1, column=col_idx)
-        cell.font = font_header
-        cell.fill = fill_header
-
-    for agenda in agendas:
-        for p in agenda.perguntas.all():
-            r = respostas_map.get(p.id)
-            if r:
-                for sol in r.solicitacoes.all():
-                    ws_sols.append([
-                        agenda.titulo,
-                        p.texto_pergunta,
-                        sol.solicitacao,
-                        sol.evidencia or "Não registrada",
-                        sol.get_conclusao_display()
-                    ])
-                    r_idx = ws_sols.max_row
-                    c_c = ws_sols.cell(row=r_idx, column=5)
-                    apply_status_style(c_c, sol.get_conclusao_display())
-
-    # Auto-fit colunas
-    for sheet in wb.worksheets:
-        for col in sheet.columns:
-            max_len = max(len(str(cell.value or '')) for cell in col)
-            col_letter = get_column_letter(col[0].column)
-            sheet.column_dimensions[col_letter].width = min(max(max_len + 3, 12), 65)
-
-    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    response['Content-Disposition'] = f'attachment; filename="Relatorio_Auditoria_ISO_{auditoria.id}.xlsx"'
-    wb.save(response)
+    response = HttpResponse(
+        excel_buffer.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
 
 

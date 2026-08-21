@@ -7,6 +7,8 @@
 <style>
     .auth-brand-logo {
         height: 60px;
+        max-width: 140px;
+        object-fit: contain;
     }
     .trusted-machine-check {
         display: flex;
@@ -50,7 +52,7 @@
 
 {% block auth_content %}
 <div class="text-center mb-4">
-    <img src="{% static 'shared/logo_calibraweb.png' %}" alt="Calibra QMS" class="mb-3 auth-brand-logo" onerror="this.style.display='none'">
+    <img src="{% static 'shared/logo_calibraweb.svg' %}" alt="Calibra QMS" class="mb-3 auth-brand-logo" onerror="this.onerror=null;this.src='{% static 'favicon.png' %}';">
     <h4 class="fw-bold text-primary">Calibra QMS</h4>
     <p class="text-muted">Sistema de Gestão da Qualidade</p>
 </div>

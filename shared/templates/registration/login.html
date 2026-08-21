@@ -4,8 +4,9 @@
 
 {% block auth_content %}
     <div class="text-center mb-4">
-        <div class="h3 fw-bold text-primary mb-1">🏭 Calibra QMS</div>
-        <div class="text-muted small">Acesso ao sistema</div>
+        <img src="{% static 'shared/logo_calibraweb.svg' %}" alt="Calibra QMS" class="mb-3" height="60" style="max-width:140px;object-fit:contain;" onerror="this.onerror=null;this.src='{% static 'favicon.png' %}';">
+        <div class="h3 fw-bold text-primary mb-1">Calibra QMS</div>
+        <div class="text-muted small">Sistema de Gestão da Qualidade</div>
     </div>
 
     <form method="post">

@@ -149,7 +149,7 @@ class SharedAuthPagesTests(TestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, static("shared/logo_calibraweb.png"))
+        self.assertContains(response, static("shared/logo_calibraweb.svg"))
         self.assertNotContains(response, "/static/logo.png")
         self.assertEqual(response["Cache-Control"], "no-cache, no-store, must-revalidate, max-age=0")
         self.assertIn("Cookie", response["Vary"])

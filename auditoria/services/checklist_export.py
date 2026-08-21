@@ -1,0 +1,478 @@
+import os
+import io
+import re
+from typing import Optional
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
+from django.conf import settings
+
+
+def natural_sort_key(s: str):
+    """Ordenação natural para referências como 4.1, 4.1.1, 4.10, etc."""
+    return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', str(s or ""))]
+
+
+def get_template_path() -> str:
+    """Retorna o caminho do arquivo de template no servidor."""
+    base_dir = getattr(settings, 'BASE_DIR', None)
+    if not base_dir:
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    templates_dir = os.path.join(str(base_dir), 'auditoria', 'templates_excel')
+    os.makedirs(templates_dir, exist_ok=True)
+    return os.path.join(templates_dir, 'checklist_norma_template.xlsx')
+
+
+def create_base_template_file(template_path: str):
+    """
+    Gera um arquivo de template base inicial com formatações e fórmulas preservadas
+    nas abas 'Check-List' e 'Resultados'.
+    """
+    wb = openpyxl.Workbook()
+    
+    # -------------------------------------------------------------
+    # 1. ABA 'Check-List'
+    # -------------------------------------------------------------
+    ws_check = wb.active
+    ws_check.title = "Check-List"
+    ws_check.views.sheetView[0].showGridLines = True
+
+    # Paleta de Estilos
+    navy_dark = "0B2545"
+    navy_blue = "134074"
+    blue_header = "1D4ED8"
+    gray_light = "F1F5F9"
+    gray_border = "CBD5E1"
+    
+    border_thin = Border(
+        left=Side(style='thin', color=gray_border),
+        right=Side(style='thin', color=gray_border),
+        top=Side(style='thin', color=gray_border),
+        bottom=Side(style='thin', color=gray_border)
+    )
+
+    # Título Principal
+    ws_check.merge_cells('B2:I3')
+    title_cell = ws_check['B2']
+    title_cell.value = "CHECK-LIST DE AUDITORIA INTERNA DA QUALIDADE"
+    title_cell.font = Font(name="Segoe UI", size=15, bold=True, color="FFFFFF")
+    title_cell.fill = PatternFill(start_color=navy_dark, end_color=navy_dark, fill_type="solid")
+    title_cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    # Cabeçalho / Metadados (Linhas 5 a 8)
+    meta_labels = [
+        ("B5", "Unidade / Empresa:", "C5:E5"),
+        ("B6", "Auditor(es) Líder(es):", "C6:E6"),
+        ("B7", "Data da Auditoria:", "C7:E7"),
+        ("B8", "Escopo / Norma:", "C8:E8"),
+    ]
+    for cell_pos, label, merge_range in meta_labels:
+        c_lbl = ws_check[cell_pos]
+        c_lbl.value = label
+        c_lbl.font = Font(name="Segoe UI", size=10, bold=True, color=navy_blue)
+        c_lbl.fill = PatternFill(start_color=gray_light, end_color=gray_light, fill_type="solid")
+        c_lbl.alignment = Alignment(horizontal="right", vertical="center")
+        c_lbl.border = border_thin
+
+        ws_check.merge_cells(merge_range)
+        top_left_cell = ws_check[merge_range.split(':')[0]]
+        top_left_cell.font = Font(name="Segoe UI", size=10, bold=False)
+        top_left_cell.alignment = Alignment(horizontal="left", vertical="center")
+        top_left_cell.border = border_thin
+
+    # Tipo de Auditoria (Presencial vs Remota)
+    ws_check['G5'].value = "Modalidade:"
+    ws_check['G5'].font = Font(name="Segoe UI", size=10, bold=True, color=navy_blue)
+    ws_check['G5'].fill = PatternFill(start_color=gray_light, end_color=gray_light, fill_type="solid")
+    ws_check['G5'].border = border_thin
+    ws_check['G5'].alignment = Alignment(horizontal="right", vertical="center")
+
+    ws_check['G6'].value = "Presencial"
+    ws_check['G6'].font = Font(name="Segoe UI", size=9, bold=True)
+    ws_check['G6'].border = border_thin
+    ws_check['G6'].alignment = Alignment(horizontal="center", vertical="center")
+    ws_check['H6'].font = Font(name="Segoe UI", size=11, bold=True, color="166534")
+    ws_check['H6'].alignment = Alignment(horizontal="center", vertical="center")
+    ws_check['H6'].border = border_thin
+
+    ws_check['G7'].value = "Remota"
+    ws_check['G7'].font = Font(name="Segoe UI", size=9, bold=True)
+    ws_check['G7'].border = border_thin
+    ws_check['G7'].alignment = Alignment(horizontal="center", vertical="center")
+    ws_check['H7'].font = Font(name="Segoe UI", size=11, bold=True, color="166534")
+    ws_check['H7'].alignment = Alignment(horizontal="center", vertical="center")
+    ws_check['H7'].border = border_thin
+
+    # Cabeçalho da Tabela de Itens (Linha 12)
+    headers_items = [
+        ("B12", "Item", 12),
+        ("C12", "Requisito / Questão Avaliada", 48),
+        ("D12", "C", 6),
+        ("E12", "NC", 6),
+        ("F12", "NA", 6),
+        ("G12", "OM", 6),
+        ("H12", "Evidências Constatadas / Amostras", 45),
+        ("I12", "Observações / Plano de Ação / OBS", 35),
+    ]
+
+    fill_table_hdr = PatternFill(start_color=navy_blue, end_color=navy_blue, fill_type="solid")
+    font_table_hdr = Font(name="Segoe UI", size=10, bold=True, color="FFFFFF")
+
+    for cell_id, text, width in headers_items:
+        cell = ws_check[cell_id]
+        cell.value = text
+        cell.font = font_table_hdr
+        cell.fill = fill_table_hdr
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        cell.border = border_thin
+        col_letter = cell_id[0]
+        ws_check.column_dimensions[col_letter].width = width
+
+    ws_check.row_dimensions[12].height = 28
+
+    # -------------------------------------------------------------
+    # 2. ABA 'Resultados' (com fórmulas e painéis automáticos)
+    # -------------------------------------------------------------
+    ws_res = wb.create_sheet(title="Resultados")
+    ws_res.views.sheetView[0].showGridLines = True
+
+    ws_res.merge_cells('B2:F3')
+    res_title = ws_res['B2']
+    res_title.value = "PAINEL DE RESULTADOS DA AUDITORIA"
+    res_title.font = Font(name="Segoe UI", size=14, bold=True, color="FFFFFF")
+    res_title.fill = PatternFill(start_color=navy_dark, end_color=navy_dark, fill_type="solid")
+    res_title.alignment = Alignment(horizontal="center", vertical="center")
+
+    # Tabela Resumo com Fórmulas
+    res_headers = [
+        ("B5", "Classificação", 24),
+        ("C5", "Sigla", 10),
+        ("D5", "Quantidade", 14),
+        ("E5", "% do Total Avaliado", 20),
+    ]
+    for cell_id, text, width in res_headers:
+        c = ws_res[cell_id]
+        c.value = text
+        c.font = font_table_hdr
+        c.fill = fill_table_hdr
+        c.alignment = Alignment(horizontal="center", vertical="center")
+        c.border = border_thin
+        ws_res.column_dimensions[cell_id[0]].width = width
+
+    # Linhas de classificação com fórmulas COUNTIF / CONT.SE
+    status_rows = [
+        (6, "Conforme", "C", "COUNTIF('Check-List'!D13:D500, \"X\") + COUNTIF('Check-List'!D13:D500, \"x\")", "166534", "DCFCE7"),
+        (7, "Não Conforme", "NC", "COUNTIF('Check-List'!E13:E500, \"X\") + COUNTIF('Check-List'!E13:E500, \"x\")", "991B1B", "FEE2E2"),
+        (8, "Não Aplicável", "NA", "COUNTIF('Check-List'!F13:F500, \"X\") + COUNTIF('Check-List'!F13:F500, \"x\")", "374151", "F3F4F6"),
+        (9, "Oportunidade de Melhoria", "OM", "COUNTIF('Check-List'!G13:G500, \"X\") + COUNTIF('Check-List'!G13:G500, \"x\")", "854D0E", "FEF9C3"),
+    ]
+
+    for row_idx, label, sigla, formula_count, text_col, bg_col in status_rows:
+        c_label = ws_res[f'B{row_idx}']
+        c_label.value = label
+        c_label.font = Font(name="Segoe UI", size=10, bold=True)
+        c_label.border = border_thin
+
+        c_sigla = ws_res[f'C{row_idx}']
+        c_sigla.value = sigla
+        c_sigla.font = Font(name="Segoe UI", size=10, bold=True, color=text_col)
+        c_sigla.fill = PatternFill(start_color=bg_col, end_color=bg_col, fill_type="solid")
+        c_sigla.alignment = Alignment(horizontal="center", vertical="center")
+        c_sigla.border = border_thin
+
+        c_qtd = ws_res[f'D{row_idx}']
+        c_qtd.value = f"={formula_count}"
+        c_qtd.font = Font(name="Segoe UI", size=10, bold=True)
+        c_qtd.alignment = Alignment(horizontal="center", vertical="center")
+        c_qtd.border = border_thin
+
+        c_pct = ws_res[f'E{row_idx}']
+        # Percentual relativo à base (C + NC + OM)
+        c_pct.value = f"=IF((D6+D7+D9)>0, D{row_idx}/(D6+D7+D9), 0)"
+        c_pct.number_format = "0.0%"
+        c_pct.font = Font(name="Segoe UI", size=10)
+        c_pct.alignment = Alignment(horizontal="center", vertical="center")
+        c_pct.border = border_thin
+
+    # Linha Total Avaliados
+    ws_res['B10'].value = "Total de Itens Auditados"
+    ws_res['B10'].font = Font(name="Segoe UI", size=10, bold=True, color=navy_dark)
+    ws_res['B10'].border = border_thin
+
+    ws_res['C10'].value = "TOTAL"
+    ws_res['C10'].font = Font(name="Segoe UI", size=9, bold=True, color=navy_dark)
+    ws_res['C10'].alignment = Alignment(horizontal="center", vertical="center")
+    ws_res['C10'].border = border_thin
+
+    ws_res['D10'].value = "=COUNTA('Check-List'!B13:B500)"
+    ws_res['D10'].font = Font(name="Segoe UI", size=10, bold=True, color=navy_dark)
+    ws_res['D10'].alignment = Alignment(horizontal="center", vertical="center")
+    ws_res['D10'].border = border_thin
+
+    ws_res['E10'].value = "=SUM(E6:E9)"
+    ws_res['E10'].number_format = "0.0%"
+    ws_res['E10'].font = Font(name="Segoe UI", size=10, bold=True, color=navy_dark)
+    ws_res['E10'].alignment = Alignment(horizontal="center", vertical="center")
+    ws_res['E10'].border = border_thin
+
+    # Card Índice de Conformidade
+    ws_res.merge_cells('B12:E12')
+    card_hdr = ws_res['B12']
+    card_hdr.value = "ÍNDICE GERAL DE CONFORMIDADE"
+    card_hdr.font = Font(name="Segoe UI", size=11, bold=True, color="FFFFFF")
+    card_hdr.fill = PatternFill(start_color=navy_blue, end_color=navy_blue, fill_type="solid")
+    card_hdr.alignment = Alignment(horizontal="center", vertical="center")
+
+    ws_res.merge_cells('B13:E14')
+    card_val = ws_res['B13']
+    card_val.value = "=IF((D6+D7+D9)>0, D6/(D6+D7+D9), 0)"
+    card_val.number_format = "0.0%"
+    card_val.font = Font(name="Segoe UI", size=22, bold=True, color="166534")
+    card_val.alignment = Alignment(horizontal="center", vertical="center")
+    card_val.fill = PatternFill(start_color="DCFCE7", end_color="DCFCE7", fill_type="solid")
+
+    wb.save(template_path)
+    return template_path
+
+
+def get_or_create_template_path() -> str:
+    """Obtém ou gera o template .xlsx."""
+    template_path = get_template_path()
+    if not os.path.exists(template_path):
+        create_base_template_file(template_path)
+    return template_path
+
+
+def generate_auditoria_excel_buffer(auditoria) -> io.BytesIO:
+    """
+    Lê o arquivo .xlsx de template e injeta os dados da auditoria nas células
+    especificadas, preservando fórmulas, gráficos e estrutura da aba Resultados.
+    """
+    from ..models import (
+        ItemNorma,
+        RespostaEntrevistaIso,
+        AvaliacaoFinalRequisitoIso,
+    )
+
+    template_path = get_or_create_template_path()
+    # Carrega workbook sem avaliar fórmulas (data_only=False preserva as fórmulas)
+    wb = openpyxl.load_workbook(template_path, data_only=False)
+
+    # Identifica a aba Check-List
+    if "Check-List" in wb.sheetnames:
+        ws = wb["Check-List"]
+    else:
+        ws = wb.worksheets[0]
+
+    # -------------------------------------------------------------
+    # 1. Metadados do Cabeçalho (Injeção Direta)
+    # -------------------------------------------------------------
+    unidade_nome = getattr(auditoria, 'empresa_auditada', '') or "Tecnolens"
+    
+    auditores_list = [a.get_full_name() or a.username for a in auditoria.auditores.all()]
+    if not auditores_list and auditoria.abertura_auditores:
+        auditores_str = auditoria.abertura_auditores
+    else:
+        auditores_str = ", ".join(auditores_list) if auditores_list else "Auditores Designados"
+
+    dt_ini = auditoria.data_inicio.strftime('%d/%m/%Y') if auditoria.data_inicio else ""
+    dt_fim = auditoria.data_fim.strftime('%d/%m/%Y') if auditoria.data_fim else ""
+    data_str = f"{dt_ini} a {dt_fim}" if (dt_ini and dt_fim and dt_ini != dt_fim) else (dt_ini or dt_fim)
+
+    escopo_str = f"{auditoria.norma.codigo} - {auditoria.norma.descricao}" if auditoria.norma.descricao else auditoria.norma.codigo
+
+    ws['C5'].value = unidade_nome
+    ws['C6'].value = auditores_str
+    ws['C7'].value = data_str
+    ws['C8'].value = escopo_str
+
+    # Tipo de Auditoria (H6 = Presencial / H7 = Remota)
+    tipo_auditoria = str(getattr(auditoria, 'tipo', '')).upper()
+    if 'REMOT' in tipo_auditoria:
+        ws['H6'].value = ""
+        ws['H7'].value = "X"
+    else:
+        ws['H6'].value = "X"
+        ws['H7'].value = ""
+
+    # -------------------------------------------------------------
+    # 2. Respostas da Auditoria (Loop Dinâmico a partir da Linha 13)
+    # -------------------------------------------------------------
+    agendas = list(auditoria.agendas.all().prefetch_related('perguntas', 'itens_norma', 'perguntas__itens_norma'))
+
+    # Coleta todos os itens do escopo ou da norma
+    itens_escopo = auditoria.escopo_itens.all()
+    if not itens_escopo.exists():
+        itens_escopo = ItemNorma.objects.filter(norma=auditoria.norma)
+    itens_list = list(itens_escopo)
+
+    # Identifica itens pais (que possuem subitens na hierarquia)
+    parent_ids = set()
+    for item in itens_list:
+        prefix = item.referencia + '.'
+        if any(other.referencia.startswith(prefix) for other in itens_list):
+            parent_ids.add(item.id)
+
+    respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).prefetch_related('solicitacoes', 'pergunta__itens_norma')
+    respostas_map = {r.pergunta_id: r for r in respostas}
+    na_item_ids = set(auditoria.itens_nao_aplicaveis.values_list('id', flat=True))
+
+    avaliacoes_finais_map = {
+        av.item_norma_id: av
+        for av in AvaliacaoFinalRequisitoIso.objects.filter(auditoria=auditoria)
+    }
+
+    # Mapas de vinculação de agendas/perguntas
+    agenda_item_ids_map = {agenda.id: set(it.id for it in agenda.itens_norma.all()) for agenda in agendas}
+    pergunta_item_ids_map = {}
+    for agenda in agendas:
+        for p in agenda.perguntas.all():
+            if p.id not in pergunta_item_ids_map:
+                pergunta_item_ids_map[p.id] = set(it.id for it in p.itens_norma.all())
+
+    # Estilos para as células dos itens
+    font_item = Font(name="Segoe UI", size=9, bold=True)
+    font_text = Font(name="Segoe UI", size=9)
+    font_x = Font(name="Segoe UI", size=10, bold=True)
+    align_center = Alignment(horizontal="center", vertical="center")
+    align_left_wrap = Alignment(horizontal="left", vertical="top", wrap_text=True)
+    gray_border = "CBD5E1"
+    border_cell = Border(
+        left=Side(style='thin', color=gray_border),
+        right=Side(style='thin', color=gray_border),
+        top=Side(style='thin', color=gray_border),
+        bottom=Side(style='thin', color=gray_border)
+    )
+
+    current_row = 13
+
+    for item in sorted(itens_list, key=lambda x: (x.ordem or 0, natural_sort_key(x.referencia))):
+        is_parent = item.id in parent_ids
+
+        # Coleta perguntas associadas
+        perguntas_do_item = []
+        for ag in agendas:
+            ag_items = agenda_item_ids_map.get(ag.id, set())
+            for p in ag.perguntas.all():
+                p_items = pergunta_item_ids_map.get(p.id, set())
+                if item.id in p_items or (not p_items and item.id in ag_items):
+                    if p not in perguntas_do_item:
+                        perguntas_do_item.append(p)
+
+        # Coleta solicitações / amostras
+        sols_do_item = []
+        for p in perguntas_do_item:
+            r = respostas_map.get(p.id)
+            if r:
+                for s in r.solicitacoes.all():
+                    sols_do_item.append(s)
+
+        # Determinação do Status Final
+        av_final = avaliacoes_finais_map.get(item.id)
+        if is_parent:
+            status_item = ""
+        elif av_final:
+            status_item = av_final.classificacao
+        elif item.id in na_item_ids:
+            status_item = "NA"
+        elif sols_do_item:
+            conclusoes = [s.conclusao for s in sols_do_item]
+            if "NC" in conclusoes:
+                status_item = "NC"
+            elif "OM" in conclusoes:
+                status_item = "OM"
+            elif any(c in ["C", "OBS"] for c in conclusoes):
+                status_item = "C"
+            elif all(c == "NA" for c in conclusoes):
+                status_item = "NA"
+            else:
+                status_item = "P"
+        elif perguntas_do_item:
+            status_item = "C" if not is_parent else ""
+        else:
+            status_item = "NA" if not is_parent else ""
+
+        # Compilação do Texto de Evidências (Col H)
+        evidencias_textos = []
+        for s in sols_do_item:
+            sol_nome = (s.solicitacao or "").strip()
+            evid_desc = (s.evidencia or "").strip()
+            concl = s.get_conclusao_display()
+            
+            if sol_nome and evid_desc:
+                evidencias_textos.append(f"• [{concl}] {sol_nome}: {evid_desc}")
+            elif sol_nome:
+                evidencias_textos.append(f"• [{concl}] {sol_nome}")
+            elif evid_desc:
+                evidencias_textos.append(f"• [{concl}] {evid_desc}")
+
+        # Se não houver amostras registradas, incluir resposta/anotação geral se existir
+        if not evidencias_textos:
+            for p in perguntas_do_item:
+                r = respostas_map.get(p.id)
+                if r and r.texto_resposta and r.texto_resposta.strip():
+                    evidencias_textos.append(f"• {r.texto_resposta.strip()}")
+
+        evidencia_compilada = "\n".join(evidencias_textos)
+
+        # Compilação de Observações / OBS / Justificativas (Col I)
+        observacoes_list = []
+        if av_final and av_final.justificativa:
+            observacoes_list.append(f"[Revisão Final] {av_final.justificativa.strip()}")
+
+        # Adiciona apontamentos com conclusão OBS (Observação com Correção)
+        for s in sols_do_item:
+            if s.conclusao == 'OBS':
+                obs_detalhe = s.evidencia.strip() if (s.evidencia and s.evidencia.strip()) else (s.solicitacao.strip() if s.solicitacao else "")
+                if obs_detalhe:
+                    observacoes_list.append(f"[OBS com Correção] {obs_detalhe}")
+
+        observacao_compilada = "\n".join(observacoes_list)
+
+        # Injeção nas Células da Linha
+        c_item = ws[f'B{current_row}']
+        c_item.value = item.referencia
+        c_item.font = font_item
+        c_item.alignment = align_center
+        c_item.border = border_cell
+
+        c_questao = ws[f'C{current_row}']
+        c_questao.value = item.titulo or item.descricao or ""
+        c_questao.font = font_text
+        c_questao.alignment = align_left_wrap
+        c_questao.border = border_cell
+
+        # Colunas D (C), E (NC), F (NA), G (OM)
+        col_map = {"C": "D", "NC": "E", "NA": "F", "OM": "G"}
+        for k, col_let in col_map.items():
+            cell_k = ws[f'{col_let}{current_row}']
+            cell_k.value = "X" if (status_item == k) else ""
+            cell_k.font = font_x
+            cell_k.alignment = align_center
+            cell_k.border = border_cell
+
+        c_evid = ws[f'H{current_row}']
+        c_evid.value = evidencia_compilada
+        c_evid.font = font_text
+        c_evid.alignment = align_left_wrap
+        c_evid.border = border_cell
+
+        c_obs = ws[f'I{current_row}']
+        c_obs.value = observacao_compilada
+        c_obs.font = font_text
+        c_obs.alignment = align_left_wrap
+        c_obs.border = border_cell
+
+        # Ajuste de altura automática da linha se houver múltiplas linhas de evidência
+        num_lines = max(evidencia_compilada.count('\n') + 1, observacao_compilada.count('\n') + 1, 1)
+        if num_lines > 1:
+            ws.row_dimensions[current_row].height = max(20, num_lines * 16)
+        else:
+            ws.row_dimensions[current_row].height = 20
+
+        current_row += 1
+
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    return buffer
