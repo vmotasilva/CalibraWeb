@@ -846,6 +846,23 @@ class AuditoriaIso(models.Model):
         return f"Auditoria {self.norma.codigo} - {self.data_inicio:%d/%m/%Y}"
 
 
+class PontoForteAuditoriaIso(models.Model):
+    auditoria = models.ForeignKey(AuditoriaIso, on_delete=models.CASCADE, related_name="pontos_fortes", verbose_name="Auditoria")
+    titulo = models.CharField(max_length=255, verbose_name="Título do Ponto Forte")
+    descricao = models.TextField(blank=True, default="", verbose_name="Descrição / Detalhamento")
+    icone = models.CharField(max_length=60, default="bi-shield-fill-check", verbose_name="Ícone Bootstrap")
+    ordem = models.IntegerField(default=0, verbose_name="Ordem de Exibição")
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Ponto Forte da Auditoria"
+        verbose_name_plural = "Pontos Fortes da Auditoria"
+        ordering = ["ordem", "id"]
+
+    def __str__(self):
+        return f"{self.titulo} ({self.auditoria})"
+
+
 class ModeloAuditoriaIso(models.Model):
     titulo = models.CharField(max_length=255, verbose_name="Título do Modelo")
     norma = models.ForeignKey(Norma, on_delete=models.CASCADE, related_name="modelos_auditoria", verbose_name="Norma de Referência")

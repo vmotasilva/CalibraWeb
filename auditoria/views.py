@@ -4457,6 +4457,84 @@ def iso_fechamento_presentation_view(request, auditoria_id):
             })
         dia_num += 1
 
+    PONTOS_FORTES_CATALOGO = [
+        {
+            "titulo": "Domínio dos Processos Produtivos",
+            "descricao": "Colaboradores dominam os processos produtivos com segurança técnica, padrão operacional e consistência.",
+            "icone": "bi-person-check-fill",
+        },
+        {
+            "titulo": "Transparência e Cooperação",
+            "descricao": "Postura transparente, cooperativa e aberta de toda a organização ao longo de todas as avaliações.",
+            "icone": "bi-eye-fill",
+        },
+        {
+            "titulo": "Prontidão em Buscar Evidências",
+            "descricao": "Agilidade e facilidade no acesso imediato a registros, documentos, amostras e comprovações solicitadas.",
+            "icone": "bi-lightning-charge-fill",
+        },
+        {
+            "titulo": "Rastreabilidade dos Produtos",
+            "descricao": "Rastreabilidade completa de ponta a ponta — fluxo produtivo, lote de matéria-prima e testes de controle.",
+            "icone": "bi-diagram-3-fill",
+        },
+        {
+            "titulo": "Engajamento da Alta Direção e Liderança",
+            "descricao": "Comprometimento visível e ativo da gestão com a política da qualidade, recursos e metas estratégicas.",
+            "icone": "bi-award-fill",
+        },
+        {
+            "titulo": "Organização, Limpeza e 5S",
+            "descricao": "Excelente nível de organização, identificação visual, limpeza e segregação nas áreas produtivas e estoques.",
+            "icone": "bi-stars",
+        },
+        {
+            "titulo": "Controle Metrológico Rigoroso",
+            "descricao": "Gestão sistemática dos instrumentos com calibração RBC em dia, critérios de aceitação e rastreabilidade.",
+            "icone": "bi-speedometer2",
+        },
+        {
+            "titulo": "Competência e Treinamento da Equipe",
+            "descricao": "Equipe técnica qualificada, registros de capacitação regulares e matriz de polivalência atualizada.",
+            "icone": "bi-mortarboard-fill",
+        },
+        {
+            "titulo": "Cultura de Melhoria Contínua",
+            "descricao": "Tratamento ágil de ações corretivas e preventivas com foco na causa raiz e evolução contínua dos processos.",
+            "icone": "bi-arrow-repeat",
+        },
+        {
+            "titulo": "Padronização e Controle Documental",
+            "descricao": "Procedimentos e instruções de trabalho claros, revisados, disponíveis nos postos e estritamente seguidos.",
+            "icone": "bi-file-earmark-check-fill",
+        },
+        {
+            "titulo": "Foco no Cliente e Requisitos Especiais",
+            "descricao": "Atenção dedicada aos requisitos de clientes, tratativa de reclamações e conformidade de especificações.",
+            "icone": "bi-heart-fill",
+        },
+        {
+            "titulo": "Segurança e Conformidade Regulatória",
+            "descricao": "Alinhamento estrito às exigências legais, sanitárias e normativas aplicáveis aos produtos e processos.",
+            "icone": "bi-shield-shaded",
+        },
+    ]
+
+    from .models import PontoForteAuditoriaIso
+    pontos_fortes_qs = list(auditoria.pontos_fortes.all().order_by('ordem', 'id'))
+    if not pontos_fortes_qs and not auditoria.pontos_fortes.exists():
+        for idx, pf in enumerate(PONTOS_FORTES_CATALOGO[:4]):
+            PontoForteAuditoriaIso.objects.create(
+                auditoria=auditoria,
+                titulo=pf['titulo'],
+                descricao=pf['descricao'],
+                icone=pf['icone'],
+                ordem=idx
+            )
+        pontos_fortes_qs = list(auditoria.pontos_fortes.all().order_by('ordem', 'id'))
+
+    slides_descobertas_positivas = list(chunks_list(pontos_fortes_qs, 4))
+
     destaques_conformes.sort(key=lambda x: natural_sort_key(x['referencia']))
     slides_pontos_fortes = list(chunks_list(destaques_conformes, 4))
     slides_pontos_melhorar = list(chunks_list(pontos_a_melhorar, 3))
@@ -4480,14 +4558,66 @@ def iso_fechamento_presentation_view(request, auditoria_id):
         },
         'veredito': veredito,
         'itens_conformes': destaques_conformes,
+        'slides_descobertas_positivas': slides_descobertas_positivas,
+        'pontos_fortes_catalogo': PONTOS_FORTES_CATALOGO,
+        'pontos_fortes_todos': pontos_fortes_qs,
         'slides_pontos_fortes': slides_pontos_fortes,
         'slides_pontos_melhorar': slides_pontos_melhorar,
         'slides_conselhos': slides_conselhos,
     }
     return render(request, "auditoria/iso/fechamento_presentation.html", context)
 
+@login_required
+@require_POST
+def api_iso_pontos_fortes_adicionar(request, auditoria_id):
+    from .models import AuditoriaIso, PontoForteAuditoriaIso
+    from django.http import JsonResponse
+
+    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+    titulo = request.POST.get('titulo', '').strip()
+    descricao = request.POST.get('descricao', '').strip()
+    icone = request.POST.get('icone', 'bi-shield-fill-check').strip() or 'bi-shield-fill-check'
+
+    if not titulo:
+        return JsonResponse({'success': False, 'error': 'Título é obrigatório.'}, status=400)
+
+    ordem_max = auditoria.pontos_fortes.count()
+    novo_pf = PontoForteAuditoriaIso.objects.create(
+        auditoria=auditoria,
+        titulo=titulo,
+        descricao=descricao,
+        icone=icone,
+        ordem=ordem_max
+    )
+    return JsonResponse({
+        'success': True,
+        'id': novo_pf.id,
+        'titulo': novo_pf.titulo,
+        'descricao': novo_pf.descricao,
+        'icone': novo_pf.icone,
+        'message': f"Ponto forte '{titulo}' adicionado com sucesso."
+    })
 
 @login_required
+@require_POST
+def api_iso_pontos_fortes_remover(request, auditoria_id, pk):
+    from .models import AuditoriaIso, PontoForteAuditoriaIso
+    from django.http import JsonResponse
+
+    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+    pf = get_object_or_404(PontoForteAuditoriaIso, auditoria=auditoria, pk=pk)
+    titulo = pf.titulo
+    pf.delete()
+    return JsonResponse({'success': True, 'message': f"Ponto forte '{titulo}' removido."})
+
+@login_required
+def api_iso_pontos_fortes_listar(request, auditoria_id):
+    from .models import AuditoriaIso
+    from django.http import JsonResponse
+
+    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+    pontos_fortes = list(auditoria.pontos_fortes.all().values('id', 'titulo', 'descricao', 'icone', 'ordem'))
+    return JsonResponse({'success': True, 'pontos_fortes': pontos_fortes})
 def iso_auditoria_export_excel(request, auditoria_id):
     """
     Exportação do Relatório Excel (Checklist da Norma) utilizando a estratégia
