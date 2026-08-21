@@ -32,13 +32,15 @@
 <div class="container my-4" id="print-area">
     
     <!-- Botões de Ação (Ocultos na impressão) -->
-    <div class="d-flex justify-content-between mb-3 no-print">
+    <div class="d-flex justify-content-between align-items-center mb-3 no-print">
         <div>
             <a href="{% url 'auditoria:iso_auditoria_detail' auditoria.id %}" class="btn btn-outline-secondary fw-bold rounded-pill shadow-sm">
-                <i class="bi bi-arrow-left me-2"></i> Voltar à Configuração
+                <i class="bi bi-arrow-left me-1"></i> <span class="d-none d-sm-inline">Voltar à Configuração</span><span class="d-sm-none">Voltar</span>
             </a>
         </div>
-        <div class="d-flex gap-2">
+
+        <!-- Ações Desktop (d-none d-md-flex) -->
+        <div class="d-none d-md-flex gap-2">
             <a href="{% url 'auditoria:iso_fechamento_presentation' auditoria.id %}" class="btn btn-outline-success fw-bold rounded-pill shadow-sm" target="_blank">
                 <i class="bi bi-easel2-fill me-1"></i> 📊 Apresentação de Fechamento
             </a>
@@ -48,6 +50,31 @@
             <button onclick="window.print()" class="btn btn-primary fw-bold rounded-pill shadow-sm">
                 <i class="bi bi-printer me-2"></i> Imprimir / Gerar PDF
             </button>
+        </div>
+
+        <!-- Ações Mobile (Dropdown) -->
+        <div class="dropdown d-md-none">
+            <button class="btn btn-primary fw-bold rounded-pill shadow-sm dropdown-toggle px-3" type="button" id="dropdownAcoesCronograma" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-gear-fill me-1"></i> Ações
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-4 p-2" aria-labelledby="dropdownAcoesCronograma" style="min-width: 220px;">
+                <li>
+                    <a class="dropdown-item py-2 fw-semibold d-flex align-items-center gap-2 rounded-3 text-success" href="{% url 'auditoria:iso_fechamento_presentation' auditoria.id %}" target="_blank">
+                        <i class="bi bi-easel2-fill"></i> Apresentação de Fechamento
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item py-2 fw-semibold d-flex align-items-center gap-2 rounded-3 text-primary" href="{% url 'auditoria:iso_matriz_view' auditoria.id %}">
+                        <i class="bi bi-grid-3x3"></i> Ver Matriz
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider my-1"></li>
+                <li>
+                    <button class="dropdown-item py-2 fw-semibold d-flex align-items-center gap-2 rounded-3 text-dark" type="button" onclick="window.print()">
+                        <i class="bi bi-printer text-secondary"></i> Imprimir / Gerar PDF
+                    </button>
+                </li>
+            </ul>
         </div>
     </div>
 
@@ -86,25 +113,31 @@
     </div>
 
     <!-- Navegação de Abas (Oculto na impressão) -->
-    <ul class="nav nav-pills mb-4 no-print" id="cronogramaTabs" role="tablist">
+    <ul class="nav nav-pills mb-4 no-print gap-1 gap-md-2 flex-nowrap overflow-x-auto pb-1" id="cronogramaTabs" role="tablist">
         <li class="nav-item" role="presentation">
-            <button class="nav-link active fw-bold px-4 rounded-pill" id="planejado-tab" data-bs-toggle="tab" data-bs-target="#planejado" type="button" role="tab" aria-controls="planejado" aria-selected="true"><i class="bi bi-calendar-check me-2"></i>Visão Planejada</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link fw-bold px-4 rounded-pill ms-2" id="ajustado-tab" data-bs-toggle="tab" data-bs-target="#ajustado" type="button" role="tab" aria-controls="ajustado" aria-selected="false"><i class="bi bi-tools me-2"></i>Visão Real/Ajustada</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link fw-bold px-4 rounded-pill ms-2 d-flex align-items-center gap-2" id="solicitacoes-tab" data-bs-toggle="tab" data-bs-target="#solicitacoes" type="button" role="tab" aria-controls="solicitacoes" aria-selected="false">
-                <i class="bi bi-hourglass-split"></i>
-                <span>Solicitações em Aberto</span>
-                <span class="badge {% if total_solicitacoes_abertas > 0 %}bg-warning text-dark{% else %}bg-secondary{% endif %} rounded-pill font-monospace">{{ total_solicitacoes_abertas }}</span>
+            <button class="nav-link active fw-bold px-3 px-md-4 rounded-pill d-flex align-items-center justify-content-center" id="planejado-tab" data-bs-toggle="tab" data-bs-target="#planejado" type="button" role="tab" aria-controls="planejado" aria-selected="true" title="Visão Planejada">
+                <i class="bi bi-calendar-check"></i>
+                <span class="d-none d-md-inline ms-2">Visão Planejada</span>
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link fw-bold px-4 rounded-pill ms-2 d-flex align-items-center gap-2" id="desvios-tab" data-bs-toggle="tab" data-bs-target="#desvios" type="button" role="tab" aria-controls="desvios" aria-selected="false">
+            <button class="nav-link fw-bold px-3 px-md-4 rounded-pill d-flex align-items-center justify-content-center" id="ajustado-tab" data-bs-toggle="tab" data-bs-target="#ajustado" type="button" role="tab" aria-controls="ajustado" aria-selected="false" title="Visão Real/Ajustada">
+                <i class="bi bi-tools"></i>
+                <span class="d-none d-md-inline ms-2">Visão Real/Ajustada</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold px-3 px-md-4 rounded-pill d-flex align-items-center justify-content-center gap-1 gap-md-2" id="solicitacoes-tab" data-bs-toggle="tab" data-bs-target="#solicitacoes" type="button" role="tab" aria-controls="solicitacoes" aria-selected="false" title="Solicitações em Aberto">
+                <i class="bi bi-hourglass-split"></i>
+                <span class="d-none d-md-inline">Solicitações em Aberto</span>
+                <span class="badge {% if total_solicitacoes_abertas > 0 %}bg-warning text-dark{% else %}bg-secondary{% endif %} rounded-pill font-monospace" style="font-size: 0.75rem;">{{ total_solicitacoes_abertas }}</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold px-3 px-md-4 rounded-pill d-flex align-items-center justify-content-center gap-1 gap-md-2" id="desvios-tab" data-bs-toggle="tab" data-bs-target="#desvios" type="button" role="tab" aria-controls="desvios" aria-selected="false" title="Solicitações Não Conformes / Desvios">
                 <i class="bi bi-exclamation-triangle-fill text-danger"></i>
-                <span>Solicitações Não Conformes / Desvios</span>
-                <span class="badge {% if total_solicitacoes_desvios > 0 %}bg-danger text-white{% else %}bg-secondary{% endif %} rounded-pill font-monospace">{{ total_solicitacoes_desvios }}</span>
+                <span class="d-none d-md-inline">Solicitações Não Conformes / Desvios</span>
+                <span class="badge {% if total_solicitacoes_desvios > 0 %}bg-danger text-white{% else %}bg-secondary{% endif %} rounded-pill font-monospace" style="font-size: 0.75rem;">{{ total_solicitacoes_desvios }}</span>
             </button>
         </li>
     </ul>
