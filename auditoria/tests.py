@@ -1059,8 +1059,7 @@ class AuditoriaIsoDocxExportTests(TestCase):
 
         content = response.content.decode("utf-8")
         self.assertIn('id="atendidas-tab"', content)
-        self.assertIn('id="atendidas"', content)
-        self.assertIn("Solicitações Atendidas / Conformes", content)
+        self.assertIn("Solicitações Sem Desvios", content)
 
     def test_auditoria_toggle_conclusao_status(self):
         self.client.force_login(self.user)

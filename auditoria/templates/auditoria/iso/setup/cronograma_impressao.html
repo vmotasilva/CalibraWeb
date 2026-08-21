@@ -134,16 +134,16 @@
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link fw-bold px-3 px-md-4 rounded-pill d-flex align-items-center justify-content-center gap-1 gap-md-2" id="desvios-tab" data-bs-toggle="tab" data-bs-target="#desvios" type="button" role="tab" aria-controls="desvios" aria-selected="false" title="Solicitações Não Conformes / Desvios">
+            <button class="nav-link fw-bold px-3 px-md-4 rounded-pill d-flex align-items-center justify-content-center gap-1 gap-md-2" id="desvios-tab" data-bs-toggle="tab" data-bs-target="#desvios" type="button" role="tab" aria-controls="desvios" aria-selected="false" title="Solicitações com Desvios">
                 <i class="bi bi-exclamation-triangle-fill text-danger"></i>
-                <span class="d-none d-md-inline">Solicitações Não Conformes / Desvios</span>
+                <span class="d-none d-md-inline">Solicitações com Desvios</span>
                 <span class="badge {% if total_solicitacoes_desvios > 0 %}bg-danger text-white{% else %}bg-secondary{% endif %} rounded-pill font-monospace" style="font-size: 0.75rem;">{{ total_solicitacoes_desvios }}</span>
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link fw-bold px-3 px-md-4 rounded-pill d-flex align-items-center justify-content-center gap-1 gap-md-2" id="atendidas-tab" data-bs-toggle="tab" data-bs-target="#atendidas" type="button" role="tab" aria-controls="atendidas" aria-selected="false" title="Solicitações Resolvidas e Atendidas">
+            <button class="nav-link fw-bold px-3 px-md-4 rounded-pill d-flex align-items-center justify-content-center gap-1 gap-md-2" id="atendidas-tab" data-bs-toggle="tab" data-bs-target="#atendidas" type="button" role="tab" aria-controls="atendidas" aria-selected="false" title="Solicitações Sem Desvios">
                 <i class="bi bi-check-circle-fill text-success"></i>
-                <span class="d-none d-md-inline">Solicitações Atendidas / Conformes</span>
+                <span class="d-none d-md-inline">Solicitações Sem Desvios</span>
                 <span class="badge {% if total_solicitacoes_atendidas > 0 %}bg-success text-white{% else %}bg-secondary{% endif %} rounded-pill font-monospace" style="font-size: 0.75rem;">{{ total_solicitacoes_atendidas }}</span>
             </button>
         </li>
@@ -602,7 +602,7 @@
                 <div>
                     <h5 class="mb-1 fw-bold text-dark d-flex align-items-center gap-2">
                         <i class="bi bi-exclamation-octagon-fill text-danger"></i>
-                        <span>Solicitações Tratadas com Desvios / Não Conformes</span>
+                        <span>Solicitações com Desvios</span>
                     </h5>
                     <small class="text-muted">Amostras e evidências avaliadas com Não Conformidade (NC), Oportunidade de Melhoria (OM) ou Observação com Correção (OBS).</small>
                 </div>
@@ -760,13 +760,13 @@
             {% endif %}
         </div>
 
-        <!-- ABA: SOLICITAÇÕES RESOLVIDAS E ATENDIDAS -->
+        <!-- ABA: SOLICITAÇÕES SEM DESVIOS -->
         <div class="tab-pane fade" id="atendidas" role="tabpanel" aria-labelledby="atendidas-tab">
             <div class="d-flex justify-content-between align-items-center bg-light p-3 rounded-top border mt-4 flex-wrap gap-2">
                 <div>
                     <h5 class="mb-1 fw-bold text-dark d-flex align-items-center gap-2">
                         <i class="bi bi-check-circle-fill text-success"></i>
-                        <span>Solicitações Resolvidas & Atendidas</span>
+                        <span>Solicitações Sem Desvios</span>
                     </h5>
                     <small class="text-muted">Amostras, documentos e evidências apresentadas que atenderam satisfatoriamente aos requisitos normativos.</small>
                 </div>
