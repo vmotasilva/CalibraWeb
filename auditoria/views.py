@@ -17,6 +17,7 @@ from datetime import timedelta
 from collections import OrderedDict
 from io import BytesIO
 import json
+import re
 import unicodedata
 from urllib.parse import urlencode
 from shared.permissions import has_view_access
