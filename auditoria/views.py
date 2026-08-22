@@ -4566,20 +4566,27 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                 'solicitação', 'solicitacao', ''
             ]
             cand = ""
-            if ev and not is_generic and ev.lower() != sol_lower:
-                cand = f"{ev} ({sol})"
-            elif ev:
-                cand = ev
+            if ev:
+                cand = ev.strip()
             elif sol and not is_generic:
-                cand = sol
-            if cand and cand.lower() not in nomes_originais_vistos:
-                nomes_originais_vistos.add(cand.lower())
-                nomes_entrevistados_blocos_originais.append(cand)
+                cand = sol.strip()
+
+            if cand:
+                # Remove sufixos como (Participantes), etc.
+                for suffix in ['(Participantes)', '(Participante)', '(Entrevistados)', '(Entrevistado)']:
+                    if cand.endswith(suffix):
+                        cand = cand[:-len(suffix)].strip()
+                if cand.lower() not in nomes_originais_vistos and len(cand) >= 2:
+                    nomes_originais_vistos.add(cand.lower())
+                    nomes_entrevistados_blocos_originais.append(cand)
         
         if resp.texto_resposta and resp.texto_resposta.strip():
             for linha in re.split(r'[;\n]', resp.texto_resposta):
                 l_clean = linha.strip()
-                if l_clean and l_clean.lower() not in nomes_originais_vistos:
+                for suffix in ['(Participantes)', '(Participante)', '(Entrevistados)', '(Entrevistado)']:
+                    if l_clean.endswith(suffix):
+                        l_clean = l_clean[:-len(suffix)].strip()
+                if l_clean and l_clean.lower() not in nomes_originais_vistos and len(l_clean) >= 2:
                     nomes_originais_vistos.add(l_clean.lower())
                     nomes_entrevistados_blocos_originais.append(l_clean)
 
@@ -4595,22 +4602,8 @@ def iso_fechamento_presentation_view(request, auditoria_id):
             key = item_clean.lower()
             if key not in nomes_vistos:
                 nomes_vistos.add(key)
-                
-                # Tenta separar Nome e Função se contiver ' - ' ou ' ('
-                nome = item_clean
-                funcao = ""
-                if ' - ' in item_clean:
-                    partes = item_clean.split(' - ', 1)
-                    nome = partes[0].strip()
-                    funcao = partes[1].strip()
-                elif '(' in item_clean and item_clean.endswith(')'):
-                    idx = item_clean.rfind('(')
-                    nome = item_clean[:idx].strip()
-                    funcao = item_clean[idx+1:-1].strip()
-
                 pessoas_auditadas_lista.append({
-                    'nome': nome,
-                    'funcao': funcao,
+                    'nome': item_clean,
                     'texto_completo': item_clean
                 })
 

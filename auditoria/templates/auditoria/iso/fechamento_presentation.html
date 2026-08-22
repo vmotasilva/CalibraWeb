@@ -358,14 +358,9 @@
                                     <i class="bi bi-person-fill fs-6"></i>
                                 </div>
                                 <div class="flex-grow-1 min-w-0">
-                                    <span class="fw-bold text-dark d-block text-truncate" style="font-size: 0.88rem;" title="{{ p.nome }}">
+                                    <span class="fw-bold text-dark d-block text-truncate" style="font-size: 0.90rem;" title="{{ p.nome }}">
                                         {{ p.nome }}
                                     </span>
-                                    {% if p.funcao %}
-                                    <span class="text-muted small d-block text-truncate" style="font-size: 0.76rem;" title="{{ p.funcao }}">
-                                        <i class="bi bi-briefcase me-1 text-primary"></i>{{ p.funcao }}
-                                    </span>
-                                    {% endif %}
                                 </div>
                             </div>
                         </div>
@@ -967,30 +962,17 @@
                 itemDiv.className = 'd-flex align-items-center justify-content-between p-2 px-2.5 bg-white rounded-3 border shadow-2xs';
                 itemDiv.id = `rep-item-${index}`;
 
-                let nome = item;
-                let cargo = '';
-                if (item.includes(' - ')) {
-                    const partes = item.split(' - ');
-                    nome = partes[0].trim();
-                    cargo = partes.slice(1).join(' - ').trim();
-                } else if (item.includes('(') && item.endsWith(')')) {
-                    const idx = item.lastIndexOf('(');
-                    nome = item.substring(0, idx).trim();
-                    cargo = item.substring(idx + 1, item.length - 1).trim();
-                }
-
                 itemDiv.innerHTML = `
                     <div class="d-flex align-items-center gap-2.5 min-w-0 flex-grow-1 me-2" id="rep-display-${index}">
                         <div class="rounded-circle bg-primary bg-opacity-10 text-primary flex-shrink-0 d-flex align-items-center justify-content-center fw-bold font-monospace" style="width: 28px; height: 28px; font-size: 0.78rem;">
                             ${index + 1}
                         </div>
                         <div class="min-w-0 flex-grow-1">
-                            <span class="fw-bold text-dark d-block text-truncate" style="font-size: 0.88rem;">${escapeHtml(nome)}</span>
-                            ${cargo ? `<small class="text-muted d-block text-truncate" style="font-size: 0.76rem;"><i class="bi bi-briefcase me-1 text-primary"></i>${escapeHtml(cargo)}</small>` : ''}
+                            <span class="fw-bold text-dark d-block text-truncate" style="font-size: 0.88rem;">${escapeHtml(item)}</span>
                         </div>
                     </div>
                     <div class="d-flex align-items-center gap-1.5 flex-shrink-0" id="rep-actions-${index}">
-                        <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0.5" onclick="editarItemRepresentante(${index})" title="Editar nome/função">
+                        <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0.5" onclick="editarItemRepresentante(${index})" title="Editar este nome">
                             <i class="bi bi-pencil-square"></i>
                         </button>
                         <button type="button" class="btn btn-xs btn-outline-danger rounded-pill px-2 py-0.5" onclick="removerItemRepresentante(${index})" title="Remover este representante">
