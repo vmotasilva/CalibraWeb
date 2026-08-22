@@ -6733,6 +6733,10 @@ def iso_auditoria_cronograma(request, auditoria_id):
     total_atendidas_c = sum(1 for s in solicitacoes_atendidas if s['conclusao'] == 'C')
     total_atendidas_na = sum(1 for s in solicitacoes_atendidas if s['conclusao'] == 'NA')
 
+    itens_norma_todos = ItemNorma.objects.filter(norma=auditoria.norma).order_by('referencia')
+    if not itens_norma_todos.exists():
+        itens_norma_todos = ItemNorma.objects.all().order_by('referencia')
+
     from organization.models import Unidade
     from django.contrib.auth import get_user_model
     User = get_user_model()
