@@ -693,9 +693,9 @@
 
     </div>
 
-    <!-- Modal de Edição de Síntese e Fechamento -->
+    <!-- Modal de Edição de Dados do Fechamento -->
     <div class="modal fade no-print" id="modalEditarFechamento" tabindex="-1" aria-labelledby="modalEditarFechamentoTitle" aria-hidden="true">
-        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
                 <div class="modal-header bg-dark text-white px-4 py-3 border-0">
                     <h5 class="modal-title fw-bold" id="modalEditarFechamentoTitle">
@@ -706,60 +706,39 @@
                 <div class="modal-body p-4">
                     <form id="formFechamento">
                         <div class="row g-3 mb-3">
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label class="form-label fw-bold small text-muted">Empresa / Laboratório Auditado</label>
-                                <input type="text" class="form-control rounded-3" id="inputEmpresaAuditada" value="{{ auditoria.empresa_auditada|default:'' }}" placeholder="Ex: Laboratório Óptico Central">
+                                <input type="text" class="form-control rounded-3 py-2" id="inputEmpresaAuditada" value="{{ auditoria.empresa_auditada|default:'' }}" placeholder="Ex: Laboratório Óptico Central">
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label class="form-label fw-bold small text-muted">Escopo da Auditoria</label>
-                                <input type="text" class="form-control rounded-3" id="inputEscopoAuditado" value="{{ auditoria.escopo|default:'Fabricação de Lentes Oftálmicas' }}" placeholder="Ex: Fabricação de Dispositivos Médicos">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold small text-muted">Representantes Presentes no Encerramento</label>
-                                <input type="text" class="form-control rounded-3" id="inputEncerramentoRep" value="{{ auditoria.encerramento_representantes|default:'' }}" placeholder="Ex: Maria Souza (Coord. Qualidade), Carlos (Gerente)">
+                                <input type="text" class="form-control rounded-3 py-2" id="inputEscopoAuditado" value="{{ auditoria.escopo|default:'Fabricação de Lentes Oftálmicas' }}" placeholder="Ex: Fabricação de Dispositivos Médicos">
                             </div>
                         </div>
 
-                        <!-- Painel com Pessoas Auditadas Coletadas de Todos os Blocos -->
-                        {% if pessoas_auditadas_por_bloco %}
-                        <div class="mb-3 p-3 bg-light rounded-4 border">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <small class="fw-bold text-dark d-flex align-items-center gap-1.5">
-                                    <i class="bi bi-people-fill text-primary"></i> Pessoas Auditadas Registradas nos Blocos ({{ pessoas_auditadas_por_bloco|length }} blocos)
-                                </small>
-                                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-bold" onclick="copiarAuditadosParaRepresentantes()" style="font-size: 0.78rem;">
-                                    <i class="bi bi-arrow-up-right-circle me-1"></i> Copiar Nomes para Representantes
+                        <!-- Campo Expandido de Representantes Presentes no Encerramento -->
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1.5 flex-wrap gap-2">
+                                <div>
+                                    <label class="form-label fw-bold text-dark mb-0 d-flex align-items-center gap-1.5">
+                                        <i class="bi bi-people-fill text-primary fs-5"></i>
+                                        <span class="fs-6">Representantes Presentes no Encerramento</span>
+                                    </label>
+                                    <small class="text-muted d-block" style="font-size: 0.78rem;">
+                                        Informe os nomes e funções dos representantes presentes na reunião de encerramento da auditoria.
+                                    </small>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1.5 fw-bold shadow-2xs" id="btnCopiarRepresentantes" onclick="copiarAuditadosParaRepresentantes()" title="Coleta automaticamente os nomes registrados na primeira pergunta de cada bloco">
+                                    <i class="bi bi-arrow-down-left-circle me-1"></i> Copiar Nomes dos Entrevistados dos Blocos
                                 </button>
                             </div>
-                            <div class="row g-2" style="max-height: 140px; overflow-y: auto;">
-                                {% for pa in pessoas_auditadas_por_bloco %}
-                                <div class="col-md-6">
-                                    <div class="p-2 bg-white rounded-3 border shadow-2xs small">
-                                        <strong class="text-primary font-monospace d-block" style="font-size: 0.78rem;">{{ pa.bloco_titulo }}</strong>
-                                        <span class="text-dark" style="font-size: 0.77rem;">{{ pa.auditados }}</span>
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                        {% endif %}
-
-                        <!-- Editor WYSIWYG para Síntese da Auditoria -->
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between align-items-center mb-1.5">
-                                <label class="form-label fw-bold small text-dark mb-0">
-                                    <i class="bi bi-journal-richtext text-primary me-1"></i>Síntese da Auditoria (Editor Rico WYSIWYG)
-                                </label>
-                                <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Permite colar imagens, listas, títulos, organogramas e tabelas para o Relatório Word</small>
-                            </div>
-                            <div id="quillEditorContainer" style="min-height: 200px; font-family: inherit; font-size: 14px;" class="bg-white rounded-bottom-3 border">
-                                {{ auditoria.sintese|safe }}
-                            </div>
+                            <textarea class="form-control rounded-3 p-3 text-dark shadow-2xs" id="inputEncerramentoRep" rows="7" placeholder="Ex: Maria Souza (Coord. Qualidade), Carlos Santos (Gerente de Produção), Ana Paula (Supervisora de Estoque)..." style="font-size: 0.95rem; line-height: 1.6; resize: vertical;">{{ auditoria.encerramento_representantes|default:'' }}</textarea>
                         </div>
 
+                        <!-- Conclusão / Parecer Final Complementar -->
                         <div class="mb-2">
                             <label class="form-label fw-bold small text-muted">Conclusão / Parecer Final Complementar</label>
-                            <textarea class="form-control rounded-3" id="inputConclusaoTexto" rows="2" placeholder="Observações finais da liderança da auditoria...">{{ auditoria.conclusao_texto|default:'' }}</textarea>
+                            <textarea class="form-control rounded-3 py-2" id="inputConclusaoTexto" rows="3" placeholder="Observações finais da liderança da auditoria...">{{ auditoria.conclusao_texto|default:'' }}</textarea>
                         </div>
                     </form>
                 </div>
@@ -897,13 +876,15 @@
                 ['clean']
             ];
 
-            quill = new Quill('#quillEditorContainer', {
-                theme: 'snow',
-                modules: {
-                    toolbar: toolbarOptions
-                },
-                placeholder: 'Escreva a síntese da auditoria, liste os entrevistados, cole imagens/organogramas...'
-            });
+            if (document.getElementById('quillEditorContainer')) {
+                quill = new Quill('#quillEditorContainer', {
+                    theme: 'snow',
+                    modules: {
+                        toolbar: toolbarOptions
+                    },
+                    placeholder: 'Escreva a síntese da auditoria, liste os entrevistados, cole imagens/organogramas...'
+                });
+            }
         });
 
         function copiarAuditadosParaRepresentantes() {
@@ -912,11 +893,32 @@
                 "{{ pa.auditados|escapejs }}",
                 {% endfor %}
             ];
-            const nomesUnicos = Array.from(new Set(auditadosTextos.filter(Boolean)));
+            const nomesValidos = auditadosTextos
+                .map(t => t.trim())
+                .filter(Boolean);
+            
+            const nomesUnicos = Array.from(new Set(nomesValidos));
             const inputRep = document.getElementById('inputEncerramentoRep');
+            const btn = document.getElementById('btnCopiarRepresentantes');
+
             if (nomesUnicos.length > 0) {
-                const textoFinal = nomesUnicos.join(', ');
-                inputRep.value = inputRep.value ? (inputRep.value + ', ' + textoFinal) : textoFinal;
+                const textoFinal = nomesUnicos.join(';\n');
+                if (inputRep.value.trim()) {
+                    inputRep.value = inputRep.value.trim() + ';\n' + textoFinal;
+                } else {
+                    inputRep.value = textoFinal;
+                }
+                if (btn) {
+                    const originalHtml = btn.innerHTML;
+                    btn.innerHTML = '<i class="bi bi-check2-circle me-1 text-success"></i> Nomes Copiados!';
+                    btn.className = 'btn btn-sm btn-success text-white rounded-pill px-3 py-1.5 fw-bold shadow-2xs';
+                    setTimeout(() => {
+                        btn.innerHTML = originalHtml;
+                        btn.className = 'btn btn-sm btn-outline-primary rounded-pill px-3 py-1.5 fw-bold shadow-2xs';
+                    }, 2000);
+                }
+            } else {
+                alert('Nenhuma resposta encontrada na primeira pergunta sobre entrevistados dos blocos.');
             }
         }
 
@@ -925,13 +927,11 @@
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Salvando...';
 
-            const sinteseHtml = quill ? quill.root.innerHTML : '';
             const payload = {
                 empresa_auditada: document.getElementById('inputEmpresaAuditada').value.trim(),
                 escopo: document.getElementById('inputEscopoAuditado').value.trim(),
                 encerramento_representantes: document.getElementById('inputEncerramentoRep').value.trim(),
-                conclusao_texto: document.getElementById('inputConclusaoTexto').value.trim(),
-                sintese: sinteseHtml
+                conclusao_texto: document.getElementById('inputConclusaoTexto').value.trim()
             };
 
             try {
