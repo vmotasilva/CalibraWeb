@@ -869,20 +869,16 @@ class AuditoriaIso(models.Model):
         ("REMOTA", "Remota"),
     ]
     norma = models.ForeignKey(Norma, on_delete=models.PROTECT, related_name="auditorias")
-    unidade = models.ForeignKey(
-        'organization.Unidade',
-        on_delete=models.SET_NULL,
-        null=True,
+    unidade = models.CharField(
+        max_length=255,
         blank=True,
-        related_name="auditorias_iso",
-        verbose_name="Unidade / Empresa Auditada"
+        default="",
+        verbose_name="Unidade / Planta Auditada"
     )
-    auditor_lider = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
+    auditor_lider = models.CharField(
+        max_length=255,
         blank=True,
-        related_name="auditorias_iso_lideradas",
+        default="",
         verbose_name="Auditor Líder"
     )
     tipo_auditoria = models.CharField(

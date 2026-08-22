@@ -5013,12 +5013,10 @@ def api_iso_auditoria_editar_planejamento(request, auditoria_id):
         auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
         data = json.loads(request.body)
         
-        if "unidade_id" in data:
-            uid = data.get("unidade_id")
-            auditoria.unidade_id = int(uid) if uid else None
-        if "auditor_lider_id" in data:
-            alid = data.get("auditor_lider_id")
-            auditoria.auditor_lider_id = int(alid) if alid else None
+        if "unidade" in data:
+            auditoria.unidade = data.get("unidade", "").strip()
+        if "auditor_lider" in data:
+            auditoria.auditor_lider = data.get("auditor_lider", "").strip()
         if "tipo_auditoria" in data:
             auditoria.tipo_auditoria = data.get("tipo_auditoria") or "PRESENCIAL"
         if "empresa_auditada" in data:
@@ -5036,7 +5034,7 @@ def api_iso_auditoria_editar_planejamento(request, auditoria_id):
         return JsonResponse({
             "success": True,
             "message": "Planejamento da auditoria atualizado com sucesso!",
-            "empresa_auditada": auditoria.unidade.nome if auditoria.unidade else auditoria.empresa_auditada,
+            "empresa_auditada": auditoria.unidade or auditoria.empresa_auditada,
             "escopo": auditoria.escopo,
             "tipo_auditoria": auditoria.tipo_auditoria
         })
@@ -6737,11 +6735,6 @@ def iso_auditoria_cronograma(request, auditoria_id):
     if not itens_norma_todos.exists():
         itens_norma_todos = ItemNorma.objects.all().order_by('referencia')
 
-    from organization.models import Unidade
-    from django.contrib.auth import get_user_model
-    User = get_user_model()
-    unidades = Unidade.objects.filter(ativo=True).order_by('nome')
-    usuarios = User.objects.filter(is_active=True).order_by('first_name', 'username')
 
     context = {
         'auditoria': auditoria,
@@ -6762,8 +6755,6 @@ def iso_auditoria_cronograma(request, auditoria_id):
         'total_atendidas_na': total_atendidas_na,
         'total_solicitacoes_todas': total_solicitacoes_todas,
         'itens_norma_todos': itens_norma_todos,
-        'unidades': unidades,
-        'usuarios': usuarios,
     }
     return render(request, 'auditoria/iso/setup/cronograma_impressao.html', context)
 

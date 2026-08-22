@@ -916,13 +916,13 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
 
     # 3. Formata variáveis de cabeçalho e metadados
     if auditoria.unidade:
-        unidade_str = auditoria.unidade.nome
+        unidade_str = auditoria.unidade
     else:
         unidade_str = getattr(auditoria, 'empresa_auditada', '') or "Tecnolens Laboratório Ótico Feira Ltda"
 
     auditores_list = [a.get_full_name() or a.username for a in auditoria.auditores.all()]
     if auditoria.auditor_lider:
-        auditor_lider_str = auditoria.auditor_lider.get_full_name() or auditoria.auditor_lider.username
+        auditor_lider_str = auditoria.auditor_lider
         if auditor_lider_str not in auditores_list:
             auditores_list.insert(0, auditor_lider_str)
     else:

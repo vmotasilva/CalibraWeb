@@ -2320,23 +2320,11 @@ async function salvarModalDetalhesAberto() {
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-bold small text-muted">Unidade / Planta Auditada</label>
-                            <select class="form-select rounded-3" id="inputPlanUnidade">
-                                <option value="">Selecione a Unidade / Planta...</option>
-                                {% for u in unidades %}
-                                    <option value="{{ u.id }}" {% if auditoria.unidade_id == u.id %}selected{% endif %}>{{ u.nome }}</option>
-                                {% endfor %}
-                            </select>
+                            <input type="text" class="form-control rounded-3" id="inputPlanUnidade" placeholder="Ex: Tecnolens Laboratório Ótico Feira Ltda" value="{{ auditoria.unidade|default:'' }}">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold small text-muted">Auditor Líder (Signatário)</label>
-                            <select class="form-select rounded-3" id="inputPlanAuditorLider">
-                                <option value="">Selecione o Auditor Líder...</option>
-                                {% for usr in usuarios %}
-                                    <option value="{{ usr.id }}" {% if auditoria.auditor_lider_id == usr.id %}selected{% endif %}>
-                                        {{ usr.get_full_name|default:usr.username }}
-                                    </option>
-                                {% endfor %}
-                            </select>
+                            <input type="text" class="form-control rounded-3" id="inputPlanAuditorLider" placeholder="Ex: Nome do Auditor Líder" value="{{ auditoria.auditor_lider|default:'' }}">
                         </div>
                     </div>
 
@@ -2414,8 +2402,8 @@ async function salvarPlanejamentoAuditoria() {
     const tipoRadio = document.querySelector('input[name="planTipoAuditoria"]:checked');
 
     const payload = {
-        unidade_id: document.getElementById('inputPlanUnidade').value || null,
-        auditor_lider_id: document.getElementById('inputPlanAuditorLider').value || null,
+        unidade: document.getElementById('inputPlanUnidade').value.trim(),
+        auditor_lider: document.getElementById('inputPlanAuditorLider').value.trim(),
         tipo_auditoria: tipoRadio ? tipoRadio.value : 'PRESENCIAL',
         escopo: document.getElementById('inputPlanEscopoAuditado').value.trim(),
         objetivo: document.getElementById('inputPlanObjetivoAuditado').value.trim(),

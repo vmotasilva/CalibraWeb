@@ -412,13 +412,13 @@ def generate_auditoria_excel_buffer(auditoria) -> io.BytesIO:
     # 1. Metadados do Cabeçalho (Injeção Direta Segura)
     # -------------------------------------------------------------
     if auditoria.unidade:
-        unidade_nome = auditoria.unidade.nome
+        unidade_nome = auditoria.unidade
     else:
         unidade_nome = getattr(auditoria, 'empresa_auditada', '') or "Tecnolens Laboratório Ótico Feira Ltda"
 
     auditores_list = [a.get_full_name() or a.username for a in auditoria.auditores.all()]
     if auditoria.auditor_lider:
-        auditor_lider_nome = auditoria.auditor_lider.get_full_name() or auditoria.auditor_lider.username
+        auditor_lider_nome = auditoria.auditor_lider
         if auditor_lider_nome not in auditores_list:
             auditores_list.insert(0, auditor_lider_nome)
 
