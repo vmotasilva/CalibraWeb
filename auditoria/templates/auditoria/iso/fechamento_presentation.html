@@ -717,11 +717,14 @@
                                     </small>
                                 </div>
                                 <div class="d-flex align-items-center gap-1.5 flex-wrap">
-                                    <button type="button" class="btn btn-xs btn-outline-warning text-dark rounded-pill px-2.5 py-1 fw-bold shadow-2xs" onclick="removerDuplicadosRepresentantes()" title="Remove nomes repetidos instantaneamente mantendo a ordem">
-                                        <i class="bi bi-magic me-1 text-warning"></i> 🧹 Remover Repetidos
+                                    <button type="button" class="btn btn-xs btn-outline-primary rounded-pill px-2.5 py-1 fw-bold shadow-2xs" id="btnCopiarRepresentantes" onclick="copiarAuditadosParaRepresentantes()" title="Recarrega os nomes dos blocos organizados de A a Z">
+                                        <i class="bi bi-arrow-repeat me-1"></i> 🔄 Puxar dos Blocos (A-Z)
                                     </button>
-                                    <button type="button" class="btn btn-xs btn-outline-primary rounded-pill px-2.5 py-1 fw-bold shadow-2xs" id="btnCopiarRepresentantes" onclick="copiarAuditadosParaRepresentantes()" title="Recarrega a lista original registrada nos blocos">
-                                        <i class="bi bi-arrow-repeat me-1"></i> 🔄 Puxar dos Blocos
+                                    <button type="button" class="btn btn-xs btn-outline-info text-dark rounded-pill px-2.5 py-1 fw-bold shadow-2xs" onclick="ordenarRepresentantesAZ()" title="Ordenar lista em ordem alfabética de A a Z">
+                                        <i class="bi bi-sort-alpha-down me-1 text-primary"></i> 🔤 Ordem A-Z
+                                    </button>
+                                    <button type="button" class="btn btn-xs btn-outline-warning text-dark rounded-pill px-2.5 py-1 fw-bold shadow-2xs" onclick="removerDuplicadosRepresentantes()" title="Remove nomes repetidos e organiza em ordem alfabética">
+                                        <i class="bi bi-magic me-1 text-warning"></i> 🧹 Remover Repetidos
                                     </button>
                                     <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-1 fw-semibold shadow-2xs" onclick="document.getElementById('inputEncerramentoRep').value = ''; atualizarContadorNomesRep(); document.getElementById('inputEncerramentoRep').focus();" title="Limpar campo">
                                         <i class="bi bi-trash me-1"></i> Limpar
@@ -898,6 +901,15 @@
             badge.textContent = `${linhas.length} pessoa(s)`;
         }
 
+        function ordenarRepresentantesAZ() {
+            const input = document.getElementById('inputEncerramentoRep');
+            if (!input) return;
+            const linhas = input.value.split(/;|\n/).map(l => l.trim()).filter(Boolean);
+            linhas.sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
+            input.value = linhas.join(';\n');
+            atualizarContadorNomesRep();
+        }
+
         function removerDuplicadosRepresentantes() {
             const input = document.getElementById('inputEncerramentoRep');
             if (!input) return;
@@ -912,15 +924,17 @@
                     unicos.push(l);
                 }
             });
+
+            unicos.sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
             
             input.value = unicos.join(';\n');
             atualizarContadorNomesRep();
             
             const countRemovidos = linhas.length - unicos.length;
             if (countRemovidos > 0) {
-                alert(`${countRemovidos} nome(s) repetido(s) removido(s) com sucesso!`);
+                alert(`${countRemovidos} nome(s) repetido(s) removido(s) e lista ordenada de A a Z!`);
             } else {
-                alert('Nenhum nome repetido foi encontrado na lista.');
+                alert('Lista organizada em ordem alfabética (A-Z)!');
             }
         }
 
@@ -934,11 +948,15 @@
             const btn = document.getElementById('btnCopiarRepresentantes');
 
             if (auditadosNomes.length > 0) {
-                inputRep.value = auditadosNomes.join(';\n');
+                // Deduplica e ordena de A a Z
+                const unicos = Array.from(new Set(auditadosNomes.map(n => n.trim()).filter(Boolean)));
+                unicos.sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
+
+                inputRep.value = unicos.join(';\n');
                 atualizarContadorNomesRep();
                 if (btn) {
                     const originalHtml = btn.innerHTML;
-                    btn.innerHTML = '<i class="bi bi-check2-circle me-1 text-white"></i> Nomes Puxados!';
+                    btn.innerHTML = '<i class="bi bi-check2-circle me-1 text-white"></i> Copiados (A-Z)!';
                     btn.className = 'btn btn-xs btn-success text-white rounded-pill px-2.5 py-1 fw-bold shadow-2xs';
                     setTimeout(() => {
                         btn.innerHTML = originalHtml;

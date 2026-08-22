@@ -4614,6 +4614,10 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                     'texto_completo': item_clean
                 })
 
+    # Ordena sempre em ordem alfabética (A-Z)
+    pessoas_auditadas_lista.sort(key=lambda x: x['nome'].lower())
+    nomes_entrevistados_blocos_originais.sort(key=lambda x: x.lower())
+
     # O slide só é renderizado se o campo Representantes estiver preenchido
     slides_pessoas_auditadas = [pessoas_auditadas_lista] if pessoas_auditadas_lista else []
 
