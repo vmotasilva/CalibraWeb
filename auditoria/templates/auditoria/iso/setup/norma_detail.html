@@ -292,9 +292,9 @@
             <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
                 <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 px-4 border-0">
                     <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-calendar-check text-primary me-2"></i>Agendas Planejadas em {{ norma.codigo }}</h5>
-                    <a href="{% url 'auditoria:iso_auditoria_create' %}?norma={{ norma.id }}" class="btn btn-primary btn-sm rounded-pill px-3 fw-bold shadow-sm">
+                    <button type="button" class="btn btn-primary btn-sm rounded-pill px-3.5 py-1.5 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNovoPlanejamento">
                         <i class="bi bi-plus-lg me-1"></i> Planejar Auditoria
-                    </a>
+                    </button>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -302,6 +302,8 @@
                             <thead class="table-light">
                                 <tr>
                                     <th class="ps-4">Identificação da Auditoria</th>
+                                    <th>Unidade / Planta</th>
+                                    <th>Modalidade</th>
                                     <th>Status</th>
                                     <th class="text-center">Qtd. Agendas/Blocos</th>
                                     <th class="text-end pe-4">Ações</th>
@@ -312,6 +314,22 @@
                                 <tr>
                                     <td class="ps-4 fw-bold text-dark">
                                         Auditoria {{ aud.norma.codigo }} - {{ aud.data_inicio|date:"d/m/Y" }}
+                                    </td>
+                                    <td>
+                                        {% if aud.unidade %}
+                                            <span class="text-dark fw-semibold"><i class="bi bi-building me-1 text-primary"></i>{{ aud.unidade.nome }}</span>
+                                        {% elif aud.empresa_auditada %}
+                                            <span class="text-muted"><i class="bi bi-building me-1"></i>{{ aud.empresa_auditada }}</span>
+                                        {% else %}
+                                            <span class="text-muted small">Não especificada</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if aud.tipo_auditoria == 'REMOTA' %}
+                                            <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 rounded-pill px-2.5 py-1 fw-semibold">🌐 Remota</span>
+                                        {% else %}
+                                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-2.5 py-1 fw-semibold">🏢 Presencial</span>
+                                        {% endif %}
                                     </td>
                                     <td>
                                         {% if aud.arquivada %}
@@ -331,7 +349,7 @@
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="4" class="text-center text-muted py-5">
+                                    <td colspan="6" class="text-center text-muted py-5">
                                         <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
                                         Nenhuma auditoria planejada para esta norma.
                                     </td>
@@ -1120,8 +1138,142 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }, 300);
             }
+    // Inicializa Select2 no modal de novo planejamento
+    if ($.fn.select2) {
+        $('.select2-modal-auditores').select2({
+            theme: 'bootstrap-5',
+            dropdownParent: $('#modalNovoPlanejamento'),
+            placeholder: 'Selecione os auditores da equipe...',
+            width: '100%'
         });
     }
 });
 </script>
+
+<!-- Modal de Novo Planejamento de Auditoria -->
+<div class="modal fade" id="modalNovoPlanejamento" tabindex="-1" aria-labelledby="modalNovoPlanejamentoTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-dark text-white px-4 py-3 border-0">
+                <h5 class="modal-title fw-bold" id="modalNovoPlanejamentoTitle">
+                    <i class="bi bi-calendar-plus text-primary me-2"></i>Novo Planejamento de Auditoria
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <form method="POST" action="{% url 'auditoria:iso_auditoria_create' %}">
+                {% csrf_token %}
+                <input type="hidden" name="norma" value="{{ norma.id }}">
+
+                <div class="modal-body p-4">
+                    <!-- Norma (Informativo) e Unidade -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-5">
+                            <label class="form-label fw-bold small text-muted">Norma / Referência</label>
+                            <input type="text" class="form-control rounded-3 bg-light fw-bold text-dark" value="{{ norma.codigo }} - {{ norma.descricao }}" readonly>
+                        </div>
+                        <div class="col-md-7">
+                            <label class="form-label fw-bold small text-muted">Unidade / Planta Auditada</label>
+                            <select name="unidade" class="form-select rounded-3" id="selectModalUnidade">
+                                <option value="">Selecione a Unidade / Planta...</option>
+                                {% for u in unidades %}
+                                    <option value="{{ u.id }}">{{ u.nome }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted" style="font-size: 0.76rem;">Ex: Tecnolens Laboratório Ótico Feira Ltda</small>
+                        </div>
+                    </div>
+
+                    <!-- Auditor Líder e Equipe Auditora -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-5">
+                            <label class="form-label fw-bold small text-muted">Auditor Líder (Signatário)</label>
+                            <select name="auditor_lider" class="form-select rounded-3">
+                                <option value="">Selecione o Auditor Líder...</option>
+                                {% for usr in usuarios %}
+                                    <option value="{{ usr.id }}" {% if usr == request.user %}selected{% endif %}>
+                                        {{ usr.get_full_name|default:usr.username }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted" style="font-size: 0.76rem;">Assina o Relatório Executivo</small>
+                        </div>
+                        <div class="col-md-7">
+                            <label class="form-label fw-bold small text-muted">Equipe Auditora <span class="text-danger">*</span></label>
+                            <select name="auditores" multiple class="form-select rounded-3 select2-modal-auditores" required>
+                                {% for usr in usuarios %}
+                                    <option value="{{ usr.id }}" {% if usr == request.user %}selected{% endif %}>
+                                        {{ usr.get_full_name|default:usr.username }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Tipo de Auditoria (Presencial vs Remota) e Datas -->
+                    <div class="row g-3 mb-3 align-items-center">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small text-muted mb-1.5">Tipo de Auditoria</label>
+                            <div class="d-flex gap-3 bg-light p-2 rounded-3 border">
+                                <div class="form-check form-check-inline mb-0">
+                                    <input class="form-check-input" type="radio" name="tipo_auditoria" id="modalTipoPresencial" value="PRESENCIAL" checked>
+                                    <label class="form-check-label fw-semibold text-dark cursor-pointer small" for="modalTipoPresencial">
+                                        🏢 Presencial
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline mb-0">
+                                    <input class="form-check-input" type="radio" name="tipo_auditoria" id="modalTipoRemota" value="REMOTA">
+                                    <label class="form-check-label fw-semibold text-dark cursor-pointer small" for="modalTipoRemota">
+                                        🌐 Remota
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small text-muted">Data de Início <span class="text-danger">*</span></label>
+                            <input type="date" name="data_inicio" class="form-control rounded-3" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small text-muted">Data Prevista de Fim <span class="text-danger">*</span></label>
+                            <input type="date" name="data_fim" class="form-control rounded-3" required>
+                        </div>
+                    </div>
+
+                    <!-- Bloco Sanfona (Accordion): Metadados do Relatório (Opcional) -->
+                    <div class="accordion mt-3" id="accordionModalMetadados">
+                        <div class="accordion-item border rounded-3 overflow-hidden shadow-2xs">
+                            <h2 class="accordion-header" id="headingModalMetadados">
+                                <button class="accordion-button collapsed bg-light text-dark fw-bold py-2.5 px-3 small" type="button" data-bs-toggle="collapse" data-bs-target="#collapseModalMetadados" aria-expanded="false" aria-controls="collapseModalMetadados">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bi bi-file-earmark-text-fill text-primary"></i>
+                                        <span>Metadados do Relatório Executivo (Opcional)</span>
+                                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-2 py-0.5 ms-2" style="font-size: 0.70rem;">DOCX / XLSX</span>
+                                    </div>
+                                </button>
+                            </h2>
+                            <div id="collapseModalMetadados" class="accordion-collapse collapse" aria-labelledby="headingModalMetadados" data-bs-parent="#accordionModalMetadados">
+                                <div class="accordion-body p-3 bg-white">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold small text-dark">Escopo da Auditoria</label>
+                                        <textarea name="escopo" class="form-control form-control-sm rounded-3" rows="2" placeholder="Ex: Fabricação de Lentes Oftálmicas">Fabricação de Lentes Oftálmicas</textarea>
+                                    </div>
+                                    <div class="mb-1">
+                                        <label class="form-label fw-bold small text-dark">Objetivo da Auditoria</label>
+                                        <textarea name="objetivo" class="form-control form-control-sm rounded-3" rows="2" placeholder="Ex: Avaliar a conformidade dos processos...">Avaliar a conformidade dos processos com os requisitos da norma e a eficácia do Sistema de Gestão da Qualidade.</textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-light px-4 py-3 border-top d-flex justify-content-between">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">
+                        <i class="bi bi-arrow-right-circle me-1"></i> Criar Planejamento (Avançar)
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}

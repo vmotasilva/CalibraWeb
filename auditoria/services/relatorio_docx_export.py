@@ -915,16 +915,33 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
     dados = compute_auditoria_metricas_completas(auditoria)
 
     # 3. Formata variáveis de cabeçalho e metadados
-    unidade_str = getattr(auditoria, 'empresa_auditada', '') or "Unidade Auditada"
+    if auditoria.unidade:
+        unidade_str = auditoria.unidade.nome
+    else:
+        unidade_str = getattr(auditoria, 'empresa_auditada', '') or "Tecnolens Laboratório Ótico Feira Ltda"
+
     auditores_list = [a.get_full_name() or a.username for a in auditoria.auditores.all()]
+    if auditoria.auditor_lider:
+        auditor_lider_str = auditoria.auditor_lider.get_full_name() or auditoria.auditor_lider.username
+        if auditor_lider_str not in auditores_list:
+            auditores_list.insert(0, auditor_lider_str)
+    else:
+        auditor_lider_str = auditores_list[0] if auditores_list else "Auditor Líder Designado"
+
     auditores_str = ", ".join(auditores_list) if auditores_list else (auditoria.abertura_auditores or "Equipe Auditora Designada")
     
+    tipo_auditoria_val = str(getattr(auditoria, 'tipo_auditoria', 'PRESENCIAL')).upper()
+    is_presencial = (tipo_auditoria_val == 'PRESENCIAL')
+    is_remota = (tipo_auditoria_val == 'REMOTA')
+    tipo_auditoria_str = auditoria.get_tipo_auditoria_display() if hasattr(auditoria, 'get_tipo_auditoria_display') else ("Presencial" if is_presencial else "Remota")
+
     dt_ini = auditoria.data_inicio.strftime('%d/%m/%Y') if auditoria.data_inicio else ""
     dt_fim = auditoria.data_fim.strftime('%d/%m/%Y') if auditoria.data_fim else ""
     datas_str = f"{dt_ini} a {dt_fim}" if (dt_ini and dt_fim and dt_ini != dt_fim) else (dt_ini or dt_fim or "Em andamento")
     rep_str = auditoria.encerramento_representantes or auditoria.abertura_representantes or "Representantes da Unidade Auditada"
     norma_desc = getattr(auditoria.norma, 'descricao', '') or ''
-    escopo_str = getattr(auditoria, 'escopo', '') or (f"{auditoria.norma.codigo}" + (f" - {norma_desc}" if norma_desc else " - Sistema de Gestão da Qualidade"))
+    escopo_str = getattr(auditoria, 'escopo', '') or "Fabricação de Lentes Oftálmicas"
+    objetivo_str = getattr(auditoria, 'objetivo', '') or "Avaliar a conformidade dos processos com os requisitos da norma e a eficácia do Sistema de Gestão da Qualidade."
 
     conclusao_custom = getattr(auditoria, 'conclusao_texto', '') or ""
     if not conclusao_custom:
@@ -942,17 +959,24 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
         '{{norma_codigo}}': auditoria.norma.codigo,
         '{{norma_descricao}}': norma_desc or "Sistema de Gestão da Qualidade",
         '{{escopo}}': escopo_str,
+        '{{objetivo}}': objetivo_str,
+        '{{tipo_auditoria}}': tipo_auditoria_str,
+        '{{modalidade}}': tipo_auditoria_str,
+        '{{presencial}}': "X" if is_presencial else "",
+        '{{remota}}': "X" if is_remota else "",
+        '{{is_presencial}}': "X" if is_presencial else "",
+        '{{is_remota}}': "X" if is_remota else "",
         '{{data_inicio}}': dt_ini,
         '{{data_fim}}': dt_fim,
         '{{data_auditoria}}': datas_str,
+        '{{auditor_lider}}': auditor_lider_str,
+        '{{nome_auditor_lider}}': auditor_lider_str,
         '{{auditores}}': auditores_str,
         '{{nome_auditor}}': auditores_str,
-        '{{auditor_lider}}': auditores_str,
         '{{equipe_auditora}}': auditores_str,
         '{{representantes}}': rep_str,
         '{{status}}': auditoria.get_status_display() if hasattr(auditoria, 'get_status_display') else "Concluída",
         '{{data_relatorio}}': dt_fim or dt_ini or "Hoje",
-        '{{modalidade}}': "Presencial e Amostragem Documental",
         '{{total_c}}': str(dados['total_c']),
         '{{pct_c}}': str(dados['pct_c']),
         '{{total_nc_menor}}': str(dados['total_nc_menor']),

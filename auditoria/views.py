@@ -4971,17 +4971,27 @@ def api_iso_fechamento_salvar(request, auditoria_id):
 def api_iso_auditoria_editar_planejamento(request, auditoria_id):
     """
     Edição rápida dos dados de planejamento da Auditoria ISO
-    (Empresa/Laboratório auditado, Escopo, Período, etc.).
+    (Unidade, Auditor Líder, Tipo de Auditoria, Escopo, Objetivo, Período, etc.).
     """
     from .models import AuditoriaIso
     try:
         auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
         data = json.loads(request.body)
         
+        if "unidade_id" in data:
+            uid = data.get("unidade_id")
+            auditoria.unidade_id = int(uid) if uid else None
+        if "auditor_lider_id" in data:
+            alid = data.get("auditor_lider_id")
+            auditoria.auditor_lider_id = int(alid) if alid else None
+        if "tipo_auditoria" in data:
+            auditoria.tipo_auditoria = data.get("tipo_auditoria") or "PRESENCIAL"
         if "empresa_auditada" in data:
             auditoria.empresa_auditada = data.get("empresa_auditada", "").strip()
         if "escopo" in data:
             auditoria.escopo = data.get("escopo", "").strip()
+        if "objetivo" in data:
+            auditoria.objetivo = data.get("objetivo", "").strip()
         if "data_inicio" in data and data["data_inicio"]:
             auditoria.data_inicio = data["data_inicio"]
         if "data_fim" in data and data["data_fim"]:
@@ -4991,8 +5001,9 @@ def api_iso_auditoria_editar_planejamento(request, auditoria_id):
         return JsonResponse({
             "success": True,
             "message": "Planejamento da auditoria atualizado com sucesso!",
-            "empresa_auditada": auditoria.empresa_auditada,
-            "escopo": auditoria.escopo
+            "empresa_auditada": auditoria.unidade.nome if auditoria.unidade else auditoria.empresa_auditada,
+            "escopo": auditoria.escopo,
+            "tipo_auditoria": auditoria.tipo_auditoria
         })
     except Exception as e:
         return JsonResponse({"success": False, "error": str(e)}, status=400)
@@ -5014,6 +5025,10 @@ def iso_setup_dashboard(request):
 def iso_norma_detail(request, pk):
     """Nível 2: Visão Específica da Norma (Itens, Perguntas, Modelos, Agendas)"""
     from .models import ModeloAuditoriaIso
+    from organization.models import Unidade
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+
     norma = get_object_or_404(Norma, pk=pk)
     
     itens_qs = ItemNorma.objects.filter(norma=norma).order_by('ordem', 'referencia')
@@ -5037,12 +5052,15 @@ def iso_norma_detail(request, pk):
     perguntas = sorted(list(perguntas_qs), key=get_pergunta_sort_key)
         
     modelos = ModeloAuditoriaIso.objects.filter(norma=norma).prefetch_related('perguntas')
-    auditorias = AuditoriaIso.objects.filter(norma=norma).order_by('-criado_em')
+    auditorias = AuditoriaIso.objects.filter(norma=norma).select_related('unidade', 'auditor_lider').order_by('-criado_em')
 
     try:
         regras_dict = {r.status_resultado: r for r in norma.regras_veredicto.all()}
     except Exception:
         regras_dict = {}
+
+    unidades = Unidade.objects.filter(ativo=True).order_by('nome')
+    usuarios = User.objects.filter(is_active=True).order_by('first_name', 'username')
 
     return render(request, "auditoria/iso/setup/norma_detail.html", {
         "norma": norma,
@@ -5050,6 +5068,8 @@ def iso_norma_detail(request, pk):
         "perguntas": perguntas,
         "modelos": modelos,
         "auditorias": auditorias,
+        "unidades": unidades,
+        "usuarios": usuarios,
         "regra_apto": regras_dict.get('APTO'),
         "regra_ressalva": regras_dict.get('RESSALVA'),
         "regra_inapto": regras_dict.get('INAPTO'),
@@ -6678,7 +6698,11 @@ def iso_auditoria_cronograma(request, auditoria_id):
     total_atendidas_c = sum(1 for s in solicitacoes_atendidas if s['conclusao'] == 'C')
     total_atendidas_na = sum(1 for s in solicitacoes_atendidas if s['conclusao'] == 'NA')
 
-    itens_norma_todos = list(ItemNorma.objects.filter(norma=auditoria.norma).order_by('ordem', 'referencia'))
+    from organization.models import Unidade
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    unidades = Unidade.objects.filter(ativo=True).order_by('nome')
+    usuarios = User.objects.filter(is_active=True).order_by('first_name', 'username')
 
     context = {
         'auditoria': auditoria,
@@ -6699,6 +6723,8 @@ def iso_auditoria_cronograma(request, auditoria_id):
         'total_atendidas_na': total_atendidas_na,
         'total_solicitacoes_todas': total_solicitacoes_todas,
         'itens_norma_todos': itens_norma_todos,
+        'unidades': unidades,
+        'usuarios': usuarios,
     }
     return render(request, 'auditoria/iso/setup/cronograma_impressao.html', context)
 

@@ -83,37 +83,128 @@
                         {% endif %}
                         
                         
-                        <!-- Norma -->
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">{{ form.norma.label }} <span class="text-danger">*</span></label>
-                            {{ form.norma }}
-                            {{ form.norma.errors }}
-                        </div>
-                        
-                        <!-- Auditores com Select2 -->
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">{{ form.auditores.label }} <span class="text-danger">*</span></label>
-                            {{ form.auditores }}
-                            {{ form.auditores.errors }}
-                        </div>
-                        
-                        <!-- Datas lado a lado -->
-                        <div class="row mb-3">
+                        <!-- Norma e Unidade (Lado a Lado) -->
+                        <div class="row mb-3 g-3">
                             <div class="col-md-6">
-                                <label class="form-label fw-bold">{{ form.data_inicio.label }} <span class="text-danger">*</span></label>
+                                <label class="form-label fw-bold text-dark d-flex align-items-center gap-1.5">
+                                    <i class="bi bi-award text-primary"></i>
+                                    <span>Norma / Referência</span>
+                                    <span class="text-danger">*</span>
+                                </label>
+                                {{ form.norma }}
+                                {{ form.norma.errors }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-dark d-flex align-items-center gap-1.5">
+                                    <i class="bi bi-building text-primary"></i>
+                                    <span>Unidade / Planta Auditada</span>
+                                </label>
+                                {{ form.unidade }}
+                                {{ form.unidade.errors }}
+                                <small class="text-muted" style="font-size: 0.76rem;">Ex: Tecnolens Laboratório Ótico Feira Ltda</small>
+                            </div>
+                        </div>
+
+                        <!-- Auditor Líder e Equipe Auditora -->
+                        <div class="row mb-3 g-3">
+                            <div class="col-md-5">
+                                <label class="form-label fw-bold text-dark d-flex align-items-center gap-1.5">
+                                    <i class="bi bi-person-badge-fill text-primary"></i>
+                                    <span>Auditor Líder (Signatário)</span>
+                                </label>
+                                {{ form.auditor_lider }}
+                                {{ form.auditor_lider.errors }}
+                                <small class="text-muted" style="font-size: 0.76rem;">Responsável principal que assina o relatório</small>
+                            </div>
+                            <div class="col-md-7">
+                                <label class="form-label fw-bold text-dark d-flex align-items-center gap-1.5">
+                                    <i class="bi bi-people-fill text-primary"></i>
+                                    <span>Equipe Auditora / Participantes</span>
+                                    <span class="text-danger">*</span>
+                                </label>
+                                {{ form.auditores }}
+                                {{ form.auditores.errors }}
+                            </div>
+                        </div>
+
+                        <!-- Tipo de Auditoria (Presencial vs Remota) e Período -->
+                        <div class="row mb-3 g-3 align-items-center">
+                            <div class="col-md-5">
+                                <label class="form-label fw-bold text-dark d-flex align-items-center gap-1.5 mb-2">
+                                    <i class="bi bi-broadcast-pin text-primary"></i>
+                                    <span>Tipo de Auditoria</span>
+                                </label>
+                                <div class="d-flex gap-3 bg-light p-2.5 rounded-3 border">
+                                    <div class="form-check form-check-inline mb-0">
+                                        <input class="form-check-input" type="radio" name="tipo_auditoria" id="tipoPresencial" value="PRESENCIAL" {% if form.tipo_auditoria.value == 'PRESENCIAL' or not form.tipo_auditoria.value %}checked{% endif %}>
+                                        <label class="form-check-label fw-semibold text-dark cursor-pointer" for="tipoPresencial">
+                                            🏢 Presencial
+                                        </label>
+                                    </div>
+                                    <div class="form-check form-check-inline mb-0">
+                                        <input class="form-check-input" type="radio" name="tipo_auditoria" id="tipoRemota" value="REMOTA" {% if form.tipo_auditoria.value == 'REMOTA' %}checked{% endif %}>
+                                        <label class="form-check-label fw-semibold text-dark cursor-pointer" for="tipoRemota">
+                                            🌐 Remota
+                                        </label>
+                                    </div>
+                                </div>
+                                {{ form.tipo_auditoria.errors }}
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold text-dark d-flex align-items-center gap-1.5">
+                                    <i class="bi bi-calendar-event text-primary"></i>
+                                    <span>Data de Início</span>
+                                    <span class="text-danger">*</span>
+                                </label>
                                 {{ form.data_inicio }}
                                 {{ form.data_inicio.errors }}
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold">{{ form.data_fim.label }} <span class="text-danger">*</span></label>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-dark d-flex align-items-center gap-1.5">
+                                    <i class="bi bi-calendar-check text-primary"></i>
+                                    <span>Data Prevista de Fim</span>
+                                    <span class="text-danger">*</span>
+                                </label>
                                 {{ form.data_fim }}
                                 {{ form.data_fim.errors }}
                             </div>
                         </div>
-                        
+
+                        <!-- Bloco Sanfona (Accordion / Collapsible): Metadados do Relatório (Opcional) -->
+                        <div class="accordion my-4" id="accordionMetadadosRelatorio">
+                            <div class="accordion-item border rounded-4 overflow-hidden shadow-2xs">
+                                <h2 class="accordion-header" id="headingMetadados">
+                                    <button class="accordion-button collapsed bg-light text-dark fw-bold py-3 px-4" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMetadados" aria-expanded="false" aria-controls="collapseMetadados">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <i class="bi bi-file-earmark-text-fill text-primary fs-5"></i>
+                                            <span>Metadados do Relatório Executivo (Opcional)</span>
+                                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-2.5 py-0.5 ms-2 small">DOCX / XLSX</span>
+                                        </div>
+                                    </button>
+                                </h2>
+                                <div id="collapseMetadados" class="accordion-collapse collapse" aria-labelledby="headingMetadados" data-bs-parent="#accordionMetadadosRelatorio">
+                                    <div class="accordion-body p-4 bg-white">
+                                        <p class="text-muted small mb-3">
+                                            <i class="bi bi-info-circle me-1 text-primary"></i>
+                                            Estes textos serão injetados automaticamente nas tags <code>{% templatetag openvariable %}escopo{% templatetag closevariable %}</code> e <code>{% templatetag openvariable %}objetivo{% templatetag closevariable %}</code> dos relatórios emitidos. Você pode mantê-los ou personalizá-los.
+                                        </p>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold text-dark">Escopo da Auditoria</label>
+                                            {{ form.escopo }}
+                                            {{ form.escopo.errors }}
+                                        </div>
+                                        <div class="mb-2">
+                                            <label class="form-label fw-bold text-dark">Objetivo da Auditoria</label>
+                                            {{ form.objetivo }}
+                                            {{ form.objetivo.errors }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         
                         <div class="d-grid mt-4">
-                            <button type="submit" class="btn btn-primary btn-lg rounded-pill fw-bold shadow-sm">
+                            <button type="submit" class="btn btn-primary btn-lg rounded-pill fw-bold shadow-sm py-3">
                                 <i class="bi bi-arrow-right-circle me-1"></i> Criar Planejamento (Avançar para Conteúdo)
                             </button>
                         </div>

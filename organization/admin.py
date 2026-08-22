@@ -1,6 +1,13 @@
 from django.contrib import admin
-from .models import Setor, CentroCusto, HierarquiaSetor
+from .models import Unidade, Setor, CentroCusto, HierarquiaSetor
 from qms.admin import admin_site
+
+
+class UnidadeAdmin(admin.ModelAdmin):
+    list_display = ['nome', 'codigo', 'cnpj', 'cidade', 'estado', 'ativo']
+    search_fields = ['nome', 'codigo', 'cnpj', 'cidade']
+    list_filter = ['ativo', 'estado']
+    ordering = ['nome']
 
 
 class SetorAdmin(admin.ModelAdmin):

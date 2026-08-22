@@ -411,9 +411,17 @@ def generate_auditoria_excel_buffer(auditoria) -> io.BytesIO:
     # -------------------------------------------------------------
     # 1. Metadados do Cabeçalho (Injeção Direta Segura)
     # -------------------------------------------------------------
-    unidade_nome = getattr(auditoria, 'empresa_auditada', '') or "Tecnolens"
-    
+    if auditoria.unidade:
+        unidade_nome = auditoria.unidade.nome
+    else:
+        unidade_nome = getattr(auditoria, 'empresa_auditada', '') or "Tecnolens Laboratório Ótico Feira Ltda"
+
     auditores_list = [a.get_full_name() or a.username for a in auditoria.auditores.all()]
+    if auditoria.auditor_lider:
+        auditor_lider_nome = auditoria.auditor_lider.get_full_name() or auditoria.auditor_lider.username
+        if auditor_lider_nome not in auditores_list:
+            auditores_list.insert(0, auditor_lider_nome)
+
     if not auditores_list and auditoria.abertura_auditores:
         auditores_str = auditoria.abertura_auditores
     else:
@@ -423,7 +431,7 @@ def generate_auditoria_excel_buffer(auditoria) -> io.BytesIO:
     dt_fim = auditoria.data_fim.strftime('%d/%m/%Y') if auditoria.data_fim else ""
     data_str = f"{dt_ini} a {dt_fim}" if (dt_ini and dt_fim and dt_ini != dt_fim) else (dt_ini or dt_fim)
 
-    escopo_str = f"{auditoria.norma.codigo} - {auditoria.norma.descricao}" if auditoria.norma.descricao else auditoria.norma.codigo
+    escopo_str = auditoria.escopo or (f"{auditoria.norma.codigo} - {auditoria.norma.descricao}" if auditoria.norma.descricao else auditoria.norma.codigo)
 
     safe_set_cell(ws, 'C5', unidade_nome)
     safe_set_cell(ws, 'C6', auditores_str)
@@ -431,8 +439,8 @@ def generate_auditoria_excel_buffer(auditoria) -> io.BytesIO:
     safe_set_cell(ws, 'C8', escopo_str)
 
     # Tipo de Auditoria (H6 = Presencial / H7 = Remota)
-    tipo_auditoria = str(getattr(auditoria, 'tipo', '')).upper()
-    if 'REMOT' in tipo_auditoria:
+    is_remota = (str(getattr(auditoria, 'tipo_auditoria', '')).upper() == 'REMOTA') or ('REMOT' in str(getattr(auditoria, 'tipo', '')).upper())
+    if is_remota:
         safe_set_cell(ws, 'H6', "")
         safe_set_cell(ws, 'H7', "X")
     else:

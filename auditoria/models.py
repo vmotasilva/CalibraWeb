@@ -864,7 +864,33 @@ class AuditoriaIso(models.Model):
         ("CONCLUIDA", "Concluída"),
         ("ARQUIVADA", "Arquivada"),
     ]
+    TIPO_CHOICES = [
+        ("PRESENCIAL", "Presencial"),
+        ("REMOTA", "Remota"),
+    ]
     norma = models.ForeignKey(Norma, on_delete=models.PROTECT, related_name="auditorias")
+    unidade = models.ForeignKey(
+        'organization.Unidade',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="auditorias_iso",
+        verbose_name="Unidade / Empresa Auditada"
+    )
+    auditor_lider = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="auditorias_iso_lideradas",
+        verbose_name="Auditor Líder"
+    )
+    tipo_auditoria = models.CharField(
+        max_length=20,
+        choices=TIPO_CHOICES,
+        default="PRESENCIAL",
+        verbose_name="Tipo de Auditoria"
+    )
     data_inicio = models.DateField(verbose_name="Data de Início")
     data_fim = models.DateField(verbose_name="Data de Fim Prevista")
     auditores = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="auditorias_iso_realizadas", verbose_name="Auditores")
@@ -879,8 +905,13 @@ class AuditoriaIso(models.Model):
     encerramento_auditores = models.TextField(blank=True, default="", verbose_name="Auditores (Encerramento)")
     encerramento_representantes = models.TextField(blank=True, default="", verbose_name="Representantes (Encerramento)")
 
-    empresa_auditada = models.CharField(max_length=255, blank=True, default="", verbose_name="Empresa / Laboratório Auditado")
-    escopo = models.CharField(max_length=500, blank=True, default="Fabricação de Lentes Oftálmicas", verbose_name="Escopo da Auditoria")
+    empresa_auditada = models.CharField(max_length=255, blank=True, default="", verbose_name="Empresa / Laboratório Auditado (Legado/Texto)")
+    escopo = models.TextField(blank=True, default="Fabricação de Lentes Oftálmicas", verbose_name="Escopo da Auditoria")
+    objetivo = models.TextField(
+        blank=True,
+        default="Avaliar a conformidade dos processos com os requisitos da norma e a eficácia do Sistema de Gestão da Qualidade.",
+        verbose_name="Objetivo da Auditoria"
+    )
     
     sintese = models.TextField(blank=True, default="", verbose_name="Síntese da Auditoria", help_text="Síntese executiva formatada em HTML/WYSIWYG com tabelas e imagens")
     conclusao_texto = models.TextField(blank=True, default="", verbose_name="Conclusão / Parecer Final da Auditoria")

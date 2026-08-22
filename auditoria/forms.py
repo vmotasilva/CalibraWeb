@@ -472,10 +472,48 @@ class AgendaPerguntasForm(forms.ModelForm):
 class AuditoriaIsoForm(forms.ModelForm):
     class Meta:
         model = AuditoriaIso
-        fields = ['norma', 'auditores', 'data_inicio', 'data_fim']
+        fields = [
+            'norma',
+            'unidade',
+            'auditor_lider',
+            'auditores',
+            'tipo_auditoria',
+            'data_inicio',
+            'data_fim',
+            'escopo',
+            'objetivo',
+        ]
         widgets = {
             'norma': forms.Select(attrs={'class': 'form-select'}),
+            'unidade': forms.Select(attrs={'class': 'form-select'}),
+            'auditor_lider': forms.Select(attrs={'class': 'form-select'}),
             'auditores': forms.SelectMultiple(attrs={'class': 'form-select select2-multiple'}),
+            'tipo_auditoria': forms.RadioSelect(attrs={'class': 'form-check-input'}),
             'data_inicio': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'data_fim': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'escopo': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Ex: Fabricação de Lentes Oftálmicas'
+            }),
+            'objetivo': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Ex: Avaliar a conformidade dos processos com os requisitos da norma e a eficácia do Sistema de Gestão da Qualidade.'
+            }),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.initial.get('escopo') and not getattr(self.instance, 'pk', None):
+            self.initial['escopo'] = "Fabricação de Lentes Oftálmicas"
+        if not self.initial.get('objetivo') and not getattr(self.instance, 'pk', None):
+            self.initial['objetivo'] = "Avaliar a conformidade dos processos com os requisitos da norma e a eficácia do Sistema de Gestão da Qualidade."
+        if not self.initial.get('tipo_auditoria') and not getattr(self.instance, 'pk', None):
+            self.initial['tipo_auditoria'] = "PRESENCIAL"
+        self.fields['unidade'].empty_label = "Selecione a Unidade / Planta..."
+        self.fields['auditor_lider'].empty_label = "Selecione o Auditor Líder..."
+        self.fields['unidade'].required = False
+        self.fields['auditor_lider'].required = False
+        self.fields['escopo'].required = False
+        self.fields['objetivo'].required = False
