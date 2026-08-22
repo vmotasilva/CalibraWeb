@@ -355,18 +355,28 @@ STATICFILES_DIRS = [
 MEDIA_URL = "/media/"
 
 
-# Armazenamento de mídia: sempre usar FileSystemStorage
+# Armazenamento de mídia: sempre usar FileSystemStorage seguro
 if os.environ.get('PERSIST_MEDIA_PATH'):
     MEDIA_ROOT = Path(os.environ.get('PERSIST_MEDIA_PATH'))
-    MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
+    try:
+        MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        MEDIA_ROOT = Path("/tmp/media")
+        MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
     DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
     logger = __import__('logging').getLogger(__name__)
     logger.info(f"✅ Usando volume persistente em: {MEDIA_ROOT}")
+elif os.environ.get('VERCEL') == '1' or str(BASE_DIR).startswith('/var/task'):
+    MEDIA_ROOT = Path("/tmp/media")
+    try:
+        MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
+    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
 else:
     logger = __import__('logging').getLogger(__name__)
 
     # Auto-detect common production mount points used by containers.
-    # If one is available, prefer it even when PERSIST_MEDIA_PATH is not explicitly set.
     candidate_media_roots = [Path("/data/media"), Path("/app/media")]
     detected_media_root = next(
         (
@@ -384,24 +394,24 @@ else:
             DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
             logger.info(f"✅ Usando volume persistente (auto-detectado) em: {MEDIA_ROOT}")
         except Exception:
-            MEDIA_ROOT = BASE_DIR / "media"
+            MEDIA_ROOT = Path("/tmp/media") if os.environ.get('VERCEL') == '1' else BASE_DIR / "media"
             try:
                 MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
             except OSError:
-                pass
+                MEDIA_ROOT = Path("/tmp/media")
+                MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
             DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
-            logger.warning("⚠️ AVISO: Usando armazenamento local em produção. Arquivos podem ser perdidos!")
-            logger.warning("Configure PERSIST_MEDIA_PATH para produção.")
     else:
         MEDIA_ROOT = BASE_DIR / "media"
         try:
             MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
         except OSError:
-            pass
+            MEDIA_ROOT = Path("/tmp/media")
+            try:
+                MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
+            except Exception:
+                pass
         DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
-        if not DEBUG:
-            logger.warning("⚠️ AVISO: Usando armazenamento local em produção. Arquivos podem ser perdidos!")
-            logger.warning("Configure PERSIST_MEDIA_PATH para produção.")
 
 # Algoritmo de compressão e cache do WhiteNoise
 # Use manifest storage only in production; in development, use regular storage

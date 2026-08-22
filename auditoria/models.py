@@ -705,6 +705,11 @@ class Norma(models.Model):
         blank=True,
         verbose_name="Data de Atualização do DOCX"
     )
+    template_docx_base64 = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Conteúdo Base64 Template DOCX"
+    )
 
     template_xlsx = models.FileField(
         upload_to="auditoria/templates_norma/xlsx/",
@@ -722,6 +727,11 @@ class Norma(models.Model):
         null=True,
         blank=True,
         verbose_name="Data de Atualização do XLSX"
+    )
+    template_xlsx_base64 = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Conteúdo Base64 Template XLSX"
     )
 
     class Meta:

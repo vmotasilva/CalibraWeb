@@ -4767,8 +4767,12 @@ def iso_auditoria_export_docx(request, auditoria_id):
 def iso_norma_upload_template(request, pk):
     """
     Realiza o upload ou substituição de template DOCX ou XLSX para a Norma.
+    Garante persistência em banco via Base64 e suporte a FileSystemStorage seguro.
     """
+    import base64
     from django.utils import timezone
+    from django.core.files.base import ContentFile
+
     norma = get_object_or_404(Norma, pk=pk)
     tipo = request.POST.get("tipo", "").strip().lower()
     uploaded_file = request.FILES.get("arquivo")
@@ -4779,20 +4783,26 @@ def iso_norma_upload_template(request, pk):
 
     file_name = uploaded_file.name
     ext = file_name.split(".")[-1].lower()
+    file_bytes = uploaded_file.read()
+    file_b64 = base64.b64encode(file_bytes).decode('utf-8')
 
     if tipo == "docx":
         if ext != "docx":
             messages.error(request, "Formato inválido. O template de Relatório Executivo deve ser um arquivo .docx.")
             return redirect(f"{reverse('auditoria:iso_norma_detail', kwargs={'pk': norma.id})}?tab=uploads")
         
-        if norma.template_docx:
-            try:
-                norma.template_docx.delete(save=False)
-            except Exception:
-                pass
-        norma.template_docx = uploaded_file
+        norma.template_docx_base64 = file_b64
         norma.template_docx_nome_original = file_name
         norma.template_docx_atualizado_em = timezone.now()
+
+        # Tenta salvar no storage se gravável
+        try:
+            if norma.template_docx:
+                norma.template_docx.delete(save=False)
+            norma.template_docx.save(file_name, ContentFile(file_bytes), save=False)
+        except Exception:
+            pass
+
         norma.save()
         messages.success(request, f"Template de Relatório Word ({file_name}) carregado com sucesso!")
 
@@ -4801,14 +4811,17 @@ def iso_norma_upload_template(request, pk):
             messages.error(request, "Formato inválido. O template de Checklist deve ser um arquivo .xlsx.")
             return redirect(f"{reverse('auditoria:iso_norma_detail', kwargs={'pk': norma.id})}?tab=uploads")
         
-        if norma.template_xlsx:
-            try:
-                norma.template_xlsx.delete(save=False)
-            except Exception:
-                pass
-        norma.template_xlsx = uploaded_file
+        norma.template_xlsx_base64 = file_b64
         norma.template_xlsx_nome_original = file_name
         norma.template_xlsx_atualizado_em = timezone.now()
+
+        try:
+            if norma.template_xlsx:
+                norma.template_xlsx.delete(save=False)
+            norma.template_xlsx.save(file_name, ContentFile(file_bytes), save=False)
+        except Exception:
+            pass
+
         norma.save()
         messages.success(request, f"Template de Checklist Excel ({file_name}) carregado com sucesso!")
     else:
@@ -4827,27 +4840,29 @@ def iso_norma_delete_template(request, pk, tipo):
     tipo = tipo.strip().lower()
 
     if tipo == "docx":
-        if norma.template_docx:
-            try:
+        try:
+            if norma.template_docx:
                 norma.template_docx.delete(save=False)
-            except Exception:
-                pass
-            norma.template_docx = None
-            norma.template_docx_nome_original = ""
-            norma.template_docx_atualizado_em = None
-            norma.save()
-            messages.success(request, "Template de Relatório Word (.docx) excluído.")
+        except Exception:
+            pass
+        norma.template_docx = None
+        norma.template_docx_base64 = ""
+        norma.template_docx_nome_original = ""
+        norma.template_docx_atualizado_em = None
+        norma.save()
+        messages.success(request, "Template de Relatório Word (.docx) excluído.")
     elif tipo == "xlsx":
-        if norma.template_xlsx:
-            try:
+        try:
+            if norma.template_xlsx:
                 norma.template_xlsx.delete(save=False)
-            except Exception:
-                pass
-            norma.template_xlsx = None
-            norma.template_xlsx_nome_original = ""
-            norma.template_xlsx_atualizado_em = None
-            norma.save()
-            messages.success(request, "Template de Checklist Excel (.xlsx) excluído.")
+        except Exception:
+            pass
+        norma.template_xlsx = None
+        norma.template_xlsx_base64 = ""
+        norma.template_xlsx_nome_original = ""
+        norma.template_xlsx_atualizado_em = None
+        norma.save()
+        messages.success(request, "Template de Checklist Excel (.xlsx) excluído.")
 
     return redirect(f"{reverse('auditoria:iso_norma_detail', kwargs={'pk': norma.id})}?tab=uploads")
 
@@ -4857,20 +4872,40 @@ def iso_norma_download_template(request, pk, tipo):
     """
     Faz o download do template atual (DOCX ou XLSX) cadastrado na Norma.
     """
-    from django.http import FileResponse, Http404
+    import base64
+    from django.http import HttpResponse, FileResponse, Http404
     norma = get_object_or_404(Norma, pk=pk)
     tipo = tipo.strip().lower()
 
     if tipo == "docx":
-        if not norma.template_docx:
-            raise Http404("Nenhum template DOCX cadastrado para esta norma.")
-        filename = norma.template_docx_nome_original or f"template_relatorio_{norma.codigo}.docx"
-        return FileResponse(norma.template_docx.open('rb'), as_attachment=True, filename=filename)
+        if norma.template_docx_base64:
+            data = base64.b64decode(norma.template_docx_base64)
+            filename = norma.template_docx_nome_original or f"template_relatorio_{norma.codigo}.docx"
+            response = HttpResponse(data, content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
+        elif norma.template_docx:
+            try:
+                filename = norma.template_docx_nome_original or f"template_relatorio_{norma.codigo}.docx"
+                return FileResponse(norma.template_docx.open('rb'), as_attachment=True, filename=filename)
+            except Exception:
+                pass
+        raise Http404("Nenhum template DOCX cadastrado para esta norma.")
+
     elif tipo == "xlsx":
-        if not norma.template_xlsx:
-            raise Http404("Nenhum template XLSX cadastrado para esta norma.")
-        filename = norma.template_xlsx_nome_original or f"template_checklist_{norma.codigo}.xlsx"
-        return FileResponse(norma.template_xlsx.open('rb'), as_attachment=True, filename=filename)
+        if norma.template_xlsx_base64:
+            data = base64.b64decode(norma.template_xlsx_base64)
+            filename = norma.template_xlsx_nome_original or f"template_checklist_{norma.codigo}.xlsx"
+            response = HttpResponse(data, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
+        elif norma.template_xlsx:
+            try:
+                filename = norma.template_xlsx_nome_original or f"template_checklist_{norma.codigo}.xlsx"
+                return FileResponse(norma.template_xlsx.open('rb'), as_attachment=True, filename=filename)
+            except Exception:
+                pass
+        raise Http404("Nenhum template XLSX cadastrado para esta norma.")
     else:
         raise Http404("Tipo inválido.")
 

@@ -66,11 +66,20 @@ def get_template_docx_path() -> str:
     base_dir = getattr(settings, 'BASE_DIR', None)
     if not base_dir:
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    templates_dir = os.path.join(str(base_dir), 'auditoria', 'templates_docx')
+    
+    if os.environ.get('VERCEL') == '1' or str(base_dir).startswith('/var/task'):
+        templates_dir = os.path.join('/tmp', 'templates_docx')
+    else:
+        templates_dir = os.path.join(str(base_dir), 'auditoria', 'templates_docx')
+    
     try:
         os.makedirs(templates_dir, exist_ok=True)
     except OSError:
-        pass
+        templates_dir = os.path.join('/tmp', 'templates_docx')
+        try:
+            os.makedirs(templates_dir, exist_ok=True)
+        except OSError:
+            pass
     return os.path.join(templates_dir, 'relatorio_auditoria_template.docx')
 
 
@@ -878,7 +887,14 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
     norma = auditoria.norma
     doc = None
 
-    if norma.template_docx and norma.template_docx.name:
+    import base64
+    if getattr(norma, 'template_docx_base64', None):
+        try:
+            b_data = base64.b64decode(norma.template_docx_base64)
+            doc = Document(io.BytesIO(b_data))
+        except Exception:
+            doc = None
+    elif norma.template_docx and norma.template_docx.name:
         try:
             doc = Document(norma.template_docx.path)
         except Exception:
