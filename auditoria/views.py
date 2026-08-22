@@ -4535,11 +4535,11 @@ def iso_fechamento_presentation_view(request, auditoria_id):
 
     slides_descobertas_positivas = list(chunks_list(pontos_fortes_qs, 4))
 
-    # Reúne as respostas de Pessoas Auditadas / Entrevistadas de todos os blocos
+    # ── COLETA UNIFICADA DE PESSOAS AUDITADAS / ENTREVISTADAS ──
     from django.db.models import Q
-    pessoas_auditadas_por_bloco = []
-    
-    # Busca todas as respostas da auditoria para perguntas de auditados/entrevistados
+    import re
+
+    # 1. Busca todas as respostas da auditoria para perguntas de auditados/entrevistados
     respostas_auditados_qs = list(
         RespostaEntrevistaIso.objects.filter(auditoria=auditoria)
         .filter(
@@ -4551,83 +4551,72 @@ def iso_fechamento_presentation_view(request, auditoria_id):
         .select_related('pergunta')
         .prefetch_related('solicitacoes')
     )
-    respostas_auditados_por_pergunta_id = {r.pergunta_id: r for r in respostas_auditados_qs}
 
-    for ag in auditoria.agendas.filter(arquivada=False).order_by('data', 'hora_inicio').prefetch_related('perguntas'):
-        resp = None
+    todos_nomes_brutos = []
+
+    # Extrai das respostas das entrevistas
+    for resp in respostas_auditados_qs:
+        for s in resp.solicitacoes.all():
+            ev = (s.evidencia or "").strip()
+            sol = (s.solicitacao or "").strip()
+            sol_lower = sol.lower()
+            is_generic = sol_lower in [
+                'entrevistado', 'entrevistados', 'pessoa auditada', 'pessoas auditadas',
+                'amostra', 'amostra #1', 'amostra #2', 'amostra #3', 'amostra #4', 'amostra #5',
+                'solicitação', 'solicitacao', ''
+            ]
+            if ev and not is_generic and ev.lower() != sol_lower:
+                todos_nomes_brutos.append(f"{ev} ({sol})")
+            elif ev:
+                todos_nomes_brutos.append(ev)
+            elif sol and not is_generic:
+                todos_nomes_brutos.append(sol)
         
-        # 1º: Tenta encontrar resposta pela pergunta exata do bloco: "Quais são os nomes e funções das pessoas auditadas / entrevistadas neste bloco ({ag.titulo})?"
-        texto_esperado = f"Quais são os nomes e funções das pessoas auditadas / entrevistadas neste bloco ({ag.titulo})?"
-        for r in respostas_auditados_qs:
-            if r.pergunta.texto_pergunta.strip() == texto_esperado.strip():
-                resp = r
-                break
-        
-        # 2º: Tenta encontrar pergunta com ag.titulo e "auditadas/entrevistadas"
-        if not resp:
-            for r in respostas_auditados_qs:
-                p_txt = r.pergunta.texto_pergunta.lower()
-                if ag.titulo.lower() in p_txt and ("auditad" in p_txt or "entrevistad" in p_txt or "nomes e funções" in p_txt):
-                    resp = r
-                    break
-        
-        # 3º: Tenta nas perguntas associadas diretamente à agenda
-        if not resp:
-            for p in ag.perguntas.all():
-                if p.id in respostas_auditados_por_pergunta_id:
-                    resp = respostas_auditados_por_pergunta_id[p.id]
-                    break
-        
-        # Extrai os nomes/funções válidos da resposta do bloco
-        nomes_bloco = []
-        if resp:
-            # Coleta das solicitações/amostras registradas para essa pergunta de auditados
-            for s in resp.solicitacoes.all():
-                ev = (s.evidencia or "").strip()
-                sol = (s.solicitacao or "").strip()
-                
-                # Descarta rótulos padrão de formulário como "Entrevistado", "Amostra #1", etc.
-                sol_lower = sol.lower()
-                is_generic_label = sol_lower in [
-                    'entrevistado', 'entrevistados', 'pessoa auditada', 'pessoas auditadas',
-                    'amostra', 'amostra #1', 'amostra #2', 'amostra #3', 'amostra #4', 'amostra #5',
-                    'solicitação', 'solicitacao', ''
-                ]
-                
-                if ev and not is_generic_label and ev.lower() != sol_lower:
-                    nomes_bloco.append(f"{ev} ({sol})")
-                elif ev:
-                    nomes_bloco.append(ev)
-                elif sol and not is_generic_label:
-                    nomes_bloco.append(sol)
+        if resp.texto_resposta and resp.texto_resposta.strip():
+            for linha in re.split(r'[;\n]', resp.texto_resposta):
+                if linha.strip():
+                    todos_nomes_brutos.append(linha.strip())
+
+    # Se o usuário preencheu representantes no encerramento ou abertura, inclui
+    if auditoria.encerramento_representantes and auditoria.encerramento_representantes.strip():
+        for linha in re.split(r'[;\n]', auditoria.encerramento_representantes):
+            if linha.strip():
+                todos_nomes_brutos.append(linha.strip())
+    elif auditoria.abertura_representantes and auditoria.abertura_representantes.strip():
+        for linha in re.split(r'[;\n]', auditoria.abertura_representantes):
+            if linha.strip():
+                todos_nomes_brutos.append(linha.strip())
+
+    # Deduplicação inteligente preservando a ordem
+    pessoas_auditadas_lista = []
+    nomes_vistos = set()
+    for item_str in todos_nomes_brutos:
+        item_clean = item_str.strip()
+        if not item_clean or len(item_clean) < 2:
+            continue
+        key = item_clean.lower()
+        if key not in nomes_vistos:
+            nomes_vistos.add(key)
             
-            # Se não houver amostras mas houver anotação em texto
-            if not nomes_bloco and resp.texto_resposta and resp.texto_resposta.strip():
-                linhas = [linha.strip() for linha in resp.texto_resposta.split('\n') if linha.strip()]
-                nomes_bloco.extend(linhas)
+            # Tenta separar Nome e Função se contiver ' - ' ou ' ('
+            nome = item_clean
+            funcao = ""
+            if ' - ' in item_clean:
+                partes = item_clean.split(' - ', 1)
+                nome = partes[0].strip()
+                funcao = partes[1].strip()
+            elif '(' in item_clean and item_clean.endswith(')'):
+                idx = item_clean.rfind('(')
+                nome = item_clean[:idx].strip()
+                funcao = item_clean[idx+1:-1].strip()
 
-        # Fallback 4º: Se nenhuma resposta foi registrada na pergunta, mas foi informado no cronograma (ag.representantes)
-        if not nomes_bloco and ag.representantes and ag.representantes.strip():
-            nomes_bloco.append(ag.representantes.strip())
-
-        if nomes_bloco:
-            # Remove duplicados preservando a ordem
-            nomes_unicos = []
-            for n in nomes_bloco:
-                if n not in nomes_unicos:
-                    nomes_unicos.append(n)
-            
-            resp_txt = "; ".join(nomes_unicos)
-            pessoas_auditadas_por_bloco.append({
-                "bloco_id": ag.id,
-                "bloco_titulo": ag.titulo,
-                "data": ag.data.strftime("%d/%m/%Y") if ag.data else "",
-                "horario": f"{ag.hora_inicio.strftime('%H:%M')} às {ag.hora_fim.strftime('%H:%M')}" if ag.hora_inicio and ag.hora_fim else "",
-                "auditados": resp_txt,
-                "nomes_lista": nomes_unicos
+            pessoas_auditadas_lista.append({
+                'nome': nome,
+                'funcao': funcao,
+                'texto_completo': item_clean
             })
 
-    slides_pessoas_auditadas = list(chunks_list(pessoas_auditadas_por_bloco, 4))
+    slides_pessoas_auditadas = list(chunks_list(pessoas_auditadas_lista, 8))
 
     destaques_conformes.sort(key=lambda x: natural_sort_key(x['referencia']))
     slides_pontos_fortes = list(chunks_list(destaques_conformes, 4))
@@ -4638,7 +4627,7 @@ def iso_fechamento_presentation_view(request, auditoria_id):
         'auditoria': auditoria,
         'agendas': agendas,
         'slides_agendas': slides_agendas,
-        'pessoas_auditadas_por_bloco': pessoas_auditadas_por_bloco,
+        'pessoas_auditadas_lista': pessoas_auditadas_lista,
         'slides_pessoas_auditadas': slides_pessoas_auditadas,
         'metricas': {
             'total_avaliados': total_avaliados,

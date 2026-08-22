@@ -328,7 +328,7 @@
         </div>
         {% endfor %}
 
-        <!-- ── SLIDES DE PESSOAS AUDITADAS / ENTREVISTADOS POR BLOCO ── -->
+        <!-- ── SLIDES DE PESSOAS AUDITADAS / ENTREVISTADOS UNIFICADOS ── -->
         {% if slides_pessoas_auditadas %}
             {% for lote_pa in slides_pessoas_auditadas %}
             <div class="slide">
@@ -340,37 +340,41 @@
                         {% endif %}
                     </h2>
                     <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-3.5 py-1.5 rounded-pill font-monospace fw-bold" style="font-size: 0.88rem;">
-                        Entrevistados nos Blocos
+                        Participantes da Auditoria
                     </span>
                 </div>
                 <div class="slide-content">
                     <div class="h-100 d-flex flex-column justify-content-start gap-3">
                         <div class="p-3 bg-light rounded-4 border">
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="badge bg-primary text-white px-2.5 py-1 rounded-pill">
-                                    <i class="bi bi-person-lines-fill me-1"></i>Registro de Entrevistas
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-primary text-white px-2.5 py-1 rounded-pill">
+                                        <i class="bi bi-person-lines-fill me-1"></i>Entrevistados & Representantes
+                                    </span>
+                                    <span class="text-secondary small fw-semibold">Profissionais e gestores que participaram do ciclo avaliado:</span>
+                                </div>
+                                <span class="badge bg-white text-dark border px-2.5 py-1 rounded-pill small fw-bold">
+                                    Total: {{ pessoas_auditadas_lista|length }} participante(s)
                                 </span>
-                                <span class="text-secondary small fw-semibold">Profissionais entrevistados em cada etapa e processo avaliado:</span>
                             </div>
                         </div>
 
-                        <div class="row row-cols-2 g-3 flex-grow-1">
-                            {% for item in lote_pa %}
+                        <div class="row row-cols-2 g-3 flex-grow-1 align-content-start">
+                            {% for p in lote_pa %}
                             <div class="col">
-                                <div class="p-3.5 bg-white rounded-4 border h-100 shadow-2xs d-flex gap-3 align-items-start">
-                                    <div class="p-2.5 rounded-circle bg-primary bg-opacity-10 text-primary flex-shrink-0">
-                                        <i class="bi bi-person-badge-fill fs-4"></i>
+                                <div class="p-3 bg-white rounded-4 border h-100 shadow-2xs d-flex gap-3 align-items-center">
+                                    <div class="p-2.5 rounded-circle bg-primary bg-opacity-10 text-primary flex-shrink-0 d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">
+                                        <i class="bi bi-person-badge-fill fs-5"></i>
                                     </div>
-                                    <div class="flex-grow-1">
-                                        <div class="d-flex justify-content-between align-items-center mb-1">
-                                            <h6 class="fw-bold text-dark mb-0 font-monospace" style="font-size: 0.9rem;">{{ item.bloco_titulo }}</h6>
-                                            {% if item.horario %}
-                                            <span class="badge bg-light text-secondary border small font-monospace">{{ item.horario }}</span>
-                                            {% endif %}
-                                        </div>
-                                        <p class="text-dark small mb-0 fw-semibold" style="line-height: 1.45; font-size: 0.84rem;">
-                                            {{ item.auditados }}
-                                        </p>
+                                    <div class="flex-grow-1 min-w-0">
+                                        <h6 class="fw-bold text-dark mb-0 text-truncate" style="font-size: 0.95rem;">
+                                            {{ p.nome }}
+                                        </h6>
+                                        {% if p.funcao %}
+                                        <span class="text-secondary small d-block text-truncate mt-0.5" style="font-size: 0.82rem;">
+                                            <i class="bi bi-briefcase me-1 text-primary"></i>{{ p.funcao }}
+                                        </span>
+                                        {% endif %}
                                     </div>
                                 </div>
                             </div>
@@ -888,13 +892,13 @@
         });
 
         function copiarAuditadosParaRepresentantes() {
-            const auditadosTextos = [
-                {% for pa in pessoas_auditadas_por_bloco %}
-                "{{ pa.auditados|escapejs }}",
+            const auditadosNomes = [
+                {% for p in pessoas_auditadas_lista %}
+                "{{ p.texto_completo|escapejs }}",
                 {% endfor %}
             ];
             const nomesValidos = [];
-            auditadosTextos.forEach(texto => {
+            auditadosNomes.forEach(texto => {
                 if (!texto) return;
                 const partes = texto.split(/;|\n/).map(p => p.trim()).filter(Boolean);
                 partes.forEach(p => {
