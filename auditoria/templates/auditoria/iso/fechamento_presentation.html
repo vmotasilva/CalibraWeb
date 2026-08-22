@@ -704,39 +704,59 @@
                             <input type="text" class="form-control rounded-3 py-2" id="inputEmpresaAuditada" value="{{ auditoria.empresa_auditada|default:'' }}" placeholder="Ex: Laboratório Óptico Central">
                         </div>
 
-                        <!-- Campo Representantes -->
+                        <!-- Gerenciador Interativo de Representantes (Caso a Caso) -->
                         <div class="mb-3">
-                            <div class="d-flex justify-content-between align-items-center mb-1.5 flex-wrap gap-2">
+                            <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
                                 <div>
                                     <label class="form-label fw-bold text-dark mb-0 d-flex align-items-center gap-1.5">
                                         <i class="bi bi-people-fill text-primary fs-5"></i>
-                                        <span class="fs-6">Representantes</span>
+                                        <span class="fs-6">Representantes Presentes</span>
                                     </label>
                                     <small class="text-muted d-block" style="font-size: 0.78rem;">
-                                        Informe os representantes presentes (um por linha ou separados por ponto e vírgula).
+                                        Adicione, edite ou remova representantes caso a caso. O slide só será exibido se houver representantes cadastrados.
                                     </small>
                                 </div>
                                 <div class="d-flex align-items-center gap-1.5 flex-wrap">
-                                    <button type="button" class="btn btn-xs btn-outline-primary rounded-pill px-2.5 py-1 fw-bold shadow-2xs" id="btnCopiarRepresentantes" onclick="copiarAuditadosParaRepresentantes()" title="Recarrega os nomes dos blocos organizados de A a Z">
+                                    <button type="button" class="btn btn-xs btn-outline-primary rounded-pill px-2.5 py-1 fw-bold shadow-2xs" id="btnCopiarRepresentantes" onclick="puxarDosBlocosParaLista()" title="Carrega todos os entrevistados dos blocos organizados de A a Z">
                                         <i class="bi bi-arrow-repeat me-1"></i> 🔄 Puxar dos Blocos (A-Z)
                                     </button>
-                                    <button type="button" class="btn btn-xs btn-outline-info text-dark rounded-pill px-2.5 py-1 fw-bold shadow-2xs" onclick="ordenarRepresentantesAZ()" title="Ordenar lista em ordem alfabética de A a Z">
+                                    <button type="button" class="btn btn-xs btn-outline-info text-dark rounded-pill px-2.5 py-1 fw-bold shadow-2xs" onclick="ordenarListaAZ()" title="Ordenar itens de A a Z">
                                         <i class="bi bi-sort-alpha-down me-1 text-primary"></i> 🔤 Ordem A-Z
                                     </button>
-                                    <button type="button" class="btn btn-xs btn-outline-warning text-dark rounded-pill px-2.5 py-1 fw-bold shadow-2xs" onclick="removerDuplicadosRepresentantes()" title="Remove nomes repetidos e organiza em ordem alfabética">
+                                    <button type="button" class="btn btn-xs btn-outline-warning text-dark rounded-pill px-2.5 py-1 fw-bold shadow-2xs" onclick="removerDuplicadosLista()" title="Remove itens repetidos e organiza de A a Z">
                                         <i class="bi bi-magic me-1 text-warning"></i> 🧹 Remover Repetidos
                                     </button>
-                                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-1 fw-semibold shadow-2xs" onclick="document.getElementById('inputEncerramentoRep').value = ''; atualizarContadorNomesRep(); document.getElementById('inputEncerramentoRep').focus();" title="Limpar campo">
+                                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-1 fw-semibold shadow-2xs" onclick="limparListaRepresentantes()" title="Limpar todos os itens">
                                         <i class="bi bi-trash me-1"></i> Limpar
                                     </button>
                                 </div>
                             </div>
-                            <textarea class="form-control rounded-3 p-3 text-dark shadow-2xs font-monospace" id="inputEncerramentoRep" rows="7" oninput="atualizarContadorNomesRep()" placeholder="Ex: Lindiane Garcia Oliveira (Gerente de Atendimento)&#10;Anderson Menezes de Santana (Líder de Atendimento)&#10;Silvana da Silva (Aquisição/Compras)..." style="font-size: 0.90rem; line-height: 1.6; resize: vertical;">{{ auditoria.encerramento_representantes|default:'' }}</textarea>
-                            <div class="d-flex justify-content-between align-items-center mt-1">
+
+                            <!-- Barra de Adição Rápida de Item -->
+                            <div class="input-group mb-2 shadow-2xs">
+                                <span class="input-group-text bg-white border-end-0 text-muted">
+                                    <i class="bi bi-person-plus-fill text-primary"></i>
+                                </span>
+                                <input type="text" class="form-control border-start-0 py-2" id="inputNovoRepresentante" placeholder="Digite o nome (Ex: Carlos Santos - Gerente de Qualidade)..." onkeydown="if(event.key==='Enter'){event.preventDefault(); adicionarItemRepresentante();}">
+                                <button type="button" class="btn btn-primary px-3.5 fw-bold" onclick="adicionarItemRepresentante()">
+                                    <i class="bi bi-plus-lg me-1"></i> Adicionar
+                                </button>
+                            </div>
+
+                            <!-- Container de Itens (Scrollable) -->
+                            <div class="border rounded-4 bg-light p-2 shadow-2xs">
+                                <div id="listaRepresentantesContainer" style="max-height: 250px; overflow-y: auto;" class="d-flex flex-column gap-1.5 p-1">
+                                    <!-- Itens individuais renderizados via JS -->
+                                </div>
+                            </div>
+
+                            <input type="hidden" id="inputEncerramentoRep" value="{{ auditoria.encerramento_representantes|default:'' }}">
+
+                            <div class="d-flex justify-content-between align-items-center mt-1.5 px-1">
                                 <small class="text-muted" style="font-size: 0.75rem;">
-                                    <i class="bi bi-info-circle me-1"></i>O slide de Representantes só será exibido na apresentação se este campo for preenchido.
+                                    <i class="bi bi-info-circle me-1"></i>Clique no <i class="bi bi-pencil-square text-primary"></i> para editar o texto de cada pessoa ou no <i class="bi bi-trash text-danger"></i> para remover.
                                 </small>
-                                <span class="badge bg-light text-secondary border font-monospace" id="contadorNomesRep">0 pessoa(s)</span>
+                                <span class="badge bg-white text-dark border font-monospace fw-bold" id="contadorNomesRep">0 pessoa(s)</span>
                             </div>
                         </div>
 
@@ -890,73 +910,167 @@
                     placeholder: 'Escreva a síntese da auditoria, liste os entrevistados, cole imagens/organogramas...'
                 });
             }
-            atualizarContadorNomesRep();
+            inicializarListaRepresentantes();
+
+            const modalFechamentoEl = document.getElementById('modalEditarFechamento');
+            if (modalFechamentoEl) {
+                modalFechamentoEl.addEventListener('show.bs.modal', inicializarListaRepresentantes);
+            }
         });
 
-        function atualizarContadorNomesRep() {
-            const input = document.getElementById('inputEncerramentoRep');
+        let representantesArray = [];
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+            return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+        }
+
+        function inicializarListaRepresentantes() {
+            const hidden = document.getElementById('inputEncerramentoRep');
+            const raw = hidden ? hidden.value : '';
+            representantesArray = raw.split(/;|\n/).map(l => l.trim()).filter(Boolean);
+            renderizarListaRepresentantes();
+        }
+
+        function sincronizarRepresentantesHidden() {
+            const hidden = document.getElementById('inputEncerramentoRep');
+            if (hidden) {
+                hidden.value = representantesArray.join(';\n');
+            }
             const badge = document.getElementById('contadorNomesRep');
-            if (!input || !badge) return;
-            const linhas = input.value.split(/;|\n/).map(l => l.trim()).filter(Boolean);
-            badge.textContent = `${linhas.length} pessoa(s)`;
-        }
-
-        function ordenarRepresentantesAZ() {
-            const input = document.getElementById('inputEncerramentoRep');
-            if (!input) return;
-            const linhas = input.value.split(/;|\n/).map(l => l.trim()).filter(Boolean);
-            linhas.sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
-            input.value = linhas.join(';\n');
-            atualizarContadorNomesRep();
-        }
-
-        function removerDuplicadosRepresentantes() {
-            const input = document.getElementById('inputEncerramentoRep');
-            if (!input) return;
-            const linhas = input.value.split(/;|\n/).map(l => l.trim()).filter(Boolean);
-            const unicos = [];
-            const chaves = new Set();
-            
-            linhas.forEach(l => {
-                const key = l.toLowerCase();
-                if (!chaves.has(key)) {
-                    chaves.add(key);
-                    unicos.push(l);
-                }
-            });
-
-            unicos.sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
-            
-            input.value = unicos.join(';\n');
-            atualizarContadorNomesRep();
-            
-            const countRemovidos = linhas.length - unicos.length;
-            if (countRemovidos > 0) {
-                alert(`${countRemovidos} nome(s) repetido(s) removido(s) e lista ordenada de A a Z!`);
-            } else {
-                alert('Lista organizada em ordem alfabética (A-Z)!');
+            if (badge) {
+                badge.textContent = `${representantesArray.length} pessoa(s)`;
             }
         }
 
-        function copiarAuditadosParaRepresentantes() {
+        function renderizarListaRepresentantes() {
+            const container = document.getElementById('listaRepresentantesContainer');
+            if (!container) return;
+
+            sincronizarRepresentantesHidden();
+
+            if (representantesArray.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-4 text-muted small">
+                        <i class="bi bi-person-x fs-3 d-block mb-1 opacity-50"></i>
+                        Nenhum representante cadastrado.<br>
+                        Clique em <strong>"🔄 Puxar dos Blocos (A-Z)"</strong> acima ou digite um nome para adicionar.
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = '';
+            representantesArray.forEach((item, index) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'd-flex align-items-center justify-content-between p-2 px-2.5 bg-white rounded-3 border shadow-2xs';
+                itemDiv.id = `rep-item-${index}`;
+
+                let nome = item;
+                let cargo = '';
+                if (item.includes(' - ')) {
+                    const partes = item.split(' - ');
+                    nome = partes[0].trim();
+                    cargo = partes.slice(1).join(' - ').trim();
+                } else if (item.includes('(') && item.endsWith(')')) {
+                    const idx = item.lastIndexOf('(');
+                    nome = item.substring(0, idx).trim();
+                    cargo = item.substring(idx + 1, item.length - 1).trim();
+                }
+
+                itemDiv.innerHTML = `
+                    <div class="d-flex align-items-center gap-2.5 min-w-0 flex-grow-1 me-2" id="rep-display-${index}">
+                        <div class="rounded-circle bg-primary bg-opacity-10 text-primary flex-shrink-0 d-flex align-items-center justify-content-center fw-bold font-monospace" style="width: 28px; height: 28px; font-size: 0.78rem;">
+                            ${index + 1}
+                        </div>
+                        <div class="min-w-0 flex-grow-1">
+                            <span class="fw-bold text-dark d-block text-truncate" style="font-size: 0.88rem;">${escapeHtml(nome)}</span>
+                            ${cargo ? `<small class="text-muted d-block text-truncate" style="font-size: 0.76rem;"><i class="bi bi-briefcase me-1 text-primary"></i>${escapeHtml(cargo)}</small>` : ''}
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-1.5 flex-shrink-0" id="rep-actions-${index}">
+                        <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0.5" onclick="editarItemRepresentante(${index})" title="Editar nome/função">
+                            <i class="bi bi-pencil-square"></i>
+                        </button>
+                        <button type="button" class="btn btn-xs btn-outline-danger rounded-pill px-2 py-0.5" onclick="removerItemRepresentante(${index})" title="Remover este representante">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(itemDiv);
+            });
+        }
+
+        function adicionarItemRepresentante() {
+            const input = document.getElementById('inputNovoRepresentante');
+            if (!input) return;
+            const val = input.value.trim();
+            if (!val) return;
+            representantesArray.push(val);
+            input.value = '';
+            input.focus();
+            renderizarListaRepresentantes();
+        }
+
+        function editarItemRepresentante(index) {
+            const itemDiv = document.getElementById(`rep-item-${index}`);
+            if (!itemDiv) return;
+            const currentVal = representantesArray[index];
+
+            itemDiv.className = 'p-2 bg-warning bg-opacity-10 rounded-3 border border-warning shadow-2xs';
+            itemDiv.innerHTML = `
+                <div class="d-flex align-items-center gap-2 w-100">
+                    <input type="text" class="form-control form-control-sm bg-white" id="edit-input-${index}" value="${escapeHtml(currentVal)}" onkeydown="if(event.key==='Enter'){salvarEdicaoItem(${index});} else if(event.key==='Escape'){renderizarListaRepresentantes();}">
+                    <button type="button" class="btn btn-xs btn-success rounded-pill px-2.5 py-1 fw-bold" onclick="salvarEdicaoItem(${index})" title="Salvar alteração">
+                        <i class="bi bi-check-lg"></i>
+                    </button>
+                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2.5 py-1" onclick="renderizarListaRepresentantes()" title="Cancelar edição">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+            `;
+            const editInput = document.getElementById(`edit-input-${index}`);
+            if (editInput) {
+                editInput.focus();
+                editInput.select();
+            }
+        }
+
+        function salvarEdicaoItem(index) {
+            const editInput = document.getElementById(`edit-input-${index}`);
+            if (!editInput) return;
+            const newVal = editInput.value.trim();
+            if (newVal) {
+                representantesArray[index] = newVal;
+            } else {
+                representantesArray.splice(index, 1);
+            }
+            renderizarListaRepresentantes();
+        }
+
+        function removerItemRepresentante(index) {
+            representantesArray.splice(index, 1);
+            renderizarListaRepresentantes();
+        }
+
+        function puxarDosBlocosParaLista() {
             const auditadosNomes = [
                 {% for p in nomes_entrevistados_blocos_originais %}
                 "{{ p|escapejs }}",
                 {% endfor %}
             ];
-            const inputRep = document.getElementById('inputEncerramentoRep');
             const btn = document.getElementById('btnCopiarRepresentantes');
 
             if (auditadosNomes.length > 0) {
-                // Deduplica e ordena de A a Z
                 const unicos = Array.from(new Set(auditadosNomes.map(n => n.trim()).filter(Boolean)));
                 unicos.sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
+                representantesArray = unicos;
+                renderizarListaRepresentantes();
 
-                inputRep.value = unicos.join(';\n');
-                atualizarContadorNomesRep();
                 if (btn) {
                     const originalHtml = btn.innerHTML;
-                    btn.innerHTML = '<i class="bi bi-check2-circle me-1 text-white"></i> Copiados (A-Z)!';
+                    btn.innerHTML = '<i class="bi bi-check2-circle me-1 text-white"></i> Carregados (A-Z)!';
                     btn.className = 'btn btn-xs btn-success text-white rounded-pill px-2.5 py-1 fw-bold shadow-2xs';
                     setTimeout(() => {
                         btn.innerHTML = originalHtml;
@@ -966,6 +1080,38 @@
             } else {
                 alert('Nenhum entrevistado registrado nas perguntas de identificação dos blocos.');
             }
+        }
+
+        function ordenarListaAZ() {
+            representantesArray.sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
+            renderizarListaRepresentantes();
+        }
+
+        function removerDuplicadosLista() {
+            const unicos = [];
+            const chaves = new Set();
+            representantesArray.forEach(l => {
+                const key = l.toLowerCase();
+                if (!chaves.has(key)) {
+                    chaves.add(key);
+                    unicos.push(l);
+                }
+            });
+            unicos.sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
+            const countRemovidos = representantesArray.length - unicos.length;
+            representantesArray = unicos;
+            renderizarListaRepresentantes();
+
+            if (countRemovidos > 0) {
+                alert(`${countRemovidos} item(ns) repetido(s) removido(s) e lista ordenada de A a Z!`);
+            } else {
+                alert('Lista organizada em ordem alfabética (A-Z)!');
+            }
+        }
+
+        function limparListaRepresentantes() {
+            representantesArray = [];
+            renderizarListaRepresentantes();
         }
 
         async function salvarDadosFechamento() {
