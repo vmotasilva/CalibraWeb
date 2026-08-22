@@ -4536,38 +4536,96 @@ def iso_fechamento_presentation_view(request, auditoria_id):
     slides_descobertas_positivas = list(chunks_list(pontos_fortes_qs, 4))
 
     # Reúne as respostas de Pessoas Auditadas / Entrevistadas de todos os blocos
+    from django.db.models import Q
     pessoas_auditadas_por_bloco = []
-    for ag in auditoria.agendas.filter(arquivada=False).order_by('data', 'hora_inicio').prefetch_related('perguntas'):
-        perguntas_bloco = list(ag.perguntas.all())
-        p_auditados = None
-        for p in perguntas_bloco:
-            p_txt = p.texto_pergunta.lower()
-            p_dica = (p.dica_auditor or "").lower()
-            if "auditadas" in p_txt or "entrevistadas" in p_txt or "nomes e funções" in p_txt or "participante" in p_dica:
-                p_auditados = p
-                break
-        if not p_auditados and perguntas_bloco:
-            p_auditados = perguntas_bloco[0]
+    
+    # Busca todas as respostas da auditoria para perguntas de auditados/entrevistados
+    respostas_auditados_qs = list(
+        RespostaEntrevistaIso.objects.filter(auditoria=auditoria)
+        .filter(
+            Q(pergunta__texto_pergunta__icontains="auditadas") |
+            Q(pergunta__texto_pergunta__icontains="entrevistadas") |
+            Q(pergunta__texto_pergunta__icontains="nomes e funções") |
+            Q(pergunta__dica_auditor__icontains="participante entrevistado")
+        )
+        .select_related('pergunta')
+        .prefetch_related('solicitacoes')
+    )
+    respostas_auditados_por_pergunta_id = {r.pergunta_id: r for r in respostas_auditados_qs}
 
-        if p_auditados:
-            resp = RespostaEntrevistaIso.objects.filter(auditoria=auditoria, pergunta=p_auditados).first()
-            resp_txt = ""
-            if resp:
-                if resp.texto_resposta and resp.texto_resposta.strip():
-                    resp_txt = resp.texto_resposta.strip()
-                elif resp.solicitacoes.exists():
-                    sols = [(s.evidencia or s.solicitacao or "").strip() for s in resp.solicitacoes.all() if (s.evidencia or s.solicitacao or "").strip()]
-                    if sols:
-                        resp_txt = "; ".join(sols)
+    for ag in auditoria.agendas.filter(arquivada=False).order_by('data', 'hora_inicio').prefetch_related('perguntas'):
+        resp = None
+        
+        # 1º: Tenta encontrar resposta pela pergunta exata do bloco: "Quais são os nomes e funções das pessoas auditadas / entrevistadas neste bloco ({ag.titulo})?"
+        texto_esperado = f"Quais são os nomes e funções das pessoas auditadas / entrevistadas neste bloco ({ag.titulo})?"
+        for r in respostas_auditados_qs:
+            if r.pergunta.texto_pergunta.strip() == texto_esperado.strip():
+                resp = r
+                break
+        
+        # 2º: Tenta encontrar pergunta com ag.titulo e "auditadas/entrevistadas"
+        if not resp:
+            for r in respostas_auditados_qs:
+                p_txt = r.pergunta.texto_pergunta.lower()
+                if ag.titulo.lower() in p_txt and ("auditad" in p_txt or "entrevistad" in p_txt or "nomes e funções" in p_txt):
+                    resp = r
+                    break
+        
+        # 3º: Tenta nas perguntas associadas diretamente à agenda
+        if not resp:
+            for p in ag.perguntas.all():
+                if p.id in respostas_auditados_por_pergunta_id:
+                    resp = respostas_auditados_por_pergunta_id[p.id]
+                    break
+        
+        # Extrai os nomes/funções válidos da resposta do bloco
+        nomes_bloco = []
+        if resp:
+            # Coleta das solicitações/amostras registradas para essa pergunta de auditados
+            for s in resp.solicitacoes.all():
+                ev = (s.evidencia or "").strip()
+                sol = (s.solicitacao or "").strip()
+                
+                # Descarta rótulos padrão de formulário como "Entrevistado", "Amostra #1", etc.
+                sol_lower = sol.lower()
+                is_generic_label = sol_lower in [
+                    'entrevistado', 'entrevistados', 'pessoa auditada', 'pessoas auditadas',
+                    'amostra', 'amostra #1', 'amostra #2', 'amostra #3', 'amostra #4', 'amostra #5',
+                    'solicitação', 'solicitacao', ''
+                ]
+                
+                if ev and not is_generic_label and ev.lower() != sol_lower:
+                    nomes_bloco.append(f"{ev} ({sol})")
+                elif ev:
+                    nomes_bloco.append(ev)
+                elif sol and not is_generic_label:
+                    nomes_bloco.append(sol)
             
-            if resp_txt:
-                pessoas_auditadas_por_bloco.append({
-                    "bloco_id": ag.id,
-                    "bloco_titulo": ag.titulo,
-                    "data": ag.data.strftime("%d/%m/%Y") if ag.data else "",
-                    "horario": f"{ag.hora_inicio.strftime('%H:%M')} às {ag.hora_fim.strftime('%H:%M')}" if ag.hora_inicio and ag.hora_fim else "",
-                    "auditados": resp_txt
-                })
+            # Se não houver amostras mas houver anotação em texto
+            if not nomes_bloco and resp.texto_resposta and resp.texto_resposta.strip():
+                linhas = [linha.strip() for linha in resp.texto_resposta.split('\n') if linha.strip()]
+                nomes_bloco.extend(linhas)
+
+        # Fallback 4º: Se nenhuma resposta foi registrada na pergunta, mas foi informado no cronograma (ag.representantes)
+        if not nomes_bloco and ag.representantes and ag.representantes.strip():
+            nomes_bloco.append(ag.representantes.strip())
+
+        if nomes_bloco:
+            # Remove duplicados preservando a ordem
+            nomes_unicos = []
+            for n in nomes_bloco:
+                if n not in nomes_unicos:
+                    nomes_unicos.append(n)
+            
+            resp_txt = "; ".join(nomes_unicos)
+            pessoas_auditadas_por_bloco.append({
+                "bloco_id": ag.id,
+                "bloco_titulo": ag.titulo,
+                "data": ag.data.strftime("%d/%m/%Y") if ag.data else "",
+                "horario": f"{ag.hora_inicio.strftime('%H:%M')} às {ag.hora_fim.strftime('%H:%M')}" if ag.hora_inicio and ag.hora_fim else "",
+                "auditados": resp_txt,
+                "nomes_lista": nomes_unicos
+            })
 
     slides_pessoas_auditadas = list(chunks_list(pessoas_auditadas_por_bloco, 4))
 

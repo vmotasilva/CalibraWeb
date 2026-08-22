@@ -893,24 +893,35 @@
                 "{{ pa.auditados|escapejs }}",
                 {% endfor %}
             ];
-            const nomesValidos = auditadosTextos
-                .map(t => t.trim())
-                .filter(Boolean);
-            
-            const nomesUnicos = Array.from(new Set(nomesValidos));
+            const nomesValidos = [];
+            auditadosTextos.forEach(texto => {
+                if (!texto) return;
+                const partes = texto.split(/;|\n/).map(p => p.trim()).filter(Boolean);
+                partes.forEach(p => {
+                    if (!nomesValidos.includes(p)) {
+                        nomesValidos.push(p);
+                    }
+                });
+            });
+
             const inputRep = document.getElementById('inputEncerramentoRep');
             const btn = document.getElementById('btnCopiarRepresentantes');
 
-            if (nomesUnicos.length > 0) {
-                const textoFinal = nomesUnicos.join(';\n');
+            if (nomesValidos.length > 0) {
+                const textoFinal = nomesValidos.join(';\n');
                 if (inputRep.value.trim()) {
-                    inputRep.value = inputRep.value.trim() + ';\n' + textoFinal;
+                    // Evita duplicar o que já estiver digitado
+                    const existentes = inputRep.value.split(/;|\n/).map(p => p.trim()).filter(Boolean);
+                    const novos = nomesValidos.filter(n => !existentes.includes(n));
+                    if (novos.length > 0) {
+                        inputRep.value = inputRep.value.trim() + ';\n' + novos.join(';\n');
+                    }
                 } else {
                     inputRep.value = textoFinal;
                 }
                 if (btn) {
                     const originalHtml = btn.innerHTML;
-                    btn.innerHTML = '<i class="bi bi-check2-circle me-1 text-success"></i> Nomes Copiados!';
+                    btn.innerHTML = '<i class="bi bi-check2-circle me-1 text-white"></i> Nomes Copiados!';
                     btn.className = 'btn btn-sm btn-success text-white rounded-pill px-3 py-1.5 fw-bold shadow-2xs';
                     setTimeout(() => {
                         btn.innerHTML = originalHtml;
@@ -918,7 +929,7 @@
                     }, 2000);
                 }
             } else {
-                alert('Nenhuma resposta encontrada na primeira pergunta sobre entrevistados dos blocos.');
+                alert('Nenhum entrevistado registrado nas perguntas de identificação dos blocos.');
             }
         }
 
