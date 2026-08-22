@@ -4556,7 +4556,7 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                 if resp.texto_resposta and resp.texto_resposta.strip():
                     resp_txt = resp.texto_resposta.strip()
                 elif resp.solicitacoes.exists():
-                    sols = [s.descricao.strip() for s in resp.solicitacoes.all() if s.descricao and s.descricao.strip()]
+                    sols = [(s.evidencia or s.solicitacao or "").strip() for s in resp.solicitacoes.all() if (s.evidencia or s.solicitacao or "").strip()]
                     if sols:
                         resp_txt = "; ".join(sols)
             
