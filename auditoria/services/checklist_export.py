@@ -8,6 +8,37 @@ from openpyxl.utils import get_column_letter
 from django.conf import settings
 
 
+from openpyxl.cell.cell import MergedCell
+
+
+def safe_set_cell(ws, coordinate: str, value, font=None, alignment=None, border=None, fill=None):
+    """
+    Define com segurança o valor e estilos de uma célula no openpyxl,
+    tratando transparentemente células mescladas (MergedCell) para evitar
+    AttributeError: 'MergedCell' object attribute 'value' is read-only.
+    """
+    try:
+        cell = ws[coordinate]
+        if isinstance(cell, MergedCell):
+            for rng in ws.merged_cells.ranges:
+                if coordinate in rng:
+                    target_cell = ws.cell(row=rng.min_row, column=rng.min_col)
+                    target_cell.value = value
+                    if font: target_cell.font = font
+                    if alignment: target_cell.alignment = alignment
+                    if border: target_cell.border = border
+                    if fill: target_cell.fill = fill
+                    return
+        else:
+            cell.value = value
+            if font: cell.font = font
+            if alignment: cell.alignment = alignment
+            if border: cell.border = border
+            if fill: cell.fill = fill
+    except Exception:
+        pass
+
+
 def natural_sort_key(s: str):
     """Ordenação natural para referências como 4.1, 4.1.1, 4.10, etc."""
     return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', str(s or ""))]
@@ -347,7 +378,15 @@ def generate_auditoria_excel_buffer(auditoria) -> io.BytesIO:
     norma = auditoria.norma
     wb = None
 
-    if norma.template_xlsx and norma.template_xlsx.name:
+    if getattr(norma, 'template_xlsx_base64', None):
+        import base64
+        try:
+            xlsx_bytes = base64.b64decode(norma.template_xlsx_base64)
+            wb = openpyxl.load_workbook(io.BytesIO(xlsx_bytes))
+        except Exception:
+            wb = None
+
+    if wb is None and norma.template_xlsx and norma.template_xlsx.name:
         try:
             wb = openpyxl.load_workbook(norma.template_xlsx.path)
         except Exception:
@@ -370,7 +409,7 @@ def generate_auditoria_excel_buffer(auditoria) -> io.BytesIO:
         ws = wb.worksheets[0]
 
     # -------------------------------------------------------------
-    # 1. Metadados do Cabeçalho (Injeção Direta)
+    # 1. Metadados do Cabeçalho (Injeção Direta Segura)
     # -------------------------------------------------------------
     unidade_nome = getattr(auditoria, 'empresa_auditada', '') or "Tecnolens"
     
@@ -386,19 +425,19 @@ def generate_auditoria_excel_buffer(auditoria) -> io.BytesIO:
 
     escopo_str = f"{auditoria.norma.codigo} - {auditoria.norma.descricao}" if auditoria.norma.descricao else auditoria.norma.codigo
 
-    ws['C5'].value = unidade_nome
-    ws['C6'].value = auditores_str
-    ws['C7'].value = data_str
-    ws['C8'].value = escopo_str
+    safe_set_cell(ws, 'C5', unidade_nome)
+    safe_set_cell(ws, 'C6', auditores_str)
+    safe_set_cell(ws, 'C7', data_str)
+    safe_set_cell(ws, 'C8', escopo_str)
 
     # Tipo de Auditoria (H6 = Presencial / H7 = Remota)
     tipo_auditoria = str(getattr(auditoria, 'tipo', '')).upper()
     if 'REMOT' in tipo_auditoria:
-        ws['H6'].value = ""
-        ws['H7'].value = "X"
+        safe_set_cell(ws, 'H6', "")
+        safe_set_cell(ws, 'H7', "X")
     else:
-        ws['H6'].value = "X"
-        ws['H7'].value = ""
+        safe_set_cell(ws, 'H6', "X")
+        safe_set_cell(ws, 'H7', "")
 
     # -------------------------------------------------------------
     # 2. Respostas da Auditoria (Loop Dinâmico a partir da Linha 13)
@@ -527,39 +566,17 @@ def generate_auditoria_excel_buffer(auditoria) -> io.BytesIO:
 
         observacao_compilada = "\n".join(observacoes_list)
 
-        # Injeção nas Células da Linha
-        c_item = ws[f'B{current_row}']
-        c_item.value = item.referencia
-        c_item.font = font_item
-        c_item.alignment = align_center
-        c_item.border = border_cell
-
-        c_questao = ws[f'C{current_row}']
-        c_questao.value = item.titulo or item.descricao or ""
-        c_questao.font = font_text
-        c_questao.alignment = align_left_wrap
-        c_questao.border = border_cell
+        # Injeção nas Células da Linha Segura
+        safe_set_cell(ws, f'B{current_row}', item.referencia, font=font_item, alignment=align_center, border=border_cell)
+        safe_set_cell(ws, f'C{current_row}', item.titulo or item.descricao or "", font=font_text, alignment=align_left_wrap, border=border_cell)
 
         # Colunas D (C), E (NC), F (NA), G (OM)
         col_map = {"C": "D", "NC": "E", "NA": "F", "OM": "G"}
         for k, col_let in col_map.items():
-            cell_k = ws[f'{col_let}{current_row}']
-            cell_k.value = "X" if (status_item == k) else ""
-            cell_k.font = font_x
-            cell_k.alignment = align_center
-            cell_k.border = border_cell
+            safe_set_cell(ws, f'{col_let}{current_row}', "X" if (status_item == k) else "", font=font_x, alignment=align_center, border=border_cell)
 
-        c_evid = ws[f'H{current_row}']
-        c_evid.value = evidencia_compilada
-        c_evid.font = font_text
-        c_evid.alignment = align_left_wrap
-        c_evid.border = border_cell
-
-        c_obs = ws[f'I{current_row}']
-        c_obs.value = observacao_compilada
-        c_obs.font = font_text
-        c_obs.alignment = align_left_wrap
-        c_obs.border = border_cell
+        safe_set_cell(ws, f'H{current_row}', evidencia_compilada, font=font_text, alignment=align_left_wrap, border=border_cell)
+        safe_set_cell(ws, f'I{current_row}', observacao_compilada, font=font_text, alignment=align_left_wrap, border=border_cell)
 
         # Ajuste de altura automática da linha se houver múltiplas linhas de evidência
         num_lines = max(evidencia_compilada.count('\n') + 1, observacao_compilada.count('\n') + 1, 1)
