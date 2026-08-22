@@ -4539,7 +4539,7 @@ def iso_fechamento_presentation_view(request, auditoria_id):
     from django.db.models import Q
     import re
 
-    # 1. Busca todas as respostas da auditoria para perguntas de auditados/entrevistados
+    # 1. Busca respostas originais das entrevistas dos blocos
     respostas_auditados_qs = list(
         RespostaEntrevistaIso.objects.filter(auditoria=auditoria)
         .filter(
@@ -4552,9 +4552,9 @@ def iso_fechamento_presentation_view(request, auditoria_id):
         .prefetch_related('solicitacoes')
     )
 
-    todos_nomes_brutos = []
+    nomes_entrevistados_blocos_originais = []
+    nomes_originais_vistos = set()
 
-    # Extrai das respostas das entrevistas
     for resp in respostas_auditados_qs:
         for s in resp.solicitacoes.all():
             ev = (s.evidencia or "").strip()
@@ -4565,32 +4565,42 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                 'amostra', 'amostra #1', 'amostra #2', 'amostra #3', 'amostra #4', 'amostra #5',
                 'solicitação', 'solicitacao', ''
             ]
+            cand = ""
             if ev and not is_generic and ev.lower() != sol_lower:
-                todos_nomes_brutos.append(f"{ev} ({sol})")
+                cand = f"{ev} ({sol})"
             elif ev:
-                todos_nomes_brutos.append(ev)
+                cand = ev
             elif sol and not is_generic:
-                todos_nomes_brutos.append(sol)
+                cand = sol
+            if cand and cand.lower() not in nomes_originais_vistos:
+                nomes_originais_vistos.add(cand.lower())
+                nomes_entrevistados_blocos_originais.append(cand)
         
         if resp.texto_resposta and resp.texto_resposta.strip():
             for linha in re.split(r'[;\n]', resp.texto_resposta):
-                if linha.strip():
-                    todos_nomes_brutos.append(linha.strip())
+                l_clean = linha.strip()
+                if l_clean and l_clean.lower() not in nomes_originais_vistos:
+                    nomes_originais_vistos.add(l_clean.lower())
+                    nomes_entrevistados_blocos_originais.append(l_clean)
 
-    # Se o usuário preencheu representantes no encerramento ou abertura, inclui
+    # 2. Fonte de exibição: se o usuário já salvou representantes (editados), usa como fonte da verdade
+    nomes_para_exibir_brutos = []
     if auditoria.encerramento_representantes and auditoria.encerramento_representantes.strip():
         for linha in re.split(r'[;\n]', auditoria.encerramento_representantes):
             if linha.strip():
-                todos_nomes_brutos.append(linha.strip())
-    elif auditoria.abertura_representantes and auditoria.abertura_representantes.strip():
-        for linha in re.split(r'[;\n]', auditoria.abertura_representantes):
-            if linha.strip():
-                todos_nomes_brutos.append(linha.strip())
+                nomes_para_exibir_brutos.append(linha.strip())
+    else:
+        # Caso ainda não tenha salvo, inicializa com a lista dos blocos
+        nomes_para_exibir_brutos = list(nomes_entrevistados_blocos_originais)
+        if not nomes_para_exibir_brutos and auditoria.abertura_representantes and auditoria.abertura_representantes.strip():
+            for linha in re.split(r'[;\n]', auditoria.abertura_representantes):
+                if linha.strip():
+                    nomes_para_exibir_brutos.append(linha.strip())
 
     # Deduplicação inteligente preservando a ordem
     pessoas_auditadas_lista = []
     nomes_vistos = set()
-    for item_str in todos_nomes_brutos:
+    for item_str in nomes_para_exibir_brutos:
         item_clean = item_str.strip()
         if not item_clean or len(item_clean) < 2:
             continue
@@ -4616,7 +4626,8 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                 'texto_completo': item_clean
             })
 
-    slides_pessoas_auditadas = list(chunks_list(pessoas_auditadas_lista, 8))
+    # Sempre renderiza em um único slide
+    slides_pessoas_auditadas = [pessoas_auditadas_lista] if pessoas_auditadas_lista else []
 
     destaques_conformes.sort(key=lambda x: natural_sort_key(x['referencia']))
     slides_pontos_fortes = list(chunks_list(destaques_conformes, 4))
@@ -4628,6 +4639,7 @@ def iso_fechamento_presentation_view(request, auditoria_id):
         'agendas': agendas,
         'slides_agendas': slides_agendas,
         'pessoas_auditadas_lista': pessoas_auditadas_lista,
+        'nomes_entrevistados_blocos_originais': nomes_entrevistados_blocos_originais,
         'slides_pessoas_auditadas': slides_pessoas_auditadas,
         'metricas': {
             'total_avaliados': total_avaliados,

@@ -328,66 +328,64 @@
         </div>
         {% endfor %}
 
-        <!-- ── SLIDES DE PESSOAS AUDITADAS / ENTREVISTADOS UNIFICADOS ── -->
-        {% if slides_pessoas_auditadas %}
-            {% for lote_pa in slides_pessoas_auditadas %}
-            <div class="slide">
-                <div class="slide-header">
-                    <h2 class="slide-title text-dark">
-                        <i class="bi bi-people-fill text-primary me-2"></i>Pessoas Auditadas & Participantes
-                        {% if slides_pessoas_auditadas|length > 1 %}
-                            <span class="text-secondary fw-normal fs-5 ms-2">({{ forloop.counter }}/{{ slides_pessoas_auditadas|length }})</span>
-                        {% endif %}
-                    </h2>
-                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-3.5 py-1.5 rounded-pill font-monospace fw-bold" style="font-size: 0.88rem;">
+        <!-- ── SLIDE ÚNICO: PESSOAS AUDITADAS & PARTICIPANTES ── -->
+        {% if pessoas_auditadas_lista %}
+        <div class="slide">
+            <div class="slide-header">
+                <h2 class="slide-title text-dark">
+                    <i class="bi bi-people-fill text-primary me-2"></i>Pessoas Auditadas & Participantes
+                </h2>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-xs btn-outline-primary rounded-pill px-3 py-1 fw-bold no-print shadow-2xs" data-bs-toggle="modal" data-bs-target="#modalEditarFechamento" title="Editar ou remover nomes repetidos">
+                        <i class="bi bi-pencil-square me-1"></i> Editar Nomes
+                    </button>
+                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-3 py-1.5 rounded-pill font-monospace fw-bold" style="font-size: 0.85rem;">
                         Participantes da Auditoria
                     </span>
                 </div>
-                <div class="slide-content">
-                    <div class="h-100 d-flex flex-column justify-content-start gap-3">
-                        <div class="p-3 bg-light rounded-4 border">
-                            <div class="d-flex align-items-center justify-content-between">
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="badge bg-primary text-white px-2.5 py-1 rounded-pill">
-                                        <i class="bi bi-person-lines-fill me-1"></i>Entrevistados & Representantes
-                                    </span>
-                                    <span class="text-secondary small fw-semibold">Profissionais e gestores que participaram do ciclo avaliado:</span>
-                                </div>
-                                <span class="badge bg-white text-dark border px-2.5 py-1 rounded-pill small fw-bold">
-                                    Total: {{ pessoas_auditadas_lista|length }} participante(s)
-                                </span>
-                            </div>
+            </div>
+            <div class="slide-content">
+                <div class="h-100 d-flex flex-column justify-content-start gap-3">
+                    <div class="p-2.5 px-3.5 bg-light rounded-4 border d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-primary text-white px-2.5 py-1 rounded-pill">
+                                <i class="bi bi-person-lines-fill me-1"></i>Entrevistados & Representantes
+                            </span>
+                            <span class="text-secondary small fw-semibold">Profissionais e gestores que participaram do ciclo avaliado:</span>
                         </div>
+                        <span class="badge bg-white text-dark border px-2.5 py-1 rounded-pill small fw-bold">
+                            Total: {{ pessoas_auditadas_lista|length }} participante(s)
+                        </span>
+                    </div>
 
-                        <div class="row row-cols-2 g-3 flex-grow-1 align-content-start">
-                            {% for p in lote_pa %}
-                            <div class="col">
-                                <div class="p-3 bg-white rounded-4 border h-100 shadow-2xs d-flex gap-3 align-items-center">
-                                    <div class="p-2.5 rounded-circle bg-primary bg-opacity-10 text-primary flex-shrink-0 d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">
-                                        <i class="bi bi-person-badge-fill fs-5"></i>
-                                    </div>
-                                    <div class="flex-grow-1 min-w-0">
-                                        <h6 class="fw-bold text-dark mb-0 text-truncate" style="font-size: 0.95rem;">
-                                            {{ p.nome }}
-                                        </h6>
-                                        {% if p.funcao %}
-                                        <span class="text-secondary small d-block text-truncate mt-0.5" style="font-size: 0.82rem;">
-                                            <i class="bi bi-briefcase me-1 text-primary"></i>{{ p.funcao }}
-                                        </span>
-                                        {% endif %}
-                                    </div>
+                    <div class="row {% if pessoas_auditadas_lista|length > 15 %}row-cols-4 g-2{% elif pessoas_auditadas_lista|length > 8 %}row-cols-3 g-2.5{% else %}row-cols-2 g-3{% endif %} flex-grow-1 align-content-start overflow-hidden">
+                        {% for p in pessoas_auditadas_lista %}
+                        <div class="col">
+                            <div class="p-2.5 bg-white rounded-3 border h-100 shadow-2xs d-flex gap-2.5 align-items-center">
+                                <div class="p-1.5 rounded-circle bg-primary bg-opacity-10 text-primary flex-shrink-0 d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+                                    <i class="bi bi-person-fill fs-6"></i>
+                                </div>
+                                <div class="flex-grow-1 min-w-0">
+                                    <span class="fw-bold text-dark d-block text-truncate" style="font-size: 0.88rem;" title="{{ p.nome }}">
+                                        {{ p.nome }}
+                                    </span>
+                                    {% if p.funcao %}
+                                    <span class="text-muted small d-block text-truncate" style="font-size: 0.76rem;" title="{{ p.funcao }}">
+                                        <i class="bi bi-briefcase me-1 text-primary"></i>{{ p.funcao }}
+                                    </span>
+                                    {% endif %}
                                 </div>
                             </div>
-                            {% endfor %}
                         </div>
+                        {% endfor %}
                     </div>
                 </div>
-                <div class="slide-footer">
-                    <span>{{ auditoria.norma.codigo }} — Pessoas Auditadas / Entrevistados</span>
-                    <span>Calibra WEB</span>
-                </div>
             </div>
-            {% endfor %}
+            <div class="slide-footer">
+                <span>{{ auditoria.norma.codigo }} — Pessoas Auditadas / Entrevistados</span>
+                <span>Calibra WEB</span>
+            </div>
+        </div>
         {% endif %}
 
         <!-- ── SLIDE(S): CONSTATAÇÕES DE AUDITORIA (DESCOBERTAS POSITIVAS) ── -->
@@ -720,23 +718,37 @@
                             </div>
                         </div>
 
-                        <!-- Campo Expandido de Representantes Presentes no Encerramento -->
+                        <!-- Campo Expandido de Representantes / Pessoas Auditadas -->
                         <div class="mb-3">
                             <div class="d-flex justify-content-between align-items-center mb-1.5 flex-wrap gap-2">
                                 <div>
                                     <label class="form-label fw-bold text-dark mb-0 d-flex align-items-center gap-1.5">
                                         <i class="bi bi-people-fill text-primary fs-5"></i>
-                                        <span class="fs-6">Representantes Presentes no Encerramento</span>
+                                        <span class="fs-6">Pessoas Auditadas / Participantes</span>
                                     </label>
                                     <small class="text-muted d-block" style="font-size: 0.78rem;">
-                                        Informe os nomes e funções dos representantes presentes na reunião de encerramento da auditoria.
+                                        Edite, adicione ou remova participantes (um por linha ou separados por ponto e vírgula).
                                     </small>
                                 </div>
-                                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1.5 fw-bold shadow-2xs" id="btnCopiarRepresentantes" onclick="copiarAuditadosParaRepresentantes()" title="Coleta automaticamente os nomes registrados na primeira pergunta de cada bloco">
-                                    <i class="bi bi-arrow-down-left-circle me-1"></i> Copiar Nomes dos Entrevistados dos Blocos
-                                </button>
+                                <div class="d-flex align-items-center gap-1.5 flex-wrap">
+                                    <button type="button" class="btn btn-xs btn-outline-warning text-dark rounded-pill px-2.5 py-1 fw-bold shadow-2xs" onclick="removerDuplicadosRepresentantes()" title="Remove nomes repetidos instantaneamente mantendo a ordem">
+                                        <i class="bi bi-magic me-1 text-warning"></i> 🧹 Remover Repetidos
+                                    </button>
+                                    <button type="button" class="btn btn-xs btn-outline-primary rounded-pill px-2.5 py-1 fw-bold shadow-2xs" id="btnCopiarRepresentantes" onclick="copiarAuditadosParaRepresentantes()" title="Recarrega a lista original registrada nos blocos">
+                                        <i class="bi bi-arrow-repeat me-1"></i> 🔄 Puxar dos Blocos
+                                    </button>
+                                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-1 fw-semibold shadow-2xs" onclick="document.getElementById('inputEncerramentoRep').value = ''; atualizarContadorNomesRep(); document.getElementById('inputEncerramentoRep').focus();" title="Limpar campo">
+                                        <i class="bi bi-trash me-1"></i> Limpar
+                                    </button>
+                                </div>
                             </div>
-                            <textarea class="form-control rounded-3 p-3 text-dark shadow-2xs" id="inputEncerramentoRep" rows="7" placeholder="Ex: Maria Souza (Coord. Qualidade), Carlos Santos (Gerente de Produção), Ana Paula (Supervisora de Estoque)..." style="font-size: 0.95rem; line-height: 1.6; resize: vertical;">{{ auditoria.encerramento_representantes|default:'' }}</textarea>
+                            <textarea class="form-control rounded-3 p-3 text-dark shadow-2xs font-monospace" id="inputEncerramentoRep" rows="7" oninput="atualizarContadorNomesRep()" placeholder="Ex: Lindiane Garcia Oliveira (Gerente de Atendimento)&#10;Anderson Menezes de Santana (Líder de Atendimento)&#10;Silvana da Silva (Aquisição/Compras)..." style="font-size: 0.90rem; line-height: 1.6; resize: vertical;">{{ auditoria.encerramento_representantes|default:'' }}</textarea>
+                            <div class="d-flex justify-content-between align-items-center mt-1">
+                                <small class="text-muted" style="font-size: 0.75rem;">
+                                    <i class="bi bi-info-circle me-1"></i>Os nomes salvos aqui serão exibidos no slide único de Pessoas Auditadas e nos relatórios exportados.
+                                </small>
+                                <span class="badge bg-light text-secondary border font-monospace" id="contadorNomesRep">0 pessoa(s)</span>
+                            </div>
                         </div>
 
                         <!-- Conclusão / Parecer Final Complementar -->
@@ -889,47 +901,62 @@
                     placeholder: 'Escreva a síntese da auditoria, liste os entrevistados, cole imagens/organogramas...'
                 });
             }
+            atualizarContadorNomesRep();
         });
+
+        function atualizarContadorNomesRep() {
+            const input = document.getElementById('inputEncerramentoRep');
+            const badge = document.getElementById('contadorNomesRep');
+            if (!input || !badge) return;
+            const linhas = input.value.split(/;|\n/).map(l => l.trim()).filter(Boolean);
+            badge.textContent = `${linhas.length} pessoa(s)`;
+        }
+
+        function removerDuplicadosRepresentantes() {
+            const input = document.getElementById('inputEncerramentoRep');
+            if (!input) return;
+            const linhas = input.value.split(/;|\n/).map(l => l.trim()).filter(Boolean);
+            const unicos = [];
+            const chaves = new Set();
+            
+            linhas.forEach(l => {
+                const key = l.toLowerCase();
+                if (!chaves.has(key)) {
+                    chaves.add(key);
+                    unicos.push(l);
+                }
+            });
+            
+            input.value = unicos.join(';\n');
+            atualizarContadorNomesRep();
+            
+            const countRemovidos = linhas.length - unicos.length;
+            if (countRemovidos > 0) {
+                alert(`${countRemovidos} nome(s) repetido(s) removido(s) com sucesso!`);
+            } else {
+                alert('Nenhum nome repetido foi encontrado na lista.');
+            }
+        }
 
         function copiarAuditadosParaRepresentantes() {
             const auditadosNomes = [
-                {% for p in pessoas_auditadas_lista %}
-                "{{ p.texto_completo|escapejs }}",
+                {% for p in nomes_entrevistados_blocos_originais %}
+                "{{ p|escapejs }}",
                 {% endfor %}
             ];
-            const nomesValidos = [];
-            auditadosNomes.forEach(texto => {
-                if (!texto) return;
-                const partes = texto.split(/;|\n/).map(p => p.trim()).filter(Boolean);
-                partes.forEach(p => {
-                    if (!nomesValidos.includes(p)) {
-                        nomesValidos.push(p);
-                    }
-                });
-            });
-
             const inputRep = document.getElementById('inputEncerramentoRep');
             const btn = document.getElementById('btnCopiarRepresentantes');
 
-            if (nomesValidos.length > 0) {
-                const textoFinal = nomesValidos.join(';\n');
-                if (inputRep.value.trim()) {
-                    // Evita duplicar o que já estiver digitado
-                    const existentes = inputRep.value.split(/;|\n/).map(p => p.trim()).filter(Boolean);
-                    const novos = nomesValidos.filter(n => !existentes.includes(n));
-                    if (novos.length > 0) {
-                        inputRep.value = inputRep.value.trim() + ';\n' + novos.join(';\n');
-                    }
-                } else {
-                    inputRep.value = textoFinal;
-                }
+            if (auditadosNomes.length > 0) {
+                inputRep.value = auditadosNomes.join(';\n');
+                atualizarContadorNomesRep();
                 if (btn) {
                     const originalHtml = btn.innerHTML;
-                    btn.innerHTML = '<i class="bi bi-check2-circle me-1 text-white"></i> Nomes Copiados!';
-                    btn.className = 'btn btn-sm btn-success text-white rounded-pill px-3 py-1.5 fw-bold shadow-2xs';
+                    btn.innerHTML = '<i class="bi bi-check2-circle me-1 text-white"></i> Nomes Puxados!';
+                    btn.className = 'btn btn-xs btn-success text-white rounded-pill px-2.5 py-1 fw-bold shadow-2xs';
                     setTimeout(() => {
                         btn.innerHTML = originalHtml;
-                        btn.className = 'btn btn-sm btn-outline-primary rounded-pill px-3 py-1.5 fw-bold shadow-2xs';
+                        btn.className = 'btn btn-xs btn-outline-primary rounded-pill px-2.5 py-1 fw-bold shadow-2xs';
                     }, 2000);
                 }
             } else {
