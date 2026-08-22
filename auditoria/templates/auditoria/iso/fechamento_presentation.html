@@ -243,21 +243,13 @@
             </div>
 
             <div class="row g-4 my-auto">
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <div class="p-3.5 bg-white bg-opacity-10 rounded-4 border border-white border-opacity-10 backdrop-blur">
                         <small class="text-white-50 text-uppercase fw-bold d-block mb-1" style="font-size: 0.72rem;">Empresa / Laboratório Auditado</small>
                         <h5 class="fw-bold text-white mb-0">{{ auditoria.empresa_auditada|default:"Não especificado" }}</h5>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="p-3.5 bg-white bg-opacity-10 rounded-4 border border-white border-opacity-10 backdrop-blur">
-                        <small class="text-white-50 text-uppercase fw-bold d-block mb-1" style="font-size: 0.72rem;">Escopo Auditado</small>
-                        <h5 class="fw-bold text-white mb-0 text-truncate" title="{{ auditoria.escopo|default:'Fabricação de Lentes Oftálmicas' }}">
-                            {{ auditoria.escopo|default:"Fabricação de Lentes Oftálmicas" }}
-                        </h5>
-                    </div>
-                </div>
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <div class="p-3.5 bg-white bg-opacity-10 rounded-4 border border-white border-opacity-10 backdrop-blur">
                         <small class="text-white-50 text-uppercase fw-bold d-block mb-1" style="font-size: 0.72rem;">Líder da Auditoria</small>
                         <h5 class="fw-bold text-white mb-0">{% if auditoria.auditores.first %}{{ auditoria.auditores.first.get_full_name|default:auditoria.auditores.first.username }}{% else %}{{ auditoria.abertura_auditores|default:auditoria.encerramento_auditores|default:"Vinicius Mota" }}{% endif %}</h5>
@@ -707,15 +699,9 @@
                 </div>
                 <div class="modal-body p-4">
                     <form id="formFechamento">
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold small text-muted">Empresa / Laboratório Auditado</label>
-                                <input type="text" class="form-control rounded-3 py-2" id="inputEmpresaAuditada" value="{{ auditoria.empresa_auditada|default:'' }}" placeholder="Ex: Laboratório Óptico Central">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold small text-muted">Escopo da Auditoria</label>
-                                <input type="text" class="form-control rounded-3 py-2" id="inputEscopoAuditado" value="{{ auditoria.escopo|default:'Fabricação de Lentes Oftálmicas' }}" placeholder="Ex: Fabricação de Dispositivos Médicos">
-                            </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-muted">Empresa / Laboratório Auditado</label>
+                            <input type="text" class="form-control rounded-3 py-2" id="inputEmpresaAuditada" value="{{ auditoria.empresa_auditada|default:'' }}" placeholder="Ex: Laboratório Óptico Central">
                         </div>
 
                         <!-- Campo Expandido de Representantes / Pessoas Auditadas -->
@@ -969,11 +955,16 @@
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Salvando...';
 
+            const inputEmpresa = document.getElementById('inputEmpresaAuditada');
+            const inputEscopo = document.getElementById('inputEscopoAuditado');
+            const inputRep = document.getElementById('inputEncerramentoRep');
+            const inputConc = document.getElementById('inputConclusaoTexto');
+
             const payload = {
-                empresa_auditada: document.getElementById('inputEmpresaAuditada').value.trim(),
-                escopo: document.getElementById('inputEscopoAuditado').value.trim(),
-                encerramento_representantes: document.getElementById('inputEncerramentoRep').value.trim(),
-                conclusao_texto: document.getElementById('inputConclusaoTexto').value.trim()
+                empresa_auditada: inputEmpresa ? inputEmpresa.value.trim() : '',
+                escopo: inputEscopo ? inputEscopo.value.trim() : '',
+                encerramento_representantes: inputRep ? inputRep.value.trim() : '',
+                conclusao_texto: inputConc ? inputConc.value.trim() : ''
             };
 
             try {
