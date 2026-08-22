@@ -320,19 +320,19 @@
         </div>
         {% endfor %}
 
-        <!-- ── SLIDE ÚNICO: PESSOAS AUDITADAS & PARTICIPANTES ── -->
-        {% if pessoas_auditadas_lista %}
+        <!-- ── SLIDE ÚNICO: REPRESENTANTES (EXIBIDO APENAS SE O CAMPO ESTIVER PREENCHIDO) ── -->
+        {% if auditoria.encerramento_representantes and pessoas_auditadas_lista %}
         <div class="slide">
             <div class="slide-header">
                 <h2 class="slide-title text-dark">
-                    <i class="bi bi-people-fill text-primary me-2"></i>Pessoas Auditadas & Participantes
+                    <i class="bi bi-people-fill text-primary me-2"></i>Representantes
                 </h2>
                 <div class="d-flex align-items-center gap-2">
-                    <button type="button" class="btn btn-xs btn-outline-primary rounded-pill px-3 py-1 fw-bold no-print shadow-2xs" data-bs-toggle="modal" data-bs-target="#modalEditarFechamento" title="Editar ou remover nomes repetidos">
-                        <i class="bi bi-pencil-square me-1"></i> Editar Nomes
+                    <button type="button" class="btn btn-xs btn-outline-primary rounded-pill px-3 py-1 fw-bold no-print shadow-2xs" data-bs-toggle="modal" data-bs-target="#modalEditarFechamento" title="Editar ou remover representantes">
+                        <i class="bi bi-pencil-square me-1"></i> Editar Representantes
                     </button>
                     <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-3 py-1.5 rounded-pill font-monospace fw-bold" style="font-size: 0.85rem;">
-                        Participantes da Auditoria
+                        Representantes
                     </span>
                 </div>
             </div>
@@ -341,12 +341,12 @@
                     <div class="p-2.5 px-3.5 bg-light rounded-4 border d-flex align-items-center justify-content-between">
                         <div class="d-flex align-items-center gap-2">
                             <span class="badge bg-primary text-white px-2.5 py-1 rounded-pill">
-                                <i class="bi bi-person-lines-fill me-1"></i>Entrevistados & Representantes
+                                <i class="bi bi-person-lines-fill me-1"></i>Representantes
                             </span>
-                            <span class="text-secondary small fw-semibold">Profissionais e gestores que participaram do ciclo avaliado:</span>
+                            <span class="text-secondary small fw-semibold">Representantes presentes no encerramento da auditoria:</span>
                         </div>
                         <span class="badge bg-white text-dark border px-2.5 py-1 rounded-pill small fw-bold">
-                            Total: {{ pessoas_auditadas_lista|length }} participante(s)
+                            Total: {{ pessoas_auditadas_lista|length }} representante(s)
                         </span>
                     </div>
 
@@ -374,7 +374,7 @@
                 </div>
             </div>
             <div class="slide-footer">
-                <span>{{ auditoria.norma.codigo }} — Pessoas Auditadas / Entrevistados</span>
+                <span>{{ auditoria.norma.codigo }} — Representantes</span>
                 <span>Calibra WEB</span>
             </div>
         </div>
@@ -704,16 +704,16 @@
                             <input type="text" class="form-control rounded-3 py-2" id="inputEmpresaAuditada" value="{{ auditoria.empresa_auditada|default:'' }}" placeholder="Ex: Laboratório Óptico Central">
                         </div>
 
-                        <!-- Campo Expandido de Representantes / Pessoas Auditadas -->
+                        <!-- Campo Representantes -->
                         <div class="mb-3">
                             <div class="d-flex justify-content-between align-items-center mb-1.5 flex-wrap gap-2">
                                 <div>
                                     <label class="form-label fw-bold text-dark mb-0 d-flex align-items-center gap-1.5">
                                         <i class="bi bi-people-fill text-primary fs-5"></i>
-                                        <span class="fs-6">Pessoas Auditadas / Participantes</span>
+                                        <span class="fs-6">Representantes</span>
                                     </label>
                                     <small class="text-muted d-block" style="font-size: 0.78rem;">
-                                        Edite, adicione ou remova participantes (um por linha ou separados por ponto e vírgula).
+                                        Informe os representantes presentes (um por linha ou separados por ponto e vírgula).
                                     </small>
                                 </div>
                                 <div class="d-flex align-items-center gap-1.5 flex-wrap">
@@ -731,7 +731,7 @@
                             <textarea class="form-control rounded-3 p-3 text-dark shadow-2xs font-monospace" id="inputEncerramentoRep" rows="7" oninput="atualizarContadorNomesRep()" placeholder="Ex: Lindiane Garcia Oliveira (Gerente de Atendimento)&#10;Anderson Menezes de Santana (Líder de Atendimento)&#10;Silvana da Silva (Aquisição/Compras)..." style="font-size: 0.90rem; line-height: 1.6; resize: vertical;">{{ auditoria.encerramento_representantes|default:'' }}</textarea>
                             <div class="d-flex justify-content-between align-items-center mt-1">
                                 <small class="text-muted" style="font-size: 0.75rem;">
-                                    <i class="bi bi-info-circle me-1"></i>Os nomes salvos aqui serão exibidos no slide único de Pessoas Auditadas e nos relatórios exportados.
+                                    <i class="bi bi-info-circle me-1"></i>O slide de Representantes só será exibido na apresentação se este campo for preenchido.
                                 </small>
                                 <span class="badge bg-light text-secondary border font-monospace" id="contadorNomesRep">0 pessoa(s)</span>
                             </div>

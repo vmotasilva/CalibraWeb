@@ -4583,50 +4583,38 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                     nomes_originais_vistos.add(l_clean.lower())
                     nomes_entrevistados_blocos_originais.append(l_clean)
 
-    # 2. Fonte de exibição: se o usuário já salvou representantes (editados), usa como fonte da verdade
-    nomes_para_exibir_brutos = []
-    if auditoria.encerramento_representantes and auditoria.encerramento_representantes.strip():
-        for linha in re.split(r'[;\n]', auditoria.encerramento_representantes):
-            if linha.strip():
-                nomes_para_exibir_brutos.append(linha.strip())
-    else:
-        # Caso ainda não tenha salvo, inicializa com a lista dos blocos
-        nomes_para_exibir_brutos = list(nomes_entrevistados_blocos_originais)
-        if not nomes_para_exibir_brutos and auditoria.abertura_representantes and auditoria.abertura_representantes.strip():
-            for linha in re.split(r'[;\n]', auditoria.abertura_representantes):
-                if linha.strip():
-                    nomes_para_exibir_brutos.append(linha.strip())
-
-    # Deduplicação inteligente preservando a ordem
+    # 2. Fonte de exibição: preenchido EXCLUSIVAMENTE pelo campo Representantes (encerramento_representantes)
     pessoas_auditadas_lista = []
-    nomes_vistos = set()
-    for item_str in nomes_para_exibir_brutos:
-        item_clean = item_str.strip()
-        if not item_clean or len(item_clean) < 2:
-            continue
-        key = item_clean.lower()
-        if key not in nomes_vistos:
-            nomes_vistos.add(key)
-            
-            # Tenta separar Nome e Função se contiver ' - ' ou ' ('
-            nome = item_clean
-            funcao = ""
-            if ' - ' in item_clean:
-                partes = item_clean.split(' - ', 1)
-                nome = partes[0].strip()
-                funcao = partes[1].strip()
-            elif '(' in item_clean and item_clean.endswith(')'):
-                idx = item_clean.rfind('(')
-                nome = item_clean[:idx].strip()
-                funcao = item_clean[idx+1:-1].strip()
+    if auditoria.encerramento_representantes and auditoria.encerramento_representantes.strip():
+        nomes_para_exibir_brutos = [linha.strip() for linha in re.split(r'[;\n]', auditoria.encerramento_representantes) if linha.strip()]
+        nomes_vistos = set()
+        for item_str in nomes_para_exibir_brutos:
+            item_clean = item_str.strip()
+            if not item_clean or len(item_clean) < 2:
+                continue
+            key = item_clean.lower()
+            if key not in nomes_vistos:
+                nomes_vistos.add(key)
+                
+                # Tenta separar Nome e Função se contiver ' - ' ou ' ('
+                nome = item_clean
+                funcao = ""
+                if ' - ' in item_clean:
+                    partes = item_clean.split(' - ', 1)
+                    nome = partes[0].strip()
+                    funcao = partes[1].strip()
+                elif '(' in item_clean and item_clean.endswith(')'):
+                    idx = item_clean.rfind('(')
+                    nome = item_clean[:idx].strip()
+                    funcao = item_clean[idx+1:-1].strip()
 
-            pessoas_auditadas_lista.append({
-                'nome': nome,
-                'funcao': funcao,
-                'texto_completo': item_clean
-            })
+                pessoas_auditadas_lista.append({
+                    'nome': nome,
+                    'funcao': funcao,
+                    'texto_completo': item_clean
+                })
 
-    # Sempre renderiza em um único slide
+    # O slide só é renderizado se o campo Representantes estiver preenchido
     slides_pessoas_auditadas = [pessoas_auditadas_lista] if pessoas_auditadas_lista else []
 
     destaques_conformes.sort(key=lambda x: natural_sort_key(x['referencia']))
