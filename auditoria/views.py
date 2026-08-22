@@ -6406,13 +6406,18 @@ def iso_auditoria_cronograma(request, auditoria_id):
         result = []
         prev_fim = None
         last_data = None
+        
+        has_abertura_in_list = any('abertura' in (a.titulo or '').lower() for a in agendas_list)
+        has_encerramento_in_list = any('encerramento' in (a.titulo or '').lower() for a in agendas_list)
+        has_revisao_in_list = any('revisão' in (a.titulo or '').lower() or 'revisao' in (a.titulo or '').lower() for a in agendas_list)
+
         for i, a in enumerate(agendas_list):
             inicio = a.hora_inicio_real if is_ajustado and a.hora_inicio_real else a.hora_inicio
             fim = a.hora_fim_real if is_ajustado and a.hora_fim_real else a.hora_fim
             data = a.data_real if is_ajustado and a.data_real else a.data
             last_data = data
             
-            if is_first_day and i == 0 and inicio:
+            if is_first_day and i == 0 and inicio and not has_abertura_in_list:
                 inicio_dt = datetime.datetime.combine(datetime.date.today(), inicio)
                 abertura_inicio = (inicio_dt - datetime.timedelta(minutes=30)).time()
                 rep_str = getattr(auditoria, 'abertura_representantes', '') or 'Todos'
@@ -6436,6 +6441,21 @@ def iso_auditoria_cronograma(request, auditoria_id):
                     'titulo': 'Intervalo',
                     'data': data
                 })
+            
+            # Anota se a agenda é um intervalo ou cerimônia especial
+            tit_lower = (a.titulo or '').lower()
+            if 'abertura' in tit_lower:
+                a.special_type = 'abertura'
+                a.is_intervalo = True
+            elif 'encerramento' in tit_lower:
+                a.special_type = 'encerramento'
+                a.is_intervalo = True
+            elif 'revisão' in tit_lower or 'revisao' in tit_lower:
+                a.special_type = 'revisao'
+                a.is_intervalo = True
+            elif 'intervalo' in tit_lower or 'almoço' in tit_lower or 'almoco' in tit_lower or 'pausa' in tit_lower or 'coffee' in tit_lower:
+                a.is_intervalo = True
+
             a.representantes_list = format_reps(a.representantes)
             result.append(a)
             if fim:
@@ -6444,33 +6464,36 @@ def iso_auditoria_cronograma(request, auditoria_id):
         if is_last_day and prev_fim and last_data:
             prev_fim_dt = datetime.datetime.combine(datetime.date.today(), prev_fim)
             
-            revisao_fim_dt = prev_fim_dt + datetime.timedelta(hours=1, minutes=30)
-            rep_str_rev = getattr(auditoria, 'revisao_representantes', '') or 'Equipe'
-            result.append({
-                'is_gap': True,
-                'special_type': 'revisao',
-                'auditores_nomes': getattr(auditoria, 'revisao_auditores', '') or 'Equipe',
-                'representantes': rep_str_rev,
-                'representantes_list': format_reps(rep_str_rev),
-                'hora_inicio': prev_fim_dt.time(),
-                'hora_fim': revisao_fim_dt.time(),
-                'titulo': 'Revisão da Auditoria com Auditores',
-                'data': last_data
-            })
+            if not has_revisao_in_list:
+                revisao_fim_dt = prev_fim_dt + datetime.timedelta(hours=1, minutes=30)
+                rep_str_rev = getattr(auditoria, 'revisao_representantes', '') or 'Equipe'
+                result.append({
+                    'is_gap': True,
+                    'special_type': 'revisao',
+                    'auditores_nomes': getattr(auditoria, 'revisao_auditores', '') or 'Equipe',
+                    'representantes': rep_str_rev,
+                    'representantes_list': format_reps(rep_str_rev),
+                    'hora_inicio': prev_fim_dt.time(),
+                    'hora_fim': revisao_fim_dt.time(),
+                    'titulo': 'Revisão da Auditoria com Auditores',
+                    'data': last_data
+                })
+                prev_fim_dt = revisao_fim_dt
             
-            encerramento_fim_dt = revisao_fim_dt + datetime.timedelta(minutes=30)
-            rep_str_enc = getattr(auditoria, 'encerramento_representantes', '') or 'Todos'
-            result.append({
-                'is_gap': True,
-                'special_type': 'encerramento',
-                'auditores_nomes': getattr(auditoria, 'encerramento_auditores', '') or 'Equipe',
-                'representantes': rep_str_enc,
-                'representantes_list': format_reps(rep_str_enc),
-                'hora_inicio': revisao_fim_dt.time(),
-                'hora_fim': encerramento_fim_dt.time(),
-                'titulo': 'Encerramento da auditoria',
-                'data': last_data
-            })
+            if not has_encerramento_in_list:
+                encerramento_fim_dt = prev_fim_dt + datetime.timedelta(minutes=30)
+                rep_str_enc = getattr(auditoria, 'encerramento_representantes', '') or 'Todos'
+                result.append({
+                    'is_gap': True,
+                    'special_type': 'encerramento',
+                    'auditores_nomes': getattr(auditoria, 'encerramento_auditores', '') or 'Equipe',
+                    'representantes': rep_str_enc,
+                    'representantes_list': format_reps(rep_str_enc),
+                    'hora_inicio': prev_fim_dt.time(),
+                    'hora_fim': encerramento_fim_dt.time(),
+                    'titulo': 'Encerramento da auditoria',
+                    'data': last_data
+                })
             
         elif not is_last_day and prev_fim and last_data:
             result.append({
@@ -6841,6 +6864,197 @@ def api_iso_agenda_create_gap(request, auditoria_id):
     
     messages.success(request, f'Bloco {titulo} criado com sucesso para o intervalo.')
     return redirect('auditoria:iso_auditoria_cronograma', auditoria_id=auditoria_id)
+
+
+@login_required
+@require_POST
+def api_iso_agenda_salvar_intervalo_evento(request, auditoria_id):
+    """
+    Cria ou atualiza um Intervalo ou Evento Especial (Abertura, Revisão, Encerramento, Almoço, etc.)
+    com suporte a:
+    - Definição de duração (ex: 15, 30, 45, 60, 90 min)
+    - Encaixe dinâmico após um bloco selecionado (ou antes do primeiro / após o último)
+    - Deslocamento e reajuste automático dos blocos seguintes no mesmo dia (cascata inteligente)
+    """
+    from .models import AgendaAuditoriaIso, AuditoriaIso
+    from django.http import JsonResponse
+    from datetime import datetime, date, timedelta, time
+    import json
+
+    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+
+    # Processa dados enviados via JSON ou FormData
+    if request.content_type == 'application/json':
+        try:
+            data_body = json.loads(request.body.decode('utf-8'))
+        except Exception:
+            data_body = {}
+    else:
+        data_body = request.POST
+
+    agenda_id = data_body.get('agenda_id')
+    special_type = data_body.get('special_type')
+    titulo = (data_body.get('titulo') or 'Intervalo').strip()
+    data_str = data_body.get('data')
+    hora_inicio_str = data_body.get('hora_inicio')
+    hora_fim_str = data_body.get('hora_fim')
+    duracao_minutos = data_body.get('duracao_minutos')
+    is_ajustado = str(data_body.get('is_ajustado')).lower() in ['true', '1']
+    reajustar_proximos = str(data_body.get('reajustar_proximos')).lower() in ['true', '1', 'on']
+    auditores_nomes = data_body.get('auditores_nomes', '')
+    representantes = data_body.get('representantes', '')
+
+    if not data_str:
+        return JsonResponse({'success': False, 'error': 'Data é obrigatória.'}, status=400)
+
+    try:
+        data_obj = datetime.strptime(data_str, '%Y-%m-%d').date()
+    except ValueError:
+        return JsonResponse({'success': False, 'error': 'Formato de data inválido.'}, status=400)
+
+    # Resolve horários de início e término
+    hora_ini_obj = None
+    hora_fim_obj = None
+    if hora_inicio_str:
+        try:
+            hora_ini_obj = datetime.strptime(hora_inicio_str, '%H:%M').time()
+        except ValueError:
+            pass
+
+    if hora_fim_str:
+        try:
+            hora_fim_obj = datetime.strptime(hora_fim_str, '%H:%M').time()
+        except ValueError:
+            pass
+
+    if hora_ini_obj and not hora_fim_obj and duracao_minutos:
+        try:
+            dur_int = int(duracao_minutos)
+            dt_ini = datetime.combine(data_obj, hora_ini_obj)
+            dt_fim = dt_ini + timedelta(minutes=dur_int)
+            hora_fim_obj = dt_fim.time()
+        except (ValueError, TypeError):
+            pass
+
+    if not hora_ini_obj or not hora_fim_obj:
+        return JsonResponse({'success': False, 'error': 'Horários de início e término são obrigatórios.'}, status=400)
+
+    # Se for tipo especial de cerimônia, atualiza metadados da auditoria se aplicável
+    if special_type == 'abertura' or 'abertura' in titulo.lower():
+        if auditores_nomes:
+            auditoria.abertura_auditores = auditores_nomes
+        if representantes:
+            auditoria.abertura_representantes = representantes
+        auditoria.save(update_fields=['abertura_auditores', 'abertura_representantes'])
+    elif special_type == 'revisao' or 'revisão' in titulo.lower() or 'revisao' in titulo.lower():
+        if auditores_nomes:
+            auditoria.revisao_auditores = auditores_nomes
+        if representantes:
+            auditoria.revisao_representantes = representantes
+        auditoria.save(update_fields=['revisao_auditores', 'revisao_representantes'])
+    elif special_type == 'encerramento' or 'encerramento' in titulo.lower():
+        if auditores_nomes:
+            auditoria.encerramento_auditores = auditores_nomes
+        if representantes:
+            auditoria.encerramento_representantes = representantes
+        auditoria.save(update_fields=['encerramento_auditores', 'encerramento_representantes'])
+
+    # Verifica se já existe uma agenda vinculada (seja por id ou por mesmo título/data)
+    agenda = None
+    if agenda_id and str(agenda_id).isdigit():
+        agenda = AgendaAuditoriaIso.objects.filter(auditoria=auditoria, pk=agenda_id).first()
+
+    if not agenda:
+        # Se não informou ID, procura se já existe agenda para esse evento nesse dia
+        agenda = AgendaAuditoriaIso.objects.filter(auditoria=auditoria, data=data_obj, titulo=titulo).first()
+
+    if agenda:
+        agenda.titulo = titulo
+        if is_ajustado:
+            agenda.data_real = data_obj
+            agenda.hora_inicio_real = hora_ini_obj
+            agenda.hora_fim_real = hora_fim_obj
+        else:
+            agenda.data = data_obj
+            agenda.hora_inicio = hora_ini_obj
+            agenda.hora_fim = hora_fim_obj
+            agenda.data_real = data_obj
+            agenda.hora_inicio_real = hora_ini_obj
+            agenda.hora_fim_real = hora_fim_obj
+
+        if auditores_nomes:
+            agenda.auditores_nomes = auditores_nomes
+        if representantes:
+            agenda.representantes = representantes
+        agenda.save()
+    else:
+        agenda = AgendaAuditoriaIso.objects.create(
+            auditoria=auditoria,
+            titulo=titulo,
+            data=data_obj,
+            data_real=data_obj,
+            hora_inicio=hora_ini_obj,
+            hora_inicio_real=hora_ini_obj,
+            hora_fim=hora_fim_obj,
+            hora_fim_real=hora_fim_obj,
+            auditores_nomes=auditores_nomes,
+            representantes=representantes
+        )
+
+    # Reajuste em cascata dos blocos subsequentes no mesmo dia (Smart Cascade)
+    if reajustar_proximos:
+        if is_ajustado:
+            outras = list(AgendaAuditoriaIso.objects.filter(
+                auditoria=auditoria,
+                data_real=data_obj
+            ).exclude(pk=agenda.pk).order_by('hora_inicio_real', 'hora_inicio', 'id'))
+        else:
+            outras = list(AgendaAuditoriaIso.objects.filter(
+                auditoria=auditoria,
+                data=data_obj
+            ).exclude(pk=agenda.pk).order_by('hora_inicio', 'id'))
+
+        cursor_fim_dt = datetime.combine(data_obj, hora_fim_obj)
+
+        for ag in outras:
+            ag_ini = (ag.hora_inicio_real if is_ajustado and ag.hora_inicio_real else ag.hora_inicio)
+            ag_fim = (ag.hora_fim_real if is_ajustado and ag.hora_fim_real else ag.hora_fim)
+
+            if not ag_ini or not ag_fim:
+                continue
+
+            ag_ini_dt = datetime.combine(data_obj, ag_ini)
+            ag_fim_dt = datetime.combine(data_obj, ag_fim)
+            duracao_bloco = ag_fim_dt - ag_ini_dt
+            if duracao_bloco.total_seconds() <= 0:
+                duracao_bloco = timedelta(minutes=60)
+
+            # Se o bloco começa antes de onde o intervalo terminou e sua hora original é >= início do intervalo
+            if ag_ini_dt < cursor_fim_dt and ag_ini_dt >= datetime.combine(data_obj, hora_ini_obj):
+                novo_ini_dt = cursor_fim_dt
+                novo_fim_dt = novo_ini_dt + duracao_bloco
+
+                if is_ajustado:
+                    ag.hora_inicio_real = novo_ini_dt.time()
+                    ag.hora_fim_real = novo_fim_dt.time()
+                    ag.save(update_fields=['hora_inicio_real', 'hora_fim_real'])
+                else:
+                    ag.hora_inicio = novo_ini_dt.time()
+                    ag.hora_fim = novo_fim_dt.time()
+                    ag.hora_inicio_real = novo_ini_dt.time()
+                    ag.hora_fim_real = novo_fim_dt.time()
+                    ag.save(update_fields=['hora_inicio', 'hora_fim', 'hora_inicio_real', 'hora_fim_real'])
+
+                cursor_fim_dt = novo_fim_dt
+            elif ag_ini_dt >= cursor_fim_dt:
+                cursor_fim_dt = max(cursor_fim_dt, ag_fim_dt)
+
+    return JsonResponse({
+        'success': True,
+        'message': f"'{titulo}' atualizado com sucesso no cronograma.",
+        'agenda_id': agenda.id
+    })
+
 
 
 

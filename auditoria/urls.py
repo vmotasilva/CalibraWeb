@@ -78,6 +78,7 @@ urlpatterns = [
     path("api/auditoria/<int:auditoria_id>/exportar-planilha/", views.iso_auditoria_export_excel, name="api_auditoria_exportar_planilha"),
     path("iso/<int:auditoria_id>/api/quick-edit/", views.api_iso_agenda_quick_edit, name="api_iso_agenda_quick_edit"),
     path("iso/<int:auditoria_id>/api/ajustar-horario/", views.api_iso_agenda_ajustar_horario, name="api_iso_agenda_ajustar_horario"),
+    path("iso/<int:auditoria_id>/api/salvar-intervalo-evento/", views.api_iso_agenda_salvar_intervalo_evento, name="api_iso_agenda_salvar_intervalo_evento"),
     path("iso/<int:auditoria_id>/api/criar-atividade-ajustada/", views.api_iso_agenda_criar_ajustada, name="api_iso_agenda_criar_ajustada"),
     path("iso/<int:auditoria_id>/agenda/<int:pk>/remover-ajustada/", views.api_iso_agenda_excluir_ajustada, name="api_iso_agenda_excluir_ajustada"),
     path("iso/<int:auditoria_id>/api/create-gap/", views.api_iso_agenda_create_gap, name="api_iso_agenda_create_gap"),

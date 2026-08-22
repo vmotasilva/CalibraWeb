@@ -177,7 +177,12 @@
                     {% if key == data %}
                         <div class="bg-primary text-white p-2 rounded-top fw-bold mt-4 print-header d-flex justify-content-between align-items-center">
                             <div><i class="bi bi-calendar-event me-2"></i> Data: {{ data|date:"d/m/Y" }}</div>
-                            <span class="badge bg-light text-primary no-print">{{ val }}% Concluído Hoje</span>
+                            <div class="no-print d-flex align-items-center gap-2">
+                                <button type="button" class="btn btn-sm btn-light text-primary rounded-pill px-3 fw-bold shadow-2xs" onclick="openModalEditarMoverIntervalo({ data: '{{ data|date:'Y-m-d' }}', isAjustado: false })">
+                                    <i class="bi bi-cup-hot-fill me-1"></i> + Intervalo / Cerimônia
+                                </button>
+                                <span class="badge bg-light text-primary">{{ val }}% Concluído Hoje</span>
+                            </div>
                         </div>
                     {% endif %}
                 {% endfor %}
@@ -219,18 +224,23 @@
                                             </td>
                                             <td class="align-middle text-center">-</td>
                                             <td class="no-print text-end align-middle td-actions">
-                                                {% if agenda.special_type == 'revisao' %}
-                                                <a href="{% url 'auditoria:iso_revisao_dashboard' auditoria.id %}" class="btn btn-sm btn-outline-primary" title="Ir para Revisão da Auditoria">
-                                                    <i class="bi bi-play-circle"></i>
-                                                </a>
-                                                {% elif agenda.special_type == 'encerramento' %}
-                                                <form method="POST" action="{% url 'auditoria:iso_auditoria_toggle_conclusao' auditoria.id %}" style="display:inline;">
-                                                    {% csrf_token %}
-                                                    <button type="submit" class="btn btn-sm {% if auditoria.status == 'CONCLUIDA' %}btn-success text-white shadow-2xs{% else %}btn-outline-success{% endif %} rounded-pill px-2.5 fw-bold" title="{% if auditoria.status == 'CONCLUIDA' %}Auditoria Concluída! Clique para reabrir se necessário{% else %}Marcar Encerramento como Concluído e finalizar Auditoria{% endif %}">
-                                                        <i class="bi bi-check2-circle me-1"></i>{% if auditoria.status == 'CONCLUIDA' %}Concluída{% else %}Concluir{% endif %}
+                                                <div class="d-flex gap-1 justify-content-end align-items-center">
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-2" onclick="openModalEditarMoverIntervalo({ id: '{{ agenda.id|default:'' }}', titulo: '{{ agenda.titulo|escapejs }}', data: '{{ agenda.data|date:'Y-m-d' }}', horaInicio: '{{ agenda.hora_inicio|time:'H:i' }}', horaFim: '{{ agenda.hora_fim|time:'H:i' }}', specialType: '{{ agenda.special_type }}', auditoresNomes: '{{ agenda.auditores_nomes|default:''|escapejs }}', representantes: '{{ agenda.representantes|default:''|escapejs }}', isAjustado: false })" title="Editar horário, duração e posição deste evento">
+                                                        <i class="bi bi-pencil-square"></i>
                                                     </button>
-                                                </form>
-                                                {% endif %}
+                                                    {% if agenda.special_type == 'revisao' %}
+                                                    <a href="{% url 'auditoria:iso_revisao_dashboard' auditoria.id %}" class="btn btn-sm btn-outline-primary" title="Ir para Revisão da Auditoria">
+                                                        <i class="bi bi-play-circle"></i>
+                                                    </a>
+                                                    {% elif agenda.special_type == 'encerramento' %}
+                                                    <form method="POST" action="{% url 'auditoria:iso_auditoria_toggle_conclusao' auditoria.id %}" style="display:inline;">
+                                                        {% csrf_token %}
+                                                        <button type="submit" class="btn btn-sm {% if auditoria.status == 'CONCLUIDA' %}btn-success text-white shadow-2xs{% else %}btn-outline-success{% endif %} rounded-pill px-2.5 fw-bold" title="{% if auditoria.status == 'CONCLUIDA' %}Auditoria Concluída! Clique para reabrir se necessário{% else %}Marcar Encerramento como Concluído e finalizar Auditoria{% endif %}">
+                                                            <i class="bi bi-check2-circle me-1"></i>{% if auditoria.status == 'CONCLUIDA' %}Concluída{% else %}Concluir{% endif %}
+                                                        </button>
+                                                    </form>
+                                                    {% endif %}
+                                                </div>
                                             </td>
                                         </tr>
                                     {% else %}
@@ -251,12 +261,37 @@
                                                 {{ agenda.titulo }}
                                             </td>
                                             <td class="no-print text-end align-middle">
-                                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="renameGap('{{ agenda.data|date:'Y-m-d' }}', '{{ agenda.hora_inicio|time:'H:i' }}', '{{ agenda.hora_fim|time:'H:i' }}')" title="Nomear/Transformar em Bloco">
-                                                    <i class="bi bi-pencil-square"></i>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-2.5" onclick="openModalEditarMoverIntervalo({ id: '{{ agenda.id|default:'' }}', titulo: '{{ agenda.titulo|escapejs }}', data: '{{ agenda.data|date:'Y-m-d' }}', horaInicio: '{{ agenda.hora_inicio|time:'H:i' }}', horaFim: '{{ agenda.hora_fim|time:'H:i' }}', specialType: 'intervalo', isAjustado: false })" title="Editar horário, duração e posição deste intervalo">
+                                                    <i class="bi bi-pencil-square me-1"></i>Editar / Mover
                                                 </button>
                                             </td>
                                         </tr>
                                     {% endif %}
+                                {% elif agenda.is_intervalo %}
+                                    <tr class="table-light text-muted">
+                                        <td class="fw-semibold text-center align-middle td-datetime">
+                                            {{ agenda.hora_inicio|time:"H:i" }} <br><small>às</small><br> {{ agenda.hora_fim|time:"H:i" }}
+                                        </td>
+                                        <td class="align-middle fst-italic">
+                                            <i class="bi bi-cup-hot me-1 text-primary"></i> <strong>{{ agenda.titulo }}</strong>
+                                        </td>
+                                        <td class="align-middle cursor-pointer" onclick="openQuickEditAuditor({{ agenda.id }}, '{{ agenda.auditores_nomes|default:'' }}')">
+                                            <small class="text-muted">{{ agenda.auditores_nomes|default:"Equipe" }}</small>
+                                            <i class="bi bi-pencil ms-1 no-print text-primary" style="font-size: 0.75rem;"></i>
+                                        </td>
+                                        <td class="align-middle cursor-pointer" onclick="openQuickEditRepresentante({{ agenda.id }}, '{{ agenda.representantes|default:'' }}')">
+                                            <small class="text-muted">
+                                                {% for rep in agenda.representantes_list %}{{ rep }}{% if not forloop.last %}<br>{% endif %}{% empty %}Todos{% endfor %}
+                                            </small>
+                                            <i class="bi bi-pencil ms-1 no-print text-primary" style="font-size: 0.75rem;"></i>
+                                        </td>
+                                        <td class="align-middle text-center">-</td>
+                                        <td class="no-print text-end align-middle">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-2.5" onclick="openModalEditarMoverIntervalo({ id: {{ agenda.id }}, titulo: '{{ agenda.titulo|escapejs }}', data: '{{ agenda.data|date:'Y-m-d' }}', horaInicio: '{{ agenda.hora_inicio|time:'H:i' }}', horaFim: '{{ agenda.hora_fim|time:'H:i' }}', specialType: '{{ agenda.special_type|default:'' }}', auditoresNomes: '{{ agenda.auditores_nomes|default:''|escapejs }}', representantes: '{{ agenda.representantes|default:''|escapejs }}', isAjustado: false })" title="Editar horário, duração e posição deste intervalo">
+                                                <i class="bi bi-pencil-square me-1"></i>Editar / Mover
+                                            </button>
+                                        </td>
+                                    </tr>
                                 {% else %}
                                     <tr class="{% if agenda.concluida %}table-success opacity-75{% endif %}">
                                         <td class="fw-semibold text-center align-middle">
@@ -337,6 +372,9 @@
                         <span>Data Ajustada: {{ data|date:"d/m/Y" }}</span>
                     </div>
                     <div class="no-print d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-dark rounded-pill px-3 fw-bold shadow-2xs" onclick="openModalEditarMoverIntervalo({ data: '{{ data|date:'Y-m-d' }}', isAjustado: true })">
+                            <i class="bi bi-cup-hot-fill me-1"></i> + Intervalo / Cerimônia
+                        </button>
                         <button type="button" class="btn btn-sm btn-dark rounded-pill px-3 fw-bold shadow-2xs d-flex align-items-center gap-1" onclick="openCriarAtividadeAjustadaModal('{{ data|date:'Y-m-d' }}')">
                             <i class="bi bi-plus-circle"></i> + Adicionar Atividade / Ajuste
                         </button>
@@ -380,18 +418,23 @@
                                             </td>
                                             <td class="align-middle text-center">-</td>
                                             <td class="no-print text-end align-middle td-actions">
-                                                {% if agenda.special_type == 'revisao' %}
-                                                <a href="{% url 'auditoria:iso_revisao_dashboard' auditoria.id %}" class="btn btn-sm btn-outline-primary" title="Ir para Revisão da Auditoria">
-                                                    <i class="bi bi-play-circle"></i>
-                                                </a>
-                                                {% elif agenda.special_type == 'encerramento' %}
-                                                <form method="POST" action="{% url 'auditoria:iso_auditoria_toggle_conclusao' auditoria.id %}" style="display:inline;">
-                                                    {% csrf_token %}
-                                                    <button type="submit" class="btn btn-sm {% if auditoria.status == 'CONCLUIDA' %}btn-success text-white shadow-2xs{% else %}btn-outline-success{% endif %} rounded-pill px-2.5 fw-bold" title="{% if auditoria.status == 'CONCLUIDA' %}Auditoria Concluída! Clique para reabrir se necessário{% else %}Marcar Encerramento como Concluído e finalizar Auditoria{% endif %}">
-                                                        <i class="bi bi-check2-circle me-1"></i>{% if auditoria.status == 'CONCLUIDA' %}Concluída{% else %}Concluir{% endif %}
+                                                <div class="d-flex gap-1 justify-content-end align-items-center">
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-2" onclick="openModalEditarMoverIntervalo({ id: '{{ agenda.id|default:'' }}', titulo: '{{ agenda.titulo|escapejs }}', data: '{{ agenda.data|date:'Y-m-d' }}', horaInicio: '{{ agenda.hora_inicio|time:'H:i' }}', horaFim: '{{ agenda.hora_fim|time:'H:i' }}', specialType: '{{ agenda.special_type }}', auditoresNomes: '{{ agenda.auditores_nomes|default:''|escapejs }}', representantes: '{{ agenda.representantes|default:''|escapejs }}', isAjustado: true })" title="Editar horário, duração e posição deste evento">
+                                                        <i class="bi bi-pencil-square"></i>
                                                     </button>
-                                                </form>
-                                                {% endif %}
+                                                    {% if agenda.special_type == 'revisao' %}
+                                                    <a href="{% url 'auditoria:iso_revisao_dashboard' auditoria.id %}" class="btn btn-sm btn-outline-primary" title="Ir para Revisão da Auditoria">
+                                                        <i class="bi bi-play-circle"></i>
+                                                    </a>
+                                                    {% elif agenda.special_type == 'encerramento' %}
+                                                    <form method="POST" action="{% url 'auditoria:iso_auditoria_toggle_conclusao' auditoria.id %}" style="display:inline;">
+                                                        {% csrf_token %}
+                                                        <button type="submit" class="btn btn-sm {% if auditoria.status == 'CONCLUIDA' %}btn-success text-white shadow-2xs{% else %}btn-outline-success{% endif %} rounded-pill px-2.5 fw-bold" title="{% if auditoria.status == 'CONCLUIDA' %}Auditoria Concluída! Clique para reabrir se necessário{% else %}Marcar Encerramento como Concluído e finalizar Auditoria{% endif %}">
+                                                            <i class="bi bi-check2-circle me-1"></i>{% if auditoria.status == 'CONCLUIDA' %}Concluída{% else %}Concluir{% endif %}
+                                                        </button>
+                                                    </form>
+                                                    {% endif %}
+                                                </div>
                                             </td>
                                         </tr>
                                     {% else %}
@@ -412,12 +455,39 @@
                                                 {{ agenda.titulo }}
                                             </td>
                                             <td class="no-print text-end align-middle">
-                                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="renameGap('{{ agenda.data|date:'Y-m-d' }}', '{{ agenda.hora_inicio|time:'H:i' }}', '{{ agenda.hora_fim|time:'H:i' }}', true)" title="Nomear/Transformar em Bloco">
-                                                    <i class="bi bi-pencil-square"></i>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-2.5" onclick="openModalEditarMoverIntervalo({ id: '{{ agenda.id|default:'' }}', titulo: '{{ agenda.titulo|escapejs }}', data: '{{ agenda.data|date:'Y-m-d' }}', horaInicio: '{{ agenda.hora_inicio|time:'H:i' }}', horaFim: '{{ agenda.hora_fim|time:'H:i' }}', specialType: 'intervalo', isAjustado: true })" title="Editar horário, duração e posição deste intervalo">
+                                                    <i class="bi bi-pencil-square me-1"></i>Editar / Mover
                                                 </button>
                                             </td>
                                         </tr>
                                     {% endif %}
+                                {% elif agenda.is_intervalo %}
+                                    <tr class="table-light text-muted">
+                                        <td class="fw-semibold text-center align-middle td-datetime">
+                                            {% if agenda.hora_inicio_real %}{{ agenda.hora_inicio_real|time:"H:i" }}{% else %}{{ agenda.hora_inicio|time:"H:i" }}{% endif %}
+                                            <br><small>às</small><br>
+                                            {% if agenda.hora_fim_real %}{{ agenda.hora_fim_real|time:"H:i" }}{% else %}{{ agenda.hora_fim|time:"H:i" }}{% endif %}
+                                        </td>
+                                        <td class="align-middle fst-italic">
+                                            <i class="bi bi-cup-hot me-1 text-primary"></i> <strong>{{ agenda.titulo }}</strong>
+                                        </td>
+                                        <td class="align-middle cursor-pointer" onclick="openQuickEditAuditor({{ agenda.id }}, '{{ agenda.auditores_nomes|default:'' }}')">
+                                            <small class="text-muted">{{ agenda.auditores_nomes|default:"Equipe" }}</small>
+                                            <i class="bi bi-pencil ms-1 no-print text-primary" style="font-size: 0.75rem;"></i>
+                                        </td>
+                                        <td class="align-middle cursor-pointer" onclick="openQuickEditRepresentante({{ agenda.id }}, '{{ agenda.representantes|default:'' }}')">
+                                            <small class="text-muted">
+                                                {% for rep in agenda.representantes_list %}{{ rep }}{% if not forloop.last %}<br>{% endif %}{% empty %}Todos{% endfor %}
+                                            </small>
+                                            <i class="bi bi-pencil ms-1 no-print text-primary" style="font-size: 0.75rem;"></i>
+                                        </td>
+                                        <td class="align-middle text-center">-</td>
+                                        <td class="no-print text-end align-middle">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-2.5" onclick="openModalEditarMoverIntervalo({ id: {{ agenda.id }}, titulo: '{{ agenda.titulo|escapejs }}', data: '{{ agenda.data_real|default:agenda.data|date:'Y-m-d' }}', horaInicio: '{% if agenda.hora_inicio_real %}{{ agenda.hora_inicio_real|time:'H:i' }}{% else %}{{ agenda.hora_inicio|time:'H:i' }}{% endif %}', horaFim: '{% if agenda.hora_fim_real %}{{ agenda.hora_fim_real|time:'H:i' }}{% else %}{{ agenda.hora_fim|time:'H:i' }}{% endif %}', specialType: '{{ agenda.special_type|default:'' }}', auditoresNomes: '{{ agenda.auditores_nomes|default:''|escapejs }}', representantes: '{{ agenda.representantes|default:''|escapejs }}', isAjustado: true })" title="Editar horário, duração e posição deste intervalo">
+                                                <i class="bi bi-pencil-square me-1"></i>Editar / Mover
+                                            </button>
+                                        </td>
+                                    </tr>
                                 {% else %}
                                     <tr class="{% if agenda.concluida %}table-success opacity-75{% endif %}">
                                         <td class="fw-semibold text-center align-middle cursor-pointer td-datetime" 
@@ -1226,7 +1296,426 @@
     </div>
 </div>
 
+<!-- Modal de Edição e Encaixe de Intervalos e Cerimônias -->
+<div class="modal fade no-print" id="modalEditarMoverIntervalo" tabindex="-1" aria-hidden="true" style="z-index: 10080;">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header text-white py-3 px-4 border-0" style="background: linear-gradient(135deg, #0B2545 0%, #134074 100%);">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="bg-white bg-opacity-20 rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                        <i class="bi bi-clock-history fs-5 text-white"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0 text-white" id="modalEditarMoverIntervaloTitle">Editar e Encaixar Intervalo / Cerimônia</h5>
+                        <small class="text-white-50">Defina o posicionamento após os blocos, duração e horários</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <input type="hidden" id="emi_agenda_id">
+                <input type="hidden" id="emi_special_type">
+                <input type="hidden" id="emi_is_ajustado" value="0">
+
+                <!-- Tipo / Título do Evento -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-dark small d-flex justify-content-between">
+                        <span><i class="bi bi-tag-fill me-1 text-primary"></i>Título do Evento / Intervalo <span class="text-danger">*</span></span>
+                    </label>
+                    <input type="text" id="emi_titulo" class="form-control form-control-lg fs-6 shadow-2xs mb-2" placeholder="Ex: Intervalo, Almoço, Reunião de Abertura...">
+                    
+                    <!-- Presets Rápidos -->
+                    <div class="d-flex flex-wrap gap-1">
+                        <button type="button" class="btn btn-xs btn-outline-primary rounded-pill px-2.5 py-1 fw-semibold" onclick="setPresetIntervalo('Intervalo', 15)">
+                            <i class="bi bi-cup-hot me-1"></i> ☕ Pausa (15m)
+                        </button>
+                        <button type="button" class="btn btn-xs btn-outline-primary rounded-pill px-2.5 py-1 fw-semibold" onclick="setPresetIntervalo('Intervalo (Almoço)', 60)">
+                            <i class="bi bi-egg-fried me-1"></i> 🍽️ Almoço (1h)
+                        </button>
+                        <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2.5 py-1 fw-semibold" onclick="setPresetIntervalo('Reunião de Abertura', 30, 'before_first')">
+                            <i class="bi bi-people-fill me-1"></i> 👥 Abertura (30m)
+                        </button>
+                        <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2.5 py-1 fw-semibold" onclick="setPresetIntervalo('Revisão da Auditoria com Auditores', 90, 'after_last')">
+                            <i class="bi bi-clipboard-check me-1"></i> 📋 Revisão (1h30)
+                        </button>
+                        <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2.5 py-1 fw-semibold" onclick="setPresetIntervalo('Encerramento da auditoria', 30, 'after_last')">
+                            <i class="bi bi-flag-fill me-1"></i> 🏁 Encerramento (30m)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Posicionamento / Marcador de Encaixe -->
+                <div class="mb-3 p-3 bg-white border rounded-3 shadow-2xs">
+                    <label class="form-label fw-bold text-dark small">
+                        <i class="bi bi-diagram-3-fill me-1 text-primary"></i> Após qual bloco deve ser encaixado?
+                    </label>
+                    <select class="form-select shadow-2xs fw-semibold" id="emi_posicao_bloco" onchange="onPosicaoBlocoChange()">
+                        <!-- Preenchido dinamicamente com os blocos do dia -->
+                    </select>
+                    <small class="text-muted mt-1 d-block" style="font-size: 0.76rem;">
+                        <i class="bi bi-info-circle me-1"></i>Ao selecionar a posição, o horário de início é preenchido automaticamente a partir do término do bloco anterior.
+                    </small>
+                </div>
+
+                <!-- Duração e Horários -->
+                <div class="p-3 bg-white border rounded-3 shadow-2xs mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <label class="form-label fw-bold text-dark small mb-0">
+                            <i class="bi bi-stopwatch me-1 text-primary"></i> Duração do Intervalo / Evento
+                        </label>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" class="btn btn-outline-secondary" onclick="setDuracaoIntervalo(15)">15m</button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="setDuracaoIntervalo(30)">30m</button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="setDuracaoIntervalo(45)">45m</button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="setDuracaoIntervalo(60)">1h</button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="setDuracaoIntervalo(90)">1h30</button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="setDuracaoIntervalo(120)">2h</button>
+                        </div>
+                    </div>
+
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold text-muted small">Data</label>
+                            <input type="date" id="emi_data" class="form-control" onchange="onDataIntervaloChange()">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold text-muted small">Hora Início</label>
+                            <input type="time" id="emi_hora_inicio" class="form-control" onchange="recalcularHoraFimIntervalo()">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold text-muted small">Hora Término</label>
+                            <input type="time" id="emi_hora_fim" class="form-control">
+                        </div>
+                    </div>
+                    <input type="hidden" id="emi_duracao" value="30">
+                </div>
+
+                <!-- Participantes (Opcional - Útil para Cerimônias) -->
+                <div class="row g-2 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold text-dark small"><i class="bi bi-person-badge me-1 text-primary"></i>Auditor(es)</label>
+                        <input type="text" id="emi_auditores_nomes" class="form-control shadow-2xs" placeholder="Ex: Vinícius">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold text-dark small"><i class="bi bi-people me-1 text-primary"></i>Representante(s)</label>
+                        <input type="text" id="emi_representantes" class="form-control shadow-2xs" placeholder="Ex: Carlos (Gestor), Todos">
+                    </div>
+                </div>
+
+                <!-- Opção Smart Cascade -->
+                <div class="form-check p-3 bg-white border rounded-3 shadow-2xs mb-2">
+                    <input class="form-check-input ms-0 me-2" type="checkbox" id="emi_reajustar_proximos" checked>
+                    <label class="form-check-label fw-bold text-dark small" for="emi_reajustar_proximos">
+                        <i class="bi bi-magic text-primary me-1"></i> Deslocar e reajustar automaticamente o início dos blocos seguintes no dia
+                    </label>
+                    <small class="text-muted d-block mt-1 ps-4" style="font-size: 0.75rem;">
+                        Empurra os blocos subsequentes para iniciarem imediatamente após o término deste intervalo, preservando as durações planejadas e evitando sobreposições.
+                    </small>
+                </div>
+            </div>
+            <div class="modal-footer bg-white border-top p-3 d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-danger rounded-pill px-3 d-none" id="btnExcluirIntervalo" onclick="excluirIntervaloAtual()">
+                    <i class="bi bi-trash me-1"></i> Excluir Intervalo
+                </button>
+                <div class="d-flex gap-2 ms-auto">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" id="btnSalvarIntervaloEvento" onclick="salvarIntervaloEvento()">
+                        <i class="bi bi-check2-circle me-1"></i> Salvar e Atualizar Cronograma
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+// Mapa de blocos existentes por data para cálculo de posicionamento e horários
+const cronogramaBlocosData = {
+    {% for data, agendas in cronograma_planejado.items %}
+    "{{ data|date:'Y-m-d' }}": [
+        {% for a in agendas %}
+        {% if not a.is_gap and a.id %}
+        {
+            id: {{ a.id }},
+            titulo: "{{ a.titulo|escapejs }}",
+            inicio: "{% if a.hora_inicio %}{{ a.hora_inicio|time:'H:i' }}{% endif %}",
+            fim: "{% if a.hora_fim %}{{ a.hora_fim|time:'H:i' }}{% endif %}",
+            inicioReal: "{% if a.hora_inicio_real %}{{ a.hora_inicio_real|time:'H:i' }}{% elif a.hora_inicio %}{{ a.hora_inicio|time:'H:i' }}{% endif %}",
+            fimReal: "{% if a.hora_fim_real %}{{ a.hora_fim_real|time:'H:i' }}{% elif a.hora_fim %}{{ a.hora_fim|time:'H:i' }}{% endif %}"
+        },
+        {% endif %}
+        {% endfor %}
+    ],
+    {% endfor %}
+};
+
+function somarMinutosHora(timeStr, mins) {
+    if (!timeStr) return '';
+    const parts = timeStr.split(':');
+    if (parts.length < 2) return '';
+    const h = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    const totalMins = (h * 60 + m + mins) % (24 * 60);
+    const finalH = Math.floor(totalMins / 60);
+    const finalM = totalMins % 60;
+    return String(finalH).padStart(2, '0') + ':' + String(finalM).padStart(2, '0');
+}
+
+function subtrairMinutosHora(timeStr, mins) {
+    if (!timeStr) return '';
+    const parts = timeStr.split(':');
+    if (parts.length < 2) return '';
+    const h = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    let totalMins = (h * 60 + m - mins);
+    if (totalMins < 0) totalMins += 24 * 60;
+    const finalH = Math.floor(totalMins / 60);
+    const finalM = totalMins % 60;
+    return String(finalH).padStart(2, '0') + ':' + String(finalM).padStart(2, '0');
+}
+
+function calcularDiferencaMinutos(horaIni, horaFim) {
+    if (!horaIni || !horaFim) return 30;
+    const [h1, m1] = horaIni.split(':').map(Number);
+    const [h2, m2] = horaFim.split(':').map(Number);
+    const diff = (h2 * 60 + m2) - (h1 * 60 + m1);
+    return diff > 0 ? diff : 30;
+}
+
+function popularPosicaoBlocos(dataStr, isAjustado, horaInicioAtual) {
+    const select = document.getElementById('emi_posicao_bloco');
+    select.innerHTML = '';
+    
+    const optInicio = document.createElement('option');
+    optInicio.value = 'before_first';
+    optInicio.textContent = '🔼 No Início do Dia (Antes do 1º bloco)';
+    select.appendChild(optInicio);
+    
+    const blocos = cronogramaBlocosData[dataStr] || [];
+    let selectedValue = null;
+    
+    blocos.forEach((b) => {
+        const opt = document.createElement('option');
+        opt.value = `after_agenda_${b.id}`;
+        const horaFimBloco = isAjustado ? (b.fimReal || b.fim) : b.fim;
+        const horaIniBloco = isAjustado ? (b.inicioReal || b.inicio) : b.inicio;
+        opt.textContent = `🔽 Após: ${b.titulo} (${horaIniBloco} às ${horaFimBloco})`;
+        opt.dataset.horaFim = horaFimBloco;
+        opt.dataset.horaIni = horaIniBloco;
+        select.appendChild(opt);
+        
+        if (horaInicioAtual && horaInicioAtual === horaFimBloco) {
+            selectedValue = opt.value;
+        }
+    });
+    
+    const optFim = document.createElement('option');
+    optFim.value = 'after_last';
+    if (blocos.length > 0) {
+        const lastBloco = blocos[blocos.length - 1];
+        const lastFim = isAjustado ? (lastBloco.fimReal || lastBloco.fim) : lastBloco.fim;
+        optFim.dataset.horaFim = lastFim;
+    }
+    optFim.textContent = '⏹️ No Fim do Dia (Após o último bloco)';
+    select.appendChild(optFim);
+    
+    if (selectedValue) {
+        select.value = selectedValue;
+    } else if (horaInicioAtual) {
+        if (blocos.length > 0) {
+            const firstIni = isAjustado ? (blocos[0].inicioReal || blocos[0].inicio) : blocos[0].inicio;
+            if (firstIni && horaInicioAtual < firstIni) {
+                select.value = 'before_first';
+            }
+        }
+    }
+}
+
+function onPosicaoBlocoChange() {
+    const select = document.getElementById('emi_posicao_bloco');
+    const selectedOpt = select.options[select.selectedIndex];
+    if (!selectedOpt) return;
+    
+    const dataStr = document.getElementById('emi_data').value;
+    const isAjustado = document.getElementById('emi_is_ajustado').value === '1';
+    const blocos = cronogramaBlocosData[dataStr] || [];
+    const duracao = parseInt(document.getElementById('emi_duracao').value) || 30;
+    
+    let novoInicio = '';
+    if (selectedOpt.value === 'before_first') {
+        if (blocos.length > 0) {
+            const firstBloco = blocos[0];
+            const firstIni = isAjustado ? (firstBloco.inicioReal || firstBloco.inicio) : firstBloco.inicio;
+            if (firstIni) {
+                novoInicio = subtrairMinutosHora(firstIni, duracao);
+            }
+        }
+    } else if (selectedOpt.dataset.horaFim) {
+        novoInicio = selectedOpt.dataset.horaFim;
+    }
+    
+    if (novoInicio) {
+        document.getElementById('emi_hora_inicio').value = novoInicio;
+        recalcularHoraFimIntervalo();
+    }
+}
+
+function onDataIntervaloChange() {
+    const dataStr = document.getElementById('emi_data').value;
+    const isAjustado = document.getElementById('emi_is_ajustado').value === '1';
+    const horaIni = document.getElementById('emi_hora_inicio').value;
+    popularPosicaoBlocos(dataStr, isAjustado, horaIni);
+}
+
+function recalcularHoraFimIntervalo() {
+    const horaIni = document.getElementById('emi_hora_inicio').value;
+    const duracao = parseInt(document.getElementById('emi_duracao').value) || 30;
+    if (horaIni) {
+        document.getElementById('emi_hora_fim').value = somarMinutosHora(horaIni, duracao);
+    }
+}
+
+function setDuracaoIntervalo(minutos) {
+    document.getElementById('emi_duracao').value = minutos;
+    recalcularHoraFimIntervalo();
+}
+
+function setPresetIntervalo(titulo, minutos, posicao) {
+    document.getElementById('emi_titulo').value = titulo;
+    document.getElementById('emi_duracao').value = minutos;
+    
+    if (posicao) {
+        const select = document.getElementById('emi_posicao_bloco');
+        if (posicao === 'before_first') {
+            select.value = 'before_first';
+            onPosicaoBlocoChange();
+        } else if (posicao === 'after_last') {
+            select.value = 'after_last';
+            onPosicaoBlocoChange();
+        }
+    } else {
+        recalcularHoraFimIntervalo();
+    }
+}
+
+function openModalEditarMoverIntervalo(options = {}) {
+    const agendaId = options.id || '';
+    const titulo = options.titulo || 'Intervalo';
+    const data = options.data || Object.keys(cronogramaBlocosData)[0] || '';
+    const horaInicio = options.horaInicio || '12:00';
+    const horaFim = options.horaFim || '13:00';
+    const specialType = options.specialType || '';
+    const auditoresNomes = options.auditoresNomes || '';
+    const representantes = options.representantes || '';
+    const isAjustado = options.isAjustado ? '1' : '0';
+    
+    document.getElementById('emi_agenda_id').value = agendaId;
+    document.getElementById('emi_special_type').value = specialType;
+    document.getElementById('emi_is_ajustado').value = isAjustado;
+    document.getElementById('emi_titulo').value = titulo;
+    document.getElementById('emi_data').value = data;
+    document.getElementById('emi_hora_inicio').value = horaInicio;
+    document.getElementById('emi_hora_fim').value = horaFim;
+    document.getElementById('emi_auditores_nomes').value = auditoresNomes;
+    document.getElementById('emi_representantes').value = representantes;
+    
+    const duracao = calcularDiferencaMinutos(horaInicio, horaFim);
+    document.getElementById('emi_duracao').value = duracao;
+    
+    popularPosicaoBlocos(data, isAjustado === '1', horaInicio);
+    
+    const btnExcluir = document.getElementById('btnExcluirIntervalo');
+    if (agendaId && String(agendaId).trim().length > 0 && !isNaN(Number(agendaId))) {
+        btnExcluir.classList.remove('d-none');
+    } else {
+        btnExcluir.classList.add('d-none');
+    }
+    
+    const modalEl = document.getElementById('modalEditarMoverIntervalo');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+}
+
+async function salvarIntervaloEvento() {
+    const btn = document.getElementById('btnSalvarIntervaloEvento');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Salvando...';
+    btn.disabled = true;
+
+    const payload = {
+        agenda_id: document.getElementById('emi_agenda_id').value,
+        special_type: document.getElementById('emi_special_type').value,
+        titulo: document.getElementById('emi_titulo').value.trim(),
+        data: document.getElementById('emi_data').value,
+        hora_inicio: document.getElementById('emi_hora_inicio').value,
+        hora_fim: document.getElementById('emi_hora_fim').value,
+        duracao_minutos: document.getElementById('emi_duracao').value,
+        posicao_bloco: document.getElementById('emi_posicao_bloco').value,
+        auditores_nomes: document.getElementById('emi_auditores_nomes').value.trim(),
+        representantes: document.getElementById('emi_representantes').value.trim(),
+        is_ajustado: document.getElementById('emi_is_ajustado').value === '1',
+        reajustar_proximos: document.getElementById('emi_reajustar_proximos').checked
+    };
+
+    if (!payload.titulo) {
+        alert('Por favor, informe o título do intervalo ou evento.');
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        return;
+    }
+
+    if (!payload.data || !payload.hora_inicio || !payload.hora_fim) {
+        alert('Por favor, informe a data e os horários de início e término.');
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        return;
+    }
+
+    try {
+        const response = await fetch("{% url 'auditoria:api_iso_agenda_salvar_intervalo_evento' auditoria.id %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(payload)
+        });
+        const res = await response.json();
+        if (res.success) {
+            window.location.reload();
+        } else {
+            alert('Erro ao salvar: ' + (res.error || 'Erro desconhecido.'));
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    } catch(err) {
+        console.error('Erro ao salvar intervalo:', err);
+        alert('Erro de comunicação com o servidor.');
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
+async function excluirIntervaloAtual() {
+    const agendaId = document.getElementById('emi_agenda_id').value;
+    if (!agendaId || isNaN(Number(agendaId))) return;
+    if (!confirm('Deseja realmente remover este intervalo do cronograma?')) return;
+    
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `/auditoria/iso/{{ auditoria.id }}/agenda/${agendaId}/remover-ajustada/`;
+    
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = 'csrfmiddlewaretoken';
+    csrfInput.value = '{{ csrf_token }}';
+    form.appendChild(csrfInput);
+    
+    document.body.appendChild(form);
+    form.submit();
+}
+
 let currentTags = { qea: [], qer: [] };
 
 function openAjustarHorarioModal(agendaId, titulo, dataReal, horaInicioReal, horaFimReal, dataPlan, horaInicioPlan, horaFimPlan, concluida) {
