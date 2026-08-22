@@ -4552,6 +4552,22 @@ def iso_fechamento_presentation_view(request, auditoria_id):
         .prefetch_related('solicitacoes')
     )
 
+    def extrair_apenas_nome(texto: str) -> str:
+        """Extrai apenas o nome da pessoa, descartando cargos ou departamentos após ' - ', ' – ' ou ' — '."""
+        if not texto:
+            return ""
+        val = str(texto).strip()
+        for sep in [' - ', ' – ', ' — ', '  -  ', ' -', '- ']:
+            if sep in val:
+                val = val.split(sep, 1)[0].strip()
+        for suffix in ['(Participantes)', '(Participante)', '(Entrevistados)', '(Entrevistado)', '(Auditado)', '(Auditados)']:
+            if val.endswith(suffix):
+                val = val[:-len(suffix)].strip()
+        for sep in [' - ', ' – ', ' — ']:
+            if sep in val:
+                val = val.split(sep, 1)[0].strip()
+        return val.strip()
+
     nomes_entrevistados_blocos_originais = []
     nomes_originais_vistos = set()
 
@@ -4567,25 +4583,18 @@ def iso_fechamento_presentation_view(request, auditoria_id):
             ]
             cand = ""
             if ev:
-                cand = ev.strip()
+                cand = extrair_apenas_nome(ev)
             elif sol and not is_generic:
-                cand = sol.strip()
+                cand = extrair_apenas_nome(sol)
 
-            if cand:
-                # Remove sufixos como (Participantes), etc.
-                for suffix in ['(Participantes)', '(Participante)', '(Entrevistados)', '(Entrevistado)']:
-                    if cand.endswith(suffix):
-                        cand = cand[:-len(suffix)].strip()
-                if cand.lower() not in nomes_originais_vistos and len(cand) >= 2:
+            if cand and len(cand) >= 2:
+                if cand.lower() not in nomes_originais_vistos:
                     nomes_originais_vistos.add(cand.lower())
                     nomes_entrevistados_blocos_originais.append(cand)
         
         if resp.texto_resposta and resp.texto_resposta.strip():
             for linha in re.split(r'[;\n]', resp.texto_resposta):
-                l_clean = linha.strip()
-                for suffix in ['(Participantes)', '(Participante)', '(Entrevistados)', '(Entrevistado)']:
-                    if l_clean.endswith(suffix):
-                        l_clean = l_clean[:-len(suffix)].strip()
+                l_clean = extrair_apenas_nome(linha)
                 if l_clean and l_clean.lower() not in nomes_originais_vistos and len(l_clean) >= 2:
                     nomes_originais_vistos.add(l_clean.lower())
                     nomes_entrevistados_blocos_originais.append(l_clean)
@@ -4596,7 +4605,7 @@ def iso_fechamento_presentation_view(request, auditoria_id):
         nomes_para_exibir_brutos = [linha.strip() for linha in re.split(r'[;\n]', auditoria.encerramento_representantes) if linha.strip()]
         nomes_vistos = set()
         for item_str in nomes_para_exibir_brutos:
-            item_clean = item_str.strip()
+            item_clean = extrair_apenas_nome(item_str)
             if not item_clean or len(item_clean) < 2:
                 continue
             key = item_clean.lower()
@@ -4953,7 +4962,33 @@ def api_iso_fechamento_salvar(request, auditoria_id):
         if "conclusao_texto" in data:
             auditoria.conclusao_texto = data.get("conclusao_texto", "").strip()
         if "encerramento_representantes" in data:
-            auditoria.encerramento_representantes = data.get("encerramento_representantes", "").strip()
+            raw_rep = data.get("encerramento_representantes", "").strip()
+            def clean_nome_single(n):
+                val = str(n).strip()
+                for sep in [' - ', ' – ', ' — ', '  -  ', ' -', '- ']:
+                    if sep in val:
+                        val = val.split(sep, 1)[0].strip()
+                for suffix in ['(Participantes)', '(Participante)', '(Entrevistados)', '(Entrevistado)', '(Auditado)', '(Auditados)']:
+                    if val.endswith(suffix):
+                        val = val[:-len(suffix)].strip()
+                for sep in [' - ', ' – ', ' — ']:
+                    if sep in val:
+                        val = val.split(sep, 1)[0].strip()
+                return val.strip()
+
+            linhas_limpas = []
+            for linha in re.split(r'[;\n]', raw_rep):
+                c = clean_nome_single(linha)
+                if c and len(c) >= 2:
+                    linhas_limpas.append(c)
+            # Remove duplicados preservando ordem
+            seen = set()
+            dedup = []
+            for n in linhas_limpas:
+                if n.lower() not in seen:
+                    seen.add(n.lower())
+                    dedup.append(n)
+            auditoria.encerramento_representantes = "\n".join(dedup)
         if "encerramento_auditores" in data:
             auditoria.encerramento_auditores = data.get("encerramento_auditores", "").strip()
         if "empresa_auditada" in data:

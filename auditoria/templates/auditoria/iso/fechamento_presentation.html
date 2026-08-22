@@ -732,7 +732,7 @@
                                 <span class="input-group-text bg-white border-end-0 text-muted">
                                     <i class="bi bi-person-plus-fill text-primary"></i>
                                 </span>
-                                <input type="text" class="form-control border-start-0 py-2" id="inputNovoRepresentante" placeholder="Digite o nome (Ex: Carlos Santos - Gerente de Qualidade)..." onkeydown="if(event.key==='Enter'){event.preventDefault(); adicionarItemRepresentante();}">
+                                <input type="text" class="form-control border-start-0 py-2" id="inputNovoRepresentante" placeholder="Digite o nome (Ex: Carlos Santos)..." onkeydown="if(event.key==='Enter'){event.preventDefault(); adicionarItemRepresentante();}">
                                 <button type="button" class="btn btn-primary px-3.5 fw-bold" onclick="adicionarItemRepresentante()">
                                     <i class="bi bi-plus-lg me-1"></i> Adicionar
                                 </button>
@@ -921,10 +921,31 @@
             return text.replace(/[&<>"']/g, function(m) { return map[m]; });
         }
 
+        function extrairApenasNome(texto) {
+            if (!texto) return '';
+            let val = String(texto).trim();
+            [' - ', ' – ', ' — ', '  -  ', ' -', '- '].forEach(sep => {
+                if (val.includes(sep)) {
+                    val = val.split(sep)[0].trim();
+                }
+            });
+            ['(Participantes)', '(Participante)', '(Entrevistados)', '(Entrevistado)', '(Auditado)', '(Auditados)'].forEach(suffix => {
+                if (val.endsWith(suffix)) {
+                    val = val.substring(0, val.length - suffix.length).trim();
+                }
+            });
+            [' - ', ' – ', ' — '].forEach(sep => {
+                if (val.includes(sep)) {
+                    val = val.split(sep)[0].trim();
+                }
+            });
+            return val.trim();
+        }
+
         function inicializarListaRepresentantes() {
             const hidden = document.getElementById('inputEncerramentoRep');
             const raw = hidden ? hidden.value : '';
-            representantesArray = raw.split(/;|\n/).map(l => l.trim()).filter(Boolean);
+            representantesArray = raw.split(/;|\n/).map(l => extrairApenasNome(l)).filter(Boolean);
             renderizarListaRepresentantes();
         }
 
@@ -975,7 +996,7 @@
                         <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0.5" onclick="editarItemRepresentante(${index})" title="Editar este nome">
                             <i class="bi bi-pencil-square"></i>
                         </button>
-                        <button type="button" class="btn btn-xs btn-outline-danger rounded-pill px-2 py-0.5" onclick="removerItemRepresentante(${index})" title="Remover este representante">
+                        <button type="button" class="btn btn-xs btn-outline-danger rounded-pill px-2 py-0.5" onclick="removerItemRepresentante(${index})" title="Remover este nome">
                             <i class="bi bi-trash"></i>
                         </button>
                     </div>
@@ -987,7 +1008,7 @@
         function adicionarItemRepresentante() {
             const input = document.getElementById('inputNovoRepresentante');
             if (!input) return;
-            const val = input.value.trim();
+            const val = extrairApenasNome(input.value);
             if (!val) return;
             representantesArray.push(val);
             input.value = '';
@@ -1022,7 +1043,7 @@
         function salvarEdicaoItem(index) {
             const editInput = document.getElementById(`edit-input-${index}`);
             if (!editInput) return;
-            const newVal = editInput.value.trim();
+            const newVal = extrairApenasNome(editInput.value);
             if (newVal) {
                 representantesArray[index] = newVal;
             } else {
@@ -1045,7 +1066,7 @@
             const btn = document.getElementById('btnCopiarRepresentantes');
 
             if (auditadosNomes.length > 0) {
-                const unicos = Array.from(new Set(auditadosNomes.map(n => n.trim()).filter(Boolean)));
+                const unicos = Array.from(new Set(auditadosNomes.map(n => extrairApenasNome(n)).filter(Boolean)));
                 unicos.sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
                 representantesArray = unicos;
                 renderizarListaRepresentantes();
@@ -1073,10 +1094,12 @@
             const unicos = [];
             const chaves = new Set();
             representantesArray.forEach(l => {
-                const key = l.toLowerCase();
+                const clean = extrairApenasNome(l);
+                if (!clean) return;
+                const key = clean.toLowerCase();
                 if (!chaves.has(key)) {
                     chaves.add(key);
-                    unicos.push(l);
+                    unicos.push(clean);
                 }
             });
             unicos.sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
