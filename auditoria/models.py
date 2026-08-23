@@ -887,6 +887,12 @@ class AuditoriaIso(models.Model):
         default="",
         verbose_name="Representante QMS"
     )
+    municipio = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="Município / Estado"
+    )
     tipo_auditoria = models.CharField(
         max_length=20,
         choices=TIPO_CHOICES,

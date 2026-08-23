@@ -976,6 +976,7 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
         '{{data_auditoria}}': datas_str,
         '{{auditor_lider}}': auditor_lider_str,
         '{{nome_auditor_lider}}': auditor_lider_str,
+        "{{municipio}}": getattr(auditoria, 'municipio', '') or "Não informado",
         '{{responsavel_qms}}': getattr(auditoria, 'responsavel_qms', '') or '',
         '{{responsável_qms}}': getattr(auditoria, 'responsavel_qms', '') or '',
         '{{auditores}}': auditores_str,

@@ -2318,15 +2318,19 @@ async function salvarModalDetalhesAberto() {
             <div class="modal-body p-4">
                 <form id="formPlanejamentoAuditoria">
                     <div class="row g-3 mb-3">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label fw-bold small text-muted">Unidade / Planta Auditada</label>
                             <input type="text" class="form-control rounded-3" id="inputPlanUnidade" placeholder="Ex: Tecnolens Laboratório Ótico" value="{{ auditoria.unidade|default:'' }}">
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold small text-muted">Município / Estado</label>
+                            <input type="text" class="form-control rounded-3" id="inputPlanMunicipio" placeholder="Ex: Feira de Santana - BA" value="{{ auditoria.municipio|default:'' }}">
+                        </div>
+                        <div class="col-md-3">
                             <label class="form-label fw-bold small text-muted">Auditor Líder (Signatário)</label>
                             <input type="text" class="form-control rounded-3" id="inputPlanAuditorLider" placeholder="Ex: Nome do Auditor Líder" value="{{ auditoria.auditor_lider|default:'' }}">
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label fw-bold small text-muted">Representante QMS</label>
                             <input type="text" class="form-control rounded-3" id="inputPlanResponsavelQms" placeholder="Ex: Nome do Representante" value="{{ auditoria.responsavel_qms|default:'' }}">
                         </div>
@@ -2407,6 +2411,7 @@ async function salvarPlanejamentoAuditoria() {
 
     const payload = {
         unidade: document.getElementById('inputPlanUnidade').value.trim(),
+        municipio: document.getElementById('inputPlanMunicipio').value.trim(),
         auditor_lider: document.getElementById('inputPlanAuditorLider').value.trim(),
         responsavel_qms: document.getElementById('inputPlanResponsavelQms').value.trim(),
         tipo_auditoria: tipoRadio ? tipoRadio.value : 'PRESENCIAL',
