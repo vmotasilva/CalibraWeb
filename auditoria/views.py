@@ -4535,7 +4535,7 @@ def iso_fechamento_presentation_view(request, auditoria_id):
             )
         pontos_fortes_qs = list(auditoria.pontos_fortes.all().order_by('ordem', 'id'))
 
-    slides_descobertas_positivas = list(chunks_list(pontos_fortes_qs, 4))
+    slides_descobertas_positivas = [pontos_fortes_qs] if pontos_fortes_qs else []
 
     # ── COLETA UNIFICADA DE PESSOAS AUDITADAS / ENTREVISTADAS ──
     from django.db.models import Q
