@@ -951,6 +951,16 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
             "Recomenda-se o acompanhamento dos prazos de implementação dos planos de ação para as oportunidades identificadas."
         )
 
+    # Pontos Fortes
+    pontos_fortes = auditoria.pontos_fortes.all()
+    pontos_fortes_linhas = []
+    for pf in pontos_fortes:
+        if pf.descricao:
+            pontos_fortes_linhas.append(f"• {pf.titulo}: {pf.descricao}")
+        else:
+            pontos_fortes_linhas.append(f"• {pf.titulo}")
+    pontos_fortes_str = "\n".join(pontos_fortes_linhas) if pontos_fortes_linhas else "Nenhum ponto forte registrado."
+
     # Dicionário de Injeção de Tags (com sinônimos suportados)
     tag_dict = {
         '{{unidade}}': unidade_str,
@@ -985,6 +995,7 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
         '{{representantes}}': rep_str,
         '{{status}}': auditoria.get_status_display() if hasattr(auditoria, 'get_status_display') else "Concluída",
         '{{data_relatorio}}': dt_fim or dt_ini or "Hoje",
+        '{{pontos_fortes}}': pontos_fortes_str,
         '{{total_c}}': str(dados['total_c']),
         '{{pct_c}}': str(dados['pct_c']),
         '{{total_nc_menor}}': str(dados['total_nc_menor']),
