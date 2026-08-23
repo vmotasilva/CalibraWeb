@@ -4316,14 +4316,14 @@ def iso_fechamento_presentation_view(request, auditoria_id):
 
                         # Categoriza conforme status do requisito
                         if status_item == 'NC':
-                            if s.conclusao == 'NC' and ev_txt and ev_txt not in evidencias_vistas:
+                            if s.conclusao in ['NC', 'OM', 'OBS'] and ev_txt and ev_txt not in evidencias_vistas:
                                 evidencias_vistas.add(ev_txt)
                                 evidencias_item.append(ev_txt)
                             elif s.conclusao == 'C' and ev_txt and ev_txt not in amostras_conformes_vistas:
                                 amostras_conformes_vistas.add(ev_txt)
                                 amostras_conformes.append(ev_txt)
                         elif status_item == 'OM':
-                            if s.conclusao in ['OM', 'NC'] and ev_txt and ev_txt not in evidencias_vistas:
+                            if s.conclusao in ['NC', 'OM', 'OBS'] and ev_txt and ev_txt not in evidencias_vistas:
                                 evidencias_vistas.add(ev_txt)
                                 evidencias_item.append(ev_txt)
                             elif s.conclusao == 'C' and ev_txt and ev_txt not in amostras_conformes_vistas:
