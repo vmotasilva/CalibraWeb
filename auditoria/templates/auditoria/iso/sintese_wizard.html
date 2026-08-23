@@ -64,7 +64,7 @@
                     <span>Repasse & Síntese da Auditoria</span>
                 </h4>
                 <small class="text-muted">
-                    {{ auditoria.norma.codigo }} • {{ auditoria.empresa_auditada|default:"Tecnolens" }} • Status: 
+                    {{ auditoria.norma.codigo }} • {% if auditoria.unidade %}{{ auditoria.unidade }}{% elif auditoria.empresa_auditada %}{{ auditoria.empresa_auditada }}{% else %}Não especificado{% endif %} • Status: 
                     <span class="badge {% if auditoria.status == 'CONCLUIDA' %}bg-success{% else %}bg-primary{% endif %} rounded-pill px-2">
                         {{ auditoria.get_status_display }}
                     </span>

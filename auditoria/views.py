@@ -4992,7 +4992,9 @@ def api_iso_fechamento_salvar(request, auditoria_id):
         if "encerramento_auditores" in data:
             auditoria.encerramento_auditores = data.get("encerramento_auditores", "").strip()
         if "empresa_auditada" in data:
-            auditoria.empresa_auditada = data.get("empresa_auditada", "").strip()
+            empresa = data.get("empresa_auditada", "").strip()
+            auditoria.empresa_auditada = empresa
+            auditoria.unidade = empresa
         if "escopo" in data:
             auditoria.escopo = data.get("escopo", "").strip()
 
@@ -5014,7 +5016,9 @@ def api_iso_auditoria_editar_planejamento(request, auditoria_id):
         data = json.loads(request.body)
         
         if "unidade" in data:
-            auditoria.unidade = data.get("unidade", "").strip()
+            unidade = data.get("unidade", "").strip()
+            auditoria.unidade = unidade
+            auditoria.empresa_auditada = unidade
         if "municipio" in data:
             auditoria.municipio = data.get("municipio", "").strip()
         if "auditor_lider" in data:

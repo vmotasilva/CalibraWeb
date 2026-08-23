@@ -246,7 +246,7 @@
                 <div class="col-md-6">
                     <div class="p-3.5 bg-white bg-opacity-10 rounded-4 border border-white border-opacity-10 backdrop-blur">
                         <small class="text-white-50 text-uppercase fw-bold d-block mb-1" style="font-size: 0.72rem;">Empresa / Laboratório Auditado</small>
-                        <h5 class="fw-bold text-white mb-0">{{ auditoria.empresa_auditada|default:"Não especificado" }}</h5>
+                        <h5 class="fw-bold text-white mb-0">{% if auditoria.unidade %}{{ auditoria.unidade }}{% elif auditoria.empresa_auditada %}{{ auditoria.empresa_auditada }}{% else %}Não especificado{% endif %}</h5>
                     </div>
                 </div>
                 <div class="col-md-6">
@@ -696,7 +696,7 @@
                     <form id="formFechamento">
                         <div class="mb-3">
                             <label class="form-label fw-bold small text-muted">Empresa / Laboratório Auditado</label>
-                            <input type="text" class="form-control rounded-3 py-2" id="inputEmpresaAuditada" value="{{ auditoria.empresa_auditada|default:'' }}" placeholder="Ex: Laboratório Óptico Central">
+                            <input type="text" class="form-control rounded-3 py-2" id="inputEmpresaAuditada" value="{% if auditoria.unidade %}{{ auditoria.unidade }}{% elif auditoria.empresa_auditada %}{{ auditoria.empresa_auditada }}{% endif %}" placeholder="Ex: Laboratório Óptico Central">
                         </div>
 
                         <!-- Gerenciador Interativo de Representantes (Caso a Caso) -->
