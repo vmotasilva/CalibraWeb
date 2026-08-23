@@ -881,6 +881,12 @@ class AuditoriaIso(models.Model):
         default="",
         verbose_name="Auditor Líder"
     )
+    responsavel_qms = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="Representante QMS"
+    )
     tipo_auditoria = models.CharField(
         max_length=20,
         choices=TIPO_CHOICES,

@@ -5017,6 +5017,8 @@ def api_iso_auditoria_editar_planejamento(request, auditoria_id):
             auditoria.unidade = data.get("unidade", "").strip()
         if "auditor_lider" in data:
             auditoria.auditor_lider = data.get("auditor_lider", "").strip()
+        if "responsavel_qms" in data:
+            auditoria.responsavel_qms = data.get("responsavel_qms", "").strip()
         if "tipo_auditoria" in data:
             auditoria.tipo_auditoria = data.get("tipo_auditoria") or "PRESENCIAL"
         if "empresa_auditada" in data:

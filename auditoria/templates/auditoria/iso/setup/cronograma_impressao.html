@@ -91,7 +91,7 @@
             <div class="row g-3">
                 <div class="col-md-4">
                     <small class="text-muted text-uppercase fw-bold d-block" style="font-size: 0.72rem;">Empresa / Laboratório Auditado</small>
-                    <strong class="text-dark fs-6" id="lblEmpresaAuditada">{{ auditoria.empresa_auditada|default:"Não especificado" }}</strong>
+                    <strong class="text-dark fs-6" id="lblEmpresaAuditada">{% if auditoria.unidade %}{{ auditoria.unidade }}{% elif auditoria.empresa_auditada %}{{ auditoria.empresa_auditada }}{% else %}Não especificado{% endif %}</strong>
                 </div>
                 <div class="col-md-4">
                     <small class="text-muted text-uppercase fw-bold d-block" style="font-size: 0.72rem;">Escopo da Auditoria</small>
@@ -2318,13 +2318,17 @@ async function salvarModalDetalhesAberto() {
             <div class="modal-body p-4">
                 <form id="formPlanejamentoAuditoria">
                     <div class="row g-3 mb-3">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label fw-bold small text-muted">Unidade / Planta Auditada</label>
-                            <input type="text" class="form-control rounded-3" id="inputPlanUnidade" placeholder="Ex: Tecnolens Laboratório Ótico Feira Ltda" value="{{ auditoria.unidade|default:'' }}">
+                            <input type="text" class="form-control rounded-3" id="inputPlanUnidade" placeholder="Ex: Tecnolens Laboratório Ótico" value="{{ auditoria.unidade|default:'' }}">
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label fw-bold small text-muted">Auditor Líder (Signatário)</label>
                             <input type="text" class="form-control rounded-3" id="inputPlanAuditorLider" placeholder="Ex: Nome do Auditor Líder" value="{{ auditoria.auditor_lider|default:'' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small text-muted">Representante QMS</label>
+                            <input type="text" class="form-control rounded-3" id="inputPlanResponsavelQms" placeholder="Ex: Nome do Representante" value="{{ auditoria.responsavel_qms|default:'' }}">
                         </div>
                     </div>
 
@@ -2404,6 +2408,7 @@ async function salvarPlanejamentoAuditoria() {
     const payload = {
         unidade: document.getElementById('inputPlanUnidade').value.trim(),
         auditor_lider: document.getElementById('inputPlanAuditorLider').value.trim(),
+        responsavel_qms: document.getElementById('inputPlanResponsavelQms').value.trim(),
         tipo_auditoria: tipoRadio ? tipoRadio.value : 'PRESENCIAL',
         escopo: document.getElementById('inputPlanEscopoAuditado').value.trim(),
         objetivo: document.getElementById('inputPlanObjetivoAuditado').value.trim(),
