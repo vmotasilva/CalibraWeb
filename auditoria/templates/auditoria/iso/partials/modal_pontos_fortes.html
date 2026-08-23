@@ -1,0 +1,229 @@
+<!-- Modal de Gerenciamento de Constatações Positivas / Pontos Fortes -->
+<div class="modal fade no-print" id="modalGerenciarPontosFortes" tabindex="-1" aria-hidden="true" style="z-index: 10070;">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header text-white px-4 py-3 border-0" style="background: linear-gradient(135deg, #134074 0%, #0B2545 100%);">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="bg-white bg-opacity-20 rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                        <i class="bi bi-star-fill text-warning fs-5"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0 text-white">Constatações Positivas & Pontos Fortes</h5>
+                        <small class="text-white-50">Selecione do catálogo de opções sugeridas ou adicione itens personalizados</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                
+                <!-- Bloco 1: Catálogo de Opções Sugeridas -->
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                            <i class="bi bi-collection-play-fill text-primary"></i> Catálogo de Opções Sugeridas
+                        </h6>
+                        <small class="text-muted">Clique em <strong>+ Adicionar</strong> para incluir o ponto forte na auditoria</small>
+                    </div>
+                    
+                    <div class="row g-2" style="max-height: 280px; overflow-y: auto;">
+                        {% for cat in pontos_fortes_catalogo %}
+                        <div class="col-md-6 cat-card" data-titulo="{{ cat.titulo|escapejs }}">
+                            <div class="p-3 bg-white rounded-3 border shadow-2xs h-100 d-flex justify-content-between align-items-start gap-2">
+                                <div class="d-flex gap-2.5 align-items-start">
+                                    <div class="p-2 rounded-circle bg-success bg-opacity-10 text-success flex-shrink-0">
+                                        <i class="bi {{ cat.icone }} fs-5"></i>
+                                    </div>
+                                    <div>
+                                        <strong class="text-dark d-block mb-1 font-monospace" style="font-size: 0.85rem;">{{ cat.titulo }}</strong>
+                                        <p class="text-muted small mb-0" style="font-size: 0.78rem; line-height: 1.35;">{{ cat.descricao }}</p>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-success rounded-pill px-2.5 py-1 text-nowrap fw-bold flex-shrink-0 shadow-2xs" onclick="adicionarPontoForte('{{ cat.titulo|escapejs }}', '{{ cat.descricao|escapejs }}', '{{ cat.icone|escapejs }}')">
+                                    <i class="bi bi-plus-lg me-1"></i> Adicionar
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Bloco 2: Formulário para Adicionar Opção Personalizada -->
+                <div class="bg-white p-3.5 rounded-4 border shadow-2xs mb-4">
+                    <h6 class="fw-bold text-dark mb-2.5 d-flex align-items-center gap-2">
+                        <i class="bi bi-plus-circle-fill text-success"></i> Criar Ponto Forte Personalizado
+                    </h6>
+                    <div class="row g-2">
+                        <div class="col-md-5">
+                            <label class="form-label small fw-bold text-muted mb-1">Título do Destaque</label>
+                            <input type="text" id="customPfTitulo" class="form-control form-control-sm" placeholder="Ex: Eficiência no Atendimento a Clientes">
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label small fw-bold text-muted mb-1">Descrição / Evidência Positiva</label>
+                            <input type="text" id="customPfDescricao" class="form-control form-control-sm" placeholder="Ex: Respostas a chamados e suporte dentro do SLA acordado.">
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="button" class="btn btn-sm btn-success w-100 fw-bold rounded-3 shadow-2xs" onclick="adicionarPontoForteCustomizado()">
+                                <i class="bi bi-check-lg me-1"></i> Incluir
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bloco 3: Itens Atualmente Selecionados na Auditoria -->
+                <div>
+                    <h6 class="fw-bold text-dark mb-2 d-flex align-items-center gap-2">
+                        <i class="bi bi-check2-circle text-primary"></i> Pontos Fortes Selecionados para esta Auditoria (<span id="pfCount">{{ pontos_fortes_todos|length }}</span>)
+                    </h6>
+                    <div id="listaPontosFortesAtuais" class="row g-2">
+                        {% for pf in pontos_fortes_todos %}
+                        <div class="col-md-6" id="card-pf-{{ pf.id }}" data-titulo="{{ pf.titulo|escapejs }}">
+                            <div class="p-3 bg-white rounded-3 border border-success border-opacity-50 shadow-2xs h-100 d-flex justify-content-between align-items-start gap-2">
+                                <div class="d-flex gap-2.5 align-items-start">
+                                    <div class="p-2 rounded-circle bg-success bg-opacity-15 text-success flex-shrink-0">
+                                        <i class="bi {{ pf.icone }} fs-5"></i>
+                                    </div>
+                                    <div>
+                                        <strong class="text-dark d-block mb-1 font-monospace" style="font-size: 0.85rem;">{{ pf.titulo }}</strong>
+                                        <p class="text-secondary small mb-0" style="font-size: 0.78rem; line-height: 1.35;">{{ pf.descricao }}</p>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-danger rounded-circle p-1.5 flex-shrink-0" onclick="removerPontoForte({{ pf.id }})" title="Remover este ponto forte">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="col-12" id="pfEmptyMsg">
+                            <div class="alert alert-secondary text-center small mb-0">Nenhum ponto forte adicionado ainda. Escolha no catálogo acima ou crie um novo.</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light px-4 py-3 border-top d-flex justify-content-end">
+                <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" onclick="window.location.reload()">
+                    <i class="bi bi-check2-all me-1"></i> Concluir e Atualizar 
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        atualizarVisibilidadeCatalogo();
+    });
+    
+    function atualizarVisibilidadeCatalogo() {
+        const addedTitles = Array.from(document.querySelectorAll('#listaPontosFortesAtuais [data-titulo]'))
+                                 .map(el => el.getAttribute('data-titulo'));
+        
+        document.querySelectorAll('.cat-card').forEach(card => {
+            const titulo = card.getAttribute('data-titulo');
+            if (addedTitles.includes(titulo)) {
+                card.style.display = 'none';
+            } else {
+                card.style.display = '';
+            }
+        });
+    }
+
+    async function adicionarPontoForte(titulo, descricao, icone = 'bi-shield-fill-check') {
+        const formData = new FormData();
+        formData.append('titulo', titulo);
+        formData.append('descricao', descricao);
+        formData.append('icone', icone);
+
+        try {
+            const response = await fetch("{% url 'auditoria:api_iso_pontos_fortes_adicionar' auditoria.id %}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            });
+            const data = await response.json();
+            if (data.success) {
+                const emptyMsg = document.getElementById('pfEmptyMsg');
+                if (emptyMsg) emptyMsg.remove();
+
+                const container = document.getElementById('listaPontosFortesAtuais');
+                const cardHtml = `
+                    <div class="col-md-6" id="card-pf-${data.id}" data-titulo="${data.titulo.replace(/"/g, '&quot;')}">
+                        <div class="p-3 bg-white rounded-3 border border-success border-opacity-50 shadow-2xs h-100 d-flex justify-content-between align-items-start gap-2">
+                            <div class="d-flex gap-2.5 align-items-start">
+                                <div class="p-2 rounded-circle bg-success bg-opacity-15 text-success flex-shrink-0">
+                                    <i class="bi ${data.icone} fs-5"></i>
+                                </div>
+                                <div>
+                                    <strong class="text-dark d-block mb-1 font-monospace" style="font-size: 0.85rem;">${data.titulo}</strong>
+                                    <p class="text-secondary small mb-0" style="font-size: 0.78rem; line-height: 1.35;">${data.descricao}</p>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-danger rounded-circle p-1.5 flex-shrink-0" onclick="removerPontoForte(${data.id})" title="Remover este ponto forte">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', cardHtml);
+                
+                const countEl = document.getElementById('pfCount');
+                if (countEl) countEl.textContent = container.children.length;
+                
+                atualizarVisibilidadeCatalogo();
+            } else {
+                alert(data.error || 'Erro ao adicionar ponto forte.');
+            }
+        } catch(err) {
+            console.error('Erro ao adicionar ponto forte:', err);
+            alert('Erro de comunicação.');
+        }
+    }
+
+    async function adicionarPontoForteCustomizado() {
+        const titulo = document.getElementById('customPfTitulo').value.trim();
+        const descricao = document.getElementById('customPfDescricao').value.trim();
+        if (!titulo) {
+            alert('Por favor, informe o título do ponto forte.');
+            return;
+        }
+        await adicionarPontoForte(titulo, descricao, 'bi-star-fill');
+        document.getElementById('customPfTitulo').value = '';
+        document.getElementById('customPfDescricao').value = '';
+    }
+
+    async function removerPontoForte(id) {
+        if (!confirm('Deseja remover este ponto forte da auditoria?')) return;
+        try {
+            const response = await fetch(`/auditoria/iso/{{ auditoria.id }}/api/pontos-fortes/${id}/remover/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            const data = await response.json();
+            if (data.success) {
+                const card = document.getElementById(`card-pf-${id}`);
+                if (card) card.remove();
+
+                const container = document.getElementById('listaPontosFortesAtuais');
+                const countEl = document.getElementById('pfCount');
+                if (countEl) countEl.textContent = container.children.length;
+                
+                if (container.children.length === 0) {
+                    container.innerHTML = `<div class="col-12" id="pfEmptyMsg"><div class="alert alert-secondary text-center small mb-0">Nenhum ponto forte adicionado ainda. Escolha no catálogo acima ou crie um novo.</div></div>`;
+                }
+                
+                atualizarVisibilidadeCatalogo();
+            } else {
+                alert(data.error || 'Erro ao remover ponto forte.');
+            }
+        } catch(err) {
+            console.error('Erro ao remover ponto forte:', err);
+            alert('Erro de comunicação.');
+        }
+    }
+</script>

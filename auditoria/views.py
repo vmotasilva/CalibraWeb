@@ -52,6 +52,69 @@ SPECIAL_VIEW_ALL_COLABORADORES_PERM = 'core.nav_pessoas_ver_todos_colaboradores'
 REPORT_SHARE_SALT = "auditoria.registros_por_modelo.share"
 REPORT_SHARE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30  # 30 dias
 
+PONTOS_FORTES_CATALOGO = [
+    {
+        "titulo": "Domínio dos Processos Produtivos",
+        "descricao": "Colaboradores dominam os processos produtivos com segurança técnica, padrão operacional e consistência.",
+        "icone": "bi-person-check-fill",
+    },
+    {
+        "titulo": "Transparência e Cooperação",
+        "descricao": "Postura transparente, cooperativa e aberta de toda a organização ao longo de todas as avaliações.",
+        "icone": "bi-eye-fill",
+    },
+    {
+        "titulo": "Prontidão em Buscar Evidências",
+        "descricao": "Agilidade e facilidade no acesso imediato a registros, documentos, amostras e comprovações solicitadas.",
+        "icone": "bi-lightning-charge-fill",
+    },
+    {
+        "titulo": "Rastreabilidade dos Produtos",
+        "descricao": "Rastreabilidade completa de ponta a ponta — fluxo produtivo, lote de matéria-prima e testes de controle.",
+        "icone": "bi-diagram-3-fill",
+    },
+    {
+        "titulo": "Engajamento da Alta Direção e Liderança",
+        "descricao": "Comprometimento visível e ativo da gestão com a política da qualidade, recursos e metas estratégicas.",
+        "icone": "bi-award-fill",
+    },
+    {
+        "titulo": "Organização, Limpeza e 5S",
+        "descricao": "Excelente nível de organização, identificação visual, limpeza e segregação nas áreas produtivas e estoques.",
+        "icone": "bi-stars",
+    },
+    {
+        "titulo": "Controle Metrológico Rigoroso",
+        "descricao": "Gestão sistemática dos instrumentos com calibração RBC em dia, critérios de aceitação e rastreabilidade.",
+        "icone": "bi-speedometer2",
+    },
+    {
+        "titulo": "Competência e Treinamento da Equipe",
+        "descricao": "Equipe técnica qualificada, registros de capacitação regulares e matriz de polivalência atualizada.",
+        "icone": "bi-mortarboard-fill",
+    },
+    {
+        "titulo": "Cultura de Melhoria Contínua",
+        "descricao": "Tratamento ágil de ações corretivas e preventivas com foco na causa raiz e evolução contínua dos processos.",
+        "icone": "bi-arrow-repeat",
+    },
+    {
+        "titulo": "Padronização e Controle Documental",
+        "descricao": "Procedimentos e instruções de trabalho claros, revisados, disponíveis nos postos e estritamente seguidos.",
+        "icone": "bi-file-earmark-check-fill",
+    },
+    {
+        "titulo": "Foco no Cliente e Requisitos Especiais",
+        "descricao": "Atenção dedicada aos requisitos de clientes, tratativa de reclamações e conformidade de especificações.",
+        "icone": "bi-heart-fill",
+    },
+    {
+        "titulo": "Segurança e Conformidade Regulatória",
+        "descricao": "Alinhamento estrito às exigências legais, sanitárias e normativas aplicáveis aos produtos e processos.",
+        "icone": "bi-shield-shaded",
+    },
+]
+
 
 def _build_registro_report_share_token(modelo_id: int, inicio: str = "", fim: str = "", topico: str = "") -> str:
     payload = {
@@ -4457,68 +4520,7 @@ def iso_fechamento_presentation_view(request, auditoria_id):
             })
         dia_num += 1
 
-    PONTOS_FORTES_CATALOGO = [
-        {
-            "titulo": "Domínio dos Processos Produtivos",
-            "descricao": "Colaboradores dominam os processos produtivos com segurança técnica, padrão operacional e consistência.",
-            "icone": "bi-person-check-fill",
-        },
-        {
-            "titulo": "Transparência e Cooperação",
-            "descricao": "Postura transparente, cooperativa e aberta de toda a organização ao longo de todas as avaliações.",
-            "icone": "bi-eye-fill",
-        },
-        {
-            "titulo": "Prontidão em Buscar Evidências",
-            "descricao": "Agilidade e facilidade no acesso imediato a registros, documentos, amostras e comprovações solicitadas.",
-            "icone": "bi-lightning-charge-fill",
-        },
-        {
-            "titulo": "Rastreabilidade dos Produtos",
-            "descricao": "Rastreabilidade completa de ponta a ponta — fluxo produtivo, lote de matéria-prima e testes de controle.",
-            "icone": "bi-diagram-3-fill",
-        },
-        {
-            "titulo": "Engajamento da Alta Direção e Liderança",
-            "descricao": "Comprometimento visível e ativo da gestão com a política da qualidade, recursos e metas estratégicas.",
-            "icone": "bi-award-fill",
-        },
-        {
-            "titulo": "Organização, Limpeza e 5S",
-            "descricao": "Excelente nível de organização, identificação visual, limpeza e segregação nas áreas produtivas e estoques.",
-            "icone": "bi-stars",
-        },
-        {
-            "titulo": "Controle Metrológico Rigoroso",
-            "descricao": "Gestão sistemática dos instrumentos com calibração RBC em dia, critérios de aceitação e rastreabilidade.",
-            "icone": "bi-speedometer2",
-        },
-        {
-            "titulo": "Competência e Treinamento da Equipe",
-            "descricao": "Equipe técnica qualificada, registros de capacitação regulares e matriz de polivalência atualizada.",
-            "icone": "bi-mortarboard-fill",
-        },
-        {
-            "titulo": "Cultura de Melhoria Contínua",
-            "descricao": "Tratamento ágil de ações corretivas e preventivas com foco na causa raiz e evolução contínua dos processos.",
-            "icone": "bi-arrow-repeat",
-        },
-        {
-            "titulo": "Padronização e Controle Documental",
-            "descricao": "Procedimentos e instruções de trabalho claros, revisados, disponíveis nos postos e estritamente seguidos.",
-            "icone": "bi-file-earmark-check-fill",
-        },
-        {
-            "titulo": "Foco no Cliente e Requisitos Especiais",
-            "descricao": "Atenção dedicada aos requisitos de clientes, tratativa de reclamações e conformidade de especificações.",
-            "icone": "bi-heart-fill",
-        },
-        {
-            "titulo": "Segurança e Conformidade Regulatória",
-            "descricao": "Alinhamento estrito às exigências legais, sanitárias e normativas aplicáveis aos produtos e processos.",
-            "icone": "bi-shield-shaded",
-        },
-    ]
+
 
     from .models import PontoForteAuditoriaIso
     pontos_fortes_qs = list(auditoria.pontos_fortes.all().order_by('ordem', 'id'))
@@ -6743,6 +6745,7 @@ def iso_auditoria_cronograma(request, auditoria_id):
     if not itens_norma_todos.exists():
         itens_norma_todos = ItemNorma.objects.all().order_by('referencia')
 
+    pontos_fortes_qs = list(auditoria.pontos_fortes.all().order_by('ordem', 'id'))
 
     context = {
         'auditoria': auditoria,
@@ -6763,6 +6766,8 @@ def iso_auditoria_cronograma(request, auditoria_id):
         'total_atendidas_na': total_atendidas_na,
         'total_solicitacoes_todas': total_solicitacoes_todas,
         'itens_norma_todos': itens_norma_todos,
+        'pontos_fortes_catalogo': PONTOS_FORTES_CATALOGO,
+        'pontos_fortes_todos': pontos_fortes_qs,
     }
     return render(request, 'auditoria/iso/setup/cronograma_impressao.html', context)
 
