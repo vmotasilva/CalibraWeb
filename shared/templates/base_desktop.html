@@ -31,38 +31,67 @@
             vertical-align: middle;
         }
 
-        /* Navbar sempre visível (sem colapsar) */
-        .navbar .navbar-toggler { display: none; }
-        .navbar .navbar-collapse { display: flex !important; flex-basis: auto; flex-grow: 1; flex-wrap: nowrap; gap: 0.1rem; }
-        .navbar .navbar-collapse.collapse { display: flex !important; }
-        .navbar .navbar-nav { flex: 1 1 auto; min-width: 0; flex-direction: row; flex-wrap: nowrap; align-items: center; white-space: nowrap; }
-        .navbar .nav-link { padding: 0.2rem 0.26rem; white-space: nowrap; }
-        .navbar-actions { flex: 0 1 auto; min-width: 0; margin-left: auto; flex-wrap: nowrap; white-space: nowrap; }
-        .navbar-actions .btn.btn-sm { padding: 0.18rem 0.32rem; }
-        .navbar-actions.border-start { padding-left: 0.35rem !important; margin-left: 0.3rem !important; }
-        .navbar-actions .me-2 { margin-right: 0.25rem !important; }
-
-        .navbar-user { max-width: clamp(100px, 12vw, 175px); overflow: hidden; }
-        .navbar-user .fw-bold,
-        .navbar-user .text-muted { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-        @media (max-width: 1199.98px) {
-            .navbar .nav-link { padding: 0.16rem 0.22rem; }
-            .nav-divider { margin: 0 0.2rem; }
-        }
-
+        /* Navbar Responsiva com Menu Hambúrguer em telas menores */
         @media (max-width: 991.98px) {
-            .nav-text { font-size: 0.78rem; }
-            .navbar .nav-link { padding: 0.14rem 0.18rem; }
-            .nav-divider { display: none; }
+            .navbar .navbar-toggler { 
+                display: block !important; 
+                padding: 0.25rem 0.5rem;
+                font-size: 1.1rem;
+            }
+            .navbar .navbar-collapse { 
+                display: none !important; 
+                flex-direction: column !important;
+                width: 100% !important;
+                background-color: #0d2f63;
+                padding: 1rem 0.5rem;
+                max-height: calc(100vh - 70px);
+                overflow-y: auto;
+            }
+            .navbar .navbar-collapse.show { 
+                display: flex !important; 
+            }
+            .navbar .navbar-nav { 
+                flex-direction: column !important; 
+                width: 100% !important;
+                align-items: stretch !important;
+                gap: 0.25rem;
+            }
+            .navbar-actions { 
+                width: 100% !important; 
+                margin-left: 0 !important; 
+                margin-top: 0.75rem; 
+                padding-top: 0.75rem; 
+                border-top: 1px solid rgba(255,255,255,0.15); 
+                justify-content: space-between !important;
+            }
+            .navbar-nav .dropdown-menu {
+                position: static !important;
+                background-color: rgba(255,255,255,0.08);
+                border: 0;
+                margin-top: 0.25rem;
+            }
+            .navbar-nav .dropdown-item {
+                color: #ffffff !important;
+                padding-left: 1.5rem;
+            }
+            .navbar-nav .dropdown-item:hover {
+                background-color: rgba(255,255,255,0.15) !important;
+            }
         }
-        @media (max-width: 767.98px) {
-            .nav-text { font-size: 0.74rem; }
-            .navbar .nav-link { padding: 0.12rem 0.16rem; }
-        }
-        @media (max-width: 575.98px) {
-            .nav-text { font-size: 0.7rem; }
-            .navbar .nav-link { padding: 0.1rem 0.14rem; }
+
+        @media (min-width: 992px) {
+            .navbar .navbar-toggler { display: none; }
+            .navbar .navbar-collapse { display: flex !important; flex-basis: auto; flex-grow: 1; flex-wrap: nowrap; gap: 0.1rem; }
+            .navbar .navbar-collapse.collapse { display: flex !important; }
+            .navbar .navbar-nav { flex: 1 1 auto; min-width: 0; flex-direction: row; flex-wrap: nowrap; align-items: center; white-space: nowrap; }
+            .navbar .nav-link { padding: 0.2rem 0.26rem; white-space: nowrap; }
+            .navbar-actions { flex: 0 1 auto; min-width: 0; margin-left: auto; flex-wrap: nowrap; white-space: nowrap; }
+            .navbar-actions .btn.btn-sm { padding: 0.18rem 0.32rem; }
+            .navbar-actions.border-start { padding-left: 0.35rem !important; margin-left: 0.3rem !important; }
+            .navbar-actions .me-2 { margin-right: 0.25rem !important; }
+            .navbar-user { max-width: clamp(100px, 12vw, 175px); overflow: hidden; }
+            .navbar-user .fw-bold,
+            .navbar-user .text-muted { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         }
 
         .nav-divider {
@@ -88,6 +117,10 @@
             <img src="{% static 'shared/logo_calibraweb.svg' %}" alt="CalibraWeb Logo" height="30" style="max-width:100px;object-fit:contain;" onerror="this.onerror=null;this.src='{% static 'favicon.png' %}';">
         </a>
         
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Alternar navegação">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
         <div class="collapse navbar-collapse" id="navbarContent">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
 

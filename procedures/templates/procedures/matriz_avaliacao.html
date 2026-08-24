@@ -95,6 +95,37 @@
         align-content: start;
     }
 
+    /* Otimizações Responsivas Mobile */
+    @media (max-width: 767.98px) {
+        .matriz-cards-grid {
+            grid-template-columns: 1fr !important;
+            gap: 1rem !important;
+        }
+
+        .colaborador-card {
+            padding: 0.85rem !important;
+        }
+
+        /* 2 disciplinas por linha no celular para não espremer o texto */
+        .colaborador-card-body {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 1.1rem 0.75rem !important;
+        }
+
+        .disciplina-box {
+            background-color: #f8fafc;
+            border-radius: 8px;
+            padding: 0.6rem 0.4rem !important;
+            border: 1px solid #f1f5f9;
+        }
+
+        .disciplina-label {
+            font-size: 0.75rem !important;
+            min-height: auto !important;
+            margin-bottom: 2px;
+        }
+    }
+
     /* Bloco individual de cada disciplina (Limpo / Sem borda) */
     .disciplina-box {
         background: transparent;
@@ -360,170 +391,164 @@
 
 {% block content %}
 <div class="container-fluid py-4">
-    <!-- Filtros -->
-    <div class="card mb-3">
-        <div class="card-header">
-            <h6 class="filtros-toggle mb-0" id="filtrosToggle">
-                <span class="toggle-icon"><i class="bi bi-chevron-down"></i></span>
-                <i class="bi bi-funnel"></i> Filtros
-            </h6>
-        </div>
-        <div id="filtrosContent">
-            <div class="card-body">
-                <form method="get" class="row g-3">
-                <div class="col-md-4">
-                    <label class="form-label">Matriz de Habilidades *</label>
-                    <select name="matriz" class="form-select" onchange="this.form.submit()">
-                        <option value="">Selecione uma matriz...</option>
-                        {% for m in matrizes %}
-                        <option value="{{ m.id }}" {% if matriz_id == m.id|stringformat:"s" %}selected{% endif %}>
-                            {{ m.codigo }} - {{ m.nome }}
-                        </option>
-                        {% endfor %}
-                    </select>
+    <!-- Botões de Acesso Rápido Superior (Filtros, Legendas, Associar) -->
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+        <button type="button" class="btn btn-outline-primary d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#modalFiltrosMatriz">
+            <i class="bi bi-funnel"></i> <span>Filtros</span>
+            {% if matriz_id or setor or turno or termo_colab or nivel_filtro or disciplina_filtro %}
+            <span class="badge bg-primary rounded-pill ms-1">Ativos</span>
+            {% endif %}
+        </button>
 
-                    <!-- Select de Disciplina abaixo da Matriz -->
-                    {% if matriz_selecionada and disciplinas %}
-                    <div class="mt-2">
-                        <label class="form-label small text-muted mb-1">Disciplina</label>
-                        <select name="disciplina" class="form-select form-select-sm" onchange="this.form.submit()">
-                            <option value="">Todas as disciplinas ({{ disciplinas.count }})</option>
-                            {% for d in disciplinas %}
-                            <option value="{{ d.id }}" {% if disciplina_filtro == d.id|stringformat:"s" %}selected{% endif %}>
-                                {{ d.nome }}
-                            </option>
-                            {% endfor %}
-                        </select>
+        {% if matriz_selecionada %}
+        <button type="button" class="btn btn-outline-secondary d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#modalLegendaMatriz">
+            <i class="bi bi-info-circle"></i> <span>Legenda</span>
+        </button>
+        
+        <button type="button" class="btn btn-success d-flex align-items-center gap-1 ms-auto" data-bs-toggle="modal" data-bs-target="#modalAssociarColab">
+            <i class="bi bi-person-plus"></i> <span class="d-none d-sm-inline">Associar Novo</span> Colaborador
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- Modal de Filtros da Matriz -->
+    <div class="modal fade" id="modalFiltrosMatriz" tabindex="-1" aria-labelledby="modalFiltrosMatrizLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <form method="get">
+                    <div class="modal-header bg-light">
+                        <h5 class="modal-title fs-6" id="modalFiltrosMatrizLabel"><i class="bi bi-funnel me-2"></i> Filtros da Matriz</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                     </div>
-                    {% endif %}
-                </div>
-                
-                <div class="col-md-2">
-                    <label class="form-label">Setor</label>
-                    <select name="setor" class="form-select">
-                        <option value="">Todos</option>
-                        {% for s in setores %}
-                        <option value="{{ s.id }}" {% if setor == s.id|stringformat:"s" %}selected{% endif %}>{{ s.nome }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                
-                <div class="col-md-2">
-                    <label class="form-label">Turno</label>
-                    <select name="turno" class="form-select">
-                        <option value="">Todos</option>
-                        {% for t in turnos_disponiveis %}
-                        <option value="{{ t }}" {% if turno == t %}selected{% endif %}>{{ t }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                
-                <div class="col-md-2">
-                    <label class="form-label">Colaborador</label>
-                    <input type="text" name="colaborador" class="form-control" 
-                           placeholder="Nome ou matrícula" value="{{ termo_colab }}">
-                </div>
-                
-                <div class="col-md-2">
-                    <label class="form-label">Status/Nível</label>
-                    <select name="nivel_filtro" class="form-select">
-                        <option value="">Todos</option>
-                        <option value="pendente" {% if nivel_filtro == 'pendente' %}selected{% endif %}>Pendente de Avaliação</option>
-                        <option value="-1" {% if nivel_filtro == '-1' %}selected{% endif %}>Nível N/A (Não se Aplica)</option>
-                        <option value="0" {% if nivel_filtro == '0' %}selected{% endif %}>Nível 0 (Há Intenção)</option>
-                        <option value="1" {% if nivel_filtro == '1' %}selected{% endif %}>Nível 1 (Em Treinamento)</option>
-                        <option value="2" {% if nivel_filtro == '2' %}selected{% endif %}>Nível 2 (Treinado)</option>
-                        <option value="3" {% if nivel_filtro == '3' %}selected{% endif %}>Nível 3 (LOFT)</option>
-                    </select>
-                </div>
-                
-                <div class="col-md-4 ms-auto">
-                    <label class="form-label">&nbsp;</label>
-                    <div class="d-flex gap-2">
-                        <a href="{% if matriz_id %}?matriz={{ matriz_id }}{% else %}{% url 'procedures:matriz_avaliacoes' %}{% endif %}" class="btn btn-outline-secondary w-100">
-                            <i class="bi bi-x-circle"></i> Limpar
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-12 col-md-6">
+                                <label class="form-label fw-semibold">Matriz de Habilidades *</label>
+                                <select name="matriz" class="form-select">
+                                    <option value="">Selecione uma matriz...</option>
+                                    {% for m in matrizes %}
+                                    <option value="{{ m.id }}" {% if matriz_id == m.id|stringformat:"s" %}selected{% endif %}>
+                                        {{ m.codigo }} - {{ m.nome }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="col-12 col-md-6">
+                                <label class="form-label fw-semibold">Disciplina</label>
+                                <select name="disciplina" class="form-select">
+                                    <option value="">Todas as disciplinas {% if disciplinas %}({{ disciplinas.count }}){% endif %}</option>
+                                    {% for d in disciplinas %}
+                                    <option value="{{ d.id }}" {% if disciplina_filtro == d.id|stringformat:"s" %}selected{% endif %}>
+                                        {{ d.nome }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="col-12 col-md-6">
+                                <label class="form-label fw-semibold">Setor</label>
+                                <select name="setor" class="form-select">
+                                    <option value="">Todos os setores</option>
+                                    {% for s in setores %}
+                                    <option value="{{ s.id }}" {% if setor == s.id|stringformat:"s" %}selected{% endif %}>{{ s.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="col-12 col-md-6">
+                                <label class="form-label fw-semibold">Turno</label>
+                                <select name="turno" class="form-select">
+                                    <option value="">Todos os turnos</option>
+                                    {% for t in turnos_disponiveis %}
+                                    <option value="{{ t }}" {% if turno == t %}selected{% endif %}>{{ t }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="col-12 col-md-6">
+                                <label class="form-label fw-semibold">Colaborador</label>
+                                <input type="text" name="colaborador" class="form-control" 
+                                       placeholder="Nome ou matrícula" value="{{ termo_colab }}">
+                            </div>
+
+                            <div class="col-12 col-md-6">
+                                <label class="form-label fw-semibold">Status / Nível</label>
+                                <select name="nivel_filtro" class="form-select">
+                                    <option value="">Todos os status</option>
+                                    <option value="pendente" {% if nivel_filtro == 'pendente' %}selected{% endif %}>Pendente de Avaliação</option>
+                                    <option value="-1" {% if nivel_filtro == '-1' %}selected{% endif %}>Nível N/A (Não se Aplica)</option>
+                                    <option value="0" {% if nivel_filtro == '0' %}selected{% endif %}>Nível 0 (Há Intenção)</option>
+                                    <option value="1" {% if nivel_filtro == '1' %}selected{% endif %}>Nível 1 (Em Treinamento)</option>
+                                    <option value="2" {% if nivel_filtro == '2' %}selected{% endif %}>Nível 2 (Treinado)</option>
+                                    <option value="3" {% if nivel_filtro == '3' %}selected{% endif %}>Nível 3 (LOFT)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer d-flex justify-content-between">
+                        <a href="{% if matriz_id %}?matriz={{ matriz_id }}{% else %}{% url 'procedures:matriz_avaliacoes' %}{% endif %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle me-1"></i> Limpar Filtros
                         </a>
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="bi bi-search"></i> Filtrar
+                        <button type="submit" class="btn btn-primary px-4">
+                            <i class="bi bi-search me-1"></i> Aplicar Filtros
                         </button>
                     </div>
-                </div>
-            </form>
+                </form>
             </div>
         </div>
     </div>
 
     {% if matriz_selecionada %}
-    <!-- Legenda -->
-    <div class="card legenda-card mb-4">
-        <div class="card-body">
-            <h6 class="legenda-toggle mb-3" id="legendaToggle">
-                <span class="toggle-icon"><i class="bi bi-chevron-down"></i></span>
-                <i class="bi bi-info-circle"></i> <strong>Legenda - Níveis de Competência</strong>
-            </h6>
-            <div class="row g-2" id="legendaContent">
-                <div class="col-md-6 col-lg-2">
-                    <div class="legenda-item">
-                        <span class="nivel-badge nivel--1">N/A</span>
-                        <small><strong>Não se Aplica</strong><br>Disciplina não aplicável</small>
+    <!-- Modal de Legenda de Competências -->
+    <div class="modal fade" id="modalLegendaMatriz" tabindex="-1" aria-labelledby="modalLegendaMatrizLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fs-6" id="modalLegendaMatrizLabel"><i class="bi bi-info-circle me-2"></i> Legenda - Níveis de Competência</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex flex-column gap-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="nivel-badge nivel--1">N/A</span>
+                            <div><strong>Não se Aplica</strong><div class="small text-muted">Disciplina não aplicável ao colaborador</div></div>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="nivel-badge nivel-0">0</span>
+                            <div><strong>Há Intenção</strong><div class="small text-muted">Intenção de treinar no setor/disciplina</div></div>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="nivel-badge nivel-1">1</span>
+                            <div><strong>Em Treinamento</strong><div class="small text-muted">Colaborador em fase de treinamento</div></div>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="nivel-badge nivel-2">2</span>
+                            <div><strong>Treinado</strong><div class="small text-muted">Apto e treinado na disciplina</div></div>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="nivel-badge nivel-3">3</span>
+                            <div><strong>LOFT</strong><div class="small text-muted">Referência / Plataforma LOFT</div></div>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="nivel-badge nivel-vazio">+</span>
+                            <div><strong>Não Avaliado</strong><div class="small text-muted">Pendente de avaliação (clique para avaliar)</div></div>
+                        </div>
                     </div>
                 </div>
-                <div class="col-md-6 col-lg-2">
-                    <div class="legenda-item">
-                        <span class="nivel-badge nivel-0">0</span>
-                        <small><strong>Há Intenção</strong><br>Intenção de treinar</small>
-                    </div>
-                </div>
-                <div class="col-md-6 col-lg-2">
-                    <div class="legenda-item">
-                        <span class="nivel-badge nivel-1">1</span>
-                        <small><strong>Em Treinamento</strong><br>Colaborador em treinamento</small>
-                    </div>
-                </div>
-                <div class="col-md-6 col-lg-2">
-                    <div class="legenda-item">
-                        <span class="nivel-badge nivel-2">2</span>
-                        <small><strong>Treinado</strong><br>Treinado na disciplina</small>
-                    </div>
-                </div>
-                <div class="col-md-6 col-lg-2">
-                    <div class="legenda-item">
-                        <span class="nivel-badge nivel-3">3</span>
-                        <small><strong>LOFT</strong><br>Plataforma LOFT</small>
-                    </div>
-                </div>
-                <div class="col-md-6 col-lg-2">
-                    <div class="legenda-item">
-                        <span class="nivel-badge nivel-vazio">+</span>
-                        <small><strong>Não Avaliado</strong><br>Clique para avaliar</small>
-                    </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <script>
-        document.getElementById('legendaToggle').addEventListener('click', function() {
-            const content = document.getElementById('legendaContent');
-            const toggle = this;
-            toggle.classList.toggle('collapsed');
-            content.classList.toggle('collapsed');
-        });
-        
-        document.getElementById('filtrosToggle').addEventListener('click', function() {
-            const content = document.getElementById('filtrosContent');
-            const toggle = this;
-            toggle.classList.toggle('collapsed');
-            content.classList.toggle('collapsed');
-        });
-    </script>
-
     <!-- Ações em Lote -->
-    <div class="card mb-4" id="acoes-lote-container" style="display: none;">
+    <div class="card mb-3" id="acoes-lote-container" style="display: none;">
         <div class="card-body py-2">
-            <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <div>
-                    <span id="contador-selecionados">0 colaboradores</span> selecionados
+                    <span id="contador-selecionados" class="fw-bold text-primary">0 colaboradores</span> selecionados
                 </div>
                 <div class="d-flex gap-2">
                     <button type="button" class="btn btn-danger btn-sm" id="btn-desassociar">
@@ -537,19 +562,12 @@
         </div>
     </div>
 
-    <!-- Botão de Associar Novo Colaborador -->
-    <div class="mb-3">
-        <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalAssociarColab">
-            <i class="bi bi-person-plus"></i> Associar Novo Colaborador
-        </button>
-    </div>
-
     <!-- Alerta de Colaboradores Desligados -->
     {% if colaboradores_desligados_ids %}
-    <div class="alert alert-warning d-flex justify-content-between align-items-center mb-3 shadow-sm border-warning">
+    <div class="alert alert-warning d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 shadow-sm border-warning">
         <div>
             <i class="bi bi-exclamation-triangle-fill text-warning fs-5 me-2"></i>
-            <strong>Colaboradores Desligados:</strong> Encontramos <strong>{{ colaboradores_desligados_ids|length }}</strong> colaborador(es) associado(s) a esta matriz que foi(foram) desligado(s) no cadastro de RH.
+            <strong>Colaboradores Desligados:</strong> Encontramos <strong>{{ colaboradores_desligados_ids|length }}</strong> colaborador(es) associado(s) a esta matriz que foi(foram) desligado(s) no RH.
         </div>
         <button type="button" class="btn btn-danger btn-sm" id="btn-remover-desligados" data-ids="{{ desligados_ids_json }}">
             <i class="bi bi-person-x"></i> Remover da Matriz
@@ -557,19 +575,21 @@
     </div>
     {% endif %}
  
-    <!-- Matriz -->
+    <!-- Matriz Card Principal -->
     <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
             <div>
-                <h6 class="mb-0">
-                    <i class="bi bi-grid-3x3"></i> 
+                <h6 class="mb-0 fs-6 fw-bold">
+                    <i class="bi bi-grid-3x3 text-primary me-1"></i> 
                     {{ matriz_selecionada.nome }}
                 </h6>
+                <div class="mt-1">
+                    <span class="badge bg-info text-dark">{% if pagination %}{{ pagination.total_items }}{% else %}{{ matriz_dados|length }}{% endif %} colaboradores × {% if disciplina_filtro %}1 disc. filtrada{% else %}{{ disciplinas.count }} disciplinas{% endif %}</span>
+                </div>
             </div>
-            <div class="d-flex gap-2 align-items-center">
-                <span class="badge bg-info">{% if pagination %}{{ pagination.total_items }}{% else %}{{ matriz_dados|length }}{% endif %} colaboradores × {% if disciplina_filtro %}1 disciplina (filtrada){% else %}{{ disciplinas.count }} disciplinas{% endif %}</span>
-                
-                <!-- Botões de Validação -->
+
+            <!-- Botões Desktop (>= 768px) -->
+            <div class="d-none d-md-flex gap-2 align-items-center">
                 <div class="btn-group" role="group">
                     <a href="{% url 'procedures:exportar_matriz_excel' %}?matriz={{ matriz_selecionada.id }}&disciplina={{ disciplina_filtro }}&setor={{ setor }}&turno={{ turno }}&colaborador={{ termo_colab }}&nivel_filtro={{ nivel_filtro }}" 
                        class="btn btn-outline-success btn-sm" 
@@ -591,6 +611,36 @@
                        title="Ver validações pendentes">
                         <i class="bi bi-inbox"></i> Pendências
                     </a>
+                </div>
+            </div>
+
+            <!-- Botões Mobile (< 768px) com Dropdown Ações -->
+            <div class="d-flex d-md-none gap-2 w-100 mt-1">
+                <a href="{% url 'procedures:exportar_matriz_excel' %}?matriz={{ matriz_selecionada.id }}&disciplina={{ disciplina_filtro }}&setor={{ setor }}&turno={{ turno }}&colaborador={{ termo_colab }}&nivel_filtro={{ nivel_filtro }}" 
+                   class="btn btn-outline-success btn-sm flex-grow-1 d-flex align-items-center justify-content-center" style="min-height: 38px;">
+                    <i class="bi bi-file-earmark-excel me-1"></i> Excel
+                </a>
+                <div class="dropdown flex-grow-1">
+                    <button class="btn btn-outline-primary btn-sm dropdown-toggle w-100 d-flex align-items-center justify-content-center" type="button" id="dropdownAcoesMatrizMobile" data-bs-toggle="dropdown" aria-expanded="false" style="min-height: 38px;">
+                        <i class="bi bi-gear me-1"></i> Ações
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="dropdownAcoesMatrizMobile">
+                        <li>
+                            <a class="dropdown-item py-2" href="{% url 'procedures:solicitar_validacao' matriz_selecionada.id %}">
+                                <i class="bi bi-clipboard-check text-primary me-2"></i> Solicitar Validação
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item py-2" href="{% url 'procedures:validacao_rapida' matriz_selecionada.id %}">
+                                <i class="bi bi-lightning-fill text-success me-2"></i> Validar Rápido
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item py-2" href="{% url 'procedures:validacoes_pendentes' %}">
+                                <i class="bi bi-inbox text-warning me-2"></i> Validações Pendentes
+                            </a>
+                        </li>
+                    </ul>
                 </div>
             </div>
         </div>
