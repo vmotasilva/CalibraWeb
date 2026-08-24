@@ -470,6 +470,24 @@ def compute_auditoria_metricas_completas(auditoria) -> Dict[str, Any]:
                 'justificativa': just_na
             })
 
+            ref_parts = item.referencia.split('.')
+            sec_code = ref_parts[0] if ref_parts else item.referencia
+            pai = ItemNorma.objects.filter(norma=auditoria.norma, referencia=sec_code).first() if ItemNorma else None
+            area_nome = f"{pai.titulo if pai else item.titulo}" if not pai else f"{pai.titulo}"
+
+            gaps_area_funcional.append({
+                'area': area_nome,
+                'item_referencia': item.referencia,
+                'item_titulo': item.titulo,
+                'tipo': 'NA',
+                'tipo_badge': "Não Aplicável",
+                'evidencia': '',
+                'descricao': just_na,
+                'tabela_gap': 'Não Aplicável',
+                'tabela_evidencia': f"{item.referencia} - {item.titulo}",
+                'tabela_descricao': just_na
+            })
+
         elif status_item == 'P':
             count_p += 1
 
@@ -481,15 +499,40 @@ def compute_auditoria_metricas_completas(auditoria) -> Dict[str, Any]:
                 'evidencias': evidencias_item[:3] or ["Processo auditado com evidências documentais em conformidade."]
             })
 
+            ref_parts = item.referencia.split('.')
+            sec_code = ref_parts[0] if ref_parts else item.referencia
+            pai = ItemNorma.objects.filter(norma=auditoria.norma, referencia=sec_code).first() if ItemNorma else None
+            area_nome = f"{pai.titulo if pai else item.titulo}" if not pai else f"{pai.titulo}"
+
+            ev_str = "\n".join([f"• {e}" for e in evidencias_item]) if evidencias_item else ""
+            desc_str = av_final.justificativa if (av_final and av_final.justificativa) else ""
+            tabela_desc = ev_str + ("\n" + desc_str if desc_str else "")
+            if not tabela_desc.strip():
+                tabela_desc = "Processo auditado com evidências documentais em conformidade."
+
+            gaps_area_funcional.append({
+                'area': area_nome,
+                'item_referencia': item.referencia,
+                'item_titulo': item.titulo,
+                'tipo': 'C',
+                'tipo_badge': "Conforme",
+                'evidencia': ev_str,
+                'descricao': desc_str,
+                'tabela_gap': 'Conforme',
+                'tabela_evidencia': f"{item.referencia} - {item.titulo}",
+                'tabela_descricao': tabela_desc.strip()
+            })
+
         elif status_item == 'OM':
             count_om += 1
             ref_parts = item.referencia.split('.')
             sec_code = ref_parts[0] if ref_parts else item.referencia
             pai = ItemNorma.objects.filter(norma=auditoria.norma, referencia=sec_code).first() if ItemNorma else None
-            area_nome = f"Seção {sec_code} - {pai.titulo if pai else item.titulo}"
+            area_nome = f"{pai.titulo if pai else item.titulo}" if not pai else f"{pai.titulo}"
 
             ev_str = "\n".join([f"• {e}" for e in evidencias_item]) if evidencias_item else "Amostragem realizada durante a auditoria."
             desc_str = av_final.justificativa if (av_final and av_final.justificativa) else f"Oportunidade de aprimoramento no cumprimento do requisito {item.referencia}."
+            tabela_desc = ev_str + "\n" + desc_str
 
             gaps_area_funcional.append({
                 'area': area_nome,
@@ -498,7 +541,10 @@ def compute_auditoria_metricas_completas(auditoria) -> Dict[str, Any]:
                 'tipo': 'OM',
                 'tipo_badge': f"Oportunidade (Item {item.referencia})",
                 'evidencia': ev_str,
-                'descricao': desc_str
+                'descricao': desc_str,
+                'tabela_gap': 'OM',
+                'tabela_evidencia': f"{item.referencia} - {item.titulo}",
+                'tabela_descricao': tabela_desc.strip()
             })
 
         elif status_item == 'NC':
@@ -531,10 +577,11 @@ def compute_auditoria_metricas_completas(auditoria) -> Dict[str, Any]:
             ref_parts = item.referencia.split('.')
             sec_code = ref_parts[0] if ref_parts else item.referencia
             pai = ItemNorma.objects.filter(norma=auditoria.norma, referencia=sec_code).first() if ItemNorma else None
-            area_nome = f"Seção {sec_code} - {pai.titulo if pai else item.titulo}"
+            area_nome = f"{pai.titulo if pai else item.titulo}" if not pai else f"{pai.titulo}"
 
             ev_str = "\n".join([f"• {e}" for e in evidencias_item]) if evidencias_item else "Evidência constatada durante amostragem documental e entrevista."
             desc_str = av_final.justificativa if (av_final and av_final.justificativa) else f"Desvio identificado em relação aos critérios do requisito {item.referencia} da norma {auditoria.norma.codigo}."
+            tabela_desc = ev_str + "\n" + desc_str
 
             gaps_area_funcional.append({
                 'area': area_nome,
@@ -543,7 +590,10 @@ def compute_auditoria_metricas_completas(auditoria) -> Dict[str, Any]:
                 'tipo': 'NC',
                 'tipo_badge': badge_nc,
                 'evidencia': ev_str,
-                'descricao': desc_str
+                'descricao': desc_str,
+                'tabela_gap': 'NC Maior' if is_maior else 'NC Menor',
+                'tabela_evidencia': f"{item.referencia} - {item.titulo}",
+                'tabela_descricao': tabela_desc.strip()
             })
 
     total_avaliados = count_c + count_om + count_nc_menor + count_nc_maior
@@ -858,28 +908,36 @@ def populate_gaps_table_loop(table, gaps_list: List[Dict[str, Any]]):
         r0.font.size = Pt(8.5)
         r0.font.color.rgb = RGBColor(11, 37, 69)
 
-        # 1. Gaps
+        # 1. Gaps (Conforme, NC, OM, NA)
         p1 = row.cells[1].paragraphs[0]
         p1.paragraph_format.space_after = Pt(0)
-        r1 = p1.add_run(gap.get('tipo_badge', ''))
+        p1.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        tipo_str = gap.get('tabela_gap', gap.get('tipo', ''))
+        r1 = p1.add_run(tipo_str)
         r1.bold = True
         r1.font.size = Pt(8.5)
         if gap.get('tipo') == 'NC':
             r1.font.color.rgb = RGBColor(220, 38, 38)
-        else:
+        elif gap.get('tipo') == 'OM':
             r1.font.color.rgb = RGBColor(217, 119, 6)
+        elif gap.get('tipo') == 'C':
+            r1.font.color.rgb = RGBColor(22, 101, 52)
+        else:
+            r1.font.color.rgb = RGBColor(71, 85, 105)
 
-        # 2. Evidência
+        # 2. Evidência (Referência e Título do Item)
         p2 = row.cells[2].paragraphs[0]
         p2.paragraph_format.space_after = Pt(0)
-        r2 = p2.add_run(gap.get('evidencia', ''))
+        p2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        r2 = p2.add_run(gap.get('tabela_evidencia', ''))
         r2.font.size = Pt(8.5)
 
-        # 3. Descrição
+        # 3. Descrição da avaliação (Constatação + Evidências)
         p3 = row.cells[3].paragraphs[0]
         p3.paragraph_format.space_after = Pt(0)
-        r3 = p3.add_run(gap.get('descricao', ''))
+        r3 = p3.add_run(gap.get('tabela_descricao', ''))
         r3.font.size = Pt(8.5)
+
 
 
 def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
@@ -973,7 +1031,8 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
     # Pontos Fracos (NC e OM)
     pontos_fracos_linhas = []
     for gap in dados.get('gaps_area_funcional', []):
-        pontos_fracos_linhas.append(f"{gap['tipo_badge']}: {gap['descricao']}")
+        if gap.get('tipo') in ['NC', 'OM']:
+            pontos_fracos_linhas.append(f"{gap['tipo_badge']}: {gap['descricao']}")
     if not pontos_fracos_linhas:
         pontos_fracos_linhas = ["Nenhuma Não Conformidade ou Oportunidade de Melhoria registrada."]
 
