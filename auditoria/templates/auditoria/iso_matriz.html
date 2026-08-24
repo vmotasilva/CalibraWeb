@@ -742,9 +742,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             respBadge = '<span class="badge bg-light text-secondary border rounded-pill px-2.5 py-1 small fw-normal" title="Este bloco não registrou amostras diretamente (evidências avaliadas no item)"><i class="bi bi-info-circle me-1"></i>Sem amostras neste bloco</span>';
                         }
 
-                        let solicitacoesHtml = '';
-                        if (inst.solicitacoes && inst.solicitacoes.length > 0) {
-                            let solsItems = inst.solicitacoes.map((s, sIdx) => {
+                        let solsItems = inst.solicitacoes.map((s, sIdx) => {
                                 let cBadge = 'bg-secondary';
                                 if (s.conclusao === 'C') cBadge = 'bg-success';
                                 else if (s.conclusao === 'NC') cBadge = 'bg-danger';
@@ -754,16 +752,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
                                 let fotosCount = (s.imagens || []).length;
                                 let fotosBadge = fotosCount > 0
-                                    ? `<span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-2 py-0.5 small fw-semibold" title="${fotosCount} foto(s) anexada(s)"><i class="bi bi-camera-fill me-1"></i>${fotosCount} foto${fotosCount > 1 ? 's' : ''}</span>`
+                                    ? `<span class="badge bg-light text-primary border rounded-pill px-2 py-0.5 small" title="${fotosCount} foto(s)"><i class="bi bi-camera me-1"></i>${fotosCount}</span>`
                                     : '';
 
                                 let fotosThumbnailsHtml = '';
                                 if (fotosCount > 0) {
                                     fotosThumbnailsHtml = `
-                                        <div class="d-flex align-items-center gap-2 mt-2 flex-wrap">
+                                        <div class="d-flex align-items-center gap-1 mt-1 flex-wrap">
                                             ${s.imagens.map(img => `
-                                                <div class="position-relative" style="cursor: pointer;" onclick="abrirLightboxImagemMatriz('${escapeJs(img.url)}', '${escapeJs(img.legenda || s.solicitacao || 'Evidência')}', event)" title="${img.legenda || img.nome || 'Ver foto'}">
-                                                    <img src="${img.url}" alt="${img.legenda || 'Foto'}" class="rounded-2 border object-fit-cover shadow-2xs" style="width: 40px; height: 40px; object-fit: cover;">
+                                                <div style="cursor: pointer;" onclick="abrirLightboxImagemMatriz('${escapeJs(img.url)}', '${escapeJs(img.legenda || s.solicitacao || 'Evidência')}', event)" title="${img.legenda || img.nome || 'Ver foto'}">
+                                                    <img src="${img.url}" alt="${img.legenda || 'Foto'}" class="rounded border shadow-sm" style="width: 32px; height: 32px; object-fit: cover;">
                                                 </div>
                                             `).join('')}
                                         </div>
@@ -773,33 +771,31 @@ document.addEventListener('DOMContentLoaded', function() {
                                 const imagensSafe = JSON.stringify(s.imagens || []).replace(/"/g, '&quot;');
 
                                 return `
-                                    <div class="p-2.5 bg-white rounded-3 border mb-2 shadow-2xs">
-                                        <div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-2">
-                                            <div class="d-flex align-items-center gap-2 flex-wrap">
-                                                <span class="badge bg-light text-primary border font-monospace" style="font-size: 0.75rem;">Amostra #${sIdx + 1}</span>
-                                                ${fotosBadge}
-                                                <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-2 py-0.5" style="font-size: 0.72rem;"><i class="bi bi-diagram-3 me-1"></i>${inst.bloco_titulo}</span>
-                                                <strong class="text-dark small">${s.solicitacao}</strong>
+                                    <div class="p-2 bg-white rounded-2 border mb-2 border-start border-3 border-${s.conclusao === 'NC' ? 'danger' : (s.conclusao === 'OM' ? 'warning' : 'primary')}">
+                                        <div class="d-flex justify-content-between align-items-start gap-2">
+                                            <div class="flex-grow-1">
+                                                <div class="d-flex align-items-center gap-2 mb-1">
+                                                    <span class="badge ${cBadge} rounded-pill" style="font-size: 0.65rem;">${s.conclusao_display || 'Pendente'}</span>
+                                                    <strong class="text-dark small">${s.solicitacao}</strong>
+                                                    ${fotosBadge}
+                                                </div>
+                                                ${s.evidencia ? `<div class="text-muted small fst-italic" style="font-size: 0.8rem;">${s.evidencia}</div>` : ''}
+                                                ${fotosThumbnailsHtml}
                                             </div>
-                                            <div class="d-flex align-items-center gap-2">
-                                                <span class="badge ${cBadge} rounded-pill px-2 py-0.5" style="font-size: 0.75rem;">${s.conclusao_display || 'Pendente'}</span>
-                                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill font-monospace" style="font-size: 0.75rem;" onclick="abrirModalDetalhesMatriz(${s.id}, '${escapeJs(s.solicitacao)}', '${escapeJs(s.evidencia || '')}', '${s.conclusao || 'P'}', ${inst.pergunta_id}, ${imagensSafe})">
-                                                    <i class="bi bi-arrows-angle-expand me-1"></i> Expandir
-                                                </button>
-                                            </div>
+                                            <button type="button" class="btn btn-sm btn-light border py-0 px-2 rounded font-monospace flex-shrink-0" style="font-size: 0.7rem;" onclick="abrirModalDetalhesMatriz(${s.id}, '${escapeJs(s.solicitacao)}', '${escapeJs(s.evidencia || '')}', '${s.conclusao || 'P'}', ${inst.pergunta_id}, ${imagensSafe})" title="Editar Solicitação">
+                                                <i class="bi bi-pencil me-1"></i>
+                                            </button>
                                         </div>
-                                        ${s.evidencia ? `<div class="text-muted font-monospace small bg-light p-2 rounded-2 mt-1" style="font-size: 0.8rem; white-space: pre-wrap;"><i class="bi bi-file-earmark-check me-1 text-primary"></i><strong>Evidência:</strong> ${s.evidencia}</div>` : `<small class="text-muted fst-italic d-block mt-1">Sem registro de evidência ainda.</small>`}
-                                        ${fotosThumbnailsHtml}
                                     </div>
                                 `;
                             }).join('');
 
                             solicitacoesHtml = `
-                                <div class="mt-2.5">
+                                <div class="mt-2">
                                     <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <small class="fw-bold text-dark"><i class="bi bi-folder-check text-primary me-1"></i> Solicitações & Amostragens (${inst.solicitacoes.length}):</small>
-                                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill py-0.5 px-2.5 fw-bold" style="font-size: 0.75rem;" onclick="adicionarSolicitacaoMatriz(${inst.pergunta_id}, ${inst.bloco_id})">
-                                            <i class="bi bi-plus-lg me-1"></i> Nova Solicitação
+                                        <small class="fw-bold text-muted text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Amostras avaliadas (${inst.solicitacoes.length})</small>
+                                        <button type="button" class="btn btn-sm btn-link text-primary p-0 text-decoration-none fw-semibold" style="font-size: 0.75rem;" onclick="adicionarSolicitacaoMatriz(${inst.pergunta_id}, ${inst.bloco_id})">
+                                            + Adicionar
                                         </button>
                                     </div>
                                     ${solsItems}

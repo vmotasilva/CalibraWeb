@@ -7689,3 +7689,29 @@ def api_iso_sintese_salvar_secao(request, auditoria_id):
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
+
+
+@login_required
+def iso_gestao_amostras_view(request, auditoria_id):
+    from django.shortcuts import render, get_object_or_404, redirect
+    from .models import AuditoriaIso, SolicitacaoEvidenciaIso, AgendaAuditoriaIso
+    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+    
+    # Check permissions
+    if not _auditoria_is_admin(request.user) and not request.user.is_superuser:
+        if not auditoria.agendas.filter(auditores=request.user).exists():
+            return redirect("auditoria:iso_auditoria_list")
+            
+    agendas = auditoria.agendas.all().order_by('titulo')
+    
+    # Get all solicitacoes for this auditoria
+    solicitacoes = SolicitacaoEvidenciaIso.objects.filter(
+        resposta__auditoria=auditoria
+    ).select_related('agenda', 'resposta__pergunta').order_by('agenda__titulo', 'solicitacao')
+    
+    return render(request, "auditoria/iso/gestao_amostras.html", {
+        "auditoria": auditoria,
+        "agendas": agendas,
+        "solicitacoes": solicitacoes
+    })
+
