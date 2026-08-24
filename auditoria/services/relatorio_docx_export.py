@@ -967,8 +967,15 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
             pontos_fortes_linhas.append(f"• {pf.titulo}")
     pontos_fortes_str = "\n".join(pontos_fortes_linhas) if pontos_fortes_linhas else "Nenhum ponto forte registrado."
 
+    # Pontos Fracos (NC e OM)
+    pontos_fracos_linhas = []
+    for gap in gaps_area_funcional:
+        pontos_fracos_linhas.append(f"• {gap['tipo_badge']}: {gap['descricao']}")
+    pontos_fracos_str = "\n".join(pontos_fracos_linhas) if pontos_fracos_linhas else "Nenhuma Não Conformidade ou Oportunidade de Melhoria registrada."
+
     # Dicionário de Injeção de Tags (com sinônimos suportados)
     tag_dict = {
+        '{{pontos_fracos}}': pontos_fracos_str,
         '{{unidade}}': unidade_str,
         '{{nome_unidade}}': unidade_str,
         '{{empresa_auditada}}': unidade_str,
