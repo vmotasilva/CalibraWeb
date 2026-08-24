@@ -676,13 +676,41 @@ def compute_auditoria_metricas_completas(auditoria) -> Dict[str, Any]:
     }
 
 
+def insert_paragraph_after(paragraph, text=None):
+    from docx.oxml import OxmlElement
+    from docx.text.paragraph import Paragraph
+    new_p_xml = OxmlElement("w:p")
+    paragraph._p.addnext(new_p_xml)
+    new_p = Paragraph(new_p_xml, paragraph._parent)
+    if text:
+        new_p.add_run(text)
+    return new_p
+
+def iter_all_paragraphs(doc_obj):
+    for p in doc_obj.paragraphs:
+        yield p
+    for table in doc_obj.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for p in cell.paragraphs:
+                    yield p
+
 def inject_html_to_docx(doc: Document, html_content: str, target_paragraph=None):
     """
     Converte código HTML (do editor WYSIWYG Quill/TinyMCE) nativamente em parágrafos,
     títulos, listas, tabelas e imagens no documento Word.
     """
+    current_p = target_paragraph
+    def add_p():
+        nonlocal current_p
+        if current_p is not None:
+            new_p = insert_paragraph_after(current_p)
+            current_p = new_p
+            return new_p
+        return doc.add_paragraph()
+
     if not html_content or not html_content.strip():
-        p = doc.add_paragraph() if target_paragraph is None else target_paragraph
+        p = add_p() if target_paragraph is None else target_paragraph
         p.paragraph_format.space_after = Pt(4)
         run = p.add_run("Nenhuma síntese ou nota registrada para este bloco.")
         run.font.italic = True
@@ -758,7 +786,7 @@ def inject_html_to_docx(doc: Document, html_content: str, target_paragraph=None)
     for elem in soup.find_all(recursive=False):
         if elem.name in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']:
             level = int(elem.name[1])
-            p = doc.add_paragraph()
+            p = add_p()
             p.paragraph_format.space_before = Pt(8)
             p.paragraph_format.space_after = Pt(3)
             p.paragraph_format.keep_with_next = True
@@ -770,7 +798,7 @@ def inject_html_to_docx(doc: Document, html_content: str, target_paragraph=None)
             r.font.color.rgb = RGBColor(15, 23, 42)
 
         elif elem.name in ['p', 'div']:
-            p = doc.add_paragraph()
+            p = add_p()
             p.paragraph_format.space_before = Pt(2)
             p.paragraph_format.space_after = Pt(3)
             p.paragraph_format.line_spacing = 1.15
@@ -779,7 +807,7 @@ def inject_html_to_docx(doc: Document, html_content: str, target_paragraph=None)
         elif elem.name in ['ul', 'ol']:
             is_ordered = (elem.name == 'ol')
             for idx, li in enumerate(elem.find_all('li', recursive=False), 1):
-                p = doc.add_paragraph()
+                p = add_p()
                 p.paragraph_format.left_indent = Inches(0.25)
                 p.paragraph_format.space_before = Pt(1)
                 p.paragraph_format.space_after = Pt(2)
@@ -790,7 +818,7 @@ def inject_html_to_docx(doc: Document, html_content: str, target_paragraph=None)
                 process_inline(li, p)
 
         elif elem.name == 'blockquote':
-            p = doc.add_paragraph()
+            p = add_p()
             p.paragraph_format.left_indent = Inches(0.35)
             p.paragraph_format.space_before = Pt(3)
             p.paragraph_format.space_after = Pt(3)
@@ -803,6 +831,10 @@ def inject_html_to_docx(doc: Document, html_content: str, target_paragraph=None)
             if rows:
                 num_cols = max(len(r.find_all(['td', 'th'])) for r in rows)
                 t = doc.add_table(rows=len(rows), cols=num_cols)
+                if current_p is not None:
+                    current_p._p.addnext(t._tbl)
+                    if t.rows:
+                        current_p = t.rows[-1].cells[-1].paragraphs[-1]
                 t.alignment = WD_TABLE_ALIGNMENT.CENTER
                 set_table_borders(t, color="CBD5E1")
                 
@@ -1121,7 +1153,7 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
                     else:
                         r.text = ""
 
-        for p in doc.paragraphs:
+        for p in iter_all_paragraphs(doc):
             if tag in p.text:
                 if not items:
                     items = ["Nenhum registro encontrado."]
@@ -1143,7 +1175,7 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
     inject_list_tags(doc, "{{pontos_fracos}}", pontos_fracos_linhas)
 
     # 5. Injeção da Seção "Exclusões Justificadas"
-    for p in doc.paragraphs:
+    for p in iter_all_paragraphs(doc):
         if "{{exclusoes_justificadas}}" in p.text:
             p.text = ""
             exclusoes = dados['exclusoes_na']
@@ -1190,7 +1222,7 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
                 p._p.addnext(p_na._p)
 
     # 6. Injeção da Síntese Narrativa & Seções
-    for p in doc.paragraphs:
+    for p in iter_all_paragraphs(doc):
         if "{{sintese_narrativa}}" in p.text:
             p.text = ""
             sinteses_secoes = list(auditoria.sinteses_secao.all())
@@ -1199,8 +1231,9 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
             tem_sintese_secao = any(bool(s.conteudo_html and s.conteudo_html.strip()) for s in sinteses_secoes)
 
             if sintese_global_html and sintese_global_html.strip():
-                inject_html_to_docx(doc, sintese_global_html)
-                doc.add_paragraph().paragraph_format.space_after = Pt(4)
+                inject_html_to_docx(doc, sintese_global_html, target_paragraph=p)
+                p = insert_paragraph_after(p)
+                p.paragraph_format.space_after = Pt(4)
 
             if tem_sintese_secao:
                 sec_num = 1
@@ -1214,11 +1247,12 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
                         r_shdr.font.size = Pt(10.0)
                         r_shdr.font.color.rgb = RGBColor(30, 58, 138)
                         
-                        inject_html_to_docx(doc, s.conteudo_html)
-                        doc.add_paragraph().paragraph_format.space_after = Pt(4)
+                        inject_html_to_docx(doc, s.conteudo_html, target_paragraph=p_shdr)
+                        p = insert_paragraph_after(p_shdr)
+                        p.paragraph_format.space_after = Pt(4)
                         sec_num += 1
             elif not (sintese_global_html and sintese_global_html.strip()):
-                p_def = doc.add_paragraph()
+                p_def = insert_paragraph_after(p)
                 p_def.paragraph_format.space_after = Pt(4)
                 r_def = p_def.add_run(
                     "A auditoria interna foi executada por amostragem abrangendo os processos críticos, "
