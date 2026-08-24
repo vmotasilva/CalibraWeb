@@ -108,67 +108,99 @@
 /* ============================================================
    4. REVISÃO (registro_detail.html — classe: audit-table)
    ============================================================ */
+.dias-container {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 0.6rem 0.5rem;
+    gap: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+}
+
+.dia-item {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex: 1 1 0px;
+    min-width: 38px;
+    text-align: center;
+    gap: 4px;
+}
+
+.dia-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #475569;
+    text-transform: uppercase;
+    line-height: 1;
+}
+
+.dia-item .semaphore-interactive {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dia-item .answer-semaphore,
+.dia-item .semaphore-empty {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    min-height: 28px;
+}
+
+.comentario-container {
+    width: 100% !important;
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 0.65rem 0.85rem;
+    margin-top: 0.75rem;
+}
+
+.comentario-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.35rem;
+}
+
+.comentario-title {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #64748b;
+}
+
 @media (max-width: 767.98px) {
-    .audit-table thead { display: none; }
-    .audit-table, .audit-table tbody { display: block; width: 100%; }
-    .audit-table tr {
-        display: flex; flex-direction: column;
-        background-color: #fff;
-        border: 1px solid #dee2e6; border-left: 3px solid #0d6efd;
-        border-radius: 0.6rem; margin-bottom: 0.75rem;
-        padding: 0.9rem 1rem; box-shadow: 0 1px 4px rgba(0,0,0,.07);
-    }
-    .audit-table td { display: block; width: 100%; border: none; padding: 0.3rem 0; text-align: left !important; }
-    .audit-table td:first-child {
-        font-weight: 600; border-bottom: 1px solid #dee2e6;
-        padding-bottom: 0.6rem; margin-bottom: 0.4rem;
-        display: flex; align-items: center;
-    }
-    .audit-table td:first-child::before {
-        content: "Ordem: "; font-weight: 600; margin-right: 0.5rem;
-        color: #6c757d; font-size: 0.875rem;
-    }
-    .audit-table td.col-pergunta { min-width: 0; }
-    .audit-table td.col-pergunta::before {
-        content: "Pergunta:"; display: block;
-        font-weight: 600; color: #6c757d; font-size: 0.8rem; margin-bottom: 0.2rem;
-    }
-    .audit-table td.col-comentarios {
-        min-width: 0; border-top: 1px solid #dee2e6;
-        margin-top: 0.4rem; padding-top: 0.6rem;
-    }
-    .audit-table td.col-comentarios::before {
-        content: "Comentários:"; display: block;
-        font-weight: 600; color: #6c757d; font-size: 0.8rem; margin-bottom: 0.4rem;
-    }
-    .audit-table td.col-dia {
-        display: inline-flex !important;
+    .audit-table thead { display: none !important; }
+    .audit-table, .audit-table tbody { display: block !important; width: 100% !important; }
+    .audit-row-card {
+        display: flex !important;
         flex-direction: column !important;
-        align-items: center !important;
-        justify-content: center !important;
-        width: calc((100% - 24px) / 7) !important;
-        min-width: 36px;
-        padding: 0.35rem 0.15rem !important;
-        border: none !important;
-        text-align: center !important;
-        margin: 0 !important;
-        box-sizing: border-box;
-        vertical-align: top;
-        background: #f8fafc;
-        border-radius: 6px;
-        margin-right: 3px !important;
-        margin-top: 0.4rem !important;
-        margin-bottom: 0.4rem !important;
+        background-color: #fff;
+        border: 1px solid #dee2e6;
+        border-left: 4px solid #0d6efd;
+        border-radius: 0.65rem;
+        margin-bottom: 1rem;
+        padding: 0.9rem;
+        box-shadow: 0 1px 4px rgba(0,0,0,.07);
     }
-    .audit-table td.col-dia::before {
-        content: attr(data-dia);
-        display: block;
-        font-size: 0.72rem;
-        font-weight: 700;
-        color: #475569;
-        text-transform: uppercase;
-        margin-bottom: 0.35rem;
-        line-height: 1;
+    .audit-row-card td {
+        display: block !important;
+        width: 100% !important;
+        border: none !important;
+        padding: 0 !important;
+        text-align: left !important;
+    }
+    .col-ordem-pergunta {
+        margin-bottom: 0.65rem;
     }
 }
 

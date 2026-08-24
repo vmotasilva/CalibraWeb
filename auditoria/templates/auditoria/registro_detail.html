@@ -116,128 +116,106 @@
     gap: 8px;
 }
 
+/* ============================================================
+   ESTRUTURA DE RESPOSTA HORIZONTAL E COMENTÁRIOS NO MOBILE
+   ============================================================ */
+.dias-container {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 0.6rem 0.5rem;
+    gap: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+}
+
+.dia-item {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex: 1 1 0px;
+    min-width: 38px;
+    text-align: center;
+    gap: 4px;
+}
+
+.dia-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #475569;
+    text-transform: uppercase;
+    line-height: 1;
+}
+
+.dia-item .semaphore-interactive {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dia-item .answer-semaphore,
+.dia-item .semaphore-empty {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    min-height: 28px;
+}
+
+.comentario-container {
+    width: 100% !important;
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 0.65rem 0.85rem;
+    margin-top: 0.75rem;
+}
+
+.comentario-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.35rem;
+}
+
+.comentario-title {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #64748b;
+}
+
 @media (max-width: 767.98px) {
     .audit-table thead {
-        display: none;
+        display: none !important;
     }
     .audit-table, .audit-table tbody {
-        display: block;
-        width: 100%;
+        display: block !important;
+        width: 100% !important;
     }
-    .audit-table tr {
-        display: flex;
-        flex-direction: column;
-        background-color: #fff;
+    .audit-row-card {
+        display: flex !important;
+        flex-direction: column !important;
+        background-color: #ffffff;
         border: 1px solid #dee2e6;
         border-left: 4px solid #0d6efd;
         border-radius: 0.65rem;
         margin-bottom: 1rem;
-        padding: 1rem;
+        padding: 0.9rem;
         box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
     }
-    .audit-table td {
-        display: block;
-        width: 100%;
-        border: none;
-        padding: 0.5rem 0;
-        text-align: left;
-    }
-    .audit-table td::before {
-        font-weight: bold;
-        display: block;
-        color: #495057;
-        margin-bottom: 0.25rem;
-    }
-    
-    /* "Ordem" cell */
-    .audit-table td:first-child {
-        border-bottom: 1px solid #dee2e6;
-        padding-top: 0;
-        padding-bottom: 0.75rem;
-        margin-bottom: 0.5rem;
-        display: flex;
-        align-items: center;
-    }
-    .audit-table td:first-child::before {
-        content: "Ordem: ";
-        font-weight: 600;
-        margin-right: 0.5rem;
-        color: #6c757d;
-        font-size: 0.875rem;
-    }
-    
-    /* "Pergunta" cell */
-    .audit-table td.col-pergunta {
-        min-width: 0;
-    }
-    .audit-table td.col-pergunta::before {
-        content: "Pergunta:";
-    }
-    
-    /* Dias da semana em formato horizontal no Mobile */
-    .audit-table tr {
-        position: relative;
-    }
-    
-    /* "Dia" cells individuais dispostas horizontalmente lado a lado */
-    .audit-table td.col-dia {
-        display: inline-flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: center !important;
-        width: calc((100% - 24px) / 7) !important;
-        min-width: 36px;
-        padding: 0.35rem 0.15rem !important;
+    .audit-row-card td {
+        display: block !important;
+        width: 100% !important;
         border: none !important;
-        text-align: center !important;
-        margin: 0 !important;
-        box-sizing: border-box;
-        vertical-align: top;
-        background: #f8fafc;
-        border-radius: 6px;
-        margin-right: 3px !important;
-        margin-top: 0.4rem !important;
-        margin-bottom: 0.4rem !important;
+        padding: 0 !important;
     }
-    .audit-table td.col-dia::before {
-        content: attr(data-dia);
-        display: block;
-        font-size: 0.72rem;
-        font-weight: 700;
-        color: #475569;
-        text-transform: uppercase;
-        margin-bottom: 0.35rem;
-        line-height: 1;
-    }
-
-    .audit-table td.col-dia .semaphore-interactive {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .audit-table td.col-dia .answer-semaphore,
-    .audit-table td.col-dia .semaphore-empty {
-        width: 28px;
-        height: 28px;
-        min-width: 28px;
-        min-height: 28px;
-    }
-
-    /* "Comentários" cell */
-    .audit-table td.col-comentarios {
-        min-width: 0;
-        border-top: 1px solid #dee2e6;
-        margin-top: 0.5rem;
-        padding-top: 0.75rem;
-    }
-    .audit-table td.col-comentarios::before {
-        content: "Comentários:";
-        display: block;
-        font-weight: 600;
-        color: #6c757d;
-        font-size: 0.875rem;
-        margin-bottom: 0.5rem;
+    .col-ordem-pergunta {
+        margin-bottom: 0.65rem;
     }
 
     /* Ações de topo no Mobile: 2 por linha, voltar 100% */
@@ -509,69 +487,86 @@
                     </thead>
                     <tbody>
                         {% for linha in bloco.linhas %}
-                        <tr>
-                            <td class="text-center">
-                                <span class="badge bg-secondary">{{ linha.ordem }}</span>
+                        <tr class="audit-row-card">
+                            <!-- 1. Cabeçalho do Card (Ordem + Pergunta) -->
+                            <td class="col-ordem-pergunta">
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <span class="badge bg-secondary">{{ linha.ordem }}</span>
+                                    <span class="fw-bold text-dark"
+                                        {% if linha.descricao_detalhada %}
+                                        data-bs-toggle="tooltip"
+                                        data-bs-placement="top"
+                                        title="{{ linha.descricao_detalhada }}"
+                                        style="cursor: help;"
+                                        {% endif %}>
+                                        {{ linha.pergunta }}
+                                    </span>
+                                    {% if linha.obrigatoria %}
+                                    <span class="text-danger">*</span>
+                                    {% endif %}
+                                </div>
                             </td>
-                            <td class="col-pergunta">
-                                <span
-                                    {% if linha.descricao_detalhada %}
-                                    data-bs-toggle="tooltip"
-                                    data-bs-placement="top"
-                                    title="{{ linha.descricao_detalhada }}"
-                                    style="cursor: help;"
-                                    {% endif %}>
-                                    {{ linha.pergunta }}
-                                </span>
-                                {% if linha.obrigatoria %}
-                                <span class="text-danger">*</span>
+
+                            <!-- 2. Área Completa de Respostas (Faróis na Horizontal + Comentários) -->
+                            <td class="col-respostas-container">
+                                {% if exibir_dia_semana %}
+                                <!-- Linha Horizontal de Faróis dos Dias da Semana -->
+                                <div class="dias-container">
+                                    {% for dia_cell in linha.dia_cells %}
+                                    <div class="dia-item">
+                                        <span class="dia-label">{{ dia_cell.short_label }}</span>
+                                        <div
+                                            class="semaphore-interactive"
+                                            data-pergunta-id="{{ dia_cell.pergunta_id }}"
+                                            data-dia="{{ dia_cell.dia_key }}"
+                                            data-valor="{{ dia_cell.value }}"
+                                            data-tipo="{{ dia_cell.tipo_resposta }}"
+                                            data-opcoes="{{ dia_cell.opcoes_json|default:'[]'|escape }}"
+                                            title="Clique para alterar a resposta"
+                                        >
+                                            {% if dia_cell.value %}
+                                            <span
+                                                class="answer-semaphore"
+                                                data-bs-toggle="tooltip"
+                                                data-bs-placement="top"
+                                                title="{{ dia_cell.value }}"
+                                                style="background-color: {{ dia_cell.color|default:'#198754' }};"
+                                            ></span>
+                                            {% else %}
+                                            <span class="semaphore-empty" data-bs-toggle="tooltip" title="Clique para responder">+</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
                                 {% endif %}
-                            </td>
-                            {% if exibir_dia_semana %}
-                                {% for dia_cell in linha.dia_cells %}
-                                <td class="col-dia" data-dia="{{ dia_cell.short_label }}">
-                                    <div
-                                        class="semaphore-interactive"
-                                        data-pergunta-id="{{ dia_cell.pergunta_id }}"
-                                        data-dia="{{ dia_cell.dia_key }}"
-                                        data-valor="{{ dia_cell.value }}"
-                                        data-tipo="{{ dia_cell.tipo_resposta }}"
-                                        data-opcoes="{{ dia_cell.opcoes_json|default:'[]'|escape }}"
-                                        title="Clique para alterar a resposta"
-                                    >
-                                        {% if dia_cell.value %}
-                                        <span
-                                            class="answer-semaphore"
-                                            data-bs-toggle="tooltip"
-                                            data-bs-placement="top"
-                                            title="{{ dia_cell.value }}"
-                                            style="background-color: {{ dia_cell.color|default:'#198754' }};"
-                                        ></span>
+
+                                <!-- Campo de Comentário Isolado (Abaixo dos Faróis, Largura 100%) -->
+                                <div class="comentario-container">
+                                    <div class="comentario-header">
+                                        <span class="comentario-title"><i class="bi bi-chat-left-text me-1"></i> Comentários:</span>
+                                        <button
+                                            type="button"
+                                            class="btn btn-sm btn-outline-primary py-0 px-2 comment-open-btn"
+                                            data-pergunta-id="{{ linha.pergunta_id }}"
+                                            data-pergunta-texto="{{ linha.pergunta|escape }}"
+                                            title="Adicionar comentário">
+                                            <i class="bi bi-plus-lg"></i>
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="comentario-body">
+                                        {% if linha.comentarios %}
+                                        <ul class="mb-0 ps-3 small text-muted">
+                                            {% for comentario in linha.comentarios %}
+                                            <li>{{ comentario }}</li>
+                                            {% endfor %}
+                                        </ul>
                                         {% else %}
-                                        <span class="semaphore-empty" data-bs-toggle="tooltip" title="Clique para responder">+</span>
+                                        <span class="text-muted fst-italic small">Sem comentários</span>
                                         {% endif %}
                                     </div>
-                                </td>
-                                {% endfor %}
-                            {% endif %}
-                            <td class="col-comentarios">
-                                {% if linha.comentarios %}
-                                <ul class="mb-2 ps-3">
-                                    {% for comentario in linha.comentarios %}
-                                    <li>{{ comentario }}</li>
-                                    {% endfor %}
-                                </ul>
-                                {% else %}
-                                <span class="text-muted fst-italic d-block mb-2">Sem comentários</span>
-                                {% endif %}
-                                <button
-                                    type="button"
-                                    class="btn btn-sm btn-outline-primary comment-open-btn"
-                                    data-pergunta-id="{{ linha.pergunta_id }}"
-                                    data-pergunta-texto="{{ linha.pergunta|escape }}"
-                                    title="Adicionar comentário">
-                                    <i class="bi bi-plus-lg"></i>
-                                </button>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
