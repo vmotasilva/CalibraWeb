@@ -1268,9 +1268,74 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
             n_desc = getattr(auditoria.norma, 'descricao', '')
             n_str = f"{n_codigo} - {n_desc}" if n_codigo else n_desc
             
-            reps_raw = getattr(auditoria, 'abertura_representantes', '')
-            reps_list = [x.strip() for x in reps_raw.replace('\r', '').split('\n') if x.strip()]
-            reps_html = "<br>".join(reps_list) if reps_list else "<i>Não preenchido</i>"
+            from auditoria.models import RespostaEntrevistaIso
+            from django.db.models import Q
+            import re
+            
+            def extrair_apenas_nome(texto: str) -> str:
+                if not texto: return ""
+                val = str(texto).strip()
+                for sep in [' - ', ' – ', ' — ', '  -  ', ' -', '- ']:
+                    if sep in val:
+                        val = val.split(sep, 1)[0].strip()
+                for suffix in ['(Participantes)', '(Participante)', '(Entrevistados)', '(Entrevistado)', '(Auditado)', '(Auditados)']:
+                    if val.endswith(suffix):
+                        val = val[:-len(suffix)].strip()
+                for sep in [' - ', ' – ', ' — ']:
+                    if sep in val:
+                        val = val.split(sep, 1)[0].strip()
+                return val.strip()
+
+            pessoas_auditadas_lista = []
+            enc_reps = getattr(auditoria, 'encerramento_representantes', '')
+            if enc_reps and enc_reps.strip():
+                nomes_brutos = [linha.strip() for linha in re.split(r'[;\n]', enc_reps) if linha.strip()]
+                nomes_vistos = set()
+                for item_str in nomes_brutos:
+                    item_clean = extrair_apenas_nome(item_str)
+                    if not item_clean or len(item_clean) < 2: continue
+                    key = item_clean.lower()
+                    if key not in nomes_vistos:
+                        nomes_vistos.add(key)
+                        pessoas_auditadas_lista.append(item_clean)
+            else:
+                respostas_auditados_qs = list(
+                    RespostaEntrevistaIso.objects.filter(auditoria=auditoria)
+                    .filter(
+                        Q(pergunta__texto_pergunta__icontains="auditadas") |
+                        Q(pergunta__texto_pergunta__icontains="entrevistadas") |
+                        Q(pergunta__texto_pergunta__icontains="nomes e funções") |
+                        Q(pergunta__dica_auditor__icontains="participante entrevistado")
+                    )
+                    .select_related('pergunta')
+                    .prefetch_related('solicitacoes')
+                )
+                nomes_vistos = set()
+                for resp in respostas_auditados_qs:
+                    for s in resp.solicitacoes.all():
+                        ev = (s.evidencia or "").strip()
+                        sol = (s.solicitacao or "").strip()
+                        is_generic = sol.lower() in [
+                            'entrevistado', 'entrevistados', 'pessoa auditada', 'pessoas auditadas',
+                            'amostra', 'amostra #1', 'amostra #2', 'amostra #3', 'amostra #4', 'amostra #5',
+                            'solicitação', 'solicitacao', ''
+                        ]
+                        cand = ""
+                        if ev: cand = extrair_apenas_nome(ev)
+                        elif sol and not is_generic: cand = extrair_apenas_nome(sol)
+                        
+                        if cand and len(cand) >= 2:
+                            if cand.lower() not in nomes_vistos:
+                                nomes_vistos.add(cand.lower())
+                                pessoas_auditadas_lista.append(cand)
+                    if resp.texto_resposta and resp.texto_resposta.strip():
+                        for linha in re.split(r'[;\n]', resp.texto_resposta):
+                            l_clean = extrair_apenas_nome(linha)
+                            if l_clean and l_clean.lower() not in nomes_vistos and len(l_clean) >= 2:
+                                nomes_vistos.add(l_clean.lower())
+                                pessoas_auditadas_lista.append(l_clean)
+            
+            reps_html = "<br>".join(pessoas_auditadas_lista) if pessoas_auditadas_lista else "<i>Não preenchido</i>"
             
             intro_html = f"<p>A auditoria no {unidade_str} foi realizada no período de {dt_inicio} a {dt_fim} e durante essa auditoria foi verificado o alinhamento do QMS a norma {n_str}.</p><p><strong>Participantes:</strong><br>{reps_html}</p>"
             
