@@ -299,11 +299,17 @@
                         {% if row.is_parent %}
                             {% if row.level == 1 %}
                             <!-- Nível 1: Seção Principal Banner -->
-                            <tr class="table-primary bg-primary bg-opacity-10 border-top border-bottom border-primary border-opacity-25 row-nivel-1">
+                            <tr class="table-primary bg-primary bg-opacity-10 border-top border-bottom border-primary border-opacity-25 row-nivel-1 row-item-matriz-auditoria"
+                                style="cursor: pointer;"
+                                data-ref="{{ row.referencia }}"
+                                data-titulo="{{ row.titulo }}"
+                                data-desc="{{ row.descricao }}"
+                                data-status="{{ row.status }}">
                                 <td class="ps-4 py-3"><strong class="fs-6 text-primary"><i class="bi bi-journal-bookmark-fill me-2"></i>Seção {{ row.referencia }}</strong></td>
                                 <td class="py-3">
                                     <strong class="fs-6 text-primary">{{ row.titulo }}</strong>
                                     <div class="small text-muted mb-0">{{ row.descricao }}</div>
+                                    <script class="blocos-json-data" type="application/json">{{ row.blocos_associados_json|safe }}</script>
                                 </td>
                                 <td colspan="2" class="text-end pe-4 py-3 td-acoes">
                                     <button type="button" class="btn btn-sm btn-outline-danger bg-white rounded-pill px-3 fw-bold btn-quick-na shadow-2xs" data-ref="{{ row.referencia }}" data-titulo="{{ row.titulo }}" title="Marcar todos os itens da Seção {{ row.referencia }} como Não Aplicável (Exclusão de Escopo)">
@@ -313,10 +319,16 @@
                             </tr>
                             {% else %}
                             <!-- Nível 2: Subseção Agrupadora -->
-                            <tr class="table-light border-top border-bottom fw-bold row-nivel-2">
+                            <tr class="table-light border-top border-bottom fw-bold row-nivel-2 row-item-matriz-auditoria"
+                                style="cursor: pointer;"
+                                data-ref="{{ row.referencia }}"
+                                data-titulo="{{ row.titulo }}"
+                                data-desc="{{ row.descricao }}"
+                                data-status="{{ row.status }}">
                                 <td class="ps-4 py-2.5"><strong class="text-dark"><i class="bi bi-folder2 me-2 text-secondary"></i>{{ row.referencia }}</strong></td>
                                 <td class="py-2.5">
                                     <strong class="text-dark">{{ row.titulo }}</strong>
+                                    <script class="blocos-json-data" type="application/json">{{ row.blocos_associados_json|safe }}</script>
                                 </td>
                                 <td colspan="2" class="text-end pe-4 py-2.5 td-acoes">
                                     <button type="button" class="btn btn-sm btn-outline-danger bg-white rounded-pill px-2.5 py-0.5 small btn-quick-na" data-ref="{{ row.referencia }}" data-titulo="{{ row.titulo }}" title="Marcar sub-itens de {{ row.referencia }} como N/A">
