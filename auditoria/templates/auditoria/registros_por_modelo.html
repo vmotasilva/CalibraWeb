@@ -26,17 +26,20 @@
                             <p class="mb-2"><strong>Objeto de Auditoria:</strong> {{ modelo.objeto_auditoria }}</p>
                             <p class="mb-2"><strong>Periodicidade:</strong> {{ modelo.get_periodicidade_completa }}</p>
                             {% if modelo.responsaveis.all %}
-                            <p class="mb-2"><strong>Responsáveis:</strong>
+                            <p class="mb-2 responsaveis-texto"><strong>Responsáveis:</strong>
+                                <span>
                                 {% for u in modelo.responsaveis.all %}
                                     {{ u.get_full_name|default:u.username }}{% if not forloop.last %}, {% endif %}
                                 {% endfor %}
+                                </span>
                             </p>
                             {% elif modelo.responsavel %}
                             <p class="mb-2"><strong>Responsável:</strong> {{ modelo.responsavel.get_full_name|default:modelo.responsavel.username }}</p>
                             {% endif %}
                         </div>
-                        <div class="col-md-6 text-start text-md-end">
-                            <div class="d-flex flex-wrap gap-2 justify-content-start justify-content-md-end">
+                        <div class="col-md-6 text-start text-md-end mt-2 mt-md-0">
+                            <!-- Ações Desktop (>= 768px) -->
+                            <div class="d-none d-md-flex flex-wrap gap-2 justify-content-end align-items-center">
                                 <button type="button" class="btn btn-outline-dark btn-sm no-print" id="btnPrintPdf">
                                     <i class="bi bi-printer"></i> Imprimir / PDF
                                 </button>
@@ -58,6 +61,48 @@
                                     <i class="bi bi-plus-circle"></i> Novo Ciclo
                                 </a>
                                 {% endif %}
+                            </div>
+
+                            <!-- Ações Mobile (< 768px): Novo Ciclo verde 100% + Dropdown Ações Secundárias 100% -->
+                            <div class="d-flex d-md-none flex-column gap-2 w-100">
+                                {% if not is_read_only %}
+                                <a href="{% url 'auditoria:registro_create_modelo' modelo.id %}" class="btn btn-success w-100 d-flex align-items-center justify-content-center" style="min-height: 42px;">
+                                    <i class="bi bi-plus-circle me-2"></i> + Novo Ciclo
+                                </a>
+                                {% endif %}
+                                
+                                <div class="dropdown w-100">
+                                    <button class="btn btn-outline-secondary w-100 dropdown-toggle d-flex align-items-center justify-content-center" type="button" id="dropdownAcoesSecundariasMobile" data-bs-toggle="dropdown" aria-expanded="false" style="min-height: 40px;">
+                                        <i class="bi bi-three-dots me-2"></i> Ações Secundárias
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end w-100 shadow py-2" aria-labelledby="dropdownAcoesSecundariasMobile">
+                                        <li>
+                                            <button type="button" class="dropdown-item py-2" id="btnPrintPdfMobile" onclick="document.getElementById('btnPrintPdf').click();">
+                                                <i class="bi bi-printer me-2 text-dark"></i> Imprimir / PDF
+                                            </button>
+                                        </li>
+                                        {% if not is_read_only %}
+                                        <li>
+                                            <button type="button" class="dropdown-item py-2" data-bs-toggle="modal" data-bs-target="#modal-compartilhar-relatorio">
+                                                <i class="bi bi-share me-2 text-primary"></i> Compartilhar Relatório
+                                            </button>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item py-2" href="{% url 'auditoria:exportar_respostas_excel' modelo.id %}">
+                                                <i class="bi bi-file-earmark-excel me-2 text-success"></i> Exportar Excel
+                                            </a>
+                                        </li>
+                                        {% endif %}
+                                        {% if modelo.link_sharepoint %}
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li>
+                                            <a class="dropdown-item py-2" href="{{ modelo.link_sharepoint }}" target="_blank">
+                                                <i class="bi bi-link-45deg me-2 text-info"></i> SharePoint
+                                            </a>
+                                        </li>
+                                        {% endif %}
+                                    </ul>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -788,44 +833,51 @@
                                     </thead>
                                     <tbody>
                                         {% for registro in page_obj %}
-                                        <tr>
-                                            <td>{{ registro.criado_em|date:"d/m/Y H:i" }}</td>
-                                            <td class="fw-medium">{{ registro.nome }}</td>
-                                            <td>
+                                        <tr class="ciclo-row-card position-relative">
+                                            <td class="td-datetime">{{ registro.criado_em|date:"d/m/Y H:i" }}</td>
+                                            <td class="td-nome fw-bold text-primary">
+                                                <a href="{% url 'auditoria:registro_detail' registro.pk %}" class="text-decoration-none text-primary stretched-link">
+                                                    {{ registro.nome }}
+                                                </a>
+                                            </td>
+                                            <td class="td-alvo">
                                                 {% if registro.alvo %}
-                                                    {{ registro.alvo }}
-                                                {% else %}
-                                                    <span class="text-muted">-</span>
+                                                    <span class="text-dark">{{ registro.alvo }}</span>
                                                 {% endif %}
                                             </td>
-                                            <td>
+                                            <td class="td-periodo">
                                                 {% if registro.periodo_inicio and registro.periodo_fim %}
                                                     {{ registro.periodo_inicio|date:"d/m/Y" }} a {{ registro.periodo_fim|date:"d/m/Y" }}
                                                 {% elif registro.periodo_inicio %}
-                                                    {{ registro.periodo_inicio|date:"d/m/Y" }}
-                                                {% else %}
-                                                    <span class="text-muted">-</span>
+                                                    A partir de {{ registro.periodo_inicio|date:"d/m/Y" }}
+                                                {% elif registro.periodo_fim %}
+                                                    Até {{ registro.periodo_fim|date:"d/m/Y" }}
                                                 {% endif %}
                                             </td>
-                                            <td class="td-status">
-                                                {% if registro.status == 'CONCLUIDO' %}
-                                                    <span class="badge bg-success">Concluído</span>
-                                                {% else %}
-                                                    <span class="badge bg-warning text-dark">Em Andamento</span>
-                                                {% endif %}
-                                            </td>
-                                            <td class="text-center align-middle">
-                                                <div class="progress" style="height: 20px;">
-                                                    <div class="progress-bar {% if registro.progresso == 100 %}bg-success{% endif %}" role="progressbar" style="width: {{ registro.progresso }}%;" aria-valuenow="{{ registro.progresso }}" aria-valuemin="0" aria-valuemax="100">{{ registro.progresso }}%</div>
+                                            <td class="td-status-progresso">
+                                                <div class="d-flex justify-content-between align-items-center gap-2 w-100">
+                                                    <div>
+                                                        {% if registro.status == 'CONCLUIDO' %}
+                                                            <span class="badge bg-success">Concluído</span>
+                                                        {% else %}
+                                                            <span class="badge bg-warning text-dark">Em Andamento</span>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="d-flex align-items-center gap-2" style="min-width: 110px;">
+                                                        <div class="progress flex-grow-1" style="height: 14px;">
+                                                            <div class="progress-bar {% if registro.progresso == 100 %}bg-success{% else %}bg-primary{% endif %}" role="progressbar" style="width: {{ registro.progresso }}%;" aria-valuenow="{{ registro.progresso }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                                        </div>
+                                                        <span class="small fw-semibold text-muted" style="font-size: 0.75rem;">{{ registro.progresso }}%</span>
+                                                    </div>
                                                 </div>
                                             </td>
-                                            <td class="text-center td-actions">
+                                            <td class="text-center td-actions position-relative" style="z-index: 2;">
                                                 {% if not is_read_only %}
-                                                <a href="{% url 'auditoria:registro_detail' registro.pk %}" class="btn btn-sm btn-info text-white" title="Visualizar Ciclo">
-                                                    <i class="bi bi-eye"></i>
+                                                <a href="{% url 'auditoria:registro_detail' registro.pk %}" class="btn btn-sm btn-outline-primary btn-ver-ciclo" title="Visualizar Ciclo">
+                                                    <i class="bi bi-chevron-right"></i>
                                                 </a>
                                                 {% else %}
-                                                <span class="text-muted small">Somente leitura</span>
+                                                <span class="text-muted small">Leitura</span>
                                                 {% endif %}
                                             </td>
                                         </tr>
