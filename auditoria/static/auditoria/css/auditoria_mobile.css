@@ -176,10 +176,48 @@
    5. FORMULÁRIO / GRADE DE PERGUNTAS (registro_form.html)
    ============================================================ */
 @media (max-width: 767.98px) {
-    .weekly-grid { flex-direction: column; gap: 0.75rem; }
-    .weekly-grid__item { width: 100% !important; flex: 1 1 100%; }
+    .weekly-grid {
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: flex-start !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+        overflow-x: auto !important;
+        padding-bottom: 8px !important;
+        -webkit-overflow-scrolling: touch;
+        width: 100%;
+    }
+    .weekly-grid__item {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        min-width: 58px !important;
+        max-width: 70px !important;
+        flex: 1 0 auto !important;
+        background-color: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 6px 4px !important;
+        margin-bottom: 0 !important;
+        text-align: center !important;
+    }
+    .weekly-grid__item label {
+        font-size: 0.72rem !important;
+        font-weight: 700 !important;
+        color: #475569 !important;
+        text-transform: uppercase !important;
+        margin-bottom: 4px !important;
+        line-height: 1 !important;
+    }
     .weekly-grid__item .form-select-sm,
-    .weekly-grid__item .form-control { min-height: 44px; font-size: 1rem; }
+    .weekly-grid__item .form-control-sm {
+        min-height: 38px !important;
+        font-size: 0.85rem !important;
+        padding: 0.25rem 0.35rem !important;
+        text-align: center !important;
+        width: 100% !important;
+    }
 
     .grid-table thead { display: none; }
     .grid-table, .grid-table tbody { display: block; width: 100%; }
