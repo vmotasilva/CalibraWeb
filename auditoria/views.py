@@ -4388,19 +4388,18 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                 if r:
                     for s in r.solicitacoes.all():
                         ev_txt = f"{s.solicitacao.strip()}: {s.evidencia.strip()}" if (s.evidencia and s.solicitacao) else (s.evidencia.strip() if s.evidencia else s.solicitacao.strip())
-                        # Pega as evidências que correspondem ao status global do item, ou se for NC pega tudo que é NC/OM para mostrar no card do item ruim
-                        if s.conclusao == status_item or (status_item == 'NC' and s.conclusao in ['NC', 'OM', 'OBS']):
+                        if s.conclusao == status_item:
                             if ev_txt and ev_txt not in evidencias_vistas:
                                 evidencias_vistas.add(ev_txt)
                                 evidencias_ativas.append(ev_txt)
-                        elif s.conclusao == 'C':
+                        else:
                             if ev_txt and ev_txt not in amostras_vistas:
                                 amostras_vistas.add(ev_txt)
                                 amostras_conformes.append(ev_txt)
                     
                     if r.texto_resposta and r.texto_resposta.strip():
                         txt = r.texto_resposta.strip()
-                        if (r.classificacao == status_item or (status_item == 'NC' and r.classificacao in ['NC', 'OM'])) and txt not in evidencias_vistas:
+                        if r.classificacao == status_item and txt not in evidencias_vistas:
                             evidencias_vistas.add(txt)
                             evidencias_ativas.append(txt)
 
