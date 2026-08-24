@@ -1177,46 +1177,39 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
             p.text = ""
             exclusoes = dados['exclusoes_na']
             if exclusoes:
-                t_na = doc.add_table(rows=len(exclusoes) + 1, cols=3)
-                t_na.alignment = WD_TABLE_ALIGNMENT.CENTER
-                set_table_borders(t_na, color="CBD5E1")
-                
-                # Header
-                for c_idx, h_t in enumerate(["Requisito", "Título do Item", "Justificativa da Não Aplicabilidade"]):
-                    c = t_na.cell(0, c_idx)
-                    set_cell_background(c, "0B2545")
-                    set_cell_margins(c, top=70, bottom=70, left=90, right=90)
-                    p_c = c.paragraphs[0]
-                    p_c.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    r = p_c.add_run(h_t)
-                    r.bold = True
-                    r.font.size = Pt(8.5)
-                    r.font.color.rgb = RGBColor(255, 255, 255)
-
-                for r_idx, item_na in enumerate(exclusoes, 1):
-                    c0 = t_na.cell(r_idx, 0)
-                    c1 = t_na.cell(r_idx, 1)
-                    c2 = t_na.cell(r_idx, 2)
-                    bg_row = "F8FAFC" if r_idx % 2 == 0 else "FFFFFF"
-                    for c in [c0, c1, c2]:
-                        set_cell_margins(c, top=60, bottom=60, left=80, right=80)
-                        set_cell_background(c, bg_row)
-
-                    c0.paragraphs[0].add_run(item_na['referencia']).bold = True
-                    c0.paragraphs[0].runs[0].font.size = Pt(8.5)
-                    c1.paragraphs[0].add_run(item_na['titulo']).font.size = Pt(8.5)
-                    c2.paragraphs[0].add_run(item_na['justificativa']).font.size = Pt(8.5)
-
-                p._p.addnext(t_na._tbl)
+                last_p = p
+                for item_na in exclusoes:
+                    from docx.oxml import OxmlElement
+                    from docx.text.paragraph import Paragraph
+                    
+                    new_p_xml = OxmlElement('w:p')
+                    last_p._p.addnext(new_p_xml)
+                    new_p = Paragraph(new_p_xml, p._parent)
+                    
+                    new_p.paragraph_format.space_after = Pt(2)
+                    
+                    r_ref = new_p.add_run(f"• {item_na['referencia']} - ")
+                    r_ref.bold = True
+                    r_ref.font.size = Pt(9.5)
+                    
+                    r_tit = new_p.add_run(item_na['titulo'])
+                    r_tit.font.size = Pt(9.5)
+                    
+                    last_p = new_p
             else:
-                p_na = doc.add_paragraph()
+                from docx.oxml import OxmlElement
+                from docx.text.paragraph import Paragraph
+                
+                new_p_xml = OxmlElement('w:p')
+                p._p.addnext(new_p_xml)
+                p_na = Paragraph(new_p_xml, p._parent)
+                
                 p_na.paragraph_format.space_before = Pt(2)
                 p_na.paragraph_format.space_after = Pt(4)
                 r_na = p_na.add_run("Não foram identificadas exclusões de requisitos normativos no escopo desta auditoria. Todos os requisitos da norma foram considerados aplicáveis.")
                 r_na.font.size = Pt(9.0)
                 r_na.font.italic = True
                 r_na.font.color.rgb = RGBColor(71, 85, 105)
-                p._p.addnext(p_na._p)
 
     # 6. Injeção da Síntese Narrativa & Seções
     for p in iter_all_paragraphs(doc):
