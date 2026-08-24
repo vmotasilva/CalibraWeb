@@ -493,6 +493,22 @@ def compute_auditoria_metricas_completas(auditoria) -> Dict[str, Any]:
             pior_peso_ag = 0
             is_maior_ag = False
             
+            def add_amostra(tipo, tit, desc):
+                if not tit and not desc:
+                    return
+                idx_desc = -1
+                for i, (e_tit, e_desc) in enumerate(amostras_por_tipo[tipo]):
+                    if e_desc and e_desc == desc:
+                        idx_desc = i
+                        break
+                if idx_desc != -1:
+                    e_tit, _ = amostras_por_tipo[tipo][idx_desc]
+                    if tit and not e_tit:
+                        amostras_por_tipo[tipo][idx_desc] = (tit, desc)
+                else:
+                    if (tit, desc) not in amostras_por_tipo[tipo]:
+                        amostras_por_tipo[tipo].append((tit, desc))
+
             for p in todas_perguntas_item:
                 if ag and p not in ag.perguntas.all() and item not in ag.itens_norma.all():
                     continue 
@@ -517,18 +533,13 @@ def compute_auditoria_metricas_completas(auditoria) -> Dict[str, Any]:
                             tit = s.solicitacao.strip() if s.solicitacao else ""
                             desc = s.evidencia.strip() if s.evidencia else ""
                             
-                            if tit or desc:
-                                pair = (tit, desc)
-                                if pair not in amostras_por_tipo[tipo]:
-                                    amostras_por_tipo[tipo].append(pair)
+                            add_amostra(tipo, tit, desc)
                     
                     if (ag and p in ag.perguntas.all()) or not ag:
                         if r.texto_resposta and r.texto_resposta.strip():
                             txt = r.texto_resposta.strip()
                             tipo = c_resp if c_resp in ['NC', 'OM'] else 'C'
-                            pair = ("", txt)
-                            if pair not in amostras_por_tipo[tipo]:
-                                amostras_por_tipo[tipo].append(pair)
+                            add_amostra(tipo, "", txt)
 
             status_ag = reverse_hierarchy.get(pior_peso_ag, "P") if pior_peso_ag > 0 else status_item
             if status_item == 'NA': status_ag = 'NA'
