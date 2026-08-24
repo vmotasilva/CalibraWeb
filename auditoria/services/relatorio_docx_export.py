@@ -972,7 +972,7 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
 
     # Pontos Fracos (NC e OM)
     pontos_fracos_linhas = []
-    for gap in gaps_area_funcional:
+    for gap in dados.get('gaps_area_funcional', []):
         pontos_fracos_linhas.append(f"{gap['tipo_badge']}: {gap['descricao']}")
     if not pontos_fracos_linhas:
         pontos_fracos_linhas = ["Nenhuma Não Conformidade ou Oportunidade de Melhoria registrada."]
