@@ -4244,6 +4244,12 @@ def iso_fechamento_presentation_view(request, auditoria_id):
             for p in ag.perguntas.all():
                 if item in p.itens_norma.all() or (not p.itens_norma.exists() and item in ag.itens_norma.all()):
                     todas_perguntas_dict[p.id] = p
+                    
+        # Garante que respostas/perguntas órfãs (ex: criadas via painel de revisão) sejam incluídas
+        for r in respostas:
+            if item in r.pergunta.itens_norma.all():
+                todas_perguntas_dict[r.pergunta_id] = r.pergunta
+                
         todas_perguntas_item = list(todas_perguntas_dict.values())
 
         av_final = avaliacoes_finais_map.get(item.id)
