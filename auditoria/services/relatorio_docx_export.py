@@ -1093,7 +1093,11 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
 
     # Pontos Fracos (NC e OM)
     pontos_fracos_linhas = []
+    nao_conformidades_linhas = []
+    nao_conformidades_com_evidencias_linhas = []
     vistos = set()
+    vistos_nc = set()
+    vistos_nc_evid = set()
     for gap in dados.get('gaps_area_funcional', []):
         if gap.get('tipo') in ['NC', 'OM']:
             linha = f"{gap['tipo_badge']}: {gap['descricao']}".strip()
@@ -1103,8 +1107,32 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
             if linha not in vistos:
                 vistos.add(linha)
                 pontos_fracos_linhas.append(linha)
+        
+        if gap.get('tipo') == 'NC':
+            # Formato 1: Item + Título/Descrição breve
+            desc_resumida = gap.get('descricao') or gap.get('item_titulo') or ''
+            linha_nc = f"{gap['tipo_badge']}: {desc_resumida}".strip()
+            if linha_nc.endswith(':'):
+                linha_nc = linha_nc[:-1]
+            if linha_nc not in vistos_nc:
+                vistos_nc.add(linha_nc)
+                nao_conformidades_linhas.append(linha_nc)
+
+            # Formato 2: Item + Evidência / Constatação detalhada (amostras)
+            detalhe_evid = gap.get('tabela_descricao') or gap.get('tabela_evidencia') or gap.get('descricao') or ''
+            linha_nc_detalhada = f"{gap['tipo_badge']}: {detalhe_evid}".strip()
+            if linha_nc_detalhada.endswith(':'):
+                linha_nc_detalhada = linha_nc_detalhada[:-1]
+            if linha_nc_detalhada not in vistos_nc_evid:
+                vistos_nc_evid.add(linha_nc_detalhada)
+                nao_conformidades_com_evidencias_linhas.append(linha_nc_detalhada)
+
     if not pontos_fracos_linhas:
         pontos_fracos_linhas = ["Nenhuma Não Conformidade ou Oportunidade de Melhoria registrada."]
+    if not nao_conformidades_linhas:
+        nao_conformidades_linhas = ["Nenhuma Não Conformidade registrada."]
+    if not nao_conformidades_com_evidencias_linhas:
+        nao_conformidades_com_evidencias_linhas = ["Nenhuma Não Conformidade registrada."]
 
     is_adequado = (dados.get('veredito_status') == 'ADEQUADO / CONFORME')
     is_melhoria = (dados.get('veredito_status') == 'MELHORIA NECESSÁRIA / RESSALVA')
@@ -1210,6 +1238,11 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
     # Injetar Listas formatadas nativamente
     inject_list_tags(doc, "{{pontos_fortes}}", pontos_fortes_linhas)
     inject_list_tags(doc, "{{pontos_fracos}}", pontos_fracos_linhas)
+    inject_list_tags(doc, "{{pontos_fracos_nc}}", nao_conformidades_linhas)
+    inject_list_tags(doc, "{{nao_conformidades}}", nao_conformidades_linhas)
+    inject_list_tags(doc, "{{nao_conformidades_detalhadas}}", nao_conformidades_com_evidencias_linhas)
+    inject_list_tags(doc, "{{lista_nc}}", nao_conformidades_linhas)
+    inject_list_tags(doc, "{{lista_nc_detalhada}}", nao_conformidades_com_evidencias_linhas)
 
     # 5. Injeção da Seção "Exclusões Justificadas"
     for p in iter_all_paragraphs(doc):
