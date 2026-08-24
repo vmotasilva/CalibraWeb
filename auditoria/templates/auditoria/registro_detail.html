@@ -271,7 +271,9 @@
 
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h2 class="mb-0 fs-4 fs-md-2"><i class="bi bi-file-text"></i> Detalhes do Ciclo de Auditoria</h2>
-        <div class="audit-detail-actions justify-content-start justify-content-md-end">
+        
+        <!-- Ações Desktop (visível apenas em telas >= 768px) -->
+        <div class="d-none d-md-flex align-items-center gap-2 audit-detail-actions-desktop">
             <a href="{% url 'auditoria:registro_create_modelo' registro.modelo.id %}" class="btn btn-primary">
                 <i class="bi bi-plus-circle me-1"></i> Novo Ciclo
             </a>
@@ -285,41 +287,78 @@
             <div class="btn-form-wrapper">
                 <form method="post" action="{% url 'auditoria:registro_delete' registro.pk %}" onsubmit="return confirm('Tem certeza que deseja excluir este registro?');">
                     {% csrf_token %}
-                    <button type="submit" class="btn btn-danger">
+                    <button type="submit" class="btn btn-outline-danger">
                         <i class="bi bi-trash me-1"></i> Excluir
                     </button>
                 </form>
             </div>
             {% endif %}
-            <a href="{% url 'auditoria:registros_por_modelo' registro.modelo.id %}" class="btn btn-secondary btn-voltar">
+            <a href="{% url 'auditoria:registros_por_modelo' registro.modelo.id %}" class="btn btn-secondary">
                 <i class="bi bi-arrow-left me-1"></i> Voltar
             </a>
         </div>
+
+        <!-- Ações Mobile (Voltar + Dropdown de Ações) (visível apenas em telas < 768px) -->
+        <div class="d-flex d-md-none w-100 gap-2 mt-2">
+            <a href="{% url 'auditoria:registros_por_modelo' registro.modelo.id %}" class="btn btn-secondary flex-grow-1 d-flex align-items-center justify-content-center" style="min-height: 44px;">
+                <i class="bi bi-arrow-left me-1"></i> Voltar
+            </a>
+            <div class="dropdown flex-grow-1">
+                <button class="btn btn-primary w-100 dropdown-toggle d-flex align-items-center justify-content-center" type="button" id="dropdownAcoesMobile" data-bs-toggle="dropdown" aria-expanded="false" style="min-height: 44px;">
+                    <i class="bi bi-gear me-1"></i> Ações
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow w-100 py-2" aria-labelledby="dropdownAcoesMobile">
+                    <li>
+                        <a class="dropdown-item py-2" href="{% url 'auditoria:registro_create_modelo' registro.modelo.id %}">
+                            <i class="bi bi-plus-circle text-primary me-2"></i> Novo Ciclo
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item py-2" href="{% url 'auditoria:registro_edit' registro.pk %}">
+                            <i class="bi bi-pencil text-warning me-2"></i> {% if registro.status == 'CONCLUIDO' %}Editar Ciclo{% else %}Continuar Preenchimento{% endif %}
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item py-2" href="{% url 'auditoria:registro_exportar_pdf' registro.pk %}">
+                            <i class="bi bi-file-earmark-pdf text-danger me-2"></i> Exportar PDF
+                        </a>
+                    </li>
+                    {% if can_delete_registro %}
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <form method="post" action="{% url 'auditoria:registro_delete' registro.pk %}" onsubmit="return confirm('Tem certeza que deseja excluir este registro?');" class="px-2">
+                            {% csrf_token %}
+                            <button type="submit" class="dropdown-item text-danger py-2 rounded">
+                                <i class="bi bi-trash me-2"></i> Excluir Registro
+                            </button>
+                        </form>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
     </div>
 
+    <!-- Informações Gerais (Compacto no Mobile com Botão Informativo Popup) -->
     <div class="card shadow-sm mb-3">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0"><i class="bi bi-info-circle"></i> Informações Gerais</h5>
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-2">
+            <h6 class="mb-0"><i class="bi bi-info-circle me-1"></i> Informações Gerais</h6>
+            <button type="button" class="btn btn-sm btn-light py-0 px-2 text-primary fw-bold" data-bs-toggle="modal" data-bs-target="#modalInfoGerais" title="Ver detalhes completos">
+                <i class="bi bi-info-circle-fill"></i> Detalhes
+            </button>
         </div>
-        <div class="card-body">
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <p class="mb-2"><strong>Modelo:</strong> {{ registro.modelo.nome }}</p>
-                    <p class="mb-2"><strong>Objeto de Auditoria:</strong> {{ registro.modelo.objeto_auditoria }}</p>
+        <div class="card-body py-3">
+            <div class="row g-2">
+                <div class="col-12 col-md-4">
+                    <p class="mb-1"><strong>Modelo:</strong> {{ registro.modelo.nome }}</p>
                 </div>
-                <div class="col-md-6">
-                    <p class="mb-2"><strong>Nome do Ciclo:</strong> {{ registro.nome }}</p>
-                    <p class="mb-2"><strong>Avaliador:</strong> {{ registro.avaliador.get_full_name|default:registro.avaliador.username }}</p>
-                    {% if registro.alvo %}
-                    <p class="mb-2"><strong>Alvo:</strong> {{ registro.alvo }}</p>
-                    {% endif %}
+                <div class="col-12 col-md-4">
+                    <p class="mb-1"><strong>Avaliado:</strong> {{ registro.alvo|default:registro.nome }}</p>
                 </div>
-            </div>
-            <div class="row g-3 mt-2">
-                <div class="col-md-6">
-                    <p class="mb-2"><strong>Período:</strong> 
+                <div class="col-12 col-md-4">
+                    <p class="mb-1"><strong>Período:</strong> 
                         {% if registro.periodo_inicio and registro.periodo_fim %}
-                        {{ registro.periodo_inicio|date:'d/m/Y' }} até {{ registro.periodo_fim|date:'d/m/Y' }}
+                        {{ registro.periodo_inicio|date:'d/m/Y' }} a {{ registro.periodo_fim|date:'d/m/Y' }}
                         {% elif registro.periodo_inicio %}
                         A partir de {{ registro.periodo_inicio|date:'d/m/Y' }}
                         {% elif registro.periodo_fim %}
@@ -329,30 +368,82 @@
                         {% endif %}
                     </p>
                 </div>
-                <div class="col-md-6">
-                    <p class="mb-2"><strong>Criado em:</strong> {{ registro.criado_em|date:'d/m/Y H:i' }}</p>
+            </div>
+
+            <!-- Progresso de Preenchimento -->
+            <div class="mt-2 pt-2 border-top">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <small class="text-muted">{{ preenchidas }} de {{ total_respostas }} perguntas respondidas</small>
+                    <span class="badge {% if percentual_preenchimento == 100 %}bg-success{% elif percentual_preenchimento >= 50 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                        {{ percentual_preenchimento }}%
+                    </span>
+                </div>
+                <div class="progress" style="height: 6px;" role="progressbar" aria-valuenow="{{ percentual_preenchimento }}" aria-valuemin="0" aria-valuemax="100">
+                    <div class="progress-bar {% if percentual_preenchimento == 100 %}bg-success{% elif percentual_preenchimento >= 50 %}bg-warning{% else %}bg-danger{% endif %}" style="width: {{ percentual_preenchimento }}%"></div>
                 </div>
             </div>
-            {% if registro.observacoes %}
-            <div class="mt-3">
-                <strong>Observações:</strong>
-                <p class="text-muted mb-0">{{ registro.observacoes }}</p>
-            </div>
-            {% endif %}
-            <div class="mt-3">
-                <div class="progress" role="progressbar" aria-label="Preenchimento" aria-valuenow="{{ percentual_preenchimento }}" aria-valuemin="0" aria-valuemax="100">
-                    <div class="progress-bar {% if percentual_preenchimento == 100 %}bg-success{% elif percentual_preenchimento >= 50 %}bg-warning{% else %}bg-danger{% endif %}" style="width: {{ percentual_preenchimento }}%">
-                        {{ percentual_preenchimento }}% Preenchido
-                    </div>
+        </div>
+    </div>
+
+    <!-- Modal com Informações Gerais Completas -->
+    <div class="modal fade" id="modalInfoGerais" tabindex="-1" aria-labelledby="modalInfoGeraisLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fs-6" id="modalInfoGeraisLabel"><i class="bi bi-info-circle me-2"></i> Informações Gerais Completas</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
                 </div>
-                <small class="text-muted">{{ preenchidas }} de {{ total_respostas }} perguntas respondidas</small>
+                <div class="modal-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4 text-muted">Modelo:</dt>
+                        <dd class="col-sm-8 fw-semibold">{{ registro.modelo.nome }}</dd>
+
+                        <dt class="col-sm-4 text-muted">Objeto:</dt>
+                        <dd class="col-sm-8">{{ registro.modelo.objeto_auditoria|default:'-' }}</dd>
+
+                        <dt class="col-sm-4 text-muted">Nome do Ciclo:</dt>
+                        <dd class="col-sm-8">{{ registro.nome }}</dd>
+
+                        <dt class="col-sm-4 text-muted">Avaliador:</dt>
+                        <dd class="col-sm-8">{{ registro.avaliador.get_full_name|default:registro.avaliador.username }}</dd>
+
+                        {% if registro.alvo %}
+                        <dt class="col-sm-4 text-muted">Avaliado (Alvo):</dt>
+                        <dd class="col-sm-8">{{ registro.alvo }}</dd>
+                        {% endif %}
+
+                        <dt class="col-sm-4 text-muted">Período:</dt>
+                        <dd class="col-sm-8">
+                            {% if registro.periodo_inicio and registro.periodo_fim %}
+                            {{ registro.periodo_inicio|date:'d/m/Y' }} até {{ registro.periodo_fim|date:'d/m/Y' }}
+                            {% elif registro.periodo_inicio %}
+                            A partir de {{ registro.periodo_inicio|date:'d/m/Y' }}
+                            {% elif registro.periodo_fim %}
+                            Até {{ registro.periodo_fim|date:'d/m/Y' }}
+                            {% else %}
+                            Não informado
+                            {% endif %}
+                        </dd>
+
+                        <dt class="col-sm-4 text-muted">Criado em:</dt>
+                        <dd class="col-sm-8">{{ registro.criado_em|date:'d/m/Y H:i' }}</dd>
+
+                        {% if registro.observacoes %}
+                        <dt class="col-sm-4 text-muted">Observações:</dt>
+                        <dd class="col-sm-8">{{ registro.observacoes }}</dd>
+                        {% endif %}
+                    </dl>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
+                </div>
             </div>
         </div>
     </div>
 
     <div class="card shadow-sm mb-3">
         <div class="card-header bg-success text-white">
-            <h5 class="mb-0"><i class="bi bi-question-circle"></i> Respostas às Perguntas</h5>
+            <h5 class="mb-0 fs-6"><i class="bi bi-question-circle me-1"></i> Respostas às Perguntas</h5>
         </div>
     </div>
 
@@ -455,7 +546,7 @@
              style="cursor: pointer; user-select: none;"
              data-bs-toggle="collapse" 
              data-bs-target="#collapse-bloco-{{ forloop.counter }}" 
-             aria-expanded="true" 
+             aria-expanded="false" 
              aria-controls="collapse-bloco-{{ forloop.counter }}">
             
             <div class="d-flex flex-column gap-1">
@@ -491,7 +582,7 @@
             </div>
         </div>
         
-        <div class="collapse show" id="collapse-bloco-{{ forloop.counter }}">
+        <div class="collapse" id="collapse-bloco-{{ forloop.counter }}">
             <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-striped mb-0 align-middle audit-table">
