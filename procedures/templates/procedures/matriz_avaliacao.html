@@ -381,6 +381,21 @@
                         </option>
                         {% endfor %}
                     </select>
+
+                    <!-- Select de Disciplina abaixo da Matriz -->
+                    {% if matriz_selecionada and disciplinas %}
+                    <div class="mt-2">
+                        <label class="form-label small text-muted mb-1">Disciplina</label>
+                        <select name="disciplina" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <option value="">Todas as disciplinas ({{ disciplinas.count }})</option>
+                            {% for d in disciplinas %}
+                            <option value="{{ d.id }}" {% if disciplina_filtro == d.id|stringformat:"s" %}selected{% endif %}>
+                                {{ d.nome }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
                 </div>
                 
                 <div class="col-md-2">
@@ -552,11 +567,11 @@
                 </h6>
             </div>
             <div class="d-flex gap-2 align-items-center">
-                <span class="badge bg-info">{% if pagination %}{{ pagination.total_items }}{% else %}{{ matriz_dados|length }}{% endif %} colaboradores × {{ disciplinas.count }} disciplinas</span>
+                <span class="badge bg-info">{% if pagination %}{{ pagination.total_items }}{% else %}{{ matriz_dados|length }}{% endif %} colaboradores × {% if disciplina_filtro %}1 disciplina (filtrada){% else %}{{ disciplinas.count }} disciplinas{% endif %}</span>
                 
                 <!-- Botões de Validação -->
                 <div class="btn-group" role="group">
-                    <a href="{% url 'procedures:exportar_matriz_excel' %}?matriz={{ matriz_selecionada.id }}&setor={{ setor }}&turno={{ turno }}&colaborador={{ termo_colab }}&nivel_filtro={{ nivel_filtro }}" 
+                    <a href="{% url 'procedures:exportar_matriz_excel' %}?matriz={{ matriz_selecionada.id }}&disciplina={{ disciplina_filtro }}&setor={{ setor }}&turno={{ turno }}&colaborador={{ termo_colab }}&nivel_filtro={{ nivel_filtro }}" 
                        class="btn btn-outline-success btn-sm" 
                        title="Exportar dados da matriz para Excel">
                         <i class="bi bi-file-earmark-excel"></i> Exportar Excel

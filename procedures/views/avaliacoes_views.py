@@ -28,6 +28,7 @@ def matriz_avaliacoes_view(request):
     """
     # Filtros
     matriz_id = request.GET.get('matriz', '')
+    disciplina_filtro = request.GET.get('disciplina', '')
     setor = request.GET.get('setor', '')
     turno = request.GET.get('turno', '')
     termo_colab = request.GET.get('colaborador', '').strip()
@@ -36,6 +37,10 @@ def matriz_avaliacoes_view(request):
     setor_id = None
     if setor and str(setor).isdigit():
         setor_id = int(setor)
+
+    disciplina_filtro_id = None
+    if disciplina_filtro and str(disciplina_filtro).isdigit():
+        disciplina_filtro_id = int(disciplina_filtro)
     
     # Buscar matrizes disponíveis
     matrizes = MatrizHabilidade.objects.filter(ativo=True).order_by('nome')
@@ -43,6 +48,7 @@ def matriz_avaliacoes_view(request):
     # Selecionar matriz
     matriz_selecionada = None
     disciplinas = []
+    disciplinas_exibidas = []
     colaboradores = []
     avaliacoes_dict = {}
     turnos_disponiveis = []
@@ -138,11 +144,16 @@ def matriz_avaliacoes_view(request):
         if 'page' in query_params:
             query_params.pop('page')
         
+        # Disciplinas a serem renderizadas nos cards
+        disciplinas_exibidas = disciplinas
+        if disciplina_filtro_id:
+            disciplinas_exibidas = disciplinas.filter(id=disciplina_filtro_id)
+
         # Buscar avaliações existentes
         avaliacoes = AvaliacaoHabilidade.objects.filter(
             matriz=matriz_selecionada,
             colaborador__in=colaboradores,
-            disciplina__in=disciplinas
+            disciplina__in=disciplinas_exibidas
         ).select_related('colaborador', 'disciplina', 'avaliador')
         
         # Criar estrutura de dados para o template
@@ -153,7 +164,7 @@ def matriz_avaliacoes_view(request):
                 'colaborador': colaborador,
                 'avaliacoes': []
             }
-            for disciplina in disciplinas:
+            for disciplina in disciplinas_exibidas:
                 # Buscar avaliação específica
                 avaliacao = next(
                     (av for av in avaliacoes if av.colaborador_id == colaborador.id and av.disciplina_id == disciplina.id),
@@ -210,6 +221,8 @@ def matriz_avaliacoes_view(request):
         'matrizes': matrizes,
         'matriz_selecionada': matriz_selecionada,
         'disciplinas': disciplinas,
+        'disciplinas_exibidas': disciplinas_exibidas,
+        'disciplina_filtro': disciplina_filtro,
         'matriz_dados': matriz_dados if matriz_selecionada else [],
         'setores': setores,
         'turnos_disponiveis': turnos_disponiveis,
@@ -217,6 +230,7 @@ def matriz_avaliacoes_view(request):
         'setor': setor,
         'turno': turno,
         'termo_colab': termo_colab,
+        'nivel_filtro': nivel_filtro,
         'pagination': pagination,
         'query_params': query_params,
         'colaboradores_desligados_ids': colaboradores_desligados_ids,
