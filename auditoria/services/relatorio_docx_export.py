@@ -929,18 +929,40 @@ def populate_gaps_table_loop(table, gaps_list: List[Dict[str, Any]]):
         r.font.color.rgb = RGBColor(22, 101, 52)
         return
 
-    for r_idx, gap in enumerate(gaps_list, 1):
+    current_area = None
+    r_idx = 1
+    for gap in gaps_list:
+        area = gap.get('area', '')
+        if area != current_area:
+            sep_row = table.add_row()
+            for cell in sep_row.cells:
+                set_cell_margins(cell, top=70, bottom=70, left=90, right=90)
+                set_cell_background(cell, "E2E8F0")
+            
+            a = sep_row.cells[0]
+            b = sep_row.cells[3]
+            a.merge(b)
+            p_sep = a.paragraphs[0]
+            p_sep.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            r_sep = p_sep.add_run(f"Bloco: {area}")
+            r_sep.bold = True
+            r_sep.font.size = Pt(9.5)
+            r_sep.font.color.rgb = RGBColor(15, 23, 42)
+            current_area = area
+            r_idx = 1
+
         row = table.add_row()
         bg_color = LIGHT_BG if r_idx % 2 == 0 else WHITE
+        r_idx += 1
 
         for cell in row.cells:
             set_cell_margins(cell, top=70, bottom=70, left=90, right=90)
             set_cell_background(cell, bg_color)
 
-        # 0. Área / Processo
+        # 0. Item Referência
         p0 = row.cells[0].paragraphs[0]
         p0.paragraph_format.space_after = Pt(0)
-        r0 = p0.add_run(f"{gap.get('area', '')}\n(Item {gap.get('item_referencia', '')})")
+        r0 = p0.add_run(f"Item {gap.get('item_referencia', '')}")
         r0.bold = True
         r0.font.size = Pt(8.5)
         r0.font.color.rgb = RGBColor(11, 37, 69)

@@ -4392,7 +4392,8 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                         if not tit or tit.lower() == "sem título":
                             continue
                             
-                        ev_txt = f"{tit}: {s.evidencia.strip()}" if s.evidencia else tit
+                        bloco = s.agenda.titulo if s.agenda else "Geral"
+                        ev_txt = f"[{bloco}] {tit}: {s.evidencia.strip()}" if s.evidencia else f"[{bloco}] {tit}"
                         
                         if s.conclusao == 'NC' and status_item == 'NC':
                             if ev_txt and ev_txt not in evidencias_vistas:
