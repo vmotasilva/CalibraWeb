@@ -821,11 +821,8 @@
                                             </td>
                                             <td class="text-center td-actions">
                                                 {% if not is_read_only %}
-                                                <a href="{% url 'auditoria:registro_detail' registro.pk %}" class="btn btn-sm btn-info" title="Visualizar / Preencher">
+                                                <a href="{% url 'auditoria:registro_detail' registro.pk %}" class="btn btn-sm btn-info text-white" title="Visualizar Ciclo">
                                                     <i class="bi bi-eye"></i>
-                                                </a>
-                                                <a href="{% url 'auditoria:registro_edit' registro.pk %}" class="btn btn-sm btn-warning" title="Editar Metadados">
-                                                    <i class="bi bi-pencil"></i>
                                                 </a>
                                                 {% else %}
                                                 <span class="text-muted small">Somente leitura</span>
