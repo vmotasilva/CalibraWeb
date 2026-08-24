@@ -1077,151 +1077,6 @@ function copiarTextoTag(texto, btnEl) {
         </div>
     </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]') ? document.querySelector('[name=csrfmiddlewaretoken]').value : '';
-
-    // Alterna a exibição dos campos percentuais caso a Matriz Estrita seja desmarcada
-    window.toggleModoEstrito = function(checked) {
-        document.querySelectorAll('.container-pct').forEach(el => {
-            el.style.display = checked ? 'none' : 'block';
-        });
-    };
-
-    // Sincronização e Ativação de Tabs pelo Bootstrap e URL Hash
-    const triggerTabList = document.querySelectorAll('#normaTabs button');
-    triggerTabList.forEach(triggerEl => {
-        triggerEl.addEventListener('click', function (event) {
-            event.preventDefault();
-            const tab = bootstrap.Tab.getOrCreateInstance(triggerEl);
-            tab.show();
-            const targetId = triggerEl.getAttribute('data-bs-target').replace('#', '');
-            const url = new URL(window.location);
-            url.searchParams.set('tab', targetId);
-            window.history.replaceState({}, '', url);
-        });
-    });
-
-    // Se houver parâmetro tab na URL ou active_tab do servidor, ativa explicitamente
-    const urlParams = new URLSearchParams(window.location.search);
-    const activeTabParam = urlParams.get('tab') || '{{ active_tab|default:"itens" }}';
-    const activeTabBtn = document.querySelector(`#normaTabs button[data-bs-target="#${activeTabParam}"]`);
-    if (activeTabBtn) {
-        const tabInstance = bootstrap.Tab.getOrCreateInstance(activeTabBtn);
-        tabInstance.show();
-    }
-
-    // Toggle rápido de Atalho Especial na tabela
-    document.querySelectorAll('.btn-toggle-atalho').forEach(btn => {
-        btn.addEventListener('click', async function(e) {
-            e.stopPropagation();
-            const url = this.dataset.url;
-            const itemId = this.dataset.id;
-            try {
-                const resp = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' }
-                });
-                const data = await resp.json();
-                if (data.success) {
-                    if (data.atalho_especial) {
-                        this.className = 'btn btn-sm rounded-pill px-2.5 py-1 fw-bold btn-toggle-atalho btn-warning text-dark border-warning shadow-2xs';
-                        this.innerHTML = '<i class="bi bi-lightning-charge-fill me-1"></i>Atalho';
-                        this.title = 'Clique para remover do atalho rápido';
-                    } else {
-                        this.className = 'btn btn-sm rounded-pill px-2.5 py-1 fw-bold btn-toggle-atalho btn-outline-secondary border-dashed opacity-75';
-                        this.innerHTML = '<i class="bi bi-lightning me-1"></i>Definir';
-                        this.title = 'Clique para adicionar ao atalho rápido';
-                    }
-                    // Atualiza data attribute na linha
-                    const row = document.querySelector(`.item-detail-row[data-id="${itemId}"]`);
-                    if (row) row.dataset.atalho = data.atalho_especial ? 'true' : 'false';
-                }
-            } catch(err) {
-                console.error('Erro ao alternar atalho:', err);
-            }
-        });
-    });
-
-    // Event listener ao clicar nas linhas da tabela de Itens
-    let currentModalItemId = null;
-    document.querySelectorAll('.item-detail-row').forEach(row => {
-        row.addEventListener('click', function(e) {
-            // Se o clique foi em um botão ou link, ignora
-            if (e.target.closest('button') || e.target.closest('a')) return;
-
-            const id = this.dataset.id;
-            currentModalItemId = id;
-            const ref = this.dataset.ref;
-            const titulo = this.dataset.titulo;
-            const desc = this.dataset.descricao;
-            const isAtalho = this.dataset.atalho === 'true';
-            const editUrl = this.dataset.editUrl;
-            const deleteUrl = this.dataset.deleteUrl;
-
-            document.getElementById('popItemRef').textContent = ref;
-            document.getElementById('popItemTitulo').textContent = titulo;
-            document.getElementById('popItemDescricao').textContent = desc || titulo;
-            
-            const btnToggleModal = document.getElementById('popItemBtnToggleAtalho');
-            const labelToggleModal = document.getElementById('popItemAtalhoLabel');
-            if (btnToggleModal) {
-                if (isAtalho) {
-                    btnToggleModal.className = 'btn btn-warning text-dark rounded-pill px-3 fw-bold shadow-2xs';
-                    labelToggleModal.textContent = 'Atalho Ativo';
-                } else {
-                    btnToggleModal.className = 'btn btn-outline-warning text-dark rounded-pill px-3 fw-semibold shadow-2xs';
-                    labelToggleModal.textContent = 'Definir como Atalho';
-                }
-            }
-
-            document.getElementById('popItemBtnEditar').href = editUrl;
-            document.getElementById('popItemFormExcluir').action = deleteUrl;
-
-            const modalEl = document.getElementById('modalPopItemDetail');
-            if (modalEl) {
-                const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-                modal.show();
-            }
-        });
-    });
-
-    // Botão de toggle dentro do modal
-    const modalToggleBtn = document.getElementById('popItemBtnToggleAtalho');
-    if (modalToggleBtn) {
-        modalToggleBtn.addEventListener('click', async function() {
-            if (!currentModalItemId) return;
-            const tableBtn = document.querySelector(`.btn-toggle-atalho[data-id="${currentModalItemId}"]`);
-            if (tableBtn) {
-                tableBtn.click();
-                setTimeout(() => {
-                    const row = document.querySelector(`.item-detail-row[data-id="${currentModalItemId}"]`);
-                    const isNowAtalho = row && row.dataset.atalho === 'true';
-                    const labelToggleModal = document.getElementById('popItemAtalhoLabel');
-                    if (isNowAtalho) {
-                        modalToggleBtn.className = 'btn btn-warning text-dark rounded-pill px-3 fw-bold shadow-2xs';
-                        labelToggleModal.textContent = 'Atalho Ativo';
-                    } else {
-                        modalToggleBtn.className = 'btn btn-outline-warning text-dark rounded-pill px-3 fw-semibold shadow-2xs';
-                        labelToggleModal.textContent = 'Definir como Atalho';
-                    }
-                }, 300);
-            }
-    // Inicializa Select2 no modal de novo planejamento
-    if ($.fn.select2) {
-        $('.select2-modal-auditores').select2({
-            theme: 'bootstrap-5',
-            dropdownParent: $('#modalNovoPlanejamento'),
-            placeholder: 'Selecione os auditores da equipe...',
-            width: '100%'
-        });
-    }
-});
-</script>
-
 <!-- Modal de Novo Planejamento de Auditoria -->
 <div class="modal fade" id="modalNovoPlanejamento" tabindex="-1" aria-labelledby="modalNovoPlanejamentoTitle" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -1348,4 +1203,158 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]') ? document.querySelector('[name=csrfmiddlewaretoken]').value : '';
+
+    // Alterna a exibição dos campos percentuais caso a Matriz Estrita seja desmarcada
+    window.toggleModoEstrito = function(checked) {
+        document.querySelectorAll('.container-pct').forEach(el => {
+            el.style.display = checked ? 'none' : 'block';
+        });
+    };
+
+    // Sincronização e Ativação de Tabs pelo Bootstrap e URL Hash
+    const triggerTabList = document.querySelectorAll('#normaTabs button');
+    triggerTabList.forEach(triggerEl => {
+        triggerEl.addEventListener('click', function (event) {
+            event.preventDefault();
+            const tab = bootstrap.Tab.getOrCreateInstance(triggerEl);
+            tab.show();
+            const targetId = triggerEl.getAttribute('data-bs-target').replace('#', '');
+            const url = new URL(window.location);
+            url.searchParams.set('tab', targetId);
+            window.history.replaceState({}, '', url);
+        });
+    });
+
+    // Se houver parâmetro tab na URL ou active_tab do servidor, ativa explicitamente
+    const urlParams = new URLSearchParams(window.location.search);
+    const activeTabParam = urlParams.get('tab') || '{{ active_tab|default:"itens" }}';
+    const activeTabBtn = document.querySelector(`#normaTabs button[data-bs-target="#${activeTabParam}"]`);
+    if (activeTabBtn) {
+        const tabInstance = bootstrap.Tab.getOrCreateInstance(activeTabBtn);
+        tabInstance.show();
+    }
+
+    // Toggle rápido de Atalho Especial na tabela
+    document.addEventListener('click', async function(e) {
+        const btn = e.target.closest('.btn-toggle-atalho');
+        if (!btn) return;
+
+        e.stopPropagation();
+        const url = btn.dataset.url;
+        const itemId = btn.dataset.id;
+        try {
+            const resp = await fetch(url, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' }
+            });
+            const data = await resp.json();
+            if (data.success) {
+                if (data.atalho_especial) {
+                    btn.className = 'btn btn-sm rounded-pill px-2.5 py-1 fw-bold btn-toggle-atalho btn-warning text-dark border-warning shadow-2xs';
+                    btn.innerHTML = '<i class="bi bi-lightning-charge-fill me-1"></i>Atalho';
+                    btn.title = 'Clique para remover do atalho rápido';
+                } else {
+                    btn.className = 'btn btn-sm rounded-pill px-2.5 py-1 fw-bold btn-toggle-atalho btn-outline-secondary border-dashed opacity-75';
+                    btn.innerHTML = '<i class="bi bi-lightning me-1"></i>Definir';
+                    btn.title = 'Clique para adicionar ao atalho rápido';
+                }
+                // Atualiza data attribute na linha
+                const row = document.querySelector(`.item-detail-row[data-id="${itemId}"]`);
+                if (row) row.dataset.atalho = data.atalho_especial ? 'true' : 'false';
+            }
+        } catch(err) {
+            console.error('Erro ao alternar atalho:', err);
+        }
+    });
+
+    // Event listener ao clicar nas linhas da tabela de Itens (Delegação Global)
+    let currentModalItemId = null;
+    document.addEventListener('click', function(e) {
+        const row = e.target.closest('.item-detail-row');
+        if (!row) return;
+
+        // Se o clique foi em um botão ou link, ignora
+        if (e.target.closest('button') || e.target.closest('a')) return;
+
+        const id = row.dataset.id;
+        currentModalItemId = id;
+        const ref = row.dataset.ref || '';
+        const titulo = row.dataset.titulo || '';
+        const desc = row.dataset.descricao || titulo;
+        const isAtalho = row.dataset.atalho === 'true';
+        const editUrl = row.dataset.editUrl;
+        const deleteUrl = row.dataset.deleteUrl;
+
+        const popRefEl = document.getElementById('popItemRef');
+        if (popRefEl) popRefEl.textContent = ref;
+        const popTitEl = document.getElementById('popItemTitulo');
+        if (popTitEl) popTitEl.textContent = titulo;
+        const popDescEl = document.getElementById('popItemDescricao');
+        if (popDescEl) popDescEl.textContent = desc;
+        
+        const btnToggleModal = document.getElementById('popItemBtnToggleAtalho');
+        const labelToggleModal = document.getElementById('popItemAtalhoLabel');
+        if (btnToggleModal && labelToggleModal) {
+            if (isAtalho) {
+                btnToggleModal.className = 'btn btn-warning text-dark rounded-pill px-3 fw-bold shadow-2xs';
+                labelToggleModal.textContent = 'Atalho Ativo';
+            } else {
+                btnToggleModal.className = 'btn btn-outline-warning text-dark rounded-pill px-3 fw-semibold shadow-2xs';
+                labelToggleModal.textContent = 'Definir como Atalho';
+            }
+        }
+
+        const editBtn = document.getElementById('popItemBtnEditar');
+        if (editBtn && editUrl) editBtn.href = editUrl;
+        const delForm = document.getElementById('popItemFormExcluir');
+        if (delForm && deleteUrl) delForm.action = deleteUrl;
+
+        const modalEl = document.getElementById('modalPopItemDetail');
+        if (modalEl) {
+            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+        }
+    });
+
+    // Botão de toggle dentro do modal
+    const modalToggleBtn = document.getElementById('popItemBtnToggleAtalho');
+    if (modalToggleBtn) {
+        modalToggleBtn.addEventListener('click', async function() {
+            if (!currentModalItemId) return;
+            const tableBtn = document.querySelector(`.btn-toggle-atalho[data-id="${currentModalItemId}"]`);
+            if (tableBtn) {
+                tableBtn.click();
+                setTimeout(() => {
+                    const row = document.querySelector(`.item-detail-row[data-id="${currentModalItemId}"]`);
+                    const isNowAtalho = row && row.dataset.atalho === 'true';
+                    const labelToggleModal = document.getElementById('popItemAtalhoLabel');
+                    if (isNowAtalho) {
+                        modalToggleBtn.className = 'btn btn-warning text-dark rounded-pill px-3 fw-bold shadow-2xs';
+                        labelToggleModal.textContent = 'Atalho Ativo';
+                    } else {
+                        modalToggleBtn.className = 'btn btn-outline-warning text-dark rounded-pill px-3 fw-semibold shadow-2xs';
+                        labelToggleModal.textContent = 'Definir como Atalho';
+                    }
+                }, 300);
+            }
+        });
+    }
+
+    // Inicializa Select2 no modal de novo planejamento
+    if ($.fn.select2) {
+        $('.select2-modal-auditores').select2({
+            theme: 'bootstrap-5',
+            dropdownParent: $('#modalNovoPlanejamento'),
+            placeholder: 'Selecione os auditores da equipe...',
+            width: '100%'
+        });
+    }
+});
+</script>
 {% endblock %}
