@@ -34,10 +34,47 @@ from shared.permissions import has_view_access
 
 
 SPECIAL_VIEW_ALL_COLABORADORES_PERM = 'core.nav_pessoas_ver_todos_colaboradores'
+SPECIAL_REGISTRAR_FERIAS_TODOS_PERM = 'core.nav_pessoas_registrar_ferias_todos'
 
 
 def _has_special_view_all_colaboradores_perm(user):
     return bool(user and user.has_perm(SPECIAL_VIEW_ALL_COLABORADORES_PERM))
+
+
+def _has_special_registrar_ferias_todos_perm(user):
+    return bool(user and user.has_perm(SPECIAL_REGISTRAR_FERIAS_TODOS_PERM))
+
+
+def can_user_manage_ferias_for(request_user, target_colaborador=None):
+    """
+    Define se o usuário pode registrar, editar ou gerenciar férias para um colaborador.
+    Retorna True se:
+    - Superusuário ou staff
+    - Possui a permissão especial de registrar férias de qualquer pessoa (nav_pessoas_registrar_ferias_todos)
+    - Pertence ao setor RH/DP/Qualidade
+    - Ou tem acesso hierárquico ao colaborador (lider, supervisor, gerente, diretor)
+    """
+    if not request_user or not request_user.is_authenticated:
+        return False
+
+    if request_user.is_superuser or request_user.is_staff:
+        return True
+
+    if _has_special_registrar_ferias_todos_perm(request_user):
+        return True
+
+    try:
+        usuario_logado = get_colaborador_for_user(request_user)
+    except Exception:
+        usuario_logado = None
+
+    if usuario_logado and _is_admin_setor(usuario_logado):
+        return True
+
+    if target_colaborador is not None:
+        return can_user_access_colaborador(request_user, target_colaborador)
+
+    return True
 
 
 def _has_nav_view_access(user, view_name: str) -> bool:
@@ -525,11 +562,7 @@ def detalhe_colaborador_view(request, colab_id):
     # Permissão: todos podem visualizar ocorrências
     can_register_occ = can_user_register_ocorrencia(request.user, alvo)
     can_edit_colaborador = _has_nav_view_access(request.user, 'editar_colaborador')
-    can_register_ferias = False
-    if request.user.is_superuser or request.user.is_staff or request.user.has_perm('rh.add_ferias'):
-        can_register_ferias = True
-    elif usuario_logado and _is_admin_setor(usuario_logado):
-        can_register_ferias = True
+    can_register_ferias = can_user_manage_ferias_for(request.user, alvo)
     can_view_occ = _has_nav_view_access(request.user, 'listar_ocorrencias')
     can_edit_occ = _has_nav_view_access(request.user, 'editar_ocorrencia')
     can_delete_occ = _has_nav_view_access(request.user, 'deletar_ocorrencia')
@@ -1115,7 +1148,7 @@ def registrar_ferias_view(request, colab_id):
     colaborador = get_object_or_404(Colaborador, id=colab_id)
     
     # Verificar permissão de acesso ao colaborador
-    if not can_user_access_colaborador(request.user, colaborador):
+    if not can_user_manage_ferias_for(request.user, colaborador):
         messages.error(request, "Acesso Negado. Você não tem permissão para registrar férias para este colaborador.")
         return redirect("modulo_rh")
     
@@ -1147,7 +1180,7 @@ def editar_ferias_view(request, colab_id, ferias_id):
     colaborador = ferias.colaborador
     
     # Verificar permissão de acesso ao colaborador
-    if not can_user_access_colaborador(request.user, colaborador):
+    if not can_user_manage_ferias_for(request.user, colaborador):
         messages.error(request, "Acesso Negado. Você não tem permissão para editar férias deste colaborador.")
         return redirect("modulo_rh")
     
@@ -1178,7 +1211,7 @@ def excluir_ferias_view(request, colab_id, ferias_id):
     colaborador = ferias.colaborador
     
     # Verificar permissão de acesso ao colaborador
-    if not can_user_access_colaborador(request.user, colaborador):
+    if not can_user_manage_ferias_for(request.user, colaborador):
         messages.error(request, "Acesso Negado. Você não tem permissão para excluir férias deste colaborador.")
         return redirect("modulo_rh")
     
@@ -1294,7 +1327,7 @@ def gestao_ferias_view(request):
         ).count()
         
         # Colaboradores para filtro
-        if request.user.is_superuser or request.user.is_staff:
+        if request.user.is_superuser or request.user.is_staff or _has_special_registrar_ferias_todos_perm(request.user):
             colaboradores = Colaborador.objects.all().order_by('nome_completo')
         else:
             try:
@@ -1370,9 +1403,9 @@ def exportar_ferias_view(request):
         if status:
             ferias_qs = ferias_qs.filter(status=status)
         if aprovada:
-            if aprovada == 'sim':
+            if aprovada == '1':
                 ferias_qs = ferias_qs.filter(aprovada=True)
-            elif aprovada == 'nao':
+            elif aprovada == '0':
                 ferias_qs = ferias_qs.filter(aprovada=False)
         if colaborador_id:
             ferias_qs = ferias_qs.filter(colaborador_id=colaborador_id)
@@ -1381,14 +1414,14 @@ def exportar_ferias_view(request):
         dados = []
         for f in ferias_qs:
             dados.append({
-                'Matrícula': f.colaborador.matricula,
-                'Colaborador': f.colaborador.nome_completo,
+                'Matrícula': f.colaborador.matricula or '',
                 'Data Início': f.data_inicio.strftime('%d/%m/%Y') if f.data_inicio else '',
                 'Data Fim': f.data_fim.strftime('%d/%m/%Y') if f.data_fim else '',
-                'Dias Solicitados': f.dias_solicitados or '',
-                'Aprovada': 'Sim' if f.aprovada else 'Não',
-                'Status': f.get_status_display() if hasattr(f, 'get_status_display') else f.status,
+                'Dias Solicitados': f.dias_solicitados,
+                'Aprovada': 'SIM' if f.aprovada else 'NÃO',
                 'Descrição': f.descricao or '',
+                'Status': f.get_status_display(),
+                'Colaborador': f.colaborador.nome_completo
             })
         
         # Criar DataFrame
@@ -1397,8 +1430,8 @@ def exportar_ferias_view(request):
         # Se não houver dados, criar DataFrame vazio com cabeçalhos
         if df.empty:
             df = pd.DataFrame(columns=[
-                'Matrícula', 'Colaborador', 'Data Início', 'Data Fim', 
-                'Dias Solicitados', 'Aprovada', 'Status', 'Descrição'
+                'Matrícula', 'Data Início', 'Data Fim', 'Dias Solicitados', 
+                'Aprovada', 'Descrição', 'Status', 'Colaborador'
             ])
         
         # Criar arquivo Excel em memória
@@ -1408,12 +1441,10 @@ def exportar_ferias_view(request):
             
             # Ajustar largura das colunas
             worksheet = writer.sheets['Férias']
-            for idx, col in enumerate(df.columns):
-                max_length = max(
-                    df[col].astype(str).map(len).max() if not df.empty else 0,
-                    len(col)
-                ) + 2
-                worksheet.column_dimensions[chr(65 + idx)].width = min(max_length, 50)
+            for col in worksheet.columns:
+                max_len = max(len(str(cell.value or '')) for cell in col)
+                col_letter = col[0].column_letter
+                worksheet.column_dimensions[col_letter].width = max(max_len + 3, 12)
         
         output.seek(0)
         
@@ -1441,7 +1472,7 @@ def criar_vencimento_ferias_view(request, colab_id):
     """Cria um novo registro de Vencimento de Férias (Período Aquisitivo)"""
     alvo = get_object_or_404(Colaborador, id=colab_id)
     
-    if not can_user_access_colaborador(request.user, alvo):
+    if not can_user_manage_ferias_for(request.user, alvo):
         messages.error(request, "Acesso Negado.")
         return redirect("rh:detalhe_colaborador", colab_id=alvo.id)
         
@@ -1459,7 +1490,7 @@ def criar_vencimento_ferias_view(request, colab_id):
 @login_required
 def excluir_vencimento_ferias_view(request, colab_id, venc_id):
     alvo = get_object_or_404(Colaborador, id=colab_id)
-    if not can_user_access_colaborador(request.user, alvo):
+    if not can_user_manage_ferias_for(request.user, alvo):
         messages.error(request, "Acesso Negado.")
         return redirect("rh:detalhe_colaborador", colab_id=alvo.id)
         
@@ -2105,7 +2136,7 @@ def criar_ferias_view(request, colab_id=None):
         colaborador = get_object_or_404(Colaborador, id=colab_id)
         
         # Verificar permissão de acesso ao colaborador
-        if not can_user_access_colaborador(request.user, colaborador):
+        if not can_user_manage_ferias_for(request.user, colaborador):
             messages.error(request, "Acesso Negado. Você não tem permissão para registrar férias deste colaborador.")
             return redirect("modulo_rh")
     else:

@@ -36,6 +36,7 @@ urlpatterns = [
     path("registros/<int:pk>/remover/", views.registro_delete, name="registro_delete"),
     path("registros/<int:pk>/exportar-pdf/", views.registro_exportar_pdf, name="registro_exportar_pdf"),
     path("registros/<int:pk>/", views.registro_detail, name="registro_detail"),
+    path("registros/<int:pk>/atualizar-resposta/", views.api_atualizar_resposta_inline, name="api_atualizar_resposta_inline"),
     path("modelos/<int:modelo_id>/registros/", views.registros_por_modelo, name="registros_por_modelo"),
     path("modelos/<int:modelo_id>/registros/compartilhado/", views.registros_por_modelo, name="registros_por_modelo_compartilhado"),
     path(

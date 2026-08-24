@@ -21,12 +21,83 @@
 }
 
 .answer-semaphore {
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
     display: inline-block;
     border: 1px solid rgba(0, 0, 0, 0.2);
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3), 0 1px 3px rgba(0,0,0,0.12);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    vertical-align: middle;
+}
+
+.semaphore-interactive {
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border-radius: 6px;
+    transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+.semaphore-interactive:hover {
+    background-color: rgba(13, 110, 253, 0.08);
+    transform: scale(1.15);
+}
+
+.semaphore-empty {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px dashed #adb5bd;
+    color: #adb5bd;
+    font-size: 11px;
+    font-weight: bold;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.semaphore-interactive:hover .semaphore-empty {
+    border-color: #0d6efd;
+    color: #0d6efd;
+    background-color: #f8f9fa;
+}
+
+.popover-farol-container {
+    max-width: 280px;
+    padding: 4px;
+}
+
+.popover-option-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 10px;
+    margin-bottom: 4px;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+    background-color: #fff;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-align: left;
+    transition: all 0.15s ease;
+    cursor: pointer;
+}
+
+.popover-option-btn:hover {
+    background-color: #f8f9fa;
+    border-color: #adb5bd;
+    transform: translateX(2px);
+}
+
+.popover-option-btn.active-opt {
+    background-color: #e7f1ff;
+    border-color: #0d6efd;
+    font-weight: 600;
 }
 
 .chart-frame-detail {
@@ -58,7 +129,13 @@
         width: 100%;
         border: none;
         padding: 0.5rem 0;
-        text-align: left !important;
+        text-align: left;
+    }
+    .audit-table td::before {
+        font-weight: bold;
+        display: block;
+        color: #495057;
+        margin-bottom: 0.25rem;
     }
     
     /* "Ordem" cell */
@@ -84,11 +161,6 @@
     }
     .audit-table td.col-pergunta::before {
         content: "Pergunta:";
-        display: block;
-        font-weight: 600;
-        color: #6c757d;
-        font-size: 0.875rem;
-        margin-bottom: 0.25rem;
     }
     
     /* "Comentários" cell */
@@ -142,15 +214,9 @@
             <a href="{% url 'auditoria:registro_create_modelo' registro.modelo.id %}" class="btn btn-primary">
                 <i class="bi bi-plus-circle"></i> Novo Ciclo
             </a>
-            {% if registro.status != 'CONCLUIDO' %}
-            <a href="{% url 'auditoria:registro_edit' registro.pk %}" class="btn btn-warning">
-                <i class="bi bi-pencil"></i> Continuar Preenchimento
+            <a href="{% url 'auditoria:registro_edit' registro.pk %}" class="btn {% if registro.status == 'CONCLUIDO' %}btn-outline-primary{% else %}btn-warning{% endif %}">
+                <i class="bi bi-pencil"></i> {% if registro.status == 'CONCLUIDO' %}Editar Ciclo{% else %}Continuar Preenchimento{% endif %}
             </a>
-            {% else %}
-            <button class="btn btn-outline-secondary" disabled>
-                <i class="bi bi-lock"></i> Concluído (Read-Only)
-            </button>
-            {% endif %}
             <a href="{% url 'auditoria:registro_exportar_pdf' registro.pk %}" class="btn btn-danger">
                 <i class="bi bi-file-earmark-pdf"></i> Exportar PDF
             </a>
@@ -387,17 +453,27 @@
                             {% if exibir_dia_semana %}
                                 {% for dia_cell in linha.dia_cells %}
                                 <td class="col-dia" data-dia="{{ dia_cell.short_label }}">
-                                    {% if dia_cell.value %}
-                                    <span
-                                        class="answer-semaphore"
-                                        data-bs-toggle="tooltip"
-                                        data-bs-placement="top"
-                                        title="{{ dia_cell.value }}"
-                                        style="background-color: {{ dia_cell.color|default:'#198754' }};"
-                                    ></span>
-                                    {% else %}
-                                    <span class="text-muted fst-italic">-</span>
-                                    {% endif %}
+                                    <div
+                                        class="semaphore-interactive"
+                                        data-pergunta-id="{{ dia_cell.pergunta_id }}"
+                                        data-dia="{{ dia_cell.dia_key }}"
+                                        data-valor="{{ dia_cell.value }}"
+                                        data-tipo="{{ dia_cell.tipo_resposta }}"
+                                        data-opcoes="{{ dia_cell.opcoes_json|default:'[]'|escape }}"
+                                        title="Clique para alterar a resposta"
+                                    >
+                                        {% if dia_cell.value %}
+                                        <span
+                                            class="answer-semaphore"
+                                            data-bs-toggle="tooltip"
+                                            data-bs-placement="top"
+                                            title="{{ dia_cell.value }}"
+                                            style="background-color: {{ dia_cell.color|default:'#198754' }};"
+                                        ></span>
+                                        {% else %}
+                                        <span class="semaphore-empty" data-bs-toggle="tooltip" title="Clique para responder">+</span>
+                                        {% endif %}
+                                    </div>
                                 </td>
                                 {% endfor %}
                             {% endif %}
@@ -583,6 +659,219 @@ document.addEventListener('DOMContentLoaded', function() {
                     y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }
                 }
             }
+        });
+    }
+
+    // --- Dynamic Semaphore Popover Logic ---
+    let activePopover = null;
+    let activeTriggerEl = null;
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken') || '{{ csrf_token }}';
+
+    function closeActivePopover() {
+        if (activePopover) {
+            activePopover.dispose();
+            activePopover = null;
+            activeTriggerEl = null;
+        }
+    }
+
+    document.addEventListener('click', function(e) {
+        if (activePopover && activeTriggerEl) {
+            const popoverEl = document.querySelector('.popover');
+            if (popoverEl && !popoverEl.contains(e.target) && !activeTriggerEl.contains(e.target)) {
+                closeActivePopover();
+            }
+        }
+    });
+
+    document.querySelectorAll('.semaphore-interactive').forEach(function(el) {
+        el.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (activeTriggerEl === el) {
+                closeActivePopover();
+                return;
+            }
+            closeActivePopover();
+
+            const perguntaId = el.getAttribute('data-pergunta-id');
+            const diaKey = el.getAttribute('data-dia') || '';
+            const valorAtual = el.getAttribute('data-valor') || '';
+            const tipoResposta = el.getAttribute('data-tipo') || '';
+            
+            let opcoes = [];
+            try {
+                opcoes = JSON.parse(el.getAttribute('data-opcoes') || '[]');
+            } catch (err) {
+                opcoes = [];
+            }
+
+            if (!opcoes || !opcoes.length) {
+                if (tipoResposta === 'SIM_NAO') {
+                    opcoes = [
+                        { label: 'Sim', color: '#198754' },
+                        { label: 'Não', color: '#dc3545' }
+                    ];
+                }
+            }
+
+            let popoverContentHtml = '<div class="popover-farol-container">';
+            popoverContentHtml += '<div class="fw-bold small mb-2 text-secondary border-bottom pb-1">Selecione uma resposta:</div>';
+
+            if (opcoes && opcoes.length > 0) {
+                opcoes.forEach(function(opt) {
+                    const isSelected = (opt.label === valorAtual);
+                    const optColor = opt.color || '#198754';
+                    popoverContentHtml += `
+                        <button type="button" class="popover-option-btn ${isSelected ? 'active-opt' : ''}" data-val="${escapeHtml(opt.label)}">
+                            <span class="answer-semaphore" style="background-color: ${optColor}; width: 14px; height: 14px;"></span>
+                            <span class="flex-grow-1">${escapeHtml(opt.label)}</span>
+                            ${isSelected ? '<i class="bi bi-check2 text-primary fw-bold"></i>' : ''}
+                        </button>
+                    `;
+                });
+            } else {
+                // Para tipos NUMERO / DECIMAL ou texto livre
+                popoverContentHtml += `
+                    <div class="input-group input-group-sm mb-2">
+                        <input type="text" class="form-control form-control-sm popover-input-val" value="${escapeHtml(valorAtual)}" placeholder="Digite o valor">
+                        <button class="btn btn-primary popover-btn-salvar-input" type="button">Salvar</button>
+                    </div>
+                `;
+            }
+
+            // Opção para Limpar / Deixar em branco
+            popoverContentHtml += `
+                <button type="button" class="popover-option-btn text-muted mt-1" data-val="" style="border-style: dashed;">
+                    <span class="semaphore-empty" style="width: 14px; height: 14px; font-size: 9px;">-</span>
+                    <span class="flex-grow-1">Limpar resposta</span>
+                </button>
+            </div>`;
+
+            activeTriggerEl = el;
+            activePopover = new bootstrap.Popover(el, {
+                html: true,
+                placement: 'auto',
+                trigger: 'manual',
+                container: 'body',
+                sanitize: false,
+                content: popoverContentHtml
+            });
+
+            activePopover.show();
+
+            // Intercept bootstrap popover buttons inside DOM
+            setTimeout(function() {
+                const popoverEl = document.querySelector('.popover');
+                if (!popoverEl) return;
+
+                popoverEl.querySelectorAll('.popover-option-btn').forEach(function(optBtn) {
+                    optBtn.addEventListener('click', function(evt) {
+                        evt.stopPropagation();
+                        const novoValor = optBtn.getAttribute('data-val');
+                        enviarAtualizacaoResposta(el, perguntaId, diaKey, novoValor);
+                    });
+                });
+
+                const inputSaveBtn = popoverEl.querySelector('.popover-btn-salvar-input');
+                if (inputSaveBtn) {
+                    inputSaveBtn.addEventListener('click', function(evt) {
+                        evt.stopPropagation();
+                        const inputEl = popoverEl.querySelector('.popover-input-val');
+                        const novoValor = inputEl ? inputEl.value : '';
+                        enviarAtualizacaoResposta(el, perguntaId, diaKey, novoValor);
+                    });
+                }
+            }, 50);
+        });
+    });
+
+    function enviarAtualizacaoResposta(triggerEl, perguntaId, diaKey, novoValor) {
+        closeActivePopover();
+
+        // Feedback visual otimista
+        const originalHtml = triggerEl.innerHTML;
+        triggerEl.innerHTML = '<span class="spinner-border spinner-border-sm text-primary" style="width: 16px; height: 16px;"></span>';
+
+        const formData = new FormData();
+        formData.append('pergunta_id', perguntaId);
+        if (diaKey) {
+            formData.append('dia_semana', diaKey);
+        }
+        formData.append('valor', novoValor);
+
+        const url = "{% url 'auditoria:api_atualizar_resposta_inline' registro.pk %}";
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            if (data.success) {
+                // Atualizar o elemento disparador
+                triggerEl.setAttribute('data-valor', data.novo_valor || '');
+                if (data.novo_valor) {
+                    const novaCor = data.nova_cor || '#198754';
+                    triggerEl.innerHTML = `
+                        <span
+                            class="answer-semaphore"
+                            data-bs-toggle="tooltip"
+                            data-bs-placement="top"
+                            title="${escapeHtml(data.novo_valor)}"
+                            style="background-color: ${novaCor};"
+                        ></span>
+                    `;
+                } else {
+                    triggerEl.innerHTML = '<span class="semaphore-empty" data-bs-toggle="tooltip" title="Clique para responder">+</span>';
+                }
+
+                // Reinicializar tooltip do elemento atualizado
+                const newTooltipEl = triggerEl.querySelector('[data-bs-toggle="tooltip"]');
+                if (newTooltipEl && typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+                    bootstrap.Tooltip.getOrCreateInstance(newTooltipEl);
+                }
+
+                // Atualizar barra de progresso no topo se existir
+                const progressBar = document.querySelector('.progress-bar');
+                if (progressBar && data.percentual_preenchimento !== undefined) {
+                    progressBar.style.width = data.percentual_preenchimento + '%';
+                    progressBar.textContent = data.percentual_preenchimento + '% Preenchido';
+                    progressBar.className = 'progress-bar ' + (
+                        data.percentual_preenchimento === 100 ? 'bg-success' : (data.percentual_preenchimento >= 50 ? 'bg-warning' : 'bg-danger')
+                    );
+                }
+                const progressSubtext = document.querySelector('.progress + small');
+                if (progressSubtext && data.preenchidas !== undefined && data.total_perguntas !== undefined) {
+                    progressSubtext.textContent = `${data.preenchidas} de ${data.total_perguntas} perguntas respondidas`;
+                }
+            } else {
+                triggerEl.innerHTML = originalHtml;
+                alert(data.error || 'Erro ao atualizar a resposta.');
+            }
+        })
+        .catch(function(err) {
+            console.error('Erro:', err);
+            triggerEl.innerHTML = originalHtml;
+            alert('Falha na comunicação com o servidor ao atualizar resposta.');
         });
     }
 });

@@ -255,6 +255,7 @@ class NavigationPermission(models.Model):
             ("nav_pessoas_editar_colaborador", "NAV: Pessoas / Editar Colaborador"),
             ("nav_pessoas_gestao_ferias", "NAV: Pessoas / Gestão de Férias"),
             ("nav_pessoas_registrar_ferias", "NAV: Pessoas / Registrar Férias"),
+            ("nav_pessoas_registrar_ferias_todos", "NAV: Pessoas / Permissão Especial: Registrar Férias de Qualquer Colaborador"),
             ("nav_pessoas_editar_ferias", "NAV: Pessoas / Editar Férias"),
             ("nav_pessoas_excluir_ferias", "NAV: Pessoas / Excluir Férias"),
             ("nav_pessoas_importar_ferias", "NAV: Pessoas / Importar Férias"),

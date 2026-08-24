@@ -613,6 +613,7 @@ NAV_STRUCTURE = [
                     {"nome": "Editar Colaborador", "view_name": "editar_colaborador", "perm": "core.nav_pessoas_editar_colaborador"},
                     {"nome": "Gestão de Férias", "view_name": "rh:gestao_ferias", "perm": "core.nav_pessoas_gestao_ferias"},
                     {"nome": "Registrar Férias", "view_name": ["rh:criar_ferias", "registrar_ferias"], "perm": "core.nav_pessoas_registrar_ferias"},
+                    {"nome": "Permissão Especial: Registrar Férias de Qualquer Colaborador", "perm": "core.nav_pessoas_registrar_ferias_todos"},
                     {"nome": "Editar Férias", "view_name": ["rh:editar_ferias", "editar_ferias"], "perm": "core.nav_pessoas_editar_ferias"},
                     {"nome": "Excluir Férias", "view_name": ["rh:excluir_ferias", "excluir_ferias"], "perm": "core.nav_pessoas_excluir_ferias"},
                     {"nome": "Importar Férias", "view_name": ["rh:importar_ferias", "qms:importar_ferias"], "perm": "core.nav_pessoas_importar_ferias"},

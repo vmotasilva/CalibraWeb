@@ -322,6 +322,17 @@ def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
         pergunta = resposta.pergunta
         item = perguntas_consolidadas.get(pergunta.id)
         if not item:
+            opcoes_disponiveis = []
+            if pergunta.tipo_resposta == "SIM_NAO":
+                cor_sim = pergunta.get_cor_resposta("Sim") or "#198754"
+                cor_nao = pergunta.get_cor_resposta("Não") or "#dc3545"
+                opcoes_disponiveis = [
+                    {"label": "Sim", "color": cor_sim},
+                    {"label": "Não", "color": cor_nao},
+                ]
+            elif pergunta.tipo_resposta == "LISTA":
+                opcoes_disponiveis = list(getattr(pergunta, "opcoes_resposta_com_cores", []) or [])
+
             item = {
                 "pergunta_id": pergunta.id,
                 "ordem": pergunta.ordem,
@@ -331,6 +342,7 @@ def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
                 "tipo_resposta": pergunta.tipo_resposta,
                 "tipo_resposta_display": pergunta.get_tipo_resposta_display(),
                 "opcoes_resposta_com_cores": list(getattr(pergunta, "opcoes_resposta_com_cores", []) or []),
+                "opcoes_disponiveis": opcoes_disponiveis,
                 "topico": pergunta.topico.get_full_name() if pergunta.topico else "",
                 "resposta_geral": "",
                 "resposta_geral_cor": "",
@@ -369,10 +381,15 @@ def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
             "dia_values": [respostas_por_dia.get(k, "") for k in dia_keys],
             "dia_cells": [
                 {
+                    "pergunta_id": item["pergunta_id"],
+                    "dia_key": k,
                     "value": respostas_por_dia.get(k, ""),
                     "color": item["respostas_por_dia_cores"].get(k, ""),
                     "label": dia_labels.get(k, k),
                     "short_label": str(dia_labels.get(k, k))[:3].upper(),
+                    "tipo_resposta": item["tipo_resposta"],
+                    "opcoes_disponiveis": item["opcoes_disponiveis"],
+                    "opcoes_json": json.dumps(item["opcoes_disponiveis"]),
                 }
                 for k in dia_keys
             ],
@@ -1435,10 +1452,6 @@ def registro_edit(request, pk):
         pk=pk,
     )
     
-    if registro.status == "CONCLUIDO":
-        from django.contrib import messages
-        messages.warning(request, "Este ciclo já foi concluído e encontra-se bloqueado para edição.")
-        return redirect("auditoria:registro_detail", pk=registro.pk)
     perguntas_qs = PerguntaAuditoria.objects.filter(modelo=registro.modelo, ativo=True).select_related('topico').order_by("ordem", "id")
     perguntas = sorted(list(perguntas_qs), key=lambda p: (p.topico.get_full_name() if p.topico else "", p.ordem, p.id))
     
@@ -1729,6 +1742,70 @@ def registro_detail(request, pk):
         "can_delete_registro": _has_nav_view_access(request.user, "auditoria:registro_delete"),
     }
     return render(request, "auditoria/registro_detail.html", context)
+
+
+@login_required
+@require_POST
+def api_atualizar_resposta_inline(request, pk):
+    """
+    API rápida para atualizar o valor de uma resposta diretamente pelo farol (popover)
+    sem necessidade de recarregar a tela inteira.
+    """
+    registro = get_object_or_404(
+        _filter_registros_para_usuario(
+            request.user,
+            RegistroAuditoria.objects.select_related("modelo"),
+        ),
+        pk=pk,
+    )
+
+    pergunta_id_raw = (request.POST.get("pergunta_id") or "").strip()
+    dia_semana = (request.POST.get("dia_semana") or "").strip() or None
+    grid_item = (request.POST.get("grid_item") or "").strip()
+    novo_valor = (request.POST.get("valor") or "").strip()
+
+    if not pergunta_id_raw.isdigit():
+        return JsonResponse({"success": False, "error": "Pergunta inválida."}, status=400)
+
+    pergunta = get_object_or_404(
+        PerguntaAuditoria,
+        id=int(pergunta_id_raw),
+        modelo=registro.modelo,
+        ativo=True,
+    )
+
+    resposta, _created = RespostaAuditoria.objects.update_or_create(
+        registro=registro,
+        pergunta=pergunta,
+        dia_semana=dia_semana,
+        grid_item=grid_item,
+        defaults={"valor": novo_valor},
+    )
+
+    registro.atualizar_progresso()
+    cor = _resolve_cor_resposta(pergunta, novo_valor)
+
+    # Recalcular resumo rápido para atualizar contadores/legendas na tela
+    resumo = _build_resumo_respostas_registro(registro)
+
+    return JsonResponse({
+        "success": True,
+        "novo_valor": novo_valor,
+        "nova_cor": cor or ("#198754" if novo_valor in ["Sim", "Conforme"] else ("#dc3545" if novo_valor in ["Não", "Não conforme"] else "")),
+        "progresso": registro.progresso,
+        "percentual_preenchimento": resumo["percentual_preenchimento"],
+        "preenchidas": resumo["preenchidas"],
+        "total_perguntas": resumo["total_perguntas"],
+        "blocos_resumo": [
+            {
+                "nome": b["nome"],
+                "tem_lista_resumo": b.get("tem_lista_resumo", False),
+                "lista_resumo": b.get("lista_resumo", []),
+                "lista_total_respostas": b.get("lista_total_respostas", 0),
+            }
+            for b in resumo["blocos"]
+        ],
+    })
 
 
 @login_required
