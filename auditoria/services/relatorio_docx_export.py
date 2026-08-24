@@ -494,7 +494,7 @@ def compute_auditoria_metricas_completas(auditoria) -> Dict[str, Any]:
             is_maior_ag = False
             
             def add_amostra(tipo, tit, desc):
-                if not tit and not desc:
+                if not tit:
                     return
                 idx_desc = -1
                 for i, (e_tit, e_desc) in enumerate(amostras_por_tipo[tipo]):
@@ -568,7 +568,7 @@ def compute_auditoria_metricas_completas(auditoria) -> Dict[str, Any]:
                 
                 for idx, (tit, desc) in enumerate(amostras, 1):
                     prefix = f"{idx}. "
-                    t_str = f"{prefix}{tit}" if tit else f"{prefix}Sem título"
+                    t_str = f"{prefix}{tit}"
                     d_str = f"{prefix}{desc}" if desc else f"{prefix}"
                     
                     tabela_evid_parts.append(t_str)
@@ -588,11 +588,8 @@ def compute_auditoria_metricas_completas(auditoria) -> Dict[str, Any]:
                     if not tabela_desc: tabela_desc = "Evidências documentais em conformidade nesta amostra."
                     gaps_area_funcional.append({'area': area_nome, 'item_referencia': item.referencia, 'item_titulo': item.titulo, 'tipo': 'C', 'tipo_badge': "Conforme", 'descricao': desc_revisao, 'tabela_gap': 'Conforme', 'tabela_evidencia': tabela_evid, 'tabela_descricao': tabela_desc})
                 elif tipo == 'OM':
-                    if tabela_evid == "1. Sem título": tabela_evid = "1. Amostragem realizada durante a auditoria."
                     gaps_area_funcional.append({'area': area_nome, 'item_referencia': item.referencia, 'item_titulo': item.titulo, 'tipo': 'OM', 'tipo_badge': f"Oportunidade (Item {item.referencia})", 'descricao': desc_revisao, 'tabela_gap': 'OM', 'tabela_evidencia': tabela_evid, 'tabela_descricao': tabela_desc})
                 elif tipo == 'NC':
-                    if tabela_evid == "1. Sem título": tabela_evid = "1. Evidência constatada na área."
-                    
                     eh_maior = False
                     if av_final and av_final.grau_nc == 'MAIOR':
                         eh_maior = True
