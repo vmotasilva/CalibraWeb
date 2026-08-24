@@ -4443,7 +4443,7 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                     'referencia': item.referencia,
                     'titulo': item.titulo,
                     'evidencias': evidencias_ativas or ["Evidência objetiva de não conformidade ao requisito."],
-                    'amostras_conformes': amostras_conformes[:2]
+                    'amostras_conformes': amostras_conformes
                 })
 
     total_avaliados = count_c + count_om + count_nc_menor + count_nc_maior + count_p
