@@ -189,6 +189,14 @@
     color: #64748b;
 }
 
+/* Ícone de rotação suave no Collapse das Seções */
+[data-bs-toggle="collapse"][aria-expanded="false"] .transition-icon {
+    transform: rotate(-90deg);
+}
+[data-bs-toggle="collapse"][aria-expanded="true"] .transition-icon {
+    transform: rotate(0deg);
+}
+
 @media (max-width: 767.98px) {
     .audit-table thead {
         display: none !important;
@@ -443,9 +451,14 @@
 
     {% for bloco in blocos_respostas %}
     <div class="card shadow-sm mb-3">
-        <div class="card-header bg-light border-bottom">
+        <div class="card-header bg-light border-bottom d-flex justify-content-between align-items-center py-2" 
+             style="cursor: pointer; user-select: none;"
+             data-bs-toggle="collapse" 
+             data-bs-target="#collapse-bloco-{{ forloop.counter }}" 
+             aria-expanded="true" 
+             aria-controls="collapse-bloco-{{ forloop.counter }}">
             <h6 class="mb-0 d-flex flex-wrap align-items-center gap-1">
-                <i class="bi bi-collection me-2"></i>
+                <i class="bi bi-collection me-2 text-primary"></i>
                 {% if bloco.nome == 'Sem tópico' %}
                     <span>{{ bloco.nome }}</span>
                 {% else %}
@@ -455,22 +468,28 @@
                     {% endfor %}
                 {% endif %}
             </h6>
-        </div>
-        {% if bloco.tem_lista_resumo %}
-        <div class="card-body border-bottom py-2">
-            <div class="small fw-semibold mb-2">Legenda e Resumo (itens de lista)</div>
-            <div class="d-flex flex-wrap gap-2 align-items-center">
-                {% for item in bloco.lista_resumo %}
-                <span class="badge rounded-pill text-dark border" style="border-color: {{ item.color }} !important;">
-                    <span class="answer-semaphore me-1" style="background-color: {{ item.color }}; width: 10px; height: 10px;"></span>
-                    {{ item.label }}: {{ item.percentual }}% ({{ item.count }})
-                </span>
-                {% endfor %}
-                <span class="text-muted small">Base: {{ bloco.lista_total_respostas }} respostas</span>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-secondary rounded-pill">{{ bloco.linhas|length }} itens</span>
+                <i class="bi bi-chevron-down text-muted transition-icon" style="transition: transform 0.2s ease;"></i>
             </div>
         </div>
-        {% endif %}
-        <div class="card-body p-0">
+        
+        <div class="collapse show" id="collapse-bloco-{{ forloop.counter }}">
+            {% if bloco.tem_lista_resumo %}
+            <div class="card-body border-bottom py-2 bg-light-subtle">
+                <div class="small fw-semibold mb-2">Legenda e Resumo (itens de lista)</div>
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    {% for item in bloco.lista_resumo %}
+                    <span class="badge rounded-pill text-dark border" style="border-color: {{ item.color }} !important;">
+                        <span class="answer-semaphore me-1" style="background-color: {{ item.color }}; width: 10px; height: 10px;"></span>
+                        {{ item.label }}: {{ item.percentual }}% ({{ item.count }})
+                    </span>
+                    {% endfor %}
+                    <span class="text-muted small">Base: {{ bloco.lista_total_respostas }} respostas</span>
+                </div>
+            </div>
+            {% endif %}
+            <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-striped mb-0 align-middle audit-table">
                     <thead class="table-dark">
@@ -574,7 +593,8 @@
                 </table>
             </div>
         </div>
-    </div>
+        </div> <!-- Fim collapse -->
+    </div> <!-- Fim card -->
     {% empty %}
     <div class="alert alert-light border text-muted">Sem respostas registradas.</div>
     {% endfor %}
