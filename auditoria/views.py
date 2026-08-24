@@ -4418,15 +4418,6 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                                 evidencias_vistas.add(txt)
                                 evidencias_om.append(txt)
 
-            evidencias_ativas = []
-            if status_item == 'NC':
-                evidencias_ativas.extend(evidencias_nc)
-                if evidencias_nc and evidencias_om:
-                    evidencias_ativas.append("_________________________________")
-                evidencias_ativas.extend(evidencias_om)
-            elif status_item == 'OM':
-                evidencias_ativas.extend(evidencias_om)
-
             if status_item == 'OM':
                 pontos_a_melhorar.append({
                     'tipo': 'OM',
@@ -4437,8 +4428,9 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                     'icone': 'bi-lightbulb-fill',
                     'referencia': item.referencia,
                     'titulo': item.titulo,
-                    'evidencias': evidencias_ativas or ["Oportunidade de aprimoramento identificada no processo."],
-                    'amostras_conformes': amostras_conformes[:2]
+                    'evidencias_nc': evidencias_nc,
+                    'evidencias_om': evidencias_om or ["Oportunidade de aprimoramento identificada no processo."],
+                    'amostras_conformes': amostras_conformes
                 })
             elif status_item == 'NC':
                 pontos_a_melhorar.append({

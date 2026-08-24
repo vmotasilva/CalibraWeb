@@ -517,14 +517,38 @@
                                 </div>
                                 
                                 <div class="bg-white p-2.5 rounded-3 border text-dark flex-grow-1 overflow-auto mt-1" style="min-height: 0;">
-                                    <div class="{% if item.tipo == 'OBS' %}text-dark{% else %}text-danger{% endif %} fw-bold mb-1" style="font-size: 0.76rem;">
-                                        <i class="bi bi-search me-1"></i>{% if item.tipo == 'OBS' %}Fragilidade / Ação Corretiva Exigida:{% elif item.tipo == 'OM' %}Oportunidade de Melhoria:{% else %}Evidência de Não Conformidade:{% endif %}
+                                    {% if item.evidencias_nc %}
+                                    <div class="text-danger fw-bold mb-1" style="font-size: 0.76rem;">
+                                        <i class="bi bi-x-circle-fill me-1"></i>Evidências de Não Conformidade:
                                     </div>
-                                    <ul class="mb-0 ps-3 text-secondary" style="font-size: 0.79rem; line-height: 1.38; white-space: pre-line;">
-                                        {% for ev in item.evidencias %}
+                                    <ul class="mb-2 ps-3 text-secondary" style="font-size: 0.79rem; line-height: 1.38; white-space: pre-line;">
+                                        {% for ev in item.evidencias_nc %}
                                             <li style="white-space: pre-line;">{{ ev }}</li>
                                         {% endfor %}
                                     </ul>
+                                    {% endif %}
+
+                                    {% if item.evidencias_om %}
+                                    <div class="text-warning text-dark fw-bold mb-1" style="font-size: 0.76rem;">
+                                        <i class="bi bi-lightbulb-fill me-1"></i>Oportunidades de Melhoria:
+                                    </div>
+                                    <ul class="mb-2 ps-3 text-secondary" style="font-size: 0.79rem; line-height: 1.38; white-space: pre-line;">
+                                        {% for ev in item.evidencias_om %}
+                                            <li style="white-space: pre-line;">{{ ev }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                    {% endif %}
+
+                                    {% if item.amostras_conformes %}
+                                    <div class="text-success fw-bold mb-1" style="font-size: 0.76rem;">
+                                        <i class="bi bi-check-circle-fill me-1"></i>Amostras Conformes:
+                                    </div>
+                                    <ul class="mb-0 ps-3 text-secondary" style="font-size: 0.79rem; line-height: 1.38; white-space: pre-line;">
+                                        {% for ev in item.amostras_conformes %}
+                                            <li style="white-space: pre-line;">{{ ev }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                    {% endif %}
                                 </div>
                             </div>
                         </div>
