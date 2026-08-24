@@ -4378,7 +4378,8 @@ def iso_fechamento_presentation_view(request, auditoria_id):
 
         # 4. Geração de Cards (pontos_a_melhorar) agrupada por Item (sem duplicar por Agenda)
         if status_item in ['NC', 'OM']:
-            evidencias_ativas = []
+            evidencias_nc = []
+            evidencias_om = []
             amostras_conformes = []
             evidencias_vistas = set()
             amostras_vistas = set()
@@ -4387,11 +4388,20 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                 r = respostas_map.get(p.id)
                 if r:
                     for s in r.solicitacoes.all():
-                        ev_txt = f"{s.solicitacao.strip()}: {s.evidencia.strip()}" if (s.evidencia and s.solicitacao) else (s.evidencia.strip() if s.evidencia else s.solicitacao.strip())
-                        if s.conclusao == status_item:
+                        tit = s.solicitacao.strip() if s.solicitacao else ""
+                        if not tit or tit.lower() == "sem título":
+                            continue
+                            
+                        ev_txt = f"{tit}: {s.evidencia.strip()}" if s.evidencia else tit
+                        
+                        if s.conclusao == 'NC' and status_item == 'NC':
                             if ev_txt and ev_txt not in evidencias_vistas:
                                 evidencias_vistas.add(ev_txt)
-                                evidencias_ativas.append(ev_txt)
+                                evidencias_nc.append(ev_txt)
+                        elif s.conclusao == 'OM':
+                            if ev_txt and ev_txt not in evidencias_vistas:
+                                evidencias_vistas.add(ev_txt)
+                                evidencias_om.append(ev_txt)
                         else:
                             if ev_txt and ev_txt not in amostras_vistas:
                                 amostras_vistas.add(ev_txt)
@@ -4399,9 +4409,22 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                     
                     if r.texto_resposta and r.texto_resposta.strip():
                         txt = r.texto_resposta.strip()
-                        if r.classificacao == status_item and txt not in evidencias_vistas:
-                            evidencias_vistas.add(txt)
-                            evidencias_ativas.append(txt)
+                        if txt not in evidencias_vistas:
+                            if r.classificacao == 'NC' and status_item == 'NC':
+                                evidencias_vistas.add(txt)
+                                evidencias_nc.append(txt)
+                            elif r.classificacao == 'OM':
+                                evidencias_vistas.add(txt)
+                                evidencias_om.append(txt)
+
+            evidencias_ativas = []
+            if status_item == 'NC':
+                evidencias_ativas.extend(evidencias_nc)
+                if evidencias_nc and evidencias_om:
+                    evidencias_ativas.append("_________________________________")
+                evidencias_ativas.extend(evidencias_om)
+            elif status_item == 'OM':
+                evidencias_ativas.extend(evidencias_om)
 
             if status_item == 'OM':
                 pontos_a_melhorar.append({
@@ -4413,7 +4436,7 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                     'icone': 'bi-lightbulb-fill',
                     'referencia': item.referencia,
                     'titulo': item.titulo,
-                    'evidencias': evidencias_ativas[:3] or ["Oportunidade de aprimoramento identificada no processo."],
+                    'evidencias': evidencias_ativas or ["Oportunidade de aprimoramento identificada no processo."],
                     'amostras_conformes': amostras_conformes[:2]
                 })
             elif status_item == 'NC':
@@ -4426,7 +4449,7 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                     'icone': 'bi-exclamation-triangle-fill',
                     'referencia': item.referencia,
                     'titulo': item.titulo,
-                    'evidencias': evidencias_ativas[:3] or ["Evidência objetiva de não conformidade ao requisito."],
+                    'evidencias': evidencias_ativas or ["Evidência objetiva de não conformidade ao requisito."],
                     'amostras_conformes': amostras_conformes[:2]
                 })
 
