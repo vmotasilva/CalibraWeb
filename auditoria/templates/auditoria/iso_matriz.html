@@ -426,6 +426,9 @@
                 </button>
                 <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Fechar</button>
             </div>
+        </div>
+    </div>
+</div>
 <!-- Modal para Visualização Plena / Edição da Solicitação e Evidência (Matriz) -->
 <div class="modal fade" id="modalDetalhesSolicitacao" tabindex="-1" aria-hidden="true" style="z-index: 10080;">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -638,12 +641,20 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    document.querySelectorAll('.row-item-matriz-auditoria').forEach(row => {
-        row.addEventListener('click', function() {
-            const ref = this.dataset.ref;
-            const titulo = this.dataset.titulo;
-            const desc = this.dataset.desc;
-            const status = this.dataset.status;
+    document.addEventListener('click', function(e) {
+        const row = e.target.closest('.row-item-matriz-auditoria');
+        if (!row) return;
+
+        // Se clicou no botão de ação N/A ou em outro botão dentro da linha, não abre o modal
+        if (e.target.closest('.btn-quick-na') || e.target.closest('button') || e.target.closest('a')) {
+            return;
+        }
+
+        try {
+            const ref = row.dataset.ref || '';
+            const titulo = row.dataset.titulo || '';
+            const desc = row.dataset.desc || '';
+            const status = row.dataset.status || '';
 
             currentItemRef = ref;
             currentItemStatus = status;
@@ -661,208 +672,223 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Extrai o JSON de blocos associados do script da linha
             let blocos = [];
-            const scriptTag = this.querySelector('.blocos-json-data');
+            const scriptTag = row.querySelector('.blocos-json-data');
             if (scriptTag) {
                 try {
                     blocos = JSON.parse(scriptTag.textContent || '[]');
-                } catch(e) { console.error('Erro ao ler JSON de blocos:', e); }
+                } catch(err) { console.error('Erro ao ler JSON de blocos:', err); }
             }
 
             // Popula Coluna 1 (Norma)
-            document.getElementById('auditoriaModalRefBadge').textContent = ref;
-            document.getElementById('auditoriaModalTituloReq').textContent = titulo;
-            document.getElementById('auditoriaModalDescReq').textContent = desc || titulo;
+            const refEl = document.getElementById('auditoriaModalRefBadge');
+            if (refEl) refEl.textContent = ref;
+            const titEl = document.getElementById('auditoriaModalTituloReq');
+            if (titEl) titEl.textContent = titulo;
+            const descEl = document.getElementById('auditoriaModalDescReq');
+            if (descEl) descEl.textContent = desc || titulo;
 
             // Badge de status
             const statusContainer = document.getElementById('auditoriaModalStatusBadgeContainer');
-            let statusHtml = '';
-            if (status === 'C') statusHtml = '<span class="status-badge status-C">✅ Conforme</span>';
-            else if (status === 'NC') statusHtml = '<span class="status-badge status-NC">🔴 Não Conforme</span>';
-            else if (status === 'OM') statusHtml = '<span class="status-badge status-OM">🟠 Oportunidade</span>';
-            else if (status === 'P') statusHtml = '<span class="status-badge status-P">⚠️ Pendente</span>';
-            else statusHtml = '<span class="status-badge status-NA">ℹ️ Não Aplicável</span>';
-            statusContainer.innerHTML = statusHtml;
+            if (statusContainer) {
+                let statusHtml = '';
+                if (status === 'C') statusHtml = '<span class="status-badge status-C">✅ Conforme</span>';
+                else if (status === 'NC') statusHtml = '<span class="status-badge status-NC">🔴 Não Conforme</span>';
+                else if (status === 'OM') statusHtml = '<span class="status-badge status-OM">🟠 Oportunidade</span>';
+                else if (status === 'P') statusHtml = '<span class="status-badge status-P">⚠️ Pendente</span>';
+                else statusHtml = '<span class="status-badge status-NA">ℹ️ Não Aplicável</span>';
+                statusContainer.innerHTML = statusHtml;
+            }
 
             // Popula Coluna 2 (Perguntas Unificadas com Seus Respectivos Blocos e Solicitações)
             const blocosContainer = document.getElementById('auditoriaModalBlocosContainer');
-            blocosContainer.innerHTML = '';
+            if (blocosContainer) {
+                blocosContainer.innerHTML = '';
 
-            if (!blocos || blocos.length === 0) {
-                blocosContainer.innerHTML = `
-                    <div class="alert alert-light border text-center py-5 rounded-4">
-                        <i class="bi bi-inbox fs-2 text-muted d-block mb-2"></i>
-                        Este item da norma não possui perguntas ou blocos associados nesta auditoria ainda.
-                    </div>
-                `;
-            } else {
-                // Agrupa perguntas por texto da pergunta (para que a pergunta apareça apenas 1 vez se for a mesma)
-                const perguntasMap = {};
-                blocos.forEach(b => {
-                    (b.perguntas || []).forEach(p => {
-                        const chave = p.texto_pergunta.trim();
-                        if (!perguntasMap[chave]) {
-                            perguntasMap[chave] = {
-                                id: p.id,
-                                texto_pergunta: p.texto_pergunta,
-                                dica_auditor: p.dica_auditor,
-                                instanciasPorBloco: []
-                            };
-                        }
-
-                        // Verifica se este bloco já foi registrado neste grupo de pergunta
-                        let instExistente = perguntasMap[chave].instanciasPorBloco.find(inst => inst.bloco_id === b.bloco_id);
-                        if (!instExistente) {
-                            perguntasMap[chave].instanciasPorBloco.push({
-                                bloco_id: b.bloco_id,
-                                bloco_titulo: b.bloco_titulo,
-                                pergunta_id: p.id,
-                                classificacao: p.classificacao,
-                                texto_resposta: p.texto_resposta,
-                                solicitacoes: [...(p.solicitacoes || [])]
-                            });
-                        } else {
-                            // Mescla solicitações evitando duplicação
-                            (p.solicitacoes || []).forEach(s => {
-                                if (!instExistente.solicitacoes.some(es => es.id === s.id)) {
-                                    instExistente.solicitacoes.push(s);
-                                }
-                            });
-                            if (p.texto_resposta && !instExistente.texto_resposta) {
-                                instExistente.texto_resposta = p.texto_resposta;
-                            }
-                            if (p.classificacao && p.classificacao !== 'P') {
-                                instExistente.classificacao = p.classificacao;
-                            }
-                        }
-                    });
-                });
-
-                Object.values(perguntasMap).forEach(group => {
-                    const groupCard = document.createElement('div');
-                    groupCard.className = 'card border rounded-4 shadow-sm mb-4 bg-white p-3.5';
-
-                    let blocosInstanciasHtml = '';
-                    group.instanciasPorBloco.forEach(inst => {
-                        let respBadge = '';
-                        if (inst.solicitacoes && inst.solicitacoes.length > 0) {
-                            if (inst.classificacao === 'C') respBadge = '<span class="badge bg-success text-white rounded-pill px-2.5 py-1 small">✅ Conforme</span>';
-                            else if (inst.classificacao === 'NC') respBadge = '<span class="badge bg-danger text-white rounded-pill px-2.5 py-1 small">🔴 Não Conforme</span>';
-                            else if (inst.classificacao === 'OM') respBadge = '<span class="badge bg-warning text-dark rounded-pill px-2.5 py-1 small">🟠 Oportunidade</span>';
-                            else if (inst.classificacao === 'NA') respBadge = '<span class="badge bg-secondary text-white rounded-pill px-2.5 py-1 small">ℹ️ Não Aplicável</span>';
-                            else respBadge = '<span class="badge bg-secondary bg-opacity-25 text-dark rounded-pill px-2.5 py-1 small">⚠️ Pendente</span>';
-                        } else {
-                            respBadge = '<span class="badge bg-light text-secondary border rounded-pill px-2.5 py-1 small fw-normal" title="Este bloco não registrou amostras diretamente (evidências avaliadas no item)"><i class="bi bi-info-circle me-1"></i>Sem amostras neste bloco</span>';
-                        }
-
-                        let solsItems = inst.solicitacoes.map((s, sIdx) => {
-                                let cBadge = 'bg-secondary';
-                                if (s.conclusao === 'C') cBadge = 'bg-success';
-                                else if (s.conclusao === 'NC') cBadge = 'bg-danger';
-                                else if (s.conclusao === 'OM') cBadge = 'bg-warning text-dark';
-                                else if (s.conclusao === 'NA') cBadge = 'bg-secondary';
-                                else if (s.conclusao === 'OBS') cBadge = 'bg-obs text-dark';
-
-                                let fotosCount = (s.imagens || []).length;
-                                let fotosBadge = fotosCount > 0
-                                    ? `<span class="badge bg-light text-primary border rounded-pill px-2 py-0.5 small" title="${fotosCount} foto(s)"><i class="bi bi-camera me-1"></i>${fotosCount}</span>`
-                                    : '';
-
-                                let fotosThumbnailsHtml = '';
-                                if (fotosCount > 0) {
-                                    fotosThumbnailsHtml = `
-                                        <div class="d-flex align-items-center gap-1 mt-1 flex-wrap">
-                                            ${s.imagens.map(img => `
-                                                <div style="cursor: pointer;" onclick="abrirLightboxImagemMatriz('${escapeJs(img.url)}', '${escapeJs(img.legenda || s.solicitacao || 'Evidência')}', event)" title="${img.legenda || img.nome || 'Ver foto'}">
-                                                    <img src="${img.url}" alt="${img.legenda || 'Foto'}" class="rounded border shadow-sm" style="width: 32px; height: 32px; object-fit: cover;">
-                                                </div>
-                                            `).join('')}
-                                        </div>
-                                    `;
-                                }
-
-                                const imagensSafe = JSON.stringify(s.imagens || []).replace(/"/g, '&quot;');
-
-                                return `
-                                    <div class="p-2 bg-white rounded-2 border mb-2 border-start border-3 border-${s.conclusao === 'NC' ? 'danger' : (s.conclusao === 'OM' ? 'warning' : 'primary')}">
-                                        <div class="d-flex justify-content-between align-items-start gap-2">
-                                            <div class="flex-grow-1">
-                                                <div class="d-flex align-items-center gap-2 mb-1">
-                                                    <span class="badge ${cBadge} rounded-pill" style="font-size: 0.65rem;">${s.conclusao_display || 'Pendente'}</span>
-                                                    <strong class="text-dark small">${s.solicitacao}</strong>
-                                                    ${fotosBadge}
-                                                </div>
-                                                ${s.evidencia ? `<div class="text-muted small fst-italic" style="font-size: 0.8rem;">${s.evidencia}</div>` : ''}
-                                                ${fotosThumbnailsHtml}
-                                            </div>
-                                            <button type="button" class="btn btn-sm btn-light border py-0 px-2 rounded font-monospace flex-shrink-0" style="font-size: 0.7rem;" onclick="abrirModalDetalhesMatriz(${s.id}, '${escapeJs(s.solicitacao)}', '${escapeJs(s.evidencia || '')}', '${s.conclusao || 'P'}', ${inst.pergunta_id}, ${imagensSafe})" title="Editar Solicitação">
-                                                <i class="bi bi-pencil me-1"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                `;
-                            }).join('');
-
-                            solicitacoesHtml = `
-                                <div class="mt-2">
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <small class="fw-bold text-muted text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Amostras avaliadas (${inst.solicitacoes.length})</small>
-                                        <button type="button" class="btn btn-sm btn-link text-primary p-0 text-decoration-none fw-semibold" style="font-size: 0.75rem;" onclick="adicionarSolicitacaoMatriz(${inst.pergunta_id}, ${inst.bloco_id})">
-                                            + Adicionar
-                                        </button>
-                                    </div>
-                                    ${solsItems}
-                                </div>
-                            `;
-                        } else {
-                            solicitacoesHtml = `
-                                <div class="mt-2 p-2 bg-light rounded-3 border text-center">
-                                    <small class="text-muted d-block mb-1.5">Nenhuma solicitação de evidência registrada para este bloco.</small>
-                                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill py-0.5 px-3 fw-bold" style="font-size: 0.75rem;" onclick="adicionarSolicitacaoMatriz(${inst.pergunta_id}, ${inst.bloco_id})">
-                                        <i class="bi bi-plus-lg me-1"></i> Adicionar Solicitação / Amostra
-                                    </button>
-                                </div>
-                            `;
-                        }
-
-                        blocosInstanciasHtml += `
-                            <div class="p-3 rounded-4 border bg-light mb-3">
-                                <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <i class="bi bi-diagram-3-fill text-primary"></i>
-                                        <span class="fw-bold text-dark">${inst.bloco_titulo}</span>
-                                    </div>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <a href="/auditoria/iso/{{ auditoria.id }}/entrevista/?agenda_id=${inst.bloco_id}&item=${encodeURIComponent(ref)}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill py-0.5 px-2.5 font-monospace fw-semibold" style="font-size: 0.75rem;" title="Abrir Modo Entrevista neste Bloco e Requisito">
-                                            <i class="bi bi-box-arrow-up-right me-1"></i> Entrevista (${ref})
-                                        </a>
-                                        ${respBadge}
-                                    </div>
-                                </div>
-                                ${solicitacoesHtml}
-                            </div>
-                        `;
-                    });
-
-                    groupCard.innerHTML = `
-                        <div class="mb-3">
-                            <h6 class="fw-bold text-primary mb-1 d-flex align-items-start gap-2">
-                                <i class="bi bi-question-circle-fill mt-0.5"></i>
-                                <span>${group.texto_pergunta}</span>
-                            </h6>
-                            ${group.dica_auditor ? `<small class="text-muted d-block ps-4"><i class="bi bi-info-circle me-1"></i>Dica: ${group.dica_auditor}</small>` : ''}
-                        </div>
-                        <div class="ps-2 border-start border-primary border-3 ms-1">
-                            ${blocosInstanciasHtml}
+                if (!blocos || blocos.length === 0) {
+                    blocosContainer.innerHTML = `
+                        <div class="alert alert-light border text-center py-5 rounded-4">
+                            <i class="bi bi-inbox fs-2 text-muted d-block mb-2"></i>
+                            Este item da norma não possui perguntas ou blocos associados nesta auditoria ainda.
                         </div>
                     `;
+                } else {
+                    // Agrupa perguntas por texto da pergunta (para que a pergunta apareça apenas 1 vez se for a mesma)
+                    const perguntasMap = {};
+                    blocos.forEach(b => {
+                        (b.perguntas || []).forEach(p => {
+                            const chave = (p.texto_pergunta || '').trim();
+                            if (!chave) return;
+                            if (!perguntasMap[chave]) {
+                                perguntasMap[chave] = {
+                                    id: p.id,
+                                    texto_pergunta: p.texto_pergunta,
+                                    dica_auditor: p.dica_auditor,
+                                    instanciasPorBloco: []
+                                };
+                            }
 
-                    blocosContainer.appendChild(groupCard);
-                });
+                            // Verifica se este bloco já foi registrado neste grupo de pergunta
+                            let instExistente = perguntasMap[chave].instanciasPorBloco.find(inst => inst.bloco_id === b.bloco_id);
+                            if (!instExistente) {
+                                perguntasMap[chave].instanciasPorBloco.push({
+                                    bloco_id: b.bloco_id,
+                                    bloco_titulo: b.bloco_titulo,
+                                    pergunta_id: p.id,
+                                    classificacao: p.classificacao,
+                                    texto_resposta: p.texto_resposta,
+                                    solicitacoes: [...(p.solicitacoes || [])]
+                                });
+                            } else {
+                                // Mescla solicitações evitando duplicação
+                                (p.solicitacoes || []).forEach(s => {
+                                    if (!instExistente.solicitacoes.some(es => es.id === s.id)) {
+                                        instExistente.solicitacoes.push(s);
+                                    }
+                                });
+                                if (p.texto_resposta && !instExistente.texto_resposta) {
+                                    instExistente.texto_resposta = p.texto_resposta;
+                                }
+                                if (p.classificacao && p.classificacao !== 'P') {
+                                    instExistente.classificacao = p.classificacao;
+                                }
+                            }
+                        });
+                    });
+
+                    Object.values(perguntasMap).forEach(group => {
+                        const groupCard = document.createElement('div');
+                        groupCard.className = 'card border rounded-4 shadow-sm mb-4 bg-white p-3.5';
+
+                        let blocosInstanciasHtml = '';
+                        group.instanciasPorBloco.forEach(inst => {
+                            let respBadge = '';
+                            if (inst.solicitacoes && inst.solicitacoes.length > 0) {
+                                if (inst.classificacao === 'C') respBadge = '<span class="badge bg-success text-white rounded-pill px-2.5 py-1 small">✅ Conforme</span>';
+                                else if (inst.classificacao === 'NC') respBadge = '<span class="badge bg-danger text-white rounded-pill px-2.5 py-1 small">🔴 Não Conforme</span>';
+                                else if (inst.classificacao === 'OM') respBadge = '<span class="badge bg-warning text-dark rounded-pill px-2.5 py-1 small">🟠 Oportunidade</span>';
+                                else if (inst.classificacao === 'NA') respBadge = '<span class="badge bg-secondary text-white rounded-pill px-2.5 py-1 small">ℹ️ Não Aplicável</span>';
+                                else respBadge = '<span class="badge bg-secondary bg-opacity-25 text-dark rounded-pill px-2.5 py-1 small">⚠️ Pendente</span>';
+                            } else {
+                                respBadge = '<span class="badge bg-light text-secondary border rounded-pill px-2.5 py-1 small fw-normal" title="Este bloco não registrou amostras diretamente (evidências avaliadas no item)"><i class="bi bi-info-circle me-1"></i>Sem amostras neste bloco</span>';
+                            }
+
+                            let solsItems = (inst.solicitacoes || []).map((s, sIdx) => {
+                                    let cBadge = 'bg-secondary';
+                                    if (s.conclusao === 'C') cBadge = 'bg-success';
+                                    else if (s.conclusao === 'NC') cBadge = 'bg-danger';
+                                    else if (s.conclusao === 'OM') cBadge = 'bg-warning text-dark';
+                                    else if (s.conclusao === 'NA') cBadge = 'bg-secondary';
+                                    else if (s.conclusao === 'OBS') cBadge = 'bg-obs text-dark';
+
+                                    let fotosCount = (s.imagens || []).length;
+                                    let fotosBadge = fotosCount > 0
+                                        ? `<span class="badge bg-light text-primary border rounded-pill px-2 py-0.5 small" title="${fotosCount} foto(s)"><i class="bi bi-camera me-1"></i>${fotosCount}</span>`
+                                        : '';
+
+                                    let fotosThumbnailsHtml = '';
+                                    if (fotosCount > 0) {
+                                        fotosThumbnailsHtml = `
+                                            <div class="d-flex align-items-center gap-1 mt-1 flex-wrap">
+                                                ${s.imagens.map(img => `
+                                                    <div style="cursor: pointer;" onclick="abrirLightboxImagemMatriz('${escapeJs(img.url)}', '${escapeJs(img.legenda || s.solicitacao || 'Evidência')}', event)" title="${img.legenda || img.nome || 'Ver foto'}">
+                                                        <img src="${img.url}" alt="${img.legenda || 'Foto'}" class="rounded border shadow-sm" style="width: 32px; height: 32px; object-fit: cover;">
+                                                    </div>
+                                                `).join('')}
+                                            </div>
+                                        `;
+                                    }
+
+                                    const imagensSafe = JSON.stringify(s.imagens || []).replace(/"/g, '&quot;');
+
+                                    return `
+                                        <div class="p-2 bg-white rounded-2 border mb-2 border-start border-3 border-${s.conclusao === 'NC' ? 'danger' : (s.conclusao === 'OM' ? 'warning' : 'primary')}">
+                                            <div class="d-flex justify-content-between align-items-start gap-2">
+                                                <div class="flex-grow-1">
+                                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                                        <span class="badge ${cBadge} rounded-pill" style="font-size: 0.65rem;">${s.conclusao_display || 'Pendente'}</span>
+                                                        <strong class="text-dark small">${s.solicitacao}</strong>
+                                                        ${fotosBadge}
+                                                    </div>
+                                                    ${s.evidencia ? `<div class="text-muted small fst-italic" style="font-size: 0.8rem;">${s.evidencia}</div>` : ''}
+                                                    ${fotosThumbnailsHtml}
+                                                </div>
+                                                <button type="button" class="btn btn-sm btn-light border py-0 px-2 rounded font-monospace flex-shrink-0" style="font-size: 0.7rem;" onclick="abrirModalDetalhesMatriz(${s.id}, '${escapeJs(s.solicitacao)}', '${escapeJs(s.evidencia || '')}', '${s.conclusao || 'P'}', ${inst.pergunta_id}, ${imagensSafe})" title="Editar Solicitação">
+                                                    <i class="bi bi-pencil me-1"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('');
+
+                            let solicitacoesHtml = '';
+                            if (inst.solicitacoes && inst.solicitacoes.length > 0) {
+                                solicitacoesHtml = `
+                                    <div class="mt-2">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <small class="fw-bold text-muted text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Amostras avaliadas (${inst.solicitacoes.length})</small>
+                                            <button type="button" class="btn btn-sm btn-link text-primary p-0 text-decoration-none fw-semibold" style="font-size: 0.75rem;" onclick="adicionarSolicitacaoMatriz(${inst.pergunta_id}, ${inst.bloco_id})">
+                                                + Adicionar
+                                            </button>
+                                        </div>
+                                        ${solsItems}
+                                    </div>
+                                `;
+                            } else {
+                                solicitacoesHtml = `
+                                    <div class="mt-2 p-2 bg-light rounded-3 border text-center">
+                                        <small class="text-muted d-block mb-1.5">Nenhuma solicitação de evidência registrada para este bloco.</small>
+                                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill py-0.5 px-3 fw-bold" style="font-size: 0.75rem;" onclick="adicionarSolicitacaoMatriz(${inst.pergunta_id}, ${inst.bloco_id})">
+                                            <i class="bi bi-plus-lg me-1"></i> Adicionar Solicitação / Amostra
+                                        </button>
+                                    </div>
+                                `;
+                            }
+
+                            blocosInstanciasHtml += `
+                                <div class="p-3 rounded-4 border bg-light mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <i class="bi bi-diagram-3-fill text-primary"></i>
+                                            <span class="fw-bold text-dark">${inst.bloco_titulo}</span>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <a href="/auditoria/iso/{{ auditoria.id }}/entrevista/?agenda_id=${inst.bloco_id}&item=${encodeURIComponent(ref)}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill py-0.5 px-2.5 font-monospace fw-semibold" style="font-size: 0.75rem;" title="Abrir Modo Entrevista neste Bloco e Requisito">
+                                                <i class="bi bi-box-arrow-up-right me-1"></i> Entrevista (${ref})
+                                            </a>
+                                            ${respBadge}
+                                        </div>
+                                    </div>
+                                    ${solicitacoesHtml}
+                                </div>
+                            `;
+                        });
+
+                        groupCard.innerHTML = `
+                            <div class="mb-3">
+                                <h6 class="fw-bold text-primary mb-1 d-flex align-items-start gap-2">
+                                    <i class="bi bi-question-circle-fill mt-0.5"></i>
+                                    <span>${group.texto_pergunta}</span>
+                                </h6>
+                                ${group.dica_auditor ? `<small class="text-muted d-block ps-4"><i class="bi bi-info-circle me-1"></i>Dica: ${group.dica_auditor}</small>` : ''}
+                            </div>
+                            <div class="ps-2 border-start border-primary border-3 ms-1">
+                                ${blocosInstanciasHtml}
+                            </div>
+                        `;
+
+                        blocosContainer.appendChild(groupCard);
+                    });
+                }
             }
 
-            const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
-            modal.show();
-        });
+            const modalElTarget = document.getElementById('detalheItemMatrizAuditoriaModal');
+            if (modalElTarget) {
+                const modal = bootstrap.Modal.getInstance(modalElTarget) || new bootstrap.Modal(modalElTarget);
+                modal.show();
+            }
+        } catch(err) {
+            console.error('Erro ao abrir modal de detalhe do item:', err);
+        }
     });
 });
 
