@@ -383,10 +383,14 @@ def compute_auditoria_metricas_completas(auditoria) -> Dict[str, Any]:
             continue
 
         todas_perguntas_dict = {}
+        agendas_do_item = set()
         for ag in agendas:
+            if item in ag.itens_norma.all():
+                agendas_do_item.add(ag.titulo)
             for p in ag.perguntas.all():
                 if item in p.itens_norma.all() or (not p.itens_norma.exists() and item in ag.itens_norma.all()):
                     todas_perguntas_dict[p.id] = p
+                    agendas_do_item.add(ag.titulo)
                     
         # Garante que respostas/perguntas órfãs (ex: criadas via painel de revisão) sejam incluídas
         for r in respostas:
@@ -394,6 +398,14 @@ def compute_auditoria_metricas_completas(auditoria) -> Dict[str, Any]:
                 todas_perguntas_dict[r.pergunta_id] = r.pergunta
                 
         todas_perguntas_item = list(todas_perguntas_dict.values())
+
+        if agendas_do_item:
+            area_nome = " + ".join(sorted(agendas_do_item))
+        else:
+            ref_parts = item.referencia.split('.')
+            sec_code = ref_parts[0] if ref_parts else item.referencia
+            pai = ItemNorma.objects.filter(norma=auditoria.norma, referencia=sec_code).first() if ItemNorma else None
+            area_nome = f"{pai.titulo if pai else item.titulo}" if not pai else f"{pai.titulo}"
 
         av_final = avaliacoes_finais_map.get(item.id)
 
@@ -470,11 +482,6 @@ def compute_auditoria_metricas_completas(auditoria) -> Dict[str, Any]:
                 'justificativa': just_na
             })
 
-            ref_parts = item.referencia.split('.')
-            sec_code = ref_parts[0] if ref_parts else item.referencia
-            pai = ItemNorma.objects.filter(norma=auditoria.norma, referencia=sec_code).first() if ItemNorma else None
-            area_nome = f"{pai.titulo if pai else item.titulo}" if not pai else f"{pai.titulo}"
-
             gaps_area_funcional.append({
                 'area': area_nome,
                 'item_referencia': item.referencia,
@@ -499,11 +506,6 @@ def compute_auditoria_metricas_completas(auditoria) -> Dict[str, Any]:
                 'evidencias': evidencias_item[:3] or ["Processo auditado com evidências documentais em conformidade."]
             })
 
-            ref_parts = item.referencia.split('.')
-            sec_code = ref_parts[0] if ref_parts else item.referencia
-            pai = ItemNorma.objects.filter(norma=auditoria.norma, referencia=sec_code).first() if ItemNorma else None
-            area_nome = f"{pai.titulo if pai else item.titulo}" if not pai else f"{pai.titulo}"
-
             ev_str = "\n".join([f"• {e}" for e in evidencias_item]) if evidencias_item else ""
             desc_str = av_final.justificativa if (av_final and av_final.justificativa) else ""
             tabela_desc = ev_str + ("\n" + desc_str if desc_str else "")
@@ -525,11 +527,6 @@ def compute_auditoria_metricas_completas(auditoria) -> Dict[str, Any]:
 
         elif status_item == 'OM':
             count_om += 1
-            ref_parts = item.referencia.split('.')
-            sec_code = ref_parts[0] if ref_parts else item.referencia
-            pai = ItemNorma.objects.filter(norma=auditoria.norma, referencia=sec_code).first() if ItemNorma else None
-            area_nome = f"{pai.titulo if pai else item.titulo}" if not pai else f"{pai.titulo}"
-
             ev_str = "\n".join([f"• {e}" for e in evidencias_item]) if evidencias_item else "Amostragem realizada durante a auditoria."
             desc_str = av_final.justificativa if (av_final and av_final.justificativa) else f"Oportunidade de aprimoramento no cumprimento do requisito {item.referencia}."
             tabela_desc = ev_str + "\n" + desc_str
@@ -573,11 +570,6 @@ def compute_auditoria_metricas_completas(auditoria) -> Dict[str, Any]:
                 count_nc_menor += 1
                 tipo_nc = 'NC_MENOR'
                 badge_nc = f"NC Menor (Item {item.referencia})"
-
-            ref_parts = item.referencia.split('.')
-            sec_code = ref_parts[0] if ref_parts else item.referencia
-            pai = ItemNorma.objects.filter(norma=auditoria.norma, referencia=sec_code).first() if ItemNorma else None
-            area_nome = f"{pai.titulo if pai else item.titulo}" if not pai else f"{pai.titulo}"
 
             ev_str = "\n".join([f"• {e}" for e in evidencias_item]) if evidencias_item else "Evidência constatada durante amostragem documental e entrevista."
             desc_str = av_final.justificativa if (av_final and av_final.justificativa) else f"Desvio identificado em relação aos critérios do requisito {item.referencia} da norma {auditoria.norma.codigo}."
