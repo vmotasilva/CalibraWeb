@@ -957,25 +957,28 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
             "Recomenda-se o acompanhamento dos prazos de implementação dos planos de ação para as oportunidades identificadas."
         )
 
+    import copy
+    
     # Pontos Fortes
     pontos_fortes = auditoria.pontos_fortes.all()
     pontos_fortes_linhas = []
     for pf in pontos_fortes:
         if pf.descricao:
-            pontos_fortes_linhas.append(f"• {pf.titulo}: {pf.descricao}")
+            pontos_fortes_linhas.append(f"{pf.titulo}: {pf.descricao}")
         else:
-            pontos_fortes_linhas.append(f"• {pf.titulo}")
-    pontos_fortes_str = "\n".join(pontos_fortes_linhas) if pontos_fortes_linhas else "Nenhum ponto forte registrado."
+            pontos_fortes_linhas.append(f"{pf.titulo}")
+    if not pontos_fortes_linhas:
+        pontos_fortes_linhas = ["Nenhum ponto forte registrado."]
 
     # Pontos Fracos (NC e OM)
     pontos_fracos_linhas = []
     for gap in gaps_area_funcional:
-        pontos_fracos_linhas.append(f"• {gap['tipo_badge']}: {gap['descricao']}")
-    pontos_fracos_str = "\n".join(pontos_fracos_linhas) if pontos_fracos_linhas else "Nenhuma Não Conformidade ou Oportunidade de Melhoria registrada."
+        pontos_fracos_linhas.append(f"{gap['tipo_badge']}: {gap['descricao']}")
+    if not pontos_fracos_linhas:
+        pontos_fracos_linhas = ["Nenhuma Não Conformidade ou Oportunidade de Melhoria registrada."]
 
     # Dicionário de Injeção de Tags (com sinônimos suportados)
     tag_dict = {
-        '{{pontos_fracos}}': pontos_fracos_str,
         '{{unidade}}': unidade_str,
         '{{nome_unidade}}': unidade_str,
         '{{empresa_auditada}}': unidade_str,
@@ -1008,7 +1011,6 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
         '{{representantes}}': rep_str,
         '{{status}}': auditoria.get_status_display() if hasattr(auditoria, 'get_status_display') else "Concluída",
         '{{data_relatorio}}': dt_fim or dt_ini or "Hoje",
-        '{{pontos_fortes}}': pontos_fortes_str,
         '{{total_c}}': str(dados['total_c']),
         '{{pct_c}}': str(dados['pct_c']),
         '{{total_nc_menor}}': str(dados['total_nc_menor']),
@@ -1035,6 +1037,34 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
 
     # 4. Injeção de Tags Escalares no Documento
     replace_tags_in_document(doc, tag_dict)
+
+    # Função auxiliar para injetar listas como parágrafos clonados
+    def inject_list_tags(doc, tag, items):
+        for p in doc.paragraphs:
+            if tag in p.text:
+                # Removemos a tag do texto para os novos parágrafos
+                base_text = p.text.replace(tag, "").strip()
+                
+                # Se não houver itens, colocamos uma mensagem
+                if not items:
+                    items = ["Nenhum registro encontrado."]
+                
+                # O primeiro item substitui o texto atual do parágrafo
+                p.text = (base_text + " " + items[0]).strip() if base_text else items[0]
+                
+                # Para os itens subsequentes, clonamos o parágrafo original
+                last_p = p
+                for item_text in items[1:]:
+                    new_p_xml = copy.deepcopy(p._p)
+                    last_p._p.addnext(new_p_xml)
+                    from docx.text.paragraph import Paragraph
+                    new_p = Paragraph(new_p_xml, p._parent)
+                    new_p.text = item_text
+                    last_p = new_p
+
+    # Injetar Listas formatadas nativamente
+    inject_list_tags(doc, "{{pontos_fortes}}", pontos_fortes_linhas)
+    inject_list_tags(doc, "{{pontos_fracos}}", pontos_fracos_linhas)
 
     # 5. Injeção da Seção "Exclusões Justificadas"
     for p in doc.paragraphs:
