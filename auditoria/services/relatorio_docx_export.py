@@ -635,7 +635,6 @@ def compute_auditoria_metricas_completas(auditoria) -> Dict[str, Any]:
             "O Sistema de Gestão da Qualidade requer a elaboração e cumprimento de Planos de Ação Corretiva formais para os desvios pontuais identificados, sem inviabilizar a recomendação geral."
         )
 
-    gaps_area_funcional.sort(key=lambda x: natural_sort_key(x['item_referencia']))
     exclusoes_na.sort(key=lambda x: natural_sort_key(x['referencia']))
 
     return {
