@@ -489,8 +489,7 @@ def compute_auditoria_metricas_completas(auditoria) -> Dict[str, Any]:
                 pai = ItemNorma.objects.filter(norma=auditoria.norma, referencia=sec_code).first() if ItemNorma else None
                 area_nome = f"{pai.titulo if pai else item.titulo}" if not pai else f"{pai.titulo}"
 
-            titulos_por_tipo = {'C': [], 'NC': [], 'OM': []}
-            descricoes_por_tipo = {'C': [], 'NC': [], 'OM': []}
+            amostras_por_tipo = {'C': [], 'NC': [], 'OM': []}
             pior_peso_ag = 0
             is_maior_ag = False
             
@@ -515,19 +514,21 @@ def compute_auditoria_metricas_completas(auditoria) -> Dict[str, Any]:
                             if c_sol == 'NC' and s.grau_nc == 'MAIOR':
                                 is_maior_ag = True
 
-                            if s.solicitacao and s.solicitacao.strip():
-                                tit = s.solicitacao.strip()
-                                if tit not in titulos_por_tipo[tipo]: titulos_por_tipo[tipo].append(tit)
+                            tit = s.solicitacao.strip() if s.solicitacao else ""
+                            desc = s.evidencia.strip() if s.evidencia else ""
                             
-                            if s.evidencia and s.evidencia.strip():
-                                desc = s.evidencia.strip()
-                                if desc not in descricoes_por_tipo[tipo]: descricoes_por_tipo[tipo].append(desc)
+                            if tit or desc:
+                                pair = (tit, desc)
+                                if pair not in amostras_por_tipo[tipo]:
+                                    amostras_por_tipo[tipo].append(pair)
                     
                     if (ag and p in ag.perguntas.all()) or not ag:
                         if r.texto_resposta and r.texto_resposta.strip():
                             txt = r.texto_resposta.strip()
                             tipo = c_resp if c_resp in ['NC', 'OM'] else 'C'
-                            if txt not in descricoes_por_tipo[tipo]: descricoes_por_tipo[tipo].append(txt)
+                            pair = ("", txt)
+                            if pair not in amostras_por_tipo[tipo]:
+                                amostras_por_tipo[tipo].append(pair)
 
             status_ag = reverse_hierarchy.get(pior_peso_ag, "P") if pior_peso_ag > 0 else status_item
             if status_item == 'NA': status_ag = 'NA'
@@ -539,21 +540,32 @@ def compute_auditoria_metricas_completas(auditoria) -> Dict[str, Any]:
             desc_revisao = av_final.justificativa if (av_final and av_final.justificativa) else ""
             
             # Se a área foi avaliada mas não tem NENHUMA evidência registrada nos buckets
-            has_evidence = any(titulos_por_tipo[t] or descricoes_por_tipo[t] for t in ['C', 'NC', 'OM'])
+            has_evidence = any(amostras_por_tipo[t] for t in ['C', 'NC', 'OM'])
             if not has_evidence:
                 tipo = status_ag if status_ag in ['NC', 'OM'] else 'C'
-                titulos_por_tipo[tipo].append("Avaliação realizada durante a auditoria.")
+                amostras_por_tipo[tipo].append(("Avaliação realizada durante a auditoria.", ""))
 
             # Gera uma linha na tabela para cada TIPO de amostra encontrada na área
             for tipo in ['C', 'OM', 'NC']:
-                tits = titulos_por_tipo[tipo]
-                descs = descricoes_por_tipo[tipo]
+                amostras = amostras_por_tipo[tipo]
                 
-                if not tits and not descs:
+                if not amostras:
                     continue # Nenhuma amostra deste tipo
                     
-                tabela_evid = "\n".join([f"• {t}" for t in tits]) if tits else "Nenhuma evidência registrada."
-                tabela_desc = "\n".join([f"• {d}" for d in descs]) if descs else ""
+                tabela_evid_parts = []
+                tabela_desc_parts = []
+                
+                for idx, (tit, desc) in enumerate(amostras, 1):
+                    prefix = f"{idx}. "
+                    t_str = f"{prefix}{tit}" if tit else f"{prefix}Sem título"
+                    d_str = f"{prefix}{desc}" if desc else f"{prefix}"
+                    
+                    tabela_evid_parts.append(t_str)
+                    tabela_desc_parts.append(d_str)
+                    
+                separator = "\n" + "_"*30 + "\n"
+                tabela_evid = separator.join(tabela_evid_parts)
+                tabela_desc = separator.join(tabela_desc_parts)
                 
                 if desc_revisao:
                     tabela_desc += f"\n\nRevisão: {desc_revisao}"
@@ -565,10 +577,10 @@ def compute_auditoria_metricas_completas(auditoria) -> Dict[str, Any]:
                     if not tabela_desc: tabela_desc = "Evidências documentais em conformidade nesta amostra."
                     gaps_area_funcional.append({'area': area_nome, 'item_referencia': item.referencia, 'item_titulo': item.titulo, 'tipo': 'C', 'tipo_badge': "Conforme", 'descricao': desc_revisao, 'tabela_gap': 'Conforme', 'tabela_evidencia': tabela_evid, 'tabela_descricao': tabela_desc})
                 elif tipo == 'OM':
-                    if tabela_evid == "Nenhuma evidência registrada.": tabela_evid = "Amostragem realizada durante a auditoria."
+                    if tabela_evid == "1. Sem título": tabela_evid = "1. Amostragem realizada durante a auditoria."
                     gaps_area_funcional.append({'area': area_nome, 'item_referencia': item.referencia, 'item_titulo': item.titulo, 'tipo': 'OM', 'tipo_badge': f"Oportunidade (Item {item.referencia})", 'descricao': desc_revisao, 'tabela_gap': 'OM', 'tabela_evidencia': tabela_evid, 'tabela_descricao': tabela_desc})
                 elif tipo == 'NC':
-                    if tabela_evid == "Nenhuma evidência registrada.": tabela_evid = "Evidência constatada na área."
+                    if tabela_evid == "1. Sem título": tabela_evid = "1. Evidência constatada na área."
                     
                     eh_maior = False
                     if av_final and av_final.grau_nc == 'MAIOR':
