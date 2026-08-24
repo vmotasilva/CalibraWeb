@@ -107,6 +107,15 @@
 }
 
 /* Responsive Table as Cards for Mobile */
+/* ============================================================
+   BOTÕES DE AÇÃO DO TOPO (MOBILE-FIRST)
+   ============================================================ */
+.audit-detail-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
 @media (max-width: 767.98px) {
     .audit-table thead {
         display: none;
@@ -116,10 +125,12 @@
         width: 100%;
     }
     .audit-table tr {
-        display: block;
+        display: flex;
+        flex-direction: column;
         background-color: #fff;
         border: 1px solid #dee2e6;
-        border-radius: 0.5rem;
+        border-left: 4px solid #0d6efd;
+        border-radius: 0.65rem;
         margin-bottom: 1rem;
         padding: 1rem;
         box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
@@ -163,6 +174,56 @@
         content: "Pergunta:";
     }
     
+    /* Dias da semana em formato horizontal no Mobile */
+    .audit-table tr {
+        position: relative;
+    }
+    
+    /* "Dia" cells individuais dispostas horizontalmente lado a lado */
+    .audit-table td.col-dia {
+        display: inline-flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: calc((100% - 24px) / 7) !important;
+        min-width: 36px;
+        padding: 0.35rem 0.15rem !important;
+        border: none !important;
+        text-align: center !important;
+        margin: 0 !important;
+        box-sizing: border-box;
+        vertical-align: top;
+        background: #f8fafc;
+        border-radius: 6px;
+        margin-right: 3px !important;
+        margin-top: 0.4rem !important;
+        margin-bottom: 0.4rem !important;
+    }
+    .audit-table td.col-dia::before {
+        content: attr(data-dia);
+        display: block;
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: #475569;
+        text-transform: uppercase;
+        margin-bottom: 0.35rem;
+        line-height: 1;
+    }
+
+    .audit-table td.col-dia .semaphore-interactive {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .audit-table td.col-dia .answer-semaphore,
+    .audit-table td.col-dia .semaphore-empty {
+        width: 28px;
+        height: 28px;
+        min-width: 28px;
+        min-height: 28px;
+    }
+
     /* "Comentários" cell */
     .audit-table td.col-comentarios {
         min-width: 0;
@@ -178,21 +239,35 @@
         font-size: 0.875rem;
         margin-bottom: 0.5rem;
     }
-    
-    /* "Dia" cells */
-    .audit-table td.col-dia {
-        display: inline-block;
-        width: auto;
-        padding: 0.25rem;
-        text-align: center !important;
-        margin-right: 0.25rem;
+
+    /* Ações de topo no Mobile: 2 por linha, voltar 100% */
+    .audit-detail-actions {
+        width: 100%;
+        margin-top: 0.5rem;
     }
-    .audit-table td.col-dia::before {
-        content: attr(data-dia);
-        display: block;
-        font-size: 0.7rem;
-        color: #6c757d;
-        margin-bottom: 0.2rem;
+    .audit-detail-actions .btn,
+    .audit-detail-actions .btn-form-wrapper {
+        flex: 1 1 calc(50% - 4px);
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.88rem;
+        padding: 0.5rem 0.5rem;
+        white-space: nowrap;
+    }
+    .audit-detail-actions .btn-form-wrapper form,
+    .audit-detail-actions .btn-form-wrapper button {
+        width: 100%;
+        height: 100%;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .audit-detail-actions .btn-voltar {
+        flex: 1 1 100% !important;
+        margin-top: 2px;
     }
 }
 </style>
@@ -209,27 +284,29 @@
     </nav>
 
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <h2 class="mb-0"><i class="bi bi-file-text"></i> Detalhes do Ciclo de Auditoria</h2>
-        <div class="d-flex flex-wrap gap-2 justify-content-start justify-content-md-end">
+        <h2 class="mb-0 fs-4 fs-md-2"><i class="bi bi-file-text"></i> Detalhes do Ciclo de Auditoria</h2>
+        <div class="audit-detail-actions justify-content-start justify-content-md-end">
             <a href="{% url 'auditoria:registro_create_modelo' registro.modelo.id %}" class="btn btn-primary">
-                <i class="bi bi-plus-circle"></i> Novo Ciclo
+                <i class="bi bi-plus-circle me-1"></i> Novo Ciclo
             </a>
             <a href="{% url 'auditoria:registro_edit' registro.pk %}" class="btn {% if registro.status == 'CONCLUIDO' %}btn-outline-primary{% else %}btn-warning{% endif %}">
-                <i class="bi bi-pencil"></i> {% if registro.status == 'CONCLUIDO' %}Editar Ciclo{% else %}Continuar Preenchimento{% endif %}
+                <i class="bi bi-pencil me-1"></i> {% if registro.status == 'CONCLUIDO' %}Editar Ciclo{% else %}Continuar{% endif %}
             </a>
             <a href="{% url 'auditoria:registro_exportar_pdf' registro.pk %}" class="btn btn-danger">
-                <i class="bi bi-file-earmark-pdf"></i> Exportar PDF
+                <i class="bi bi-file-earmark-pdf me-1"></i> Exportar PDF
             </a>
             {% if can_delete_registro %}
-            <form method="post" action="{% url 'auditoria:registro_delete' registro.pk %}" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir este registro?');">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-danger">
-                    <i class="bi bi-trash"></i> Excluir
-                </button>
-            </form>
+            <div class="btn-form-wrapper">
+                <form method="post" action="{% url 'auditoria:registro_delete' registro.pk %}" onsubmit="return confirm('Tem certeza que deseja excluir este registro?');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i> Excluir
+                    </button>
+                </form>
+            </div>
             {% endif %}
-            <a href="{% url 'auditoria:registros_por_modelo' registro.modelo.id %}" class="btn btn-secondary">
-                <i class="bi bi-arrow-left"></i> Voltar
+            <a href="{% url 'auditoria:registros_por_modelo' registro.modelo.id %}" class="btn btn-secondary btn-voltar">
+                <i class="bi bi-arrow-left me-1"></i> Voltar
             </a>
         </div>
     </div>

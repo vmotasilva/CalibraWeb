@@ -1,4 +1,4 @@
-﻿/*
+/*
  * ============================================================
  *  auditoria_mobile.css
  *  Regras responsivas centralizadas — Módulo de Auditoria
@@ -142,12 +142,33 @@
         font-weight: 600; color: #6c757d; font-size: 0.8rem; margin-bottom: 0.4rem;
     }
     .audit-table td.col-dia {
-        display: inline-block; width: auto;
-        padding: 0.25rem; text-align: center !important; margin-right: 0.25rem;
+        display: inline-flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: calc((100% - 24px) / 7) !important;
+        min-width: 36px;
+        padding: 0.35rem 0.15rem !important;
+        border: none !important;
+        text-align: center !important;
+        margin: 0 !important;
+        box-sizing: border-box;
+        vertical-align: top;
+        background: #f8fafc;
+        border-radius: 6px;
+        margin-right: 3px !important;
+        margin-top: 0.4rem !important;
+        margin-bottom: 0.4rem !important;
     }
     .audit-table td.col-dia::before {
-        content: attr(data-dia); display: block;
-        font-size: 0.7rem; color: #6c757d; margin-bottom: 0.2rem;
+        content: attr(data-dia);
+        display: block;
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: #475569;
+        text-transform: uppercase;
+        margin-bottom: 0.35rem;
+        line-height: 1;
     }
 }
 
