@@ -4442,7 +4442,8 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                     'icone': 'bi-exclamation-triangle-fill',
                     'referencia': item.referencia,
                     'titulo': item.titulo,
-                    'evidencias': evidencias_ativas or ["Evidência objetiva de não conformidade ao requisito."],
+                    'evidencias_nc': evidencias_nc or ["Evidência objetiva de não conformidade ao requisito."],
+                    'evidencias_om': evidencias_om,
                     'amostras_conformes': amostras_conformes
                 })
 
