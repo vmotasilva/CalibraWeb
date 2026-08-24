@@ -489,83 +489,95 @@ def compute_auditoria_metricas_completas(auditoria) -> Dict[str, Any]:
                 pai = ItemNorma.objects.filter(norma=auditoria.norma, referencia=sec_code).first() if ItemNorma else None
                 area_nome = f"{pai.titulo if pai else item.titulo}" if not pai else f"{pai.titulo}"
 
-            titulos_ag = []
-            descricoes_ag = []
+            titulos_por_tipo = {'C': [], 'NC': [], 'OM': []}
+            descricoes_por_tipo = {'C': [], 'NC': [], 'OM': []}
             pior_peso_ag = 0
+            is_maior_ag = False
             
             for p in todas_perguntas_item:
                 if ag and p not in ag.perguntas.all() and item not in ag.itens_norma.all():
-                    continue # Não pertence a esta agenda
+                    continue 
                     
                 r = respostas_map.get(p.id)
                 if r:
-                    # Avalia o peso da resposta raiz para o status local
                     c_resp = r.classificacao if r.classificacao != "OBS" else "C"
                     peso_resp = hierarchy.get(c_resp, 2)
                     if peso_resp > pior_peso_ag: pior_peso_ag = peso_resp
 
                     for s in r.solicitacoes.all():
-                        # A solicitação pertence à agenda se a originou ou se a pergunta originou
                         if s.agenda == ag or (s.agenda is None and ag and p in ag.perguntas.all()):
                             c_sol = s.conclusao if s.conclusao != "OBS" else "C"
                             peso_sol = hierarchy.get(c_sol, 2)
                             if peso_sol > pior_peso_ag: pior_peso_ag = peso_sol
 
+                            tipo = c_sol if c_sol in ['NC', 'OM'] else 'C'
+                            
+                            if c_sol == 'NC' and s.grau_nc == 'MAIOR':
+                                is_maior_ag = True
+
                             if s.solicitacao and s.solicitacao.strip():
                                 tit = s.solicitacao.strip()
-                                if tit not in titulos_ag: titulos_ag.append(tit)
+                                if tit not in titulos_por_tipo[tipo]: titulos_por_tipo[tipo].append(tit)
                             
                             if s.evidencia and s.evidencia.strip():
                                 desc = s.evidencia.strip()
-                                if desc not in descricoes_ag: descricoes_ag.append(desc)
+                                if desc not in descricoes_por_tipo[tipo]: descricoes_por_tipo[tipo].append(desc)
                     
-                    # Evidência raiz (texto da resposta) se for desta agenda
                     if (ag and p in ag.perguntas.all()) or not ag:
                         if r.texto_resposta and r.texto_resposta.strip():
                             txt = r.texto_resposta.strip()
-                            if txt not in descricoes_ag: descricoes_ag.append(txt)
+                            tipo = c_resp if c_resp in ['NC', 'OM'] else 'C'
+                            if txt not in descricoes_por_tipo[tipo]: descricoes_por_tipo[tipo].append(txt)
 
-            # 2. Define o status local para exibição (fallback para status_item se sem perguntas)
             status_ag = reverse_hierarchy.get(pior_peso_ag, "P") if pior_peso_ag > 0 else status_item
-            if status_item == 'NA': status_ag = 'NA' # NA força NA local
-            if status_item == 'C' and status_ag in ['NC', 'OM']: status_ag = 'C' # Não pode ser pior localmente que a Av. Final consolidada
+            if status_item == 'NA': status_ag = 'NA'
+            if status_item == 'C' and status_ag in ['NC', 'OM']: status_ag = 'C'
 
-            tabela_evid = "\n".join([f"• {t}" for t in titulos_ag]) if titulos_ag else "Nenhuma evidência registrada."
-            tabela_desc = "\n".join([f"• {d}" for d in descricoes_ag]) if descricoes_ag else ""
-            
             if status_ag == 'NA':
-                pass # Itens NA não entram na tabela de detalhamento por área, apenas na lista global de Exclusões
-            elif status_ag == 'C':
-                desc_str = av_final.justificativa if (av_final and av_final.justificativa) else ""
-                if not tabela_desc.strip(): tabela_desc = "Evidências documentais em conformidade nesta área."
-                if desc_str: tabela_desc += f"\nRevisão: {desc_str}"
-                gaps_area_funcional.append({'area': area_nome, 'item_referencia': item.referencia, 'item_titulo': item.titulo, 'tipo': 'C', 'tipo_badge': "Conforme", 'descricao': desc_str, 'tabela_gap': 'Conforme', 'tabela_evidencia': tabela_evid.strip(), 'tabela_descricao': tabela_desc.strip()})
-            elif status_ag == 'OM':
-                if not tabela_evid.strip() or tabela_evid == "Nenhuma evidência registrada.": tabela_evid = "Amostragem realizada durante a auditoria."
-                desc_str = av_final.justificativa if (av_final and av_final.justificativa) else f"Oportunidade de aprimoramento."
-                if desc_str: tabela_desc += f"\nRevisão: {desc_str}"
-                gaps_area_funcional.append({'area': area_nome, 'item_referencia': item.referencia, 'item_titulo': item.titulo, 'tipo': 'OM', 'tipo_badge': f"Oportunidade (Item {item.referencia})", 'descricao': desc_str, 'tabela_gap': 'OM', 'tabela_evidencia': tabela_evid.strip(), 'tabela_descricao': tabela_desc.strip()})
-            elif status_ag == 'NC':
-                # Determina grau local ou global
-                is_maior_ag = False
-                if av_final and av_final.grau_nc:
-                    is_maior_ag = (av_final.grau_nc == 'MAIOR')
-                else:
-                    for p in todas_perguntas_item:
-                        r = respostas_map.get(p.id)
-                        if r:
-                            for s in r.solicitacoes.all():
-                                if (s.agenda == ag or (s.agenda is None and ag and p in ag.perguntas.all())):
-                                    if s.conclusao == 'NC' and s.grau_nc == 'MAIOR':
-                                        is_maior_ag = True
-                                        break
-                            if is_maior_ag: break
+                continue
                 
-                if not is_maior_ag and not tabela_evid.strip(): tabela_evid = "Evidência constatada na área."
-                desc_str = av_final.justificativa if (av_final and av_final.justificativa) else f"Desvio identificado nesta área."
-                if desc_str: tabela_desc += f"\nRevisão: {desc_str}"
-                badge_nc = f"NC Maior (Item {item.referencia})" if is_maior_ag else f"NC Menor (Item {item.referencia})"
-                gaps_area_funcional.append({'area': area_nome, 'item_referencia': item.referencia, 'item_titulo': item.titulo, 'tipo': 'NC', 'tipo_badge': badge_nc, 'descricao': desc_str, 'tabela_gap': 'NC Maior' if is_maior_ag else 'NC Menor', 'tabela_evidencia': tabela_evid.strip(), 'tabela_descricao': tabela_desc.strip()})
+            desc_revisao = av_final.justificativa if (av_final and av_final.justificativa) else ""
+            
+            # Se a área foi avaliada mas não tem NENHUMA evidência registrada nos buckets
+            has_evidence = any(titulos_por_tipo[t] or descricoes_por_tipo[t] for t in ['C', 'NC', 'OM'])
+            if not has_evidence:
+                tipo = status_ag if status_ag in ['NC', 'OM'] else 'C'
+                titulos_por_tipo[tipo].append("Avaliação realizada durante a auditoria.")
+
+            # Gera uma linha na tabela para cada TIPO de amostra encontrada na área
+            for tipo in ['C', 'OM', 'NC']:
+                tits = titulos_por_tipo[tipo]
+                descs = descricoes_por_tipo[tipo]
+                
+                if not tits and not descs:
+                    continue # Nenhuma amostra deste tipo
+                    
+                tabela_evid = "\n".join([f"• {t}" for t in tits]) if tits else "Nenhuma evidência registrada."
+                tabela_desc = "\n".join([f"• {d}" for d in descs]) if descs else ""
+                
+                if desc_revisao:
+                    tabela_desc += f"\n\nRevisão: {desc_revisao}"
+                    
+                tabela_desc = tabela_desc.strip()
+                tabela_evid = tabela_evid.strip()
+                
+                if tipo == 'C':
+                    if not tabela_desc: tabela_desc = "Evidências documentais em conformidade nesta amostra."
+                    gaps_area_funcional.append({'area': area_nome, 'item_referencia': item.referencia, 'item_titulo': item.titulo, 'tipo': 'C', 'tipo_badge': "Conforme", 'descricao': desc_revisao, 'tabela_gap': 'Conforme', 'tabela_evidencia': tabela_evid, 'tabela_descricao': tabela_desc})
+                elif tipo == 'OM':
+                    if tabela_evid == "Nenhuma evidência registrada.": tabela_evid = "Amostragem realizada durante a auditoria."
+                    gaps_area_funcional.append({'area': area_nome, 'item_referencia': item.referencia, 'item_titulo': item.titulo, 'tipo': 'OM', 'tipo_badge': f"Oportunidade (Item {item.referencia})", 'descricao': desc_revisao, 'tabela_gap': 'OM', 'tabela_evidencia': tabela_evid, 'tabela_descricao': tabela_desc})
+                elif tipo == 'NC':
+                    if tabela_evid == "Nenhuma evidência registrada.": tabela_evid = "Evidência constatada na área."
+                    
+                    eh_maior = False
+                    if av_final and av_final.grau_nc == 'MAIOR':
+                        eh_maior = True
+                    else:
+                        eh_maior = is_maior_ag
+                        
+                    badge_nc = f"NC Maior (Item {item.referencia})" if eh_maior else f"NC Menor (Item {item.referencia})"
+                    gaps_area_funcional.append({'area': area_nome, 'item_referencia': item.referencia, 'item_titulo': item.titulo, 'tipo': 'NC', 'tipo_badge': badge_nc, 'descricao': desc_revisao, 'tabela_gap': 'NC Maior' if eh_maior else 'NC Menor', 'tabela_evidencia': tabela_evid, 'tabela_descricao': tabela_desc})
 
     # Ordena os gaps por Área/Processo e, em seguida, pelo Item da norma (para que a Tabela de Gaps exiba agrupada)
     gaps_area_funcional.sort(key=lambda x: (x.get('area', ''), natural_sort_key(x.get('item_referencia', ''))))
