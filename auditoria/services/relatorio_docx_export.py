@@ -1259,6 +1259,22 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
             sinteses_secoes = sorted(sinteses_secoes, key=lambda s: natural_sort_key(s.secao_referencia))
             sintese_global_html = getattr(auditoria, 'sintese', '') or ""
             tem_sintese_secao = any(bool(s.conteudo_html and s.conteudo_html.strip()) for s in sinteses_secoes)
+            
+            unidade_str = getattr(auditoria, 'unidade', '') or '____'
+            dt_inicio = auditoria.data_inicio.strftime('%d/%m') if auditoria.data_inicio else '____'
+            dt_fim = auditoria.data_fim.strftime('%d/%m/%Y') if auditoria.data_fim else '____'
+            
+            n_codigo = getattr(auditoria.norma, 'codigo', '')
+            n_desc = getattr(auditoria.norma, 'descricao', '')
+            n_str = f"{n_codigo} - {n_desc}" if n_codigo else n_desc
+            
+            reps_raw = getattr(auditoria, 'abertura_representantes', '')
+            reps_list = [x.strip() for x in reps_raw.replace('\r', '').split('\n') if x.strip()]
+            reps_html = "<br>".join(reps_list) if reps_list else "<i>Não preenchido</i>"
+            
+            intro_html = f"<p>A auditoria no {unidade_str} foi realizada no período de {dt_inicio} a {dt_fim} e durante essa auditoria foi verificado o alinhamento do QMS a norma {n_str}.</p><p><strong>Participantes:</strong><br>{reps_html}</p>"
+            
+            sintese_global_html = intro_html + sintese_global_html
 
             if sintese_global_html and sintese_global_html.strip():
                 inject_html_to_docx(doc, sintese_global_html, target_paragraph=p)
