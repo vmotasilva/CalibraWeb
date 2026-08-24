@@ -640,14 +640,21 @@ def compute_auditoria_metricas_completas(auditoria) -> Dict[str, Any]:
     limite_nc_maior_apto = regra_apto.max_nc_maior if (regra_apto and regra_apto.max_nc_maior is not None) else 0
     limite_nc_menor_apto = regra_apto.max_nc_menor if (regra_apto and regra_apto.max_nc_menor is not None) else 2
 
-    if count_nc_maior >= gatilho_nc_maior_inapto or count_nc_menor >= gatilho_nc_menor_inapto:
+    # A regra deve considerar também o total de desvios (amostras individuais) gerados, 
+    # e não apenas a quantidade de itens da norma afetados.
+    total_amostras_nc_maior = sum(1 for g in gaps_area_funcional if g['tabela_gap'] == 'NC Maior')
+    total_amostras_nc_menor = sum(1 for g in gaps_area_funcional if g['tabela_gap'] == 'NC Menor')
+
+    if (count_nc_maior >= gatilho_nc_maior_inapto or count_nc_menor >= gatilho_nc_menor_inapto) or \
+       (total_amostras_nc_maior >= gatilho_nc_maior_inapto or total_amostras_nc_menor >= gatilho_nc_menor_inapto):
         veredito_status = "INADEQUADO / NÃO CONFORME"
         veredito_cor = "DC2626"
         veredito_bg = "FEE2E2"
         veredito_parecer = regra_inapto.texto_parecer_padrao if (regra_inapto and regra_inapto.texto_parecer_padrao) else (
             "Sistema inadequado e com alto risco crítico. As evidências apontam falhas sistêmicas que inviabilizam a recomendação neste ciclo. Recomenda-se plano de ação imediato e nova auditoria."
         )
-    elif count_nc_maior <= limite_nc_maior_apto and count_nc_menor <= limite_nc_menor_apto:
+    elif (count_nc_maior <= limite_nc_maior_apto and count_nc_menor <= limite_nc_menor_apto) and \
+         (total_amostras_nc_maior <= limite_nc_maior_apto and total_amostras_nc_menor <= limite_nc_menor_apto):
         veredito_status = "ADEQUADO / CONFORME"
         veredito_cor = "16A34A"
         veredito_bg = "DCFCE7"
