@@ -4052,12 +4052,26 @@ def iso_matriz_view(request, auditoria_id):
                                 ]
                             })
 
+                    class_calc = resp.classificacao if resp else 'P'
+                    class_display = resp.get_classificacao_display() if resp else 'Pendente'
+                    if sols_list:
+                        conclusoes = [s['conclusao'] for s in sols_list]
+                        if "NC" in conclusoes:
+                            class_calc = "NC"
+                            class_display = "Não Conforme"
+                        elif "OM" in conclusoes:
+                            class_calc = "OM"
+                            class_display = "Oportunidade de Melhoria"
+                        elif "C" in conclusoes:
+                            class_calc = "C"
+                            class_display = "Conforme"
+
                     perguntas_info.append({
                         'id': p.id,
                         'texto_pergunta': p.texto_pergunta,
                         'dica_auditor': p.dica_auditor or '',
-                        'classificacao': resp.classificacao if resp else 'P',
-                        'classificacao_display': resp.get_classificacao_display() if resp else 'Pendente',
+                        'classificacao': class_calc,
+                        'classificacao_display': class_display,
                         'texto_resposta': resp.texto_resposta if (resp and resp.texto_resposta) else '',
                         'solicitacoes': sols_list
                     })
@@ -4272,84 +4286,60 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                     pior_peso = peso
             status_item = reverse_hierarchy.get(pior_peso, "P")
 
-        # Coleta evidências filtradas separando as reprovadas das conformes
-        evidencias_item = []
-        evidencias_vistas = set()
-        amostras_conformes = []
-        amostras_conformes_vistas = set()
-        total_solicitacoes_item = 0
-        total_nc_solicitacoes_item = 0
-
+        # 1. Fallback/Override global: garante que NCs ou OMs transferidos sejam refletidos no status global do item
+        has_dangling_nc = False
+        has_dangling_om = False
         for p in todas_perguntas_item:
             r = respostas_map.get(p.id)
             if r:
-                solicitacoes_list = list(r.solicitacoes.all())
-                if solicitacoes_list:
-                    total_solicitacoes_item += len(solicitacoes_list)
-                    for s in solicitacoes_list:
-                        if s.conclusao == 'NC':
-                            total_nc_solicitacoes_item += 1
-                        elif s.conclusao == 'OBS':
-                            count_obs += 1
-                            obs_txt = ""
-                            if s.evidencia and s.evidencia.strip():
-                                if s.solicitacao and s.solicitacao.strip():
-                                    obs_txt = f"{s.solicitacao.strip()}: {s.evidencia.strip()}"
-                                else:
-                                    obs_txt = s.evidencia.strip()
-                            elif s.solicitacao and s.solicitacao.strip():
-                                obs_txt = s.solicitacao.strip()
+                for s in r.solicitacoes.all():
+                    if s.conclusao == 'NC':
+                        has_dangling_nc = True
+                    elif s.conclusao == 'OM':
+                        has_dangling_om = True
+        
+        if has_dangling_nc:
+            status_item = 'NC'
+        elif has_dangling_om and status_item != 'NC':
+            status_item = 'OM'
 
-                            if obs_txt:
-                                if item.referencia not in conselhos_map:
-                                    conselhos_map[item.referencia] = {
-                                        'referencia': item.referencia,
-                                        'titulo': item.titulo,
-                                        'conselhos': []
-                                    }
-                                    conselhos_por_item.append(conselhos_map[item.referencia])
-                                conselhos_map[item.referencia]['conselhos'].append(obs_txt)
+        # 2. Coleta evidências globais para definir grau_nc e destaques
+        evidencias_globais = []
+        evidencias_globais_vistas = set()
+        for p in todas_perguntas_item:
+            r = respostas_map.get(p.id)
+            if r:
+                for s in r.solicitacoes.all():
+                    if s.conclusao == 'OBS':
+                        count_obs += 1
+                        obs_txt = f"{s.solicitacao.strip()}: {s.evidencia.strip()}" if (s.evidencia and s.solicitacao) else (s.evidencia.strip() if s.evidencia else s.solicitacao.strip())
+                        if obs_txt:
+                            if item.referencia not in conselhos_map:
+                                conselhos_map[item.referencia] = {
+                                    'referencia': item.referencia,
+                                    'titulo': item.titulo,
+                                    'conselhos': []
+                                }
+                                conselhos_por_item.append(conselhos_map[item.referencia])
+                            conselhos_map[item.referencia]['conselhos'].append(obs_txt)
 
-                        # Texto formatado da evidência
-                        ev_txt = ""
-                        if s.evidencia and s.evidencia.strip():
-                            if s.solicitacao and s.solicitacao.strip():
-                                ev_txt = f"{s.solicitacao.strip()}: {s.evidencia.strip()}"
-                            else:
-                                ev_txt = s.evidencia.strip()
-                        elif s.solicitacao and s.solicitacao.strip():
-                            ev_txt = s.solicitacao.strip()
-
-                        # Categoriza conforme status do requisito
-                        if status_item == 'NC':
-                            if s.conclusao in ['NC', 'OM', 'OBS'] and ev_txt and ev_txt not in evidencias_vistas:
-                                evidencias_vistas.add(ev_txt)
-                                evidencias_item.append(ev_txt)
-                            elif s.conclusao == 'C' and ev_txt and ev_txt not in amostras_conformes_vistas:
-                                amostras_conformes_vistas.add(ev_txt)
-                                amostras_conformes.append(ev_txt)
-                        elif status_item == 'OM':
-                            if s.conclusao in ['NC', 'OM', 'OBS'] and ev_txt and ev_txt not in evidencias_vistas:
-                                evidencias_vistas.add(ev_txt)
-                                evidencias_item.append(ev_txt)
-                            elif s.conclusao == 'C' and ev_txt and ev_txt not in amostras_conformes_vistas:
-                                amostras_conformes_vistas.add(ev_txt)
-                                amostras_conformes.append(ev_txt)
-                        elif status_item == 'C':
-                            if s.conclusao in ['C', 'P', 'OBS'] and ev_txt and ev_txt not in evidencias_vistas:
-                                evidencias_vistas.add(ev_txt)
-                                evidencias_item.append(ev_txt)
-                elif r.texto_resposta and r.texto_resposta.strip():
-                    ev_txt = r.texto_resposta.strip()
-                    if ev_txt not in evidencias_vistas:
-                        evidencias_vistas.add(ev_txt)
-                        evidencias_item.append(ev_txt)
+                    ev_txt = f"{s.solicitacao.strip()}: {s.evidencia.strip()}" if (s.evidencia and s.solicitacao) else (s.evidencia.strip() if s.evidencia else s.solicitacao.strip())
+                    if ev_txt and ev_txt not in evidencias_globais_vistas:
+                        evidencias_globais_vistas.add(ev_txt)
+                        evidencias_globais.append(ev_txt)
+                
+                if r.texto_resposta and r.texto_resposta.strip():
+                    txt = r.texto_resposta.strip()
+                    if txt not in evidencias_globais_vistas:
+                        evidencias_globais_vistas.add(txt)
+                        evidencias_globais.append(txt)
 
         if av_final and av_final.justificativa and av_final.justificativa.strip():
-            just_txt = f"Justificativa da Revisão: {av_final.justificativa.strip()}"
-            if just_txt not in evidencias_vistas:
-                evidencias_item.insert(0, just_txt)
+            just_txt = f"Revisão: {av_final.justificativa.strip()}"
+            if just_txt not in evidencias_globais_vistas:
+                evidencias_globais.insert(0, just_txt)
 
+        # 3. Contadores globais
         if status_item == 'NA':
             count_na += 1
         elif status_item == 'P':
@@ -4359,65 +4349,128 @@ def iso_fechamento_presentation_view(request, auditoria_id):
             destaques_conformes.append({
                 'referencia': item.referencia,
                 'titulo': item.titulo,
-                'evidencias': evidencias_item[:3] or ["Processo e evidências documentais em conformidade."]
+                'evidencias': evidencias_globais[:3] or ["Processo e evidências documentais em conformidade."]
             })
         elif status_item == 'OM':
             count_om += 1
-            pontos_a_melhorar.append({
-                'tipo': 'OM',
-                'badge': 'Oportunidade',
-                'cor': 'warning',
-                'cor_text': 'dark',
-                'bg_badge': '#ffc107',
-                'icone': 'bi-lightbulb-fill',
-                'referencia': item.referencia,
-                'titulo': item.titulo,
-                'evidencias': evidencias_item[:3] or ["Oportunidade de aprimoramento identificada no processo."],
-                'amostras_conformes': amostras_conformes[:2]
-            })
         elif status_item == 'NC':
+            is_maior_global = False
             if av_final and av_final.grau_nc:
-                is_maior = (av_final.grau_nc == 'MAIOR')
+                is_maior_global = (av_final.grau_nc == 'MAIOR')
             else:
-                # 1. Verifica se nas respostas ou solicitações do requisito o auditor marcou explicitamente grau_nc
                 graus_definidos = []
                 for p in todas_perguntas_item:
                     r = respostas_map.get(p.id)
-                    if r and r.grau_nc:
-                        graus_definidos.append(r.grau_nc)
                     if r:
+                        if r.grau_nc: graus_definidos.append(r.grau_nc)
                         for s in r.solicitacoes.all():
                             if s.conclusao == 'NC' and s.grau_nc:
                                 graus_definidos.append(s.grau_nc)
-
                 if graus_definidos:
-                    # Se o auditor definiu grau explicitamente, respeita a decisão do auditor: vira MAIOR apenas se houver 'MAIOR'
-                    is_maior = any(g == 'MAIOR' for g in graus_definidos)
+                    is_maior_global = any(g == 'MAIOR' for g in graus_definidos)
                 else:
-                    # Padrão normativo: NC Menor (desvio pontual), a menos que haja termo crítico/grave no apontamento
-                    is_maior = any('crítica' in ev.lower() or 'grave' in ev.lower() or 'sistêmica' in ev.lower() for ev in evidencias_item)
-
-            if is_maior:
+                    is_maior_global = any('crítica' in ev.lower() or 'grave' in ev.lower() or 'sistêmica' in ev.lower() for ev in evidencias_globais)
+            
+            if is_maior_global:
                 count_nc_maior += 1
-                tipo_nc = 'NC_MAIOR'
-                badge_nc = 'NC Maior'
             else:
                 count_nc_menor += 1
-                tipo_nc = 'NC_MENOR'
-                badge_nc = 'NC Menor'
 
-            pontos_a_melhorar.append({
-                'tipo': tipo_nc,
-                'badge': badge_nc,
-                'cor': 'danger',
-                'cor_text': 'white',
-                'bg_badge': '#dc3545',
-                'icone': 'bi-exclamation-triangle-fill',
-                'referencia': item.referencia,
-                'titulo': item.titulo,
-                'evidencias': evidencias_item[:3] or ["Evidência objetiva de não conformidade ao requisito."],
-                'amostras_conformes': amostras_conformes[:2]
-            })
+        # 4. Geração de Cards (pontos_a_melhorar) desmembrada por Área/Agenda
+        agendas_do_item_objs = []
+        for ag in agendas:
+            if item in ag.itens_norma.all() or any(item in p.itens_norma.all() for p in ag.perguntas.all()):
+                agendas_do_item_objs.append(ag)
+        if not agendas_do_item_objs:
+            agendas_do_item_objs = [None]
+
+        for ag in agendas_do_item_objs:
+            area_nome = ag.titulo if ag else "Auditoria Geral"
+
+            evidencias_ag = []
+            evidencias_ag_vistas = set()
+            amostras_conformes_ag = []
+            amostras_conformes_ag_vistas = set()
+            pior_peso_ag = 0
+            
+            for p in todas_perguntas_item:
+                if ag and p not in ag.perguntas.all() and item not in ag.itens_norma.all():
+                    continue 
+                    
+                r = respostas_map.get(p.id)
+                if r:
+                    c_resp = r.classificacao if r.classificacao != "OBS" else "C"
+                    peso_resp = hierarchy.get(c_resp, 2)
+                    if peso_resp > pior_peso_ag: pior_peso_ag = peso_resp
+
+                    for s in r.solicitacoes.all():
+                        if s.agenda == ag or (s.agenda is None and ag and p in ag.perguntas.all()):
+                            c_sol = s.conclusao if s.conclusao != "OBS" else "C"
+                            peso_sol = hierarchy.get(c_sol, 2)
+                            if peso_sol > pior_peso_ag: pior_peso_ag = peso_sol
+
+                            ev_txt = f"{s.solicitacao.strip()}: {s.evidencia.strip()}" if (s.evidencia and s.solicitacao) else (s.evidencia.strip() if s.evidencia else s.solicitacao.strip())
+                            
+                            if s.conclusao in ['NC', 'OM', 'OBS']:
+                                if ev_txt and ev_txt not in evidencias_ag_vistas:
+                                    evidencias_ag_vistas.add(ev_txt)
+                                    evidencias_ag.append(ev_txt)
+                            elif s.conclusao == 'C':
+                                if ev_txt and ev_txt not in amostras_conformes_ag_vistas:
+                                    amostras_conformes_ag_vistas.add(ev_txt)
+                                    amostras_conformes_ag.append(ev_txt)
+                    
+                    if (ag and p in ag.perguntas.all()) or not ag:
+                        if r.texto_resposta and r.texto_resposta.strip():
+                            txt = r.texto_resposta.strip()
+                            if r.classificacao in ['NC', 'OM'] and txt not in evidencias_ag_vistas:
+                                evidencias_ag_vistas.add(txt)
+                                evidencias_ag.append(txt)
+
+            status_ag = reverse_hierarchy.get(pior_peso_ag, "P") if pior_peso_ag > 0 else status_item
+            if status_item == 'NA': status_ag = 'NA'
+            if status_item == 'C' and status_ag in ['NC', 'OM']: status_ag = 'C'
+
+            if status_ag == 'OM':
+                pontos_a_melhorar.append({
+                    'tipo': 'OM',
+                    'badge': 'Oportunidade',
+                    'cor': 'warning',
+                    'cor_text': 'dark',
+                    'bg_badge': '#ffc107',
+                    'icone': 'bi-lightbulb-fill',
+                    'referencia': item.referencia,
+                    'titulo': f"[{area_nome}] {item.titulo}",
+                    'evidencias': evidencias_ag[:3] or ["Oportunidade de aprimoramento identificada no processo."],
+                    'amostras_conformes': amostras_conformes_ag[:2]
+                })
+            elif status_ag == 'NC':
+                is_maior_ag = False
+                if av_final and av_final.grau_nc:
+                    is_maior_ag = (av_final.grau_nc == 'MAIOR')
+                else:
+                    for p in todas_perguntas_item:
+                        r = respostas_map.get(p.id)
+                        if r:
+                            for s in r.solicitacoes.all():
+                                if (s.agenda == ag or (s.agenda is None and ag and p in ag.perguntas.all())):
+                                    if s.conclusao == 'NC' and s.grau_nc == 'MAIOR':
+                                        is_maior_ag = True
+                                        break
+                            if is_maior_ag: break
+                
+                pontos_a_melhorar.append({
+                    'tipo': 'NC_MAIOR' if is_maior_ag else 'NC_MENOR',
+                    'badge': 'NC Maior' if is_maior_ag else 'NC Menor',
+                    'cor': 'danger',
+                    'cor_text': 'white',
+                    'bg_badge': '#dc3545',
+                    'icone': 'bi-exclamation-triangle-fill',
+                    'referencia': item.referencia,
+                    'titulo': f"[{area_nome}] {item.titulo}",
+                    'evidencias': evidencias_ag[:3] or ["Evidência objetiva de não conformidade ao requisito."],
+                    'amostras_conformes': amostras_conformes_ag[:2]
+                })
 
     total_avaliados = count_c + count_om + count_nc_menor + count_nc_maior + count_p
     # OBS não entra no percentual nem nos status de itens: o percentual é C / (C + NC + OM)

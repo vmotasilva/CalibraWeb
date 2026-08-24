@@ -399,13 +399,13 @@ def compute_auditoria_metricas_completas(auditoria) -> Dict[str, Any]:
                 
         todas_perguntas_item = list(todas_perguntas_dict.values())
 
-        if agendas_do_item:
-            area_nome = " + ".join(sorted(agendas_do_item))
-        else:
-            ref_parts = item.referencia.split('.')
-            sec_code = ref_parts[0] if ref_parts else item.referencia
-            pai = ItemNorma.objects.filter(norma=auditoria.norma, referencia=sec_code).first() if ItemNorma else None
-            area_nome = f"{pai.titulo if pai else item.titulo}" if not pai else f"{pai.titulo}"
+        agendas_do_item_objs = []
+        for ag in agendas:
+            if item in ag.itens_norma.all() or any(item in p.itens_norma.all() for p in ag.perguntas.all()):
+                agendas_do_item_objs.append(ag)
+
+        if not agendas_do_item_objs:
+            agendas_do_item_objs = [None]
 
         av_final = avaliacoes_finais_map.get(item.id)
 
@@ -420,140 +420,54 @@ def compute_auditoria_metricas_completas(auditoria) -> Dict[str, Any]:
             for p in todas_perguntas_item:
                 r = respostas_map.get(p.id)
                 c = r.classificacao if r else "P"
-                if c == "OBS":
-                    c = "C"
+                if c == "OBS": c = "C"
                 peso = hierarchy.get(c, 2)
-                if peso > pior_peso:
-                    pior_peso = peso
+                if peso > pior_peso: pior_peso = peso
             status_item = reverse_hierarchy.get(pior_peso, "P")
 
-        # Evidências e Amostras do Requisito
+        # Evidências globais do Requisito (usadas para destaques e contadores globais)
         evidencias_item = []
         evidencias_vistas = set()
-        sols_do_item = []
-
         for p in todas_perguntas_item:
             r = respostas_map.get(p.id)
             if r:
-                sols_list = list(r.solicitacoes.all())
-                sols_do_item.extend(sols_list)
-                for s in sols_list:
-                    if s.conclusao == 'OBS':
-                        count_obs += 1
-                    
-                    ev_txt = ""
-                    if s.evidencia and s.evidencia.strip():
-                        if s.solicitacao and s.solicitacao.strip():
-                            ev_txt = f"{s.solicitacao.strip()}: {s.evidencia.strip()}"
-                        else:
-                            ev_txt = s.evidencia.strip()
-                    elif s.solicitacao and s.solicitacao.strip():
-                        ev_txt = s.solicitacao.strip()
-
+                for s in r.solicitacoes.all():
+                    if s.conclusao == 'OBS': count_obs += 1
+                    ev_txt = f"{s.solicitacao.strip()}: {s.evidencia.strip()}" if (s.evidencia and s.solicitacao) else (s.evidencia.strip() if s.evidencia else s.solicitacao.strip())
                     if ev_txt and ev_txt not in evidencias_vistas:
                         evidencias_vistas.add(ev_txt)
                         evidencias_item.append(ev_txt)
-
                 if r.texto_resposta and r.texto_resposta.strip():
                     txt = r.texto_resposta.strip()
                     if txt not in evidencias_vistas:
                         evidencias_vistas.add(txt)
                         evidencias_item.append(txt)
-
+                        
         if av_final and av_final.justificativa and av_final.justificativa.strip():
             just_txt = f"Revisão: {av_final.justificativa.strip()}"
             if just_txt not in evidencias_vistas:
                 evidencias_item.insert(0, just_txt)
 
-        # Classificação do Requisito
+        # Contadores globais (Não muda para não afetar as estatísticas)
         if status_item == 'NA':
             count_na += 1
-            just_na = ""
-            if av_final and av_final.justificativa:
-                just_na = av_final.justificativa.strip()
-            elif evidencias_item:
-                just_na = " | ".join(evidencias_item)
-            else:
-                just_na = "Requisito declarado e avaliado como Não Aplicável (NA) ao escopo de atividades e produtos desta unidade."
-            
-            exclusoes_na.append({
-                'referencia': item.referencia,
-                'titulo': item.titulo,
-                'justificativa': just_na
-            })
-
-            gaps_area_funcional.append({
-                'area': area_nome,
-                'item_referencia': item.referencia,
-                'item_titulo': item.titulo,
-                'tipo': 'NA',
-                'tipo_badge': "Não Aplicável",
-                'evidencia': '',
-                'descricao': just_na,
-                'tabela_gap': 'Não Aplicável',
-                'tabela_evidencia': f"{item.referencia} - {item.titulo}",
-                'tabela_descricao': just_na
-            })
-
-        elif status_item == 'P':
-            count_p += 1
-
-        elif status_item == 'C':
+            just_na = av_final.justificativa.strip() if av_final and av_final.justificativa else (" | ".join(evidencias_item) if evidencias_item else "Requisito Não Aplicável.")
+            exclusoes_na.append({'referencia': item.referencia, 'titulo': item.titulo, 'justificativa': just_na})
+        elif status_item == 'P': count_p += 1
+        elif status_item == 'C': 
             count_c += 1
-            destaques_conformes.append({
-                'referencia': item.referencia,
-                'titulo': item.titulo,
-                'evidencias': evidencias_item[:3] or ["Processo auditado com evidências documentais em conformidade."]
-            })
-
-            ev_str = "\n".join([f"• {e}" for e in evidencias_item]) if evidencias_item else ""
-            desc_str = av_final.justificativa if (av_final and av_final.justificativa) else ""
-            tabela_desc = ev_str + ("\n" + desc_str if desc_str else "")
-            if not tabela_desc.strip():
-                tabela_desc = "Processo auditado com evidências documentais em conformidade."
-
-            gaps_area_funcional.append({
-                'area': area_nome,
-                'item_referencia': item.referencia,
-                'item_titulo': item.titulo,
-                'tipo': 'C',
-                'tipo_badge': "Conforme",
-                'evidencia': ev_str,
-                'descricao': desc_str,
-                'tabela_gap': 'Conforme',
-                'tabela_evidencia': f"{item.referencia} - {item.titulo}",
-                'tabela_descricao': tabela_desc.strip()
-            })
-
-        elif status_item == 'OM':
-            count_om += 1
-            ev_str = "\n".join([f"• {e}" for e in evidencias_item]) if evidencias_item else "Amostragem realizada durante a auditoria."
-            desc_str = av_final.justificativa if (av_final and av_final.justificativa) else f"Oportunidade de aprimoramento no cumprimento do requisito {item.referencia}."
-            tabela_desc = ev_str + "\n" + desc_str
-
-            gaps_area_funcional.append({
-                'area': area_nome,
-                'item_referencia': item.referencia,
-                'item_titulo': item.titulo,
-                'tipo': 'OM',
-                'tipo_badge': f"Oportunidade (Item {item.referencia})",
-                'evidencia': ev_str,
-                'descricao': desc_str,
-                'tabela_gap': 'OM',
-                'tabela_evidencia': f"{item.referencia} - {item.titulo}",
-                'tabela_descricao': tabela_desc.strip()
-            })
-
+            destaques_conformes.append({'referencia': item.referencia, 'titulo': item.titulo, 'evidencias': evidencias_item[:3] or ["Processo conforme."]})
+        elif status_item == 'OM': count_om += 1
         elif status_item == 'NC':
+            is_maior = False
             if av_final and av_final.grau_nc:
                 is_maior = (av_final.grau_nc == 'MAIOR')
             else:
                 graus_definidos = []
                 for p in todas_perguntas_item:
                     r = respostas_map.get(p.id)
-                    if r and r.grau_nc:
-                        graus_definidos.append(r.grau_nc)
                     if r:
+                        if r.grau_nc: graus_definidos.append(r.grau_nc)
                         for s in r.solicitacoes.all():
                             if s.conclusao == 'NC' and s.grau_nc:
                                 graus_definidos.append(s.grau_nc)
@@ -561,32 +475,100 @@ def compute_auditoria_metricas_completas(auditoria) -> Dict[str, Any]:
                     is_maior = any(g == 'MAIOR' for g in graus_definidos)
                 else:
                     is_maior = any('crítica' in ev.lower() or 'grave' in ev.lower() or 'sistêmica' in ev.lower() for ev in evidencias_item)
+            
+            if is_maior: count_nc_maior += 1
+            else: count_nc_menor += 1
 
-            if is_maior:
-                count_nc_maior += 1
-                tipo_nc = 'NC_MAIOR'
-                badge_nc = f"NC Maior (Item {item.referencia})"
+        # Geração de Gaps desmembrada por Área/Agenda
+        for ag in agendas_do_item_objs:
+            if ag:
+                area_nome = ag.titulo
             else:
-                count_nc_menor += 1
-                tipo_nc = 'NC_MENOR'
-                badge_nc = f"NC Menor (Item {item.referencia})"
+                ref_parts = item.referencia.split('.')
+                sec_code = ref_parts[0] if ref_parts else item.referencia
+                pai = ItemNorma.objects.filter(norma=auditoria.norma, referencia=sec_code).first() if ItemNorma else None
+                area_nome = f"{pai.titulo if pai else item.titulo}" if not pai else f"{pai.titulo}"
 
-            ev_str = "\n".join([f"• {e}" for e in evidencias_item]) if evidencias_item else "Evidência constatada durante amostragem documental e entrevista."
-            desc_str = av_final.justificativa if (av_final and av_final.justificativa) else f"Desvio identificado em relação aos critérios do requisito {item.referencia} da norma {auditoria.norma.codigo}."
-            tabela_desc = ev_str + "\n" + desc_str
+            titulos_ag = []
+            descricoes_ag = []
+            pior_peso_ag = 0
+            
+            for p in todas_perguntas_item:
+                if ag and p not in ag.perguntas.all() and item not in ag.itens_norma.all():
+                    continue # Não pertence a esta agenda
+                    
+                r = respostas_map.get(p.id)
+                if r:
+                    # Avalia o peso da resposta raiz para o status local
+                    c_resp = r.classificacao if r.classificacao != "OBS" else "C"
+                    peso_resp = hierarchy.get(c_resp, 2)
+                    if peso_resp > pior_peso_ag: pior_peso_ag = peso_resp
 
-            gaps_area_funcional.append({
-                'area': area_nome,
-                'item_referencia': item.referencia,
-                'item_titulo': item.titulo,
-                'tipo': 'NC',
-                'tipo_badge': badge_nc,
-                'evidencia': ev_str,
-                'descricao': desc_str,
-                'tabela_gap': 'NC Maior' if is_maior else 'NC Menor',
-                'tabela_evidencia': f"{item.referencia} - {item.titulo}",
-                'tabela_descricao': tabela_desc.strip()
-            })
+                    for s in r.solicitacoes.all():
+                        # A solicitação pertence à agenda se a originou ou se a pergunta originou
+                        if s.agenda == ag or (s.agenda is None and ag and p in ag.perguntas.all()):
+                            c_sol = s.conclusao if s.conclusao != "OBS" else "C"
+                            peso_sol = hierarchy.get(c_sol, 2)
+                            if peso_sol > pior_peso_ag: pior_peso_ag = peso_sol
+
+                            if s.solicitacao and s.solicitacao.strip():
+                                tit = s.solicitacao.strip()
+                                if tit not in titulos_ag: titulos_ag.append(tit)
+                            
+                            if s.evidencia and s.evidencia.strip():
+                                desc = s.evidencia.strip()
+                                if desc not in descricoes_ag: descricoes_ag.append(desc)
+                    
+                    # Evidência raiz (texto da resposta) se for desta agenda
+                    if (ag and p in ag.perguntas.all()) or not ag:
+                        if r.texto_resposta and r.texto_resposta.strip():
+                            txt = r.texto_resposta.strip()
+                            if txt not in descricoes_ag: descricoes_ag.append(txt)
+
+            # 2. Define o status local para exibição (fallback para status_item se sem perguntas)
+            status_ag = reverse_hierarchy.get(pior_peso_ag, "P") if pior_peso_ag > 0 else status_item
+            if status_item == 'NA': status_ag = 'NA' # NA força NA local
+            if status_item == 'C' and status_ag in ['NC', 'OM']: status_ag = 'C' # Não pode ser pior localmente que a Av. Final consolidada
+
+            tabela_evid = "\n".join([f"• {t}" for t in titulos_ag]) if titulos_ag else "Nenhuma evidência registrada."
+            tabela_desc = "\n".join([f"• {d}" for d in descricoes_ag]) if descricoes_ag else ""
+            
+            if status_ag == 'NA':
+                pass # Itens NA não entram na tabela de detalhamento por área, apenas na lista global de Exclusões
+            elif status_ag == 'C':
+                desc_str = av_final.justificativa if (av_final and av_final.justificativa) else ""
+                if not tabela_desc.strip(): tabela_desc = "Evidências documentais em conformidade nesta área."
+                if desc_str: tabela_desc += f"\nRevisão: {desc_str}"
+                gaps_area_funcional.append({'area': area_nome, 'item_referencia': item.referencia, 'item_titulo': item.titulo, 'tipo': 'C', 'tipo_badge': "Conforme", 'descricao': desc_str, 'tabela_gap': 'Conforme', 'tabela_evidencia': tabela_evid.strip(), 'tabela_descricao': tabela_desc.strip()})
+            elif status_ag == 'OM':
+                if not tabela_evid.strip() or tabela_evid == "Nenhuma evidência registrada.": tabela_evid = "Amostragem realizada durante a auditoria."
+                desc_str = av_final.justificativa if (av_final and av_final.justificativa) else f"Oportunidade de aprimoramento."
+                if desc_str: tabela_desc += f"\nRevisão: {desc_str}"
+                gaps_area_funcional.append({'area': area_nome, 'item_referencia': item.referencia, 'item_titulo': item.titulo, 'tipo': 'OM', 'tipo_badge': f"Oportunidade (Item {item.referencia})", 'descricao': desc_str, 'tabela_gap': 'OM', 'tabela_evidencia': tabela_evid.strip(), 'tabela_descricao': tabela_desc.strip()})
+            elif status_ag == 'NC':
+                # Determina grau local ou global
+                is_maior_ag = False
+                if av_final and av_final.grau_nc:
+                    is_maior_ag = (av_final.grau_nc == 'MAIOR')
+                else:
+                    for p in todas_perguntas_item:
+                        r = respostas_map.get(p.id)
+                        if r:
+                            for s in r.solicitacoes.all():
+                                if (s.agenda == ag or (s.agenda is None and ag and p in ag.perguntas.all())):
+                                    if s.conclusao == 'NC' and s.grau_nc == 'MAIOR':
+                                        is_maior_ag = True
+                                        break
+                            if is_maior_ag: break
+                
+                if not is_maior_ag and not tabela_evid.strip(): tabela_evid = "Evidência constatada na área."
+                desc_str = av_final.justificativa if (av_final and av_final.justificativa) else f"Desvio identificado nesta área."
+                if desc_str: tabela_desc += f"\nRevisão: {desc_str}"
+                badge_nc = f"NC Maior (Item {item.referencia})" if is_maior_ag else f"NC Menor (Item {item.referencia})"
+                gaps_area_funcional.append({'area': area_nome, 'item_referencia': item.referencia, 'item_titulo': item.titulo, 'tipo': 'NC', 'tipo_badge': badge_nc, 'descricao': desc_str, 'tabela_gap': 'NC Maior' if is_maior_ag else 'NC Menor', 'tabela_evidencia': tabela_evid.strip(), 'tabela_descricao': tabela_desc.strip()})
+
+    # Ordena os gaps por Área/Processo e, em seguida, pelo Item da norma (para que a Tabela de Gaps exiba agrupada)
+    gaps_area_funcional.sort(key=lambda x: (x.get('area', ''), natural_sort_key(x.get('item_referencia', ''))))
 
     total_avaliados = count_c + count_om + count_nc_menor + count_nc_maior
     total_base_calc = total_avaliados if total_avaliados > 0 else (count_c + count_na or 1)
@@ -895,7 +877,7 @@ def populate_gaps_table_loop(table, gaps_list: List[Dict[str, Any]]):
         # 0. Área / Processo
         p0 = row.cells[0].paragraphs[0]
         p0.paragraph_format.space_after = Pt(0)
-        r0 = p0.add_run(gap.get('area', ''))
+        r0 = p0.add_run(f"{gap.get('area', '')}\n(Item {gap.get('item_referencia', '')})")
         r0.bold = True
         r0.font.size = Pt(8.5)
         r0.font.color.rgb = RGBColor(11, 37, 69)
@@ -1089,28 +1071,37 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
     # 4. Injeção de Tags Escalares no Documento
     replace_tags_in_document(doc, tag_dict)
 
-    # Função auxiliar para injetar listas como parágrafos clonados
+    # Função auxiliar para injetar listas como parágrafos clonados mantendo a formatação (ex: bullets/numeração)
     def inject_list_tags(doc, tag, items):
+        def replace_in_p(paragraph, old_text, new_text):
+            for run in paragraph.runs:
+                if old_text in run.text:
+                    run.text = run.text.replace(old_text, new_text)
+                    return
+            # Se a tag estiver dividida em múltiplos runs
+            if old_text in paragraph.text:
+                new_full = paragraph.text.replace(old_text, new_text)
+                for i, r in enumerate(paragraph.runs):
+                    if i == 0:
+                        r.text = new_full
+                    else:
+                        r.text = ""
+
         for p in doc.paragraphs:
             if tag in p.text:
-                # Removemos a tag do texto para os novos parágrafos
-                base_text = p.text.replace(tag, "").strip()
-                
-                # Se não houver itens, colocamos uma mensagem
                 if not items:
                     items = ["Nenhum registro encontrado."]
                 
-                # O primeiro item substitui o texto atual do parágrafo
-                p.text = (base_text + " " + items[0]).strip() if base_text else items[0]
+                original_p_xml = copy.deepcopy(p._p)
+                replace_in_p(p, tag, items[0])
                 
-                # Para os itens subsequentes, clonamos o parágrafo original
                 last_p = p
                 for item_text in items[1:]:
-                    new_p_xml = copy.deepcopy(p._p)
+                    new_p_xml = copy.deepcopy(original_p_xml)
                     last_p._p.addnext(new_p_xml)
                     from docx.text.paragraph import Paragraph
                     new_p = Paragraph(new_p_xml, p._parent)
-                    new_p.text = item_text
+                    replace_in_p(new_p, tag, item_text)
                     last_p = new_p
 
     # Injetar Listas formatadas nativamente
