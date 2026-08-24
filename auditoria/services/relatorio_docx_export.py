@@ -497,6 +497,21 @@ def compute_auditoria_metricas_completas(auditoria) -> Dict[str, Any]:
             def add_amostra(tipo, tit, desc):
                 if not tit:
                     return
+                
+                # Ignorar amostras genéricas se não possuírem descrição complementar
+                tit_clean = tit.strip().lower()
+                desc_clean = desc.strip() if desc else ""
+                textos_ignorados = [
+                    "avaliação realizada durante a auditoria.",
+                    "avaliação realizada durante a auditoria",
+                    "nova solicitação de evidência",
+                    "nova solicitação de evidência.",
+                    "evidências / documentos registrados"
+                ]
+                
+                if not desc_clean and tit_clean in textos_ignorados:
+                    return
+
                 idx_desc = -1
                 for i, (e_tit, e_desc) in enumerate(amostras_por_tipo[tipo]):
                     if e_desc and e_desc == desc:
@@ -558,8 +573,7 @@ def compute_auditoria_metricas_completas(auditoria) -> Dict[str, Any]:
             # Se a área foi avaliada mas não tem NENHUMA evidência registrada nos buckets
             has_evidence = any(amostras_por_tipo[t] for t in ['C', 'NC', 'OM'])
             if not has_evidence:
-                tipo = status_ag if status_ag in ['NC', 'OM'] else 'C'
-                amostras_por_tipo[tipo].append(("Avaliação realizada durante a auditoria.", ""))
+                pass # A pedido, não gera linha de amostra genérica quando não há descrição
 
             # Gera uma linha na tabela para cada TIPO de amostra encontrada na área
             for tipo in ['C', 'OM', 'NC']:
@@ -1072,9 +1086,16 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
 
     # Pontos Fracos (NC e OM)
     pontos_fracos_linhas = []
+    vistos = set()
     for gap in dados.get('gaps_area_funcional', []):
         if gap.get('tipo') in ['NC', 'OM']:
-            pontos_fracos_linhas.append(f"{gap['tipo_badge']}: {gap['descricao']}")
+            linha = f"{gap['tipo_badge']}: {gap['descricao']}".strip()
+            # Remove trailing colon if description is empty
+            if linha.endswith(':'):
+                linha = linha[:-1]
+            if linha not in vistos:
+                vistos.add(linha)
+                pontos_fracos_linhas.append(linha)
     if not pontos_fracos_linhas:
         pontos_fracos_linhas = ["Nenhuma Não Conformidade ou Oportunidade de Melhoria registrada."]
 
