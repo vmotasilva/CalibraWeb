@@ -1078,6 +1078,10 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
     if not pontos_fracos_linhas:
         pontos_fracos_linhas = ["Nenhuma Não Conformidade ou Oportunidade de Melhoria registrada."]
 
+    is_adequado = (dados.get('veredito_status') == 'ADEQUADO / CONFORME')
+    is_melhoria = (dados.get('veredito_status') == 'MELHORIA NECESSÁRIA / RESSALVA')
+    is_inadequado = (dados.get('veredito_status') == 'INADEQUADO / NÃO CONFORME')
+
     # Dicionário de Injeção de Tags (com sinônimos suportados)
     tag_dict = {
         '{{unidade}}': unidade_str,
@@ -1093,10 +1097,13 @@ def generate_relatorio_docx_buffer(auditoria) -> io.BytesIO:
         '{{sintese}}': getattr(auditoria, 'sintese', '') or '',
         '{{tipo_auditoria}}': tipo_auditoria_str,
         '{{modalidade}}': tipo_auditoria_str,
-        '{{presencial}}': "X" if is_presencial else "",
-        '{{remota}}': "X" if is_remota else "",
-        '{{is_presencial}}': "X" if is_presencial else "",
-        '{{is_remota}}': "X" if is_remota else "",
+        '{{presencial}}': "X" if is_presencial else "   ",
+        '{{remota}}': "X" if is_remota else "   ",
+        '{{is_presencial}}': "X" if is_presencial else "   ",
+        '{{is_remota}}': "X" if is_remota else "   ",
+        '{{resultado_adequado}}': "X" if is_adequado else "   ",
+        '{{resultado_melhoria}}': "X" if is_melhoria else "   ",
+        '{{resultado_inadequado}}': "X" if is_inadequado else "   ",
         '{{data_inicio}}': dt_ini,
         '{{data_fim}}': dt_fim,
         '{{data_final}}': dt_fim,
