@@ -679,12 +679,13 @@ def detalhe_instrumento_view(request, instrumento_id):
                             }
                         )
         
-        historico = HistoricoCalibracao.objects.filter(instrumento=inst).prefetch_related(
-            'resultados_faixa__faixa__unidade'
-        ).order_by("-data_calibracao")
+        historico = HistoricoCalibracao.objects.filter(instrumento=inst).prefetch_related('resultados_faixa').order_by("-data_calibracao")
     except Exception as e:
         logger.error(f"Erro ao buscar histórico: {e}")
-        historico = []
+        try:
+            historico = HistoricoCalibracao.objects.filter(instrumento=inst).order_by("-data_calibracao")
+        except Exception:
+            historico = []
 
     try:
         calibracoes = inst.calibracoes.all().order_by("-data_prevista")
