@@ -491,7 +491,7 @@
 
             <!-- MATRIZ DE TREINAMENTOS EM CASCATA -->
             <div class="card shadow-sm mb-4 border-0">
-                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <div>
                         <span class="fw-bold"><i class="bi bi-mortarboard"></i> Matriz de Treinamentos</span>
                         {% if total_treinamentos > 0 %}
@@ -503,16 +503,23 @@
                         {% endif %}
                         {% endif %}
                     </div>
-                    {% if can_edit %}
-                    <button type="button" class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#modalAssociarPerfil">
-                        <i class="bi bi-plus-circle"></i> Associar Perfil
-                    </button>
-                    {% endif %}
+                    <div class="d-flex align-items-center gap-2">
+                        {% if total_pendentes > 0 %}
+                        <button type="button" class="btn btn-sm btn-warning text-dark fw-bold btn-toggle-pendencias" onclick="toggleFocoPendencias(this)">
+                            <i class="bi bi-funnel-fill me-1"></i> <span>Apenas Pendências</span>
+                        </button>
+                        {% endif %}
+                        {% if can_edit %}
+                        <button type="button" class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#modalAssociarPerfil">
+                            <i class="bi bi-plus-circle"></i> Associar Perfil
+                        </button>
+                        {% endif %}
+                    </div>
                 </div>
                 <div class="card-body p-0">
                     {% if matriz_treinamentos %}
                         {% for perfil_codigo, perfil_data in matriz_treinamentos.items %}
-                        <div class="accordion accordion-flush" id="accordion-{{ perfil_codigo }}">
+                        <div class="accordion accordion-flush perfil-accordion-container" data-pendentes="{{ perfil_data.pendentes }}" id="accordion-{{ perfil_codigo }}">
                             <!-- PERFIL -->
                             <div class="accordion-item border-0">
                                 <h2 class="accordion-header">
@@ -537,14 +544,14 @@
                                                 </a>
                                             </div>
                                             {% if can_edit %}
-                                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmarRemocaoPerfil('{{ perfil_data.perfil.codigo }}', {{ perfil_data.perfil.id }}, {{ alvo.id }})">
+                                             <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmarRemocaoPerfil('{{ perfil_data.perfil.codigo }}', {{ perfil_data.perfil.id }}, {{ alvo.id }})">
                                                 <i class="bi bi-trash"></i> Remover Associação
                                             </button>
                                             {% endif %}
                                         </div>
                                         {% for grupo_id, grupo_data in perfil_data.grupos.items %}
                                         <!-- GRUPO -->
-                                        <div class="accordion accordion-flush ms-3" id="accordion-grupo-{{ grupo_id }}">
+                                        <div class="accordion accordion-flush ms-3 grupo-accordion-container" data-pendentes="{{ grupo_data.pendentes }}" id="accordion-grupo-{{ grupo_id }}">
                                             <div class="accordion-item border-0">
                                                 <h3 class="accordion-header">
                                                     <button class="accordion-button collapsed bg-white" type="button" data-bs-toggle="collapse" data-bs-target="#grupo-{{ grupo_id }}" aria-expanded="false">
@@ -559,7 +566,7 @@
                                                     <div class="accordion-body p-0">
                                                         {% for subgrupo_id, subgrupo_data in grupo_data.subgrupos.items %}
                                                         <!-- SUBGRUPO -->
-                                                        <div class="accordion accordion-flush ms-3" id="accordion-subgrupo-{{ subgrupo_id }}">
+                                                        <div class="accordion accordion-flush ms-3 subgrupo-accordion-container" data-pendentes="{{ subgrupo_data.pendentes }}" id="accordion-subgrupo-{{ subgrupo_id }}">
                                                             <div class="accordion-item border-0">
                                                                 <h4 class="accordion-header">
                                                                     <button class="accordion-button bg-white" type="button" data-bs-toggle="collapse" data-bs-target="#subgrupo-{{ subgrupo_id }}" aria-expanded="true">
@@ -589,7 +596,7 @@
                                                                                 </thead>
                                                                                 <tbody>
                                                                                     {% for item in subgrupo_data.procedimentos %}
-                                                                                    <tr>
+                                                                                    <tr class="item-procedimento-row" data-pendente="{% if not item.treinamento or item.treinamento.status_treinamento != 'OK' %}true{% else %}false{% endif %}">
                                                                                         <td class="text-start ps-3">
                                                                                             <strong>{{ item.procedimento.codigo }}</strong><br>
                                                                                             <small class="text-muted">{{ item.procedimento.nome|truncatewords:10 }}</small>
@@ -635,7 +642,7 @@
                                                                         <!-- PROCEDIMENTOS (CARDS MOBILE < 768px) -->
                                                                         <div class="d-block d-md-none p-2">
                                                                             {% for item in subgrupo_data.procedimentos %}
-                                                                            <div class="card mb-2 border shadow-sm p-2" style="background-color: #f8fafc;">
+                                                                            <div class="card mb-2 border shadow-sm p-2 item-procedimento-card" data-pendente="{% if not item.treinamento or item.treinamento.status_treinamento != 'OK' %}true{% else %}false{% endif %}" style="background-color: #f8fafc;">
                                                                                 <div class="d-flex justify-content-between align-items-start mb-1">
                                                                                     <div>
                                                                                         <strong class="text-primary small d-block">{{ item.procedimento.codigo }}</strong>
@@ -1205,11 +1212,16 @@
 <!-- 5. Offcanvas Matriz de Treinamentos -->
 <div class="offcanvas offcanvas-bottom h-75 rounded-top-4 shadow-lg d-md-none" tabindex="-1" id="offcanvasTreinamentos" aria-labelledby="offcanvasTreinamentosLabel">
     <div class="offcanvas-header bg-primary text-white rounded-top-4 py-3 px-3">
-        <div class="d-flex justify-content-between align-items-center w-100">
+        <div class="d-flex justify-content-between align-items-center w-100 flex-wrap gap-2">
             <h5 class="offcanvas-title fw-bold fs-6 mb-0 d-flex align-items-center" id="offcanvasTreinamentosLabel">
                 <i class="bi bi-mortarboard me-2 fs-5"></i> Matriz de Treinamentos
             </h5>
             <div class="d-flex align-items-center gap-2">
+                {% if total_pendentes > 0 %}
+                <button type="button" class="btn btn-sm btn-warning text-dark fw-bold py-1 px-2 btn-toggle-pendencias" style="font-size: 0.75rem;" onclick="toggleFocoPendencias(this)">
+                    <i class="bi bi-funnel-fill"></i> Pendências
+                </button>
+                {% endif %}
                 {% if can_edit %}
                 <button type="button" class="btn btn-sm btn-light py-1 px-2" style="font-size: 0.75rem;" data-bs-toggle="modal" data-bs-target="#modalAssociarPerfil">
                     <i class="bi bi-plus-lg"></i> Perfil
@@ -1222,7 +1234,7 @@
     <div class="offcanvas-body p-2">
         {% if matriz_treinamentos %}
             {% for perfil_codigo, perfil_data in matriz_treinamentos.items %}
-            <div class="card mb-3 border shadow-sm">
+            <div class="card mb-3 border shadow-sm perfil-card-container" data-pendentes="{{ perfil_data.pendentes }}">
                 <div class="card-header bg-light fw-bold small d-flex justify-content-between align-items-center">
                     <div>
                         <i class="bi bi-person-workspace text-primary me-1"></i> {{ perfil_data.perfil.codigo }} - {{ perfil_data.perfil.nome }}
@@ -1235,13 +1247,13 @@
                 </div>
                 <div class="card-body p-2">
                     {% for grupo_id, grupo_data in perfil_data.grupos.items %}
-                        <div class="mb-2">
+                        <div class="mb-2 grupo-card-container" data-pendentes="{{ grupo_data.pendentes }}">
                             <span class="fw-bold text-dark small"><i class="bi bi-folder2-open text-primary me-1"></i> {{ grupo_data.grupo.nome }}</span>
                             {% for subgrupo_id, subgrupo_data in grupo_data.subgrupos.items %}
-                                <div class="ms-2 mt-1">
+                                <div class="ms-2 mt-1 subgrupo-card-container" data-pendentes="{{ subgrupo_data.pendentes }}">
                                     <span class="text-secondary small fw-semibold"><i class="bi bi-folder me-1"></i> {{ subgrupo_data.subgrupo.nome }}</span>
                                     {% for item in subgrupo_data.procedimentos %}
-                                    <div class="card my-1 p-2 border bg-white shadow-none">
+                                    <div class="card my-1 p-2 border bg-white shadow-none item-procedimento-card" data-pendente="{% if not item.treinamento or item.treinamento.status_treinamento != 'OK' %}true{% else %}false{% endif %}">
                                         <div class="d-flex justify-content-between align-items-start">
                                             <div>
                                                 <strong class="text-primary small d-block">{{ item.procedimento.codigo }}</strong>
@@ -1533,6 +1545,116 @@ function confirmarRemocaoPerfil(perfilCodigo, perfilId, colaboradorId) {
         document.body.appendChild(form);
         form.submit();
     }
+}
+
+// Controle de Estado do Filtro de Pendências
+let focoApenasPendenciasAtivo = false;
+
+function toggleFocoPendencias(btnTrigger) {
+    focoApenasPendenciasAtivo = !focoApenasPendenciasAtivo;
+    
+    // Atualiza visual de todos os botões de toggle (desktop e mobile offcanvas)
+    const todosBotoes = document.querySelectorAll('.btn-toggle-pendencias');
+    todosBotoes.forEach(btn => {
+        if (focoApenasPendenciasAtivo) {
+            btn.classList.remove('btn-warning');
+            btn.classList.add('btn-light', 'text-danger', 'border-danger');
+            btn.innerHTML = '<i class="bi bi-eye me-1"></i> <span>Ver Todos</span>';
+        } else {
+            btn.classList.remove('btn-light', 'text-danger', 'border-danger');
+            btn.classList.add('btn-warning', 'text-dark');
+            btn.innerHTML = '<i class="bi bi-funnel-fill me-1"></i> <span>Apenas Pendências</span>';
+        }
+    });
+
+    // 1. Filtrar Linhas da Tabela Desktop
+    document.querySelectorAll('.item-procedimento-row').forEach(row => {
+        const isPendente = row.getAttribute('data-pendente') === 'true';
+        if (focoApenasPendenciasAtivo) {
+            row.style.display = isPendente ? '' : 'none';
+        } else {
+            row.style.display = '';
+        }
+    });
+
+    // 2. Filtrar Cards de Procedimento (Mobile)
+    document.querySelectorAll('.item-procedimento-card').forEach(card => {
+        const isPendente = card.getAttribute('data-pendente') === 'true';
+        if (focoApenasPendenciasAtivo) {
+            card.style.display = isPendente ? '' : 'none';
+        } else {
+            card.style.display = '';
+        }
+    });
+
+    // 3. Ocultar e Expandir Accordions (Desktop)
+    document.querySelectorAll('.subgrupo-accordion-container').forEach(subgrupo => {
+        const pendentes = parseInt(subgrupo.getAttribute('data-pendentes') || '0', 10);
+        const collapseEl = subgrupo.querySelector('.accordion-collapse');
+        if (focoApenasPendenciasAtivo) {
+            if (pendentes === 0) {
+                subgrupo.style.display = 'none';
+            } else {
+                subgrupo.style.display = '';
+                if (collapseEl && !collapseEl.classList.contains('show')) {
+                    const bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapseEl, { toggle: false });
+                    bsCollapse.show();
+                }
+            }
+        } else {
+            subgrupo.style.display = '';
+        }
+    });
+
+    document.querySelectorAll('.grupo-accordion-container').forEach(grupo => {
+        const pendentes = parseInt(grupo.getAttribute('data-pendentes') || '0', 10);
+        const collapseEl = grupo.querySelector('.accordion-collapse');
+        if (focoApenasPendenciasAtivo) {
+            if (pendentes === 0) {
+                grupo.style.display = 'none';
+            } else {
+                grupo.style.display = '';
+                if (collapseEl && !collapseEl.classList.contains('show')) {
+                    const bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapseEl, { toggle: false });
+                    bsCollapse.show();
+                }
+            }
+        } else {
+            grupo.style.display = '';
+        }
+    });
+
+    document.querySelectorAll('.perfil-accordion-container').forEach(perfil => {
+        const pendentes = parseInt(perfil.getAttribute('data-pendentes') || '0', 10);
+        const collapseEl = perfil.querySelector('.accordion-collapse');
+        if (focoApenasPendenciasAtivo) {
+            if (pendentes === 0) {
+                perfil.style.display = 'none';
+            } else {
+                perfil.style.display = '';
+                if (collapseEl && !collapseEl.classList.contains('show')) {
+                    const bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapseEl, { toggle: false });
+                    bsCollapse.show();
+                }
+            }
+        } else {
+            perfil.style.display = '';
+        }
+    });
+
+    // 4. Ocultar containers de perfil/grupo/subgrupo no Offcanvas Mobile
+    document.querySelectorAll('#offcanvasTreinamentos .subgrupo-card-container').forEach(subgrupo => {
+        const pendentes = parseInt(subgrupo.getAttribute('data-pendentes') || '0', 10);
+        subgrupo.style.display = (focoApenasPendenciasAtivo && pendentes === 0) ? 'none' : '';
+    });
+    document.querySelectorAll('#offcanvasTreinamentos .grupo-card-container').forEach(grupo => {
+        const pendentes = parseInt(grupo.getAttribute('data-pendentes') || '0', 10);
+        grupo.style.display = (focoApenasPendenciasAtivo && pendentes === 0) ? 'none' : '';
+    });
+    document.querySelectorAll('#offcanvasTreinamentos .perfil-card-container').forEach(perfil => {
+        const pendentes = parseInt(perfil.getAttribute('data-pendentes') || '0', 10);
+        perfil.style.display = (focoApenasPendenciasAtivo && pendentes === 0) ? 'none' : '';
+    });
 }
 </script>
 
