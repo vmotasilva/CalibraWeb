@@ -8347,10 +8347,49 @@ def api_iso_avaliacao_resumo(request, auditoria_id):
     m_pont = round(stats["media_pontualidade"] or 0, 1)
     m_clar = round(stats["media_clareza"] or 0, 1)
     m_cord = round(stats["media_cordialidade"] or 0, 1)
-    m_geral = round((m_pont + m_clar + m_cord) / 3, 1)
+    perguntas_qs = PerguntaAvaliacaoAuditorIso.objects.filter(
+        Q(auditoria=auditoria) | Q(auditoria__isnull=True, norma=auditoria.norma) | Q(auditoria__isnull=True, norma__isnull=True),
+        ativa=True
+    ).order_by("ordem", "id")
+
+    # Coleta médias de cada critério de estrelas dinâmico
+    criterios_estrelas = []
+    for p in perguntas_qs.filter(tipo='ESTRELAS_1_5'):
+        resps_p = RespostaItemAvaliacaoIso.objects.filter(
+            avaliacao__auditoria=auditoria,
+            pergunta=p,
+            nota_estrelas__isnull=False
+        )
+        total_p = resps_p.count()
+        media_p = 0
+        if total_p > 0:
+            media_p = round(resps_p.aggregate(Avg('nota_estrelas'))['nota_estrelas__avg'] or 0, 1)
+        criterios_estrelas.append({
+            "id": p.id,
+            "titulo": p.titulo,
+            "media": media_p,
+            "total_respostas": total_p
+        })
+
+    # Média Geral ponderada ou das respostas
+    if criterios_estrelas:
+        medias_validas = [c["media"] for c in criterios_estrelas if c["total_respostas"] > 0]
+        m_geral = round(sum(medias_validas) / len(medias_validas), 1) if medias_validas else 0.0
+    else:
+        m_geral = round((m_pont + m_clar + m_cord) / 3, 1) if total_avaliacoes > 0 else 0.0
 
     lista_avaliacoes = []
     for av in avaliacoes:
+        itens_respostas = []
+        for r_item in av.respostas_itens.select_related('pergunta').order_by('pergunta__ordem'):
+            itens_respostas.append({
+                "pergunta_id": r_item.pergunta.id,
+                "pergunta_titulo": r_item.pergunta.titulo,
+                "tipo": r_item.pergunta.tipo,
+                "nota_estrelas": r_item.nota_estrelas,
+                "texto_resposta": r_item.texto_resposta,
+            })
+
         lista_avaliacoes.append({
             "id": av.id,
             "nota_pontualidade": av.nota_pontualidade,
@@ -8362,6 +8401,7 @@ def api_iso_avaliacao_resumo(request, auditoria_id):
             "setor_avaliador": av.setor_avaliador or "Não especificado",
             "nome_avaliador": av.nome_avaliador or "Anônimo",
             "criado_em": av.criado_em.strftime("%d/%m/%Y %H:%M"),
+            "itens_customizados": itens_respostas
         })
 
     return JsonResponse({
@@ -8371,15 +8411,210 @@ def api_iso_avaliacao_resumo(request, auditoria_id):
         "media_pontualidade": m_pont,
         "media_clareza": m_clar,
         "media_cordialidade": m_cord,
+        "criterios_estrelas": criterios_estrelas,
         "avaliacoes": lista_avaliacoes
     })
+
+
+@login_required
+def api_iso_avaliacao_perguntas_list_create(request, auditoria_id):
+    """
+    Lista e cria perguntas de avaliação do auditor para uma auditoria específica.
+    """
+    from .models import PerguntaAvaliacaoAuditorIso, AuditoriaIso
+    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8")) if request.body else {}
+            titulo = data.get("titulo", "").strip()
+            if not titulo:
+                return JsonResponse({"success": False, "error": "O título da pergunta é obrigatório."}, status=400)
+
+            descricao = data.get("descricao", "").strip()
+            tipo = data.get("tipo", "ESTRELAS_1_5")
+            obrigatoria = bool(data.get("obrigatoria", True))
+            ordem = int(data.get("ordem", 1))
+
+            pergunta = PerguntaAvaliacaoAuditorIso.objects.create(
+                auditoria=auditoria,
+                norma=auditoria.norma,
+                titulo=titulo,
+                descricao=descricao,
+                tipo=tipo,
+                obrigatoria=obrigatoria,
+                ordem=ordem,
+                ativa=True
+            )
+            return JsonResponse({
+                "success": True,
+                "pergunta": {
+                    "id": pergunta.id,
+                    "titulo": pergunta.titulo,
+                    "descricao": pergunta.descricao,
+                    "tipo": pergunta.tipo,
+                    "ordem": pergunta.ordem,
+                    "obrigatoria": pergunta.obrigatoria,
+                    "ativa": pergunta.ativa,
+                    "origem": "auditoria"
+                }
+            })
+        except Exception as e:
+            return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+    # GET: Retorna perguntas associadas à auditoria ou herdadas da norma/globais
+    perguntas_auditoria = list(PerguntaAvaliacaoAuditorIso.objects.filter(auditoria=auditoria).order_by("ordem", "id"))
+    
+    if not perguntas_auditoria:
+        # Se ainda não possui customizações específicas, busca as perguntas padrão/globais
+        padroes = PerguntaAvaliacaoAuditorIso.objects.filter(
+            Q(norma=auditoria.norma) | Q(auditoria__isnull=True, norma__isnull=True),
+            ativa=True
+        ).order_by("ordem", "id")
+        
+        # Clona atomicamente os padrões para a auditoria
+        for p in padroes:
+            nova = PerguntaAvaliacaoAuditorIso.objects.create(
+                auditoria=auditoria,
+                norma=auditoria.norma,
+                titulo=p.titulo,
+                descricao=p.descricao,
+                tipo=p.tipo,
+                ordem=p.ordem,
+                obrigatoria=p.obrigatoria,
+                ativa=p.ativa
+            )
+            perguntas_auditoria.append(nova)
+
+    lista = []
+    for p in perguntas_auditoria:
+        lista.append({
+            "id": p.id,
+            "titulo": p.titulo,
+            "descricao": p.descricao,
+            "tipo": p.tipo,
+            "ordem": p.ordem,
+            "obrigatoria": p.obrigatoria,
+            "ativa": p.ativa,
+            "origem": "auditoria" if p.auditoria_id else "padrao"
+        })
+
+    return JsonResponse({"success": True, "perguntas": lista})
+
+
+@login_required
+@require_POST
+def api_iso_avaliacao_pergunta_update_delete(request, pk):
+    """
+    Edita, ativa/desativa ou remove uma pergunta de avaliação.
+    """
+    from .models import PerguntaAvaliacaoAuditorIso
+    pergunta = get_object_or_404(PerguntaAvaliacaoAuditorIso, pk=pk)
+
+    action = request.POST.get("action")
+    if not action and request.body:
+        try:
+            body_data = json.loads(request.body.decode("utf-8"))
+            action = body_data.get("action")
+        except Exception:
+            pass
+
+    if action == "delete":
+        pergunta.delete()
+        return JsonResponse({"success": True, "message": "Pergunta removida com sucesso."})
+
+    try:
+        data = json.loads(request.body.decode("utf-8")) if request.body else {}
+        if "titulo" in data:
+            pergunta.titulo = data["titulo"].strip()
+        if "descricao" in data:
+            pergunta.descricao = data["descricao"].strip()
+        if "tipo" in data:
+            pergunta.tipo = data["tipo"]
+        if "ordem" in data:
+            pergunta.ordem = int(data["ordem"])
+        if "obrigatoria" in data:
+            pergunta.obrigatoria = bool(data["obrigatoria"])
+        if "ativa" in data:
+            pergunta.ativa = bool(data["ativa"])
+        
+        pergunta.save()
+        return JsonResponse({"success": True, "message": "Pergunta atualizada com sucesso."})
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+
+@login_required
+@require_POST
+def api_iso_avaliacao_restaurar_padroes(request, auditoria_id):
+    """
+    Restaura as perguntas padrão da norma/globais para a auditoria.
+    """
+    from .models import PerguntaAvaliacaoAuditorIso, AuditoriaIso
+    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+    
+    # Remove perguntas existentes da auditoria
+    PerguntaAvaliacaoAuditorIso.objects.filter(auditoria=auditoria).delete()
+    
+    # Recria os 5 critérios fundamentais padrão
+    padroes = [
+        {
+            'titulo': 'Pontualidade e Cumprimento da Agenda',
+            'descricao': 'Organização do tempo, cumprimento dos horários e planejamento das entrevistas.',
+            'tipo': 'ESTRELAS_1_5',
+            'ordem': 1,
+            'obrigatoria': True
+        },
+        {
+            'titulo': 'Clareza e Comunicação',
+            'descricao': 'Clareza nas perguntas, explicações dos requisitos normativos e feedback objetivo.',
+            'tipo': 'ESTRELAS_1_5',
+            'ordem': 2,
+            'obrigatoria': True
+        },
+        {
+            'titulo': 'Cordialidade, Postura e Empatia',
+            'descricao': 'Postura profissional, respeito com os auditados, escuta ativa e conduta ética.',
+            'tipo': 'ESTRELAS_1_5',
+            'ordem': 3,
+            'obrigatoria': True
+        },
+        {
+            'titulo': 'Pontos Fortes do Auditor',
+            'descricao': 'O que o auditor fez bem durante a condução da auditoria?',
+            'tipo': 'TEXTO_LIVRE',
+            'ordem': 4,
+            'obrigatoria': False
+        },
+        {
+            'titulo': 'Oportunidades de Melhoria',
+            'descricao': 'O que a equipe auditora pode aprimorar em futuras auditorias?',
+            'tipo': 'TEXTO_LIVRE',
+            'ordem': 5,
+            'obrigatoria': False
+        }
+    ]
+
+    for p in padroes:
+        PerguntaAvaliacaoAuditorIso.objects.create(
+            auditoria=auditoria,
+            norma=auditoria.norma,
+            titulo=p['titulo'],
+            descricao=p['descricao'],
+            tipo=p['tipo'],
+            ordem=p['ordem'],
+            obrigatoria=p['obrigatoria'],
+            ativa=True
+        )
+
+    return JsonResponse({"success": True, "message": "Perguntas padrão restauradas com sucesso!"})
 
 
 def avaliacao_portal_publico_view(request, token):
     """
     Portal público de feedback do auditor (sem necessidade de login).
     """
-    from .models import TokenAvaliacaoIso
+    from .models import TokenAvaliacaoIso, PerguntaAvaliacaoAuditorIso
     token_obj = TokenAvaliacaoIso.objects.filter(token=token).first()
 
     if not token_obj or not token_obj.is_valid:
@@ -8393,6 +8628,18 @@ def avaliacao_portal_publico_view(request, token):
     token_obj.save(update_fields=["ultimo_acesso_em"])
 
     auditoria = token_obj.auditoria
+
+    # Perguntas ativas para a auditoria
+    perguntas = list(PerguntaAvaliacaoAuditorIso.objects.filter(
+        Q(auditoria=auditoria) | Q(auditoria__isnull=True, norma=auditoria.norma) | Q(auditoria__isnull=True, norma__isnull=True),
+        ativa=True
+    ).order_by("ordem", "id"))
+
+    if not perguntas:
+        # Garante defaults
+        perguntas_aud = api_iso_avaliacao_perguntas_list_create(request, auditoria.id)
+        perguntas = list(PerguntaAvaliacaoAuditorIso.objects.filter(auditoria=auditoria, ativa=True).order_by("ordem", "id"))
+
     context = {
         "token_obj": token_obj,
         "auditoria": auditoria,
@@ -8402,6 +8649,7 @@ def avaliacao_portal_publico_view(request, token):
         "auditor_lider": auditoria.auditor_lider_nome or "Equipe Auditora",
         "data_inicio": auditoria.data_inicio,
         "data_fim": auditoria.data_fim,
+        "perguntas": perguntas,
     }
     return render(request, "auditoria/iso/avaliacao/portal_publico.html", context)
 
@@ -8409,10 +8657,10 @@ def avaliacao_portal_publico_view(request, token):
 @require_POST
 def api_avaliacao_salvar_resposta_publica(request, token):
     """
-    Endpoint público para salvar a avaliação submetida pelo auditado.
+    Endpoint público para salvar a avaliação submetida pelo auditado com perguntas dinâmicas.
     """
     from django.http import JsonResponse
-    from .models import TokenAvaliacaoIso, AvaliacaoAuditorIso
+    from .models import TokenAvaliacaoIso, AvaliacaoAuditorIso, PerguntaAvaliacaoAuditorIso, RespostaItemAvaliacaoIso
 
     token_obj = TokenAvaliacaoIso.objects.filter(token=token).first()
     if not token_obj or not token_obj.is_valid:
@@ -8420,30 +8668,72 @@ def api_avaliacao_salvar_resposta_publica(request, token):
 
     try:
         data = json.loads(request.body.decode("utf-8")) if request.body else {}
+        auditoria = token_obj.auditoria
+
+        # Perguntas ativas
+        perguntas = list(PerguntaAvaliacaoAuditorIso.objects.filter(
+            Q(auditoria=auditoria) | Q(auditoria__isnull=True, norma=auditoria.norma) | Q(auditoria__isnull=True, norma__isnull=True),
+            ativa=True
+        ).order_by("ordem", "id"))
+
+        respostas_itens_payload = data.get("respostas_itens", {})
         
-        nota_pontualidade = int(data.get("nota_pontualidade", 0))
-        nota_clareza = int(data.get("nota_clareza", 0))
-        nota_cordialidade = int(data.get("nota_cordialidade", 0))
-
-        if not (1 <= nota_pontualidade <= 5 and 1 <= nota_clareza <= 5 and 1 <= nota_cordialidade <= 5):
-            return JsonResponse({"success": False, "error": "Por favor, avalie todas as 3 categorias com notas de 1 a 5 estrelas."}, status=400)
-
+        # Campos legados / fallback
+        nota_pont = int(data.get("nota_pontualidade", 5) or 5)
+        nota_clar = int(data.get("nota_clareza", 5) or 5)
+        nota_cord = int(data.get("nota_cordialidade", 5) or 5)
         pontos_fortes = data.get("pontos_fortes", "").strip()
-        oportunidades_melhoria = data.get("oportunidades_melhoria", "").strip()
+        oportunidades = data.get("oportunidades_melhoria", "").strip()
         setor_avaliador = data.get("setor_avaliador", "").strip()
         nome_avaliador = data.get("nome_avaliador", "").strip()
 
+        # Validação de perguntas obrigatórias
+        for p in perguntas:
+            val = respostas_itens_payload.get(str(p.id))
+            if p.obrigatoria:
+                if p.tipo == 'ESTRELAS_1_5' and (not val or not (1 <= int(val) <= 5)):
+                    return JsonResponse({"success": False, "error": f"Por favor, atribua uma nota de 1 a 5 estrelas para '{p.titulo}'."}, status=400)
+                if p.tipo == 'TEXTO_LIVRE' and not str(val).strip():
+                    return JsonResponse({"success": False, "error": f"Por favor, preencha o campo obrigatório '{p.titulo}'."}, status=400)
+
+        # Mapeia valores para legados se compatível
+        for p in perguntas:
+            val = respostas_itens_payload.get(str(p.id))
+            if not val: continue
+            tit_lower = p.titulo.lower()
+            if 'pontualidade' in tit_lower and p.tipo == 'ESTRELAS_1_5':
+                nota_pont = int(val)
+            elif 'clareza' in tit_lower and p.tipo == 'ESTRELAS_1_5':
+                nota_clar = int(val)
+            elif 'cordialidade' in tit_lower and p.tipo == 'ESTRELAS_1_5':
+                nota_cord = int(val)
+            elif 'fortes' in tit_lower and p.tipo == 'TEXTO_LIVRE':
+                pontos_fortes = str(val).strip()
+            elif 'melhoria' in tit_lower and p.tipo == 'TEXTO_LIVRE':
+                oportunidades = str(val).strip()
+
         av = AvaliacaoAuditorIso.objects.create(
-            auditoria=token_obj.auditoria,
+            auditoria=auditoria,
             token_origem=token_obj,
-            nota_pontualidade=nota_pontualidade,
-            nota_clareza=nota_clareza,
-            nota_cordialidade=nota_cordialidade,
+            nota_pontualidade=nota_pont,
+            nota_clareza=nota_clar,
+            nota_cordialidade=nota_cord,
             pontos_fortes=pontos_fortes,
-            oportunidades_melhoria=oportunidades_melhoria,
+            oportunidades_melhoria=oportunidades,
             setor_avaliador=setor_avaliador,
             nome_avaliador=nome_avaliador
         )
+
+        # Salva itens detalhados customizados
+        for p in perguntas:
+            val = respostas_itens_payload.get(str(p.id))
+            if val is not None and str(val).strip() != "":
+                RespostaItemAvaliacaoIso.objects.create(
+                    avaliacao=av,
+                    pergunta=p,
+                    nota_estrelas=int(val) if p.tipo == 'ESTRELAS_1_5' else None,
+                    texto_resposta=str(val).strip() if p.tipo == 'TEXTO_LIVRE' else ""
+                )
 
         token_obj.total_respostas = (token_obj.total_respostas or 0) + 1
         token_obj.save(update_fields=["total_respostas"])
@@ -8457,6 +8747,7 @@ def api_avaliacao_salvar_resposta_publica(request, token):
         import traceback
         traceback.print_exc()
         return JsonResponse({"success": False, "error": str(e)}, status=400)
+
 
 
 

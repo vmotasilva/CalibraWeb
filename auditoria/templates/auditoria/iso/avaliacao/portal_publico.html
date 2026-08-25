@@ -196,106 +196,59 @@
 
                 <form id="formAvaliacaoAuditor" onsubmit="event.preventDefault(); submeterAvaliacao();">
                     
-                    <!-- Critério 1: Pontualidade -->
-                    <div class="rating-box mb-3">
-                        <div class="d-flex justify-content-between align-items-start mb-2 flex-wrap gap-2">
-                            <div>
-                                <label class="fw-bold text-dark mb-0 fs-6">1. Pontualidade e Cumprimento da Agenda <span class="text-danger">*</span></label>
-                                <small class="text-muted d-block">Organização do tempo, cumprimento dos horários e planejamento das entrevistas.</small>
+                    {% for p in perguntas %}
+                        {% if p.tipo == 'ESTRELAS_1_5' %}
+                            <!-- Pergunta de Estrelas Dinâmica -->
+                            <div class="rating-box mb-3" data-pergunta-id="{{ p.id }}" data-pergunta-tipo="ESTRELAS_1_5" data-obrigatoria="{{ p.obrigatoria|yesno:'true,false' }}">
+                                <div class="d-flex justify-content-between align-items-start mb-2 flex-wrap gap-2">
+                                    <div>
+                                        <label class="fw-bold text-dark mb-0 fs-6">
+                                            {{ forloop.counter }}. {{ p.titulo }}
+                                            {% if p.obrigatoria %}<span class="text-danger">*</span>{% endif %}
+                                        </label>
+                                        {% if p.descricao %}
+                                            <small class="text-muted d-block">{{ p.descricao }}</small>
+                                        {% endif %}
+                                    </div>
+                                    <span class="badge-legend" id="legend_p_{{ p.id }}">Selecione uma nota</span>
+                                </div>
+                                <div class="stars-container mt-2">
+                                    <input type="radio" id="p_{{ p.id }}_5" name="nota_p_{{ p.id }}" value="5" class="star-radio" onchange="atualizarLegenda('p_{{ p.id }}', 5)" {% if p.obrigatoria %}required{% endif %}>
+                                    <label for="p_{{ p.id }}_5" class="star-label bi bi-star-fill" title="5 estrelas - Excelente"></label>
+
+                                    <input type="radio" id="p_{{ p.id }}_4" name="nota_p_{{ p.id }}" value="4" class="star-radio" onchange="atualizarLegenda('p_{{ p.id }}', 4)">
+                                    <label for="p_{{ p.id }}_4" class="star-label bi bi-star-fill" title="4 estrelas - Bom"></label>
+
+                                    <input type="radio" id="p_{{ p.id }}_3" name="nota_p_{{ p.id }}" value="3" class="star-radio" onchange="atualizarLegenda('p_{{ p.id }}', 3)">
+                                    <label for="p_{{ p.id }}_3" class="star-label bi bi-star-fill" title="3 estrelas - Regular"></label>
+
+                                    <input type="radio" id="p_{{ p.id }}_2" name="nota_p_{{ p.id }}" value="2" class="star-radio" onchange="atualizarLegenda('p_{{ p.id }}', 2)">
+                                    <label for="p_{{ p.id }}_2" class="star-label bi bi-star-fill" title="2 estrelas - Ruim"></label>
+
+                                    <input type="radio" id="p_{{ p.id }}_1" name="nota_p_{{ p.id }}" value="1" class="star-radio" onchange="atualizarLegenda('p_{{ p.id }}', 1)">
+                                    <label for="p_{{ p.id }}_1" class="star-label bi bi-star-fill" title="1 estrela - Muito Ruim"></label>
+                                </div>
                             </div>
-                            <span class="badge-legend" id="legend_pontualidade">Selecione uma nota</span>
-                        </div>
-                        <div class="stars-container mt-2">
-                            <input type="radio" id="pont_5" name="nota_pontualidade" value="5" class="star-radio" onchange="atualizarLegenda('pontualidade', 5)" required>
-                            <label for="pont_5" class="star-label bi bi-star-fill" title="5 estrelas - Excelente"></label>
-
-                            <input type="radio" id="pont_4" name="nota_pontualidade" value="4" class="star-radio" onchange="atualizarLegenda('pontualidade', 4)">
-                            <label for="pont_4" class="star-label bi bi-star-fill" title="4 estrelas - Bom"></label>
-
-                            <input type="radio" id="pont_3" name="nota_pontualidade" value="3" class="star-radio" onchange="atualizarLegenda('pontualidade', 3)">
-                            <label for="pont_3" class="star-label bi bi-star-fill" title="3 estrelas - Regular"></label>
-
-                            <input type="radio" id="pont_2" name="nota_pontualidade" value="2" class="star-radio" onchange="atualizarLegenda('pontualidade', 2)">
-                            <label for="pont_2" class="star-label bi bi-star-fill" title="2 estrelas - Ruim"></label>
-
-                            <input type="radio" id="pont_1" name="nota_pontualidade" value="1" class="star-radio" onchange="atualizarLegenda('pontualidade', 1)">
-                            <label for="pont_1" class="star-label bi bi-star-fill" title="1 estrela - Muito Ruim"></label>
-                        </div>
-                    </div>
-
-                    <!-- Critério 2: Clareza -->
-                    <div class="rating-box mb-3">
-                        <div class="d-flex justify-content-between align-items-start mb-2 flex-wrap gap-2">
-                            <div>
-                                <label class="fw-bold text-dark mb-0 fs-6">2. Clareza e Comunicação <span class="text-danger">*</span></label>
-                                <small class="text-muted d-block">Clareza nas perguntas, explicações dos requisitos normativos e feedback objetivo.</small>
+                        {% else %}
+                            <!-- Pergunta Dissertativa Dinâmica -->
+                            <div class="mb-3" data-pergunta-id="{{ p.id }}" data-pergunta-tipo="TEXTO_LIVRE" data-obrigatoria="{{ p.obrigatoria|yesno:'true,false' }}">
+                                <label for="input_p_{{ p.id }}" class="form-label fw-bold text-dark small">
+                                    <i class="bi bi-chat-left-text-fill text-primary me-1"></i> {{ forloop.counter }}. {{ p.titulo }}
+                                    {% if p.obrigatoria %}<span class="text-danger">*</span>{% endif %}
+                                </label>
+                                {% if p.descricao %}
+                                    <small class="text-muted d-block mb-1">{{ p.descricao }}</small>
+                                {% endif %}
+                                <textarea class="form-control rounded-3" id="input_p_{{ p.id }}" rows="3" 
+                                          placeholder="Digite sua resposta e comentários..." {% if p.obrigatoria %}required{% endif %}></textarea>
                             </div>
-                            <span class="badge-legend" id="legend_clareza">Selecione uma nota</span>
-                        </div>
-                        <div class="stars-container mt-2">
-                            <input type="radio" id="clar_5" name="nota_clareza" value="5" class="star-radio" onchange="atualizarLegenda('clareza', 5)" required>
-                            <label for="clar_5" class="star-label bi bi-star-fill" title="5 estrelas - Excelente"></label>
-
-                            <input type="radio" id="clar_4" name="nota_clareza" value="4" class="star-radio" onchange="atualizarLegenda('clareza', 4)">
-                            <label for="clar_4" class="star-label bi bi-star-fill" title="4 estrelas - Bom"></label>
-
-                            <input type="radio" id="clar_3" name="nota_clareza" value="3" class="star-radio" onchange="atualizarLegenda('clareza', 3)">
-                            <label for="clar_3" class="star-label bi bi-star-fill" title="3 estrelas - Regular"></label>
-
-                            <input type="radio" id="clar_2" name="nota_clareza" value="2" class="star-radio" onchange="atualizarLegenda('clareza', 2)">
-                            <label for="clar_2" class="star-label bi bi-star-fill" title="2 estrelas - Ruim"></label>
-
-                            <input type="radio" id="clar_1" name="nota_clareza" value="1" class="star-radio" onchange="atualizarLegenda('clareza', 1)">
-                            <label for="clar_1" class="star-label bi bi-star-fill" title="1 estrela - Muito Ruim"></label>
-                        </div>
-                    </div>
-
-                    <!-- Critério 3: Cordialidade -->
-                    <div class="rating-box mb-4">
-                        <div class="d-flex justify-content-between align-items-start mb-2 flex-wrap gap-2">
-                            <div>
-                                <label class="fw-bold text-dark mb-0 fs-6">3. Cordialidade, Ética e Empatia <span class="text-danger">*</span></label>
-                                <small class="text-muted d-block">Postura profissional, respeito com os auditados, escuta ativa e conduta ética.</small>
-                            </div>
-                            <span class="badge-legend" id="legend_cordialidade">Selecione uma nota</span>
-                        </div>
-                        <div class="stars-container mt-2">
-                            <input type="radio" id="cord_5" name="nota_cordialidade" value="5" class="star-radio" onchange="atualizarLegenda('cordialidade', 5)" required>
-                            <label for="cord_5" class="star-label bi bi-star-fill" title="5 estrelas - Excelente"></label>
-
-                            <input type="radio" id="cord_4" name="nota_cordialidade" value="4" class="star-radio" onchange="atualizarLegenda('cordialidade', 4)">
-                            <label for="cord_4" class="star-label bi bi-star-fill" title="4 estrelas - Bom"></label>
-
-                            <input type="radio" id="cord_3" name="nota_cordialidade" value="3" class="star-radio" onchange="atualizarLegenda('cordialidade', 3)">
-                            <label for="cord_3" class="star-label bi bi-star-fill" title="3 estrelas - Regular"></label>
-
-                            <input type="radio" id="cord_2" name="nota_cordialidade" value="2" class="star-radio" onchange="atualizarLegenda('cordialidade', 2)">
-                            <label for="cord_2" class="star-label bi bi-star-fill" title="2 estrelas - Ruim"></label>
-
-                            <input type="radio" id="cord_1" name="nota_cordialidade" value="1" class="star-radio" onchange="atualizarLegenda('cordialidade', 1)">
-                            <label for="cord_1" class="star-label bi bi-star-fill" title="1 estrela - Muito Ruim"></label>
-                        </div>
-                    </div>
-
-                    <!-- Campos de Texto Livre -->
-                    <div class="mb-3">
-                        <label for="inputPontosFortes" class="form-label fw-bold text-dark small">
-                            <i class="bi bi-hand-thumbs-up-fill text-success me-1"></i> Pontos Fortes (O que o auditor fez bem?):
-                        </label>
-                        <textarea class="form-control rounded-3" id="inputPontosFortes" rows="3" 
-                                  placeholder="Ex: Condução leve e focada em melhorias, ótimo domínio da norma, pontualidade..."></textarea>
-                    </div>
-
-                    <div class="mb-4">
-                        <label for="inputOportunidades" class="form-label fw-bold text-dark small">
-                            <i class="bi bi-lightbulb-fill text-warning me-1"></i> Oportunidades de Melhoria (O que pode melhorar?):
-                        </label>
-                        <textarea class="form-control rounded-3" id="inputOportunidades" rows="3" 
-                                  placeholder="Ex: Dar mais tempo para busca de evidências, aprofundar no setor de manutenção..."></textarea>
-                    </div>
+                        {% endif %}
+                    {% empty %}
+                        <div class="alert alert-info small">Nenhum critério cadastrado para esta avaliação.</div>
+                    {% endfor %}
 
                     <!-- Identificação Opcional -->
-                    <div class="p-3 bg-light rounded-3 border mb-4">
+                    <div class="p-3 bg-light rounded-3 border mb-4 mt-4">
                         <h6 class="fw-bold text-dark small mb-2"><i class="bi bi-person-gear text-secondary me-1"></i> Identificação do Avaliador (Opcional)</h6>
                         <div class="row g-2">
                             <div class="col-md-6">
@@ -361,13 +314,32 @@
         }
 
         async function submeterAvaliacao() {
-            const notaPont = document.querySelector('input[name="nota_pontualidade"]:checked');
-            const notaClar = document.querySelector('input[name="nota_clareza"]:checked');
-            const notaCord = document.querySelector('input[name="nota_cordialidade"]:checked');
+            const boxes = document.querySelectorAll("[data-pergunta-id]");
+            const respostasItens = {};
 
-            if (!notaPont || !notaClar || !notaCord) {
-                alert("Por favor, selecione as estrelas de avaliação para os 3 critérios.");
-                return;
+            for (const b of boxes) {
+                const pId = b.getAttribute("data-pergunta-id");
+                const pTipo = b.getAttribute("data-pergunta-tipo");
+                const obrigatoria = b.getAttribute("data-obrigatoria") === "true";
+
+                if (pTipo === "ESTRELAS_1_5") {
+                    const checkedRadio = document.querySelector(`input[name="nota_p_${pId}"]:checked`);
+                    if (obrigatoria && !checkedRadio) {
+                        alert("Por favor, selecione uma nota de 1 a 5 estrelas para todos os critérios obrigatórios.");
+                        return;
+                    }
+                    if (checkedRadio) {
+                        respostasItens[pId] = parseInt(checkedRadio.value);
+                    }
+                } else if (pTipo === "TEXTO_LIVRE") {
+                    const textarea = document.getElementById(`input_p_${pId}`);
+                    const val = textarea ? textarea.value.trim() : "";
+                    if (obrigatoria && !val) {
+                        alert("Por favor, preencha todas as respostas dissertativas obrigatórias.");
+                        return;
+                    }
+                    respostasItens[pId] = val;
+                }
             }
 
             const btn = document.getElementById("btnEnviarAvaliacao");
@@ -375,11 +347,7 @@
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Enviando...';
 
             const payload = {
-                nota_pontualidade: parseInt(notaPont.value),
-                nota_clareza: parseInt(notaClar.value),
-                nota_cordialidade: parseInt(notaCord.value),
-                pontos_fortes: document.getElementById("inputPontosFortes").value.trim(),
-                oportunidades_melhoria: document.getElementById("inputOportunidades").value.trim(),
+                respostas_itens: respostasItens,
                 setor_avaliador: document.getElementById("inputSetor").value.trim(),
                 nome_avaliador: document.getElementById("inputNome").value.trim()
             };
@@ -406,7 +374,7 @@
                 }
             } catch (err) {
                 console.error(err);
-                alert("Erro de comunicação com o servidor. Tente novamente.");
+                alert("Erro de comunicação com o servidor.");
                 btn.disabled = false;
                 btn.innerHTML = '<i class="bi bi-send-fill me-2"></i> Enviar Avaliação';
             }

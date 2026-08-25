@@ -1487,11 +1487,98 @@ class AvaliacaoAuditorIso(models.Model):
 
     @property
     def media_individual(self) -> float:
+        resps_estrelas = self.respostas_itens.filter(pergunta__tipo='ESTRELAS_1_5', nota_estrelas__isnull=False)
+        if resps_estrelas.exists():
+            notas = [r.nota_estrelas for r in resps_estrelas]
+            return round(sum(notas) / len(notas), 1)
         notas = [self.nota_pontualidade, self.nota_clareza, self.nota_cordialidade]
-        return round(sum(notas) / len(notas), 1)
+        notas_validas = [n for n in notas if n]
+        if notas_validas:
+            return round(sum(notas_validas) / len(notas_validas), 1)
+        return 0.0
 
     def __str__(self):
         setor = self.setor_avaliador or "Anônimo"
         return f"Avaliação {self.auditoria} - {setor} (Média: {self.media_individual})"
+
+
+class PerguntaAvaliacaoAuditorIso(models.Model):
+    """
+    Perguntas personalizáveis de avaliação do auditor. Podem ser vinculadas
+    a uma auditoria específica ou à Norma (modelo padrão).
+    """
+    TIPO_CHOICES = [
+        ('ESTRELAS_1_5', 'Classificação por Estrelas (1 a 5)'),
+        ('TEXTO_LIVRE', 'Caixa de Texto / Resposta Dissertativa'),
+    ]
+
+    auditoria = models.ForeignKey(
+        AuditoriaIso,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="perguntas_avaliacao",
+        verbose_name="Auditoria Específica"
+    )
+    norma = models.ForeignKey(
+        NormaIso,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="perguntas_avaliacao_padrao",
+        verbose_name="Norma Base"
+    )
+    titulo = models.CharField(max_length=255, verbose_name="Título / Critério Avaliado")
+    descricao = models.TextField(blank=True, default="", verbose_name="Dica / Explicação do Critério")
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default='ESTRELAS_1_5', verbose_name="Tipo de Resposta")
+    ordem = models.PositiveIntegerField(default=1, verbose_name="Ordem de Exibição")
+    obrigatoria = models.BooleanField(default=True, verbose_name="Resposta Obrigatória")
+    ativa = models.BooleanField(default=True, verbose_name="Pergunta Ativa")
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Pergunta de Avaliação do Auditor"
+        verbose_name_plural = "Perguntas de Avaliação do Auditor"
+        ordering = ["ordem", "id"]
+
+    def __str__(self):
+        escopo = self.auditoria or self.norma or "Geral"
+        return f"[{escopo}] {self.ordem}. {self.titulo} ({self.get_tipo_display()})"
+
+
+class RespostaItemAvaliacaoIso(models.Model):
+    """
+    Resposta individual para cada pergunta customizada no formulário de avaliação.
+    """
+    avaliacao = models.ForeignKey(
+        AvaliacaoAuditorIso,
+        on_delete=models.CASCADE,
+        related_name="respostas_itens",
+        verbose_name="Avaliação Pai"
+    )
+    pergunta = models.ForeignKey(
+        PerguntaAvaliacaoAuditorIso,
+        on_delete=models.CASCADE,
+        related_name="respostas_coletadas",
+        verbose_name="Pergunta Avaliada"
+    )
+    nota_estrelas = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Nota em Estrelas (1 a 5)"
+    )
+    texto_resposta = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Resposta em Texto"
+    )
+
+    class Meta:
+        verbose_name = "Resposta de Item de Avaliação"
+        verbose_name_plural = "Respostas de Itens de Avaliação"
+
+    def __str__(self):
+        return f"Resp {self.avaliacao_id} -> {self.pergunta.titulo}: {self.nota_estrelas or self.texto_resposta[:30]}"
+
 
 

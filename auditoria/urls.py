@@ -165,10 +165,14 @@ urlpatterns = [
     # ==========================================
     path("iso/<int:auditoria_id>/api/avaliacao/gerar-link/", views.api_iso_avaliacao_gerar_link, name="api_iso_avaliacao_gerar_link"),
     path("iso/<int:auditoria_id>/api/avaliacao/resumo/", views.api_iso_avaliacao_resumo, name="api_iso_avaliacao_resumo"),
+    path("iso/<int:auditoria_id>/api/avaliacao/perguntas/", views.api_iso_avaliacao_perguntas_list_create, name="api_iso_avaliacao_perguntas_list_create"),
+    path("iso/api/avaliacao/perguntas/<int:pk>/", views.api_iso_avaliacao_pergunta_update_delete, name="api_iso_avaliacao_pergunta_update_delete"),
+    path("iso/<int:auditoria_id>/api/avaliacao/perguntas/restaurar-padroes/", views.api_iso_avaliacao_restaurar_padroes, name="api_iso_avaliacao_restaurar_padroes"),
     
     # Rota Pública Aberta (Sem Login) - Avaliação
     path("avaliacao/responder/<str:token>/", views.avaliacao_portal_publico_view, name="avaliacao_portal_publico"),
     path("avaliacao/api/salvar-resposta/<str:token>/", views.api_avaliacao_salvar_resposta_publica, name="api_avaliacao_salvar_resposta_publica"),
 ]
+
 
 

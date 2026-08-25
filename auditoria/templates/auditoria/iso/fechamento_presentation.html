@@ -213,6 +213,9 @@
             <span class="text-white fw-bold"><i class="bi bi-easel2-fill text-primary me-2"></i>Apresentação & Relatório Executivo</span>
         </div>
         <div class="d-flex align-items-center gap-2 flex-wrap">
+            <button type="button" class="btn btn-sm btn-outline-warning text-warning rounded-pill px-3 fw-bold" onclick="abrirModalConfigPerguntasAvaliacao()">
+                <i class="bi bi-ui-checks-grid me-1"></i> ⚙️ Configurar Perguntas
+            </button>
             <button type="button" class="btn btn-sm btn-warning text-dark rounded-pill px-3.5 fw-bold shadow-sm" onclick="gerarLinkAvaliacaoAuditor()">
                 <i class="bi bi-star-fill me-1"></i> ⭐ Gerar Link de Avaliação
             </button>
@@ -1087,6 +1090,186 @@
         }
 
         // ==========================================
+        // CONFIGURAÇÃO DE PERGUNTAS DE AVALIAÇÃO
+        // ==========================================
+
+        async function abrirModalConfigPerguntasAvaliacao() {
+            const modalEl = document.getElementById('modalConfigPerguntasAvaliacao');
+            new bootstrap.Modal(modalEl).show();
+            await carregarPerguntasConfig();
+        }
+
+        async function carregarPerguntasConfig() {
+            const container = document.getElementById('containerListaPerguntasConfig');
+            container.innerHTML = '<div class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span> Carregando critérios de avaliação...</div>';
+
+            try {
+                const response = await fetch("{% url 'auditoria:api_iso_avaliacao_perguntas_list_create' auditoria.id %}");
+                const res = await response.json();
+                if (res.success && res.perguntas) {
+                    renderizarListaPerguntasConfig(res.perguntas);
+                } else {
+                    container.innerHTML = '<div class="text-danger p-3">Erro ao carregar critérios.</div>';
+                }
+            } catch (err) {
+                console.error(err);
+                container.innerHTML = '<div class="text-danger p-3">Erro de comunicação.</div>';
+            }
+        }
+
+        function renderizarListaPerguntasConfig(perguntas) {
+            const container = document.getElementById('containerListaPerguntasConfig');
+            if (perguntas.length === 0) {
+                container.innerHTML = '<div class="text-muted text-center py-4">Nenhuma pergunta configurada. Clique em "Adicionar Pergunta" ou "Restaurar Padrões".</div>';
+                return;
+            }
+
+            container.innerHTML = '';
+            perguntas.forEach((p, idx) => {
+                const div = document.createElement('div');
+                div.className = 'p-3 bg-light rounded-3 border mb-2 d-flex justify-content-between align-items-center gap-2';
+                div.innerHTML = `
+                    <div class="d-flex align-items-start gap-2">
+                        <span class="badge bg-secondary rounded-circle px-2 py-1">${p.ordem || idx + 1}</span>
+                        <div>
+                            <div class="fw-bold text-dark fs-6 mb-0">
+                                ${p.titulo} 
+                                ${p.tipo === 'ESTRELAS_1_5' ? '<span class="badge bg-warning text-dark ms-1" style="font-size:0.7rem;">⭐ 1 a 5 Estrelas</span>' : '<span class="badge bg-info text-dark ms-1" style="font-size:0.7rem;">✍️ Dissertativa</span>'}
+                                ${p.obrigatoria ? '<span class="badge bg-danger bg-opacity-10 text-danger ms-1" style="font-size:0.68rem;">Obrigatória</span>' : '<span class="badge bg-secondary bg-opacity-10 text-secondary ms-1" style="font-size:0.68rem;">Opcional</span>'}
+                            </div>
+                            <small class="text-muted d-block">${p.descricao || 'Sem descrição/dica adicional'}</small>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-1">
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-circle p-1 px-2" title="Editar Critério" onclick='abrirModalEditarPergunta(${JSON.stringify(p)})'>
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger rounded-circle p-1 px-2" title="Excluir Pergunta" onclick="excluirPerguntaConfig(${p.id})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function abrirModalCriarPergunta() {
+            document.getElementById('formPerguntaModalTitulo').textContent = 'Nova Pergunta de Avaliação';
+            document.getElementById('perguntaEditId').value = '';
+            document.getElementById('inputPerguntaTitulo').value = '';
+            document.getElementById('inputPerguntaDescricao').value = '';
+            document.getElementById('selectPerguntaTipo').value = 'ESTRELAS_1_5';
+            document.getElementById('inputPerguntaOrdem').value = '10';
+            document.getElementById('checkPerguntaObrigatoria').checked = true;
+            new bootstrap.Modal(document.getElementById('modalFormPergunta')).show();
+        }
+
+        function abrirModalEditarPergunta(p) {
+            document.getElementById('formPerguntaModalTitulo').textContent = 'Editar Pergunta de Avaliação';
+            document.getElementById('perguntaEditId').value = p.id;
+            document.getElementById('inputPerguntaTitulo').value = p.titulo;
+            document.getElementById('inputPerguntaDescricao').value = p.descricao || '';
+            document.getElementById('selectPerguntaTipo').value = p.tipo;
+            document.getElementById('inputPerguntaOrdem').value = p.ordem || 1;
+            document.getElementById('checkPerguntaObrigatoria').checked = !!p.obrigatoria;
+            new bootstrap.Modal(document.getElementById('modalFormPergunta')).show();
+        }
+
+        async function salvarPerguntaConfig() {
+            const pId = document.getElementById('perguntaEditId').value;
+            const titulo = document.getElementById('inputPerguntaTitulo').value.trim();
+            if (!titulo) {
+                alert('Informe o título/critério da pergunta.');
+                return;
+            }
+
+            const payload = {
+                titulo: titulo,
+                descricao: document.getElementById('inputPerguntaDescricao').value.trim(),
+                tipo: document.getElementById('selectPerguntaTipo').value,
+                ordem: parseInt(document.getElementById('inputPerguntaOrdem').value) || 1,
+                obrigatoria: document.getElementById('checkPerguntaObrigatoria').checked,
+                ativa: true
+            };
+
+            try {
+                let url = "{% url 'auditoria:api_iso_avaliacao_perguntas_list_create' auditoria.id %}";
+                if (pId) {
+                    url = `/auditoria/iso/api/avaliacao/perguntas/${pId}/`;
+                }
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const res = await response.json();
+                if (res.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('modalFormPergunta')).hide();
+                    await carregarPerguntasConfig();
+                } else {
+                    alert('Erro ao salvar pergunta: ' + (res.error || 'Erro desconhecido.'));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Erro de comunicação.');
+            }
+        }
+
+        async function excluirPerguntaConfig(pId) {
+            if (!confirm('Deseja realmente remover esta pergunta de avaliação?')) return;
+
+            try {
+                const response = await fetch(`/auditoria/iso/api/avaliacao/perguntas/${pId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({ action: 'delete' })
+                });
+
+                const res = await response.json();
+                if (res.success) {
+                    await carregarPerguntasConfig();
+                } else {
+                    alert('Erro ao remover: ' + (res.error || 'Erro desconhecido.'));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Erro de comunicação.');
+            }
+        }
+
+        async function restaurarPadroesPerguntas() {
+            if (!confirm('Deseja restaurar as perguntas padrão recomendadas (Pontualidade, Clareza, Cordialidade, Pontos Fortes e Oportunidades)?')) return;
+
+            try {
+                const response = await fetch("{% url 'auditoria:api_iso_avaliacao_restaurar_padroes' auditoria.id %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                });
+
+                const res = await response.json();
+                if (res.success) {
+                    await carregarPerguntasConfig();
+                } else {
+                    alert('Erro ao restaurar: ' + (res.error || 'Erro desconhecido.'));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Erro de comunicação.');
+            }
+        }
+
+        // ==========================================
         // AVALIAÇÃO DO AUDITOR & FEEDBACK
         // ==========================================
 
@@ -1127,6 +1310,7 @@
         async function abrirModalDashboardAvaliacoes() {
             const modalEl = document.getElementById('modalDashboardAvaliacoes');
             const containerFeedbacks = document.getElementById('containerListaFeedbacks');
+            const containerCriterios = document.getElementById('containerCriteriosDinamicos');
             
             new bootstrap.Modal(modalEl).show();
             containerFeedbacks.innerHTML = '<div class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span> Carregando avaliações...</div>';
@@ -1138,15 +1322,73 @@
                 if (res.success) {
                     document.getElementById('dashTotalAvaliacoes').textContent = res.total_avaliacoes;
                     document.getElementById('dashMediaGeral').textContent = res.media_geral ? `${res.media_geral} ★` : '-';
-                    document.getElementById('dashPontualidade').textContent = res.media_pontualidade ? `${res.media_pontualidade} ★` : '-';
-                    document.getElementById('dashClareza').textContent = res.media_clareza ? `${res.media_clareza} ★` : '-';
-                    document.getElementById('dashCordialidade').textContent = res.media_cordialidade ? `${res.media_cordialidade} ★` : '-';
+                    
+                    // Renderiza critérios dinâmicos
+                    if (containerCriterios && res.criterios_estrelas && res.criterios_estrelas.length > 0) {
+                        containerCriterios.innerHTML = '';
+                        res.criterios_estrelas.forEach(c => {
+                            const col = document.createElement('div');
+                            col.className = 'col-6 col-md-3';
+                            col.innerHTML = `
+                                <div class="p-3 bg-light rounded-3 border text-center h-100">
+                                    <small class="text-muted text-uppercase fw-bold d-block text-truncate" style="font-size: 0.68rem;" title="${c.titulo}">${c.titulo}</small>
+                                    <h4 class="fw-bold text-primary mb-0 mt-1">${c.total_respostas > 0 ? `${c.media} ★` : '-'}</h4>
+                                </div>
+                            `;
+                            containerCriterios.appendChild(col);
+                        });
+                    }
 
                     if (res.avaliacoes && res.avaliacoes.length > 0) {
                         containerFeedbacks.innerHTML = '';
                         res.avaliacoes.forEach(av => {
                             const card = document.createElement('div');
                             card.className = 'p-3 bg-light rounded-3 border mb-3';
+                            
+                            // Renderiza notas detalhadas customizadas ou legadas
+                            let notasHtml = '';
+                            if (av.itens_customizados && av.itens_customizados.length > 0) {
+                                av.itens_customizados.filter(it => it.tipo === 'ESTRELAS_1_5').forEach(it => {
+                                    notasHtml += `<span class="me-3">${it.pergunta_titulo}: <strong>${it.nota_estrelas}★</strong></span>`;
+                                });
+                            } else {
+                                notasHtml = `
+                                    <span class="me-3">Pontualidade: <strong>${av.nota_pontualidade}★</strong></span>
+                                    <span class="me-3">Clareza: <strong>${av.nota_clareza}★</strong></span>
+                                    <span class="me-3">Cordialidade: <strong>${av.nota_cordialidade}★</strong></span>
+                                `;
+                            }
+
+                            // Renderiza respostas dissertativas customizadas ou legadas
+                            let dissertativasHtml = '';
+                            if (av.itens_customizados && av.itens_customizados.length > 0) {
+                                av.itens_customizados.filter(it => it.tipo === 'TEXTO_LIVRE' && it.texto_resposta).forEach(it => {
+                                    dissertativasHtml += `
+                                        <div class="small mb-2">
+                                            <strong class="text-dark"><i class="bi bi-chat-text-fill text-primary me-1"></i> ${it.pergunta_titulo}:</strong>
+                                            <div class="text-dark ps-3" style="white-space: pre-wrap;">${it.texto_resposta}</div>
+                                        </div>
+                                    `;
+                                });
+                            } else {
+                                if (av.pontos_fortes) {
+                                    dissertativasHtml += `
+                                        <div class="small mb-1">
+                                            <strong class="text-success"><i class="bi bi-hand-thumbs-up-fill me-1"></i> Pontos Fortes:</strong>
+                                            <div class="text-dark ps-3" style="white-space: pre-wrap;">${av.pontos_fortes}</div>
+                                        </div>
+                                    `;
+                                }
+                                if (av.oportunidades_melhoria) {
+                                    dissertativasHtml += `
+                                        <div class="small">
+                                            <strong class="text-warning text-dark"><i class="bi bi-lightbulb-fill text-warning me-1"></i> Oportunidades de Melhoria:</strong>
+                                            <div class="text-dark ps-3" style="white-space: pre-wrap;">${av.oportunidades_melhoria}</div>
+                                        </div>
+                                    `;
+                                }
+                            }
+
                             card.innerHTML = `
                                 <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-1">
                                     <div>
@@ -1156,23 +1398,10 @@
                                     </div>
                                     <small class="text-muted">${av.criado_em}</small>
                                 </div>
-                                <div class="d-flex gap-3 text-muted small font-monospace mb-2">
-                                    <span>Pontualidade: <strong>${av.nota_pontualidade}★</strong></span>
-                                    <span>Clareza: <strong>${av.nota_clareza}★</strong></span>
-                                    <span>Cordialidade: <strong>${av.nota_cordialidade}★</strong></span>
+                                <div class="d-flex flex-wrap gap-2 text-muted small font-monospace mb-2">
+                                    ${notasHtml}
                                 </div>
-                                ${av.pontos_fortes ? `
-                                    <div class="small mb-1">
-                                        <strong class="text-success"><i class="bi bi-hand-thumbs-up-fill me-1"></i> Pontos Fortes:</strong>
-                                        <div class="text-dark ps-3" style="white-space: pre-wrap;">${av.pontos_fortes}</div>
-                                    </div>
-                                ` : ''}
-                                ${av.oportunidades_melhoria ? `
-                                    <div class="small">
-                                        <strong class="text-warning text-dark"><i class="bi bi-lightbulb-fill text-warning me-1"></i> Oportunidades de Melhoria:</strong>
-                                        <div class="text-dark ps-3" style="white-space: pre-wrap;">${av.oportunidades_melhoria}</div>
-                                    </div>
-                                ` : ''}
+                                ${dissertativasHtml}
                             `;
                             containerFeedbacks.appendChild(card);
                         });
@@ -1194,6 +1423,84 @@
         }
 
     </script>
+
+    <!-- Modal: Configurar Perguntas de Avaliação -->
+    <div class="modal fade" id="modalConfigPerguntasAvaliacao" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header bg-dark text-white p-3 px-4">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-ui-checks-grid text-warning me-2"></i> Perguntas do Formulário de Avaliação do Auditor</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 bg-white">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <p class="text-secondary small mb-0">
+                            Defina quais critérios e perguntas serão exibidos para os auditados responderem ao acessar o link público.
+                        </p>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="restaurarPadroesPerguntas()">
+                                <i class="bi bi-arrow-counterclockwise me-1"></i> Restaurar Padrões
+                            </button>
+                            <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold" onclick="abrirModalCriarPergunta()">
+                                <i class="bi bi-plus-lg me-1"></i> Adicionar Pergunta
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="containerListaPerguntasConfig">
+                        <!-- Lista carregada dinamicamente via JS -->
+                    </div>
+                </div>
+                <div class="modal-footer bg-light p-3 px-4">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Form: Criar / Editar Pergunta -->
+    <div class="modal fade" id="modalFormPergunta" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header bg-primary text-white p-3 px-4">
+                    <h5 class="modal-title fw-bold" id="formPerguntaModalTitulo">Nova Pergunta de Avaliação</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 bg-white">
+                    <input type="hidden" id="perguntaEditId">
+                    <div class="mb-3">
+                        <label for="inputPerguntaTitulo" class="form-label fw-bold text-dark small">Título / Critério <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control rounded-3" id="inputPerguntaTitulo" placeholder="Ex: Domínio Técnico dos Processos" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="inputPerguntaDescricao" class="form-label fw-bold text-dark small">Dica / Explicação do Critério</label>
+                        <textarea class="form-control rounded-3" id="inputPerguntaDescricao" rows="2" placeholder="Ex: Avalie se o auditor demonstrou conhecimento adequado sobre o processo auditado."></textarea>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label for="selectPerguntaTipo" class="form-label fw-bold text-dark small">Tipo de Resposta</label>
+                            <select class="form-select rounded-3" id="selectPerguntaTipo">
+                                <option value="ESTRELAS_1_5">⭐ Classificação (1 a 5 Estrelas)</option>
+                                <option value="TEXTO_LIVRE">✍️ Resposta Dissertativa</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label for="inputPerguntaOrdem" class="form-label fw-bold text-dark small">Ordem de Exibição</label>
+                            <input type="number" class="form-control rounded-3" id="inputPerguntaOrdem" value="1" min="1">
+                        </div>
+                    </div>
+                    <div class="form-check form-switch mt-2">
+                        <input class="form-check-input" type="checkbox" id="checkPerguntaObrigatoria" checked>
+                        <label class="form-check-label fw-semibold text-dark small" for="checkPerguntaObrigatoria">Resposta Obrigatória</label>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light p-3 px-4">
+                    <button type="button" class="btn btn-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" onclick="salvarPerguntaConfig()">Salvar Critério</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Modal: Link de Avaliação Gerado -->
     <div class="modal fade" id="modalLinkAvaliacao" tabindex="-1" aria-hidden="true">
@@ -1233,39 +1540,26 @@
                 </div>
                 <div class="modal-body p-4 bg-white">
                     
-                    <!-- Resumo das Notas -->
-                    <div class="row g-2 mb-4">
-                        <div class="col-6 col-md-3">
-                            <div class="p-3 bg-light rounded-3 border text-center">
+                    <!-- Resumo das Notas Dinâmicas -->
+                    <div class="row g-2 mb-4" id="containerCriteriosDinamicos">
+                        <div class="col-12 col-md-3">
+                            <div class="p-3 bg-light rounded-3 border text-center h-100">
                                 <small class="text-muted text-uppercase fw-bold d-block" style="font-size: 0.7rem;">Média Geral</small>
-                                <h3 class="fw-bold text-warning mb-0" id="dashMediaGeral">-</h3>
-                            </div>
-                        </div>
-                        <div class="col-6 col-md-3">
-                            <div class="p-3 bg-light rounded-3 border text-center">
-                                <small class="text-muted text-uppercase fw-bold d-block" style="font-size: 0.7rem;">Pontualidade</small>
-                                <h4 class="fw-bold text-primary mb-0" id="dashPontualidade">-</h4>
-                            </div>
-                        </div>
-                        <div class="col-6 col-md-3">
-                            <div class="p-3 bg-light rounded-3 border text-center">
-                                <small class="text-muted text-uppercase fw-bold d-block" style="font-size: 0.7rem;">Clareza</small>
-                                <h4 class="fw-bold text-info mb-0" id="dashClareza">-</h4>
-                            </div>
-                        </div>
-                        <div class="col-6 col-md-3">
-                            <div class="p-3 bg-light rounded-3 border text-center">
-                                <small class="text-muted text-uppercase fw-bold d-block" style="font-size: 0.7rem;">Cordialidade</small>
-                                <h4 class="fw-bold text-success mb-0" id="dashCordialidade">-</h4>
+                                <h3 class="fw-bold text-warning mb-0 mt-1" id="dashMediaGeral">-</h3>
                             </div>
                         </div>
                     </div>
 
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <h6 class="fw-bold text-dark mb-0">Feedbacks Recebidos (<span id="dashTotalAvaliacoes">0</span>):</h6>
-                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="gerarLinkAvaliacaoAuditor()">
-                            <i class="bi bi-link-45deg me-1"></i> Gerar Outro Link
-                        </button>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="abrirModalConfigPerguntasAvaliacao()">
+                                <i class="bi bi-gear me-1"></i> Configurar Perguntas
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="gerarLinkAvaliacaoAuditor()">
+                                <i class="bi bi-link-45deg me-1"></i> Gerar Outro Link
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Lista de Comentários e Avaliações -->
