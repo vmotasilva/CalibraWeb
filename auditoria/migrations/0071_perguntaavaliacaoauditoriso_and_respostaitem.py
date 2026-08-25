@@ -78,7 +78,7 @@ class Migration(migrations.Migration):
                 ('ativa', models.BooleanField(default=True, verbose_name='Pergunta Ativa')),
                 ('criado_em', models.DateTimeField(auto_now_add=True)),
                 ('auditoria', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='perguntas_avaliacao', to='auditoria.auditoriaiso', verbose_name='Auditoria Específica')),
-                ('norma', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='perguntas_avaliacao_padrao', to='auditoria.normaiso', verbose_name='Norma Base')),
+                ('norma', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='perguntas_avaliacao_padrao', to='auditoria.norma', verbose_name='Norma Base')),
             ],
             options={
                 'verbose_name': 'Pergunta de Avaliação do Auditor',

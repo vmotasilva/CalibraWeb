@@ -1521,7 +1521,7 @@ class PerguntaAvaliacaoAuditorIso(models.Model):
         verbose_name="Auditoria Específica"
     )
     norma = models.ForeignKey(
-        NormaIso,
+        Norma,
         on_delete=models.CASCADE,
         null=True,
         blank=True,
