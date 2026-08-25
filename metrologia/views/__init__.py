@@ -30,6 +30,7 @@ from .views import (
     preview_certificado_view,
     aplicar_carimbo_certificado_view,
     visualizar_historico_calibracao_view,
+    salvar_edicao_historico_modal_view,
     registrar_historico_massa,
     
     # Ocorrências
@@ -87,6 +88,7 @@ __all__ = [
     'preview_certificado_view',
     'aplicar_carimbo_certificado_view',
     'visualizar_historico_calibracao_view',
+    'salvar_edicao_historico_modal_view',
     'api_faixa_medicao_view',
     'registrar_historico_massa',
     'registrar_ocorrencia',
