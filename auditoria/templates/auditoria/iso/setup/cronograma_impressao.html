@@ -174,6 +174,15 @@
                 <span class="badge {% if total_solicitacoes_atendidas > 0 %}bg-success text-white{% else %}bg-secondary{% endif %} rounded-pill font-monospace" style="font-size: 0.75rem;">{{ total_solicitacoes_atendidas }}</span>
             </button>
         </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold px-3 px-md-4 rounded-pill d-flex align-items-center justify-content-center gap-1 gap-md-2" id="capa-tab" data-bs-toggle="tab" data-bs-target="#capa" type="button" role="tab" aria-controls="capa" aria-selected="false" title="Plano de Ação (CAPA)">
+                <i class="bi bi-clipboard2-check-fill text-primary"></i>
+                <span class="d-none d-md-inline">Plano de Ação (CAPA)</span>
+                <span class="badge {% if total_capa_pendentes > 0 %}bg-danger text-white{% elif total_capa_aguardando > 0 %}bg-info text-dark{% else %}bg-success text-white{% endif %} rounded-pill font-monospace" style="font-size: 0.75rem;">
+                    {{ total_capa_aguardando|add:total_capa_pendentes }}
+                </span>
+            </button>
+        </li>
     </ul>
 
     <div class="tab-content" id="cronogramaTabsContent">
@@ -1042,6 +1051,376 @@
                     </div>
                 </div>
             {% endif %}
+        </div>
+
+        <!-- ABA: PLANO DE AÇÃO (CAPA) -->
+        <div class="tab-pane fade" id="capa" role="tabpanel" aria-labelledby="capa-tab">
+            <!-- Header do Módulo CAPA -->
+            <div class="d-flex justify-content-between align-items-center bg-light p-3 rounded-top border mt-4 flex-wrap gap-2">
+                <div>
+                    <h5 class="mb-1 fw-bold text-dark d-flex align-items-center gap-2">
+                        <i class="bi bi-clipboard2-check-fill text-primary"></i>
+                        <span>Gestão de Planos de Ação (CAPA) & Magic Links</span>
+                    </h5>
+                    <small class="text-muted">Acompanhe as tratativas de causa raiz, prazos e aprove ou rejeite planos de ação enviados pelos auditados.</small>
+                </div>
+                <div class="d-flex gap-2 align-items-center flex-wrap">
+                    <button type="button" class="btn btn-primary fw-bold rounded-pill px-3.5 shadow-sm d-flex align-items-center gap-1.5" onclick="abrirModalGerarMagicLink()">
+                        <i class="bi bi-link-45deg fs-5"></i> 🔗 Gerar Link do Plano de Ação
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-3 shadow-2xs fw-semibold" onclick="abrirModalHistoricoLinks()">
+                        <i class="bi bi-clock-history me-1"></i> Links Ativos
+                    </button>
+                </div>
+            </div>
+
+            <!-- Métricas Rápidas de CAPA -->
+            <div class="row g-2 p-3 bg-white border border-top-0">
+                <div class="col-md-3">
+                    <div class="p-2.5 rounded-3 border bg-light d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.72rem;">Pendentes de Resposta</small>
+                            <h4 class="fw-bold text-secondary mb-0">{{ total_capa_pendentes }}</h4>
+                        </div>
+                        <i class="bi bi-hourglass-split fs-3 text-secondary"></i>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="p-2.5 rounded-3 border bg-light d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.72rem;">Aguardando Revisão</small>
+                            <h4 class="fw-bold text-info mb-0">{{ total_capa_aguardando }}</h4>
+                        </div>
+                        <i class="bi bi-clock-history fs-3 text-info"></i>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="p-2.5 rounded-3 border bg-light d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.72rem;">Planos Aprovados</small>
+                            <h4 class="fw-bold text-success mb-0">{{ total_capa_aprovados }}</h4>
+                        </div>
+                        <i class="bi bi-check2-circle fs-3 text-success"></i>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="p-2.5 rounded-3 border bg-light d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.72rem;">Planos Rejeitados</small>
+                            <h4 class="fw-bold text-danger mb-0">{{ total_capa_rejeitados }}</h4>
+                        </div>
+                        <i class="bi bi-exclamation-circle fs-3 text-danger"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filtros de Setor e Status -->
+            <div class="p-3 bg-light border border-top-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <label class="fw-bold text-dark small me-1"><i class="bi bi-funnel-fill text-primary"></i> Filtrar:</label>
+                    <select id="filtroCapaSetor" class="form-select form-select-sm rounded-pill" style="width: auto; min-width: 180px;" onchange="filtrarTabelaCapa()">
+                        <option value="ALL">Todos os Setores / Blocos</option>
+                        {% for ag in agendas_auditoria %}
+                        <option value="{{ ag.id }}">{{ ag.titulo }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <select id="filtroCapaStatus" class="form-select form-select-sm rounded-pill" style="width: auto; min-width: 180px;" onchange="filtrarTabelaCapa()">
+                        <option value="ALL">Todos os Status</option>
+                        <option value="PENDENTE">Pendente de Resposta</option>
+                        <option value="AGUARDANDO_REVISAO">Aguardando Revisão</option>
+                        <option value="APROVADO">Plano Aprovado</option>
+                        <option value="REJEITADO">Rejeitado / Ajustar</option>
+                    </select>
+                </div>
+                <div class="text-muted small">
+                    Mostrando <span id="contadorItensCapa" class="fw-bold text-dark">{{ solicitacoes_com_desvios|length }}</span> item(ns)
+                </div>
+            </div>
+
+            <!-- Tabela de Planos de Ação -->
+            {% if solicitacoes_com_desvios %}
+                <div class="table-responsive border border-top-0 rounded-bottom bg-white shadow-2xs mb-4">
+                    <table class="table table-hover align-middle mb-0" id="tabelaCapa">
+                        <thead class="table-light">
+                            <tr>
+                                <th width="12%">Status CAPA</th>
+                                <th width="14%">Setor / Requisito</th>
+                                <th width="20%">Não Conformidade / Evidência</th>
+                                <th width="24%">Causa Raiz & Ação Proposta</th>
+                                <th width="16%">Responsável & Prazo</th>
+                                <th width="14%" class="no-print text-end">Ações do Auditor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sol in solicitacoes_com_desvios %}
+                                <tr class="capa-row" id="capa-row-{{ sol.id }}" data-agenda-id="{{ sol.agenda.id|default:'0' }}" data-status="{{ sol.capa_status }}">
+                                    <!-- Status CAPA -->
+                                    <td class="align-middle">
+                                        <div id="capa-badge-status-{{ sol.id }}">
+                                            {% if sol.capa_status == 'PENDENTE' %}
+                                                <span class="badge bg-secondary text-white rounded-pill px-2.5 py-1 fw-bold font-monospace d-inline-flex align-items-center gap-1">
+                                                    <i class="bi bi-hourglass-split"></i> Pendente
+                                                </span>
+                                            {% elif sol.capa_status == 'AGUARDANDO_REVISAO' %}
+                                                <span class="badge bg-info text-dark rounded-pill px-2.5 py-1 fw-bold font-monospace d-inline-flex align-items-center gap-1">
+                                                    <i class="bi bi-clock-history"></i> Em Revisão
+                                                </span>
+                                            {% elif sol.capa_status == 'APROVADO' %}
+                                                <span class="badge bg-success text-white rounded-pill px-2.5 py-1 fw-bold font-monospace d-inline-flex align-items-center gap-1">
+                                                    <i class="bi bi-check2-circle"></i> Aprovado
+                                                </span>
+                                            {% elif sol.capa_status == 'REJEITADO' %}
+                                                <span class="badge bg-danger text-white rounded-pill px-2.5 py-1 fw-bold font-monospace d-inline-flex align-items-center gap-1">
+                                                    <i class="bi bi-x-circle-fill"></i> Rejeitado
+                                                </span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="mt-1">
+                                            {% if sol.conclusao == 'NC' %}
+                                                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill px-2 py-0.5" style="font-size: 0.7rem;">NC {{ sol.grau_nc|default:'Menor' }}</span>
+                                            {% elif sol.conclusao == 'OBS' %}
+                                                <span class="badge text-dark rounded-pill px-2 py-0.5" style="background-color: #d4e157; font-size: 0.7rem;">Obs. Correção</span>
+                                            {% elif sol.conclusao == 'OM' %}
+                                                <span class="badge bg-warning text-dark rounded-pill px-2 py-0.5" style="font-size: 0.7rem;">OM</span>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+
+                                    <!-- Setor / Requisito -->
+                                    <td class="align-middle">
+                                        <div class="fw-bold text-dark small d-flex align-items-center gap-1">
+                                            <i class="bi bi-geo-alt-fill text-primary"></i>
+                                            <span>{{ sol.agenda.titulo|default:"Auditoria Geral" }}</span>
+                                        </div>
+                                        <div class="d-flex flex-wrap gap-1 mt-1">
+                                            {% for it in sol.itens_norma %}
+                                                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 font-monospace px-1.5 py-0.5" style="font-size: 0.72rem;">
+                                                    {{ it.referencia }}
+                                                </span>
+                                            {% endfor %}
+                                        </div>
+                                    </td>
+
+                                    <!-- Não Conformidade -->
+                                    <td class="align-middle">
+                                        <div class="fw-semibold text-dark small mb-1">{{ sol.solicitacao }}</div>
+                                        {% if sol.evidencia %}
+                                            <div class="text-secondary small font-monospace" style="font-size: 0.78rem; max-height: 48px; overflow-y: auto;">
+                                                {{ sol.evidencia|truncatechars:120 }}
+                                            </div>
+                                        {% endif %}
+                                    </td>
+
+                                    <!-- Causa Raiz & Ação Proposta -->
+                                    <td class="align-middle">
+                                        {% if sol.capa_causa_raiz or sol.capa_acao_corretiva %}
+                                            {% if sol.capa_causa_raiz %}
+                                                <div class="mb-1">
+                                                    <small class="text-muted fw-bold d-block" style="font-size: 0.72rem;">Causa Raiz:</small>
+                                                    <div class="text-dark small" style="white-space: pre-wrap; font-size: 0.8rem;">{{ sol.capa_causa_raiz }}</div>
+                                                </div>
+                                            {% endif %}
+                                            {% if sol.capa_acao_corretiva %}
+                                                <div>
+                                                    <small class="text-muted fw-bold d-block" style="font-size: 0.72rem;">Ação Proposta:</small>
+                                                    <div class="text-dark small" style="white-space: pre-wrap; font-size: 0.8rem;">{{ sol.capa_acao_corretiva }}</div>
+                                                </div>
+                                            {% endif %}
+                                            {% if sol.evidencias_capa %}
+                                                <div class="mt-1 d-flex flex-wrap gap-1">
+                                                    {% for ev in sol.evidencias_capa %}
+                                                        <a href="{{ ev.url }}" target="_blank" class="badge bg-light text-primary border text-decoration-none" style="font-size: 0.72rem;">
+                                                            <i class="bi bi-paperclip"></i> {{ ev.nome|truncatechars:20 }}
+                                                        </a>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted small fst-italic">Ainda não preenchido pelo gestor.</span>
+                                        {% endif %}
+                                    </td>
+
+                                    <!-- Responsável & Prazo -->
+                                    <td class="align-middle">
+                                        {% if sol.capa_responsavel %}
+                                            <div class="small fw-semibold text-dark">
+                                                <i class="bi bi-person-fill text-secondary me-1"></i>{{ sol.capa_responsavel }}
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted small">-</span>
+                                        {% endif %}
+                                        {% if sol.capa_prazo %}
+                                            <div class="small text-muted font-monospace mt-0.5">
+                                                <i class="bi bi-calendar-event me-1"></i>Prazo: {{ sol.capa_prazo_display }}
+                                            </div>
+                                        {% endif %}
+                                        {% if sol.capa_respondido_em %}
+                                            <small class="text-muted d-block" style="font-size: 0.7rem;">
+                                                Envio: {{ sol.capa_respondido_em }}
+                                            </small>
+                                        {% endif %}
+                                    </td>
+
+                                    <!-- Ações do Auditor -->
+                                    <td class="no-print text-end align-middle">
+                                        <div class="d-flex gap-1 justify-content-end align-items-center">
+                                            <button type="button" class="btn btn-sm btn-success rounded-pill px-2 py-0.5 fw-bold shadow-2xs" 
+                                                    onclick="revisarPlanoAcao({{ sol.id }}, 'APROVADO')" title="Aprovar Plano de Ação">
+                                                <i class="bi bi-check-lg"></i> Aprovar
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-0.5 fw-semibold" 
+                                                    onclick="abrirModalRejeitarPlano({{ sol.id }}, '{{ sol.capa_parecer_auditor|escapejs }}')" title="Rejeitar ou Pedir Ajustes">
+                                                <i class="bi bi-x-lg"></i> Rejeitar
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="card border-0 shadow-sm rounded-4 text-center p-5 mt-4 bg-white">
+                    <div class="py-4">
+                        <i class="bi bi-shield-check text-success fs-1 mb-2 d-block"></i>
+                        <h5 class="fw-bold text-dark">Nenhum Desvio que Exija Plano de Ação (CAPA)!</h5>
+                        <p class="text-muted small mb-0">Esta auditoria não possui Não Conformidades ou Observações pendentes de tratativa.</p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAIS DO MÓDULO CAPA & MAGIC LINK         -->
+<!-- ========================================== -->
+
+<!-- Modal: Gerar Magic Link -->
+<div class="modal fade" id="modalGerarMagicLink" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-primary text-white p-3 px-4">
+                <h5 class="modal-title fw-bold"><i class="bi bi-link-45deg me-1"></i> Gerar Magic Link do Plano de Ação</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 bg-white">
+                <p class="text-secondary small mb-3">
+                    Gere um link seguro e temporário para enviar por WhatsApp ou E-mail ao gestor auditado. Ele poderá responder às Não Conformidades sem necessidade de login.
+                </p>
+
+                <div class="mb-3">
+                    <label for="linkSetor" class="form-label fw-bold text-dark small">Escopo / Setor do Link:</label>
+                    <select id="linkSetor" class="form-select rounded-3">
+                        <option value="">🌐 Todas as Áreas (Global)</option>
+                        {% for ag in agendas_auditoria %}
+                        <option value="{{ ag.id }}">📍 {{ ag.titulo }}</option>
+                        {% endfor %}
+                    </select>
+                    <small class="text-muted" style="font-size: 0.75rem;">Selecione um setor específico para que o gestor visualize apenas as NCs da área dele.</small>
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-md-6">
+                        <label for="linkValidade" class="form-label fw-bold text-dark small">Validade do Link:</label>
+                        <select id="linkValidade" class="form-select rounded-3">
+                            <option value="7">7 Dias</option>
+                            <option value="15" selected>15 Dias (Recomendado)</option>
+                            <option value="30">30 Dias</option>
+                            <option value="60">60 Dias</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 d-flex align-items-end">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="linkIncluirOm">
+                            <label class="form-check-label small fw-semibold text-dark" for="linkIncluirOm">
+                                Incluir Oportunidades (OM)
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resultado do Link Gerado -->
+                <div id="containerResultadoLink" class="d-none mt-3 p-3 bg-light border border-primary border-opacity-25 rounded-3">
+                    <label class="fw-bold text-primary small d-block mb-1"><i class="bi bi-check-circle-fill me-1"></i> Link Gerado com Sucesso:</label>
+                    <div class="input-group">
+                        <input type="text" id="inputLinkGerado" class="form-control font-monospace small bg-white" readonly>
+                        <button class="btn btn-primary fw-bold" type="button" onclick="copiarMagicLink()">
+                            <i class="bi bi-clipboard me-1"></i> Copiar
+                        </button>
+                    </div>
+                    <small class="text-muted d-block mt-1" id="infoLinkGerado"></small>
+                </div>
+            </div>
+            <div class="modal-footer bg-light p-3 px-4 d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold" id="btnConfirmarGerarLink" onclick="executarGeracaoMagicLink()">
+                    <i class="bi bi-magic me-1"></i> Gerar Link Agora
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Histórico de Links Ativos -->
+<div class="modal fade" id="modalHistoricoLinks" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-light border-bottom p-3 px-4">
+                <h5 class="modal-title fw-bold text-dark"><i class="bi bi-clock-history text-primary me-1"></i> Magic Links Ativos da Auditoria</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 bg-white">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Setor / Escopo</th>
+                                <th>Expiração</th>
+                                <th>Criado por</th>
+                                <th>Último Acesso</th>
+                                <th class="text-end">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corpoTabelaHistoricoLinks">
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-3">Carregando links...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer bg-light p-3 px-4">
+                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Rejeitar / Solicitar Ajuste do Plano -->
+<div class="modal fade" id="modalRejeitarPlano" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-danger text-white p-3 px-4">
+                <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-octagon-fill me-1"></i> Solicitar Ajustes no Plano de Ação</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 bg-white">
+                <input type="hidden" id="rejeitar_sol_id">
+                <label for="rejeitar_parecer" class="form-label fw-bold text-dark small mb-1">
+                    Motivo da Rejeição / O que o gestor deve ajustar: <span class="text-danger">*</span>
+                </label>
+                <textarea class="form-control" id="rejeitar_parecer" rows="4" 
+                          placeholder="Ex: A causa raiz apontada não contempla a falha de calibração; favor incluir evidência de treinamento da equipe..." required></textarea>
+                <small class="text-muted d-block mt-1">Este feedback será exibido no portal público para que o gestor revise e reenvie a tratativa.</small>
+            </div>
+            <div class="modal-footer bg-light p-3 px-4 d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger rounded-pill px-4 fw-bold" onclick="confirmarRejeicaoPlano()">
+                    <i class="bi bi-x-circle me-1"></i> Confirmar Rejeição
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -2455,6 +2834,220 @@ async function salvarPlanejamentoAuditoria() {
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Salvar Dados';
     }
+}
+
+// ==========================================
+// FUNÇÕES JS: CAPA & MAGIC LINK
+// ==========================================
+
+function filtrarTabelaCapa() {
+    const setorVal = document.getElementById('filtroCapaSetor').value;
+    const statusVal = document.getElementById('filtroCapaStatus').value;
+    const rows = document.querySelectorAll('.capa-row');
+    let visiveis = 0;
+
+    rows.forEach(row => {
+        const rowSetor = row.getAttribute('data-agenda-id');
+        const rowStatus = row.getAttribute('data-status');
+
+        const matchSetor = (setorVal === 'ALL' || rowSetor === setorVal);
+        const matchStatus = (statusVal === 'ALL' || rowStatus === statusVal);
+
+        if (matchSetor && matchStatus) {
+            row.style.display = '';
+            visiveis++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+
+    const contador = document.getElementById('contadorItensCapa');
+    if (contador) contador.textContent = visiveis;
+}
+
+function abrirModalGerarMagicLink() {
+    document.getElementById('containerResultadoLink').classList.add('d-none');
+    document.getElementById('btnConfirmarGerarLink').disabled = false;
+    document.getElementById('btnConfirmarGerarLink').innerHTML = '<i class="bi bi-magic me-1"></i> Gerar Link Agora';
+    const modalEl = document.getElementById('modalGerarMagicLink');
+    if (modalEl) new bootstrap.Modal(modalEl).show();
+}
+
+async function executarGeracaoMagicLink() {
+    const btn = document.getElementById('btnConfirmarGerarLink');
+    const setorId = document.getElementById('linkSetor').value;
+    const diasValidade = document.getElementById('linkValidade').value;
+    const incluirOm = document.getElementById('linkIncluirOm').checked;
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Gerando...';
+
+    try {
+        const response = await fetch("{% url 'auditoria:api_iso_capa_gerar_link' auditoria.id %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                agenda_id: setorId || null,
+                dias_validade: diasValidade,
+                incluir_om: incluirOm
+            })
+        });
+
+        const res = await response.json();
+        if (res.success) {
+            document.getElementById('inputLinkGerado').value = res.link.url;
+            document.getElementById('infoLinkGerado').innerHTML = `
+                <strong>Escopo:</strong> ${res.link.setor_nome} &bull; 
+                <strong>Expira em:</strong> ${res.link.expira_em} (${res.link.dias_validade} dias)
+            `;
+            document.getElementById('containerResultadoLink').classList.remove('d-none');
+        } else {
+            alert('Erro ao gerar link: ' + (res.error || 'Erro desconhecido.'));
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Erro de comunicação.');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-magic me-1"></i> Gerar Outro Link';
+    }
+}
+
+function copiarMagicLink() {
+    const input = document.getElementById('inputLinkGerado');
+    input.select();
+    input.setSelectionRange(0, 99999);
+    navigator.clipboard.writeText(input.value);
+    alert('Link copiado para a área de transferência!');
+}
+
+async function abrirModalHistoricoLinks() {
+    const modalEl = document.getElementById('modalHistoricoLinks');
+    const tbody = document.getElementById('corpoTabelaHistoricoLinks');
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm me-1"></span> Carregando links...</td></tr>';
+    
+    new bootstrap.Modal(modalEl).show();
+
+    try {
+        const response = await fetch("{% url 'auditoria:api_iso_capa_listar_links' auditoria.id %}");
+        const res = await response.json();
+
+        if (res.success && res.links.length > 0) {
+            tbody.innerHTML = '';
+            res.links.forEach(l => {
+                const tr = document.createElement('tr');
+                const statusBadge = l.is_valid 
+                    ? '<span class="badge bg-success rounded-pill px-2 py-1">Ativo</span>'
+                    : '<span class="badge bg-secondary rounded-pill px-2 py-1">Expirado/Revogado</span>';
+
+                tr.innerHTML = `
+                    <td>
+                        <div class="fw-semibold text-dark">${l.setor_nome}</div>
+                        <div class="font-monospace text-muted small">${l.token.substring(0, 8)}...</div>
+                    </td>
+                    <td>
+                        <div class="small text-dark">${l.expira_em}</div>
+                        ${statusBadge}
+                    </td>
+                    <td class="small text-secondary">${l.criado_por}<br><small class="text-muted">${l.criado_em}</small></td>
+                    <td class="small text-secondary">${l.ultimo_acesso_em}</td>
+                    <td class="text-end">
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-2.5" onclick="navigator.clipboard.writeText('${l.url}'); alert('Link copiado!');" title="Copiar URL">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                        ${l.ativo ? `
+                            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2.5 ms-1" onclick="revogarMagicLink(${l.id})" title="Revogar/Desativar Link">
+                                <i class="bi bi-slash-circle"></i>
+                            </button>
+                        ` : ''}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } else {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4"><i class="bi bi-link-45deg fs-4 d-block mb-1"></i> Nenhum Magic Link gerado até o momento.</td></tr>';
+        }
+    } catch (err) {
+        console.error(err);
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-3">Erro ao carregar links.</td></tr>';
+    }
+}
+
+async function revogarMagicLink(linkId) {
+    if (!confirm('Deseja realmente revogar este Magic Link? O auditado não poderá mais responder através dele.')) return;
+
+    try {
+        const response = await fetch(`/auditoria/iso/api/capa/revogar-link/${linkId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        });
+        const res = await response.json();
+        if (res.success) {
+            alert('Link revogado com sucesso!');
+            abrirModalHistoricoLinks();
+        } else {
+            alert('Erro ao revogar: ' + (res.error || 'Erro desconhecido.'));
+        }
+    } catch(err) {
+        console.error(err);
+        alert('Erro de comunicação.');
+    }
+}
+
+async function revisarPlanoAcao(solId, statusAcao, parecer = '') {
+    if (statusAcao === 'APROVADO' && !confirm('Deseja aprovar formalmente este Plano de Ação?')) return;
+
+    try {
+        const response = await fetch(`/auditoria/iso/api/capa/revisar/${solId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                status: statusAcao,
+                parecer: parecer
+            })
+        });
+
+        const res = await response.json();
+        if (res.success) {
+            alert(res.message);
+            window.location.reload();
+        } else {
+            alert('Erro ao revisar plano: ' + (res.error || 'Erro desconhecido.'));
+        }
+    } catch(err) {
+        console.error(err);
+        alert('Erro de comunicação.');
+    }
+}
+
+function abrirModalRejeitarPlano(solId, parecerAtual = '') {
+    document.getElementById('rejeitar_sol_id').value = solId;
+    document.getElementById('rejeitar_parecer').value = parecerAtual || '';
+    new bootstrap.Modal(document.getElementById('modalRejeitarPlano')).show();
+}
+
+async function confirmarRejeicaoPlano() {
+    const solId = document.getElementById('rejeitar_sol_id').value;
+    const parecer = document.getElementById('rejeitar_parecer').value.trim();
+
+    if (!parecer) {
+        alert('Por favor, informe a justificativa / parecer da rejeição para orientar o gestor.');
+        return;
+    }
+
+    const modalEl = document.getElementById('modalRejeitarPlano');
+    bootstrap.Modal.getInstance(modalEl)?.hide();
+
+    await revisarPlanoAcao(solId, 'REJEITADO', parecer);
 }
 </script>
 

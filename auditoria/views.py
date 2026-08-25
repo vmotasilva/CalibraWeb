@@ -6817,6 +6817,16 @@ def iso_auditoria_cronograma(request, auditoria_id):
                 'legenda': img.legenda or '',
             })
 
+        evidencias_capa_list = []
+        for ev in s.evidencias_capa.all():
+            evidencias_capa_list.append({
+                'id': ev.id,
+                'url': ev.url_arquivo,
+                'nome': ev.nome_arquivo,
+                'tipo': ev.tipo_arquivo,
+                'criado_em': ev.criado_em.strftime('%d/%m/%Y %H:%M')
+            })
+
         item_dict = {
             'id': s.id,
             'solicitacao': s.solicitacao,
@@ -6832,6 +6842,18 @@ def iso_auditoria_cronograma(request, auditoria_id):
             'agendas_vinculadas': agendas_vinculadas,
             'imagens': imagens_list,
             'imagens_json': json.dumps(imagens_list),
+            # Campos CAPA
+            'capa_status': s.capa_status or 'PENDENTE',
+            'capa_status_display': s.get_capa_status_display(),
+            'capa_causa_raiz': s.capa_causa_raiz or '',
+            'capa_acao_corretiva': s.capa_acao_corretiva or '',
+            'capa_responsavel': s.capa_responsavel or '',
+            'capa_prazo': s.capa_prazo.strftime('%Y-%m-%d') if s.capa_prazo else '',
+            'capa_prazo_display': s.capa_prazo.strftime('%d/%m/%Y') if s.capa_prazo else '',
+            'capa_respondido_em': s.capa_respondido_em.strftime('%d/%m/%Y %H:%M') if s.capa_respondido_em else '',
+            'capa_respondido_por_nome': s.capa_respondido_por_nome or '',
+            'capa_parecer_auditor': s.capa_parecer_auditor or '',
+            'evidencias_capa': evidencias_capa_list,
         }
 
         if s.conclusao == 'P':
@@ -6848,6 +6870,12 @@ def iso_auditoria_cronograma(request, auditoria_id):
     total_desvios_om = sum(1 for s in solicitacoes_com_desvios if s['conclusao'] == 'OM')
     total_desvios_obs = sum(1 for s in solicitacoes_com_desvios if s['conclusao'] == 'OBS')
 
+    # Métricas de CAPA
+    total_capa_pendentes = sum(1 for s in solicitacoes_com_desvios if s['capa_status'] == 'PENDENTE')
+    total_capa_aguardando = sum(1 for s in solicitacoes_com_desvios if s['capa_status'] == 'AGUARDANDO_REVISAO')
+    total_capa_aprovados = sum(1 for s in solicitacoes_com_desvios if s['capa_status'] == 'APROVADO')
+    total_capa_rejeitados = sum(1 for s in solicitacoes_com_desvios if s['capa_status'] == 'REJEITADO')
+
     total_solicitacoes_atendidas = len(solicitacoes_atendidas)
     total_atendidas_c = sum(1 for s in solicitacoes_atendidas if s['conclusao'] == 'C')
     total_atendidas_na = sum(1 for s in solicitacoes_atendidas if s['conclusao'] == 'NA')
@@ -6857,9 +6885,11 @@ def iso_auditoria_cronograma(request, auditoria_id):
         itens_norma_todos = ItemNorma.objects.all().order_by('referencia')
 
     pontos_fortes_qs = list(auditoria.pontos_fortes.all().order_by('ordem', 'id'))
+    agendas_auditoria_list = list(auditoria.agendas.filter(arquivada=False).order_by('titulo'))
 
     context = {
         'auditoria': auditoria,
+        'agendas_auditoria': agendas_auditoria_list,
         'cronograma_planejado': planejado_com_gaps,
         'cronograma_ajustado': ajustado_com_gaps,
         'progresso_geral': progresso_geral,
@@ -6871,6 +6901,10 @@ def iso_auditoria_cronograma(request, auditoria_id):
         'total_desvios_nc': total_desvios_nc,
         'total_desvios_om': total_desvios_om,
         'total_desvios_obs': total_desvios_obs,
+        'total_capa_pendentes': total_capa_pendentes,
+        'total_capa_aguardando': total_capa_aguardando,
+        'total_capa_aprovados': total_capa_aprovados,
+        'total_capa_rejeitados': total_capa_rejeitados,
         'solicitacoes_atendidas': solicitacoes_atendidas,
         'total_solicitacoes_atendidas': total_solicitacoes_atendidas,
         'total_atendidas_c': total_atendidas_c,
@@ -6880,6 +6914,7 @@ def iso_auditoria_cronograma(request, auditoria_id):
         'pontos_fortes_catalogo': PONTOS_FORTES_CATALOGO,
         'pontos_fortes_todos': pontos_fortes_qs,
     }
+
     return render(request, 'auditoria/iso/setup/cronograma_impressao.html', context)
 
 @login_required
@@ -7784,4 +7819,392 @@ def iso_gestao_amostras_view(request, auditoria_id):
         "agendas": agendas,
         "solicitacoes": solicitacoes
     })
+
+
+# ==============================================================================
+# VIEWS: CAPA - PLANO DE AÇÃO & MAGIC LINK PÚBLICO
+# ==============================================================================
+
+@login_required
+@require_POST
+def api_iso_capa_gerar_link(request, auditoria_id):
+    """Gera um novo Magic Link público de Plano de Ação para a auditoria ou setor específico."""
+    import json
+    from django.http import JsonResponse
+    from django.utils import timezone
+    from .models import AuditoriaIso, AgendaAuditoriaIso, PlanoAcaoMagicLink
+
+    try:
+        auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+        data = json.loads(request.body) if request.body else {}
+        
+        agenda_id = data.get("agenda_id")
+        dias_validade = int(data.get("dias_validade") or 15)
+        incluir_om = bool(data.get("incluir_om", False))
+
+        agenda = None
+        if agenda_id and str(agenda_id).strip().isdigit():
+            agenda = AgendaAuditoriaIso.objects.filter(pk=int(agenda_id), auditoria=auditoria).first()
+
+        expira_em = timezone.now() + timezone.timedelta(days=dias_validade)
+
+        magic_link = PlanoAcaoMagicLink.objects.create(
+            auditoria=auditoria,
+            agenda=agenda,
+            dias_validade=dias_validade,
+            expira_em=expira_em,
+            incluir_om=incluir_om,
+            criado_por=request.user
+        )
+
+        url_path = reverse("auditoria:capa_portal_publico", kwargs={"token": magic_link.token})
+        url_completa = request.build_absolute_uri(url_path)
+
+        return JsonResponse({
+            "success": True,
+            "link": {
+                "id": magic_link.id,
+                "token": magic_link.token,
+                "url": url_completa,
+                "setor_nome": agenda.titulo if agenda else "Global (Todas as Áreas)",
+                "dias_validade": magic_link.dias_validade,
+                "expira_em": magic_link.expira_em.strftime("%d/%m/%Y"),
+                "incluir_om": magic_link.incluir_om,
+                "criado_em": magic_link.criado_em.strftime("%d/%m/%Y %H:%M"),
+                "ativo": magic_link.ativo
+            },
+            "message": "Magic Link gerado com sucesso!"
+        })
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+
+@login_required
+def api_iso_capa_listar_links(request, auditoria_id):
+    """Lista todos os links de Plano de Ação gerados para a auditoria."""
+    from django.http import JsonResponse
+    from .models import AuditoriaIso, PlanoAcaoMagicLink
+
+    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+    links_qs = auditoria.magic_links_capa.select_related("agenda", "criado_por").all()
+
+    links_data = []
+    for l in links_qs:
+        url_path = reverse("auditoria:capa_portal_publico", kwargs={"token": l.token})
+        links_data.append({
+            "id": l.id,
+            "token": l.token,
+            "url": request.build_absolute_uri(url_path),
+            "setor_nome": l.agenda.titulo if l.agenda else "Global (Todas as Áreas)",
+            "agenda_id": l.agenda_id,
+            "dias_validade": l.dias_validade,
+            "expira_em": l.expira_em.strftime("%d/%m/%Y"),
+            "is_expired": l.is_expired,
+            "is_valid": l.is_valid,
+            "incluir_om": l.incluir_om,
+            "criado_por": l.criado_por.get_full_name() if l.criado_por else "Sistema",
+            "criado_em": l.criado_em.strftime("%d/%m/%Y %H:%M"),
+            "ultimo_acesso_em": l.ultimo_acesso_em.strftime("%d/%m/%Y %H:%M") if l.ultimo_acesso_em else "Nunca",
+            "ativo": l.ativo
+        })
+
+    return JsonResponse({"success": True, "links": links_data})
+
+
+@login_required
+@require_POST
+def api_iso_capa_revogar_link(request, pk):
+    """Revoga / Desativa um Magic Link de CAPA."""
+    from django.http import JsonResponse
+    from .models import PlanoAcaoMagicLink
+
+    magic_link = get_object_or_404(PlanoAcaoMagicLink, pk=pk)
+    magic_link.ativo = False
+    magic_link.save()
+
+    return JsonResponse({"success": True, "message": "Link revogado com sucesso."})
+
+
+@login_required
+@require_POST
+def api_iso_capa_revisar_solicitacao(request, pk):
+    """O Auditor Líder / Coordenador aprova ou rejeita o plano de ação submetido pelo gestor."""
+    import json
+    from django.http import JsonResponse
+    from .models import SolicitacaoEvidenciaIso
+
+    try:
+        sol = get_object_or_404(SolicitacaoEvidenciaIso, pk=pk)
+        data = json.loads(request.body) if request.body else {}
+        
+        status_acao = data.get("status") # 'APROVADO' ou 'REJEITADO'
+        parecer = data.get("parecer", "").strip()
+
+        if status_acao not in ["APROVADO", "REJEITADO"]:
+            return JsonResponse({"success": False, "error": "Status de revisão inválido."}, status=400)
+
+        sol.capa_status = status_acao
+        if parecer:
+            sol.capa_parecer_auditor = parecer
+        sol.save()
+
+        return JsonResponse({
+            "success": True,
+            "status": sol.capa_status,
+            "status_display": sol.get_capa_status_display(),
+            "parecer": sol.capa_parecer_auditor,
+            "message": f"Plano de Ação atualizado para '{sol.get_capa_status_display()}' com sucesso!"
+        })
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+
+# ------------------------------------------------------------------------------
+# ROTA PÚBLICA (SEM LOGIN) - PORTAL DO AUDITADO
+# ------------------------------------------------------------------------------
+
+def capa_portal_publico_view(request, token):
+    """
+    Renderiza o Portal Público de Resposta ao Plano de Ação (CAPA)
+    sem requerer autenticação no Calibra WEB.
+    """
+    from django.shortcuts import render
+    from django.utils import timezone
+    from .models import PlanoAcaoMagicLink, SolicitacaoEvidenciaIso
+
+    magic_link = PlanoAcaoMagicLink.objects.filter(token=token).select_related("auditoria", "auditoria__norma", "agenda").first()
+
+    if not magic_link or not magic_link.ativo:
+        return render(request, "auditoria/iso/capa/portal_publico.html", {
+            "error_title": "Link Inválido ou Desativado",
+            "error_message": "Este link de Plano de Ação não é mais válido ou foi revogado pela coordenação da qualidade."
+        }, status=404)
+
+    if magic_link.is_expired:
+        return render(request, "auditoria/iso/capa/portal_publico.html", {
+            "error_title": "Link Expirado",
+            "error_message": f"O prazo de acesso deste link expirou em {magic_link.expira_em.strftime('%d/%m/%Y')}. Solicite um novo link ao Auditor Líder."
+        }, status=403)
+
+    # Registrar último acesso
+    magic_link.ultimo_acesso_em = timezone.now()
+    magic_link.save(update_fields=["ultimo_acesso_em"])
+
+    auditoria = magic_link.auditoria
+    setor_filtrado = magic_link.agenda
+
+    # Buscar itens que necessitam de tratativa
+    conclusoes_alvo = ["NC", "OBS"]
+    if magic_link.incluir_om:
+        conclusoes_alvo.append("OM")
+
+    solicitacoes_qs = SolicitacaoEvidenciaIso.objects.filter(
+        resposta__auditoria=auditoria,
+        conclusao__in=conclusoes_alvo
+    ).select_related(
+        "resposta__pergunta", "agenda"
+    ).prefetch_related(
+        "resposta__pergunta__itens_norma",
+        "imagens",
+        "evidencias_capa"
+    ).order_by("agenda__titulo", "criado_em")
+
+    if setor_filtrado:
+        solicitacoes_qs = solicitacoes_qs.filter(agenda=setor_filtrado)
+
+    # Estruturar lista de pendências
+    itens_capa = []
+    total_pendentes = 0
+    total_aguardando = 0
+    total_aprovados = 0
+
+    for s in solicitacoes_qs:
+        if s.capa_status == "PENDENTE":
+            total_pendentes += 1
+        elif s.capa_status == "AGUARDANDO_REVISAO":
+            total_aguardando += 1
+        elif s.capa_status == "APROVADO":
+            total_aprovados += 1
+
+        itens_norma = list(s.resposta.pergunta.itens_norma.all()) if s.resposta and s.resposta.pergunta else []
+        imagens_origem = [{
+            "id": img.id,
+            "url": img.url_imagem,
+            "nome": img.nome_arquivo,
+            "legenda": img.legenda or ""
+        } for img in s.imagens.all()]
+
+        evidencias_capa = [{
+            "id": ev.id,
+            "url": ev.url_arquivo,
+            "nome": ev.nome_arquivo,
+            "tipo": ev.tipo_arquivo,
+            "criado_em": ev.criado_em.strftime("%d/%m/%Y %H:%M")
+        } for ev in s.evidencias_capa.all()]
+
+        itens_capa.append({
+            "id": s.id,
+            "solicitacao": s.solicitacao,
+            "evidencia_auditor": s.evidencia,
+            "conclusao": s.conclusao,
+            "grau_nc": s.grau_nc,
+            "bloco_nome": s.agenda.titulo if s.agenda else "Geral / Corporativo",
+            "itens_norma": itens_norma,
+            "itens_str": ", ".join(it.referencia for it in itens_norma) if itens_norma else "-",
+            "pergunta_texto": s.resposta.pergunta.texto_pergunta if s.resposta and s.resposta.pergunta else "",
+            "imagens_origem": imagens_origem,
+            # Campos CAPA
+            "capa_status": s.capa_status,
+            "capa_status_display": s.get_capa_status_display(),
+            "capa_causa_raiz": s.capa_causa_raiz or "",
+            "capa_acao_corretiva": s.capa_acao_corretiva or "",
+            "capa_responsavel": s.capa_responsavel or "",
+            "capa_prazo": s.capa_prazo.strftime("%Y-%m-%d") if s.capa_prazo else "",
+            "capa_prazo_display": s.capa_prazo.strftime("%d/%m/%Y") if s.capa_prazo else "",
+            "capa_respondido_em": s.capa_respondido_em.strftime("%d/%m/%Y %H:%M") if s.capa_respondido_em else "",
+            "capa_respondido_por_nome": s.capa_respondido_por_nome or "",
+            "capa_parecer_auditor": s.capa_parecer_auditor or "",
+            "evidencias_capa": evidencias_capa
+        })
+
+    context = {
+        "magic_link": magic_link,
+        "auditoria": auditoria,
+        "setor_filtrado": setor_filtrado,
+        "itens_capa": itens_capa,
+        "total_itens": len(itens_capa),
+        "total_pendentes": total_pendentes,
+        "total_aguardando": total_aguardando,
+        "total_aprovados": total_aprovados,
+        "token": token
+    }
+    return render(request, "auditoria/iso/capa/portal_publico.html", context)
+
+
+@require_POST
+def api_capa_salvar_resposta_publica(request, token):
+    """
+    Endpoint público (validado por token UUID) para o gestor salvar rascunho
+    ou enviar formalmente o Plano de Ação com upload de evidências.
+    """
+    import base64
+    from django.http import JsonResponse
+    from django.utils import timezone
+    from .models import PlanoAcaoMagicLink, SolicitacaoEvidenciaIso, EvidenciaPlanoAcaoIso
+    from datetime import datetime
+
+    magic_link = PlanoAcaoMagicLink.objects.filter(token=token).select_related("auditoria", "agenda").first()
+
+    if not magic_link or not magic_link.is_valid:
+        return JsonResponse({"success": False, "error": "Link de acesso inválido ou expirado."}, status=403)
+
+    try:
+        solicitacao_id = request.POST.get("solicitacao_id")
+        causa_raiz = request.POST.get("causa_raiz", "").strip()
+        acao_corretiva = request.POST.get("acao_corretiva", "").strip()
+        responsavel = request.POST.get("responsavel", "").strip()
+        prazo_str = request.POST.get("prazo", "").strip()
+        respondente_nome = request.POST.get("respondente_nome", "").strip()
+        is_submissao = request.POST.get("is_submissao", "false").lower() == "true"
+
+        sol = get_object_or_404(
+            SolicitacaoEvidenciaIso,
+            pk=solicitacao_id,
+            resposta__auditoria=magic_link.auditoria
+        )
+
+        # Se o link for restrito por setor, validar se o item pertence a ele
+        if magic_link.agenda and sol.agenda_id != magic_link.agenda_id:
+            return JsonResponse({"success": False, "error": "Item fora do escopo do seu setor."}, status=403)
+
+        # Atualizar dados
+        sol.capa_causa_raiz = causa_raiz
+        sol.capa_acao_corretiva = acao_corretiva
+        sol.capa_responsavel = responsavel
+        if respondente_nome:
+            sol.capa_respondido_por_nome = respondente_nome
+
+        if prazo_str:
+            try:
+                sol.capa_prazo = datetime.strptime(prazo_str, "%Y-%m-%d").date()
+            except ValueError:
+                pass
+
+        if is_submissao:
+            # Validação para submissão final
+            if not causa_raiz or not acao_corretiva or not responsavel or not sol.capa_prazo:
+                return JsonResponse({
+                    "success": False,
+                    "error": "Para enviar o Plano de Ação, preencha Causa Raiz, Ação, Responsável e Prazo."
+                }, status=400)
+
+            sol.capa_status = "AGUARDANDO_REVISAO"
+            sol.capa_respondido_em = timezone.now()
+        else:
+            # Se já estava rejeitado e o gestor editou, volta para pendente se não for submissão
+            if sol.capa_status == "REJEITADO":
+                sol.capa_status = "PENDENTE"
+
+        sol.save()
+
+        # Processar uploads de arquivos se houver
+        novas_evidencias = []
+        if request.FILES.getlist("arquivos_evidencia"):
+            for f in request.FILES.getlist("arquivos_evidencia"):
+                try:
+                    f_bytes = f.read()
+                    f_b64 = base64.b64encode(f_bytes).decode("utf-8")
+                    ev_obj = EvidenciaPlanoAcaoIso.objects.create(
+                        solicitacao=sol,
+                        arquivo=f,
+                        arquivo_base64=f_b64,
+                        nome_arquivo=f.name,
+                        tipo_arquivo=f.content_type or ""
+                    )
+                    novas_evidencias.append({
+                        "id": ev_obj.id,
+                        "url": ev_obj.url_arquivo,
+                        "nome": ev_obj.nome_arquivo,
+                        "tipo": ev_obj.tipo_arquivo,
+                        "criado_em": ev_obj.criado_em.strftime("%d/%m/%Y %H:%M")
+                    })
+                except Exception as ex_file:
+                    print(f"Erro ao salvar anexo CAPA: {ex_file}")
+
+        return JsonResponse({
+            "success": True,
+            "solicitacao_id": sol.id,
+            "status": sol.capa_status,
+            "status_display": sol.get_capa_status_display(),
+            "respondido_em": sol.capa_respondido_em.strftime("%d/%m/%Y %H:%M") if sol.capa_respondido_em else "",
+            "novas_evidencias": novas_evidencias,
+            "message": "Plano de Ação submetido com sucesso! O Auditor Líder foi notificado para revisão." if is_submissao else "Rascunho salvo com sucesso."
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+
+@require_POST
+def api_capa_remover_evidencia_publica(request, token, evidencia_id):
+    """Remove uma evidência anexada pelo gestor."""
+    from django.http import JsonResponse
+    from .models import PlanoAcaoMagicLink, EvidenciaPlanoAcaoIso
+
+    magic_link = PlanoAcaoMagicLink.objects.filter(token=token).first()
+    if not magic_link or not magic_link.is_valid:
+        return JsonResponse({"success": False, "error": "Link de acesso inválido ou expirado."}, status=403)
+
+    try:
+        ev = get_object_or_404(
+            EvidenciaPlanoAcaoIso,
+            pk=evidencia_id,
+            solicitacao__resposta__auditoria=magic_link.auditoria
+        )
+        ev.delete()
+        return JsonResponse({"success": True, "message": "Evidência removida com sucesso."})
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=400)
+
 

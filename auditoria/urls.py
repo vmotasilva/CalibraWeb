@@ -146,4 +146,18 @@ urlpatterns = [
     path("iso/setup/auditorias/<int:auditoria_id>/agendas/<int:pk>/perguntas/nova/", views.iso_agenda_pergunta_create, name="iso_agenda_pergunta_create"),
     path("iso/setup/auditorias/<int:auditoria_id>/agendas/<int:pk>/alvo/", views.iso_agenda_alvo_update, name="iso_agenda_alvo_update"),
     path("iso/setup/auditorias/<int:auditoria_id>/agendas/<int:pk>/sincronizar/", views.iso_agenda_sincronizar_modelo, name="iso_agenda_sincronizar_modelo"),
+
+    # ==========================================
+    # CAPA - PLANO DE AÇÃO & MAGIC LINK PÚBLICO
+    # ==========================================
+    path("iso/<int:auditoria_id>/api/capa/gerar-link/", views.api_iso_capa_gerar_link, name="api_iso_capa_gerar_link"),
+    path("iso/<int:auditoria_id>/api/capa/listar-links/", views.api_iso_capa_listar_links, name="api_iso_capa_listar_links"),
+    path("iso/api/capa/revogar-link/<int:pk>/", views.api_iso_capa_revogar_link, name="api_iso_capa_revogar_link"),
+    path("iso/api/capa/revisar/<int:pk>/", views.api_iso_capa_revisar_solicitacao, name="api_iso_capa_revisar_solicitacao"),
+    
+    # Rota Pública Aberta (Sem Login)
+    path("capa/responder/<str:token>/", views.capa_portal_publico_view, name="capa_portal_publico"),
+    path("capa/api/salvar-resposta/<str:token>/", views.api_capa_salvar_resposta_publica, name="api_capa_salvar_resposta_publica"),
+    path("capa/api/remover-evidencia/<str:token>/<int:evidencia_id>/", views.api_capa_remover_evidencia_publica, name="api_capa_remover_evidencia_publica"),
 ]
+

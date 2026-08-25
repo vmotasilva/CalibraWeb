@@ -1085,6 +1085,57 @@ class SolicitacaoEvidenciaIso(models.Model):
     evidencia = models.TextField(blank=True, verbose_name="Evidência Apresentada")
     conclusao = models.CharField(max_length=4, choices=CLASSIFICACAO_CHOICES, default="P")
     grau_nc = models.CharField(max_length=10, choices=GRAU_NC_CHOICES, blank=True, null=True, verbose_name="Grau da Não Conformidade")
+    # Campos de Tratativa e Plano de Ação (CAPA)
+    CAPA_STATUS_CHOICES = [
+        ("PENDENTE", "Pendente de Plano"),
+        ("AGUARDANDO_REVISAO", "Aguardando Revisão"),
+        ("APROVADO", "Plano Aprovado"),
+        ("REJEITADO", "Plano Rejeitado"),
+    ]
+    capa_status = models.CharField(
+        max_length=20,
+        choices=CAPA_STATUS_CHOICES,
+        default="PENDENTE",
+        verbose_name="Status do Plano de Ação (CAPA)"
+    )
+    capa_causa_raiz = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Análise de Causa Raiz"
+    )
+    capa_acao_corretiva = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Ação Corretiva / Preventiva"
+    )
+    capa_responsavel = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="Responsável pela Ação"
+    )
+    capa_prazo = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Prazo Estimado"
+    )
+    capa_respondido_em = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Respondido em"
+    )
+    capa_respondido_por_nome = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="Nome do Respondente / Gestor"
+    )
+    capa_parecer_auditor = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Parecer / Feedback do Auditor"
+    )
+
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
 
@@ -1095,6 +1146,124 @@ class SolicitacaoEvidenciaIso(models.Model):
 
     def __str__(self):
         return f"Solicitação: {self.solicitacao[:30]} ({self.conclusao})"
+
+
+class EvidenciaPlanoAcaoIso(models.Model):
+    """Arquivos e evidências anexadas pelo gestor/auditado na resposta do Plano de Ação (CAPA)"""
+    solicitacao = models.ForeignKey(
+        SolicitacaoEvidenciaIso,
+        on_delete=models.CASCADE,
+        related_name="evidencias_capa",
+        verbose_name="Solicitação / Não Conformidade",
+    )
+    arquivo = models.FileField(
+        upload_to="auditoria/capa/%Y/%m/",
+        blank=True,
+        null=True,
+        verbose_name="Arquivo Comprovante",
+    )
+    arquivo_base64 = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Dados Base64",
+        help_text="Backup para persistência garantida",
+    )
+    nome_arquivo = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="Nome do Arquivo",
+    )
+    tipo_arquivo = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        verbose_name="Tipo MIME / Extensão",
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Evidência do Plano de Ação"
+        verbose_name_plural = "Evidências do Plano de Ação"
+        ordering = ["criado_em"]
+
+    def __str__(self):
+        return f"Evidência CAPA {self.id} - {self.solicitacao.solicitacao[:30]}"
+
+    @property
+    def url_arquivo(self) -> str:
+        if self.arquivo and hasattr(self.arquivo, "url"):
+            try:
+                return self.arquivo.url
+            except Exception:
+                pass
+        if self.arquivo_base64:
+            if self.arquivo_base64.startswith("data:"):
+                return self.arquivo_base64
+            mime = self.tipo_arquivo or "application/octet-stream"
+            return f"data:{mime};base64,{self.arquivo_base64}"
+        return ""
+
+
+class PlanoAcaoMagicLink(models.Model):
+    """
+    Controla os links públicos de acesso ao Plano de Ação (CAPA)
+    para auditados sem login preencherem suas defesas e comprovações.
+    """
+    auditoria = models.ForeignKey(
+        AuditoriaIso,
+        on_delete=models.CASCADE,
+        related_name="magic_links_capa",
+        verbose_name="Auditoria de Origem"
+    )
+    agenda = models.ForeignKey(
+        AgendaAuditoriaIso,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="magic_links_capa",
+        verbose_name="Setor / Bloco Filtrado",
+        help_text="Se vazio, o link dá acesso a todas as Não Conformidades da auditoria."
+    )
+    token = models.CharField(max_length=64, unique=True, db_index=True, verbose_name="Token de Acesso")
+    dias_validade = models.PositiveIntegerField(default=15, verbose_name="Validade em Dias")
+    expira_em = models.DateTimeField(verbose_name="Data de Expiração")
+    incluir_om = models.BooleanField(default=False, verbose_name="Incluir OMs no Escopo")
+    criado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Criado por"
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    ultimo_acesso_em = models.DateTimeField(null=True, blank=True, verbose_name="Último Acesso")
+    ativo = models.BooleanField(default=True, verbose_name="Link Ativo")
+
+    class Meta:
+        verbose_name = "Magic Link de Plano de Ação"
+        verbose_name_plural = "Magic Links de Planos de Ação"
+        ordering = ["-criado_em"]
+
+    def save(self, *args, **kwargs):
+        if not self.token:
+            self.token = uuid.uuid4().hex
+        if not self.expira_em:
+            self.expira_em = timezone.now() + timezone.timedelta(days=self.dias_validade or 15)
+        super().save(*args, **kwargs)
+
+    @property
+    def is_expired(self) -> bool:
+        return bool(self.expira_em and self.expira_em <= timezone.now())
+
+    @property
+    def is_valid(self) -> bool:
+        return self.ativo and not self.is_expired
+
+    def __str__(self):
+        setor_nome = self.agenda.titulo if self.agenda else "Global (Todas as Áreas)"
+        return f"CAPA Link: {self.auditoria} [{setor_nome}] - {self.token[:8]}"
+
 
 
 class ImagemSolicitacaoIso(models.Model):

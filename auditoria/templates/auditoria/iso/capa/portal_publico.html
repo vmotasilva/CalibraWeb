@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal do Auditado | Plano de Ação (CAPA) - Calibra QMS</title>
+    <!-- Bootstrap 5.3 + Icons + Google Fonts Inter -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bs-body-font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            --brand-primary: #0284c7;
+            --brand-primary-dark: #0369a1;
+            --brand-bg: #f8fafc;
+        }
+
+        body {
+            background-color: var(--brand-bg);
+            color: #1e293b;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .glass-header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .capa-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+            transition: all 0.2s ease-in-out;
+            overflow: hidden;
+        }
+
+        .capa-card:hover {
+            border-color: #cbd5e1;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+        }
+
+        .capa-card-header-nc {
+            border-left: 5px solid #dc2626;
+        }
+
+        .capa-card-header-obs {
+            border-left: 5px solid #84cc16;
+        }
+
+        .capa-card-header-om {
+            border-left: 5px solid #f59e0b;
+        }
+
+        .status-badge-pill {
+            font-size: 0.78rem;
+            letter-spacing: 0.02em;
+            padding: 0.35rem 0.75rem;
+            border-radius: 9999px;
+            font-weight: 700;
+        }
+
+        .upload-dropzone {
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            background-color: #f8fafc;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .upload-dropzone:hover {
+            background-color: #f1f5f9;
+            border-color: var(--brand-primary);
+        }
+
+        .file-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .btn-brand {
+            background-color: var(--brand-primary);
+            color: #ffffff;
+            font-weight: 600;
+            border: none;
+        }
+
+        .btn-brand:hover {
+            background-color: var(--brand-primary-dark);
+            color: #ffffff;
+        }
+
+        .hero-banner {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #ffffff;
+            border-radius: 20px;
+            padding: 32px 36px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+
+    {% if error_title %}
+    <!-- Tela de Erro / Link Expirado -->
+    <div class="container my-auto py-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-5 text-center">
+                <div class="card border-0 shadow-lg rounded-4 p-4 p-md-5 bg-white">
+                    <div class="mb-3 text-danger">
+                        <i class="bi bi-shield-lock-fill" style="font-size: 4rem;"></i>
+                    </div>
+                    <h3 class="fw-bold text-dark mb-2">{{ error_title }}</h3>
+                    <p class="text-secondary mb-4">{{ error_message }}</p>
+                    <div class="p-3 bg-light rounded-3 text-muted small mb-0">
+                        <i class="bi bi-info-circle me-1"></i> Se você é gestor do setor auditado, entre em contato com o Coordenador da Qualidade para emissão de um novo convite de acesso.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+
+    <!-- Topbar Corporativo -->
+    <header class="glass-header sticky-top py-2.5 px-3 px-md-4 shadow-sm">
+        <div class="container-xl d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2.5">
+                <div class="bg-primary text-white rounded-3 p-2 d-flex align-items-center justify-content-center shadow-sm" style="width: 38px; height: 38px;">
+                    <i class="bi bi-shield-check fs-5"></i>
+                </div>
+                <div>
+                    <div class="fw-bold text-dark lh-1" style="font-size: 1.05rem;">Calibra WEB • QMS</div>
+                    <small class="text-muted font-mono" style="font-size: 0.72rem;">PORTAL DE TRATATIVA DE NÃO CONFORMIDADES (CAPA)</small>
+                </div>
+            </div>
+            <div>
+                <span class="badge bg-light text-secondary border px-3 py-2 rounded-pill font-mono">
+                    <i class="bi bi-clock-history me-1 text-primary"></i> Expira em: {{ magic_link.expira_em|date:"d/m/Y" }}
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <main class="container-xl my-4 flex-grow-1">
+        <!-- Hero Header -->
+        <div class="hero-banner mb-4">
+            <div class="row align-items-center g-3">
+                <div class="col-lg-8">
+                    <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+                        <span class="badge bg-primary text-white font-mono px-2.5 py-1.5 rounded-3">
+                            <i class="bi bi-award me-1"></i>{{ auditoria.norma.codigo }}
+                        </span>
+                        {% if setor_filtrado %}
+                            <span class="badge bg-success bg-opacity-75 text-white px-3 py-1.5 rounded-pill fw-bold font-mono fs-6">
+                                <i class="bi bi-geo-alt-fill me-1"></i> Setor: {{ setor_filtrado.titulo }}
+                            </span>
+                        {% else %}
+                            <span class="badge bg-secondary px-3 py-1.5 rounded-pill fw-bold font-mono fs-6">
+                                <i class="bi bi-globe me-1"></i> Visão Global (Todas as Áreas)
+                            </span>
+                        {% endif %}
+                    </div>
+                    <h2 class="fw-bold text-white mb-1">
+                        Plano de Ação Corretiva e Preventiva (CAPA)
+                    </h2>
+                    <p class="text-light text-opacity-75 mb-0" style="font-size: 0.95rem;">
+                        <i class="bi bi-building me-1"></i> {{ auditoria.unidade|default:"Unidade Fabril" }} &bull; 
+                        <i class="bi bi-calendar3 me-1 ms-2"></i> Período: {{ auditoria.data_inicio|date:"d/m/Y" }} a {{ auditoria.data_fim|date:"d/m/Y" }} &bull;
+                        <i class="bi bi-person-badge me-1 ms-2"></i> Auditor Líder: {{ auditoria.auditor_lider|default:"Auditor QMS" }}
+                    </p>
+                </div>
+                <div class="col-lg-4 text-lg-end">
+                    <div class="d-inline-flex bg-white bg-opacity-10 border border-white border-opacity-10 rounded-4 p-3 gap-3 text-center">
+                        <div>
+                            <div class="text-white fw-bold fs-4">{{ total_itens }}</div>
+                            <small class="text-white text-opacity-75" style="font-size: 0.72rem;">TOTAL ITENS</small>
+                        </div>
+                        <div class="border-start border-white border-opacity-20 ps-3">
+                            <div class="text-warning fw-bold fs-4">{{ total_pendentes }}</div>
+                            <small class="text-white text-opacity-75" style="font-size: 0.72rem;">PENDENTES</small>
+                        </div>
+                        <div class="border-start border-white border-opacity-20 ps-3">
+                            <div class="text-info fw-bold fs-4">{{ total_aguardando }}</div>
+                            <small class="text-white text-opacity-75" style="font-size: 0.72rem;">EM REVISÃO</small>
+                        </div>
+                        <div class="border-start border-white border-opacity-20 ps-3">
+                            <div class="text-success fw-bold fs-4">{{ total_aprovados }}</div>
+                            <small class="text-white text-opacity-75" style="font-size: 0.72rem;">APROVADOS</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instruções de Preenchimento -->
+        <div class="alert bg-white border border-slate-200 rounded-4 shadow-sm p-3.5 mb-4 d-flex align-items-start gap-3">
+            <div class="text-primary fs-4 mt-0.5">
+                <i class="bi bi-lightbulb-fill"></i>
+            </div>
+            <div class="small text-secondary">
+                <strong class="text-dark d-block mb-1">Instruções para o Gestor / Auditado:</strong>
+                Para cada item apontado abaixo, descreva detalhadamente a <strong>Causa Raiz</strong> (utilizando metodologias como 5 Porquês ou Diagrama de Ishikawa), a <strong>Ação Corretiva</strong> proposta, o <strong>Responsável</strong> e o <strong>Prazo Limite</strong>. Você também pode anexar fotos ou PDFs de comprovantes. Após preencher, clique em <strong>Enviar Plano de Ação</strong> para submeter à revisão do Auditor Líder.
+            </div>
+        </div>
+
+        <!-- Lista de Desvios / Formulários CAPA -->
+        <div class="d-flex flex-column gap-4" id="lista-capa">
+            {% for item in itens_capa %}
+            <div class="capa-card {% if item.conclusao == 'NC' %}capa-card-header-nc{% elif item.conclusao == 'OBS' %}capa-card-header-obs{% else %}capa-card-header-om{% endif %}" id="card-sol-{{ item.id }}">
+                
+                <!-- Cabeçalho do Card -->
+                <div class="p-3.5 px-md-4 bg-light border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        {% if item.conclusao == 'NC' %}
+                            {% if item.grau_nc == 'MAIOR' %}
+                                <span class="badge bg-danger text-white status-badge-pill font-mono">
+                                    <i class="bi bi-x-octagon-fill me-1"></i> NC MAIOR
+                                </span>
+                            {% else %}
+                                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 status-badge-pill font-mono">
+                                    <i class="bi bi-exclamation-triangle-fill me-1"></i> NC MENOR
+                                </span>
+                            {% endif %}
+                        {% elif item.conclusao == 'OBS' %}
+                            <span class="badge text-dark status-badge-pill font-mono" style="background-color: #d4e157;">
+                                <i class="bi bi-eye-fill me-1"></i> OBSERVAÇÃO COM CORREÇÃO
+                            </span>
+                        {% elif item.conclusao == 'OM' %}
+                            <span class="badge bg-warning text-dark status-badge-pill font-mono">
+                                <i class="bi bi-lightbulb-fill me-1"></i> OPORTUNIDADE DE MELHORIA
+                            </span>
+                        {% endif %}
+
+                        <span class="badge bg-white text-secondary border font-mono px-2.5 py-1.5 rounded-3">
+                            <i class="bi bi-box-seam me-1 text-primary"></i> {{ item.bloco_nome }}
+                        </span>
+
+                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 font-mono px-2.5 py-1.5 rounded-3">
+                            Item {{ item.itens_str }}
+                        </span>
+                    </div>
+
+                    <div>
+                        <!-- Status do Workflow CAPA -->
+                        {% if item.capa_status == 'PENDENTE' %}
+                            <span class="badge bg-secondary text-white rounded-pill px-3 py-1.5 fw-semibold font-mono" id="badge-status-{{ item.id }}">
+                                <i class="bi bi-hourglass-split me-1"></i> Pendente de Resposta
+                            </span>
+                        {% elif item.capa_status == 'AGUARDANDO_REVISAO' %}
+                            <span class="badge bg-info text-dark rounded-pill px-3 py-1.5 fw-semibold font-mono" id="badge-status-{{ item.id }}">
+                                <i class="bi bi-clock-history me-1"></i> Aguardando Revisão do Auditor
+                            </span>
+                        {% elif item.capa_status == 'APROVADO' %}
+                            <span class="badge bg-success text-white rounded-pill px-3 py-1.5 fw-bold font-mono" id="badge-status-{{ item.id }}">
+                                <i class="bi bi-check2-circle me-1"></i> Plano Aprovado
+                            </span>
+                        {% elif item.capa_status == 'REJEITADO' %}
+                            <span class="badge bg-danger text-white rounded-pill px-3 py-1.5 fw-bold font-mono" id="badge-status-{{ item.id }}">
+                                <i class="bi bi-exclamation-circle-fill me-1"></i> Rejeitado - Requer Ajuste
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="p-3.5 p-md-4">
+                    <!-- Detalhamento da Falha Apontada pelo Auditor -->
+                    <div class="bg-light bg-opacity-75 border rounded-3 p-3 mb-4">
+                        <div class="text-uppercase text-secondary fw-bold small mb-1" style="font-size: 0.72rem; letter-spacing: 0.05em;">
+                            <i class="bi bi-pin-angle-fill text-danger me-1"></i> Constatação do Auditor:
+                        </div>
+                        <h6 class="fw-bold text-dark mb-2">{{ item.solicitacao }}</h6>
+                        {% if item.evidencia_auditor %}
+                        <div class="text-secondary small font-monospace" style="white-space: pre-wrap; line-height: 1.5;">{{ item.evidencia_auditor }}</div>
+                        {% endif %}
+
+                        <!-- Fotos registradas pelo auditor na auditoria -->
+                        {% if item.imagens_origem %}
+                        <div class="mt-3 pt-2 border-top">
+                            <small class="fw-bold text-secondary d-block mb-2"><i class="bi bi-camera-fill me-1 text-primary"></i> Evidências Fotográficas do Auditor:</small>
+                            <div class="d-flex flex-wrap gap-2">
+                                {% for img in item.imagens_origem %}
+                                <a href="{{ img.url }}" target="_blank" class="d-inline-block rounded-3 border p-1 bg-white shadow-2xs hover-opacity" title="{{ img.legenda|default:img.nome }}">
+                                    <img src="{{ img.url }}" alt="Evidência" style="height: 60px; width: 60px; object-fit: cover;" class="rounded-2">
+                                </a>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Parecer do Auditor se foi Rejeitado -->
+                    {% if item.capa_parecer_auditor %}
+                    <div class="alert alert-warning border border-warning rounded-3 p-3 mb-4 d-flex align-items-start gap-2">
+                        <i class="bi bi-chat-left-dots-fill text-warning fs-5"></i>
+                        <div>
+                            <strong class="d-block mb-0.5">Comentário / Feedback do Auditor Líder:</strong>
+                            <div class="small text-dark">{{ item.capa_parecer_auditor }}</div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Formulário de Tratativa CAPA -->
+                    <form id="form-capa-{{ item.id }}" onsubmit="salvarPlanoAcao(event, {{ item.id }}, true)">
+                        <div class="row g-3 mb-3">
+                            <!-- Causa Raiz -->
+                            <div class="col-12">
+                                <label for="causa-raiz-{{ item.id }}" class="form-label fw-bold text-dark small mb-1">
+                                    1. Análise da Causa Raiz (Por que o problema ocorreu?) <span class="text-danger">*</span>
+                                </label>
+                                <textarea class="form-control" id="causa-raiz-{{ item.id }}" name="causa_raiz" rows="3" 
+                                          placeholder="Descreva a investigação de causa raiz (ex: metodologia dos 5 Porquês, falha de processo, falta de treinamento, etc.)..." required>{{ item.capa_causa_raiz }}</textarea>
+                            </div>
+
+                            <!-- Ação Corretiva/Preventiva -->
+                            <div class="col-12">
+                                <label for="acao-corretiva-{{ item.id }}" class="form-label fw-bold text-dark small mb-1">
+                                    2. Plano de Ação Corretiva / Preventiva (O que será feito para eliminar a causa?) <span class="text-danger">*</span>
+                                </label>
+                                <textarea class="form-control" id="acao-corretiva-{{ item.id }}" name="acao_corretiva" rows="3" 
+                                          placeholder="Detalhamento das ações a serem implementadas para corrigir e evitar reincidência..." required>{{ item.capa_acao_corretiva }}</textarea>
+                            </div>
+
+                            <!-- Responsável -->
+                            <div class="col-md-6">
+                                <label for="responsavel-{{ item.id }}" class="form-label fw-bold text-dark small mb-1">
+                                    3. Responsável pela Execução <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="responsavel-{{ item.id }}" name="responsavel" 
+                                       placeholder="Nome do colaborador / gestor responsável" value="{{ item.capa_responsavel }}" required>
+                            </div>
+
+                            <!-- Prazo -->
+                            <div class="col-md-6">
+                                <label for="prazo-{{ item.id }}" class="form-label fw-bold text-dark small mb-1">
+                                    4. Prazo Limite para Implementação <span class="text-danger">*</span>
+                                </label>
+                                <input type="date" class="form-control" id="prazo-{{ item.id }}" name="prazo" 
+                                       value="{{ item.capa_prazo }}" required>
+                            </div>
+
+                            <!-- Nome do Gestor/Respondente -->
+                            <div class="col-12">
+                                <label for="respondente-{{ item.id }}" class="form-label fw-semibold text-secondary small mb-1">
+                                    Identificação do Respondente (Seu Nome / Cargo):
+                                </label>
+                                <input type="text" class="form-control form-control-sm" id="respondente-{{ item.id }}" name="respondente_nome" 
+                                       placeholder="Ex: Carlos Silva - Supervisor de Produção" value="{{ item.capa_respondido_por_nome }}">
+                            </div>
+
+                            <!-- Upload de Evidências / Comprovantes -->
+                            <div class="col-12">
+                                <label class="form-label fw-bold text-dark small mb-1">
+                                    5. Comprovantes / Evidências da Ação (Fotos, Procedimentos, PDFs)
+                                </label>
+                                <div class="upload-dropzone" onclick="document.getElementById('input-file-{{ item.id }}').click()">
+                                    <i class="bi bi-cloud-arrow-up-fill fs-2 text-primary d-block mb-1"></i>
+                                    <span class="fw-semibold text-dark small d-block">Clique ou arraste arquivos para anexar</span>
+                                    <span class="text-muted" style="font-size: 0.75rem;">Suporta Imagens (PNG, JPG) e Documentos (PDF, DOCX)</span>
+                                    <input type="file" id="input-file-{{ item.id }}" multiple class="d-none" onchange="previewArquivosSelecionados({{ item.id }})">
+                                </div>
+                                <div id="preview-files-{{ item.id }}" class="d-flex flex-wrap gap-2 mt-2"></div>
+
+                                <!-- Arquivos Já Anexados -->
+                                <div id="anexos-existentes-{{ item.id }}" class="d-flex flex-wrap gap-2 mt-2">
+                                    {% for ev in item.evidencias_capa %}
+                                    <div class="file-pill" id="ev-pill-{{ ev.id }}">
+                                        <i class="bi bi-paperclip text-primary"></i>
+                                        <a href="{{ ev.url }}" target="_blank" class="text-decoration-none text-dark">{{ ev.nome }}</a>
+                                        <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-1" onclick="removerEvidencia({{ item.id }}, {{ ev.id }})" title="Remover anexo">
+                                            <i class="bi bi-x-circle-fill"></i>
+                                        </button>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Barra de Ações do Card -->
+                        <div class="pt-3 border-top d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <div class="text-muted small">
+                                {% if item.capa_respondido_em %}
+                                    <i class="bi bi-check-circle me-1 text-success"></i> Última submissão em {{ item.capa_respondido_em }}
+                                {% endif %}
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-outline-secondary rounded-pill px-3.5 fw-semibold btn-sm shadow-2xs" 
+                                        onclick="salvarPlanoAcao(event, {{ item.id }}, false)" id="btn-rascunho-{{ item.id }}">
+                                    <i class="bi bi-floppy me-1"></i> Salvar Rascunho
+                                </button>
+                                <button type="submit" class="btn btn-brand rounded-pill px-4 fw-bold btn-sm shadow-sm" id="btn-enviar-{{ item.id }}">
+                                    <i class="bi bi-send-fill me-1"></i> Enviar Plano de Ação
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% empty %}
+            <div class="card border-0 shadow-sm rounded-4 text-center p-5 bg-white">
+                <div class="py-4">
+                    <i class="bi bi-check-circle-fill text-success fs-1 mb-2 d-block"></i>
+                    <h5 class="fw-bold text-dark">Nenhuma Não Conformidade Pendente!</h5>
+                    <p class="text-secondary small mb-0">Não foram encontrados desvios registrados para o escopo deste link.</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </main>
+
+    <footer class="bg-white border-top py-3 text-center text-secondary small mt-auto">
+        <div class="container-xl">
+            Calibra WEB &bull; Sistema Integrado de Gestão da Qualidade &bull; © 2026 Todos os direitos reservados.
+        </div>
+    </footer>
+
+    <!-- Toast de Notificação -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1055;">
+        <div id="toastFeedback" class="toast align-items-center text-white border-0 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body fw-medium" id="toastMessage"></div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts Bootstrap + Lógica do Portal -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const TOKEN = "{{ token }}";
+        const URL_SALVAR = "{% url 'auditoria:api_capa_salvar_resposta_publica' token %}";
+
+        function showToast(message, isSuccess = true) {
+            const toastEl = document.getElementById('toastFeedback');
+            const msgEl = document.getElementById('toastMessage');
+            toastEl.className = `toast align-items-center text-white border-0 shadow-lg ${isSuccess ? 'bg-success' : 'bg-danger'}`;
+            msgEl.textContent = message;
+            const toast = new bootstrap.Toast(toastEl, { delay: 4000 });
+            toast.show();
+        }
+
+        function previewArquivosSelecionados(solId) {
+            const input = document.getElementById(`input-file-${solId}`);
+            const container = document.getElementById(`preview-files-${solId}`);
+            container.innerHTML = '';
+
+            if (input.files && input.files.length > 0) {
+                Array.from(input.files).forEach(f => {
+                    const pill = document.createElement('div');
+                    pill.className = 'file-pill border-primary bg-primary bg-opacity-10 text-primary';
+                    pill.innerHTML = `<i class="bi bi-file-earmark-arrow-up"></i> ${f.name} <small class="text-muted">(${Math.round(f.size/1024)} KB)</small>`;
+                    container.appendChild(pill);
+                });
+            }
+        }
+
+        async function salvarPlanoAcao(e, solId, isSubmissao) {
+            if (e) e.preventDefault();
+
+            const btnEnviar = document.getElementById(`btn-enviar-${solId}`);
+            const btnRascunho = document.getElementById(`btn-rascunho-${solId}`);
+            const originalText = isSubmissao ? btnEnviar.innerHTML : btnRascunho.innerHTML;
+
+            const causaRaiz = document.getElementById(`causa-raiz-${solId}`).value;
+            const acaoCorretiva = document.getElementById(`acao-corretiva-${solId}`).value;
+            const responsavel = document.getElementById(`responsavel-${solId}`).value;
+            const prazo = document.getElementById(`prazo-${solId}`).value;
+            const respondente = document.getElementById(`respondente-${solId}`).value;
+            const inputFiles = document.getElementById(`input-file-${solId}`);
+
+            if (isSubmissao) {
+                if (!causaRaiz.trim() || !acaoCorretiva.trim() || !responsavel.trim() || !prazo) {
+                    showToast('Por favor, preencha Causa Raiz, Ação Corretiva, Responsável e Prazo para submeter.', false);
+                    return;
+                }
+                btnEnviar.disabled = true;
+                btnEnviar.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Enviando...`;
+            } else {
+                btnRascunho.disabled = true;
+                btnRascunho.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Salvando...`;
+            }
+
+            const formData = new FormData();
+            formData.append('solicitacao_id', solId);
+            formData.append('causa_raiz', causaRaiz);
+            formData.append('acao_corretiva', acaoCorretiva);
+            formData.append('responsavel', responsavel);
+            formData.append('prazo', prazo);
+            formData.append('respondente_nome', respondente);
+            formData.append('is_submissao', isSubmissao ? 'true' : 'false');
+
+            if (inputFiles.files && inputFiles.files.length > 0) {
+                for (let i = 0; i < inputFiles.files.length; i++) {
+                    formData.append('arquivos_evidencia', inputFiles.files[i]);
+                }
+            }
+
+            try {
+                const response = await fetch(URL_SALVAR, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showToast(data.message, true);
+
+                    // Atualizar badge de status
+                    const badgeStatus = document.getElementById(`badge-status-${solId}`);
+                    if (badgeStatus) {
+                        if (data.status === 'AGUARDANDO_REVISAO') {
+                            badgeStatus.className = 'badge bg-info text-dark rounded-pill px-3 py-1.5 fw-semibold font-mono';
+                            badgeStatus.innerHTML = `<i class="bi bi-clock-history me-1"></i> Aguardando Revisão do Auditor`;
+                        } else if (data.status === 'PENDENTE') {
+                            badgeStatus.className = 'badge bg-secondary text-white rounded-pill px-3 py-1.5 fw-semibold font-mono';
+                            badgeStatus.innerHTML = `<i class="bi bi-hourglass-split me-1"></i> Pendente de Resposta`;
+                        }
+                    }
+
+                    // Renderizar novos anexos salvos
+                    if (data.novas_evidencias && data.novas_evidencias.length > 0) {
+                        const anexosCont = document.getElementById(`anexos-existentes-${solId}`);
+                        data.novas_evidencias.forEach(ev => {
+                            const pill = document.createElement('div');
+                            pill.className = 'file-pill';
+                            pill.id = `ev-pill-${ev.id}`;
+                            pill.innerHTML = `
+                                <i class="bi bi-paperclip text-primary"></i>
+                                <a href="${ev.url}" target="_blank" class="text-decoration-none text-dark">${ev.nome}</a>
+                                <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-1" onclick="removerEvidencia(${solId}, ${ev.id})" title="Remover anexo">
+                                    <i class="bi bi-x-circle-fill"></i>
+                                </button>
+                            `;
+                            anexosCont.appendChild(pill);
+                        });
+                        // Limpa seleção temporária
+                        document.getElementById(`input-file-${solId}`).value = '';
+                        document.getElementById(`preview-files-${solId}`).innerHTML = '';
+                    }
+                } else {
+                    showToast(data.error || 'Erro ao processar solicitação.', false);
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Erro de conexão com o servidor. Tente novamente.', false);
+            } finally {
+                if (isSubmissao) {
+                    btnEnviar.disabled = false;
+                    btnEnviar.innerHTML = originalText;
+                } else {
+                    btnRascunho.disabled = false;
+                    btnRascunho.innerHTML = originalText;
+                }
+            }
+        }
+
+        async function removerEvidencia(solId, evId) {
+            if (!confirm('Deseja realmente remover este arquivo anexo?')) return;
+
+            try {
+                const url = `/auditoria/capa/api/remover-evidencia/${TOKEN}/${evId}/`;
+                const response = await fetch(url, { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    const el = document.getElementById(`ev-pill-${evId}`);
+                    if (el) el.remove();
+                    showToast('Arquivo removido com sucesso.', true);
+                } else {
+                    showToast(data.error || 'Erro ao remover arquivo.', false);
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Erro de comunicação.', false);
+            }
+        }
+    </script>
+    {% endif %}
+</body>
+</html>
