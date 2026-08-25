@@ -117,9 +117,9 @@
 }
 
 /* ============================================================
-   ESTRUTURA DE RESPOSTA HORIZONTAL E COMENTÁRIOS NO MOBILE
+   ESTRUTURA DE RESPOSTA HORIZONTAL E COMENTÁRIOS NO MOBILE (Card)
    ============================================================ */
-.dias-container {
+.dias-container-mobile {
     display: flex !important;
     flex-direction: row !important;
     justify-content: space-between !important;
@@ -127,64 +127,66 @@
     background: #f8fafc;
     border: 1px solid #e2e8f0;
     border-radius: 8px;
-    padding: 0.6rem 0.5rem;
-    gap: 6px;
+    padding: 0.5rem 0.4rem;
+    gap: 4px;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     width: 100%;
+    margin-bottom: 0.5rem !important; /* mb-2 */
 }
 
-.dia-item {
+.dia-item-mobile {
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
     justify-content: center !important;
     flex: 1 1 0px;
-    min-width: 38px;
+    min-width: 32px;
     text-align: center;
-    gap: 4px;
+    gap: 3px;
 }
 
-.dia-label {
-    font-size: 0.72rem;
+.dia-label-mobile {
+    font-size: 0.7rem !important;
     font-weight: 700;
     color: #475569;
     text-transform: uppercase;
     line-height: 1;
 }
 
-.dia-item .semaphore-interactive {
+.dia-item-mobile .semaphore-interactive {
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 2px;
 }
 
-.dia-item .answer-semaphore,
-.dia-item .semaphore-empty {
-    width: 28px;
-    height: 28px;
-    min-width: 28px;
-    min-height: 28px;
+.dia-item-mobile .answer-semaphore,
+.dia-item-mobile .semaphore-empty {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    font-size: 13px;
 }
 
-.comentario-container {
+.comentario-container-mobile {
     width: 100% !important;
     background-color: #ffffff;
     border: 1px solid #e2e8f0;
     border-radius: 8px;
-    padding: 0.65rem 0.85rem;
-    margin-top: 0.75rem;
+    padding: 0.6rem 0.75rem;
 }
 
-.comentario-header {
+.comentario-header-mobile {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 0.35rem;
+    margin-bottom: 0.3rem;
 }
 
-.comentario-title {
-    font-size: 0.82rem;
+.comentario-title-mobile {
+    font-size: 0.8rem;
     font-weight: 600;
     color: #64748b;
 }
@@ -600,34 +602,105 @@
                     </thead>
                     <tbody>
                         {% for linha in bloco.linhas %}
-                        <tr class="audit-row-card">
-                            <!-- 1. Cabeçalho do Card (Ordem + Pergunta) -->
-                            <td class="col-ordem-pergunta">
-                                <div class="d-flex align-items-center gap-2 mb-1">
-                                    <span class="badge bg-secondary">{{ linha.ordem }}</span>
-                                    <span class="fw-bold text-dark"
-                                        {% if linha.descricao_detalhada %}
-                                        data-bs-toggle="tooltip"
-                                        data-bs-placement="top"
-                                        title="{{ linha.descricao_detalhada }}"
-                                        style="cursor: help;"
-                                        {% endif %}>
-                                        {{ linha.pergunta }}
-                                    </span>
-                                    {% if linha.obrigatoria %}
-                                    <span class="text-danger">*</span>
-                                    {% endif %}
+                        <!-- 1. VERSÃO DESKTOP (>= 768px): Tabela Tradicional com Colunas Alinhadas aos <th> -->
+                        <tr class="d-none d-md-table-row">
+                            <td class="text-center">
+                                <span class="badge bg-secondary">{{ linha.ordem }}</span>
+                            </td>
+                            <td class="col-pergunta">
+                                <span class="fw-semibold text-dark"
+                                    {% if linha.descricao_detalhada %}
+                                    data-bs-toggle="tooltip"
+                                    data-bs-placement="top"
+                                    title="{{ linha.descricao_detalhada }}"
+                                    style="cursor: help;"
+                                    {% endif %}>
+                                    {{ linha.pergunta }}
+                                </span>
+                                {% if linha.obrigatoria %}
+                                <span class="text-danger">*</span>
+                                {% endif %}
+                            </td>
+                            {% if exibir_dia_semana %}
+                                {% for dia_cell in linha.dia_cells %}
+                                <td class="col-dia text-center">
+                                    <div
+                                        class="semaphore-interactive"
+                                        data-pergunta-id="{{ dia_cell.pergunta_id }}"
+                                        data-dia="{{ dia_cell.dia_key }}"
+                                        data-valor="{{ dia_cell.value }}"
+                                        data-tipo="{{ dia_cell.tipo_resposta }}"
+                                        data-opcoes="{{ dia_cell.opcoes_json|default:'[]'|escape }}"
+                                        title="Clique para alterar a resposta"
+                                    >
+                                        {% if dia_cell.value %}
+                                        <span
+                                            class="answer-semaphore"
+                                            data-bs-toggle="tooltip"
+                                            data-bs-placement="top"
+                                            title="{{ dia_cell.value }}"
+                                            style="background-color: {{ dia_cell.color|default:'#198754' }};"
+                                        ></span>
+                                        {% else %}
+                                        <span class="semaphore-empty" data-bs-toggle="tooltip" title="Clique para responder">+</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                {% endfor %}
+                            {% endif %}
+                            <td class="col-comentarios">
+                                <div class="d-flex justify-content-between align-items-start gap-2">
+                                    <div class="flex-grow-1">
+                                        {% if linha.comentarios %}
+                                        <ul class="mb-0 ps-3 small text-muted">
+                                            {% for comentario in linha.comentarios %}
+                                            <li>{{ comentario }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                        {% else %}
+                                        <span class="text-muted fst-italic small">Sem comentários</span>
+                                        {% endif %}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm btn-outline-primary py-0 px-2 comment-open-btn ms-1"
+                                        data-pergunta-id="{{ linha.pergunta_id }}"
+                                        data-pergunta-texto="{{ linha.pergunta|escape }}"
+                                        title="Adicionar comentário">
+                                        <i class="bi bi-plus-lg"></i>
+                                    </button>
                                 </div>
                             </td>
+                        </tr>
 
-                            <!-- 2. Área Completa de Respostas (Faróis na Horizontal + Comentários) -->
-                            <td class="col-respostas-container">
+                        <!-- 2. VERSÃO MOBILE (< 768px): Card Empilhado com Faróis Horizontais e Comentários -->
+                        <tr class="d-table-row d-md-none audit-row-card">
+                            <td class="p-0 border-0">
+                                <!-- Cabeçalho do Card (Ordem + Pergunta) -->
+                                <div class="col-ordem-pergunta mb-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="badge bg-secondary">{{ linha.ordem }}</span>
+                                        <span class="fw-bold text-dark"
+                                            {% if linha.descricao_detalhada %}
+                                            data-bs-toggle="tooltip"
+                                            data-bs-placement="top"
+                                            title="{{ linha.descricao_detalhada }}"
+                                            style="cursor: help;"
+                                            {% endif %}>
+                                            {{ linha.pergunta }}
+                                        </span>
+                                        {% if linha.obrigatoria %}
+                                        <span class="text-danger">*</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <!-- Área de Respostas (Faróis na Horizontal) -->
                                 {% if exibir_dia_semana %}
-                                <!-- Linha Horizontal de Faróis dos Dias da Semana -->
-                                <div class="dias-container">
+                                <div class="dias-container-mobile">
                                     {% for dia_cell in linha.dia_cells %}
-                                    <div class="dia-item">
-                                        <span class="dia-label">{{ dia_cell.short_label }}</span>
+                                    <div class="dia-item-mobile">
+                                        <span class="dia-label-mobile">{{ dia_cell.short_label }}</span>
                                         <div
                                             class="semaphore-interactive"
                                             data-pergunta-id="{{ dia_cell.pergunta_id }}"
@@ -654,10 +727,10 @@
                                 </div>
                                 {% endif %}
 
-                                <!-- Campo de Comentário Isolado (Abaixo dos Faróis, Largura 100%) -->
-                                <div class="comentario-container">
-                                    <div class="comentario-header">
-                                        <span class="comentario-title"><i class="bi bi-chat-left-text me-1"></i> Comentários:</span>
+                                <!-- Campo de Comentário (Abaixo dos Faróis com Margem) -->
+                                <div class="comentario-container-mobile">
+                                    <div class="comentario-header-mobile">
+                                        <span class="comentario-title-mobile"><i class="bi bi-chat-left-text me-1"></i> Comentários:</span>
                                         <button
                                             type="button"
                                             class="btn btn-sm btn-outline-primary py-0 px-2 comment-open-btn"
