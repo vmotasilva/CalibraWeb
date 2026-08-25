@@ -137,6 +137,11 @@
                                     {{ sec.count_om }} OM
                                 </span>
                             {% endif %}
+                            {% if sec.count_obs > 0 %}
+                                <span class="badge text-dark rounded-pill px-2 py-0.5 font-monospace" style="background-color: #d4e157; font-size: 0.7rem;">
+                                    {{ sec.count_obs }} OBS
+                                </span>
+                            {% endif %}
                             {% if sec.total_gaps == 0 %}
                                 <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2 py-0.5" style="font-size: 0.7rem;">
                                     <i class="bi bi-check2"></i> 100% Conforme
@@ -181,10 +186,10 @@
                     {% if secao_ativa.gaps %}
                         <div class="d-flex flex-column gap-2 mb-3">
                             {% for gap in secao_ativa.gaps %}
-                            <div class="p-3 rounded-3 border {% if gap.status == 'NC' %}bg-danger bg-opacity-10 border-danger border-opacity-25{% else %}bg-warning bg-opacity-10 border-warning border-opacity-25{% endif %}">
+                            <div class="p-3 rounded-3 border {% if gap.status == 'NC' %}bg-danger bg-opacity-10 border-danger border-opacity-25{% elif gap.status == 'OBS' %}bg-warning bg-opacity-15 border-warning border-opacity-50{% else %}bg-warning bg-opacity-10 border-warning border-opacity-25{% endif %}">
                                 <div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-2">
                                     <div class="d-flex align-items-center gap-2">
-                                        <span class="badge {% if gap.status == 'NC' %}bg-danger text-white{% else %}bg-warning text-dark{% endif %} font-monospace rounded-pill px-2.5 py-1">
+                                        <span class="badge {% if gap.status == 'NC' %}bg-danger text-white{% elif gap.status == 'OBS' %}text-dark{% else %}bg-warning text-dark{% endif %} font-monospace rounded-pill px-2.5 py-1" {% if gap.status == 'OBS' %}style="background-color: #d4e157;"{% endif %}>
                                             {{ gap.grau_label }}
                                         </span>
                                         <strong class="text-dark">Requisito {{ gap.item_referencia }}</strong>

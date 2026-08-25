@@ -7630,14 +7630,17 @@ def iso_auditoria_sintese_wizard(request, auditoria_id):
     respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).prefetch_related(
         'solicitacoes', 'solicitacoes__imagens', 'pergunta__itens_norma'
     )
-    respostas_map = {r.pergunta_id: r for r in respostas}
     avaliacoes_finais = {av.item_norma_id: av for av in AvaliacaoFinalRequisitoIso.objects.filter(auditoria=auditoria)}
 
-    pergunta_itens_map = {}
-    for ag in auditoria.agendas.all():
-        for p in ag.perguntas.all():
-            if p.id not in pergunta_itens_map:
-                pergunta_itens_map[p.id] = set(it.id for it in p.itens_norma.all())
+    # Mapeia todas as respostas e solicitações da auditoria para cada Item da Norma
+    item_respostas_map = defaultdict(list)
+    item_solicitacoes_map = defaultdict(list)
+
+    for resp in respostas:
+        for it in resp.pergunta.itens_norma.all():
+            item_respostas_map[it.id].append(resp)
+            for sol in resp.solicitacoes.all():
+                item_solicitacoes_map[it.id].append(sol)
 
     secoes_dict = {}
     all_root_items = {it.referencia: it for it in ItemNorma.objects.filter(norma=auditoria.norma)}
@@ -7672,30 +7675,31 @@ def iso_auditoria_sintese_wizard(request, auditoria_id):
         sec_data['itens'].append(item)
 
         av_final = avaliacoes_finais.get(item.id)
-        perguntas_do_item = [p_id for p_id, ids in pergunta_itens_map.items() if item.id in ids]
-        sols_do_item = []
-        for p_id in perguntas_do_item:
-            r = respostas_map.get(p_id)
-            if r:
-                for s in r.solicitacoes.all():
-                    sols_do_item.append(s)
+        sols_do_item = item_solicitacoes_map.get(item.id, [])
+        resps_do_item = item_respostas_map.get(item.id, [])
 
         if av_final and av_final.classificacao:
             status = av_final.classificacao
             grau = av_final.grau_nc
             justif = av_final.justificativa
-        elif sols_do_item:
-            conclusoes = [s.conclusao for s in sols_do_item]
-            if 'NC' in conclusoes:
+        elif sols_do_item or resps_do_item:
+            conclusoes_sols = [s.conclusao for s in sols_do_item]
+            classificacoes_resps = [r.classificacao for r in resps_do_item]
+            todas_conclusoes = conclusoes_sols + classificacoes_resps
+
+            if 'NC' in todas_conclusoes:
                 status = 'NC'
                 grau = 'MAIOR' if any(s.grau_nc == 'MAIOR' for s in sols_do_item if s.conclusao == 'NC') else 'MENOR'
-            elif 'OM' in conclusoes:
+            elif 'OM' in todas_conclusoes:
                 status = 'OM'
                 grau = None
-            elif any(c == 'C' for c in conclusoes):
+            elif 'OBS' in todas_conclusoes:
+                status = 'OBS'
+                grau = None
+            elif any(c == 'C' for c in todas_conclusoes):
                 status = 'C'
                 grau = None
-            elif all(c == 'NA' for c in conclusoes):
+            elif all(c == 'NA' for c in todas_conclusoes):
                 status = 'NA'
                 grau = None
             else:
@@ -7707,6 +7711,7 @@ def iso_auditoria_sintese_wizard(request, auditoria_id):
             grau = None
             justif = ""
 
+
         if status == 'NC':
             if grau == 'MAIOR':
                 sec_data['count_nc_maior'] += 1
@@ -7714,6 +7719,8 @@ def iso_auditoria_sintese_wizard(request, auditoria_id):
                 sec_data['count_nc_menor'] += 1
         elif status == 'OM':
             sec_data['count_om'] += 1
+        elif status == 'OBS':
+            sec_data['count_obs'] = sec_data.get('count_obs', 0) + 1
         elif status == 'C':
             sec_data['count_c'] += 1
         elif status == 'NA':
@@ -7721,13 +7728,14 @@ def iso_auditoria_sintese_wizard(request, auditoria_id):
 
         sec_data['total_avaliados'] += 1
 
-        if status in ['NC', 'OM']:
+        if status in ['NC', 'OM', 'OBS']:
+            grau_label = "NC Maior" if (status == 'NC' and grau == 'MAIOR') else ("NC Menor" if status == 'NC' else ("Observação com Correção" if status == 'OBS' else "Oportunidade de Melhoria"))
             sec_data['gaps'].append({
                 'item_referencia': item.referencia,
                 'item_titulo': item.titulo,
                 'status': status,
                 'grau': grau,
-                'grau_label': "NC Maior" if grau == 'MAIOR' else ("NC Menor" if status == 'NC' else "Oportunidade de Melhoria"),
+                'grau_label': grau_label,
                 'justificativa': justif,
                 'solicitacoes': sols_do_item,
             })
@@ -7735,7 +7743,8 @@ def iso_auditoria_sintese_wizard(request, auditoria_id):
     secoes_lista = sorted(secoes_dict.values(), key=lambda s: natural_sort_key(s['referencia']))
 
     for s in secoes_lista:
-        s['total_gaps'] = s['count_nc_maior'] + s['count_nc_menor'] + s['count_om']
+        s['total_gaps'] = s['count_nc_maior'] + s['count_nc_menor'] + s['count_om'] + s.get('count_obs', 0)
+
 
     secao_ativa_ref = request.GET.get('secao')
     secao_ativa = None
