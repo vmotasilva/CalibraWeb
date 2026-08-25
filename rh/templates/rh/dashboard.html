@@ -2,26 +2,37 @@
 
 {% block content %}
 <style>
-    <style>
-        /* --- ESTILOS DE "APP" (SEM ROLAGEM NA PÁGINA NO DESKTOP) --- */
-        @media (min-width: 768px) {
-            body { overflow: hidden; }
-            .main-rh-container { height: calc(100vh - 170px); }
+    /* --- ESTILOS DE "APP" (SEM ROLAGEM NA PÁGINA NO DESKTOP) --- */
+    @media (min-width: 768px) {
+        body { overflow: hidden; }
+        .main-rh-container { height: calc(100vh - 170px); }
+    }
+    @media (max-width: 767.98px) {
+        body { overflow-y: auto !important; height: auto !important; }
+        .container-fluid-rh { height: auto !important; overflow: visible !important; min-height: 100vh; }
+        .main-rh-container { height: auto !important; flex-direction: column !important; }
+        #table-col { 
+            height: auto !important; 
+            border: none !important; 
+            background: transparent !important; 
+            padding: 0 !important; 
+            overflow: visible !important; 
         }
-        @media (max-width: 767.98px) {
-            body { overflow-y: auto !important; }
-            .container-fluid-rh { height: auto !important; overflow: visible !important; }
-            .main-rh-container { height: auto !important; }
-            #table-col { height: auto !important; }
-            .table-card { height: auto !important; }
-            .table-card-body { overflow: visible !important; }
-            .table-container-scroll { overflow: visible !important; height: auto !important; }
-            
-            /* Paginação compacta no mobile: oculta números intermediários */
-            #pageNumbers { display: none !important; }
-            .pagination-controls { justify-content: center !important; gap: 0.5rem !important; }
-            .pagination-info { width: 100%; text-align: center; margin-bottom: 0.25rem; font-size: 0.8rem; }
+        .table-card { 
+            height: auto !important; 
+            border: none !important; 
+            box-shadow: none !important; 
+            background: transparent !important; 
+            overflow: visible !important; 
         }
+        .table-card-body { overflow: visible !important; }
+        .table-container-scroll { overflow: visible !important; height: auto !important; }
+        
+        /* Paginação compacta no mobile: oculta números intermediários */
+        #pageNumbers { display: none !important; }
+        .pagination-controls { justify-content: center !important; gap: 0.5rem !important; }
+        .pagination-info { width: 100%; text-align: center; margin-bottom: 0.25rem; font-size: 0.8rem; }
+    }
 
         /* CARD DO FILTRO (SIDEBAR) */
         .filter-card {
@@ -203,7 +214,7 @@
         }
     </style>
 
-<div class="container-fluid container-fluid-rh py-3" style="height: 100vh; display: flex; flex-direction: column; overflow: hidden;">
+<div class="container-fluid container-fluid-rh py-3">
     
     {% load nav_access %}
     {% can_nav_block user 'rh' 'horas_extras' as can_he %}
@@ -306,7 +317,7 @@
         </div>
     </div>
 
-    <div style="display: flex; gap: 1rem; height: calc(100vh - 180px); width: 100%;">
+    <div class="main-rh-container" style="display: flex; gap: 1rem; width: 100%;">
         
         <!-- Modal Filtros -->
         <div class="modal fade" id="filtrosModal" tabindex="-1" aria-hidden="true">
@@ -513,10 +524,10 @@
                 </div>
             </div>
 
-            <div class="card table-card">
+            <!-- TABELA DESKTOP (>= 768px) -->
+            <div class="card table-card d-none d-md-flex">
                 <div class="table-card-body">
-                    <!-- TABELA DESKTOP (>= 768px) -->
-                    <div class="table-container-scroll d-none d-md-block">
+                    <div class="table-container-scroll">
                         <table class="table table-hover align-middle mb-0" id="rhTable">
                             <thead class="small text-uppercase text-muted font-monospace">
                                 <tr>
@@ -613,93 +624,98 @@
                             </tbody>
                         </table>
                     </div>
+                </div>
+            </div>
 
-                    <!-- CONTAINER DE CARDS MOBILE (< 768px) -->
-                    <div class="d-block d-md-none p-2" id="rhMobileCardsContainer">
-                        {% for f in funcionarios %}
-                        <div class="colaborador-mobile-card">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <div class="d-flex align-items-center gap-2">
-                                    <div class="bg-light rounded-circle d-flex align-items-center justify-content-center text-primary fw-bold border shadow-sm" style="width: 38px; height: 38px; font-size: 0.9rem; flex-shrink: 0;">
-                                        {{ f.nome_completo|slice:":1" }}
-                                    </div>
-                                    <div>
-                                        <a href="{% url 'detalhe_colaborador' f.id %}" class="fw-bold text-primary small text-uppercase text-decoration-none d-block">
-                                            {{ f.nome_completo }}
-                                        </a>
-                                        <div class="text-muted small d-flex align-items-center flex-wrap" style="font-size: 0.7rem;">
-                                            <i class="bi bi-person-vcard me-1"></i>{{ f.matricula }} <span class="badge bg-info bg-opacity-10 text-info border ms-1 py-0" style="font-size: 0.65rem;">#{{ f.id }}</span>
-                                            {% if not f.is_active %}
-                                                <span class="badge bg-danger ms-1 py-0" style="font-size: 0.6rem;">DESLIGADO</span>
-                                            {% elif f.afastado %}
-                                                <span class="badge bg-info ms-1 py-0" style="font-size: 0.6rem;">AFASTADO</span>
-                                            {% elif f.em_ferias %}
-                                                <span class="badge bg-warning text-dark ms-1 py-0" style="font-size: 0.6rem;">FÉRIAS</span>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </div>
-                                {% if user.is_superuser %}
-                                <input type="checkbox" class="form-check-input row-checkbox" data-id="{{ f.id }}" onchange="updateSelectionBadge()">
-                                {% endif %}
+            <!-- CONTAINER DE CARDS MOBILE (< 768px - FLUXO NATURAL DO DOM) -->
+            <div class="d-block d-md-none" id="rhMobileCardsContainer">
+                {% for f in funcionarios %}
+                <div class="colaborador-mobile-card">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="bg-light rounded-circle d-flex align-items-center justify-content-center text-primary fw-bold border shadow-sm" style="width: 38px; height: 38px; font-size: 0.9rem; flex-shrink: 0;">
+                                {{ f.nome_completo|slice:":1" }}
                             </div>
-
-                            <div class="mb-2 ps-1">
-                                <p class="mb-1 text-dark fw-semibold small">{{ f.cargo|default:"Sem cargo" }}</p>
-                                <p class="mb-0 text-muted small" style="font-size: 0.75rem;">
-                                    <i class="bi bi-diagram-3 me-1"></i>{{ f.setor.nome|default:"-" }} <span class="ms-1">| CC: {{ f.centro_custo.codigo|default:"N/A" }}</span>
-                                </p>
-                            </div>
-
-                            <div class="d-flex justify-content-between align-items-center pt-2 border-top">
-                                <span class="badge bg-light text-dark border fw-normal" style="font-size: 0.7rem;">{{ f.get_turno_display|default:"Geral" }}</span>
-                                <div class="d-flex gap-1">
-                                    <span class="badge bg-success bg-opacity-10 text-success border" style="font-size: 0.7rem;">Vigentes: {{ f.trein_vigentes }}</span>
-                                    <span class="badge bg-danger bg-opacity-10 text-danger border" style="font-size: 0.7rem;">Pendentes: {{ f.trein_pendentes }}</span>
+                            <div>
+                                <a href="{% url 'detalhe_colaborador' f.id %}" class="fw-bold text-primary small text-uppercase text-decoration-none d-block">
+                                    {{ f.nome_completo }}
+                                </a>
+                                <div class="text-muted small d-flex align-items-center flex-wrap" style="font-size: 0.7rem;">
+                                    <i class="bi bi-person-vcard me-1"></i>{{ f.matricula }} <span class="badge bg-info bg-opacity-10 text-info border ms-1 py-0" style="font-size: 0.65rem;">#{{ f.id }}</span>
+                                    {% if not f.is_active %}
+                                        <span class="badge bg-danger ms-1 py-0" style="font-size: 0.6rem;">DESLIGADO</span>
+                                    {% elif f.afastado %}
+                                        <span class="badge bg-info ms-1 py-0" style="font-size: 0.6rem;">AFASTADO</span>
+                                    {% elif f.em_ferias %}
+                                        <span class="badge bg-warning text-dark ms-1 py-0" style="font-size: 0.6rem;">FÉRIAS</span>
+                                    {% endif %}
                                 </div>
                             </div>
                         </div>
-                        {% empty %}
-                        <div class="text-center py-4 text-muted bg-white rounded border">
-                            <i class="bi bi-people fs-2 d-block mb-1 opacity-25"></i>
-                            <p class="mb-0 small">Nenhum colaborador encontrado.</p>
+                        {% if user.is_superuser %}
+                        <input type="checkbox" class="form-check-input row-checkbox" data-id="{{ f.id }}" onchange="updateSelectionBadge()">
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-2 ps-1">
+                        <p class="mb-1 text-dark fw-semibold small">{{ f.cargo|default:"Sem cargo" }}</p>
+                        <p class="mb-0 text-muted small" style="font-size: 0.75rem;">
+                            <i class="bi bi-diagram-3 me-1"></i>{{ f.setor.nome|default:"-" }} <span class="ms-1">| CC: {{ f.centro_custo.codigo|default:"N/A" }}</span>
+                        </p>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                        <span class="badge bg-light text-dark border fw-normal" style="font-size: 0.7rem;">{{ f.get_turno_display|default:"Geral" }}</span>
+                        <div class="d-flex gap-1">
+                            <span class="badge bg-success bg-opacity-10 text-success border" style="font-size: 0.7rem;">Vigentes: {{ f.trein_vigentes }}</span>
+                            <span class="badge bg-danger bg-opacity-10 text-danger border" style="font-size: 0.7rem;">Pendentes: {{ f.trein_pendentes }}</span>
                         </div>
-                        {% endfor %}
                     </div>
                 </div>
+                {% empty %}
+                <div class="text-center py-4 text-muted bg-white rounded border">
+                    <i class="bi bi-people fs-2 d-block mb-1 opacity-25"></i>
+                    <p class="mb-0 small">Nenhum colaborador encontrado.</p>
+                </div>
+                {% endfor %}
+            </div>
 
-                <div class="table-card-footer">
-                    <div class="pagination-controls">
-                        <div class="pagination-info">
-                            <span id="paginationInfo">Mostrando 1-10 de 0 colaboradores</span>
-                        </div>
-                        
-                        <div class="pagination-nav">
-                            <button class="btn btn-sm btn-outline-secondary" id="btnFirstPage" onclick="goToPage(1)" title="Primeira página">
-                                <i class="bi bi-chevron-bar-left"></i>
-                            </button>
-                            <button class="btn btn-sm btn-outline-secondary" id="btnPrevPage" onclick="previousPage()" title="Página anterior">
-                                <i class="bi bi-chevron-left"></i>
-                            </button>
+            <!-- BARRA DE PAGINAÇÃO (ABAIXO DA TABELA E DOS CARDS MOBILE) -->
+            <div class="row mt-3">
+                <div class="col-12">
+                    <div class="card shadow-sm border p-2 bg-white rounded">
+                        <div class="pagination-controls">
+                            <div class="pagination-info">
+                                <span id="paginationInfo">Mostrando 1-10 de 0 colaboradores</span>
+                            </div>
                             
-                            <div id="pageNumbers" style="display: flex; gap: 0.25rem;"></div>
-                            
-                            <button class="btn btn-sm btn-outline-secondary" id="btnNextPage" onclick="nextPage()" title="Próxima página">
-                                <i class="bi bi-chevron-right"></i>
-                            </button>
-                            <button class="btn btn-sm btn-outline-secondary" id="btnLastPage" onclick="goToPage('last')" title="Última página">
-                                <i class="bi bi-chevron-bar-right"></i>
-                            </button>
-                        </div>
+                            <div class="pagination-nav">
+                                <button class="btn btn-sm btn-outline-secondary" id="btnFirstPage" onclick="goToPage(1)" title="Primeira página">
+                                    <i class="bi bi-chevron-bar-left"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary" id="btnPrevPage" onclick="previousPage()" title="Página anterior">
+                                    <i class="bi bi-chevron-left"></i>
+                                </button>
+                                
+                                <div id="pageNumbers" style="display: flex; gap: 0.25rem;"></div>
+                                
+                                <button class="btn btn-sm btn-outline-secondary" id="btnNextPage" onclick="nextPage()" title="Próxima página">
+                                    <i class="bi bi-chevron-right"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary" id="btnLastPage" onclick="goToPage('last')" title="Última página">
+                                    <i class="bi bi-chevron-bar-right"></i>
+                                </button>
+                            </div>
 
-                        <div>
-                            <select id="itemsPerPageSelect" class="form-select form-select-sm items-per-page-select" onchange="changeItemsPerPage()">
-                                <option value="10">10 itens</option>
-                                <option value="25">25 itens</option>
-                                <option value="50">50 itens</option>
-                                <option value="100">100 itens</option>
-                                <option value="all">Todos</option>
-                            </select>
+                            <div>
+                                <select id="itemsPerPageSelect" class="form-select form-select-sm items-per-page-select" onchange="changeItemsPerPage()">
+                                    <option value="10">10 itens</option>
+                                    <option value="25">25 itens</option>
+                                    <option value="50">50 itens</option>
+                                    <option value="100">100 itens</option>
+                                    <option value="all">Todos</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>
