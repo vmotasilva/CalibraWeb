@@ -155,9 +155,20 @@ urlpatterns = [
     path("iso/api/capa/revogar-link/<int:pk>/", views.api_iso_capa_revogar_link, name="api_iso_capa_revogar_link"),
     path("iso/api/capa/revisar/<int:pk>/", views.api_iso_capa_revisar_solicitacao, name="api_iso_capa_revisar_solicitacao"),
     
-    # Rota Pública Aberta (Sem Login)
+    # Rota Pública Aberta (Sem Login) - CAPA
     path("capa/responder/<str:token>/", views.capa_portal_publico_view, name="capa_portal_publico"),
     path("capa/api/salvar-resposta/<str:token>/", views.api_capa_salvar_resposta_publica, name="api_capa_salvar_resposta_publica"),
     path("capa/api/remover-evidencia/<str:token>/<int:evidencia_id>/", views.api_capa_remover_evidencia_publica, name="api_capa_remover_evidencia_publica"),
+
+    # ==========================================
+    # AVALIAÇÃO DO AUDITOR & FEEDBACK (MAGIC LINK)
+    # ==========================================
+    path("iso/<int:auditoria_id>/api/avaliacao/gerar-link/", views.api_iso_avaliacao_gerar_link, name="api_iso_avaliacao_gerar_link"),
+    path("iso/<int:auditoria_id>/api/avaliacao/resumo/", views.api_iso_avaliacao_resumo, name="api_iso_avaliacao_resumo"),
+    
+    # Rota Pública Aberta (Sem Login) - Avaliação
+    path("avaliacao/responder/<str:token>/", views.avaliacao_portal_publico_view, name="avaliacao_portal_publico"),
+    path("avaliacao/api/salvar-resposta/<str:token>/", views.api_avaliacao_salvar_resposta_publica, name="api_avaliacao_salvar_resposta_publica"),
 ]
+
 

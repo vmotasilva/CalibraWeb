@@ -8208,3 +8208,188 @@ def api_capa_remover_evidencia_publica(request, token, evidencia_id):
         return JsonResponse({"success": False, "error": str(e)}, status=400)
 
 
+# ==============================================================================
+# AVALIAÇÃO DO AUDITOR & FEEDBACK PÓS-AUDITORIA (MAGIC LINK)
+# ==============================================================================
+
+@login_required
+@require_POST
+def api_iso_avaliacao_gerar_link(request, auditoria_id):
+    """
+    Gera um novo Magic Link público com validade de 7 dias para avaliação do auditor.
+    """
+    from django.http import JsonResponse
+    from .models import AuditoriaIso, TokenAvaliacaoIso
+
+    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+    dias_validade = 7
+    expira_em = timezone.now() + timezone.timedelta(days=dias_validade)
+
+    token_obj = TokenAvaliacaoIso.objects.create(
+        auditoria=auditoria,
+        dias_validade=dias_validade,
+        expira_em=expira_em,
+        criado_por=request.user if request.user.is_authenticated else None,
+        ativo=True
+    )
+
+    url_publica = request.build_absolute_uri(
+        reverse("auditoria:avaliacao_portal_publico", kwargs={"token": token_obj.token})
+    )
+
+    return JsonResponse({
+        "success": True,
+        "token": token_obj.token,
+        "url": url_publica,
+        "dias_validade": dias_validade,
+        "expira_em": token_obj.expira_em.strftime("%d/%m/%Y"),
+        "message": "Link de Avaliação gerado com sucesso!"
+    })
+
+
+@login_required
+def api_iso_avaliacao_resumo(request, auditoria_id):
+    """
+    Retorna métricas consolidadas (médias de pontualidade, clareza, cordialidade e lista de feedbacks).
+    """
+    from django.http import JsonResponse
+    from django.db.models import Avg, Count
+    from .models import AuditoriaIso, AvaliacaoAuditorIso
+
+    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+    avaliacoes = AvaliacaoAuditorIso.objects.filter(auditoria=auditoria).order_by("-criado_em")
+
+    total_avaliacoes = avaliacoes.count()
+    if total_avaliacoes == 0:
+        return JsonResponse({
+            "success": True,
+            "total_avaliacoes": 0,
+            "media_geral": 0,
+            "media_pontualidade": 0,
+            "media_clareza": 0,
+            "media_cordialidade": 0,
+            "avaliacoes": []
+        })
+
+    stats = avaliacoes.aggregate(
+        media_pontualidade=Avg("nota_pontualidade"),
+        media_clareza=Avg("nota_clareza"),
+        media_cordialidade=Avg("nota_cordialidade"),
+    )
+
+    m_pont = round(stats["media_pontualidade"] or 0, 1)
+    m_clar = round(stats["media_clareza"] or 0, 1)
+    m_cord = round(stats["media_cordialidade"] or 0, 1)
+    m_geral = round((m_pont + m_clar + m_cord) / 3, 1)
+
+    lista_avaliacoes = []
+    for av in avaliacoes:
+        lista_avaliacoes.append({
+            "id": av.id,
+            "nota_pontualidade": av.nota_pontualidade,
+            "nota_clareza": av.nota_clareza,
+            "nota_cordialidade": av.nota_cordialidade,
+            "media_individual": av.media_individual,
+            "pontos_fortes": av.pontos_fortes,
+            "oportunidades_melhoria": av.oportunidades_melhoria,
+            "setor_avaliador": av.setor_avaliador or "Não especificado",
+            "nome_avaliador": av.nome_avaliador or "Anônimo",
+            "criado_em": av.criado_em.strftime("%d/%m/%Y %H:%M"),
+        })
+
+    return JsonResponse({
+        "success": True,
+        "total_avaliacoes": total_avaliacoes,
+        "media_geral": m_geral,
+        "media_pontualidade": m_pont,
+        "media_clareza": m_clar,
+        "media_cordialidade": m_cord,
+        "avaliacoes": lista_avaliacoes
+    })
+
+
+def avaliacao_portal_publico_view(request, token):
+    """
+    Portal público de feedback do auditor (sem necessidade de login).
+    """
+    from .models import TokenAvaliacaoIso
+    token_obj = TokenAvaliacaoIso.objects.filter(token=token).first()
+
+    if not token_obj or not token_obj.is_valid:
+        return render(request, "auditoria/iso/avaliacao/portal_publico.html", {
+            "erro": "Link de avaliação inválido, expirado ou revogado.",
+            "token_invalido": True,
+        })
+
+    # Atualiza registro de último acesso
+    token_obj.ultimo_acesso_em = timezone.now()
+    token_obj.save(update_fields=["ultimo_acesso_em"])
+
+    auditoria = token_obj.auditoria
+    context = {
+        "token_obj": token_obj,
+        "auditoria": auditoria,
+        "empresa_nome": auditoria.empresa_auditada or auditoria.unidade or "Unidade Auditada",
+        "norma_codigo": auditoria.norma.codigo,
+        "norma_nome": auditoria.norma.nome,
+        "auditor_lider": auditoria.auditor_lider_nome or "Equipe Auditora",
+        "data_inicio": auditoria.data_inicio,
+        "data_fim": auditoria.data_fim,
+    }
+    return render(request, "auditoria/iso/avaliacao/portal_publico.html", context)
+
+
+@require_POST
+def api_avaliacao_salvar_resposta_publica(request, token):
+    """
+    Endpoint público para salvar a avaliação submetida pelo auditado.
+    """
+    from django.http import JsonResponse
+    from .models import TokenAvaliacaoIso, AvaliacaoAuditorIso
+
+    token_obj = TokenAvaliacaoIso.objects.filter(token=token).first()
+    if not token_obj or not token_obj.is_valid:
+        return JsonResponse({"success": False, "error": "Link de avaliação inválido ou expirado."}, status=403)
+
+    try:
+        data = json.loads(request.body.decode("utf-8")) if request.body else {}
+        
+        nota_pontualidade = int(data.get("nota_pontualidade", 0))
+        nota_clareza = int(data.get("nota_clareza", 0))
+        nota_cordialidade = int(data.get("nota_cordialidade", 0))
+
+        if not (1 <= nota_pontualidade <= 5 and 1 <= nota_clareza <= 5 and 1 <= nota_cordialidade <= 5):
+            return JsonResponse({"success": False, "error": "Por favor, avalie todas as 3 categorias com notas de 1 a 5 estrelas."}, status=400)
+
+        pontos_fortes = data.get("pontos_fortes", "").strip()
+        oportunidades_melhoria = data.get("oportunidades_melhoria", "").strip()
+        setor_avaliador = data.get("setor_avaliador", "").strip()
+        nome_avaliador = data.get("nome_avaliador", "").strip()
+
+        av = AvaliacaoAuditorIso.objects.create(
+            auditoria=token_obj.auditoria,
+            token_origem=token_obj,
+            nota_pontualidade=nota_pontualidade,
+            nota_clareza=nota_clareza,
+            nota_cordialidade=nota_cordialidade,
+            pontos_fortes=pontos_fortes,
+            oportunidades_melhoria=oportunidades_melhoria,
+            setor_avaliador=setor_avaliador,
+            nome_avaliador=nome_avaliador
+        )
+
+        token_obj.total_respostas = (token_obj.total_respostas or 0) + 1
+        token_obj.save(update_fields=["total_respostas"])
+
+        return JsonResponse({
+            "success": True,
+            "avaliacao_id": av.id,
+            "message": "Avaliação enviada com sucesso! Muito obrigado pelo seu feedback."
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+
+

@@ -1373,3 +1373,125 @@ class SinteseSecaoAuditoriaIso(models.Model):
     def __str__(self):
         return f"{self.auditoria} - Seção {self.secao_referencia}: {self.secao_titulo}"
 
+
+class TokenAvaliacaoIso(models.Model):
+    """
+    Controla os links públicos de acesso ao formulário de Avaliação e Feedback do Auditor (Pós-Auditoria).
+    """
+    auditoria = models.ForeignKey(
+        AuditoriaIso,
+        on_delete=models.CASCADE,
+        related_name="tokens_avaliacao",
+        verbose_name="Auditoria de Origem"
+    )
+    token = models.CharField(max_length=64, unique=True, db_index=True, verbose_name="Token de Acesso")
+    dias_validade = models.PositiveIntegerField(default=7, verbose_name="Validade em Dias")
+    expira_em = models.DateTimeField(verbose_name="Data de Expiração")
+    criado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Criado por"
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    ultimo_acesso_em = models.DateTimeField(null=True, blank=True, verbose_name="Último Acesso")
+    ativo = models.BooleanField(default=True, verbose_name="Link Ativo")
+    total_respostas = models.PositiveIntegerField(default=0, verbose_name="Total de Respostas Coletadas")
+
+    class Meta:
+        verbose_name = "Token de Avaliação de Auditoria"
+        verbose_name_plural = "Tokens de Avaliação de Auditoria"
+        ordering = ["-criado_em"]
+
+    def save(self, *args, **kwargs):
+        if not self.token:
+            self.token = uuid.uuid4().hex
+        if not self.expira_em:
+            self.expira_em = timezone.now() + timezone.timedelta(days=self.dias_validade or 7)
+        super().save(*args, **kwargs)
+
+    @property
+    def is_expired(self) -> bool:
+        return bool(self.expira_em and self.expira_em <= timezone.now())
+
+    @property
+    def is_valid(self) -> bool:
+        return self.ativo and not self.is_expired
+
+    def __str__(self):
+        return f"Avaliação Link: {self.auditoria} - {self.token[:8]}"
+
+
+class AvaliacaoAuditorIso(models.Model):
+    """
+    Avaliação do auditor preenchida pelos auditados (gestores, operadores, etc).
+    """
+    auditoria = models.ForeignKey(
+        AuditoriaIso,
+        on_delete=models.CASCADE,
+        related_name="avaliacoes_auditor",
+        verbose_name="Auditoria"
+    )
+    token_origem = models.ForeignKey(
+        TokenAvaliacaoIso,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="avaliacoes_recebidas",
+        verbose_name="Token Utilizado"
+    )
+    # Notas de 1 a 5 estrelas
+    nota_pontualidade = models.PositiveSmallIntegerField(
+        verbose_name="Pontualidade e Cumprimento da Agenda",
+        help_text="Nota de 1 a 5 estrelas"
+    )
+    nota_clareza = models.PositiveSmallIntegerField(
+        verbose_name="Clareza e Comunicação",
+        help_text="Nota de 1 a 5 estrelas"
+    )
+    nota_cordialidade = models.PositiveSmallIntegerField(
+        verbose_name="Cordialidade, Postura e Empatia",
+        help_text="Nota de 1 a 5 estrelas"
+    )
+    # Textos livres
+    pontos_fortes = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Pontos Fortes do Auditor"
+    )
+    oportunidades_melhoria = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Oportunidades de Melhoria"
+    )
+    # Identificação opcional
+    setor_avaliador = models.CharField(
+        max_length=150,
+        blank=True,
+        default="",
+        verbose_name="Setor do Avaliador (Ex: Produção, EHS, Qualidade)"
+    )
+    nome_avaliador = models.CharField(
+        max_length=150,
+        blank=True,
+        default="",
+        verbose_name="Nome do Avaliador (Opcional - Anônimo por padrão)"
+    )
+    criado_em = models.DateTimeField(auto_now_add=True, verbose_name="Data da Avaliação")
+
+    class Meta:
+        verbose_name = "Avaliação de Auditor ISO"
+        verbose_name_plural = "Avaliações de Auditores ISO"
+        ordering = ["-criado_em"]
+
+    @property
+    def media_individual(self) -> float:
+        notas = [self.nota_pontualidade, self.nota_clareza, self.nota_cordialidade]
+        return round(sum(notas) / len(notas), 1)
+
+    def __str__(self):
+        setor = self.setor_avaliador or "Anônimo"
+        return f"Avaliação {self.auditoria} - {setor} (Média: {self.media_individual})"
+
+

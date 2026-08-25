@@ -1,0 +1,416 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avaliação da Auditoria - Calibra WEB</title>
+    
+    <!-- Bootstrap 5.3 & Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #0F52BA;
+            --primary-dark: #0A387E;
+            --bg-body: #f8fafc;
+            --card-border: #e2e8f0;
+            --star-inactive: #cbd5e1;
+            --star-active: #f59e0b;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-body);
+            color: #1e293b;
+            min-height: 100vh;
+            padding-bottom: 60px;
+        }
+
+        .hero-banner {
+            background: linear-gradient(135deg, #0B2545 0%, #134074 100%);
+            color: white;
+            padding: 35px 20px;
+            border-bottom: 4px solid #3b82f6;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
+        }
+
+        .rating-box {
+            background: #ffffff;
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 20px;
+            transition: all 0.2s ease;
+        }
+
+        .rating-box:hover {
+            border-color: #93c5fd;
+            box-shadow: 0 10px 20px -5px rgba(15, 82, 186, 0.05);
+        }
+
+        /* Star Rating Component */
+        .stars-container {
+            display: inline-flex;
+            flex-direction: row-reverse;
+            gap: 6px;
+        }
+
+        .star-label {
+            font-size: 2rem;
+            color: var(--star-inactive);
+            cursor: pointer;
+            transition: transform 0.15s ease, color 0.15s ease;
+        }
+
+        .star-label:hover,
+        .star-label:hover ~ .star-label {
+            color: #fbbf24;
+            transform: scale(1.15);
+        }
+
+        .star-radio {
+            display: none;
+        }
+
+        .star-radio:checked ~ .star-label {
+            color: var(--star-active);
+        }
+
+        .badge-legend {
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: #f1f5f9;
+            color: #475569;
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, #0F52BA 0%, #1e40af 100%);
+            border: none;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            padding: 14px 28px;
+            border-radius: 100px;
+            box-shadow: 0 10px 20px -5px rgba(15, 82, 186, 0.35);
+            transition: all 0.2s ease;
+        }
+
+        .btn-submit:hover {
+            background: linear-gradient(135deg, #0A387E 0%, #1e3a8a 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 15px 25px -5px rgba(15, 82, 186, 0.45);
+        }
+
+        .success-card {
+            background: #ffffff;
+            border-radius: 24px;
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e2e8f0;
+            padding: 40px 24px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    {% if token_invalido %}
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6 text-center">
+                <div class="card border-0 shadow-sm rounded-4 p-5 bg-white">
+                    <div class="text-danger mb-3">
+                        <i class="bi bi-exclamation-triangle-fill" style="font-size: 3.5rem;"></i>
+                    </div>
+                    <h3 class="fw-bold text-dark mb-2">Link Indisponível</h3>
+                    <p class="text-secondary mb-4">{{ erro|default:"Este link de avaliação expirou ou foi desativado pela equipe de qualidade." }}</p>
+                    <div class="small text-muted font-monospace">Calibra WEB &bull; QMS ISO Portal</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+
+    <!-- Topo / Header Corporativo -->
+    <header class="hero-banner mb-4">
+        <div class="container" style="max-width: 800px;">
+            <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                <span class="badge bg-white text-primary fw-bold px-3 py-1.5 rounded-pill shadow-2xs font-monospace">
+                    <i class="bi bi-star-fill text-warning me-1"></i> Feedback Pós-Auditoria
+                </span>
+                <span class="text-white-50 small font-monospace">
+                    <i class="bi bi-calendar3 me-1"></i>{{ data_inicio|date:"d/m/Y" }}{% if data_fim and data_fim != data_inicio %} a {{ data_fim|date:"d/m/Y" }}{% endif %}
+                </span>
+            </div>
+
+            <h2 class="fw-extrabold text-white mb-1" style="font-weight: 800; letter-spacing: -0.5px;">
+                Avaliação de Auditoria
+            </h2>
+            <p class="text-white-50 mb-0 fs-6">
+                {{ empresa_nome }} &bull; Norma <strong class="text-white">{{ norma_codigo }}</strong>
+            </p>
+        </div>
+    </header>
+
+    <div class="container" style="max-width: 800px;">
+
+        <!-- Alerta de Já Respondido (Bloqueio Anti-Duplicidade) -->
+        <div id="cardJaRespondido" class="d-none success-card mb-4">
+            <div class="mb-3">
+                <div class="bg-success bg-opacity-10 text-success rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                    <i class="bi bi-patch-check-fill fs-1"></i>
+                </div>
+            </div>
+            <h3 class="fw-bold text-dark mb-2">Avaliação Já Enviada!</h3>
+            <p class="text-secondary fs-6 mb-3">
+                Você já enviou sua avaliação para esta auditoria neste dispositivo. Sua opinião é fundamental para a melhoria contínua dos nossos processos de auditoria.
+            </p>
+            <div class="d-inline-flex align-items-center gap-2 p-2 px-3 bg-light rounded-pill border">
+                <i class="bi bi-shield-check text-success"></i>
+                <small class="text-muted">Feedback registrado e protegido com sucesso.</small>
+            </div>
+        </div>
+
+        <!-- Formulário de Avaliação -->
+        <div id="containerFormulario">
+            <div class="card border-0 shadow-sm rounded-4 p-4 p-md-4 mb-4 bg-white">
+                <div class="d-flex align-items-center gap-2 mb-3 text-secondary small">
+                    <i class="bi bi-info-circle-fill text-primary fs-5"></i>
+                    <span>Sua resposta é <strong>anônima</strong> (a menos que deseje se identificar) e servirá para avaliar a postura, clareza e organização da equipe auditora.</span>
+                </div>
+                <div class="p-3 bg-light rounded-3 border mb-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.72rem;">Auditor / Equipe Avaliada</small>
+                            <div class="fw-bold text-dark fs-6"><i class="bi bi-person-badge-fill text-primary me-1"></i>{{ auditor_lider }}</div>
+                        </div>
+                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-3 py-1">
+                            Auditoria Interna
+                        </span>
+                    </div>
+                </div>
+
+                <form id="formAvaliacaoAuditor" onsubmit="event.preventDefault(); submeterAvaliacao();">
+                    
+                    <!-- Critério 1: Pontualidade -->
+                    <div class="rating-box mb-3">
+                        <div class="d-flex justify-content-between align-items-start mb-2 flex-wrap gap-2">
+                            <div>
+                                <label class="fw-bold text-dark mb-0 fs-6">1. Pontualidade e Cumprimento da Agenda <span class="text-danger">*</span></label>
+                                <small class="text-muted d-block">Organização do tempo, cumprimento dos horários e planejamento das entrevistas.</small>
+                            </div>
+                            <span class="badge-legend" id="legend_pontualidade">Selecione uma nota</span>
+                        </div>
+                        <div class="stars-container mt-2">
+                            <input type="radio" id="pont_5" name="nota_pontualidade" value="5" class="star-radio" onchange="atualizarLegenda('pontualidade', 5)" required>
+                            <label for="pont_5" class="star-label bi bi-star-fill" title="5 estrelas - Excelente"></label>
+
+                            <input type="radio" id="pont_4" name="nota_pontualidade" value="4" class="star-radio" onchange="atualizarLegenda('pontualidade', 4)">
+                            <label for="pont_4" class="star-label bi bi-star-fill" title="4 estrelas - Bom"></label>
+
+                            <input type="radio" id="pont_3" name="nota_pontualidade" value="3" class="star-radio" onchange="atualizarLegenda('pontualidade', 3)">
+                            <label for="pont_3" class="star-label bi bi-star-fill" title="3 estrelas - Regular"></label>
+
+                            <input type="radio" id="pont_2" name="nota_pontualidade" value="2" class="star-radio" onchange="atualizarLegenda('pontualidade', 2)">
+                            <label for="pont_2" class="star-label bi bi-star-fill" title="2 estrelas - Ruim"></label>
+
+                            <input type="radio" id="pont_1" name="nota_pontualidade" value="1" class="star-radio" onchange="atualizarLegenda('pontualidade', 1)">
+                            <label for="pont_1" class="star-label bi bi-star-fill" title="1 estrela - Muito Ruim"></label>
+                        </div>
+                    </div>
+
+                    <!-- Critério 2: Clareza -->
+                    <div class="rating-box mb-3">
+                        <div class="d-flex justify-content-between align-items-start mb-2 flex-wrap gap-2">
+                            <div>
+                                <label class="fw-bold text-dark mb-0 fs-6">2. Clareza e Comunicação <span class="text-danger">*</span></label>
+                                <small class="text-muted d-block">Clareza nas perguntas, explicações dos requisitos normativos e feedback objetivo.</small>
+                            </div>
+                            <span class="badge-legend" id="legend_clareza">Selecione uma nota</span>
+                        </div>
+                        <div class="stars-container mt-2">
+                            <input type="radio" id="clar_5" name="nota_clareza" value="5" class="star-radio" onchange="atualizarLegenda('clareza', 5)" required>
+                            <label for="clar_5" class="star-label bi bi-star-fill" title="5 estrelas - Excelente"></label>
+
+                            <input type="radio" id="clar_4" name="nota_clareza" value="4" class="star-radio" onchange="atualizarLegenda('clareza', 4)">
+                            <label for="clar_4" class="star-label bi bi-star-fill" title="4 estrelas - Bom"></label>
+
+                            <input type="radio" id="clar_3" name="nota_clareza" value="3" class="star-radio" onchange="atualizarLegenda('clareza', 3)">
+                            <label for="clar_3" class="star-label bi bi-star-fill" title="3 estrelas - Regular"></label>
+
+                            <input type="radio" id="clar_2" name="nota_clareza" value="2" class="star-radio" onchange="atualizarLegenda('clareza', 2)">
+                            <label for="clar_2" class="star-label bi bi-star-fill" title="2 estrelas - Ruim"></label>
+
+                            <input type="radio" id="clar_1" name="nota_clareza" value="1" class="star-radio" onchange="atualizarLegenda('clareza', 1)">
+                            <label for="clar_1" class="star-label bi bi-star-fill" title="1 estrela - Muito Ruim"></label>
+                        </div>
+                    </div>
+
+                    <!-- Critério 3: Cordialidade -->
+                    <div class="rating-box mb-4">
+                        <div class="d-flex justify-content-between align-items-start mb-2 flex-wrap gap-2">
+                            <div>
+                                <label class="fw-bold text-dark mb-0 fs-6">3. Cordialidade, Ética e Empatia <span class="text-danger">*</span></label>
+                                <small class="text-muted d-block">Postura profissional, respeito com os auditados, escuta ativa e conduta ética.</small>
+                            </div>
+                            <span class="badge-legend" id="legend_cordialidade">Selecione uma nota</span>
+                        </div>
+                        <div class="stars-container mt-2">
+                            <input type="radio" id="cord_5" name="nota_cordialidade" value="5" class="star-radio" onchange="atualizarLegenda('cordialidade', 5)" required>
+                            <label for="cord_5" class="star-label bi bi-star-fill" title="5 estrelas - Excelente"></label>
+
+                            <input type="radio" id="cord_4" name="nota_cordialidade" value="4" class="star-radio" onchange="atualizarLegenda('cordialidade', 4)">
+                            <label for="cord_4" class="star-label bi bi-star-fill" title="4 estrelas - Bom"></label>
+
+                            <input type="radio" id="cord_3" name="nota_cordialidade" value="3" class="star-radio" onchange="atualizarLegenda('cordialidade', 3)">
+                            <label for="cord_3" class="star-label bi bi-star-fill" title="3 estrelas - Regular"></label>
+
+                            <input type="radio" id="cord_2" name="nota_cordialidade" value="2" class="star-radio" onchange="atualizarLegenda('cordialidade', 2)">
+                            <label for="cord_2" class="star-label bi bi-star-fill" title="2 estrelas - Ruim"></label>
+
+                            <input type="radio" id="cord_1" name="nota_cordialidade" value="1" class="star-radio" onchange="atualizarLegenda('cordialidade', 1)">
+                            <label for="cord_1" class="star-label bi bi-star-fill" title="1 estrela - Muito Ruim"></label>
+                        </div>
+                    </div>
+
+                    <!-- Campos de Texto Livre -->
+                    <div class="mb-3">
+                        <label for="inputPontosFortes" class="form-label fw-bold text-dark small">
+                            <i class="bi bi-hand-thumbs-up-fill text-success me-1"></i> Pontos Fortes (O que o auditor fez bem?):
+                        </label>
+                        <textarea class="form-control rounded-3" id="inputPontosFortes" rows="3" 
+                                  placeholder="Ex: Condução leve e focada em melhorias, ótimo domínio da norma, pontualidade..."></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="inputOportunidades" class="form-label fw-bold text-dark small">
+                            <i class="bi bi-lightbulb-fill text-warning me-1"></i> Oportunidades de Melhoria (O que pode melhorar?):
+                        </label>
+                        <textarea class="form-control rounded-3" id="inputOportunidades" rows="3" 
+                                  placeholder="Ex: Dar mais tempo para busca de evidências, aprofundar no setor de manutenção..."></textarea>
+                    </div>
+
+                    <!-- Identificação Opcional -->
+                    <div class="p-3 bg-light rounded-3 border mb-4">
+                        <h6 class="fw-bold text-dark small mb-2"><i class="bi bi-person-gear text-secondary me-1"></i> Identificação do Avaliador (Opcional)</h6>
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <label for="inputSetor" class="form-label small text-muted mb-1">Seu Setor / Área:</label>
+                                <input type="text" class="form-control form-control-sm rounded-2" id="inputSetor" placeholder="Ex: Produção, EHS, Expedição">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="inputNome" class="form-label small text-muted mb-1">Seu Nome (Deixe em branco para Anônimo):</label>
+                                <input type="text" class="form-control form-control-sm rounded-2" id="inputNome" placeholder="Opcional">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Botão de Envio -->
+                    <div class="text-center pt-2">
+                        <button type="submit" id="btnEnviarAvaliacao" class="btn btn-primary btn-submit text-white px-5 py-3 fs-6">
+                            <i class="bi bi-send-fill me-2"></i> Enviar Avaliação
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+    {% endif %}
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        const TOKEN = "{{ token_obj.token }}";
+        const STORAGE_KEY = `calibra_avaliacao_${TOKEN}`;
+
+        const LEGENDAS = {
+            1: "1 ★ - Muito Ruim",
+            2: "2 ★ - Ruim",
+            3: "3 ★ - Regular",
+            4: "4 ★ - Bom",
+            5: "5 ★ - Excelente"
+        };
+
+        // Verifica se já respondeu neste navegador
+        document.addEventListener("DOMContentLoaded", () => {
+            if (localStorage.getItem(STORAGE_KEY)) {
+                mostrarTelaJaRespondido();
+            }
+        });
+
+        function atualizarLegenda(criterio, nota) {
+            const el = document.getElementById(`legend_${criterio}`);
+            if (el && LEGENDAS[nota]) {
+                el.textContent = LEGENDAS[nota];
+                el.classList.add("bg-warning", "text-dark");
+                el.classList.remove("bg-light", "text-muted");
+            }
+        }
+
+        function mostrarTelaJaRespondido() {
+            const formContainer = document.getElementById("containerFormulario");
+            const cardJaRespondido = document.getElementById("cardJaRespondido");
+            if (formContainer) formContainer.classList.add("d-none");
+            if (cardJaRespondido) cardJaRespondido.classList.remove("d-none");
+        }
+
+        async function submeterAvaliacao() {
+            const notaPont = document.querySelector('input[name="nota_pontualidade"]:checked');
+            const notaClar = document.querySelector('input[name="nota_clareza"]:checked');
+            const notaCord = document.querySelector('input[name="nota_cordialidade"]:checked');
+
+            if (!notaPont || !notaClar || !notaCord) {
+                alert("Por favor, selecione as estrelas de avaliação para os 3 critérios.");
+                return;
+            }
+
+            const btn = document.getElementById("btnEnviarAvaliacao");
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Enviando...';
+
+            const payload = {
+                nota_pontualidade: parseInt(notaPont.value),
+                nota_clareza: parseInt(notaClar.value),
+                nota_cordialidade: parseInt(notaCord.value),
+                pontos_fortes: document.getElementById("inputPontosFortes").value.trim(),
+                oportunidades_melhoria: document.getElementById("inputOportunidades").value.trim(),
+                setor_avaliador: document.getElementById("inputSetor").value.trim(),
+                nome_avaliador: document.getElementById("inputNome").value.trim()
+            };
+
+            try {
+                const response = await fetch(`/auditoria/avaliacao/api/salvar-resposta/${TOKEN}/`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const res = await response.json();
+                if (res.success) {
+                    // Grava no localStorage para bloquear repetição
+                    localStorage.setItem(STORAGE_KEY, "true");
+                    mostrarTelaJaRespondido();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                } else {
+                    alert("Erro ao enviar avaliação: " + (res.error || "Erro desconhecido."));
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-send-fill me-2"></i> Enviar Avaliação';
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Erro de comunicação com o servidor. Tente novamente.");
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-send-fill me-2"></i> Enviar Avaliação';
+            }
+        }
+    </script>
+</body>
+</html>

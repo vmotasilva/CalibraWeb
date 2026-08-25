@@ -213,11 +213,17 @@
             <span class="text-white fw-bold"><i class="bi bi-easel2-fill text-primary me-2"></i>Apresentação & Relatório Executivo</span>
         </div>
         <div class="d-flex align-items-center gap-2 flex-wrap">
-            <button type="button" class="btn btn-sm btn-light rounded-pill px-3 fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalEditarFechamento">
-                <i class="bi bi-pencil-square text-primary me-1"></i> Editar Dados de Fechamento
+            <button type="button" class="btn btn-sm btn-warning text-dark rounded-pill px-3.5 fw-bold shadow-sm" onclick="gerarLinkAvaliacaoAuditor()">
+                <i class="bi bi-star-fill me-1"></i> ⭐ Gerar Link de Avaliação
+            </button>
+            <button type="button" class="btn btn-sm btn-light rounded-pill px-3 fw-semibold shadow-sm" onclick="abrirModalDashboardAvaliacoes()">
+                <i class="bi bi-chat-heart-fill text-danger me-1"></i> Avaliações Recebidas
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-light rounded-pill px-3 fw-semibold" data-bs-toggle="modal" data-bs-target="#modalEditarFechamento">
+                <i class="bi bi-pencil-square me-1"></i> Editar Fechamento
             </button>
             <a href="{% url 'auditoria:iso_auditoria_export_docx' auditoria.id %}" class="btn btn-sm btn-primary rounded-pill px-3.5 fw-bold shadow-sm" title="Baixar Relatório Completo em formato Word">
-                <i class="bi bi-file-earmark-word-fill me-1"></i> Relatório Word (.DOCX)
+                <i class="bi bi-file-earmark-word-fill me-1"></i> Relatório Word
             </a>
             <a href="{% url 'auditoria:iso_auditoria_export_excel' auditoria.id %}" class="btn btn-sm btn-success rounded-pill px-3.5 fw-bold shadow-sm" title="Baixar Checklist Completo em formato Excel">
                 <i class="bi bi-file-earmark-excel-fill me-1"></i> Checklist (.XLSX)
@@ -1080,6 +1086,200 @@
             }
         }
 
+        // ==========================================
+        // AVALIAÇÃO DO AUDITOR & FEEDBACK
+        // ==========================================
+
+        async function gerarLinkAvaliacaoAuditor() {
+            try {
+                const response = await fetch("{% url 'auditoria:api_iso_avaliacao_gerar_link' auditoria.id %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                });
+
+                const res = await response.json();
+                if (res.success) {
+                    document.getElementById('inputLinkAvaliacaoGerado').value = res.url;
+                    document.getElementById('infoLinkAvaliacao').innerHTML = `
+                        <strong>Expira em:</strong> ${res.expira_em} (${res.dias_validade} dias de validade)
+                    `;
+                    new bootstrap.Modal(document.getElementById('modalLinkAvaliacao')).show();
+                } else {
+                    alert('Erro ao gerar link de avaliação: ' + (res.error || 'Erro desconhecido.'));
+                }
+            } catch(err) {
+                console.error(err);
+                alert('Erro de comunicação.');
+            }
+        }
+
+        function copiarLinkAvaliacao() {
+            const input = document.getElementById('inputLinkAvaliacaoGerado');
+            input.select();
+            input.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(input.value);
+            alert('Link copiado para a área de transferência! Compartilhe com os auditados.');
+        }
+
+        async function abrirModalDashboardAvaliacoes() {
+            const modalEl = document.getElementById('modalDashboardAvaliacoes');
+            const containerFeedbacks = document.getElementById('containerListaFeedbacks');
+            
+            new bootstrap.Modal(modalEl).show();
+            containerFeedbacks.innerHTML = '<div class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span> Carregando avaliações...</div>';
+
+            try {
+                const response = await fetch("{% url 'auditoria:api_iso_avaliacao_resumo' auditoria.id %}");
+                const res = await response.json();
+
+                if (res.success) {
+                    document.getElementById('dashTotalAvaliacoes').textContent = res.total_avaliacoes;
+                    document.getElementById('dashMediaGeral').textContent = res.media_geral ? `${res.media_geral} ★` : '-';
+                    document.getElementById('dashPontualidade').textContent = res.media_pontualidade ? `${res.media_pontualidade} ★` : '-';
+                    document.getElementById('dashClareza').textContent = res.media_clareza ? `${res.media_clareza} ★` : '-';
+                    document.getElementById('dashCordialidade').textContent = res.media_cordialidade ? `${res.media_cordialidade} ★` : '-';
+
+                    if (res.avaliacoes && res.avaliacoes.length > 0) {
+                        containerFeedbacks.innerHTML = '';
+                        res.avaliacoes.forEach(av => {
+                            const card = document.createElement('div');
+                            card.className = 'p-3 bg-light rounded-3 border mb-3';
+                            card.innerHTML = `
+                                <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-1">
+                                    <div>
+                                        <span class="badge bg-warning text-dark font-monospace fw-bold me-1">Média: ${av.media_individual} ★</span>
+                                        <span class="text-dark fw-semibold small">${av.setor_avaliador}</span>
+                                        ${av.nome_avaliador !== 'Anônimo' ? `<span class="badge bg-secondary bg-opacity-10 text-secondary small ms-1">${av.nome_avaliador}</span>` : '<span class="badge bg-light text-muted small ms-1">Anônimo</span>'}
+                                    </div>
+                                    <small class="text-muted">${av.criado_em}</small>
+                                </div>
+                                <div class="d-flex gap-3 text-muted small font-monospace mb-2">
+                                    <span>Pontualidade: <strong>${av.nota_pontualidade}★</strong></span>
+                                    <span>Clareza: <strong>${av.nota_clareza}★</strong></span>
+                                    <span>Cordialidade: <strong>${av.nota_cordialidade}★</strong></span>
+                                </div>
+                                ${av.pontos_fortes ? `
+                                    <div class="small mb-1">
+                                        <strong class="text-success"><i class="bi bi-hand-thumbs-up-fill me-1"></i> Pontos Fortes:</strong>
+                                        <div class="text-dark ps-3" style="white-space: pre-wrap;">${av.pontos_fortes}</div>
+                                    </div>
+                                ` : ''}
+                                ${av.oportunidades_melhoria ? `
+                                    <div class="small">
+                                        <strong class="text-warning text-dark"><i class="bi bi-lightbulb-fill text-warning me-1"></i> Oportunidades de Melhoria:</strong>
+                                        <div class="text-dark ps-3" style="white-space: pre-wrap;">${av.oportunidades_melhoria}</div>
+                                    </div>
+                                ` : ''}
+                            `;
+                            containerFeedbacks.appendChild(card);
+                        });
+                    } else {
+                        containerFeedbacks.innerHTML = `
+                            <div class="text-center text-muted py-4">
+                                <i class="bi bi-chat-square-dots fs-3 d-block mb-1"></i>
+                                Nenhuma avaliação recebida ainda. Gere o link e envie para os auditados!
+                            </div>
+                        `;
+                    }
+                } else {
+                    containerFeedbacks.innerHTML = '<div class="text-center text-danger py-3">Erro ao carregar avaliações.</div>';
+                }
+            } catch(err) {
+                console.error(err);
+                containerFeedbacks.innerHTML = '<div class="text-center text-danger py-3">Erro de comunicação.</div>';
+            }
+        }
+
     </script>
+
+    <!-- Modal: Link de Avaliação Gerado -->
+    <div class="modal fade" id="modalLinkAvaliacao" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header bg-warning text-dark p-3 px-4">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-star-fill me-1"></i> Magic Link de Avaliação do Auditor</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 bg-white">
+                    <p class="text-secondary small mb-3">
+                        Compartilhe este link público via WhatsApp ou E-mail com gerentes, operadores e participantes da auditoria para coletar feedbacks anônimos.
+                    </p>
+                    <label class="fw-bold text-dark small d-block mb-1">Link de Acesso Direto (Sem Login):</label>
+                    <div class="input-group mb-2">
+                        <input type="text" id="inputLinkAvaliacaoGerado" class="form-control font-monospace small bg-white" readonly>
+                        <button class="btn btn-warning fw-bold text-dark" type="button" onclick="copiarLinkAvaliacao()">
+                            <i class="bi bi-clipboard me-1"></i> Copiar
+                        </button>
+                    </div>
+                    <small class="text-muted d-block" id="infoLinkAvaliacao"></small>
+                </div>
+                <div class="modal-footer bg-light p-3 px-4">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Dashboard de Avaliações Recebidas -->
+    <div class="modal fade" id="modalDashboardAvaliacoes" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header bg-light border-bottom p-3 px-4">
+                    <h5 class="modal-title fw-bold text-dark"><i class="bi bi-chat-heart-fill text-danger me-1"></i> Avaliações e Feedbacks dos Auditados</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 bg-white">
+                    
+                    <!-- Resumo das Notas -->
+                    <div class="row g-2 mb-4">
+                        <div class="col-6 col-md-3">
+                            <div class="p-3 bg-light rounded-3 border text-center">
+                                <small class="text-muted text-uppercase fw-bold d-block" style="font-size: 0.7rem;">Média Geral</small>
+                                <h3 class="fw-bold text-warning mb-0" id="dashMediaGeral">-</h3>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="p-3 bg-light rounded-3 border text-center">
+                                <small class="text-muted text-uppercase fw-bold d-block" style="font-size: 0.7rem;">Pontualidade</small>
+                                <h4 class="fw-bold text-primary mb-0" id="dashPontualidade">-</h4>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="p-3 bg-light rounded-3 border text-center">
+                                <small class="text-muted text-uppercase fw-bold d-block" style="font-size: 0.7rem;">Clareza</small>
+                                <h4 class="fw-bold text-info mb-0" id="dashClareza">-</h4>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="p-3 bg-light rounded-3 border text-center">
+                                <small class="text-muted text-uppercase fw-bold d-block" style="font-size: 0.7rem;">Cordialidade</small>
+                                <h4 class="fw-bold text-success mb-0" id="dashCordialidade">-</h4>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold text-dark mb-0">Feedbacks Recebidos (<span id="dashTotalAvaliacoes">0</span>):</h6>
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="gerarLinkAvaliacaoAuditor()">
+                            <i class="bi bi-link-45deg me-1"></i> Gerar Outro Link
+                        </button>
+                    </div>
+
+                    <!-- Lista de Comentários e Avaliações -->
+                    <div id="containerListaFeedbacks">
+                        <!-- Renderizado via JS -->
+                    </div>
+
+                </div>
+                <div class="modal-footer bg-light p-3 px-4">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
