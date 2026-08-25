@@ -473,6 +473,7 @@
                             <option value="ESTRELAS_1_5">⭐ Classificação (1 a 5 Estrelas)</option>
                             <option value="TEXTO_LIVRE">✍️ Resposta Dissertativa</option>
                             <option value="SELECAO_LISTA">📋 Lista de Seleção (Opções)</option>
+                            <option value="AGRUPAMENTO_ESCALA">📊 Agrupamento (Supera / Atende / Não Atende / N/A)</option>
                         </select>
                     </div>
                     <div class="col-6">
@@ -679,10 +680,11 @@
                     <div>
                         <div class="d-flex align-items-center gap-2 flex-wrap">
                             <strong class="text-dark">${p.titulo}</strong>
-                            ${p.tipo === 'ESTRELAS_1_5' ? '<span class="badge bg-warning text-dark small">⭐ 1-5 Estrelas</span>' : (p.tipo === 'SELECAO_LISTA' ? '<span class="badge bg-success bg-opacity-10 text-success small">📋 Lista de Seleção</span>' : '<span class="badge bg-info bg-opacity-10 text-info small">✍️ Texto Livre</span>')}
+                            ${p.tipo === 'ESTRELAS_1_5' ? '<span class="badge bg-warning text-dark small">⭐ 1-5 Estrelas</span>' : (p.tipo === 'AGRUPAMENTO_ESCALA' ? '<span class="badge bg-primary bg-opacity-10 text-primary small">📊 Agrupamento (Supera/Atende/Não Atende/N/A)</span>' : (p.tipo === 'SELECAO_LISTA' ? '<span class="badge bg-success bg-opacity-10 text-success small">📋 Lista de Seleção</span>' : '<span class="badge bg-info bg-opacity-10 text-info small">✍️ Texto Livre</span>'))}
                             ${p.obrigatoria ? '<span class="badge bg-danger bg-opacity-10 text-danger small">Obrigatória</span>' : '<span class="badge bg-light text-muted border small">Opcional</span>'}
                         </div>
                         ${p.descricao ? `<small class="text-muted d-block mt-0.5">${p.descricao}</small>` : ''}
+                        ${p.tipo === 'AGRUPAMENTO_ESCALA' ? `<small class="text-secondary d-block mt-1 font-monospace" style="font-size:0.75rem;">Opções: Supera, Atende, Não Atende, Não se Aplica</small>` : ''}
                         ${p.tipo === 'SELECAO_LISTA' && p.opcoes_lista ? `<small class="text-secondary d-block mt-1 font-monospace" style="font-size:0.75rem;">Opções: ${p.opcoes_lista.split('\n').map(o=>o.trim()).filter(Boolean).join(', ')}</small>` : ''}
                     </div>
                 </div>
@@ -940,11 +942,17 @@
 
                         let dissertativasHtml = '';
                         if (av.itens_customizados && av.itens_customizados.length > 0) {
-                            av.itens_customizados.filter(it => it.tipo === 'TEXTO_LIVRE' && it.texto_resposta).forEach(it => {
+                            av.itens_customizados.filter(it => it.tipo !== 'ESTRELAS_1_5' && it.texto_resposta).forEach(it => {
+                                let badgeIcon = '<i class="bi bi-chat-text-fill text-primary me-1"></i>';
+                                if (it.tipo === 'AGRUPAMENTO_ESCALA') {
+                                    badgeIcon = '<i class="bi bi-bar-chart-steps text-success me-1"></i>';
+                                } else if (it.tipo === 'SELECAO_LISTA') {
+                                    badgeIcon = '<i class="bi bi-list-check text-info me-1"></i>';
+                                }
                                 dissertativasHtml += `
                                     <div class="small mb-2">
-                                        <strong class="text-dark"><i class="bi bi-chat-text-fill text-primary me-1"></i> ${it.pergunta_titulo}:</strong>
-                                        <div class="text-dark ps-3" style="white-space: pre-wrap;">${it.texto_resposta}</div>
+                                        <strong class="text-dark">${badgeIcon} ${it.pergunta_titulo}:</strong>
+                                        <span class="badge ${it.texto_resposta === 'Supera' ? 'bg-success' : (it.texto_resposta === 'Atende' ? 'bg-primary' : (it.texto_resposta === 'Não Atende' ? 'bg-danger' : 'bg-secondary'))} ms-1">${it.texto_resposta}</span>
                                     </div>
                                 `;
                             });

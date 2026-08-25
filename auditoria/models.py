@@ -1511,6 +1511,7 @@ class PerguntaAvaliacaoAuditorIso(models.Model):
         ('ESTRELAS_1_5', 'Classificação por Estrelas (1 a 5)'),
         ('TEXTO_LIVRE', 'Caixa de Texto / Resposta Dissertativa'),
         ('SELECAO_LISTA', 'Lista de Seleção (Múltipla Escolha / Opções)'),
+        ('AGRUPAMENTO_ESCALA', 'Agrupamento (Supera, Atende, Não Atende, Não se Aplica)'),
     ]
 
     auditoria = models.ForeignKey(
@@ -1531,12 +1532,15 @@ class PerguntaAvaliacaoAuditorIso(models.Model):
     )
     titulo = models.CharField(max_length=255, verbose_name="Título / Critério Avaliado")
     descricao = models.TextField(blank=True, default="", verbose_name="Dica / Explicação do Critério")
-    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default='ESTRELAS_1_5', verbose_name="Tipo de Resposta")
+    tipo = models.CharField(max_length=30, choices=TIPO_CHOICES, default='ESTRELAS_1_5', verbose_name="Tipo de Resposta")
     opcoes_lista = models.TextField(blank=True, default="", verbose_name="Opções da Lista (uma por linha ou separadas por vírgula)")
     ordem = models.PositiveIntegerField(default=1, verbose_name="Ordem de Exibição")
     obrigatoria = models.BooleanField(default=True, verbose_name="Resposta Obrigatória")
     ativa = models.BooleanField(default=True, verbose_name="Pergunta Ativa")
+
     def get_opcoes_lista_display(self):
+        if self.tipo == 'AGRUPAMENTO_ESCALA':
+            return ['Supera', 'Atende', 'Não Atende', 'Não se Aplica']
         if not self.opcoes_lista:
             return []
         linhas = []

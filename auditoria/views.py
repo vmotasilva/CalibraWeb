@@ -8834,7 +8834,7 @@ def api_avaliacao_salvar_resposta_publica(request, token):
                     return JsonResponse({"success": False, "error": f"Por favor, atribua uma nota de 1 a 5 estrelas para '{p.titulo}'."}, status=400)
                 if p.tipo == 'TEXTO_LIVRE' and not str(val).strip():
                     return JsonResponse({"success": False, "error": f"Por favor, preencha o campo obrigatório '{p.titulo}'."}, status=400)
-                if p.tipo == 'SELECAO_LISTA' and not str(val).strip():
+                if p.tipo in ['SELECAO_LISTA', 'AGRUPAMENTO_ESCALA'] and not str(val).strip():
                     return JsonResponse({"success": False, "error": f"Por favor, selecione uma opção para '{p.titulo}'."}, status=400)
 
         # Mapeia valores para legados se compatível
@@ -8873,7 +8873,7 @@ def api_avaliacao_salvar_resposta_publica(request, token):
                     avaliacao=av,
                     pergunta=p,
                     nota_estrelas=int(val) if p.tipo == 'ESTRELAS_1_5' else None,
-                    texto_resposta=str(val).strip() if p.tipo in ['TEXTO_LIVRE', 'SELECAO_LISTA'] else ""
+                    texto_resposta=str(val).strip() if p.tipo in ['TEXTO_LIVRE', 'SELECAO_LISTA', 'AGRUPAMENTO_ESCALA'] else ""
                 )
 
         token_obj.total_respostas = (token_obj.total_respostas or 0) + 1

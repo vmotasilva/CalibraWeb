@@ -229,6 +229,27 @@
                                     <label for="p_{{ p.id }}_1" class="star-label bi bi-star-fill" title="1 estrela - Muito Ruim"></label>
                                 </div>
                             </div>
+                        {% elif p.tipo == 'AGRUPAMENTO_ESCALA' %}
+                            <!-- Pergunta de Agrupamento / Escala Padrão -->
+                            <div class="mb-3 p-3 bg-light rounded-3 border" data-pergunta-id="{{ p.id }}" data-pergunta-tipo="AGRUPAMENTO_ESCALA" data-obrigatoria="{{ p.obrigatoria|yesno:'true,false' }}">
+                                <label class="form-label fw-bold text-dark small mb-1 d-block">
+                                    <i class="bi bi-bar-chart-steps text-primary me-1"></i> {{ forloop.counter }}. {{ p.titulo }}
+                                    {% if p.obrigatoria %}<span class="text-danger">*</span>{% endif %}
+                                </label>
+                                {% if p.descricao %}
+                                    <small class="text-muted d-block mb-2">{{ p.descricao }}</small>
+                                {% endif %}
+                                <div class="row g-2 pt-1">
+                                    {% for op in p.get_opcoes_lista_display %}
+                                        <div class="col-6 col-md-3">
+                                            <input type="radio" class="btn-check" name="escala_p_{{ p.id }}" id="opt_{{ p.id }}_{{ forloop.counter }}" value="{{ op }}" autocomplete="off" {% if p.obrigatoria and forloop.first %}required{% endif %}>
+                                            <label class="btn btn-outline-secondary w-100 py-2 small fw-semibold text-truncate rounded-3 {% if op == 'Supera' %}btn-outline-success{% elif op == 'Atende' %}btn-outline-primary{% elif op == 'Não Atende' %}btn-outline-danger{% endif %}" for="opt_{{ p.id }}_{{ forloop.counter }}">
+                                                {% if op == 'Supera' %}🚀 {% elif op == 'Atende' %}✅ {% elif op == 'Não Atende' %}❌ {% elif op == 'Não se Aplica' %}⚪ {% endif %}{{ op }}
+                                            </label>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
                         {% elif p.tipo == 'SELECAO_LISTA' %}
                             <!-- Pergunta de Seleção em Lista (Dropdown) -->
                             <div class="mb-3" data-pergunta-id="{{ p.id }}" data-pergunta-tipo="SELECAO_LISTA" data-obrigatoria="{{ p.obrigatoria|yesno:'true,false' }}">
@@ -347,6 +368,15 @@
                     }
                     if (checkedRadio) {
                         respostasItens[pId] = parseInt(checkedRadio.value);
+                    }
+                } else if (pTipo === "AGRUPAMENTO_ESCALA") {
+                    const checkedRadio = document.querySelector(`input[name="escala_p_${pId}"]:checked`);
+                    if (obrigatoria && !checkedRadio) {
+                        alert("Por favor, selecione uma opção para todos os critérios de avaliação obrigatórios.");
+                        return;
+                    }
+                    if (checkedRadio) {
+                        respostasItens[pId] = checkedRadio.value;
                     }
                 } else if (pTipo === "SELECAO_LISTA") {
                     const selectEl = document.getElementById(`select_p_${pId}`);
