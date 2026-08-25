@@ -375,117 +375,256 @@
                     </div>
                 </div>
 
-    <!-- Gráficos Linha 1 - Demanda -->
-    <div class="row mb-2 g-2">
-        <!-- Treinamentos por Líder -->
-        <div class="col-md-6">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-white border-0 py-1 px-2">
-                    <h6 class="mb-0 fw-bold dashboard-chart-title"><i class="bi bi-person-badge text-success me-1"></i>Demanda por Líder</h6>
+    <!-- ==========================================
+         SEÇÃO DE GRÁFICOS - MOBILE EM ABAS (< 768px)
+         ========================================== -->
+    <div class="d-block d-md-none mb-3">
+        <!-- Navegação em Abas (Pills com scroll horizontal) -->
+        <ul class="nav nav-pills flex-nowrap overflow-x-auto mobile-charts-nav mb-2" id="mobileChartsTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tab-lider-btn" data-bs-toggle="pill" data-bs-target="#tab-lider" type="button" role="tab" aria-controls="tab-lider" aria-selected="true">
+                    <i class="bi bi-person-badge text-success me-1"></i>Líder
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-setor-btn" data-bs-toggle="pill" data-bs-target="#tab-setor" type="button" role="tab" aria-controls="tab-setor" aria-selected="false">
+                    <i class="bi bi-building text-warning me-1"></i>Setor/Turno
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-instrutor-btn" data-bs-toggle="pill" data-bs-target="#tab-instrutor" type="button" role="tab" aria-controls="tab-instrutor" aria-selected="false">
+                    <i class="bi bi-person-workspace text-secondary me-1"></i>Instrutor
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-pl-instrutor-btn" data-bs-toggle="pill" data-bs-target="#tab-pl-instrutor" type="button" role="tab" aria-controls="tab-pl-instrutor" aria-selected="false">
+                    <i class="bi bi-calendar-check text-primary me-1"></i>Pl. Instrutor
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-pl-setor-btn" data-bs-toggle="pill" data-bs-target="#tab-pl-setor" type="button" role="tab" aria-controls="tab-pl-setor" aria-selected="false">
+                    <i class="bi bi-calendar2-week text-info me-1"></i>Pl. Setor
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-meses-btn" data-bs-toggle="pill" data-bs-target="#tab-meses" type="button" role="tab" aria-controls="tab-meses" aria-selected="false">
+                    <i class="bi bi-bar-chart text-info me-1"></i>12 Meses
+                </button>
+            </li>
+        </ul>
+
+        <!-- Conteúdo das Abas Mobile -->
+        <div class="tab-content" id="mobileChartsTabContent">
+            <!-- 1. Demanda por Líder -->
+            <div class="tab-pane fade show active" id="tab-lider" role="tabpanel" aria-labelledby="tab-lider-btn">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 py-2 px-3">
+                        <h6 class="mb-0 fw-bold text-dark" style="font-size: 0.85rem;"><i class="bi bi-person-badge text-success me-1"></i>Demanda por Líder</h6>
+                    </div>
+                    <div class="card-body p-2">
+                        <div class="chart-mobile-wrapper-h">
+                            <canvas id="chartLiderMobile" class="dashboard-chart"></canvas>
+                        </div>
+                        <div id="chartLiderMobileFallback" class="text-center text-muted py-3 d-none">
+                            <i class="bi bi-bar-chart fs-4 text-muted"></i>
+                            <p class="mt-1 small mb-0">Nenhum dado disponível</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body py-1 px-2 overflow-x-auto">
-                    <div class="chart-scroll-wrapper">
+            </div>
+
+            <!-- 2. Demanda por Setor/Turno -->
+            <div class="tab-pane fade" id="tab-setor" role="tabpanel" aria-labelledby="tab-setor-btn">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 py-2 px-3">
+                        <h6 class="mb-0 fw-bold text-dark" style="font-size: 0.85rem;"><i class="bi bi-building text-warning me-1"></i>Demanda por Setor/Turno</h6>
+                    </div>
+                    <div class="card-body p-2">
+                        <div class="chart-mobile-wrapper-h">
+                            <canvas id="chartSetorTurnoMobile" class="dashboard-chart"></canvas>
+                        </div>
+                        <div id="chartSetorTurnoMobileFallback" class="text-center text-muted py-3 d-none">
+                            <i class="bi bi-bar-chart fs-4 text-muted"></i>
+                            <p class="mt-1 small mb-0">Nenhum dado disponível</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Demanda por Instrutor -->
+            <div class="tab-pane fade" id="tab-instrutor" role="tabpanel" aria-labelledby="tab-instrutor-btn">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 py-2 px-3">
+                        <h6 class="mb-0 fw-bold text-dark" style="font-size: 0.85rem;"><i class="bi bi-person-workspace text-secondary me-1"></i>Demanda por Instrutor Responsável</h6>
+                    </div>
+                    <div class="card-body p-2">
+                        <div class="chart-mobile-wrapper-h">
+                            <canvas id="chartDemandaInstrutorMobile" class="dashboard-chart"></canvas>
+                        </div>
+                        <div id="chartDemandaInstrutorMobileFallback" class="text-center text-muted py-3 d-none">
+                            <i class="bi bi-person-workspace fs-4 text-muted"></i>
+                            <p class="mt-1 small mb-0">Nenhuma demanda encontrada para os responsáveis configurados.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. Planejamento por Instrutor -->
+            <div class="tab-pane fade" id="tab-pl-instrutor" role="tabpanel" aria-labelledby="tab-pl-instrutor-btn">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 py-2 px-3">
+                        <h6 class="mb-0 fw-bold text-dark" style="font-size: 0.85rem;"><i class="bi bi-calendar-check text-primary me-1"></i>Planejamento por Instrutor</h6>
+                    </div>
+                    <div class="card-body p-2">
+                        <div class="chart-mobile-wrapper-h">
+                            <canvas id="chartPlanejamentoInstrutorMobile" class="dashboard-chart"></canvas>
+                        </div>
+                        <div id="chartPlanejamentoInstrutorMobileFallback" class="text-center text-muted py-3 d-none">
+                            <i class="bi bi-calendar-x fs-4 text-muted"></i>
+                            <p class="mt-1 small mb-0">Nenhum planejamento encontrado</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. Planejamento por Setor/Turno -->
+            <div class="tab-pane fade" id="tab-pl-setor" role="tabpanel" aria-labelledby="tab-pl-setor-btn">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 py-2 px-3">
+                        <h6 class="mb-0 fw-bold text-dark" style="font-size: 0.85rem;"><i class="bi bi-calendar2-week text-info me-1"></i>Planejamento por Setor/Turno</h6>
+                    </div>
+                    <div class="card-body p-2">
+                        <div class="chart-mobile-wrapper-h">
+                            <canvas id="chartPlanejamentoSetorTurnoMobile" class="dashboard-chart"></canvas>
+                        </div>
+                        <div id="chartPlanejamentoSetorTurnoMobileFallback" class="text-center text-muted py-3 d-none">
+                            <i class="bi bi-calendar-x fs-4 text-muted"></i>
+                            <p class="mt-1 small mb-0">Nenhum planejamento encontrado</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6. Treinamentos Últimos 12 Meses -->
+            <div class="tab-pane fade" id="tab-meses" role="tabpanel" aria-labelledby="tab-meses-btn">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 py-2 px-3">
+                        <h6 class="mb-0 fw-bold text-dark" style="font-size: 0.85rem;"><i class="bi bi-bar-chart text-info me-1"></i>Treinamentos Últimos 12 Meses (Deslize para o lado)</h6>
+                    </div>
+                    <div class="card-body p-2 overflow-x-auto">
+                        <div class="chart-mobile-wrapper-month">
+                            <canvas id="chartMesesMobile" class="dashboard-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         SEÇÃO DE GRÁFICOS - DESKTOP ORIGINAL (>= 768px)
+         ========================================== -->
+    <div class="d-none d-md-block">
+        <!-- Gráficos Linha 1 - Demanda -->
+        <div class="row mb-2 g-2">
+            <!-- Treinamentos por Líder -->
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white border-0 py-1 px-2">
+                        <h6 class="mb-0 fw-bold dashboard-chart-title"><i class="bi bi-person-badge text-success me-1"></i>Demanda por Líder</h6>
+                    </div>
+                    <div class="card-body py-1 px-2">
                         <canvas id="chartLider" class="dashboard-chart dashboard-chart--row"></canvas>
-                    </div>
-                    <div id="chartLiderFallback" class="text-center text-muted py-2 d-none">
-                        <i class="bi bi-bar-chart fs-4 text-muted"></i>
-                        <p class="mt-1 small mb-0">Nenhum dado disponível</p>
+                        <div id="chartLiderFallback" class="text-center text-muted py-2 d-none">
+                            <i class="bi bi-bar-chart fs-4 text-muted"></i>
+                            <p class="mt-1 small mb-0">Nenhum dado disponível</p>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Treinamentos por Setor/Turno -->
-        <div class="col-md-6">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-white border-0 py-1 px-2">
-                    <h6 class="mb-0 fw-bold dashboard-chart-title"><i class="bi bi-building text-warning me-1"></i>Demanda por Setor/Turno</h6>
-                </div>
-                <div class="card-body py-1 px-2 overflow-x-auto">
-                    <div class="chart-scroll-wrapper">
+            <!-- Treinamentos por Setor/Turno -->
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white border-0 py-1 px-2">
+                        <h6 class="mb-0 fw-bold dashboard-chart-title"><i class="bi bi-building text-warning me-1"></i>Demanda por Setor/Turno</h6>
+                    </div>
+                    <div class="card-body py-1 px-2">
                         <canvas id="chartSetorTurno" class="dashboard-chart dashboard-chart--row"></canvas>
-                    </div>
-                    <div id="chartSetorTurnoFallback" class="text-center text-muted py-2 d-none">
-                        <i class="bi bi-bar-chart fs-4 text-muted"></i>
-                        <p class="mt-1 small mb-0">Nenhum dado disponível</p>
+                        <div id="chartSetorTurnoFallback" class="text-center text-muted py-2 d-none">
+                            <i class="bi bi-bar-chart fs-4 text-muted"></i>
+                            <p class="mt-1 small mb-0">Nenhum dado disponível</p>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Gráfico Linha 2 - Demanda por Instrutor Responsável -->
-    <div class="row mb-2 g-2">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white border-0 py-1 px-2">
-                    <h6 class="mb-0 fw-bold dashboard-chart-title"><i class="bi bi-person-workspace text-secondary me-1"></i>Demanda por Instrutor Responsável</h6>
-                </div>
-                <div class="card-body py-1 px-2 overflow-x-auto">
-                    <div class="chart-scroll-wrapper">
+        <!-- Gráfico Linha 2 - Demanda por Instrutor Responsável -->
+        <div class="row mb-2 g-2">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 py-1 px-2">
+                        <h6 class="mb-0 fw-bold dashboard-chart-title"><i class="bi bi-person-workspace text-secondary me-1"></i>Demanda por Instrutor Responsável</h6>
+                    </div>
+                    <div class="card-body py-1 px-2">
                         <canvas id="chartDemandaInstrutor" class="dashboard-chart dashboard-chart--row"></canvas>
-                    </div>
-                    <div id="chartDemandaInstrutorFallback" class="text-center text-muted py-2 d-none">
-                        <i class="bi bi-person-workspace fs-4 text-muted"></i>
-                        {% if total_responsabilidades_treinamento %}
-                        <p class="mt-1 small mb-0">Nenhuma demanda encontrada para os responsáveis configurados.</p>
-                        {% else %}
-                        <p class="mt-1 small mb-0">Defina responsáveis na matriz de treinamento para gerar este gráfico.</p>
-                        {% endif %}
+                        <div id="chartDemandaInstrutorFallback" class="text-center text-muted py-2 d-none">
+                            <i class="bi bi-person-workspace fs-4 text-muted"></i>
+                            {% if total_responsabilidades_treinamento %}
+                            <p class="mt-1 small mb-0">Nenhuma demanda encontrada para os responsáveis configurados.</p>
+                            {% else %}
+                            <p class="mt-1 small mb-0">Defina responsáveis na matriz de treinamento para gerar este gráfico.</p>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Gráficos Linha 3 - Planejamento -->
-    <div class="row mb-2 g-2">
-        <!-- Planejamento por Instrutor -->
-        <div class="col-md-6">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-white border-0 py-1 px-2">
-                    <h6 class="mb-0 fw-bold dashboard-chart-title"><i class="bi bi-calendar-check text-primary me-1"></i>Planejamento por Instrutor</h6>
-                </div>
-                <div class="card-body py-1 px-2 overflow-x-auto">
-                    <div class="chart-scroll-wrapper">
+        <!-- Gráficos Linha 3 - Planejamento -->
+        <div class="row mb-2 g-2">
+            <!-- Planejamento por Instrutor -->
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white border-0 py-1 px-2">
+                        <h6 class="mb-0 fw-bold dashboard-chart-title"><i class="bi bi-calendar-check text-primary me-1"></i>Planejamento por Instrutor</h6>
+                    </div>
+                    <div class="card-body py-1 px-2">
                         <canvas id="chartPlanejamentoInstrutor" class="dashboard-chart dashboard-chart--row"></canvas>
-                    </div>
-                    <div id="chartPlanejamentoInstrutorFallback" class="text-center text-muted py-2 d-none">
-                        <i class="bi bi-calendar-x fs-4 text-muted"></i>
-                        <p class="mt-1 small mb-0">Nenhum planejamento encontrado</p>
+                        <div id="chartPlanejamentoInstrutorFallback" class="text-center text-muted py-2 d-none">
+                            <i class="bi bi-calendar-x fs-4 text-muted"></i>
+                            <p class="mt-1 small mb-0">Nenhum planejamento encontrado</p>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Planejamento por Setor/Turno -->
-        <div class="col-md-6">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-white border-0 py-1 px-2">
-                    <h6 class="mb-0 fw-bold dashboard-chart-title"><i class="bi bi-calendar2-week text-info me-1"></i>Planejamento por Setor/Turno</h6>
-                </div>
-                <div class="card-body py-1 px-2 overflow-x-auto">
-                    <div class="chart-scroll-wrapper">
+            <!-- Planejamento por Setor/Turno -->
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white border-0 py-1 px-2">
+                        <h6 class="mb-0 fw-bold dashboard-chart-title"><i class="bi bi-calendar2-week text-info me-1"></i>Planejamento por Setor/Turno</h6>
+                    </div>
+                    <div class="card-body py-1 px-2">
                         <canvas id="chartPlanejamentoSetorTurno" class="dashboard-chart dashboard-chart--row"></canvas>
-                    </div>
-                    <div id="chartPlanejamentoSetorTurnoFallback" class="text-center text-muted py-2 d-none">
-                        <i class="bi bi-calendar-x fs-4 text-muted"></i>
-                        <p class="mt-1 small mb-0">Nenhum planejamento encontrado</p>
+                        <div id="chartPlanejamentoSetorTurnoFallback" class="text-center text-muted py-2 d-none">
+                            <i class="bi bi-calendar-x fs-4 text-muted"></i>
+                            <p class="mt-1 small mb-0">Nenhum planejamento encontrado</p>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Gráfico de Treinamentos por Mês -->
-    <div class="row mb-2 g-2">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white border-0 py-1 px-2">
-                    <h6 class="mb-0 fw-bold dashboard-chart-title"><i class="bi bi-bar-chart text-info me-1"></i>Treinamentos Últimos 12 Meses</h6>
-                </div>
-                <div class="card-body py-1 px-2 overflow-x-auto">
-                    <div class="chart-scroll-wrapper">
+        <!-- Gráfico de Treinamentos por Mês -->
+        <div class="row mb-2 g-2">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 py-1 px-2">
+                        <h6 class="mb-0 fw-bold dashboard-chart-title"><i class="bi bi-bar-chart text-info me-1"></i>Treinamentos Últimos 12 Meses</h6>
+                    </div>
+                    <div class="card-body py-1 px-2">
                         <canvas id="chartMeses" class="dashboard-chart dashboard-chart--wide"></canvas>
                     </div>
                 </div>
@@ -1203,6 +1342,44 @@
         }
     }
 
+    /* Mobile Tabs and Chart Wrappers */
+    .mobile-charts-nav {
+        gap: 0.35rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #eef1f4;
+    }
+
+    .mobile-charts-nav .nav-link {
+        font-size: 0.78rem;
+        padding: 0.35rem 0.65rem;
+        border-radius: 20px;
+        white-space: nowrap;
+        background-color: #f8f9fa;
+        color: #495057;
+        border: 1px solid #e9ecef;
+        transition: all 0.2s ease;
+    }
+
+    .mobile-charts-nav .nav-link.active {
+        background-color: #0d6efd;
+        color: #fff;
+        border-color: #0d6efd;
+        font-weight: 600;
+        box-shadow: 0 2px 4px rgba(13, 110, 253, 0.25);
+    }
+
+    .chart-mobile-wrapper-h {
+        position: relative;
+        width: 100%;
+        min-height: 520px;
+    }
+
+    .chart-mobile-wrapper-month {
+        min-width: 600px;
+        height: 280px;
+        position: relative;
+    }
+
     @media (max-width: 768px) {
         .dashboard-wrapper {
             height: auto;
@@ -1215,11 +1392,11 @@
         }
 
         .dashboard-chart--row {
-            height: 240px !important;
+            height: 100% !important;
         }
 
         .dashboard-chart--wide {
-            height: 230px !important;
+            height: 100% !important;
         }
 
         .card-header h6 {
@@ -2216,6 +2393,228 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('chartPlanejamentoSetorTurnoFallback').classList.remove('d-none');
             ctxPlanejamentoSetorTurno.style.display = 'none';
         }
+    }
+
+    // =====================
+    // Redimensionar gráficos ao trocar de aba no mobile
+    // =====================
+    const mobileTabButtons = document.querySelectorAll('#mobileChartsTab button[data-bs-toggle="pill"]');
+    mobileTabButtons.forEach(btn => {
+        btn.addEventListener('shown.bs.tab', function(event) {
+            const targetId = event.target.getAttribute('data-bs-target');
+            const targetPane = document.querySelector(targetId);
+            if (targetPane) {
+                const canvas = targetPane.querySelector('canvas');
+                if (canvas) {
+                    const chartInstance = Chart.getChart(canvas);
+                    if (chartInstance) {
+                        chartInstance.resize();
+                    }
+                }
+            }
+        });
+    });
+
+    // =====================
+    // Inicialização dos Gráficos Mobile
+    // =====================
+    const ctxLiderMob = document.getElementById('chartLiderMobile');
+    if (ctxLiderMob) {
+        const liderLabels = [{% for item in treinamentos_por_lider %}'{{ item.nome|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const liderVigentes = [{% for item in treinamentos_por_lider %}{{ item.vigentes }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const liderPendentes = [{% for item in treinamentos_por_lider %}{{ item.pendentes }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        if (liderLabels.length > 0) {
+            new Chart(ctxLiderMob.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: liderLabels,
+                    datasets: [
+                        { label: 'Vigentes', data: liderVigentes, backgroundColor: 'rgba(40, 167, 69, 0.8)', borderColor: 'rgba(40, 167, 69, 1)', borderWidth: 1, borderRadius: 4 },
+                        { label: 'Pendentes', data: liderPendentes, backgroundColor: 'rgba(220, 53, 69, 0.8)', borderColor: 'rgba(220, 53, 69, 1)', borderWidth: 1, borderRadius: 4 }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { title: resolveRawLabelTooltip } } },
+                    scales: {
+                        x: { beginAtZero: true, stacked: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                        y: { stacked: true, ticks: { autoSkip: false, font: { size: 11 } }, grid: { display: false } }
+                    }
+                }
+            });
+        } else {
+            document.getElementById('chartLiderMobileFallback')?.classList.remove('d-none');
+            ctxLiderMob.style.display = 'none';
+        }
+    }
+
+    const ctxSetorTurnoMob = document.getElementById('chartSetorTurnoMobile');
+    if (ctxSetorTurnoMob) {
+        const setorLabels = [{% for item in treinamentos_por_setor_turno %}'{{ item.nome|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const setorVigentes = [{% for item in treinamentos_por_setor_turno %}{{ item.vigentes }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const setorPendentes = [{% for item in treinamentos_por_setor_turno %}{{ item.pendentes }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        if (setorLabels.length > 0) {
+            new Chart(ctxSetorTurnoMob.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: setorLabels,
+                    datasets: [
+                        { label: 'Vigentes', data: setorVigentes, backgroundColor: 'rgba(40, 167, 69, 0.8)', borderColor: 'rgba(40, 167, 69, 1)', borderWidth: 1, borderRadius: 4 },
+                        { label: 'Pendentes', data: setorPendentes, backgroundColor: 'rgba(220, 53, 69, 0.8)', borderColor: 'rgba(220, 53, 69, 1)', borderWidth: 1, borderRadius: 4 }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { title: resolveRawLabelTooltip } } },
+                    scales: {
+                        x: { beginAtZero: true, stacked: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                        y: { stacked: true, ticks: { autoSkip: false, font: { size: 11 } }, grid: { display: false } }
+                    }
+                }
+            });
+        } else {
+            document.getElementById('chartSetorTurnoMobileFallback')?.classList.remove('d-none');
+            ctxSetorTurnoMob.style.display = 'none';
+        }
+    }
+
+    const ctxDemandaInstrutorMob = document.getElementById('chartDemandaInstrutorMobile');
+    if (ctxDemandaInstrutorMob) {
+        const demandaInstrutorLabels = [{% for item in demanda_por_instrutor %}'{{ item.nome|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const demandaInstrutorVigentes = [{% for item in demanda_por_instrutor %}{{ item.vigentes }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const demandaInstrutorPendentes = [{% for item in demanda_por_instrutor %}{{ item.pendentes }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        if (demandaInstrutorLabels.length > 0) {
+            new Chart(ctxDemandaInstrutorMob.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: demandaInstrutorLabels,
+                    datasets: [
+                        { label: 'Vigentes', data: demandaInstrutorVigentes, backgroundColor: 'rgba(40, 167, 69, 0.8)', borderColor: 'rgba(40, 167, 69, 1)', borderWidth: 1, borderRadius: 4 },
+                        { label: 'Pendentes', data: demandaInstrutorPendentes, backgroundColor: 'rgba(220, 53, 69, 0.8)', borderColor: 'rgba(220, 53, 69, 1)', borderWidth: 1, borderRadius: 4 }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { title: resolveRawLabelTooltip } } },
+                    scales: {
+                        x: { beginAtZero: true, stacked: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                        y: { stacked: true, ticks: { autoSkip: false, font: { size: 11 } }, grid: { display: false } }
+                    }
+                }
+            });
+        } else {
+            document.getElementById('chartDemandaInstrutorMobileFallback')?.classList.remove('d-none');
+            ctxDemandaInstrutorMob.style.display = 'none';
+        }
+    }
+
+    const ctxPlanejamentoInstrutorMob = document.getElementById('chartPlanejamentoInstrutorMobile');
+    if (ctxPlanejamentoInstrutorMob) {
+        const plInstrutorLabels = [{% for item in planejamento_por_instrutor %}'{{ item.nome_abreviado|default:item.instrutor__nome_completo|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const plInstrutorPlanejado = [{% for item in planejamento_por_instrutor %}{{ item.planejado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const plInstrutorConfirmado = [{% for item in planejamento_por_instrutor %}{{ item.confirmado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const plInstrutorRealizado = [{% for item in planejamento_por_instrutor %}{{ item.realizado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const plInstrutorAtrasado = [{% for item in planejamento_por_instrutor %}{{ item.atrasado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        if (plInstrutorLabels.length > 0) {
+            new Chart(ctxPlanejamentoInstrutorMob.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: plInstrutorLabels,
+                    datasets: [
+                        { label: 'Planejado', data: plInstrutorPlanejado, backgroundColor: 'rgba(124, 58, 237, 0.8)', borderColor: 'rgba(124, 58, 237, 1)', borderWidth: 1, borderRadius: 4 },
+                        { label: 'Confirmado', data: plInstrutorConfirmado, backgroundColor: 'rgba(23, 162, 184, 0.8)', borderColor: 'rgba(23, 162, 184, 1)', borderWidth: 1, borderRadius: 4 },
+                        { label: 'Realizado', data: plInstrutorRealizado, backgroundColor: 'rgba(40, 167, 69, 0.8)', borderColor: 'rgba(40, 167, 69, 1)', borderWidth: 1, borderRadius: 4 },
+                        { label: 'Atrasado', data: plInstrutorAtrasado, backgroundColor: 'rgba(220, 53, 69, 0.8)', borderColor: 'rgba(220, 53, 69, 1)', borderWidth: 1, borderRadius: 4 }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { title: resolveRawLabelTooltip } } },
+                    scales: {
+                        x: { beginAtZero: true, stacked: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                        y: { stacked: true, ticks: { autoSkip: false, font: { size: 11 } }, grid: { display: false } }
+                    }
+                }
+            });
+        } else {
+            document.getElementById('chartPlanejamentoInstrutorMobileFallback')?.classList.remove('d-none');
+            ctxPlanejamentoInstrutorMob.style.display = 'none';
+        }
+    }
+
+    const ctxPlanejamentoSetorTurnoMob = document.getElementById('chartPlanejamentoSetorTurnoMobile');
+    if (ctxPlanejamentoSetorTurnoMob) {
+        const plSetorLabels = [{% for item in planejamento_por_setor_turno %}'{{ item.colaboradores__setor__nome|escapejs }} - {{ item.colaboradores__turno|default:"N/A"|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const plSetorPlanejado = [{% for item in planejamento_por_setor_turno %}{{ item.planejado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const plSetorConfirmado = [{% for item in planejamento_por_setor_turno %}{{ item.confirmado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const plSetorRealizado = [{% for item in planejamento_por_setor_turno %}{{ item.realizado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const plSetorAtrasado = [{% for item in planejamento_por_setor_turno %}{{ item.atrasado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        if (plSetorLabels.length > 0) {
+            new Chart(ctxPlanejamentoSetorTurnoMob.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: plSetorLabels,
+                    datasets: [
+                        { label: 'Planejado', data: plSetorPlanejado, backgroundColor: 'rgba(124, 58, 237, 0.8)', borderColor: 'rgba(124, 58, 237, 1)', borderWidth: 1, borderRadius: 4 },
+                        { label: 'Confirmado', data: plSetorConfirmado, backgroundColor: 'rgba(23, 162, 184, 0.8)', borderColor: 'rgba(23, 162, 184, 1)', borderWidth: 1, borderRadius: 4 },
+                        { label: 'Realizado', data: plSetorRealizado, backgroundColor: 'rgba(40, 167, 69, 0.8)', borderColor: 'rgba(40, 167, 69, 1)', borderWidth: 1, borderRadius: 4 },
+                        { label: 'Atrasado', data: plSetorAtrasado, backgroundColor: 'rgba(220, 53, 69, 0.8)', borderColor: 'rgba(220, 53, 69, 1)', borderWidth: 1, borderRadius: 4 }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { title: resolveRawLabelTooltip } } },
+                    scales: {
+                        x: { beginAtZero: true, stacked: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                        y: { stacked: true, ticks: { autoSkip: false, font: { size: 11 } }, grid: { display: false } }
+                    }
+                }
+            });
+        } else {
+            document.getElementById('chartPlanejamentoSetorTurnoMobileFallback')?.classList.remove('d-none');
+            ctxPlanejamentoSetorTurnoMob.style.display = 'none';
+        }
+    }
+
+    const ctxMesesMob = document.getElementById('chartMesesMobile');
+    if (ctxMesesMob) {
+        const meses = [{% for item in treinamentos_por_mes %}'{{ item.mes }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const mesesIso = [{% for item in treinamentos_por_mes %}'{{ item.mes_iso }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const valores = [{% for item in treinamentos_por_mes %}{{ item.total }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        new Chart(ctxMesesMob.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: meses,
+                datasets: [{
+                    label: 'Treinamentos Realizados',
+                    data: valores,
+                    backgroundColor: 'rgba(23, 162, 184, 0.7)',
+                    borderColor: 'rgba(23, 162, 184, 1)',
+                    borderWidth: 2,
+                    borderRadius: 6,
+                    borderSkipped: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: true, position: 'top', align: 'end' } },
+                scales: {
+                    y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: 'rgba(0,0,0,0.05)' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
     }
     
     // =====================
