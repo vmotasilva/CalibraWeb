@@ -1367,13 +1367,36 @@ def salvar_edicao_historico_modal_view(request, historico_id):
             hist.save()
 
             # 2. Atualizar Erro e Incerteza para cada ResultadoFaixaCalibracao
+            faixas_inst = list(inst.faixas.all().order_by('valor_minimo')) if inst else []
+            if faixas_inst:
+                faixas_existentes = set(hist.resultados_faixa.values_list('faixa_id', flat=True))
+                for f in faixas_inst:
+                    if f.id not in faixas_existentes:
+                        ResultadoFaixaCalibracao.objects.get_or_create(
+                            historico=hist,
+                            faixa=f,
+                            defaults={
+                                'valor_minimo': f.valor_minimo,
+                                'valor_maximo': f.valor_maximo,
+                                'nominal': f.nominal,
+                                'tolerancia': f.tolerancia_mais_menos,
+                            }
+                        )
+
             resultados_faixa = hist.resultados_faixa.all()
             for rf in resultados_faixa:
-                erro_val_str = request.POST.get(f'erro_faixa_{rf.id}', '').strip()
-                inc_val_str = request.POST.get(f'incerteza_faixa_{rf.id}', '').strip()
+                erro_val_str = request.POST.get(f'erro_faixa_{rf.id}', '').strip().replace(',', '.')
+                inc_val_str = request.POST.get(f'incerteza_faixa_{rf.id}', '').strip().replace(',', '.')
                 
-                erro_decimal = Decimal(erro_val_str) if erro_val_str != '' else None
-                inc_decimal = Decimal(inc_val_str) if inc_val_str != '' else None
+                try:
+                    erro_decimal = Decimal(erro_val_str) if erro_val_str != '' else None
+                except Exception:
+                    erro_decimal = None
+
+                try:
+                    inc_decimal = Decimal(inc_val_str) if inc_val_str != '' else None
+                except Exception:
+                    inc_decimal = None
 
                 rf.erro = erro_decimal
                 rf.incerteza = inc_decimal
