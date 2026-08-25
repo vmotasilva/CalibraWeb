@@ -8459,7 +8459,10 @@ def api_iso_avaliacao_resumo(request, auditoria_id):
     })
 
 
+from django.views.decorators.csrf import csrf_exempt
+
 @login_required
+@csrf_exempt
 def api_iso_avaliacao_perguntas_list_create(request, auditoria_id):
     """
     Lista e cria perguntas de avaliação do auditor para uma auditoria específica.
@@ -8551,6 +8554,7 @@ def api_iso_avaliacao_perguntas_list_create(request, auditoria_id):
 
 
 @login_required
+@csrf_exempt
 @require_POST
 def api_iso_avaliacao_pergunta_update_delete(request, pk):
     """
@@ -8595,6 +8599,7 @@ def api_iso_avaliacao_pergunta_update_delete(request, pk):
 
 
 @login_required
+@csrf_exempt
 @require_POST
 def api_iso_avaliacao_restaurar_padroes(request, auditoria_id):
     """
@@ -8667,6 +8672,7 @@ def api_iso_avaliacao_restaurar_padroes(request, auditoria_id):
 
 
 @login_required
+@csrf_exempt
 def api_iso_avaliacao_perguntas_global_list_create(request):
     """
     Lista e cria perguntas de avaliação globais (modelo padrão para todas as auditorias).
