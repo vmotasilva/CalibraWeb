@@ -210,18 +210,81 @@
                                 {% endif %}
 
                                 {% if gap.solicitacoes %}
-                                    <div class="mt-2 pt-2 border-top border-secondary border-opacity-25">
-                                        <small class="text-muted fw-bold d-block mb-1">Amostras e Evidências Auditadas:</small>
-                                        {% for s in gap.solicitacoes %}
-                                            <div class="small text-dark mb-1 ps-2 border-start border-2 border-secondary">
-                                                <strong>{{ s.solicitacao }}:</strong> {{ s.evidencia|default:"Sem evidência descrita." }}
-                                                {% if s.imagens.exists %}
-                                                    <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill ms-1">
-                                                        <i class="bi bi-images"></i> {{ s.imagens.count }} foto(s)
+                                    <div class="mt-2 pt-2 border-top border-secondary border-opacity-25 d-flex flex-column gap-2">
+                                        <!-- Bloco de Não Conformidades (NC) -->
+                                        {% if gap.sols_nc %}
+                                            <div class="p-2.5 rounded-3 bg-danger bg-opacity-10 border border-danger border-opacity-50">
+                                                <div class="d-flex align-items-center gap-1.5 mb-1.5">
+                                                    <span class="badge bg-danger text-white rounded-pill px-2 py-0.5 font-monospace" style="font-size: 0.75rem;">
+                                                        <i class="bi bi-x-circle me-1"></i>{{ gap.total_nc }} Não Conformidade{{ gap.total_nc|pluralize:"s" }} (NC)
                                                     </span>
-                                                {% endif %}
+                                                </div>
+                                                {% for s in gap.sols_nc %}
+                                                    <div class="small text-dark mb-1 ps-2 border-start border-3 border-danger">
+                                                        <strong>{{ s.solicitacao }}:</strong> {{ s.evidencia|default:"Sem evidência descrita." }}
+                                                        {% if s.imagens.exists %}
+                                                            <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill ms-1">
+                                                                <i class="bi bi-images"></i> {{ s.imagens.count }} foto(s)
+                                                            </span>
+                                                        {% endif %}
+                                                    </div>
+                                                {% endfor %}
                                             </div>
-                                        {% endfor %}
+                                        {% endif %}
+
+                                        <!-- Bloco de Observações com Correção (OBS) -->
+                                        {% if gap.sols_obs %}
+                                            <div class="p-2.5 rounded-3 bg-warning bg-opacity-15 border border-warning border-opacity-50">
+                                                <div class="d-flex align-items-center gap-1.5 mb-1.5">
+                                                    <span class="badge text-dark rounded-pill px-2 py-0.5 font-monospace" style="background-color: #d4e157; font-size: 0.75rem;">
+                                                        <i class="bi bi-exclamation-triangle me-1"></i>{{ gap.total_obs }} Observação com Correção (OBS)
+                                                    </span>
+                                                </div>
+                                                {% for s in gap.sols_obs %}
+                                                    <div class="small text-dark mb-1 ps-2 border-start border-3 border-warning">
+                                                        <strong>{{ s.solicitacao }}:</strong> {{ s.evidencia|default:"Sem evidência descrita." }}
+                                                        {% if s.imagens.exists %}
+                                                            <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill ms-1">
+                                                                <i class="bi bi-images"></i> {{ s.imagens.count }} foto(s)
+                                                            </span>
+                                                        {% endif %}
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+
+                                        <!-- Bloco de Oportunidades de Melhoria (OM) -->
+                                        {% if gap.sols_om %}
+                                            <div class="p-2.5 rounded-3 bg-info bg-opacity-10 border border-info border-opacity-50">
+                                                <div class="d-flex align-items-center gap-1.5 mb-1.5">
+                                                    <span class="badge bg-info text-dark rounded-pill px-2 py-0.5 font-monospace" style="font-size: 0.75rem;">
+                                                        <i class="bi bi-lightbulb me-1"></i>{{ gap.total_om }} Oportunidade de Melhoria (OM)
+                                                    </span>
+                                                </div>
+                                                {% for s in gap.sols_om %}
+                                                    <div class="small text-dark mb-1 ps-2 border-start border-3 border-info">
+                                                        <strong>{{ s.solicitacao }}:</strong> {{ s.evidencia|default:"Sem evidência descrita." }}
+                                                        {% if s.imagens.exists %}
+                                                            <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill ms-1">
+                                                                <i class="bi bi-images"></i> {{ s.imagens.count }} foto(s)
+                                                            </span>
+                                                        {% endif %}
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+
+                                        <!-- Outras Evidências / Amostras Conformes Auditadas -->
+                                        {% if gap.sols_outras %}
+                                            <div class="p-2.5 rounded-3 bg-light border">
+                                                <small class="text-muted fw-bold d-block mb-1"><i class="bi bi-check2-circle text-success me-1"></i>Outras Amostras Auditadas:</small>
+                                                {% for s in gap.sols_outras %}
+                                                    <div class="small text-secondary mb-1 ps-2 border-start border-2 border-secondary">
+                                                        <strong>{{ s.solicitacao }}:</strong> {{ s.evidencia|default:"Conforme." }}
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
                                     </div>
                                 {% endif %}
                             </div>

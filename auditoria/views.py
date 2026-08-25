@@ -7816,6 +7816,13 @@ def iso_auditoria_sintese_wizard(request, auditoria_id):
 
         if status in ['NC', 'OM', 'OBS']:
             grau_label = "NC Maior" if (status == 'NC' and grau == 'MAIOR') else ("NC Menor" if status == 'NC' else ("Observação com Correção" if status == 'OBS' else "Oportunidade de Melhoria"))
+            
+            # Separação clara das solicitações por qualificação
+            sols_nc = [s for s in sols_do_item if s.conclusao == 'NC']
+            sols_om = [s for s in sols_do_item if s.conclusao == 'OM']
+            sols_obs = [s for s in sols_do_item if s.conclusao == 'OBS']
+            sols_outras = [s for s in sols_do_item if s.conclusao not in ['NC', 'OM', 'OBS']]
+
             sec_data['gaps'].append({
                 'item_id': item.id,
                 'item_referencia': item.referencia,
@@ -7825,6 +7832,13 @@ def iso_auditoria_sintese_wizard(request, auditoria_id):
                 'grau_label': grau_label,
                 'justificativa': justif,
                 'solicitacoes': sols_do_item,
+                'sols_nc': sols_nc,
+                'sols_om': sols_om,
+                'sols_obs': sols_obs,
+                'sols_outras': sols_outras,
+                'total_nc': len(sols_nc),
+                'total_om': len(sols_om),
+                'total_obs': len(sols_obs),
             })
 
     secoes_lista = sorted(secoes_dict.values(), key=lambda s: natural_sort_key(s['referencia']))
