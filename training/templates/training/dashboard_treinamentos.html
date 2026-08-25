@@ -7,21 +7,26 @@
 <div class="dashboard-wrapper">
     <!-- Cabeçalho Principal - Fixo no topo -->
     <div class="dashboard-header">
-        <div class="d-flex justify-content-between align-items-center bg-white rounded shadow-sm px-4 py-2">
-            <div>
-                <h1 class="h5 mb-0"><i class="bi bi-graph-up text-primary me-2"></i>Dashboard de Treinamentos</h1>
-                <small class="text-muted dashboard-desc">Visão geral de estatísticas e conformidade</small>
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center bg-white rounded shadow-sm px-3 px-md-4 py-2 gap-2">
+            <div class="d-flex justify-content-between align-items-center w-100 w-md-auto">
+                <div>
+                    <h1 class="h5 mb-0 fw-bold fs-6 fs-md-5"><i class="bi bi-graph-up text-primary me-2"></i>Dashboard de Treinamentos</h1>
+                    <small class="text-muted dashboard-desc d-none d-sm-inline">Visão geral de estatísticas e conformidade</small>
+                </div>
+                <span class="badge bg-light text-dark dashboard-badge-time d-md-none border">
+                    <i class="bi bi-clock me-1"></i>{% now "H:i" %}
+                </span>
             </div>
-            <div class="d-flex align-items-center gap-2">
-                <button type="button" class="btn btn-outline-primary btn-sm py-1" data-bs-toggle="modal" data-bs-target="#filtrosModal">
-                    <i class="bi bi-funnel"></i> Filtros
+            <div class="d-flex align-items-center gap-1 gap-md-2 w-100 w-md-auto justify-content-between justify-content-md-end flex-wrap">
+                <button type="button" class="btn btn-outline-primary btn-sm py-1 px-2 d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#filtrosModal">
+                    <i class="bi bi-funnel"></i> <span>Filtros</span>
                 </button>
-                <button id="clearFiltersBtn" type="button" class="btn btn-outline-secondary btn-sm py-1" title="Limpar Filtros">
-                    <i class="bi bi-x-circle"></i> Limpar
+                <button id="clearFiltersBtn" type="button" class="btn btn-outline-secondary btn-sm py-1 px-2 d-flex align-items-center gap-1" title="Limpar Filtros">
+                    <i class="bi bi-x-circle"></i> <span class="d-none d-sm-inline">Limpar</span>
                 </button>
                 <div class="dropdown">
-                    <button class="btn btn-outline-secondary dropdown-toggle btn-sm py-1" type="button" id="dashboardActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-three-dots-vertical"></i> Ações
+                    <button class="btn btn-outline-secondary dropdown-toggle btn-sm py-1 px-2 d-flex align-items-center gap-1" type="button" id="dashboardActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-three-dots-vertical"></i> <span>Ações</span>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="dashboardActionsDropdown">
                         <li>
@@ -36,7 +41,7 @@
                         </li>
                     </ul>
                 </div>
-                <span class="badge bg-light text-dark dashboard-badge-time ms-2">
+                <span class="badge bg-light text-dark dashboard-badge-time ms-2 d-none d-md-inline border">
                     <i class="bi bi-clock me-1"></i>Atualizado: {% now "d/m/Y H:i" %}
                 </span>
             </div>
@@ -216,8 +221,8 @@
             </div>
         </div>
         
-        <!-- Sidebar 2 - Indicadores -->
-        <div id="sidebar2Col" class="col-auto sidebar2-col">
+        <!-- Sidebar 2 - Indicadores (Desktop >= 768px) -->
+        <div id="sidebar2Col" class="col-auto sidebar2-col d-none d-md-block">
             <div id="indicatorsSidebar" class="indicators-sidebar">
                 <div class="sidebar2-content">
                     <h6 class="mb-2 fw-bold text-center dashboard-indic-title"><i class="bi bi-speedometer2 text-primary me-1"></i>Indicadores</h6>
@@ -297,6 +302,79 @@
         <div id="mainContent" class="col main-content">
             <div class="charts-scroll-area">
 
+                <!-- Indicadores Mobile em Grid 2x2 (< 768px) -->
+                <div class="d-block d-md-none mb-3">
+                    <div class="row row-cols-2 g-2">
+                        <!-- Total -->
+                        <div class="col">
+                            <div class="card border-0 shadow-sm text-center py-2 px-1 h-100">
+                                <div class="d-flex flex-column align-items-center justify-content-center">
+                                    <div class="indicator-icon bg-primary bg-opacity-10 rounded-circle mb-1">
+                                        <i class="bi bi-journal-check text-primary fs-6"></i>
+                                    </div>
+                                    <small class="text-muted text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.5px;">Total</small>
+                                    <span class="fw-bold text-primary fs-5">{{ total_treinamentos|default:"0" }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Vigentes -->
+                        <div class="col">
+                            <div class="card border-0 shadow-sm text-center py-2 px-1 h-100">
+                                <div class="d-flex flex-column align-items-center justify-content-center">
+                                    <div class="indicator-icon bg-success bg-opacity-10 rounded-circle mb-1">
+                                        <i class="bi bi-check-circle text-success fs-6"></i>
+                                    </div>
+                                    <small class="text-muted text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.5px;">Vigentes</small>
+                                    <span class="fw-bold text-success fs-5">{{ treinamentos_vigentes|default:"0" }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Pendentes -->
+                        <div class="col">
+                            <div class="card border-0 shadow-sm text-center py-2 px-1 h-100">
+                                <div class="d-flex flex-column align-items-center justify-content-center">
+                                    <div class="indicator-icon bg-danger bg-opacity-10 rounded-circle mb-1">
+                                        <i class="bi bi-exclamation-triangle text-danger fs-6"></i>
+                                    </div>
+                                    <small class="text-muted text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.5px;">Pendentes</small>
+                                    <span class="fw-bold text-danger fs-5">{{ treinamentos_pendentes|default:"0" }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Colaboradores -->
+                        <div class="col">
+                            <div class="card border-0 shadow-sm text-center py-2 px-1 h-100">
+                                <div class="d-flex flex-column align-items-center justify-content-center">
+                                    <div class="indicator-icon bg-info bg-opacity-10 rounded-circle mb-1">
+                                        <i class="bi bi-people text-info fs-6"></i>
+                                    </div>
+                                    <small class="text-muted text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.5px;">Colaboradores</small>
+                                    <span class="fw-bold text-info fs-5">{{ total_colaboradores_treinados|default:"0" }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Taxa de Conformidade Mobile (Barra Horizontal) -->
+                    <div class="card border-0 shadow-sm mt-2 p-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="small fw-bold text-muted text-uppercase" style="font-size: 0.75rem;">Taxa de Conformidade:</span>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="circular-progress-sm">
+                                    <svg viewBox="0 0 36 36" class="circular-chart-sm">
+                                        <path class="circle-bg-red" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                        <path class="circle-green" stroke-dasharray="{{ taxa_conformidade|default:0 }}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                    </svg>
+                                </div>
+                                <span class="fw-bold text-success fs-6">{{ taxa_conformidade|default:"0" }}%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
     <!-- Gráficos Linha 1 - Demanda -->
     <div class="row mb-2 g-2">
         <!-- Treinamentos por Líder -->
@@ -305,8 +383,10 @@
                 <div class="card-header bg-white border-0 py-1 px-2">
                     <h6 class="mb-0 fw-bold dashboard-chart-title"><i class="bi bi-person-badge text-success me-1"></i>Demanda por Líder</h6>
                 </div>
-                <div class="card-body py-1 px-2">
-                    <canvas id="chartLider" class="dashboard-chart dashboard-chart--row"></canvas>
+                <div class="card-body py-1 px-2 overflow-x-auto">
+                    <div class="chart-scroll-wrapper">
+                        <canvas id="chartLider" class="dashboard-chart dashboard-chart--row"></canvas>
+                    </div>
                     <div id="chartLiderFallback" class="text-center text-muted py-2 d-none">
                         <i class="bi bi-bar-chart fs-4 text-muted"></i>
                         <p class="mt-1 small mb-0">Nenhum dado disponível</p>
@@ -321,8 +401,10 @@
                 <div class="card-header bg-white border-0 py-1 px-2">
                     <h6 class="mb-0 fw-bold dashboard-chart-title"><i class="bi bi-building text-warning me-1"></i>Demanda por Setor/Turno</h6>
                 </div>
-                <div class="card-body py-1 px-2">
-                    <canvas id="chartSetorTurno" class="dashboard-chart dashboard-chart--row"></canvas>
+                <div class="card-body py-1 px-2 overflow-x-auto">
+                    <div class="chart-scroll-wrapper">
+                        <canvas id="chartSetorTurno" class="dashboard-chart dashboard-chart--row"></canvas>
+                    </div>
                     <div id="chartSetorTurnoFallback" class="text-center text-muted py-2 d-none">
                         <i class="bi bi-bar-chart fs-4 text-muted"></i>
                         <p class="mt-1 small mb-0">Nenhum dado disponível</p>
@@ -339,8 +421,10 @@
                 <div class="card-header bg-white border-0 py-1 px-2">
                     <h6 class="mb-0 fw-bold dashboard-chart-title"><i class="bi bi-person-workspace text-secondary me-1"></i>Demanda por Instrutor Responsável</h6>
                 </div>
-                <div class="card-body py-1 px-2">
-                    <canvas id="chartDemandaInstrutor" class="dashboard-chart dashboard-chart--row"></canvas>
+                <div class="card-body py-1 px-2 overflow-x-auto">
+                    <div class="chart-scroll-wrapper">
+                        <canvas id="chartDemandaInstrutor" class="dashboard-chart dashboard-chart--row"></canvas>
+                    </div>
                     <div id="chartDemandaInstrutorFallback" class="text-center text-muted py-2 d-none">
                         <i class="bi bi-person-workspace fs-4 text-muted"></i>
                         {% if total_responsabilidades_treinamento %}
@@ -362,8 +446,10 @@
                 <div class="card-header bg-white border-0 py-1 px-2">
                     <h6 class="mb-0 fw-bold dashboard-chart-title"><i class="bi bi-calendar-check text-primary me-1"></i>Planejamento por Instrutor</h6>
                 </div>
-                <div class="card-body py-1 px-2">
-                    <canvas id="chartPlanejamentoInstrutor" class="dashboard-chart dashboard-chart--row"></canvas>
+                <div class="card-body py-1 px-2 overflow-x-auto">
+                    <div class="chart-scroll-wrapper">
+                        <canvas id="chartPlanejamentoInstrutor" class="dashboard-chart dashboard-chart--row"></canvas>
+                    </div>
                     <div id="chartPlanejamentoInstrutorFallback" class="text-center text-muted py-2 d-none">
                         <i class="bi bi-calendar-x fs-4 text-muted"></i>
                         <p class="mt-1 small mb-0">Nenhum planejamento encontrado</p>
@@ -378,8 +464,10 @@
                 <div class="card-header bg-white border-0 py-1 px-2">
                     <h6 class="mb-0 fw-bold dashboard-chart-title"><i class="bi bi-calendar2-week text-info me-1"></i>Planejamento por Setor/Turno</h6>
                 </div>
-                <div class="card-body py-1 px-2">
-                    <canvas id="chartPlanejamentoSetorTurno" class="dashboard-chart dashboard-chart--row"></canvas>
+                <div class="card-body py-1 px-2 overflow-x-auto">
+                    <div class="chart-scroll-wrapper">
+                        <canvas id="chartPlanejamentoSetorTurno" class="dashboard-chart dashboard-chart--row"></canvas>
+                    </div>
                     <div id="chartPlanejamentoSetorTurnoFallback" class="text-center text-muted py-2 d-none">
                         <i class="bi bi-calendar-x fs-4 text-muted"></i>
                         <p class="mt-1 small mb-0">Nenhum planejamento encontrado</p>
@@ -396,8 +484,10 @@
                 <div class="card-header bg-white border-0 py-1 px-2">
                     <h6 class="mb-0 fw-bold dashboard-chart-title"><i class="bi bi-bar-chart text-info me-1"></i>Treinamentos Últimos 12 Meses</h6>
                 </div>
-                <div class="card-body py-1 px-2">
-                    <canvas id="chartMeses" class="dashboard-chart dashboard-chart--wide"></canvas>
+                <div class="card-body py-1 px-2 overflow-x-auto">
+                    <div class="chart-scroll-wrapper">
+                        <canvas id="chartMeses" class="dashboard-chart dashboard-chart--wide"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -421,8 +511,10 @@
                             </h6>
                             <span class="badge bg-secondary ms-2 text-white">{{ grupo.list|length }}</span>
                         </div>
-                        <div class="table-responsive dashboard-pending-table-shell">
-                            <table class="table table-sm table-striped table-hover align-middle dashboard-pending-table mb-0">
+
+                        <!-- TABELA DESKTOP (>= 768px) -->
+                        <div class="table-responsive dashboard-pending-table-shell d-none d-md-block">
+                            <table class="table table-sm table-striped table-hover align-middle dashboard-pending-table mb-0 d-none d-md-table">
                                 <thead class="table-light">
                                     <tr class="small text-uppercase">
                                         <th>Procedimento</th>
@@ -448,6 +540,37 @@
                                     {% endfor %}
                                 </tbody>
                             </table>
+                        </div>
+
+                        <!-- CARDS MOBILE (< 768px) -->
+                        <div class="d-block d-md-none">
+                            {% for pendencia in grupo.list %}
+                            <div class="card shadow-sm border mb-2" style="border-radius: 8px;">
+                                <!-- Topo do Card: Colaborador e Matrícula -->
+                                <div class="card-header bg-light border-0 py-2 px-3 d-flex justify-content-between align-items-center">
+                                    <span class="fw-bold text-dark text-truncate" style="font-size: 0.85rem; max-width: 65%;">
+                                        <i class="bi bi-person me-1 text-primary"></i>{{ pendencia.colaborador }}
+                                    </span>
+                                    <span class="badge bg-white text-secondary border font-monospace" style="font-size: 0.75rem;">
+                                        Matrícula: {{ pendencia.matricula|default:"-" }}
+                                    </span>
+                                </div>
+                                <!-- Corpo do Card: Procedimento e Nome -->
+                                <div class="card-body py-2 px-3">
+                                    <div class="badge bg-danger bg-opacity-10 text-danger border border-danger-subtle font-monospace mb-1" style="font-size: 0.75rem;">
+                                        {{ pendencia.procedimento }}
+                                    </div>
+                                    <div class="fw-semibold text-dark" style="font-size: 0.85rem; line-height: 1.3;">
+                                        {{ pendencia.procedimento_nome }}
+                                    </div>
+                                </div>
+                                <!-- Rodapé do Card: Matriz e Sub-área -->
+                                <div class="card-footer bg-white border-top py-2 px-3 d-flex justify-content-between align-items-center text-muted small" style="font-size: 0.75rem;">
+                                    <span><i class="bi bi-grid me-1"></i>Matriz: <strong>{{ pendencia.matriz|default:"-" }}</strong></span>
+                                    <span><i class="bi bi-diagram-3 me-1"></i>Sub-área: <strong>{{ pendencia.sub_area|default:"-" }}</strong></span>
+                                </div>
+                            </div>
+                            {% endfor %}
                         </div>
                     </div>
                     {% empty %}
@@ -1084,12 +1207,11 @@
         .dashboard-wrapper {
             height: auto;
             min-height: calc(100dvh - 60px);
+            overflow-x: hidden;
         }
 
-        .dashboard-header .d-flex {
-            flex-direction: column;
-            align-items: flex-start !important;
-            gap: 0.5rem;
+        .chart-scroll-wrapper {
+            min-width: 540px;
         }
 
         .dashboard-chart--row {
