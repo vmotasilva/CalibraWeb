@@ -1510,6 +1510,7 @@ class PerguntaAvaliacaoAuditorIso(models.Model):
     TIPO_CHOICES = [
         ('ESTRELAS_1_5', 'Classificação por Estrelas (1 a 5)'),
         ('TEXTO_LIVRE', 'Caixa de Texto / Resposta Dissertativa'),
+        ('SELECAO_LISTA', 'Lista de Seleção (Múltipla Escolha / Opções)'),
     ]
 
     auditoria = models.ForeignKey(
@@ -1531,10 +1532,18 @@ class PerguntaAvaliacaoAuditorIso(models.Model):
     titulo = models.CharField(max_length=255, verbose_name="Título / Critério Avaliado")
     descricao = models.TextField(blank=True, default="", verbose_name="Dica / Explicação do Critério")
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default='ESTRELAS_1_5', verbose_name="Tipo de Resposta")
+    opcoes_lista = models.TextField(blank=True, default="", verbose_name="Opções da Lista (uma por linha ou separadas por vírgula)")
     ordem = models.PositiveIntegerField(default=1, verbose_name="Ordem de Exibição")
     obrigatoria = models.BooleanField(default=True, verbose_name="Resposta Obrigatória")
     ativa = models.BooleanField(default=True, verbose_name="Pergunta Ativa")
-    criado_em = models.DateTimeField(auto_now_add=True)
+    def get_opcoes_lista_display(self):
+        if not self.opcoes_lista:
+            return []
+        linhas = []
+        for line in self.opcoes_lista.splitlines():
+            partes = [p.strip() for p in line.split(',') if p.strip()] if ',' in line else [line.strip()]
+            linhas.extend([p for p in partes if p])
+        return linhas
 
     class Meta:
         verbose_name = "Pergunta de Avaliação do Auditor"

@@ -469,15 +469,21 @@
                 <div class="row g-2 mb-3">
                     <div class="col-6">
                         <label for="selectPerguntaTipoListagem" class="form-label fw-bold text-dark small">Tipo de Resposta</label>
-                        <select class="form-select rounded-3" id="selectPerguntaTipoListagem">
+                        <select class="form-select rounded-3" id="selectPerguntaTipoListagem" onchange="toggleOpcoesListaListagem()">
                             <option value="ESTRELAS_1_5">⭐ Classificação (1 a 5 Estrelas)</option>
                             <option value="TEXTO_LIVRE">✍️ Resposta Dissertativa</option>
+                            <option value="SELECAO_LISTA">📋 Lista de Seleção (Opções)</option>
                         </select>
                     </div>
                     <div class="col-6">
                         <label for="inputPerguntaOrdemListagem" class="form-label fw-bold text-dark small">Ordem</label>
                         <input type="number" class="form-control rounded-3" id="inputPerguntaOrdemListagem" value="1" min="1">
                     </div>
+                </div>
+                <div class="mb-3 d-none" id="containerOpcoesListaListagem">
+                    <label for="inputPerguntaOpcoesListagem" class="form-label fw-bold text-dark small">Opções da Lista (uma por linha) <span class="text-danger">*</span></label>
+                    <textarea class="form-control rounded-3" id="inputPerguntaOpcoesListagem" rows="3" placeholder="Opção 1&#10;Opção 2&#10;Opção 3"></textarea>
+                    <small class="text-muted" style="font-size: 0.75rem;">Digite as alternativas que o auditado poderá escolher no menu suspenso.</small>
                 </div>
                 <div class="form-check form-switch mt-2">
                     <input class="form-check-input" type="checkbox" id="checkPerguntaObrigatoriaListagem" checked>
@@ -671,12 +677,13 @@
                 <div class="d-flex align-items-start gap-3">
                     <span class="badge bg-secondary rounded-circle px-2 py-1 font-monospace mt-1">${p.ordem || (idx + 1)}</span>
                     <div>
-                        <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
                             <strong class="text-dark">${p.titulo}</strong>
-                            ${p.tipo === 'ESTRELAS_1_5' ? '<span class="badge bg-warning text-dark small">⭐ 1-5 Estrelas</span>' : '<span class="badge bg-info bg-opacity-10 text-info small">✍️ Texto Livre</span>'}
+                            ${p.tipo === 'ESTRELAS_1_5' ? '<span class="badge bg-warning text-dark small">⭐ 1-5 Estrelas</span>' : (p.tipo === 'SELECAO_LISTA' ? '<span class="badge bg-success bg-opacity-10 text-success small">📋 Lista de Seleção</span>' : '<span class="badge bg-info bg-opacity-10 text-info small">✍️ Texto Livre</span>')}
                             ${p.obrigatoria ? '<span class="badge bg-danger bg-opacity-10 text-danger small">Obrigatória</span>' : '<span class="badge bg-light text-muted border small">Opcional</span>'}
                         </div>
                         ${p.descricao ? `<small class="text-muted d-block mt-0.5">${p.descricao}</small>` : ''}
+                        ${p.tipo === 'SELECAO_LISTA' && p.opcoes_lista ? `<small class="text-secondary d-block mt-1 font-monospace" style="font-size:0.75rem;">Opções: ${p.opcoes_lista.split('\n').map(o=>o.trim()).filter(Boolean).join(', ')}</small>` : ''}
                     </div>
                 </div>
                 <div class="d-flex align-items-center gap-1">
@@ -691,14 +698,26 @@
         `).join('');
     }
 
+    function toggleOpcoesListaListagem() {
+        const tipo = document.getElementById('selectPerguntaTipoListagem').value;
+        const containerOpcoes = document.getElementById('containerOpcoesListaListagem');
+        if (tipo === 'SELECAO_LISTA') {
+            containerOpcoes.classList.remove('d-none');
+        } else {
+            containerOpcoes.classList.add('d-none');
+        }
+    }
+
     function abrirModalCriarPerguntaListagem() {
         document.getElementById('formPerguntaModalTituloListagem').textContent = 'Nova Pergunta de Avaliação';
         document.getElementById('perguntaEditIdListagem').value = '';
         document.getElementById('inputPerguntaTituloListagem').value = '';
         document.getElementById('inputPerguntaDescricaoListagem').value = '';
         document.getElementById('selectPerguntaTipoListagem').value = 'ESTRELAS_1_5';
+        document.getElementById('inputPerguntaOpcoesListagem').value = '';
         document.getElementById('inputPerguntaOrdemListagem').value = (perguntasAtuaisListagem.length + 1);
         document.getElementById('checkPerguntaObrigatoriaListagem').checked = true;
+        toggleOpcoesListaListagem();
 
         showModalSafe(document.getElementById('modalFormPerguntaListagem'));
     }
@@ -712,8 +731,10 @@
         document.getElementById('inputPerguntaTituloListagem').value = p.titulo;
         document.getElementById('inputPerguntaDescricaoListagem').value = p.descricao || '';
         document.getElementById('selectPerguntaTipoListagem').value = p.tipo;
+        document.getElementById('inputPerguntaOpcoesListagem').value = p.opcoes_lista || '';
         document.getElementById('inputPerguntaOrdemListagem').value = p.ordem || 1;
         document.getElementById('checkPerguntaObrigatoriaListagem').checked = p.obrigatoria;
+        toggleOpcoesListaListagem();
 
         showModalSafe(document.getElementById('modalFormPerguntaListagem'));
     }
@@ -726,10 +747,19 @@
             return;
         }
 
+        const tipo = document.getElementById('selectPerguntaTipoListagem').value;
+        const opcoes = document.getElementById('inputPerguntaOpcoesListagem').value.trim();
+
+        if (tipo === 'SELECAO_LISTA' && !opcoes) {
+            alert('Por favor, informe as opções da lista (uma por linha).');
+            return;
+        }
+
         const payload = {
             titulo: titulo,
             descricao: document.getElementById('inputPerguntaDescricaoListagem').value.trim(),
-            tipo: document.getElementById('selectPerguntaTipoListagem').value,
+            tipo: tipo,
+            opcoes_lista: opcoes,
             ordem: parseInt(document.getElementById('inputPerguntaOrdemListagem').value) || 1,
             obrigatoria: document.getElementById('checkPerguntaObrigatoriaListagem').checked,
             ativa: true

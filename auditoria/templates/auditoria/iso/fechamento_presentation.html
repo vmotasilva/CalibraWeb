@@ -1129,22 +1129,23 @@
                 const div = document.createElement('div');
                 div.className = 'p-3 bg-light rounded-3 border mb-2 d-flex justify-content-between align-items-center gap-2';
                 div.innerHTML = `
-                    <div class="d-flex align-items-start gap-2">
-                        <span class="badge bg-secondary rounded-circle px-2 py-1">${p.ordem || idx + 1}</span>
+                    <div class="d-flex align-items-start gap-3">
+                        <span class="badge bg-secondary rounded-circle px-2 py-1 font-monospace mt-1">${p.ordem || idx + 1}</span>
                         <div>
-                            <div class="fw-bold text-dark fs-6 mb-0">
-                                ${p.titulo} 
-                                ${p.tipo === 'ESTRELAS_1_5' ? '<span class="badge bg-warning text-dark ms-1" style="font-size:0.7rem;">⭐ 1 a 5 Estrelas</span>' : '<span class="badge bg-info text-dark ms-1" style="font-size:0.7rem;">✍️ Dissertativa</span>'}
-                                ${p.obrigatoria ? '<span class="badge bg-danger bg-opacity-10 text-danger ms-1" style="font-size:0.68rem;">Obrigatória</span>' : '<span class="badge bg-secondary bg-opacity-10 text-secondary ms-1" style="font-size:0.68rem;">Opcional</span>'}
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <strong class="text-dark">${p.titulo}</strong>
+                                ${p.tipo === 'ESTRELAS_1_5' ? '<span class="badge bg-warning text-dark small">⭐ 1-5 Estrelas</span>' : (p.tipo === 'SELECAO_LISTA' ? '<span class="badge bg-success bg-opacity-10 text-success small">📋 Lista de Seleção</span>' : '<span class="badge bg-info bg-opacity-10 text-info small">✍️ Texto Livre</span>')}
+                                ${p.obrigatoria ? '<span class="badge bg-danger bg-opacity-10 text-danger small">Obrigatória</span>' : '<span class="badge bg-light text-muted border small">Opcional</span>'}
                             </div>
-                            <small class="text-muted d-block">${p.descricao || 'Sem descrição/dica adicional'}</small>
+                            ${p.descricao ? `<small class="text-muted d-block mt-0.5">${p.descricao}</small>` : ''}
+                            ${p.tipo === 'SELECAO_LISTA' && p.opcoes_lista ? `<small class="text-secondary d-block mt-1 font-monospace" style="font-size:0.75rem;">Opções: ${p.opcoes_lista.split('\n').map(o=>o.trim()).filter(Boolean).join(', ')}</small>` : ''}
                         </div>
                     </div>
                     <div class="d-flex align-items-center gap-1">
-                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-circle p-1 px-2" title="Editar Critério" onclick='abrirModalEditarPergunta(${JSON.stringify(p)})'>
-                            <i class="bi bi-pencil"></i>
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-2.5 py-1" onclick='abrirModalEditarPergunta(${JSON.stringify(p)})'>
+                            <i class="bi bi-pencil me-1"></i> Editar
                         </button>
-                        <button type="button" class="btn btn-sm btn-outline-danger rounded-circle p-1 px-2" title="Excluir Pergunta" onclick="excluirPerguntaConfig(${p.id})">
+                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2.5 py-1" onclick="excluirPerguntaConfig(${p.id})">
                             <i class="bi bi-trash"></i>
                         </button>
                     </div>
@@ -1153,14 +1154,29 @@
             });
         }
 
+        function toggleOpcoesListaFechamento() {
+            const tipo = document.getElementById('selectPerguntaTipo').value;
+            const containerOpcoes = document.getElementById('containerOpcoesListaFechamento');
+            if (containerOpcoes) {
+                if (tipo === 'SELECAO_LISTA') {
+                    containerOpcoes.classList.remove('d-none');
+                } else {
+                    containerOpcoes.classList.add('d-none');
+                }
+            }
+        }
+
         function abrirModalCriarPergunta() {
             document.getElementById('formPerguntaModalTitulo').textContent = 'Nova Pergunta de Avaliação';
             document.getElementById('perguntaEditId').value = '';
             document.getElementById('inputPerguntaTitulo').value = '';
             document.getElementById('inputPerguntaDescricao').value = '';
             document.getElementById('selectPerguntaTipo').value = 'ESTRELAS_1_5';
+            const optInput = document.getElementById('inputPerguntaOpcoesFechamento');
+            if (optInput) optInput.value = '';
             document.getElementById('inputPerguntaOrdem').value = '10';
             document.getElementById('checkPerguntaObrigatoria').checked = true;
+            toggleOpcoesListaFechamento();
             new bootstrap.Modal(document.getElementById('modalFormPergunta')).show();
         }
 
@@ -1170,8 +1186,11 @@
             document.getElementById('inputPerguntaTitulo').value = p.titulo;
             document.getElementById('inputPerguntaDescricao').value = p.descricao || '';
             document.getElementById('selectPerguntaTipo').value = p.tipo;
+            const optInput = document.getElementById('inputPerguntaOpcoesFechamento');
+            if (optInput) optInput.value = p.opcoes_lista || '';
             document.getElementById('inputPerguntaOrdem').value = p.ordem || 1;
             document.getElementById('checkPerguntaObrigatoria').checked = !!p.obrigatoria;
+            toggleOpcoesListaFechamento();
             new bootstrap.Modal(document.getElementById('modalFormPergunta')).show();
         }
 
@@ -1183,10 +1202,20 @@
                 return;
             }
 
+            const tipo = document.getElementById('selectPerguntaTipo').value;
+            const optInput = document.getElementById('inputPerguntaOpcoesFechamento');
+            const opcoes = optInput ? optInput.value.trim() : '';
+
+            if (tipo === 'SELECAO_LISTA' && !opcoes) {
+                alert('Por favor, informe as opções da lista (uma por linha).');
+                return;
+            }
+
             const payload = {
                 titulo: titulo,
                 descricao: document.getElementById('inputPerguntaDescricao').value.trim(),
-                tipo: document.getElementById('selectPerguntaTipo').value,
+                tipo: tipo,
+                opcoes_lista: opcoes,
                 ordem: parseInt(document.getElementById('inputPerguntaOrdem').value) || 1,
                 obrigatoria: document.getElementById('checkPerguntaObrigatoria').checked,
                 ativa: true
@@ -1479,15 +1508,21 @@
                     <div class="row g-2 mb-3">
                         <div class="col-6">
                             <label for="selectPerguntaTipo" class="form-label fw-bold text-dark small">Tipo de Resposta</label>
-                            <select class="form-select rounded-3" id="selectPerguntaTipo">
+                            <select class="form-select rounded-3" id="selectPerguntaTipo" onchange="toggleOpcoesListaFechamento()">
                                 <option value="ESTRELAS_1_5">⭐ Classificação (1 a 5 Estrelas)</option>
                                 <option value="TEXTO_LIVRE">✍️ Resposta Dissertativa</option>
+                                <option value="SELECAO_LISTA">📋 Lista de Seleção (Opções)</option>
                             </select>
                         </div>
                         <div class="col-6">
                             <label for="inputPerguntaOrdem" class="form-label fw-bold text-dark small">Ordem de Exibição</label>
                             <input type="number" class="form-control rounded-3" id="inputPerguntaOrdem" value="1" min="1">
                         </div>
+                    </div>
+                    <div class="mb-3 d-none" id="containerOpcoesListaFechamento">
+                        <label for="inputPerguntaOpcoesFechamento" class="form-label fw-bold text-dark small">Opções da Lista (uma por linha) <span class="text-danger">*</span></label>
+                        <textarea class="form-control rounded-3" id="inputPerguntaOpcoesFechamento" rows="3" placeholder="Opção 1&#10;Opção 2&#10;Opção 3"></textarea>
+                        <small class="text-muted" style="font-size: 0.75rem;">Digite as alternativas que o auditado poderá escolher no menu suspenso.</small>
                     </div>
                     <div class="form-check form-switch mt-2">
                         <input class="form-check-input" type="checkbox" id="checkPerguntaObrigatoria" checked>

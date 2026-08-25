@@ -8434,6 +8434,7 @@ def api_iso_avaliacao_perguntas_list_create(request, auditoria_id):
 
             descricao = data.get("descricao", "").strip()
             tipo = data.get("tipo", "ESTRELAS_1_5")
+            opcoes_lista = data.get("opcoes_lista", "").strip()
             obrigatoria = bool(data.get("obrigatoria", True))
             ordem = int(data.get("ordem", 1))
 
@@ -8443,6 +8444,7 @@ def api_iso_avaliacao_perguntas_list_create(request, auditoria_id):
                 titulo=titulo,
                 descricao=descricao,
                 tipo=tipo,
+                opcoes_lista=opcoes_lista,
                 obrigatoria=obrigatoria,
                 ordem=ordem,
                 ativa=True
@@ -8454,6 +8456,7 @@ def api_iso_avaliacao_perguntas_list_create(request, auditoria_id):
                     "titulo": pergunta.titulo,
                     "descricao": pergunta.descricao,
                     "tipo": pergunta.tipo,
+                    "opcoes_lista": pergunta.opcoes_lista,
                     "ordem": pergunta.ordem,
                     "obrigatoria": pergunta.obrigatoria,
                     "ativa": pergunta.ativa,
@@ -8481,6 +8484,7 @@ def api_iso_avaliacao_perguntas_list_create(request, auditoria_id):
                 titulo=p.titulo,
                 descricao=p.descricao,
                 tipo=p.tipo,
+                opcoes_lista=getattr(p, 'opcoes_lista', ''),
                 ordem=p.ordem,
                 obrigatoria=p.obrigatoria,
                 ativa=p.ativa
@@ -8494,6 +8498,7 @@ def api_iso_avaliacao_perguntas_list_create(request, auditoria_id):
             "titulo": p.titulo,
             "descricao": p.descricao,
             "tipo": p.tipo,
+            "opcoes_lista": getattr(p, 'opcoes_lista', ''),
             "ordem": p.ordem,
             "obrigatoria": p.obrigatoria,
             "ativa": p.ativa,
@@ -8532,6 +8537,8 @@ def api_iso_avaliacao_pergunta_update_delete(request, pk):
             pergunta.descricao = data["descricao"].strip()
         if "tipo" in data:
             pergunta.tipo = data["tipo"]
+        if "opcoes_lista" in data:
+            pergunta.opcoes_lista = data["opcoes_lista"].strip()
         if "ordem" in data:
             pergunta.ordem = int(data["ordem"])
         if "obrigatoria" in data:
@@ -8563,6 +8570,7 @@ def api_iso_avaliacao_restaurar_padroes(request, auditoria_id):
             'titulo': 'Pontualidade e Cumprimento da Agenda',
             'descricao': 'Organização do tempo, cumprimento dos horários e planejamento das entrevistas.',
             'tipo': 'ESTRELAS_1_5',
+            'opcoes_lista': '',
             'ordem': 1,
             'obrigatoria': True
         },
@@ -8570,6 +8578,7 @@ def api_iso_avaliacao_restaurar_padroes(request, auditoria_id):
             'titulo': 'Clareza e Comunicação',
             'descricao': 'Clareza nas perguntas, explicações dos requisitos normativos e feedback objetivo.',
             'tipo': 'ESTRELAS_1_5',
+            'opcoes_lista': '',
             'ordem': 2,
             'obrigatoria': True
         },
@@ -8577,6 +8586,7 @@ def api_iso_avaliacao_restaurar_padroes(request, auditoria_id):
             'titulo': 'Cordialidade, Postura e Empatia',
             'descricao': 'Postura profissional, respeito com os auditados, escuta ativa e conduta ética.',
             'tipo': 'ESTRELAS_1_5',
+            'opcoes_lista': '',
             'ordem': 3,
             'obrigatoria': True
         },
@@ -8584,6 +8594,7 @@ def api_iso_avaliacao_restaurar_padroes(request, auditoria_id):
             'titulo': 'Pontos Fortes do Auditor',
             'descricao': 'O que o auditor fez bem durante a condução da auditoria?',
             'tipo': 'TEXTO_LIVRE',
+            'opcoes_lista': '',
             'ordem': 4,
             'obrigatoria': False
         },
@@ -8591,6 +8602,7 @@ def api_iso_avaliacao_restaurar_padroes(request, auditoria_id):
             'titulo': 'Oportunidades de Melhoria',
             'descricao': 'O que a equipe auditora pode aprimorar em futuras auditorias?',
             'tipo': 'TEXTO_LIVRE',
+            'opcoes_lista': '',
             'ordem': 5,
             'obrigatoria': False
         }
@@ -8603,6 +8615,7 @@ def api_iso_avaliacao_restaurar_padroes(request, auditoria_id):
             titulo=p['titulo'],
             descricao=p['descricao'],
             tipo=p['tipo'],
+            opcoes_lista=p.get('opcoes_lista', ''),
             ordem=p['ordem'],
             obrigatoria=p['obrigatoria'],
             ativa=True
@@ -8627,6 +8640,7 @@ def api_iso_avaliacao_perguntas_global_list_create(request):
 
             descricao = data.get("descricao", "").strip()
             tipo = data.get("tipo", "ESTRELAS_1_5")
+            opcoes_lista = data.get("opcoes_lista", "").strip()
             obrigatoria = bool(data.get("obrigatoria", True))
             ordem = int(data.get("ordem", 1))
 
@@ -8636,6 +8650,7 @@ def api_iso_avaliacao_perguntas_global_list_create(request):
                 titulo=titulo,
                 descricao=descricao,
                 tipo=tipo,
+                opcoes_lista=opcoes_lista,
                 obrigatoria=obrigatoria,
                 ordem=ordem,
                 ativa=True
@@ -8647,6 +8662,7 @@ def api_iso_avaliacao_perguntas_global_list_create(request):
                     "titulo": pergunta.titulo,
                     "descricao": pergunta.descricao,
                     "tipo": pergunta.tipo,
+                    "opcoes_lista": pergunta.opcoes_lista,
                     "ordem": pergunta.ordem,
                     "obrigatoria": pergunta.obrigatoria,
                     "ativa": pergunta.ativa,
@@ -8662,11 +8678,11 @@ def api_iso_avaliacao_perguntas_global_list_create(request):
     if not perguntas:
         # Se não existirem perguntas cadastradas, insere os 5 critérios padrões
         padroes = [
-            {'titulo': 'Pontualidade e Cumprimento da Agenda', 'descricao': 'Organização do tempo e cumprimento dos horários.', 'tipo': 'ESTRELAS_1_5', 'ordem': 1, 'obrigatoria': True},
-            {'titulo': 'Clareza e Comunicação', 'descricao': 'Clareza nas perguntas e explicações dos requisitos.', 'tipo': 'ESTRELAS_1_5', 'ordem': 2, 'obrigatoria': True},
-            {'titulo': 'Cordialidade, Postura e Empatia', 'descricao': 'Postura profissional, respeito e escuta ativa.', 'tipo': 'ESTRELAS_1_5', 'ordem': 3, 'obrigatoria': True},
-            {'titulo': 'Pontos Fortes do Auditor', 'descricao': 'O que o auditor fez bem durante a condução?', 'tipo': 'TEXTO_LIVRE', 'ordem': 4, 'obrigatoria': False},
-            {'titulo': 'Oportunidades de Melhoria', 'descricao': 'O que a equipe auditora pode aprimorar?', 'tipo': 'TEXTO_LIVRE', 'ordem': 5, 'obrigatoria': False}
+            {'titulo': 'Pontualidade e Cumprimento da Agenda', 'descricao': 'Organização do tempo e cumprimento dos horários.', 'tipo': 'ESTRELAS_1_5', 'opcoes_lista': '', 'ordem': 1, 'obrigatoria': True},
+            {'titulo': 'Clareza e Comunicação', 'descricao': 'Clareza nas perguntas e explicações dos requisitos.', 'tipo': 'ESTRELAS_1_5', 'opcoes_lista': '', 'ordem': 2, 'obrigatoria': True},
+            {'titulo': 'Cordialidade, Postura e Empatia', 'descricao': 'Postura profissional, respeito e escuta ativa.', 'tipo': 'ESTRELAS_1_5', 'opcoes_lista': '', 'ordem': 3, 'obrigatoria': True},
+            {'titulo': 'Pontos Fortes do Auditor', 'descricao': 'O que o auditor fez bem durante a condução?', 'tipo': 'TEXTO_LIVRE', 'opcoes_lista': '', 'ordem': 4, 'obrigatoria': False},
+            {'titulo': 'Oportunidades de Melhoria', 'descricao': 'O que a equipe auditora pode aprimorar?', 'tipo': 'TEXTO_LIVRE', 'opcoes_lista': '', 'ordem': 5, 'obrigatoria': False}
         ]
         for p in padroes:
             nova = PerguntaAvaliacaoAuditorIso.objects.create(
@@ -8675,6 +8691,7 @@ def api_iso_avaliacao_perguntas_global_list_create(request):
                 titulo=p['titulo'],
                 descricao=p['descricao'],
                 tipo=p['tipo'],
+                opcoes_lista=p.get('opcoes_lista', ''),
                 ordem=p['ordem'],
                 obrigatoria=p['obrigatoria'],
                 ativa=True
@@ -8688,6 +8705,7 @@ def api_iso_avaliacao_perguntas_global_list_create(request):
             "titulo": p.titulo,
             "descricao": p.descricao,
             "tipo": p.tipo,
+            "opcoes_lista": getattr(p, 'opcoes_lista', ''),
             "ordem": p.ordem,
             "obrigatoria": p.obrigatoria,
             "ativa": p.ativa,
@@ -8708,11 +8726,11 @@ def api_iso_avaliacao_restaurar_padroes_global(request):
     PerguntaAvaliacaoAuditorIso.objects.filter(auditoria__isnull=True).delete()
 
     padroes = [
-        {'titulo': 'Pontualidade e Cumprimento da Agenda', 'descricao': 'Organização do tempo e cumprimento dos horários.', 'tipo': 'ESTRELAS_1_5', 'ordem': 1, 'obrigatoria': True},
-        {'titulo': 'Clareza e Comunicação', 'descricao': 'Clareza nas perguntas e explicações dos requisitos.', 'tipo': 'ESTRELAS_1_5', 'ordem': 2, 'obrigatoria': True},
-        {'titulo': 'Cordialidade, Postura e Empatia', 'descricao': 'Postura profissional, respeito e escuta ativa.', 'tipo': 'ESTRELAS_1_5', 'ordem': 3, 'obrigatoria': True},
-        {'titulo': 'Pontos Fortes do Auditor', 'descricao': 'O que o auditor fez bem durante a condução?', 'tipo': 'TEXTO_LIVRE', 'ordem': 4, 'obrigatoria': False},
-        {'titulo': 'Oportunidades de Melhoria', 'descricao': 'O que a equipe auditora pode aprimorar?', 'tipo': 'TEXTO_LIVRE', 'ordem': 5, 'obrigatoria': False}
+        {'titulo': 'Pontualidade e Cumprimento da Agenda', 'descricao': 'Organização do tempo e cumprimento dos horários.', 'tipo': 'ESTRELAS_1_5', 'opcoes_lista': '', 'ordem': 1, 'obrigatoria': True},
+        {'titulo': 'Clareza e Comunicação', 'descricao': 'Clareza nas perguntas e explicações dos requisitos.', 'tipo': 'ESTRELAS_1_5', 'opcoes_lista': '', 'ordem': 2, 'obrigatoria': True},
+        {'titulo': 'Cordialidade, Postura e Empatia', 'descricao': 'Postura profissional, respeito e escuta ativa.', 'tipo': 'ESTRELAS_1_5', 'opcoes_lista': '', 'ordem': 3, 'obrigatoria': True},
+        {'titulo': 'Pontos Fortes do Auditor', 'descricao': 'O que o auditor fez bem durante a condução?', 'tipo': 'TEXTO_LIVRE', 'opcoes_lista': '', 'ordem': 4, 'obrigatoria': False},
+        {'titulo': 'Oportunidades de Melhoria', 'descricao': 'O que a equipe auditora pode aprimorar?', 'tipo': 'TEXTO_LIVRE', 'opcoes_lista': '', 'ordem': 5, 'obrigatoria': False}
     ]
 
     for p in padroes:
@@ -8722,6 +8740,7 @@ def api_iso_avaliacao_restaurar_padroes_global(request):
             titulo=p['titulo'],
             descricao=p['descricao'],
             tipo=p['tipo'],
+            opcoes_lista=p.get('opcoes_lista', ''),
             ordem=p['ordem'],
             obrigatoria=p['obrigatoria'],
             ativa=True
@@ -8815,6 +8834,8 @@ def api_avaliacao_salvar_resposta_publica(request, token):
                     return JsonResponse({"success": False, "error": f"Por favor, atribua uma nota de 1 a 5 estrelas para '{p.titulo}'."}, status=400)
                 if p.tipo == 'TEXTO_LIVRE' and not str(val).strip():
                     return JsonResponse({"success": False, "error": f"Por favor, preencha o campo obrigatório '{p.titulo}'."}, status=400)
+                if p.tipo == 'SELECAO_LISTA' and not str(val).strip():
+                    return JsonResponse({"success": False, "error": f"Por favor, selecione uma opção para '{p.titulo}'."}, status=400)
 
         # Mapeia valores para legados se compatível
         for p in perguntas:
@@ -8852,7 +8873,7 @@ def api_avaliacao_salvar_resposta_publica(request, token):
                     avaliacao=av,
                     pergunta=p,
                     nota_estrelas=int(val) if p.tipo == 'ESTRELAS_1_5' else None,
-                    texto_resposta=str(val).strip() if p.tipo == 'TEXTO_LIVRE' else ""
+                    texto_resposta=str(val).strip() if p.tipo in ['TEXTO_LIVRE', 'SELECAO_LISTA'] else ""
                 )
 
         token_obj.total_respostas = (token_obj.total_respostas or 0) + 1

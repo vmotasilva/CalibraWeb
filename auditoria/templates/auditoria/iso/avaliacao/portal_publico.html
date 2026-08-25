@@ -229,6 +229,23 @@
                                     <label for="p_{{ p.id }}_1" class="star-label bi bi-star-fill" title="1 estrela - Muito Ruim"></label>
                                 </div>
                             </div>
+                        {% elif p.tipo == 'SELECAO_LISTA' %}
+                            <!-- Pergunta de Seleção em Lista (Dropdown) -->
+                            <div class="mb-3" data-pergunta-id="{{ p.id }}" data-pergunta-tipo="SELECAO_LISTA" data-obrigatoria="{{ p.obrigatoria|yesno:'true,false' }}">
+                                <label for="select_p_{{ p.id }}" class="form-label fw-bold text-dark small">
+                                    <i class="bi bi-list-check text-primary me-1"></i> {{ forloop.counter }}. {{ p.titulo }}
+                                    {% if p.obrigatoria %}<span class="text-danger">*</span>{% endif %}
+                                </label>
+                                {% if p.descricao %}
+                                    <small class="text-muted d-block mb-1">{{ p.descricao }}</small>
+                                {% endif %}
+                                <select class="form-select rounded-3 py-2" id="select_p_{{ p.id }}" {% if p.obrigatoria %}required{% endif %}>
+                                    <option value="">Selecione uma opção...</option>
+                                    {% for op in p.get_opcoes_lista_display %}
+                                        <option value="{{ op }}">{{ op }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
                         {% else %}
                             <!-- Pergunta Dissertativa Dinâmica -->
                             <div class="mb-3" data-pergunta-id="{{ p.id }}" data-pergunta-tipo="TEXTO_LIVRE" data-obrigatoria="{{ p.obrigatoria|yesno:'true,false' }}">
@@ -330,6 +347,16 @@
                     }
                     if (checkedRadio) {
                         respostasItens[pId] = parseInt(checkedRadio.value);
+                    }
+                } else if (pTipo === "SELECAO_LISTA") {
+                    const selectEl = document.getElementById(`select_p_${pId}`);
+                    const val = selectEl ? selectEl.value.trim() : "";
+                    if (obrigatoria && !val) {
+                        alert("Por favor, selecione uma opção para todos os campos de lista obrigatórios.");
+                        return;
+                    }
+                    if (val) {
+                        respostasItens[pId] = val;
                     }
                 } else if (pTipo === "TEXTO_LIVRE") {
                     const textarea = document.getElementById(`input_p_${pId}`);
