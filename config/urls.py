@@ -18,7 +18,7 @@ except RuntimeError:
     tf_urls = []
 # from procedures.views import nova_solicitacao  # TODO: Implementar se necessário
 from rh.views import modulo_rh_view, detalhe_colaborador_view, editar_colaborador_view, registrar_ocorrencia_view, editar_ocorrencia_view, deletar_ocorrencia_view, listar_ocorrencias_view, registrar_ferias_view, editar_ferias_view, excluir_ferias_view
-from metrologia.views import export_metrologia_view, export_etiquetas_view, detalhe_instrumento_view, modulo_metrologia_view, remover_historico_view, visualizar_historico_calibracao_view
+from metrologia.views import export_metrologia_view, export_etiquetas_view, detalhe_instrumento_view, modulo_metrologia_view, remover_historico_view, visualizar_historico_calibracao_view, salvar_edicao_historico_modal_view
 from qms.views import (
     editar_instrumento_view, gerenciar_faixas_instrumento_view, editar_faixa_view,
     registrar_historico_calibracao_view, preview_certificado_view, download_certificado_view,
@@ -197,8 +197,8 @@ urlpatterns = [
     path("metrologia/historico/<int:historico_id>/download/", download_certificado_view, name="download_certificado"),
     path("metrologia/historico/<int:historico_id>/certificado-bytes/", get_certificado_bytes_view, name="get_certificado_bytes"),
     path("metrologia/historico/<int:historico_id>/debug-certificado/", debug_certificado_view, name="debug_certificado"),
-    path("metrologia/historico/<int:historico_id>/visualizar/", visualizar_historico_calibracao_view, name="visualizar_historico_calibracao"),
     path("metrologia/historico/<int:historico_id>/editar/", editar_historico_calibracao_view, name="editar_historico_calibracao"),
+    path("metrologia/historico/<int:historico_id>/salvar-modal/", salvar_edicao_historico_modal_view, name="salvar_edicao_historico_modal"),
     path("metrologia/historico/<int:historico_id>/remover/", remover_historico_view, name="remover_historico"),
     path("metrologia/historico/<int:historico_id>/anexar-certificado/", anexar_certificado_historico_view, name="anexar_certificado_historico"),
     path("metrologia/historico/<int:historico_id>/remover-certificado/", remover_certificado_historico_view, name="remover_certificado_historico"),

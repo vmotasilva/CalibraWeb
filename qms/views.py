@@ -201,6 +201,24 @@ def detalhe_instrumento_view(request, instrumento_id):
 
     # Get related data with optimization and error handling
     try:
+        faixas_inst = list(instrumento.faixas.all().select_related('unidade').order_by('valor_minimo'))
+        historico_qs = HistoricoCalibracao.objects.filter(instrumento=instrumento).order_by("-data_calibracao")
+        if faixas_inst:
+            for h in historico_qs:
+                faixas_existentes = set(h.resultados_faixa.values_list('faixa_id', flat=True))
+                for f in faixas_inst:
+                    if f.id not in faixas_existentes:
+                        ResultadoFaixaCalibracao.objects.get_or_create(
+                            historico=h,
+                            faixa=f,
+                            defaults={
+                                'valor_minimo': f.valor_minimo,
+                                'valor_maximo': f.valor_maximo,
+                                'nominal': f.nominal,
+                                'tolerancia': f.tolerancia_mais_menos,
+                            }
+                        )
+
         historicos = list(
             HistoricoCalibracao.objects.filter(instrumento=instrumento)
             .prefetch_related('resultados_faixa__faixa__unidade')

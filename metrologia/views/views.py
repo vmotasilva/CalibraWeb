@@ -657,6 +657,28 @@ def detalhe_instrumento_view(request, instrumento_id):
 
     # Busca dados relacionados
     try:
+        # Busca todas as faixas do instrumento
+        faixas_inst = list(inst.faixas.all().select_related('unidade').order_by('valor_minimo'))
+        
+        historico_qs = HistoricoCalibracao.objects.filter(instrumento=inst).order_by("-data_calibracao")
+        
+        # Garante que para cada histórico, todas as faixas do instrumento estejam criadas em resultados_faixa
+        if faixas_inst:
+            for h in historico_qs:
+                faixas_existentes = set(h.resultados_faixa.values_list('faixa_id', flat=True))
+                for f in faixas_inst:
+                    if f.id not in faixas_existentes:
+                        ResultadoFaixaCalibracao.objects.get_or_create(
+                            historico=h,
+                            faixa=f,
+                            defaults={
+                                'valor_minimo': f.valor_minimo,
+                                'valor_maximo': f.valor_maximo,
+                                'nominal': f.nominal,
+                                'tolerancia': f.tolerancia_mais_menos,
+                            }
+                        )
+        
         historico = HistoricoCalibracao.objects.filter(instrumento=inst).prefetch_related(
             'resultados_faixa__faixa__unidade'
         ).order_by("-data_calibracao")
@@ -1306,5 +1328,68 @@ def deletar_ocorrencia(request, ocorrencia_id):
         ocorrencia = get_object_or_404(OcorrenciaInstrumento, pk=ocorrencia_id)
         ocorrencia.delete()
         messages.success(request, 'Ocorrência excluída com sucesso.')
-    return redirect(request.META.get('HTTP_REFERER', 'metrologia:modulo_metrologia'))
+@login_required
+def salvar_edicao_historico_modal_view(request, historico_id):
+    """Atualiza o histórico e as medições por faixa diretamente pelo modal pop-up."""
+    from decimal import Decimal
+    hist = get_object_or_404(HistoricoCalibracao, id=historico_id)
+    inst = hist.instrumento
+
+    if request.method == 'POST':
+        try:
+            # 1. Atualizar campos básicos do histórico
+            if 'data_calibracao' in request.POST and request.POST.get('data_calibracao'):
+                hist.data_calibracao = request.POST.get('data_calibracao')
+            if 'proxima_calibracao' in request.POST and request.POST.get('proxima_calibracao'):
+                hist.proxima_calibracao = request.POST.get('proxima_calibracao')
+            if 'numero_certificado' in request.POST:
+                hist.numero_certificado = request.POST.get('numero_certificado', '').strip() or "S/N"
+            if 'tipo_calibracao' in request.POST:
+                hist.tipo_calibracao = request.POST.get('tipo_calibracao')
+            if 'fornecedor' in request.POST:
+                hist.fornecedor = request.POST.get('fornecedor', '').strip()
+            if 'responsavel' in request.POST:
+                hist.responsavel = request.POST.get('responsavel', '').strip()
+            
+            hist.tem_selo_rbc = ('tem_selo_rbc' in request.POST)
+            
+            if 'observacoes' in request.POST:
+                hist.observacoes = request.POST.get('observacoes', '').strip()
+            
+            # Anexar novo certificado se enviado
+            if 'certificado' in request.FILES:
+                hist.certificado = request.FILES['certificado']
+
+            hist.save()
+
+            # 2. Atualizar Erro e Incerteza para cada ResultadoFaixaCalibracao
+            resultados_faixa = hist.resultados_faixa.all()
+            for rf in resultados_faixa:
+                erro_val_str = request.POST.get(f'erro_faixa_{rf.id}', '').strip()
+                inc_val_str = request.POST.get(f'incerteza_faixa_{rf.id}', '').strip()
+                
+                erro_decimal = Decimal(erro_val_str) if erro_val_str != '' else None
+                inc_decimal = Decimal(inc_val_str) if inc_val_str != '' else None
+
+                rf.erro = erro_decimal
+                rf.incerteza = inc_decimal
+                rf.save() # Dispara auto-cálculo de EMA, EME e resultado da faixa
+
+            # 3. Recalcular resultado geral do Histórico
+            resultados_list = list(hist.resultados_faixa.values_list('resultado', flat=True))
+            if resultados_list:
+                if 'REPROVADO' in resultados_list:
+                    hist.resultado = 'REPROVADO'
+                elif 'APROVADO_COM_CORRECAO' in resultados_list:
+                    hist.resultado = 'APROVADO_COM_CORRECAO'
+                else:
+                    hist.resultado = 'APROVADO_SEM_CORRECAO'
+                hist.save(update_fields=['resultado'])
+
+            messages.success(request, f"✓ Certificado / Histórico {hist.numero_certificado} atualizado com sucesso!")
+        except Exception as e:
+            logger.error(f"Erro ao salvar edição do histórico {historico_id}: {e}")
+            messages.error(request, f"Erro ao atualizar histórico: {e}")
+
+    return redirect('detalhe_instrumento', instrumento_id=inst.id if inst else 1)
 
