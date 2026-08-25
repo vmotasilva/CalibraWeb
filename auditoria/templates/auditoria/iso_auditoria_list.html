@@ -29,7 +29,10 @@
             </h2>
             <p class="text-muted small mb-0">Gestão de entrevistas, matriz de requisitos, revisão e apresentação executiva</p>
         </div>
-        <div class="d-flex align-items-center gap-2">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <button type="button" class="btn btn-outline-dark rounded-pill px-3 py-2 fw-semibold shadow-2xs d-flex align-items-center gap-2" onclick="abrirModalConfigPerguntasListagem(null)">
+                <i class="bi bi-gear-fill text-warning"></i> ⚙️ Perguntas de Avaliação
+            </button>
             <a href="{% url 'auditoria:iso_analytics_global' %}" class="btn btn-primary rounded-pill px-3.5 py-2 fw-bold shadow-sm d-flex align-items-center gap-2">
                 <i class="bi bi-bar-chart-line-fill text-warning"></i> 📊 Analytics Executivo
             </a>
@@ -96,25 +99,25 @@
                                         <!-- Monitoramento Avaliação do Auditor -->
                                         {% if aud.status == 'CONCLUIDA' %}
                                             <div class="d-flex align-items-center gap-1.5 mt-0.5">
-                                                {% if aud.total_avaliacoes > 0 %}
-                                                    <a href="{% url 'auditoria:iso_fechamento_presentation' aud.id %}" target="_blank" class="badge bg-warning bg-opacity-20 text-dark border border-warning border-opacity-50 rounded-pill text-decoration-none px-2 py-1" title="Ver Feedbacks Recebidos">
-                                                        <i class="bi bi-star-fill text-warning me-1"></i>{{ aud.media_avaliacao }} ★ ({{ aud.total_avaliacoes }} feedback{{ aud.total_avaliacoes|pluralize:"s" }})
-                                                    </a>
-                                                {% else %}
-                                                    <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2 py-0.5" style="font-size: 0.72rem;">
-                                                        <i class="bi bi-chat-square-dots me-1"></i>Sem avaliações
-                                                    </span>
-                                                {% endif %}
+                                                <button type="button" class="btn btn-sm btn-outline-warning text-dark rounded-pill px-2 py-0.5 d-flex align-items-center gap-1" onclick="abrirModalDashboardAvaliacoesListagem({{ aud.id }}, '{{ aud.norma.codigo }}')" title="Ver Feedbacks Recebidos">
+                                                    {% if aud.total_avaliacoes > 0 %}
+                                                        <i class="bi bi-star-fill text-warning"></i>
+                                                        <span class="fw-bold">{{ aud.media_avaliacao }} ★</span>
+                                                        <span class="text-muted small">({{ aud.total_avaliacoes }})</span>
+                                                    {% else %}
+                                                        <i class="bi bi-chat-square-dots"></i>
+                                                        <span class="small">Feedbacks (0)</span>
+                                                    {% endif %}
+                                                </button>
 
-                                                {% if aud.tem_link_avaliacao and aud.link_avaliacao_url %}
-                                                    <button type="button" class="btn btn-sm btn-outline-warning text-dark p-0 px-1.5 rounded-circle" onclick="navigator.clipboard.writeText('{{ aud.link_avaliacao_url }}'); alert('Magic Link de Avaliação copiado!');" title="Copiar Link de Avaliação">
-                                                        <i class="bi bi-link-45deg"></i>
-                                                    </button>
-                                                {% else %}
-                                                    <a href="{% url 'auditoria:iso_fechamento_presentation' aud.id %}" target="_blank" class="btn btn-sm btn-outline-secondary p-0 px-1.5 rounded-circle" title="Gerar Link de Avaliação">
-                                                        <i class="bi bi-plus-lg"></i>
-                                                    </a>
-                                                {% endif %}
+                                                <button type="button" class="btn btn-sm btn-warning text-dark p-0 px-2 rounded-pill small fw-semibold d-flex align-items-center gap-1 shadow-2xs" onclick="gerarLinkAvaliacaoListagem({{ aud.id }})" title="Gerar / Obter Magic Link de Avaliação">
+                                                    <i class="bi bi-link-45deg"></i>
+                                                    <span>Link</span>
+                                                </button>
+
+                                                <button type="button" class="btn btn-sm btn-outline-secondary p-0 px-1.5 rounded-circle" onclick="abrirModalConfigPerguntasListagem({{ aud.id }}, '{{ aud.norma.codigo }}')" title="Personalizar Perguntas Desta Auditoria">
+                                                    <i class="bi bi-gear"></i>
+                                                </button>
                                             </div>
                                         {% endif %}
                                     </div>
@@ -204,7 +207,7 @@
                     {% endif %}
 
                     <!-- Monitoramento de Links (Mobile) -->
-                    <div class="p-2 bg-light rounded-3 border d-flex flex-column gap-1.5 mt-2">
+                    <div class="p-2.5 bg-light rounded-3 border d-flex flex-column gap-2 mt-2">
                         {% if aud.total_desvios_capa > 0 %}
                             <div class="d-flex justify-content-between align-items-center">
                                 <a href="{% url 'auditoria:iso_auditoria_cronograma' aud.id %}#capa" class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill text-decoration-none px-2 py-1">
@@ -219,22 +222,19 @@
                         {% endif %}
 
                         {% if aud.status == 'CONCLUIDA' %}
-                            <div class="d-flex justify-content-between align-items-center">
-                                {% if aud.total_avaliacoes > 0 %}
-                                    <span class="badge bg-warning bg-opacity-20 text-dark border border-warning border-opacity-50 rounded-pill px-2 py-1">
-                                        <i class="bi bi-star-fill text-warning me-1"></i>{{ aud.media_avaliacao }} ★ ({{ aud.total_avaliacoes }} feedback(s))
-                                    </span>
-                                {% else %}
-                                    <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2 py-1">
-                                        Sem avaliações
-                                    </span>
-                                {% endif %}
-
-                                {% if aud.tem_link_avaliacao and aud.link_avaliacao_url %}
-                                    <button type="button" class="btn btn-sm btn-outline-warning text-dark p-0 px-2 rounded-pill small" onclick="navigator.clipboard.writeText('{{ aud.link_avaliacao_url }}'); alert('Link de Avaliação copiado!');">
-                                        <i class="bi bi-link-45deg me-1"></i>Copiar Link
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-warning text-dark rounded-pill px-2 py-1 d-flex align-items-center gap-1" onclick="abrirModalDashboardAvaliacoesListagem({{ aud.id }}, '{{ aud.norma.codigo }}')">
+                                    <i class="bi bi-star-fill text-warning"></i>
+                                    <span>{{ aud.media_avaliacao|default:"-" }} ★ ({{ aud.total_avaliacoes }} feedbacks)</span>
+                                </button>
+                                <div class="d-flex gap-1">
+                                    <button type="button" class="btn btn-sm btn-warning text-dark px-2 rounded-pill small fw-semibold" onclick="gerarLinkAvaliacaoListagem({{ aud.id }})">
+                                        <i class="bi bi-link-45deg me-1"></i>Link
                                     </button>
-                                {% endif %}
+                                    <button type="button" class="btn btn-sm btn-outline-secondary px-2 rounded-pill small" onclick="abrirModalConfigPerguntasListagem({{ aud.id }}, '{{ aud.norma.codigo }}')">
+                                        <i class="bi bi-gear"></i>
+                                    </button>
+                                </div>
                             </div>
                         {% endif %}
                     </div>
@@ -252,12 +252,6 @@
                                 </a>
                             </div>
                             <div class="col-6">
-                                <a href="{% url 'auditoria:iso_auditoria_cronograma' aud.id %}" class="btn btn-outline-secondary btn-sm w-100 py-2 rounded-3 fw-semibold" target="_blank">
-                                    <i class="bi bi-calendar3 me-1"></i> Cronograma
-                                </a>
-                            </div>
-                        </div>
-                        <button type="button" class="btn btn-success btn-sm w-100 py-2 rounded-3 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalExportarAuditoria{{ aud.id }}">
                             <i class="bi bi-download me-1"></i> ⬇️ Exportar Relatórios
                         </button>
                     {% else %}
@@ -409,4 +403,542 @@
 </div>
 {% endif %}
 {% endfor %}
+
+<!-- ══════════════════════════════════════════════════════════════════════════════ -->
+<!-- MODAIS DE GESTÃO DE AVALIAÇÕES E PERGUNTAS (DIRETAMENTE NA TELA DE AUDITORIAS) -->
+<!-- ══════════════════════════════════════════════════════════════════════════════ -->
+
+<!-- Modal 1: Configurar Perguntas de Avaliação -->
+<div class="modal fade" id="modalConfigPerguntasAvaliacaoListagem" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-dark text-white p-3 px-4">
+                <div>
+                    <h5 class="modal-title fw-bold mb-0"><i class="bi bi-ui-checks-grid text-warning me-2"></i> Perguntas do Formulário de Avaliação do Auditor</h5>
+                    <small class="text-muted" id="subtituloModalPerguntas">Modelo de Avaliação Padrão</small>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 bg-white">
+                <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                    <p class="text-secondary small mb-0">
+                        Defina os critérios e perguntas que serão respondidos pelos auditados via link público.
+                    </p>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="restaurarPadroesPerguntasListagem()">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i> Restaurar Padrões
+                        </button>
+                        <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold" onclick="abrirModalCriarPerguntaListagem()">
+                            <i class="bi bi-plus-lg me-1"></i> Adicionar Pergunta
+                        </button>
+                    </div>
+                </div>
+
+                <div id="containerListaPerguntasConfigListagem">
+                    <!-- Carregado dinamicamente via JS -->
+                </div>
+            </div>
+            <div class="modal-footer bg-light p-3 px-4">
+                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 2: Form Criar / Editar Pergunta -->
+<div class="modal fade" id="modalFormPerguntaListagem" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-primary text-white p-3 px-4">
+                <h5 class="modal-title fw-bold" id="formPerguntaModalTituloListagem">Nova Pergunta de Avaliação</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 bg-white">
+                <input type="hidden" id="perguntaEditIdListagem">
+                <div class="mb-3">
+                    <label for="inputPerguntaTituloListagem" class="form-label fw-bold text-dark small">Título / Critério <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control rounded-3" id="inputPerguntaTituloListagem" placeholder="Ex: Domínio Técnico dos Processos" required>
+                </div>
+                <div class="mb-3">
+                    <label for="inputPerguntaDescricaoListagem" class="form-label fw-bold text-dark small">Dica / Explicação do Critério</label>
+                    <textarea class="form-control rounded-3" id="inputPerguntaDescricaoListagem" rows="2" placeholder="Ex: Avalie se o auditor demonstrou conhecimento adequado sobre o processo."></textarea>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label for="selectPerguntaTipoListagem" class="form-label fw-bold text-dark small">Tipo de Resposta</label>
+                        <select class="form-select rounded-3" id="selectPerguntaTipoListagem">
+                            <option value="ESTRELAS_1_5">⭐ Classificação (1 a 5 Estrelas)</option>
+                            <option value="TEXTO_LIVRE">✍️ Resposta Dissertativa</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label for="inputPerguntaOrdemListagem" class="form-label fw-bold text-dark small">Ordem</label>
+                        <input type="number" class="form-control rounded-3" id="inputPerguntaOrdemListagem" value="1" min="1">
+                    </div>
+                </div>
+                <div class="form-check form-switch mt-2">
+                    <input class="form-check-input" type="checkbox" id="checkPerguntaObrigatoriaListagem" checked>
+                    <label class="form-check-label fw-semibold text-dark small" for="checkPerguntaObrigatoriaListagem">Resposta Obrigatória</label>
+                </div>
+            </div>
+            <div class="modal-footer bg-light p-3 px-4">
+                <button type="button" class="btn btn-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" onclick="salvarPerguntaConfigListagem()">Salvar Critério</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 3: Magic Link de Avaliação Gerado -->
+<div class="modal fade" id="modalLinkAvaliacaoListagem" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-warning text-dark p-3 px-4">
+                <h5 class="modal-title fw-bold"><i class="bi bi-star-fill me-1"></i> Magic Link de Avaliação do Auditor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 bg-white">
+                <p class="text-secondary small mb-3">
+                    Compartilhe este link público via WhatsApp ou E-mail com gerentes e operadores para coletar feedback sobre o auditor.
+                </p>
+                <label class="fw-bold text-dark small d-block mb-1">Link de Acesso Direto (Sem Login):</label>
+                <div class="input-group mb-2">
+                    <input type="text" id="inputLinkAvaliacaoGeradoListagem" class="form-control font-monospace small bg-white" readonly>
+                    <button class="btn btn-warning fw-bold text-dark" type="button" onclick="copiarLinkAvaliacaoListagem()">
+                        <i class="bi bi-clipboard me-1"></i> Copiar
+                    </button>
+                </div>
+                <small class="text-muted d-block" id="infoLinkAvaliacaoListagem"></small>
+            </div>
+            <div class="modal-footer bg-light p-3 px-4">
+                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 4: Dashboard de Avaliações e Feedbacks Recebidos -->
+<div class="modal fade" id="modalDashboardAvaliacoesListagem" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-light border-bottom p-3 px-4">
+                <div>
+                    <h5 class="modal-title fw-bold text-dark mb-0"><i class="bi bi-chat-heart-fill text-danger me-1"></i> Avaliações e Feedbacks dos Auditados</h5>
+                    <small class="text-muted" id="subtituloModalDashboard">Resultados da Auditoria</small>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 bg-white">
+                
+                <!-- Resumo das Notas Dinâmicas -->
+                <div class="row g-2 mb-4" id="containerCriteriosDinamicosListagem">
+                    <div class="col-12 col-md-3">
+                        <div class="p-3 bg-light rounded-3 border text-center h-100">
+                            <small class="text-muted text-uppercase fw-bold d-block" style="font-size: 0.7rem;">Média Geral</small>
+                            <h3 class="fw-bold text-warning mb-0 mt-1" id="dashMediaGeralListagem">-</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                    <h6 class="fw-bold text-dark mb-0">Feedbacks Recebidos (<span id="dashTotalAvaliacoesListagem">0</span>):</h6>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="abrirModalConfigPerguntasListagem(currentAuditoriaIdAvaliacao)">
+                            <i class="bi bi-gear me-1"></i> Configurar Perguntas
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="gerarLinkAvaliacaoListagem(currentAuditoriaIdAvaliacao)">
+                            <i class="bi bi-link-45deg me-1"></i> Gerar Link
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Lista de Comentários e Avaliações -->
+                <div id="containerListaFeedbacksListagem">
+                    <!-- Renderizado via JS -->
+                </div>
+
+            </div>
+            <div class="modal-footer bg-light p-3 px-4">
+                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts JS para Gestão de Perguntas e Avaliações na Listagem -->
+<script>
+    let currentAuditoriaIdAvaliacao = null;
+    let perguntasAtuaisListagem = [];
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    async function abrirModalConfigPerguntasListagem(auditoriaId, normaCodigo) {
+        currentAuditoriaIdAvaliacao = auditoriaId;
+        const modalEl = document.getElementById('modalConfigPerguntasAvaliacaoListagem');
+        const subtitulo = document.getElementById('subtituloModalPerguntas');
+        
+        if (auditoriaId) {
+            subtitulo.textContent = `Auditoria ${normaCodigo || ''} (ID #${auditoriaId})`;
+        } else {
+            subtitulo.textContent = 'Perguntas Padrão do Sistema (Globais)';
+        }
+
+        new bootstrap.Modal(modalEl).show();
+        await carregarPerguntasConfigListagem();
+    }
+
+    async function carregarPerguntasConfigListagem() {
+        const container = document.getElementById('containerListaPerguntasConfigListagem');
+        container.innerHTML = '<div class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span> Carregando perguntas...</div>';
+
+        let url = '/auditoria/iso/api/avaliacao/perguntas/global/';
+        if (currentAuditoriaIdAvaliacao) {
+            url = `/auditoria/iso/${currentAuditoriaIdAvaliacao}/api/avaliacao/perguntas/`;
+        }
+
+        try {
+            const response = await fetch(url);
+            const res = await response.json();
+
+            if (res.success) {
+                perguntasAtuaisListagem = res.perguntas || [];
+                renderizarListaPerguntasConfigListagem(perguntasAtuaisListagem);
+            } else {
+                container.innerHTML = '<div class="text-center text-danger py-3">Erro ao carregar perguntas.</div>';
+            }
+        } catch(err) {
+            console.error(err);
+            container.innerHTML = '<div class="text-center text-danger py-3">Erro de comunicação.</div>';
+        }
+    }
+
+    function renderizarListaPerguntasConfigListagem(perguntas) {
+        const container = document.getElementById('containerListaPerguntasConfigListagem');
+        if (!perguntas || perguntas.length === 0) {
+            container.innerHTML = `
+                <div class="text-center text-muted py-4 border rounded-3 bg-light">
+                    <i class="bi bi-question-circle fs-3 d-block mb-1"></i>
+                    Nenhuma pergunta configurada. Clique em <strong>Adicionar Pergunta</strong> ou <strong>Restaurar Padrões</strong>.
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = perguntas.map((p, idx) => `
+            <div class="p-3 bg-light rounded-3 border mb-2.5 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div class="d-flex align-items-start gap-3">
+                    <span class="badge bg-secondary rounded-circle px-2 py-1 font-monospace mt-1">${p.ordem || (idx + 1)}</span>
+                    <div>
+                        <div class="d-flex align-items-center gap-2">
+                            <strong class="text-dark">${p.titulo}</strong>
+                            ${p.tipo === 'ESTRELAS_1_5' ? '<span class="badge bg-warning text-dark small">⭐ 1-5 Estrelas</span>' : '<span class="badge bg-info bg-opacity-10 text-info small">✍️ Texto Livre</span>'}
+                            ${p.obrigatoria ? '<span class="badge bg-danger bg-opacity-10 text-danger small">Obrigatória</span>' : '<span class="badge bg-light text-muted border small">Opcional</span>'}
+                        </div>
+                        ${p.descricao ? `<small class="text-muted d-block mt-0.5">${p.descricao}</small>` : ''}
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-2.5 py-1" onclick="abrirModalEditarPerguntaListagem(${p.id})">
+                        <i class="bi bi-pencil me-1"></i> Editar
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2.5 py-1" onclick="excluirPerguntaConfigListagem(${p.id})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function abrirModalCriarPerguntaListagem() {
+        document.getElementById('formPerguntaModalTituloListagem').textContent = 'Nova Pergunta de Avaliação';
+        document.getElementById('perguntaEditIdListagem').value = '';
+        document.getElementById('inputPerguntaTituloListagem').value = '';
+        document.getElementById('inputPerguntaDescricaoListagem').value = '';
+        document.getElementById('selectPerguntaTipoListagem').value = 'ESTRELAS_1_5';
+        document.getElementById('inputPerguntaOrdemListagem').value = (perguntasAtuaisListagem.length + 1);
+        document.getElementById('checkPerguntaObrigatoriaListagem').checked = true;
+
+        new bootstrap.Modal(document.getElementById('modalFormPerguntaListagem')).show();
+    }
+
+    function abrirModalEditarPerguntaListagem(pId) {
+        const p = perguntasAtuaisListagem.find(item => item.id === pId);
+        if (!p) return;
+
+        document.getElementById('formPerguntaModalTituloListagem').textContent = 'Editar Pergunta de Avaliação';
+        document.getElementById('perguntaEditIdListagem').value = p.id;
+        document.getElementById('inputPerguntaTituloListagem').value = p.titulo;
+        document.getElementById('inputPerguntaDescricaoListagem').value = p.descricao || '';
+        document.getElementById('selectPerguntaTipoListagem').value = p.tipo;
+        document.getElementById('inputPerguntaOrdemListagem').value = p.ordem || 1;
+        document.getElementById('checkPerguntaObrigatoriaListagem').checked = p.obrigatoria;
+
+        new bootstrap.Modal(document.getElementById('modalFormPerguntaListagem')).show();
+    }
+
+    async function salvarPerguntaConfigListagem() {
+        const pId = document.getElementById('perguntaEditIdListagem').value;
+        const titulo = document.getElementById('inputPerguntaTituloListagem').value.trim();
+        if (!titulo) {
+            alert('Por favor, informe o título da pergunta.');
+            return;
+        }
+
+        const payload = {
+            titulo: titulo,
+            descricao: document.getElementById('inputPerguntaDescricaoListagem').value.trim(),
+            tipo: document.getElementById('selectPerguntaTipoListagem').value,
+            ordem: parseInt(document.getElementById('inputPerguntaOrdemListagem').value) || 1,
+            obrigatoria: document.getElementById('checkPerguntaObrigatoriaListagem').checked,
+            ativa: true
+        };
+
+        try {
+            let url = '/auditoria/iso/api/avaliacao/perguntas/global/';
+            if (currentAuditoriaIdAvaliacao) {
+                url = `/auditoria/iso/${currentAuditoriaIdAvaliacao}/api/avaliacao/perguntas/`;
+            }
+            if (pId) {
+                url = `/auditoria/iso/api/avaliacao/perguntas/${pId}/`;
+            }
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const res = await response.json();
+            if (res.success) {
+                bootstrap.Modal.getInstance(document.getElementById('modalFormPerguntaListagem')).hide();
+                await carregarPerguntasConfigListagem();
+            } else {
+                alert('Erro ao salvar: ' + (res.error || 'Erro desconhecido.'));
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Erro de comunicação.');
+        }
+    }
+
+    async function excluirPerguntaConfigListagem(pId) {
+        if (!confirm('Deseja realmente remover esta pergunta de avaliação?')) return;
+
+        try {
+            const response = await fetch(`/auditoria/iso/api/avaliacao/perguntas/${pId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ action: 'delete' })
+            });
+
+            const res = await response.json();
+            if (res.success) {
+                await carregarPerguntasConfigListagem();
+            } else {
+                alert('Erro ao remover: ' + (res.error || 'Erro desconhecido.'));
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Erro de comunicação.');
+        }
+    }
+
+    async function restaurarPadroesPerguntasListagem() {
+        if (!confirm('Deseja restaurar as perguntas padrão recomendadas (Pontualidade, Clareza, Cordialidade, Pontos Fortes e Oportunidades)?')) return;
+
+        let url = '/auditoria/iso/api/avaliacao/perguntas/restaurar-padroes-global/';
+        if (currentAuditoriaIdAvaliacao) {
+            url = `/auditoria/iso/${currentAuditoriaIdAvaliacao}/api/avaliacao/perguntas/restaurar-padroes/`;
+        }
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+
+            const res = await response.json();
+            if (res.success) {
+                await carregarPerguntasConfigListagem();
+            } else {
+                alert('Erro ao restaurar: ' + (res.error || 'Erro desconhecido.'));
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Erro de comunicação.');
+        }
+    }
+
+    async function gerarLinkAvaliacaoListagem(auditoriaId) {
+        try {
+            const response = await fetch(`/auditoria/iso/${auditoriaId}/api/avaliacao/gerar-link/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+
+            const res = await response.json();
+            if (res.success) {
+                document.getElementById('inputLinkAvaliacaoGeradoListagem').value = res.url;
+                document.getElementById('infoLinkAvaliacaoListagem').innerHTML = `
+                    <strong>Expira em:</strong> ${res.expira_em} (${res.dias_validade} dias de validade)
+                `;
+                new bootstrap.Modal(document.getElementById('modalLinkAvaliacaoListagem')).show();
+            } else {
+                alert('Erro ao gerar link: ' + (res.error || 'Erro desconhecido.'));
+            }
+        } catch(err) {
+            console.error(err);
+            alert('Erro de comunicação.');
+        }
+    }
+
+    function copiarLinkAvaliacaoListagem() {
+        const input = document.getElementById('inputLinkAvaliacaoGeradoListagem');
+        input.select();
+        input.setSelectionRange(0, 99999);
+        navigator.clipboard.writeText(input.value);
+        alert('Link copiado para a área de transferência! Compartilhe com os auditados.');
+    }
+
+    async function abrirModalDashboardAvaliacoesListagem(auditoriaId, normaCodigo) {
+        currentAuditoriaIdAvaliacao = auditoriaId;
+        const modalEl = document.getElementById('modalDashboardAvaliacoesListagem');
+        const containerFeedbacks = document.getElementById('containerListaFeedbacksListagem');
+        const containerCriterios = document.getElementById('containerCriteriosDinamicosListagem');
+        const subtitulo = document.getElementById('subtituloModalDashboard');
+        
+        subtitulo.textContent = `Auditoria ${normaCodigo || ''} (ID #${auditoriaId})`;
+        new bootstrap.Modal(modalEl).show();
+        containerFeedbacks.innerHTML = '<div class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span> Carregando avaliações...</div>';
+
+        try {
+            const response = await fetch(`/auditoria/iso/${auditoriaId}/api/avaliacao/resumo/`);
+            const res = await response.json();
+
+            if (res.success) {
+                document.getElementById('dashTotalAvaliacoesListagem').textContent = res.total_avaliacoes;
+                document.getElementById('dashMediaGeralListagem').textContent = res.media_geral ? `${res.media_geral} ★` : '-';
+                
+                // Renderiza critérios dinâmicos
+                if (containerCriterios && res.criterios_estrelas && res.criterios_estrelas.length > 0) {
+                    containerCriterios.innerHTML = '';
+                    res.criterios_estrelas.forEach(c => {
+                        const col = document.createElement('div');
+                        col.className = 'col-6 col-md-3';
+                        col.innerHTML = `
+                            <div class="p-3 bg-light rounded-3 border text-center h-100">
+                                <small class="text-muted text-uppercase fw-bold d-block text-truncate" style="font-size: 0.68rem;" title="${c.titulo}">${c.titulo}</small>
+                                <h4 class="fw-bold text-primary mb-0 mt-1">${c.total_respostas > 0 ? `${c.media} ★` : '-'}</h4>
+                            </div>
+                        `;
+                        containerCriterios.appendChild(col);
+                    });
+                }
+
+                if (res.avaliacoes && res.avaliacoes.length > 0) {
+                    containerFeedbacks.innerHTML = '';
+                    res.avaliacoes.forEach(av => {
+                        const card = document.createElement('div');
+                        card.className = 'p-3 bg-light rounded-3 border mb-3';
+                        
+                        let notasHtml = '';
+                        if (av.itens_customizados && av.itens_customizados.length > 0) {
+                            av.itens_customizados.filter(it => it.tipo === 'ESTRELAS_1_5').forEach(it => {
+                                notasHtml += `<span class="me-3">${it.pergunta_titulo}: <strong>${it.nota_estrelas}★</strong></span>`;
+                            });
+                        } else {
+                            notasHtml = `
+                                <span class="me-3">Pontualidade: <strong>${av.nota_pontualidade}★</strong></span>
+                                <span class="me-3">Clareza: <strong>${av.nota_clareza}★</strong></span>
+                                <span class="me-3">Cordialidade: <strong>${av.nota_cordialidade}★</strong></span>
+                            `;
+                        }
+
+                        let dissertativasHtml = '';
+                        if (av.itens_customizados && av.itens_customizados.length > 0) {
+                            av.itens_customizados.filter(it => it.tipo === 'TEXTO_LIVRE' && it.texto_resposta).forEach(it => {
+                                dissertativasHtml += `
+                                    <div class="small mb-2">
+                                        <strong class="text-dark"><i class="bi bi-chat-text-fill text-primary me-1"></i> ${it.pergunta_titulo}:</strong>
+                                        <div class="text-dark ps-3" style="white-space: pre-wrap;">${it.texto_resposta}</div>
+                                    </div>
+                                `;
+                            });
+                        } else {
+                            if (av.pontos_fortes) {
+                                dissertativasHtml += `
+                                    <div class="small mb-1">
+                                        <strong class="text-success"><i class="bi bi-hand-thumbs-up-fill me-1"></i> Pontos Fortes:</strong>
+                                        <div class="text-dark ps-3" style="white-space: pre-wrap;">${av.pontos_fortes}</div>
+                                    </div>
+                                `;
+                            }
+                            if (av.oportunidades_melhoria) {
+                                dissertativasHtml += `
+                                    <div class="small">
+                                        <strong class="text-warning text-dark"><i class="bi bi-lightbulb-fill text-warning me-1"></i> Oportunidades de Melhoria:</strong>
+                                        <div class="text-dark ps-3" style="white-space: pre-wrap;">${av.oportunidades_melhoria}</div>
+                                    </div>
+                                `;
+                            }
+                        }
+
+                        card.innerHTML = `
+                            <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-1">
+                                <div>
+                                    <span class="badge bg-warning text-dark font-monospace fw-bold me-1">Média: ${av.media_individual} ★</span>
+                                    <span class="text-dark fw-semibold small">${av.setor_avaliador}</span>
+                                    ${av.nome_avaliador !== 'Anônimo' ? `<span class="badge bg-secondary bg-opacity-10 text-secondary small ms-1">${av.nome_avaliador}</span>` : '<span class="badge bg-light text-muted small ms-1">Anônimo</span>'}
+                                </div>
+                                <small class="text-muted">${av.criado_em}</small>
+                            </div>
+                            <div class="d-flex flex-wrap gap-2 text-muted small font-monospace mb-2">
+                                ${notasHtml}
+                            </div>
+                            ${dissertativasHtml}
+                        `;
+                        containerFeedbacks.appendChild(card);
+                    });
+                } else {
+                    containerFeedbacks.innerHTML = `
+                        <div class="text-center text-muted py-4">
+                            <i class="bi bi-chat-square-dots fs-3 d-block mb-1"></i>
+                            Nenhuma avaliação recebida ainda. Gere o link e envie para os auditados!
+                        </div>
+                    `;
+                }
+            } else {
+                containerFeedbacks.innerHTML = '<div class="text-center text-danger py-3">Erro ao carregar avaliações.</div>';
+            }
+        } catch(err) {
+            console.error(err);
+            containerFeedbacks.innerHTML = '<div class="text-center text-danger py-3">Erro de comunicação.</div>';
+        }
+    }
+</script>
 {% endblock %}

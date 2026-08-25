@@ -8610,6 +8610,125 @@ def api_iso_avaliacao_restaurar_padroes(request, auditoria_id):
     return JsonResponse({"success": True, "message": "Perguntas padrão restauradas com sucesso!"})
 
 
+@login_required
+def api_iso_avaliacao_perguntas_global_list_create(request):
+    """
+    Lista e cria perguntas de avaliação globais (modelo padrão para todas as auditorias).
+    """
+    from .models import PerguntaAvaliacaoAuditorIso
+
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8")) if request.body else {}
+            titulo = data.get("titulo", "").strip()
+            if not titulo:
+                return JsonResponse({"success": False, "error": "O título da pergunta é obrigatório."}, status=400)
+
+            descricao = data.get("descricao", "").strip()
+            tipo = data.get("tipo", "ESTRELAS_1_5")
+            obrigatoria = bool(data.get("obrigatoria", True))
+            ordem = int(data.get("ordem", 1))
+
+            pergunta = PerguntaAvaliacaoAuditorIso.objects.create(
+                auditoria=None,
+                norma=None,
+                titulo=titulo,
+                descricao=descricao,
+                tipo=tipo,
+                obrigatoria=obrigatoria,
+                ordem=ordem,
+                ativa=True
+            )
+            return JsonResponse({
+                "success": True,
+                "pergunta": {
+                    "id": pergunta.id,
+                    "titulo": pergunta.titulo,
+                    "descricao": pergunta.descricao,
+                    "tipo": pergunta.tipo,
+                    "ordem": pergunta.ordem,
+                    "obrigatoria": pergunta.obrigatoria,
+                    "ativa": pergunta.ativa,
+                    "origem": "global"
+                }
+            })
+        except Exception as e:
+            return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+    # GET: Retorna perguntas padrão/globais
+    perguntas = list(PerguntaAvaliacaoAuditorIso.objects.filter(auditoria__isnull=True).order_by("ordem", "id"))
+    
+    if not perguntas:
+        # Se não existirem perguntas cadastradas, insere os 5 critérios padrões
+        padroes = [
+            {'titulo': 'Pontualidade e Cumprimento da Agenda', 'descricao': 'Organização do tempo e cumprimento dos horários.', 'tipo': 'ESTRELAS_1_5', 'ordem': 1, 'obrigatoria': True},
+            {'titulo': 'Clareza e Comunicação', 'descricao': 'Clareza nas perguntas e explicações dos requisitos.', 'tipo': 'ESTRELAS_1_5', 'ordem': 2, 'obrigatoria': True},
+            {'titulo': 'Cordialidade, Postura e Empatia', 'descricao': 'Postura profissional, respeito e escuta ativa.', 'tipo': 'ESTRELAS_1_5', 'ordem': 3, 'obrigatoria': True},
+            {'titulo': 'Pontos Fortes do Auditor', 'descricao': 'O que o auditor fez bem durante a condução?', 'tipo': 'TEXTO_LIVRE', 'ordem': 4, 'obrigatoria': False},
+            {'titulo': 'Oportunidades de Melhoria', 'descricao': 'O que a equipe auditora pode aprimorar?', 'tipo': 'TEXTO_LIVRE', 'ordem': 5, 'obrigatoria': False}
+        ]
+        for p in padroes:
+            nova = PerguntaAvaliacaoAuditorIso.objects.create(
+                auditoria=None,
+                norma=None,
+                titulo=p['titulo'],
+                descricao=p['descricao'],
+                tipo=p['tipo'],
+                ordem=p['ordem'],
+                obrigatoria=p['obrigatoria'],
+                ativa=True
+            )
+            perguntas.append(nova)
+
+    lista = []
+    for p in perguntas:
+        lista.append({
+            "id": p.id,
+            "titulo": p.titulo,
+            "descricao": p.descricao,
+            "tipo": p.tipo,
+            "ordem": p.ordem,
+            "obrigatoria": p.obrigatoria,
+            "ativa": p.ativa,
+            "origem": "global"
+        })
+
+    return JsonResponse({"success": True, "perguntas": lista})
+
+
+@login_required
+@require_POST
+def api_iso_avaliacao_restaurar_padroes_global(request):
+    """
+    Restaura as perguntas padrão do sistema globalmente.
+    """
+    from .models import PerguntaAvaliacaoAuditorIso
+
+    PerguntaAvaliacaoAuditorIso.objects.filter(auditoria__isnull=True).delete()
+
+    padroes = [
+        {'titulo': 'Pontualidade e Cumprimento da Agenda', 'descricao': 'Organização do tempo e cumprimento dos horários.', 'tipo': 'ESTRELAS_1_5', 'ordem': 1, 'obrigatoria': True},
+        {'titulo': 'Clareza e Comunicação', 'descricao': 'Clareza nas perguntas e explicações dos requisitos.', 'tipo': 'ESTRELAS_1_5', 'ordem': 2, 'obrigatoria': True},
+        {'titulo': 'Cordialidade, Postura e Empatia', 'descricao': 'Postura profissional, respeito e escuta ativa.', 'tipo': 'ESTRELAS_1_5', 'ordem': 3, 'obrigatoria': True},
+        {'titulo': 'Pontos Fortes do Auditor', 'descricao': 'O que o auditor fez bem durante a condução?', 'tipo': 'TEXTO_LIVRE', 'ordem': 4, 'obrigatoria': False},
+        {'titulo': 'Oportunidades de Melhoria', 'descricao': 'O que a equipe auditora pode aprimorar?', 'tipo': 'TEXTO_LIVRE', 'ordem': 5, 'obrigatoria': False}
+    ]
+
+    for p in padroes:
+        PerguntaAvaliacaoAuditorIso.objects.create(
+            auditoria=None,
+            norma=None,
+            titulo=p['titulo'],
+            descricao=p['descricao'],
+            tipo=p['tipo'],
+            ordem=p['ordem'],
+            obrigatoria=p['obrigatoria'],
+            ativa=True
+        )
+
+    return JsonResponse({"success": True, "message": "Perguntas padrão globais restauradas com sucesso!"})
+
+
 def avaliacao_portal_publico_view(request, token):
     """
     Portal público de feedback do auditor (sem necessidade de login).
