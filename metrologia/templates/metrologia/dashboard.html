@@ -9,28 +9,41 @@
 
 {% block content %}
 <style>
-    /* Estilos de "App" (Rolagem Independente) */
-    body { overflow: hidden; }
+    /* Estilos Desktop / App */
+    @media (min-width: 768px) {
+        body { overflow: hidden; }
+        .container-fluid-metro {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .table-container-scroll {
+            height: calc(100vh - 200px);
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            background-color: white;
+        }
+        .table-container-scroll thead th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background-color: #f8f9fa;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+    }
+
+    /* Estilos Mobile First (< 768px) */
+    @media (max-width: 767.98px) {
+        body { overflow-y: auto !important; height: auto !important; }
+        .container-fluid-metro { height: auto !important; display: block !important; }
+        .table-container-scroll { height: auto !important; border: none !important; }
+    }
 
     .sidebar-scroll {
         height: calc(100vh - 160px);
         overflow-y: auto;
         padding-right: 5px;
-    }
-
-    .table-container-scroll {
-        height: calc(100vh - 200px);
-        overflow-y: auto;
-        border: 1px solid #dee2e6;
-        border-radius: 6px;
-        background-color: white;
-    }
-    .table-container-scroll thead th {
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        background-color: #f8f9fa;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
 
     /* Filtros Expansíveis */
@@ -43,6 +56,21 @@
     .filter-content { display: none; padding: 8px 0 8px 5px; }
     .filter-group.open .filter-content { display: block; }
 
+    /* Cards Mobile de Instrumentos */
+    .instrumento-mobile-card {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.75rem;
+        padding: 0.9rem 1rem;
+        margin-bottom: 0.75rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        transition: transform 0.15s ease, background-color 0.15s ease;
+    }
+    .instrumento-mobile-card:active {
+        background-color: #f8fafc;
+        transform: scale(0.99);
+    }
+
     /* Scrollbars */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: #f1f1f1; }
@@ -51,26 +79,46 @@
     .transition-all { transition: all 0.3s ease; }
 </style>
 
-<div class="container-fluid py-3" style="height: 100vh; display: flex; flex-direction: column;">
+<div class="container-fluid container-fluid-metro py-3 overflow-x-hidden">
     
-    <!-- CABEÇALHO -->
-    <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2 flex-shrink-0">
-        <div class="d-flex align-items-center gap-3">
-            <button type="button" class="btn btn-outline-primary btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#filtrosModal">
-                <i class="bi bi-funnel"></i> Filtros
-            </button>
-            <div>
-                <h4 class="fw-bold text-primary mb-0">Metrologia</h4>
-                <p class="text-muted mb-0 small">Controle de Instrumentos e Calibrações</p>
+    <!-- CABEÇALHO RESPONSIVO (TOP BAR) -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-3 border-bottom pb-2 flex-shrink-0 w-100">
+        
+        <!-- Linha do Título e Filtros -->
+        <div class="d-flex justify-content-between align-items-center w-100 w-md-auto">
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-outline-primary btn-sm shadow-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#filtrosModal">
+                    <i class="bi bi-funnel"></i> <span class="d-none d-sm-inline">Filtros</span>
+                </button>
+                <div>
+                    <h4 class="fw-bold text-primary mb-0 fs-5 fs-md-4">Metrologia</h4>
+                    <span class="text-muted small d-none d-sm-inline">Controle de Instrumentos e Calibrações</span>
+                </div>
             </div>
+
+            <!-- Botão Novo destacado no mobile -->
+            {% if can_novo_instrumento %}
+            <a href="{% url 'novo_instrumento' %}" class="btn btn-primary btn-sm shadow-sm d-md-none d-flex align-items-center gap-1">
+                <i class="bi bi-plus-lg"></i> Novo
+            </a>
+            {% endif %}
         </div>
         
-        <div class="d-flex gap-2 align-items-center flex-wrap">
-            <div class="dropdown">
-                <button class="btn btn-outline-secondary btn-sm shadow-sm dropdown-toggle" type="button" id="metroActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-three-dots-vertical"></i> Ações
+        <!-- Grupo de Ações -->
+        <div class="d-flex align-items-center gap-2 w-100 w-md-auto justify-content-between justify-content-md-end">
+            <!-- Dropdown Ações -->
+            <div class="dropdown flex-grow-1 flex-md-grow-0">
+                <button class="btn btn-outline-secondary btn-sm shadow-sm dropdown-toggle w-100 d-flex align-items-center justify-content-center gap-1" type="button" id="metroActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-three-dots-vertical"></i> <span>Ações</span>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="metroActionsDropdown">
+                    <!-- Opção de Registrar Histórico no Dropdown para Mobile -->
+                    <li class="d-md-none">
+                        <button type="button" class="dropdown-item btn-historico-massa-trigger" disabled data-bs-toggle="modal" data-bs-target="#modalNovoHistoricoMassa">
+                            <i class="bi bi-calendar-plus me-2 text-success"></i>Registrar Histórico em Massa
+                        </button>
+                    </li>
+                    <li class="d-md-none"><hr class="dropdown-divider"></li>
                     <li>
                         <button id="btnCopyFilters" type="button" class="dropdown-item">
                             <i class="bi bi-link-45deg me-2 text-secondary"></i>Copiar Link
@@ -103,12 +151,17 @@
                 </ul>
             </div>
             
-            <button type="button" id="btn-historico-massa" class="btn btn-success btn-sm shadow-sm me-2" disabled data-bs-toggle="modal" data-bs-target="#modalNovoHistoricoMassa">
+            <!-- Botão Registrar Histórico em Desktop (>= 768px) -->
+            <button type="button" id="btn-historico-massa" class="btn btn-success btn-sm shadow-sm d-none d-md-inline-flex align-items-center gap-1 btn-historico-massa-trigger" disabled data-bs-toggle="modal" data-bs-target="#modalNovoHistoricoMassa">
                 <i class="bi bi-calendar-plus"></i> Registrar Histórico
             </button>
-            <a href="{% url 'novo_instrumento' %}" class="btn btn-primary btn-sm shadow-sm">
+
+            <!-- Botão Novo em Desktop (>= 768px) -->
+            {% if can_novo_instrumento %}
+            <a href="{% url 'novo_instrumento' %}" class="btn btn-primary btn-sm shadow-sm d-none d-md-inline-flex align-items-center gap-1">
                 <i class="bi bi-plus-lg"></i> Novo
             </a>
+            {% endif %}
         </div>
     </div>
 
@@ -398,7 +451,7 @@
             </div>
         </div>
 
-        <!-- TABELA PRINCIPAL -->
+        <!-- TABELA PRINCIPAL / CARDS MOBILE -->
         <div class="col-12 transition-all h-100 d-flex flex-column" id="content-col">
             
             <div class="d-flex justify-content-between align-items-center mb-2 flex-shrink-0">
@@ -407,17 +460,18 @@
                 </span>
                 
                 <!-- PAGINATION CONTROLS -->
-                <div class="d-flex align-items-center gap-3">
-                    <div class="small text-muted" id="paginationInfo">Mostrando 0 a 0 de 0 instrumentos</div>
-                    <nav>
-                        <ul class="pagination pagination-sm mb-0" id="paginationControls">
+                <div class="d-flex align-items-center gap-2 gap-md-3">
+                    <div class="small text-muted d-none d-md-inline-block" id="paginationInfo">Mostrando 0 a 0 de 0 instrumentos</div>
+                    <nav class="overflow-x-auto">
+                        <ul class="pagination pagination-sm mb-0 flex-nowrap" id="paginationControls">
                         </ul>
                     </nav>
                 </div>
             </div>
 
-            <div class="table-container-scroll shadow-sm">
-                <table class="table table-hover align-middle mb-0" id="metrologiaTable">
+            <!-- CONTAINER DESKTOP (TABELA >= 768px) -->
+            <div class="table-container-scroll shadow-sm d-none d-md-block">
+                <table class="table table-hover align-middle mb-0 d-none d-md-table" id="metrologiaTable">
                     <thead class="small text-uppercase text-muted font-monospace">
                         <tr>
                             <th class="ps-3 py-3"><input type="checkbox" id="selectAll" title="Selecionar todos visíveis"></th>
@@ -466,7 +520,6 @@
 
                             <td class="py-2 small text-muted">
                                 {% if i.setor %}{{ i.setor.nome }}{% else %}-{% endif %}
-                                <!-- using simpler logic since we cant do var sets easily inside loops -->
                                 {% with abertas=i.ocorrencias.all %}
                                     {% if abertas %}
                                         <button class="btn btn-sm btn-link p-0 text-decoration-none ms-1 btn-ocorrencia-{{ i.id }}" 
@@ -477,7 +530,6 @@
                                         <div id="ocorrencias-data-{{ i.id }}" style="display:none;">
                                             {% for oc in abertas %}
                                                 {% if oc.status == 'ABERTA' %}
-                                                    <!-- ABERTA -->
                                                     <div class="border-bottom pb-2 mb-2">
                                                         <strong>{{ oc.get_tipo_display }}</strong> - {{ oc.data_ocorrencia|date:"d/m/Y" }}<br>
                                                         <small>{{ oc.descricao }}</small><br>
@@ -556,8 +608,100 @@
                     </tbody>
                 </table>
             </div>
-            
 
+            <!-- CONTAINER MOBILE (CARDS < 768px) -->
+            <div class="d-block d-md-none" id="metroMobileCardsContainer">
+                {% for i in instrumentos %}
+                <div class="instrumento-mobile-card instrumento-row"
+                    data-nome="{{ i.tag|default:''|lower }} {{ i.descricao|default:''|lower }} {{ i.fabricante|default:''|lower }}"
+                    data-status="{% if i.ativo %}ATIVO{% else %}INATIVO{% endif %}"
+                    data-categoria="{{ i.categoria_id|default:'' }}"
+                    data-acao="{{ i.acao|default:'' }}"
+                    data-setor="{{ i.setor_id|default:'' }}"
+                    data-resultado="{% with historico=i.historicos.all|first %}{% if historico %}{{ historico.resultado }}{% else %}SEM_CALIBRACAO{% endif %}{% endwith %}"
+                    data-periodo="{% if i.data_proxima_calibracao %}{{ i.data_proxima_calibracao|date:'Y-m' }}{% endif %}"
+                    data-ocorrencia="{% if i.ocorrencias.all %}{% for oc in i.ocorrencias.all %}{% if oc.status == 'ABERTA' %}COM_ABERTA{% endif %}{% endfor %}{% endif %}"
+                    data-situacao="{% if i.data_proxima_calibracao %}{% if i.data_proxima_calibracao < hoje %}VENCIDO{% elif i.data_proxima_calibracao <= alerta_30d %}AVENCER_30{% elif i.data_proxima_calibracao <= alerta_60d %}AVENCER_60{% elif i.data_proxima_calibracao <= alerta_90d %}AVENCER_90{% elif i.data_proxima_calibracao <= alerta_120d %}AVENCER_120{% else %}EM_DIA{% endif %}{% else %}EM_DIA{% endif %}">
+                    
+                    <!-- Topo do Card: Checkbox, TAG e Botões de Ação -->
+                    <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="checkbox" class="row-select form-check-input mt-0" value="{{ i.id }}" data-tag="{{ i.tag }}" data-frequencia="{% if i.frequencia_meses %}{{ i.frequencia_meses }}{% elif i.categoria and i.categoria.frequencia_calibracao_meses %}{{ i.categoria.frequencia_calibracao_meses }}{% else %}12{% endif %}" />
+                            <span class="fw-bold text-primary font-monospace fs-6">{{ i.tag }}</span>
+                            {% if i.categoria %}
+                                <span class="badge bg-light text-muted border" style="font-size: 0.65rem;">{{ i.categoria.nome }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="d-flex align-items-center gap-1">
+                            <button type="button" class="btn btn-sm btn-outline-warning py-0 px-2 rounded-pill" 
+                                    title="Registrar Ocorrência" 
+                                    data-bs-toggle="modal" data-bs-target="#modalNovaOcorrencia" 
+                                    data-id="{{ i.id }}" data-tag="{{ i.tag }}">
+                                <i class="bi bi-exclamation-triangle"></i>
+                            </button>
+                            <a href="{% url 'visualizar_instrumento' i.id %}" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill detail-link" style="font-size: 0.75rem;">
+                                <i class="bi bi-eye me-1"></i> Detalhes
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Corpo do Card: Descrição e Setor -->
+                    <div class="mb-2">
+                        <h6 class="fw-bold text-dark mb-1 fs-6">{{ i.descricao }}</h6>
+                        <div class="d-flex justify-content-between align-items-center text-muted small" style="font-size: 0.8rem;">
+                            <span><i class="bi bi-geo-alt me-1"></i>Setor: <strong>{{ i.setor.nome|default:"-" }}</strong></span>
+                            {% if i.fabricante or i.modelo %}
+                                <span class="text-truncate" style="max-width: 140px;" title="{{ i.fabricante }} {{ i.modelo }}">{{ i.fabricante }} {{ i.modelo }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Rodapé do Card: Status da Próxima e Última Calibração -->
+                    <div class="d-flex justify-content-between align-items-center bg-light p-2 rounded border" style="font-size: 0.75rem;">
+                        <div>
+                            <span class="text-muted d-block" style="font-size: 0.7rem;">Próx. Calibração:</span>
+                            {% if i.data_proxima_calibracao %}
+                                {% if i.data_proxima_calibracao < hoje %}
+                                    <span class="badge bg-danger">VENCIDO ({{ i.data_proxima_calibracao|date:"d/m/Y" }})</span>
+                                {% elif i.data_proxima_calibracao <= alerta_30d %}
+                                    <span class="badge bg-warning text-dark">A VENCER ({{ i.data_proxima_calibracao|date:"d/m/Y" }})</span>
+                                {% elif i.data_proxima_calibracao <= alerta_60d %}
+                                    <span class="badge bg-warning text-dark">A VENCER 60d ({{ i.data_proxima_calibracao|date:"d/m/Y" }})</span>
+                                {% else %}
+                                    <span class="text-success fw-bold">{{ i.data_proxima_calibracao|date:"d/m/Y" }}</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </div>
+                        <div class="text-end">
+                            <span class="text-muted d-block" style="font-size: 0.7rem;">Últ. Calibração:</span>
+                            {% with historico=i.historicos.all|first %}
+                                {% if historico %}
+                                    {% if historico.resultado == 'APROVADO_SEM_CORRECAO' %}
+                                        <span class="badge bg-success">✓ Aprovado</span>
+                                    {% elif historico.resultado == 'APROVADO_COM_CORRECAO' %}
+                                        <span class="badge bg-warning text-dark">⚠ Aprv. c/ Corr.</span>
+                                    {% elif historico.resultado == 'REPROVADO' %}
+                                        <span class="badge bg-danger">✗ Reprovado</span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            {% endwith %}
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-5 text-muted bg-white rounded border">
+                    <i class="bi bi-inbox fs-1 d-block mb-2 opacity-50"></i>
+                    <p class="mb-0">Nenhum instrumento cadastrado.</p>
+                </div>
+                {% endfor %}
+            </div>
+            
         </div>
     </div>
 </div>
@@ -737,8 +881,6 @@ function filtrar() {
             var querSem = filtrosAtivos.ocorrencia.includes("SEM_ABERTA");
             if (querCom && !querSem && !temAberta) mostrar = false;
             if (querSem && !querCom && temAberta) mostrar = false;
-        }
-
         if (mostrar) {
             filteredRows.push(row);
         } else {
@@ -746,15 +888,21 @@ function filtrar() {
         }
     });
 
-    if(countDisplay) countDisplay.innerText = filteredRows.length;
-    renderPagination(filteredRows);
+    // Como agora temos as linhas da tabela e os cards mobile com a mesma classe .instrumento-row,
+    // o número real de instrumentos filtrados é a contagem de elementos TR da tabela desktop.
+    const tableRows = filteredRows.filter(el => el.tagName === 'TR');
+    const mobileCards = filteredRows.filter(el => el.tagName !== 'TR');
+    const uniqueCount = tableRows.length;
+    
+    if(countDisplay) countDisplay.innerText = uniqueCount;
+    renderPagination(tableRows, mobileCards);
 }
 
 let currentPage = 1;
 const itemsPerPage = 15;
 
-function renderPagination(rows) {
-    const totalItems = rows.length;
+function renderPagination(tableRows, mobileCards) {
+    const totalItems = tableRows.length;
     const totalPages = Math.ceil(totalItems / itemsPerPage);
     
     if (currentPage > totalPages) currentPage = totalPages || 1;
@@ -763,15 +911,26 @@ function renderPagination(rows) {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
     
-    // Esconde todos os filtrados e exibe apenas os da pagina atual
-    rows.forEach((row, index) => {
+    // Esconde todos os filtrados e exibe apenas os da pagina atual na tabela desktop
+    tableRows.forEach((row, index) => {
         if (index >= startIndex && index < endIndex) {
             row.style.display = '';
         } else {
             row.style.display = 'none';
         }
     });
-    
+
+    // Esconde todos os filtrados e exibe apenas os da pagina atual nos cards mobile
+    if (mobileCards && mobileCards.length > 0) {
+        mobileCards.forEach((card, index) => {
+            if (index >= startIndex && index < endIndex) {
+                card.style.display = '';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+
     // Atualiza o info de paginacao
     const info = document.getElementById('paginationInfo');
     if (info) {
@@ -792,7 +951,7 @@ function renderPagination(rows) {
             liPrev.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
             liPrev.innerHTML = `<a class="page-link" href="#" aria-label="Anterior"><span aria-hidden="true">&laquo;</span></a>`;
             if (currentPage > 1) {
-                liPrev.addEventListener('click', (e) => { e.preventDefault(); currentPage--; renderPagination(rows); });
+                liPrev.addEventListener('click', (e) => { e.preventDefault(); currentPage--; renderPagination(tableRows, mobileCards); });
             }
             controls.appendChild(liPrev);
             
@@ -808,7 +967,7 @@ function renderPagination(rows) {
                 li.className = `page-item ${i === currentPage ? 'active' : ''}`;
                 li.innerHTML = `<a class="page-link" href="#">${i}</a>`;
                 if (i !== currentPage) {
-                    li.addEventListener('click', (e) => { e.preventDefault(); currentPage = i; renderPagination(rows); });
+                    li.addEventListener('click', (e) => { e.preventDefault(); currentPage = i; renderPagination(tableRows, mobileCards); });
                 }
                 controls.appendChild(li);
             }
@@ -818,7 +977,7 @@ function renderPagination(rows) {
             liNext.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
             liNext.innerHTML = `<a class="page-link" href="#" aria-label="Próximo"><span aria-hidden="true">&raquo;</span></a>`;
             if (currentPage < totalPages) {
-                liNext.addEventListener('click', (e) => { e.preventDefault(); currentPage++; renderPagination(rows); });
+                liNext.addEventListener('click', (e) => { e.preventDefault(); currentPage++; renderPagination(tableRows, mobileCards); });
             }
             controls.appendChild(liNext);
         }
@@ -1143,7 +1302,7 @@ function selectAllInCategory(category) {
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const btnMassa = document.getElementById('btn-historico-massa');
+    const botoesMassa = document.querySelectorAll('.btn-historico-massa-trigger');
     const inputIds = document.getElementById('instrumentos_ids_input');
     const qtdSpan = document.getElementById('qtd-selecionados');
     
@@ -1151,28 +1310,36 @@ document.addEventListener('DOMContentLoaded', function() {
         const checkboxes = document.querySelectorAll('.row-select:checked');
         const count = checkboxes.length;
         
-        if (btnMassa) {
-            btnMassa.disabled = count === 0;
-            const ids = Array.from(checkboxes).map(cb => cb.value);
-            if (inputIds) inputIds.value = ids.join(',');
-            if (qtdSpan) qtdSpan.textContent = count;
-        }
+        botoesMassa.forEach(btn => {
+            btn.disabled = (count === 0);
+        });
+        
+        const ids = Array.from(checkboxes).map(cb => cb.value);
+        if (inputIds) inputIds.value = ids.join(',');
+        if (qtdSpan) qtdSpan.textContent = count;
     }
     
     // Adiciona listener nos checkboxes individuais
     document.querySelectorAll('.row-select').forEach(cb => {
-        cb.addEventListener('change', atualizarBotaoMassa);
+        cb.addEventListener('change', function() {
+            // Sincroniza estado de checkboxes de mesmo ID (se existirem na tabela e card mobile)
+            const idVal = this.value;
+            const checkedVal = this.checked;
+            document.querySelectorAll(`.row-select[value="${idVal}"]`).forEach(otherCb => {
+                otherCb.checked = checkedVal;
+            });
+            atualizarBotaoMassa();
+        });
     });
     
     // Adiciona listener no "Selecionar Todos"
     const selectAllCheckbox = document.getElementById('selectAll');
     if (selectAllCheckbox) {
         selectAllCheckbox.addEventListener('change', function() {
-            document.querySelectorAll('.row-select').forEach(cb => {
-                // Apenas marcar se a linha estiver visivel (não filtrada)
-                const tr = cb.closest('tr');
-                if (tr && tr.style.display !== 'none') {
-                    cb.checked = this.checked;
+            document.querySelectorAll('.instrumento-row').forEach(row => {
+                if (row.style.display !== 'none') {
+                    const cb = row.querySelector('.row-select');
+                    if (cb) cb.checked = selectAllCheckbox.checked;
                 }
             });
             atualizarBotaoMassa();
