@@ -15,20 +15,21 @@
                 {{ alvo.nome_completo|slice:":1" }}
             </div>
             <div class="flex-grow-1 min-w-0 text-break">
-                <h3 class="fw-bold mb-0 text-truncate fs-5 fs-md-4 text-dark" title="{{ alvo.nome_completo }}">{{ alvo.nome_completo }}</h3>
+                <h3 class="fw-bold mb-1 text-truncate fs-5 fs-md-4 text-dark" title="{{ alvo.nome_completo }}">{{ alvo.nome_completo }}</h3>
                 
-                <!-- Cargo e Matrícula organizados para não quebrar a largura mobile -->
-                <div class="text-muted small mt-1">
+                <!-- Informações em linhas separadas (Cargo, Matrícula e Mat. Global) -->
+                <div class="text-muted small">
                     <div class="fw-semibold text-secondary text-truncate" title="{{ alvo.cargo|default:'Sem cargo' }}">
                         {{ alvo.cargo|default:"Sem cargo" }}
                     </div>
-                    <div class="d-flex flex-wrap gap-1 align-items-center text-muted" style="font-size: 0.78rem;">
-                        <span>Matrícula: <strong>{{ alvo.matricula }}</strong></span>
-                        {% if alvo.matricula_global %}
-                            <span class="d-none d-sm-inline text-secondary">|</span>
-                            <span>Global: <strong class="text-primary">{{ alvo.matricula_global }}</strong></span>
-                        {% endif %}
+                    <div class="text-muted" style="font-size: 0.82rem;">
+                        Matrícula: <strong>{{ alvo.matricula }}</strong>
                     </div>
+                    {% if alvo.matricula_global %}
+                    <div class="text-muted" style="font-size: 0.82rem;">
+                        Mat. Global: <strong class="text-primary">{{ alvo.matricula_global }}</strong>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
