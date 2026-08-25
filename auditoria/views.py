@@ -8738,6 +8738,17 @@ def api_avaliacao_salvar_resposta_publica(request, token):
         token_obj.total_respostas = (token_obj.total_respostas or 0) + 1
         token_obj.save(update_fields=["total_respostas"])
 
+        return JsonResponse({
+            "success": True,
+            "avaliacao_id": av.id,
+            "message": "Avaliação enviada com sucesso! Muito obrigado pelo seu feedback."
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+
 @login_required
 def iso_analytics_global_view(request):
     """
