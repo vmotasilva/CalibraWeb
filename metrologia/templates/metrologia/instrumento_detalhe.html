@@ -1470,15 +1470,31 @@ function toggleEditOcorrencia(id) {
                                                 <span class="text-muted">± {{ rf.tolerancia|default:rf.faixa.tolerancia_mais_menos|default:"-" }}</span>
                                             </td>
                                             <td class="p-1">
-                                                <input type="number" step="0.0001" name="erro_faixa_{{ rf.id }}" class="form-control form-control-sm text-center fw-bold rounded-2 border-primary" value="{{ rf.erro|stringformat:'.4f'|default:'' }}" placeholder="0.0000">
+                                                <input type="number" step="0.0001"
+                                                    id="erro_faixa_{{ rf.id }}"
+                                                    name="erro_faixa_{{ rf.id }}"
+                                                    data-rfid="{{ rf.id }}"
+                                                    data-field="erro"
+                                                    class="form-control form-control-sm text-center fw-bold rounded-2 border-primary campo-eme"
+                                                    value="{{ rf.erro|stringformat:'.4f'|default:'' }}"
+                                                    placeholder="0.0000">
                                             </td>
                                             <td class="p-1">
-                                                <input type="number" step="0.0001" min="0" name="incerteza_faixa_{{ rf.id }}" class="form-control form-control-sm text-center fw-bold rounded-2 border-primary" value="{{ rf.incerteza|stringformat:'.4f'|default:'' }}" placeholder="0.0000">
+                                                <input type="number" step="0.0001" min="0"
+                                                    id="incerteza_faixa_{{ rf.id }}"
+                                                    name="incerteza_faixa_{{ rf.id }}"
+                                                    data-rfid="{{ rf.id }}"
+                                                    data-field="incerteza"
+                                                    class="form-control form-control-sm text-center fw-bold rounded-2 border-primary campo-eme"
+                                                    value="{{ rf.incerteza|stringformat:'.4f'|default:'' }}"
+                                                    placeholder="0.0000">
                                             </td>
-                                            <td class="fw-bold text-secondary">
-                                                {{ rf.eme|default:"-" }}
+                                            <td class="fw-bold text-secondary" id="eme_display_{{ rf.id }}"
+                                                data-tol="{{ rf.tolerancia|default:rf.faixa.tolerancia_mais_menos|default:'' }}">
+                                                {% if rf.eme %}{{ rf.eme|stringformat:'.4f' }}{% else %}-{% endif %}
                                             </td>
                                             <td>
+                                                <span id="resultado_badge_{{ rf.id }}">
                                                 {% if rf.resultado == 'APROVADO_SEM_CORRECAO' %}
                                                     <span class="badge bg-success small">✓ Aprovado</span>
                                                 {% elif rf.resultado == 'APROVADO_COM_CORRECAO' %}
@@ -1488,6 +1504,7 @@ function toggleEditOcorrencia(id) {
                                                 {% else %}
                                                     <span class="badge bg-secondary small">-</span>
                                                 {% endif %}
+                                                </span>
                                             </td>
                                         </tr>
                                         {% empty %}
@@ -1533,5 +1550,62 @@ function toggleEditOcorrencia(id) {
     </div>
 </div>
 {% endfor %}
+
+<script>
+(function () {
+    "use strict";
+
+    function calcularEme(rfId) {
+        const erroInput = document.getElementById('erro_faixa_' + rfId);
+        const incInput  = document.getElementById('incerteza_faixa_' + rfId);
+        const emeCell   = document.getElementById('eme_display_' + rfId);
+        const badgeCell = document.getElementById('resultado_badge_' + rfId);
+        if (!erroInput || !incInput || !emeCell) return;
+
+        const erroVal = parseFloat(erroInput.value);
+        const incVal  = parseFloat(incInput.value);
+
+        if (isNaN(erroVal) || isNaN(incVal)) {
+            emeCell.textContent = '-';
+            if (badgeCell) badgeCell.innerHTML = '<span class="badge bg-secondary small">-</span>';
+            return;
+        }
+
+        const eme = Math.abs(erroVal) + incVal;
+        emeCell.textContent = eme.toFixed(4);
+
+        // Preview de resultado
+        const tolRaw = emeCell.dataset.tol;
+        const tol    = parseFloat(tolRaw);
+        if (!isNaN(tol) && badgeCell) {
+            const tolAbs = Math.abs(tol);
+            const ema    = tolAbs / 2;
+            if (eme > tolAbs) {
+                badgeCell.innerHTML = '<span class="badge bg-danger small">✗ Reprovado</span>';
+                emeCell.className = emeCell.className.replace(/text-\w+/g, '') + ' text-danger';
+            } else if (eme <= ema) {
+                badgeCell.innerHTML = '<span class="badge bg-success small">✓ Aprovado</span>';
+                emeCell.className = emeCell.className.replace(/text-\w+/g, '') + ' text-success';
+            } else {
+                badgeCell.innerHTML = '<span class="badge bg-warning text-dark small">⚠ Condicional</span>';
+                emeCell.className = emeCell.className.replace(/text-\w+/g, '') + ' text-warning';
+            }
+        }
+    }
+
+    document.addEventListener('input', function (e) {
+        if (e.target && e.target.classList.contains('campo-eme')) {
+            calcularEme(e.target.dataset.rfid);
+        }
+    });
+
+    // Calcular EME assim que o modal abre (campos já preenchidos)
+    document.addEventListener('shown.bs.modal', function () {
+        document.querySelectorAll('.campo-eme[data-field="erro"]').forEach(function (el) {
+            calcularEme(el.dataset.rfid);
+        });
+    });
+})();
+</script>
 
 {% endblock %}

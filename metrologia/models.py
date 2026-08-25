@@ -547,8 +547,15 @@ class HistoricoCalibracao(models.Model):
         # Auto-calculate próxima_calibracao based on category frequency
         if self.instrumento and self.instrumento.categoria and self.instrumento.categoria.frequencia_calibracao_meses:
             from dateutil.relativedelta import relativedelta
+            from datetime import date as _date
             meses = self.instrumento.categoria.frequencia_calibracao_meses
-            self.proxima_calibracao = self.data_calibracao + relativedelta(months=meses)
+            # Garantir que data_calibracao é um objeto date (pode chegar como string do POST)
+            data_cal = self.data_calibracao
+            if isinstance(data_cal, str):
+                from django.utils.dateparse import parse_date
+                data_cal = parse_date(data_cal)
+            if data_cal:
+                self.proxima_calibracao = data_cal + relativedelta(months=meses)
         
         super().save(*args, **kwargs)
 
