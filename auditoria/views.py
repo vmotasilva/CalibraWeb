@@ -3394,8 +3394,66 @@ def consolidar_solicitacoes_perguntas(auditoria=None):
 
 @login_required
 def iso_auditoria_list(request):
-    auditorias = AuditoriaIso.objects.all().order_by("-data_inicio")
+    from django.db.models import Avg, Count
+    from .models import PlanoAcaoMagicLink, TokenAvaliacaoIso, SolicitacaoEvidenciaIso, AvaliacaoAuditorIso
+
+    auditorias_qs = AuditoriaIso.objects.all().order_by("-data_inicio")
+    auditorias = []
+
+    for aud in auditorias_qs:
+        # Consulta de links ativos de CAPA
+        links_capa = PlanoAcaoMagicLink.objects.filter(auditoria=aud)
+        tem_link_capa = links_capa.filter(ativo=True).exists()
+        ultimo_link_capa = links_capa.first()
+
+        # Consulta de desvios e status de CAPA
+        desvios_capa = SolicitacaoEvidenciaIso.objects.filter(
+            resposta__auditoria=aud,
+            conclusao__in=['NC', 'OBS', 'OM']
+        )
+        total_desvios_capa = desvios_capa.count()
+        capa_pendentes = desvios_capa.filter(capa_status='PENDENTE').count()
+        capa_aguardando = desvios_capa.filter(capa_status='AGUARDANDO_REVISAO').count()
+        capa_aprovados = desvios_capa.filter(capa_status='APROVADO').count()
+        capa_rejeitados = desvios_capa.filter(capa_status='REJEITADO').count()
+
+        # Consulta de Avaliação do Auditor
+        tokens_av = TokenAvaliacaoIso.objects.filter(auditoria=aud)
+        tem_link_avaliacao = tokens_av.filter(ativo=True).exists()
+        ultimo_token_av = tokens_av.first()
+
+        avaliacoes_auditor = AvaliacaoAuditorIso.objects.filter(auditoria=aud)
+        total_avaliacoes = avaliacoes_auditor.count()
+        
+        media_avaliacao = 0
+        if total_avaliacoes > 0:
+            stats = avaliacoes_auditor.aggregate(
+                m_pont=Avg('nota_pontualidade'),
+                m_clar=Avg('nota_clareza'),
+                m_cord=Avg('nota_cordialidade'),
+            )
+            p = stats['m_pont'] or 0
+            c = stats['m_clar'] or 0
+            co = stats['m_cord'] or 0
+            media_avaliacao = round((p + c + co) / 3, 1)
+
+        aud.tem_link_capa = tem_link_capa
+        aud.link_capa_url = request.build_absolute_uri(reverse('auditoria:capa_portal_publico', kwargs={'token': ultimo_link_capa.token})) if ultimo_link_capa else None
+        aud.total_desvios_capa = total_desvios_capa
+        aud.capa_pendentes = capa_pendentes
+        aud.capa_aguardando = capa_aguardando
+        aud.capa_aprovados = capa_aprovados
+        aud.capa_rejeitados = capa_rejeitados
+
+        aud.tem_link_avaliacao = tem_link_avaliacao
+        aud.link_avaliacao_url = request.build_absolute_uri(reverse('auditoria:avaliacao_portal_publico', kwargs={'token': ultimo_token_av.token})) if ultimo_token_av else None
+        aud.total_avaliacoes = total_avaliacoes
+        aud.media_avaliacao = media_avaliacao
+
+        auditorias.append(aud)
+
     return render(request, "auditoria/iso_auditoria_list.html", {"auditorias": auditorias})
+
 
 @login_required
 def iso_entrevista_view(request, auditoria_id):

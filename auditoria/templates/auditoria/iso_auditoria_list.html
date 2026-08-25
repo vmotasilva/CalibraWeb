@@ -39,10 +39,11 @@
                     <table class="table table-hover mb-0 align-middle">
                         <thead class="table-light">
                             <tr>
-                                <th class="ps-4">Norma</th>
-                                <th>Período / Datas</th>
-                                <th>Status</th>
-                                <th class="text-end pe-4">Ações & Relatórios</th>
+                                <th class="ps-4" width="22%">Norma & Escopo</th>
+                                <th width="16%">Período / Datas</th>
+                                <th width="12%">Status</th>
+                                <th width="24%">Monitoramento & Magic Links</th>
+                                <th width="26%" class="text-end pe-4">Ações & Relatórios</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -66,6 +67,52 @@
                                     {% else %}
                                         <span class="badge text-white rounded-pill px-3 py-1.5 fw-bold shadow-2xs" style="background-color: #14532d;">Concluída</span>
                                     {% endif %}
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-column gap-1">
+                                        <!-- Monitoramento CAPA -->
+                                        {% if aud.total_desvios_capa > 0 %}
+                                            <div class="d-flex align-items-center gap-1.5">
+                                                <a href="{% url 'auditoria:iso_auditoria_cronograma' aud.id %}#capa" class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill text-decoration-none px-2 py-1" title="Ver Planos de Ação">
+                                                    <i class="bi bi-clipboard2-check me-1"></i>CAPA: {{ aud.capa_aguardando|add:aud.capa_pendentes }} pendente{{ aud.capa_aguardando|add:aud.capa_pendentes|pluralize:"s" }}
+                                                </a>
+                                                {% if aud.tem_link_capa and aud.link_capa_url %}
+                                                    <button type="button" class="btn btn-sm btn-outline-danger p-0 px-1.5 rounded-circle" onclick="navigator.clipboard.writeText('{{ aud.link_capa_url }}'); alert('Link Público do CAPA copiado!');" title="Copiar Magic Link do CAPA">
+                                                        <i class="bi bi-link-45deg"></i>
+                                                    </button>
+                                                {% endif %}
+                                            </div>
+                                        {% else %}
+                                            <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2 py-0.5" style="font-size: 0.72rem; width: fit-content;">
+                                                <i class="bi bi-check2"></i> 100% Conforme (Sem NCs)
+                                            </span>
+                                        {% endif %}
+
+                                        <!-- Monitoramento Avaliação do Auditor -->
+                                        {% if aud.status == 'CONCLUIDA' %}
+                                            <div class="d-flex align-items-center gap-1.5 mt-0.5">
+                                                {% if aud.total_avaliacoes > 0 %}
+                                                    <a href="{% url 'auditoria:iso_fechamento_presentation' aud.id %}" target="_blank" class="badge bg-warning bg-opacity-20 text-dark border border-warning border-opacity-50 rounded-pill text-decoration-none px-2 py-1" title="Ver Feedbacks Recebidos">
+                                                        <i class="bi bi-star-fill text-warning me-1"></i>{{ aud.media_avaliacao }} ★ ({{ aud.total_avaliacoes }} feedback{{ aud.total_avaliacoes|pluralize:"s" }})
+                                                    </a>
+                                                {% else %}
+                                                    <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2 py-0.5" style="font-size: 0.72rem;">
+                                                        <i class="bi bi-chat-square-dots me-1"></i>Sem avaliações
+                                                    </span>
+                                                {% endif %}
+
+                                                {% if aud.tem_link_avaliacao and aud.link_avaliacao_url %}
+                                                    <button type="button" class="btn btn-sm btn-outline-warning text-dark p-0 px-1.5 rounded-circle" onclick="navigator.clipboard.writeText('{{ aud.link_avaliacao_url }}'); alert('Magic Link de Avaliação copiado!');" title="Copiar Link de Avaliação">
+                                                        <i class="bi bi-link-45deg"></i>
+                                                    </button>
+                                                {% else %}
+                                                    <a href="{% url 'auditoria:iso_fechamento_presentation' aud.id %}" target="_blank" class="btn btn-sm btn-outline-secondary p-0 px-1.5 rounded-circle" title="Gerar Link de Avaliação">
+                                                        <i class="bi bi-plus-lg"></i>
+                                                    </a>
+                                                {% endif %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
                                 </td>
                                 <td class="text-end pe-4">
                                     {% if aud.status == 'CONCLUIDA' %}
@@ -104,7 +151,7 @@
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="4" class="text-center text-muted py-5">
+                                <td colspan="5" class="text-center text-muted py-5">
                                     <i class="bi bi-inbox fs-2 d-block text-secondary mb-2"></i>
                                     Nenhuma auditoria cadastrada. Cadastre através do painel de administração.
                                 </td>
@@ -145,11 +192,47 @@
                         <span>{{ aud.data_inicio|date:"d/m/Y" }} a {{ aud.data_fim|date:"d/m/Y" }}</span>
                     </div>
                     {% if aud.norma.descricao %}
-                    <div class="d-flex align-items-center gap-2 text-secondary">
+                    <div class="d-flex align-items-center gap-2 text-secondary mb-2">
                         <i class="bi bi-bookmark text-secondary"></i>
                         <span>{{ aud.norma.descricao }}</span>
                     </div>
                     {% endif %}
+
+                    <!-- Monitoramento de Links (Mobile) -->
+                    <div class="p-2 bg-light rounded-3 border d-flex flex-column gap-1.5 mt-2">
+                        {% if aud.total_desvios_capa > 0 %}
+                            <div class="d-flex justify-content-between align-items-center">
+                                <a href="{% url 'auditoria:iso_auditoria_cronograma' aud.id %}#capa" class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill text-decoration-none px-2 py-1">
+                                    <i class="bi bi-clipboard2-check me-1"></i>CAPA: {{ aud.capa_aguardando|add:aud.capa_pendentes }} pendente(s)
+                                </a>
+                                {% if aud.tem_link_capa and aud.link_capa_url %}
+                                    <button type="button" class="btn btn-sm btn-outline-danger p-0 px-2 rounded-pill small" onclick="navigator.clipboard.writeText('{{ aud.link_capa_url }}'); alert('Link CAPA copiado!');">
+                                        <i class="bi bi-link-45deg me-1"></i>Copiar Link
+                                    </button>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+
+                        {% if aud.status == 'CONCLUIDA' %}
+                            <div class="d-flex justify-content-between align-items-center">
+                                {% if aud.total_avaliacoes > 0 %}
+                                    <span class="badge bg-warning bg-opacity-20 text-dark border border-warning border-opacity-50 rounded-pill px-2 py-1">
+                                        <i class="bi bi-star-fill text-warning me-1"></i>{{ aud.media_avaliacao }} ★ ({{ aud.total_avaliacoes }} feedback(s))
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2 py-1">
+                                        Sem avaliações
+                                    </span>
+                                {% endif %}
+
+                                {% if aud.tem_link_avaliacao and aud.link_avaliacao_url %}
+                                    <button type="button" class="btn btn-sm btn-outline-warning text-dark p-0 px-2 rounded-pill small" onclick="navigator.clipboard.writeText('{{ aud.link_avaliacao_url }}'); alert('Link de Avaliação copiado!');">
+                                        <i class="bi bi-link-45deg me-1"></i>Copiar Link
+                                    </button>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    </div>
                 </div>
 
                 <div class="d-grid gap-2">
