@@ -2,230 +2,308 @@
 
 {% block content %}
 <style>
-    /* --- ESTILOS DE "APP" (SEM ROLAGEM NA PÁGINA) --- */
-    body { overflow: hidden; }
-
-    /* CARD DO FILTRO (SIDEBAR) */
-    .filter-card {
-        display: flex;
-        flex-direction: column;
-        flex: 1;
-        min-height: 0;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        border: 1px solid #dee2e6;
-        border-right: 2px solid #dee2e6;
-    }
-
-    .filter-card-body {
-        flex: 1;
-        overflow-y: auto;
-        padding: 1rem;
-    }
-
-    /* BARRA LATERAL (FILTROS) */
-    .sidebar-scroll {
-        height: 100%;
-        overflow-y: auto;
-        padding-right: 5px;
-    }
-
-    /* CARD DA TABELA (MAIN) */
-    .table-card {
-        display: flex;
-        flex-direction: column;
-        flex: 1;
-        min-height: 0;
-        height: 100%;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        border: 1px solid #dee2e6;
-        overflow: hidden;
-    }
-
-    .table-card-body {
-        flex: 1;
-        overflow-y: auto;
-    }
-
-    .table-card-footer {
-        flex-shrink: 0;
-        border-top: 1px solid #dee2e6;
-        padding: 0.75rem 1rem;
-        background-color: #f8f9fa;
-    }
-
-    /* TABELA (ROLAGEM) */
-    .table-container-scroll {
-        height: 100%;
-        overflow-y: auto;
-        background-color: white;
-    }
-    .table-container-scroll thead th {
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        background-color: #f8f9fa;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-
-    /* PAGINAÇÃO */
-    .pagination-controls {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 1rem;
-    }
-
-    .pagination-info {
-        font-size: 0.875rem;
-        color: #6c757d;
-    }
-
-    .pagination-nav {
-        display: flex;
-        align-items: center;
-        gap: 0.25rem;
-    }
-
-    .pagination-nav button {
-        padding: 0.25rem 0.5rem;
-        font-size: 0.875rem;
-    }
-
-    .items-per-page-select {
-        max-width: 80px;
-        font-size: 0.875rem;
-    }
-
-    /* --- NOVO: ESTILO DOS FILTROS EXPANSÍVEIS (ACORDEÃO) --- */
-    .filter-group {
-        border-bottom: 1px solid #f0f0f0;
-        margin-bottom: 5px;
-    }
-    
-    .filter-header {
-        cursor: pointer;
-        padding: 10px 5px;
-        user-select: none;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-radius: 4px;
-        transition: background-color 0.2s;
-    }
-    
-    .filter-header:hover {
-        background-color: #f8f9fa;
-    }
-
-    .filter-title {
-        font-size: 0.75rem;
-        font-weight: 700;
-        color: #6c757d;
-        text-transform: uppercase;
-        margin: 0;
-        cursor: pointer;
-    }
-
-    /* Ícone da seta */
-    .filter-header i {
-        transition: transform 0.3s ease;
-        font-size: 0.8rem;
-        color: #adb5bd;
-    }
-
-    /* Quando o grupo está ABERTO (classe .open) */
-    .filter-group.open .filter-header i {
-        transform: rotate(180deg);
-        color: #0d6efd;
-    }
-    
-    .filter-group.open .filter-title {
-        color: #212529;
-    }
-
-    /* Conteúdo dos filtros (Checkboxes) */
-    .filter-content {
-        display: none;
-        padding: 5px 0 15px 10px;
-        animation: slideDown 0.3s ease-out;
-    }
-
-    /* Mostra conteúdo quando aberto */
-    .filter-group.open .filter-content {
-        display: block;
-    }
-
-    @keyframes slideDown {
-        from { opacity: 0; transform: translateY(-10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-
-    /* SCROLLBARS CUSTOMIZADAS */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: #f1f1f1; }
-    ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
-    
-    .transition-all { transition: all 0.3s ease; }
-</style>
-
-<div class="container-fluid py-3" style="height: 100vh; display: flex; flex-direction: column; overflow: hidden;">
-    
-    <div class="d-flex flex-wrap justify-content-between align-items-start align-items-md-center gap-2 mb-3 border-bottom pb-2 flex-shrink-0">
-        <div class="d-flex align-items-center gap-3">
-            <button type="button" class="btn btn-outline-primary btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#filtrosModal">
-                <i class="bi bi-funnel"></i> Filtros
-            </button>
-            <div class="input-group input-group-sm" style="width: 250px;">
-                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                <input type="search" id="searchInput" class="form-control border-start-0 shadow-sm" placeholder="Nome ou Matrícula..." autocomplete="one-time-code">
-            </div>
-            <div class="d-none d-md-block ms-2">
-                <h4 class="fw-bold text-primary mb-0">Gestão de Pessoas</h4>
-                <p class="text-muted mb-0 small">Equipe e Hierarquia</p>
-            </div>
-        </div>
-        <div class="d-flex flex-wrap gap-2 justify-content-start justify-content-md-end">
-            {% load nav_access %}
-            {% can_nav_block user 'rh' 'horas_extras' as can_he %}
+    <style>
+        /* --- ESTILOS DE "APP" (SEM ROLAGEM NA PÁGINA NO DESKTOP) --- */
+        @media (min-width: 768px) {
+            body { overflow: hidden; }
+            .main-rh-container { height: calc(100vh - 170px); }
+        }
+        @media (max-width: 767.98px) {
+            body { overflow-y: auto !important; }
+            .container-fluid-rh { height: auto !important; overflow: visible !important; }
+            .main-rh-container { height: auto !important; }
+            #table-col { height: auto !important; }
+            .table-card { height: auto !important; }
+            .table-card-body { overflow: visible !important; }
+            .table-container-scroll { overflow: visible !important; height: auto !important; }
             
-            <div class="dropdown">
-                <button class="btn btn-outline-secondary btn-sm shadow-sm dropdown-toggle" type="button" id="rhActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-three-dots-vertical"></i> Ações
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="rhActionsDropdown">
-                    {% if can_he %}
-                    <li>
-                        <a href="{% url 'rh:planejamento_hora_extra_list' %}" class="dropdown-item" title="Gerenciar planejamento de horas extras e absenteísmo">
-                            <i class="bi bi-clock-history me-2 text-warning"></i> Horas Extras e Absenteísmo
-                        </a>
-                    </li>
-                    {% endif %}
-                    <li>
-                        <a href="{% url 'rh:gestao_ferias' %}" class="dropdown-item" title="Gerenciar férias de todos os colaboradores">
-                            <i class="bi bi-calendar-check me-2 text-info"></i> Gestão de Férias
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{% url 'qms:importar_colaboradores' %}" class="dropdown-item">
-                            <i class="bi bi-file-earmark-spreadsheet me-2 text-success"></i> Importar RH
-                        </a>
-                    </li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li>
-                        <a href="{% url 'dl_template_colab_dados' %}" class="dropdown-item" title="Baixar Base de Dados em Excel">
-                            <i class="bi bi-download me-2 text-secondary"></i> Exportar Dados
-                        </a>
-                    </li>
-                </ul>
-            </div>
+            /* Paginação compacta no mobile: oculta números intermediários */
+            #pageNumbers { display: none !important; }
+            .pagination-controls { justify-content: center !important; gap: 0.5rem !important; }
+            .pagination-info { width: 100%; text-align: center; margin-bottom: 0.25rem; font-size: 0.8rem; }
+        }
 
-            <a href="{% url 'rh:criar_colaborador' %}" class="btn btn-primary btn-sm shadow-sm">
-                <i class="bi bi-plus-lg"></i> Novo
-            </a>
+        /* CARD DO FILTRO (SIDEBAR) */
+        .filter-card {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border: 1px solid #dee2e6;
+            border-right: 2px solid #dee2e6;
+        }
+
+        .filter-card-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+
+        /* BARRA LATERAL (FILTROS) */
+        .sidebar-scroll {
+            height: 100%;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        /* CARD DA TABELA (MAIN) */
+        .table-card {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+            height: 100%;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border: 1px solid #dee2e6;
+            overflow: hidden;
+        }
+
+        .table-card-body {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .table-card-footer {
+            flex-shrink: 0;
+            border-top: 1px solid #dee2e6;
+            padding: 0.75rem 1rem;
+            background-color: #f8f9fa;
+        }
+
+        /* TABELA (ROLAGEM) */
+        .table-container-scroll {
+            height: 100%;
+            overflow-y: auto;
+            background-color: white;
+        }
+        .table-container-scroll thead th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background-color: #f8f9fa;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        /* PAGINAÇÃO */
+        .pagination-controls {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .pagination-info {
+            font-size: 0.875rem;
+            color: #6c757d;
+        }
+
+        .pagination-nav {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .pagination-nav button {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .items-per-page-select {
+            max-width: 80px;
+            font-size: 0.875rem;
+        }
+
+        /* --- ESTILO DOS FILTROS EXPANSÍVEIS (ACORDEÃO) --- */
+        .filter-group {
+            border-bottom: 1px solid #f0f0f0;
+            margin-bottom: 5px;
+        }
+        
+        .filter-header {
+            cursor: pointer;
+            padding: 10px 5px;
+            user-select: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+        
+        .filter-header:hover {
+            background-color: #f8f9fa;
+        }
+
+        .filter-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #6c757d;
+            text-transform: uppercase;
+            margin: 0;
+            cursor: pointer;
+        }
+
+        /* Ícone da seta */
+        .filter-header i {
+            transition: transform 0.3s ease;
+            font-size: 0.8rem;
+            color: #adb5bd;
+        }
+
+        /* Quando o grupo está ABERTO (classe .open) */
+        .filter-group.open .filter-header i {
+            transform: rotate(180deg);
+            color: #0d6efd;
+        }
+        
+        .filter-group.open .filter-title {
+            color: #212529;
+        }
+
+        /* Conteúdo dos filtros (Checkboxes) */
+        .filter-content {
+            display: none;
+            padding: 5px 0 15px 10px;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        /* Mostra conteúdo quando aberto */
+        .filter-group.open .filter-content {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* SCROLLBARS CUSTOMIZADAS */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+        
+        .transition-all { transition: all 0.3s ease; }
+
+        /* CARDS MOBILE DE COLABORADORES */
+        .colaborador-mobile-card {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.75rem;
+            padding: 0.85rem 1rem;
+            margin-bottom: 0.65rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            transition: transform 0.15s ease, background-color 0.15s ease;
+        }
+        .colaborador-mobile-card:active {
+            background-color: #f8fafc;
+            transform: scale(0.99);
+        }
+    </style>
+
+<div class="container-fluid container-fluid-rh py-3" style="height: 100vh; display: flex; flex-direction: column; overflow: hidden;">
+    
+    {% load nav_access %}
+    {% can_nav_block user 'rh' 'horas_extras' as can_he %}
+
+    <!-- CABEÇALHO / TOP BAR RESPONSIVO -->
+    <div class="d-flex flex-column gap-2 mb-3 border-bottom pb-2 flex-shrink-0">
+        <!-- Linha 1: Título e Botão + Novo -->
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2">
+                <h4 class="fw-bold text-primary mb-0 fs-5 fs-md-4">Gestão de Pessoas</h4>
+                <span class="text-muted small d-none d-sm-inline">| Equipe e Hierarquia</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <!-- Botões de Ações e Filtros no Desktop -->
+                <div class="d-none d-md-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-outline-primary btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#filtrosModal">
+                        <i class="bi bi-funnel"></i> Filtros
+                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary btn-sm shadow-sm dropdown-toggle" type="button" id="rhActionsDropdownDesk" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-three-dots-vertical"></i> Ações
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="rhActionsDropdownDesk">
+                            {% if can_he %}
+                            <li>
+                                <a href="{% url 'rh:planejamento_hora_extra_list' %}" class="dropdown-item" title="Gerenciar planejamento de horas extras e absenteísmo">
+                                    <i class="bi bi-clock-history me-2 text-warning"></i> Horas Extras e Absenteísmo
+                                </a>
+                            </li>
+                            {% endif %}
+                            <li>
+                                <a href="{% url 'rh:gestao_ferias' %}" class="dropdown-item" title="Gerenciar férias de todos os colaboradores">
+                                    <i class="bi bi-calendar-check me-2 text-info"></i> Gestão de Férias
+                                </a>
+                            </li>
+                            <li>
+                                <a href="{% url 'qms:importar_colaboradores' %}" class="dropdown-item">
+                                    <i class="bi bi-file-earmark-spreadsheet me-2 text-success"></i> Importar RH
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a href="{% url 'dl_template_colab_dados' %}" class="dropdown-item" title="Baixar Base de Dados em Excel">
+                                    <i class="bi bi-download me-2 text-secondary"></i> Exportar Dados
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <a href="{% url 'rh:criar_colaborador' %}" class="btn btn-primary btn-sm shadow-sm px-3 d-flex align-items-center gap-1">
+                    <i class="bi bi-plus-lg"></i> <span>Novo</span>
+                </a>
+            </div>
         </div>
 
+        <!-- Linha 2: Barra de Pesquisa 100% com Botões Compactos (Filtros e Ações) no Mobile -->
+        <div class="d-flex align-items-center gap-2 w-100">
+            <div class="input-group input-group-sm flex-grow-1 shadow-sm">
+                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                <input type="search" id="searchInput" class="form-control border-start-0" placeholder="Nome ou Matrícula..." autocomplete="one-time-code">
+            </div>
+
+            <!-- Botões de Ícones Compactos Apenas no Mobile (< 768px) -->
+            <div class="d-flex d-md-none align-items-center gap-1">
+                <button type="button" class="btn btn-outline-primary btn-sm shadow-sm d-flex align-items-center justify-content-center" data-bs-toggle="modal" data-bs-target="#filtrosModal" style="width: 36px; height: 31px;" title="Filtros">
+                    <i class="bi bi-funnel"></i>
+                </button>
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary btn-sm shadow-sm d-flex align-items-center justify-content-center" type="button" id="rhActionsDropdownMob" data-bs-toggle="dropdown" aria-expanded="false" style="width: 36px; height: 31px;" title="Ações">
+                        <i class="bi bi-three-dots-vertical"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="rhActionsDropdownMob">
+                        {% if can_he %}
+                        <li>
+                            <a href="{% url 'rh:planejamento_hora_extra_list' %}" class="dropdown-item py-2">
+                                <i class="bi bi-clock-history me-2 text-warning"></i> Horas Extras
+                            </a>
+                        </li>
+                        {% endif %}
+                        <li>
+                            <a href="{% url 'rh:gestao_ferias' %}" class="dropdown-item py-2">
+                                <i class="bi bi-calendar-check me-2 text-info"></i> Gestão de Férias
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'qms:importar_colaboradores' %}" class="dropdown-item py-2">
+                                <i class="bi bi-file-earmark-spreadsheet me-2 text-success"></i> Importar RH
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a href="{% url 'dl_template_colab_dados' %}" class="dropdown-item py-2">
+                                <i class="bi bi-download me-2 text-secondary"></i> Exportar Dados
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div style="display: flex; gap: 1rem; height: calc(100vh - 180px); width: 100%;">
@@ -437,102 +515,156 @@
 
             <div class="card table-card">
                 <div class="table-card-body">
-                    <div class="table-container-scroll">
+                    <!-- TABELA DESKTOP (>= 768px) -->
+                    <div class="table-container-scroll d-none d-md-block">
                         <table class="table table-hover align-middle mb-0" id="rhTable">
-                    <thead class="small text-uppercase text-muted font-monospace">
-                        <tr>
-                            {% if user.is_superuser %}
-                            <th class="ps-4 py-3" style="width: 40px;">
-                                <input type="checkbox" id="selectAllCheckbox" class="form-check-input" onchange="toggleSelectAll()" title="Selecionar todos">
-                            </th>
-                            {% endif %}
-                            <th class="py-3" style="min-width: 250px;">Colaborador</th>
-                            <th class="py-3">Cargo</th>
-                            <th class="py-3">Setor / CC</th>
-                            <th class="py-3">Turno</th>
-                            <th class="py-3">Treinamentos</th>
-                        </tr>
-                    </thead>
-                    <tbody class="border-top-0 bg-white">
+                            <thead class="small text-uppercase text-muted font-monospace">
+                                <tr>
+                                    {% if user.is_superuser %}
+                                    <th class="ps-4 py-3" style="width: 40px;">
+                                        <input type="checkbox" id="selectAllCheckbox" class="form-check-input" onchange="toggleSelectAll()" title="Selecionar todos">
+                                    </th>
+                                    {% endif %}
+                                    <th class="py-3" style="min-width: 250px;">Colaborador</th>
+                                    <th class="py-3">Cargo</th>
+                                    <th class="py-3">Setor / CC</th>
+                                    <th class="py-3">Turno</th>
+                                    <th class="py-3">Treinamentos</th>
+                                </tr>
+                            </thead>
+                            <tbody class="border-top-0 bg-white">
+                                {% for f in funcionarios %}
+                                <tr class="rh-row border-bottom" 
+                                    data-nome="{{ f.nome_completo|default:''|lower }} {{ f.matricula|default:'' }}"
+                                    data-status="{% if not f.is_active %}INATIVO{% elif f.afastado %}AFASTADO{% elif f.em_ferias %}FERIAS{% else %}ATIVO{% endif %}"
+                                    data-setor="{{ f.setor.id|default:'' }}"
+                                    data-lider="{{ f.lider.id|default:'' }}"
+                                    data-supervisor="{{ f.supervisor.id|default:'' }}" 
+                                    data-gerente="{{ f.gerente.id|default:'' }}"
+                                    data-turno="{{ f.turno|default:'' }}"
+                                    data-treino="{% if f.trein_pendentes %}PENDENTE{% else %}EM_DIA{% endif %}">
+                                    
+                                    {% if user.is_superuser %}
+                                    <td class="ps-3 py-2">
+                                        <input type="checkbox" class="form-check-input row-checkbox" data-id="{{ f.id }}" onchange="updateSelectionBadge()">
+                                    </td>
+                                    {% endif %}
+                                    <td class="ps-4 py-2">
+                                        <div class="d-flex align-items-center">
+                                            <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-3 text-primary fw-bold border shadow-sm" style="width: 38px; height: 38px; font-size: 0.9rem;">
+                                                {{ f.nome_completo|slice:":1" }}
+                                            </div>
+                                            <div>
+                                                <a href="{% url 'detalhe_colaborador' f.id %}" class="fw-bold text-primary small text-uppercase text-decoration-none" style="cursor: pointer; display: block; transition: all 0.2s;">{{ f.nome_completo }}</a>
+                                                <div class="text-muted d-flex align-items-center flex-wrap" style="font-size: 0.7rem;">
+                                                    <i class="bi bi-person-vcard me-1"></i> {{ f.matricula }} <span class="badge bg-info bg-opacity-10 text-info border ms-1 py-0" style="font-size: 0.65rem;">#{{ f.id }}</span> 
+                                                    {% if not f.is_active %}
+                                                        <span class="badge bg-danger ms-2 py-0" style="font-size: 0.6rem;">DESLIGADO</span>
+                                                    {% elif f.afastado %}
+                                                        <span class="badge bg-info ms-2 py-0" style="font-size: 0.6rem;">AFASTADO</span>
+                                                    {% elif f.em_ferias %}
+                                                        <span class="badge bg-warning text-dark ms-2 py-0" style="font-size: 0.6rem;">FÉRIAS</span>
+                                                        {% with ferias_ativa=f.ferias_set.all|first %}
+                                                            {% if ferias_ativa %}
+                                                                <span class="text-warning fw-bold ms-2" title="Retorno em {{ ferias_ativa.data_fim|date:'d/m/Y' }}">
+                                                                    Retorno: <span class="badge bg-warning text-dark">{{ ferias_ativa.data_fim|date:'d/m' }}</span>
+                                                                </span>
+                                                            {% endif %}
+                                                        {% endwith %}
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    
+                                    <td class="py-2">
+                                        <span class="d-block text-dark small fw-semibold">{{ f.cargo }}</span>
+                                    </td>
+                                    
+                                    <td class="py-2">
+                                        <div class="small text-dark fw-bold">{{ f.setor.nome|default:"-" }}</div>
+                                        <div class="text-muted small" style="font-size: 0.7rem;" title="Centro de Custo">
+                                            CC: {{ f.centro_custo.codigo|default:"N/A" }}
+                                        </div>
+                                    </td>
+                                    
+                                    <td class="py-2">
+                                        <span class="badge bg-light text-dark border fw-normal">{{ f.get_turno_display }}</span>
+                                    </td>
+                                    
+                                    <td class="py-2">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="badge bg-success bg-opacity-10 text-success border small">Vigentes: {{ f.trein_vigentes }}</span>
+                                            <span class="badge bg-danger bg-opacity-10 text-danger border small">Pendentes: {{ f.trein_pendentes }}</span>
+                                            {% if f.trein_ultima_data %}
+                                            <span class="text-muted small" title="Última participação">Último: {{ f.trein_ultima_data|date:"d/m/Y" }}</span>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="{% if user.is_superuser %}6{% else %}5{% endif %}" class="text-center py-5 text-muted bg-light">
+                                        <i class="bi bi-people fs-1 d-block mb-2 opacity-25"></i>
+                                        <p class="mb-0">Nenhum colaborador encontrado com estes filtros.</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- CONTAINER DE CARDS MOBILE (< 768px) -->
+                    <div class="d-block d-md-none p-2" id="rhMobileCardsContainer">
                         {% for f in funcionarios %}
-                        <tr class="rh-row border-bottom" 
-                            data-nome="{{ f.nome_completo|default:''|lower }} {{ f.matricula|default:'' }}"
-                            data-status="{% if not f.is_active %}INATIVO{% elif f.afastado %}AFASTADO{% elif f.em_ferias %}FERIAS{% else %}ATIVO{% endif %}"
-                            data-setor="{{ f.setor.id|default:'' }}"
-                            data-lider="{{ f.lider.id|default:'' }}"
-                            data-supervisor="{{ f.supervisor.id|default:'' }}" 
-                            data-gerente="{{ f.gerente.id|default:'' }}"
-                            data-turno="{{ f.turno|default:'' }}"
-                            data-treino="{% if f.trein_pendentes %}PENDENTE{% else %}EM_DIA{% endif %}">
-                            
-                            {% if user.is_superuser %}
-                            <td class="ps-3 py-2">
-                                <input type="checkbox" class="form-check-input row-checkbox" data-id="{{ f.id }}" onchange="updateSelectionBadge()">
-                            </td>
-                            {% endif %}
-                            <td class="ps-4 py-2">
-                                <div class="d-flex align-items-center">
-                                    <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-3 text-primary fw-bold border shadow-sm" style="width: 38px; height: 38px; font-size: 0.9rem;">
+                        <div class="colaborador-mobile-card">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="bg-light rounded-circle d-flex align-items-center justify-content-center text-primary fw-bold border shadow-sm" style="width: 38px; height: 38px; font-size: 0.9rem; flex-shrink: 0;">
                                         {{ f.nome_completo|slice:":1" }}
                                     </div>
                                     <div>
-                                        <a href="{% url 'detalhe_colaborador' f.id %}" class="fw-bold text-primary small text-uppercase text-decoration-none" style="cursor: pointer; display: block; transition: all 0.2s;">{{ f.nome_completo }}</a>
-                                        <div class="text-muted d-flex align-items-center flex-wrap" style="font-size: 0.7rem;">
-                                            <i class="bi bi-person-vcard me-1"></i> {{ f.matricula }} <span class="badge bg-info bg-opacity-10 text-info border ms-1 py-0" style="font-size: 0.65rem;">#{{ f.id }}</span> 
+                                        <a href="{% url 'detalhe_colaborador' f.id %}" class="fw-bold text-primary small text-uppercase text-decoration-none d-block">
+                                            {{ f.nome_completo }}
+                                        </a>
+                                        <div class="text-muted small d-flex align-items-center flex-wrap" style="font-size: 0.7rem;">
+                                            <i class="bi bi-person-vcard me-1"></i>{{ f.matricula }} <span class="badge bg-info bg-opacity-10 text-info border ms-1 py-0" style="font-size: 0.65rem;">#{{ f.id }}</span>
                                             {% if not f.is_active %}
-                                                <span class="badge bg-danger ms-2 py-0" style="font-size: 0.6rem;">DESLIGADO</span>
+                                                <span class="badge bg-danger ms-1 py-0" style="font-size: 0.6rem;">DESLIGADO</span>
                                             {% elif f.afastado %}
-                                                <span class="badge bg-info ms-2 py-0" style="font-size: 0.6rem;">AFASTADO</span>
+                                                <span class="badge bg-info ms-1 py-0" style="font-size: 0.6rem;">AFASTADO</span>
                                             {% elif f.em_ferias %}
-                                                <span class="badge bg-warning text-dark ms-2 py-0" style="font-size: 0.6rem;">FÉRIAS</span>
-                                                {% with ferias_ativa=f.ferias_set.all|first %}
-                                                    {% if ferias_ativa %}
-                                                        <span class="text-warning fw-bold ms-2" title="Retorno em {{ ferias_ativa.data_fim|date:'d/m/Y' }}">
-                                                            Retorno: <span class="badge bg-warning text-dark">{{ ferias_ativa.data_fim|date:'d/m' }}</span>
-                                                        </span>
-                                                    {% endif %}
-                                                {% endwith %}
+                                                <span class="badge bg-warning text-dark ms-1 py-0" style="font-size: 0.6rem;">FÉRIAS</span>
                                             {% endif %}
                                         </div>
                                     </div>
                                 </div>
-                            </td>
-                            
-                            <td class="py-2">
-                                <span class="d-block text-dark small fw-semibold">{{ f.cargo }}</span>
-                            </td>
-                            
-                            <td class="py-2">
-                                <div class="small text-dark fw-bold">{{ f.setor.nome|default:"-" }}</div>
-                                <div class="text-muted small" style="font-size: 0.7rem;" title="Centro de Custo">
-                                    CC: {{ f.centro_custo.codigo|default:"N/A" }}
+                                {% if user.is_superuser %}
+                                <input type="checkbox" class="form-check-input row-checkbox" data-id="{{ f.id }}" onchange="updateSelectionBadge()">
+                                {% endif %}
+                            </div>
+
+                            <div class="mb-2 ps-1">
+                                <p class="mb-1 text-dark fw-semibold small">{{ f.cargo|default:"Sem cargo" }}</p>
+                                <p class="mb-0 text-muted small" style="font-size: 0.75rem;">
+                                    <i class="bi bi-diagram-3 me-1"></i>{{ f.setor.nome|default:"-" }} <span class="ms-1">| CC: {{ f.centro_custo.codigo|default:"N/A" }}</span>
+                                </p>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                                <span class="badge bg-light text-dark border fw-normal" style="font-size: 0.7rem;">{{ f.get_turno_display|default:"Geral" }}</span>
+                                <div class="d-flex gap-1">
+                                    <span class="badge bg-success bg-opacity-10 text-success border" style="font-size: 0.7rem;">Vigentes: {{ f.trein_vigentes }}</span>
+                                    <span class="badge bg-danger bg-opacity-10 text-danger border" style="font-size: 0.7rem;">Pendentes: {{ f.trein_pendentes }}</span>
                                 </div>
-                            </td>
-                            
-                            <td class="py-2">
-                                <span class="badge bg-light text-dark border fw-normal">{{ f.get_turno_display }}</span>
-                            </td>
-                            
-                            <td class="py-2">
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="badge bg-success bg-opacity-10 text-success border small">Vigentes: {{ f.trein_vigentes }}</span>
-                                    <span class="badge bg-danger bg-opacity-10 text-danger border small">Pendentes: {{ f.trein_pendentes }}</span>
-                                    {% if f.trein_ultima_data %}
-                                    <span class="text-muted small" title="Última participação">Último: {{ f.trein_ultima_data|date:"d/m/Y" }}</span>
-                                    {% endif %}
-                                </div>
-                            </td>
-                        </tr>
+                            </div>
+                        </div>
                         {% empty %}
-                        <tr>
-                            <td colspan="{% if user.is_superuser %}6{% else %}5{% endif %}" class="text-center py-5 text-muted bg-light">
-                                <i class="bi bi-people fs-1 d-block mb-2 opacity-25"></i>
-                                <p class="mb-0">Nenhum colaborador encontrado com estes filtros.</p>
-                            </td>
-                        </tr>
+                        <div class="text-center py-4 text-muted bg-white rounded border">
+                            <i class="bi bi-people fs-2 d-block mb-1 opacity-25"></i>
+                            <p class="mb-0 small">Nenhum colaborador encontrado.</p>
+                        </div>
                         {% endfor %}
-                    </tbody>
-                        </table>
                     </div>
                 </div>
 
@@ -683,66 +815,120 @@ async function loadAndApplyFilters() {
     }
 }
 
-// Renderizar tabela com dados
+// Renderizar tabela e cards mobile com dados
 function renderTable(colaboradores) {
     const tbody = document.querySelector('#rhTable tbody');
-    const tableHeader = document.querySelector('#rhTable thead');
+    const mobileContainer = document.getElementById('rhMobileCardsContainer');
     
     if (colaboradores.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="${TABLE_COLSPAN}" class="text-center py-5 text-muted bg-light">
-                    <i class="bi bi-people fs-1 d-block mb-2 opacity-25"></i>
-                    <p class="mb-0">Nenhum colaborador encontrado com estes filtros.</p>
-                </td>
-            </tr>
-        `;
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="${TABLE_COLSPAN}" class="text-center py-5 text-muted bg-light">
+                        <i class="bi bi-people fs-1 d-block mb-2 opacity-25"></i>
+                        <p class="mb-0">Nenhum colaborador encontrado com estes filtros.</p>
+                    </td>
+                </tr>
+            `;
+        }
+        if (mobileContainer) {
+            mobileContainer.innerHTML = `
+                <div class="text-center py-4 text-muted bg-white rounded border">
+                    <i class="bi bi-people fs-2 d-block mb-1 opacity-25"></i>
+                    <p class="mb-0 small">Nenhum colaborador encontrado.</p>
+                </div>
+            `;
+        }
         return;
     }
     
-    tbody.innerHTML = colaboradores.map(c => `
-        <tr class="rh-row border-bottom">
-            ${IS_SUPERUSER ? `
-            <td class="ps-3 py-2">
-                <input type="checkbox" class="form-check-input row-checkbox" data-id="${c.id}" onchange="updateSelectionBadge()">
-            </td>
-            ` : ''}
-            <td class="py-2">
-                <div class="d-flex align-items-center">
-                    <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-3 text-primary fw-bold border shadow-sm" style="width: 38px; height: 38px; font-size: 0.9rem;">
-                        ${(c.nome[0] || 'C').toUpperCase()}
-                    </div>
-                    <div>
-                        <a href="/rh/colaborador/${c.id}/" class="fw-bold text-primary small text-uppercase text-decoration-none" style="cursor: pointer; display: block; transition: all 0.2s;">${c.nome}</a>
-                        <div class="text-muted d-flex align-items-center flex-wrap" style="font-size: 0.7rem;">
-                            <i class="bi bi-person-vcard me-1"></i> ${c.matricula} 
-                            <span class="badge bg-info bg-opacity-10 text-info border ms-1 py-0" style="font-size: 0.65rem;">#${c.id}</span>
-                            ${c.status === 'Em Férias' ? `<span class="badge bg-warning text-dark ms-2 py-0" style="font-size: 0.6rem;">Em Férias</span>` : 
-                              c.status !== 'ATIVO' ? `<span class="badge bg-danger ms-2 py-0" style="font-size: 0.6rem;">${c.status}</span>` : ''}
+    if (tbody) {
+        tbody.innerHTML = colaboradores.map(c => `
+            <tr class="rh-row border-bottom">
+                ${IS_SUPERUSER ? `
+                <td class="ps-3 py-2">
+                    <input type="checkbox" class="form-check-input row-checkbox" data-id="${c.id}" onchange="updateSelectionBadge()">
+                </td>
+                ` : ''}
+                <td class="py-2">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-3 text-primary fw-bold border shadow-sm" style="width: 38px; height: 38px; font-size: 0.9rem;">
+                            ${(c.nome[0] || 'C').toUpperCase()}
+                        </div>
+                        <div>
+                            <a href="/rh/colaborador/${c.id}/" class="fw-bold text-primary small text-uppercase text-decoration-none" style="cursor: pointer; display: block; transition: all 0.2s;">${c.nome}</a>
+                            <div class="text-muted d-flex align-items-center flex-wrap" style="font-size: 0.7rem;">
+                                <i class="bi bi-person-vcard me-1"></i> ${c.matricula} 
+                                <span class="badge bg-info bg-opacity-10 text-info border ms-1 py-0" style="font-size: 0.65rem;">#${c.id}</span>
+                                ${c.status === 'Em Férias' ? `<span class="badge bg-warning text-dark ms-2 py-0" style="font-size: 0.6rem;">Em Férias</span>` : 
+                                  c.status !== 'ATIVO' ? `<span class="badge bg-danger ms-2 py-0" style="font-size: 0.6rem;">${c.status}</span>` : ''}
+                            </div>
                         </div>
                     </div>
+                </td>
+                <td class="py-2">
+                    <span class="d-block text-dark small fw-semibold">${c.cargo || '-'}</span>
+                </td>
+                <td class="py-2">
+                    <div class="small text-dark fw-bold">${c.setor || '-'}</div>
+                    <div class="text-muted small" style="font-size: 0.7rem;" title="Centro de Custo">
+                        CC: ${c.centro_custo || 'N/A'}
+                    </div>
+                </td>
+                <td class="py-2">
+                    <span class="badge bg-light text-dark border fw-normal">${c.turno || '-'}</span>
+                </td>
+                <td class="py-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-success bg-opacity-10 text-success border small">Vigentes: ${c.vigentes}</span>
+                        <span class="badge bg-danger bg-opacity-10 text-danger border small">Pendentes: ${c.pendentes}</span>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    if (mobileContainer) {
+        mobileContainer.innerHTML = colaboradores.map(c => `
+            <div class="colaborador-mobile-card">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="bg-light rounded-circle d-flex align-items-center justify-content-center text-primary fw-bold border shadow-sm" style="width: 38px; height: 38px; font-size: 0.9rem; flex-shrink: 0;">
+                            ${(c.nome[0] || 'C').toUpperCase()}
+                        </div>
+                        <div>
+                            <a href="/rh/colaborador/${c.id}/" class="fw-bold text-primary small text-uppercase text-decoration-none d-block">
+                                ${c.nome}
+                            </a>
+                            <div class="text-muted small d-flex align-items-center flex-wrap" style="font-size: 0.7rem;">
+                                <i class="bi bi-person-vcard me-1"></i>${c.matricula} <span class="badge bg-info bg-opacity-10 text-info border ms-1 py-0" style="font-size: 0.65rem;">#${c.id}</span>
+                                ${c.status === 'Em Férias' ? `<span class="badge bg-warning text-dark ms-1 py-0" style="font-size: 0.6rem;">FÉRIAS</span>` : 
+                                  c.status !== 'ATIVO' ? `<span class="badge bg-danger ms-1 py-0" style="font-size: 0.6rem;">${c.status}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    ${IS_SUPERUSER ? `
+                    <input type="checkbox" class="form-check-input row-checkbox" data-id="${c.id}" onchange="updateSelectionBadge()">
+                    ` : ''}
                 </div>
-            </td>
-            <td class="py-2">
-                <span class="d-block text-dark small fw-semibold">${c.cargo || '-'}</span>
-            </td>
-            <td class="py-2">
-                <div class="small text-dark fw-bold">${c.setor || '-'}</div>
-                <div class="text-muted small" style="font-size: 0.7rem;" title="Centro de Custo">
-                    CC: ${c.centro_custo || 'N/A'}
+
+                <div class="mb-2 ps-1">
+                    <p class="mb-1 text-dark fw-semibold small">${c.cargo || 'Sem cargo'}</p>
+                    <p class="mb-0 text-muted small" style="font-size: 0.75rem;">
+                        <i class="bi bi-diagram-3 me-1"></i>${c.setor || '-'} <span class="ms-1">| CC: ${c.centro_custo || 'N/A'}</span>
+                    </p>
                 </div>
-            </td>
-            <td class="py-2">
-                <span class="badge bg-light text-dark border fw-normal">${c.turno || '-'}</span>
-            </td>
-            <td class="py-2">
-                <div class="d-flex align-items-center gap-2">
-                    <span class="badge bg-success bg-opacity-10 text-success border small">Vigentes: ${c.vigentes}</span>
-                    <span class="badge bg-danger bg-opacity-10 text-danger border small">Pendentes: ${c.pendentes}</span>
+
+                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                    <span class="badge bg-light text-dark border fw-normal" style="font-size: 0.7rem;">${c.turno || 'Geral'}</span>
+                    <div class="d-flex gap-1">
+                        <span class="badge bg-success bg-opacity-10 text-success border" style="font-size: 0.7rem;">Vigentes: ${c.vigentes}</span>
+                        <span class="badge bg-danger bg-opacity-10 text-danger border" style="font-size: 0.7rem;">Pendentes: ${c.pendentes}</span>
+                    </div>
                 </div>
-            </td>
-        </tr>
-    `).join('');
+            </div>
+        `).join('');
+    }
 }
 
 // Atualizar contador
