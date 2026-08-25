@@ -375,6 +375,13 @@ class ResultadoFaixaCalibracao(models.Model):
 
     def save(self, *args, **kwargs):
         """Auto-calculate EMA, EME and resultado."""
+        # Herdar tolerância da faixa se não definida
+        if self.tolerancia is None and self.faixa_id:
+            try:
+                self.tolerancia = self.faixa.tolerancia_mais_menos
+            except Exception:
+                pass
+
         # Calcular EMA = Tolerância * 2 / 4
         if self.tolerancia is not None:
             self.ema = self.tolerancia * 2 / 4
