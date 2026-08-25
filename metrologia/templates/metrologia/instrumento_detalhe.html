@@ -312,7 +312,19 @@
                                 {% for item in historicos %}
                                 <tr>
                                     <td class="fw-bold">{{ item.data_calibracao|date:"d/m/Y" }}</td>
-                                    <td><small>{{ item.numero_certificado }}</small></td>
+                                    <td>
+                                        {% if item.link_certificado %}
+                                            <a href="{{ item.link_certificado }}" target="_blank" rel="noopener noreferrer" class="fw-semibold text-primary text-decoration-none" title="Abrir certificado externo">
+                                                {{ item.numero_certificado }} <i class="bi bi-box-arrow-up-right small ms-0.5"></i>
+                                            </a>
+                                        {% elif item.certificado %}
+                                            <a href="/metrologia/historico/{{ item.id }}/download/" download class="fw-semibold text-primary text-decoration-none" title="Baixar PDF do certificado">
+                                                {{ item.numero_certificado }} <i class="bi bi-file-earmark-pdf small ms-0.5"></i>
+                                            </a>
+                                        {% else %}
+                                            <small class="text-dark">{{ item.numero_certificado }}</small>
+                                        {% endif %}
+                                    </td>
                                     <td>
                                         {% if item.resultado == 'APROVADO_SEM_CORRECAO' %}
                                             <span class="badge bg-success">✓ APROVADO</span>
@@ -1487,12 +1499,11 @@ function toggleEditOcorrencia(id) {
                                     <label class="form-label small text-muted mb-1 fw-bold"><i class="bi bi-link-45deg text-primary"></i> Link Externo do Certificado / Nuvem (Drive, Dropbox, etc.)</label>
                                     <div class="input-group input-group-sm">
                                         <span class="input-group-text bg-white"><i class="bi bi-globe2 text-muted"></i></span>
-                                        <input type="url" name="link_certificado" class="form-control form-control-sm rounded-end-3" value="{{ item.link_certificado|default:'' }}" placeholder="https://drive.google.com/... ou https://...">
-                                        {% if item.link_certificado %}
-                                            <a href="{{ item.link_certificado }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary btn-sm" title="Abrir link atual">
-                                                <i class="bi bi-box-arrow-up-right"></i>
-                                            </a>
-                                        {% endif %}
+                                        <input type="url" name="link_certificado" id="input_link_cert_{{ item.id }}" class="form-control form-control-sm" value="{{ item.link_certificado|default:'' }}" placeholder="https://drive.google.com/... ou https://...">
+                                        <button type="button" class="btn btn-outline-primary btn-sm rounded-end-3 px-2.5 fw-semibold d-flex align-items-center gap-1" onclick="const url = document.getElementById('input_link_cert_{{ item.id }}').value.trim(); if(url){ window.open(url.startsWith('http') ? url : 'https://' + url, '_blank'); } else { alert('Por favor, digite um link primeiro.'); }" title="Abrir link do certificado em nova aba">
+                                            <i class="bi bi-box-arrow-up-right"></i>
+                                            <span>Acessar</span>
+                                        </button>
                                     </div>
                                 </div>
                                 <div class="col-12 mt-2">
