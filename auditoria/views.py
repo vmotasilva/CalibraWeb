@@ -7950,7 +7950,6 @@ def iso_auditoria_capa(request, auditoria_id):
     ).prefetch_related(
         'resposta__pergunta__itens_norma',
         'resposta__pergunta__agendas_vinculadas',
-        'itens_norma',
         'evidencias_capa',
         'imagens'
     ).order_by('id')
@@ -7963,9 +7962,7 @@ def iso_auditoria_capa(request, auditoria_id):
         agendas_vinculadas = list(s.resposta.pergunta.agendas_vinculadas.filter(auditoria=auditoria, arquivada=False)) if (s.resposta and s.resposta.pergunta) else []
         primeira_agenda = s.agenda if s.agenda else (agendas_vinculadas[0] if agendas_vinculadas else None)
 
-        itens_norma_list = list(s.itens_norma.all())
-        if not itens_norma_list and s.resposta and s.resposta.pergunta:
-            itens_norma_list = list(s.resposta.pergunta.itens_norma.all())
+        itens_norma_list = list(s.resposta.pergunta.itens_norma.all()) if (s.resposta and s.resposta.pergunta) else []
         itens_sorted = sorted(itens_norma_list, key=lambda it: natural_sort_key(it.referencia))
 
         evidencias_capa_list = []
