@@ -17,6 +17,16 @@
 .export-option-card:active {
     transform: translateY(0);
 }
+/* Garantir que menus suspensos fiquem a frente de qualquer elemento da tabela */
+.table-responsive {
+    overflow: visible !important;
+}
+.dropdown-menu {
+    z-index: 1060 !important;
+}
+.table td {
+    position: relative;
+}
 </style>
 {% endblock %}
 
@@ -41,9 +51,9 @@
 
     <!-- ── LISTAGEM EM TABELA (DESKTOP) ── -->
     <div class="d-none d-md-block">
-        <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
-            <div class="card-body p-0">
-                <div class="table-responsive">
+        <div class="card shadow-sm border-0 rounded-4" style="overflow: visible !important;">
+            <div class="card-body p-0" style="overflow: visible !important;">
+                <div class="table-responsive" style="overflow: visible !important;">
                     <table class="table table-hover mb-0 align-middle">
                         <thead class="table-light">
                             <tr>
