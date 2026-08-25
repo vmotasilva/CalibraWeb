@@ -7936,6 +7936,90 @@ def iso_gestao_amostras_view(request, auditoria_id):
 # ==============================================================================
 
 @login_required
+def iso_auditoria_capa(request, auditoria_id):
+    """
+    Sessão dedicada e isolada para Gestão de Planos de Ação (CAPA) e Magic Links da Auditoria.
+    """
+    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+
+    sols_todas = SolicitacaoEvidenciaIso.objects.filter(
+        resposta__auditoria=auditoria
+    ).select_related(
+        'resposta__pergunta',
+        'resposta__agenda'
+    ).prefetch_related(
+        'itens_norma',
+        'evidencias_capa',
+        'imagens'
+    ).order_by('id')
+
+    solicitacoes_com_desvios = []
+    for s in sols_todas:
+        if s.conclusao not in ['NC', 'OM', 'OBS']:
+            continue
+
+        itens_sorted = sorted(s.itens_norma.all(), key=lambda it: natural_sort_key(it.referencia))
+        primeira_agenda = s.resposta.agenda if (s.resposta and s.resposta.agenda) else None
+
+        evidencias_capa_list = []
+        for ev in s.evidencias_capa.all():
+            evidencias_capa_list.append({
+                'id': ev.id,
+                'url': ev.url_arquivo,
+                'nome': ev.nome_arquivo,
+                'tipo': ev.tipo_arquivo,
+                'criado_em': ev.criado_em.strftime('%d/%m/%Y %H:%M') if ev.criado_em else ''
+            })
+
+        item_dict = {
+            'id': s.id,
+            'solicitacao': s.solicitacao,
+            'evidencia': s.evidencia,
+            'conclusao': s.conclusao,
+            'grau_nc': s.grau_nc,
+            'criado_em': s.criado_em,
+            'pergunta_id': s.resposta.pergunta_id if s.resposta else None,
+            'pergunta_texto': s.resposta.pergunta.texto_pergunta if (s.resposta and s.resposta.pergunta) else '',
+            'itens_norma': itens_sorted,
+            'itens_str': ", ".join(it.referencia for it in itens_sorted),
+            'agenda': primeira_agenda,
+            # Campos CAPA
+            'capa_status': s.capa_status or 'PENDENTE',
+            'capa_status_display': s.get_capa_status_display(),
+            'capa_causa_raiz': s.capa_causa_raiz or '',
+            'capa_acao_corretiva': s.capa_acao_corretiva or '',
+            'capa_responsavel': s.capa_responsavel or '',
+            'capa_prazo': s.capa_prazo.strftime('%Y-%m-%d') if s.capa_prazo else '',
+            'capa_prazo_display': s.capa_prazo.strftime('%d/%m/%Y') if s.capa_prazo else '',
+            'capa_respondido_em': s.capa_respondido_em.strftime('%d/%m/%Y %H:%M') if s.capa_respondido_em else '',
+            'capa_respondido_por_nome': s.capa_respondido_por_nome or '',
+            'capa_parecer_auditor': s.capa_parecer_auditor or '',
+            'evidencias_capa': evidencias_capa_list,
+        }
+        solicitacoes_com_desvios.append(item_dict)
+
+    # Métricas de CAPA
+    total_capa_pendentes = sum(1 for s in solicitacoes_com_desvios if s['capa_status'] == 'PENDENTE')
+    total_capa_aguardando = sum(1 for s in solicitacoes_com_desvios if s['capa_status'] == 'AGUARDANDO_REVISAO')
+    total_capa_aprovados = sum(1 for s in solicitacoes_com_desvios if s['capa_status'] == 'APROVADO')
+    total_capa_rejeitados = sum(1 for s in solicitacoes_com_desvios if s['capa_status'] == 'REJEITADO')
+
+    agendas_auditoria_list = list(auditoria.agendas.filter(arquivada=False).order_by('titulo'))
+
+    context = {
+        'auditoria': auditoria,
+        'agendas_auditoria': agendas_auditoria_list,
+        'solicitacoes_com_desvios': solicitacoes_com_desvios,
+        'total_solicitacoes_desvios': len(solicitacoes_com_desvios),
+        'total_capa_pendentes': total_capa_pendentes,
+        'total_capa_aguardando': total_capa_aguardando,
+        'total_capa_aprovados': total_capa_aprovados,
+        'total_capa_rejeitados': total_capa_rejeitados,
+    }
+    return render(request, 'auditoria/iso/capa/painel_gestao.html', context)
+
+
+@login_required
 @require_POST
 def api_iso_capa_gerar_link(request, auditoria_id):
     """Gera um novo Magic Link público de Plano de Ação para a auditoria ou setor específico."""

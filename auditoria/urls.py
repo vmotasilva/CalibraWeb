@@ -150,6 +150,7 @@ urlpatterns = [
     # ==========================================
     # CAPA - PLANO DE AÇÃO & MAGIC LINK PÚBLICO
     # ==========================================
+    path("iso/<int:auditoria_id>/capa/", views.iso_auditoria_capa, name="iso_auditoria_capa"),
     path("iso/<int:auditoria_id>/api/capa/gerar-link/", views.api_iso_capa_gerar_link, name="api_iso_capa_gerar_link"),
     path("iso/<int:auditoria_id>/api/capa/listar-links/", views.api_iso_capa_listar_links, name="api_iso_capa_listar_links"),
     path("iso/api/capa/revogar-link/<int:pk>/", views.api_iso_capa_revogar_link, name="api_iso_capa_revogar_link"),

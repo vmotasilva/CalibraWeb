@@ -156,6 +156,9 @@
             <a href="{% url 'auditoria:iso_auditoria_cronograma' auditoria.id %}" class="btn btn-outline-primary rounded-pill px-3 fw-bold shadow-2xs">
                 <i class="bi bi-calendar-event me-1"></i> Ver Cronograma
             </a>
+            <a href="{% url 'auditoria:iso_auditoria_capa' auditoria.id %}" class="btn btn-outline-danger rounded-pill px-3 fw-bold shadow-2xs">
+                <i class="bi bi-clipboard2-check-fill me-1"></i> Plano CAPA
+            </a>
             <a href="{% url 'auditoria:iso_auditoria_export_docx' auditoria.id %}" class="btn btn-outline-primary rounded-pill px-3 fw-bold shadow-2xs" title="Baixar Relatório em Word">
                 <i class="bi bi-file-earmark-word me-1"></i> Relatório Word
             </a>

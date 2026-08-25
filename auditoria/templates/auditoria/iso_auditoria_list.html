@@ -163,7 +163,7 @@
                                                 <li><h6 class="dropdown-header text-uppercase text-muted fw-bold pb-1" style="font-size: 0.68rem; letter-spacing: 0.5px;">Planos de Ação (CAPA)</h6></li>
                                                 <li>
                                                     {% if aud.total_desvios_capa > 0 %}
-                                                        <a class="dropdown-item rounded-2 py-1.5 d-flex align-items-center justify-content-between" href="{% url 'auditoria:iso_auditoria_cronograma' aud.id %}#capa">
+                                                        <a class="dropdown-item rounded-2 py-1.5 d-flex align-items-center justify-content-between" href="{% url 'auditoria:iso_auditoria_capa' aud.id %}">
                                                             <span><i class="bi bi-clipboard2-check text-danger me-2"></i>Plano CAPA</span>
                                                             <span class="badge bg-danger rounded-pill">{{ aud.capa_aguardando|add:aud.capa_pendentes }} pendente{{ aud.capa_aguardando|add:aud.capa_pendentes|pluralize:"s" }}</span>
                                                         </a>
@@ -263,7 +263,7 @@
                     <div class="p-2.5 bg-light rounded-3 border d-flex flex-column gap-2 mt-2">
                         {% if aud.total_desvios_capa > 0 %}
                             <div class="d-flex justify-content-between align-items-center">
-                                <a href="{% url 'auditoria:iso_auditoria_cronograma' aud.id %}#capa" class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill text-decoration-none px-2 py-1">
+                                <a href="{% url 'auditoria:iso_auditoria_capa' aud.id %}" class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill text-decoration-none px-2 py-1">
                                     <i class="bi bi-clipboard2-check me-1"></i>CAPA: {{ aud.capa_aguardando|add:aud.capa_pendentes }} pendente(s)
                                 </a>
                                 {% if aud.tem_link_capa and aud.link_capa_url %}
