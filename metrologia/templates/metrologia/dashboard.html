@@ -84,21 +84,27 @@
     <!-- CABEÇALHO RESPONSIVO (TOP BAR) -->
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-3 border-bottom pb-2 flex-shrink-0 w-100">
         
-        <!-- Linha do Título e Filtros -->
-        <div class="d-flex justify-content-between align-items-center w-100 w-md-auto">
+        <!-- Linha do Título, Filtros e Busca Principal -->
+        <div class="d-flex flex-wrap align-items-center gap-2 w-100 w-md-auto">
             <div class="d-flex align-items-center gap-2">
                 <button type="button" class="btn btn-outline-primary btn-sm shadow-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#filtrosModal">
                     <i class="bi bi-funnel"></i> <span class="d-none d-sm-inline">Filtros</span>
                 </button>
                 <div>
                     <h4 class="fw-bold text-primary mb-0 fs-5 fs-md-4">Metrologia</h4>
-                    <span class="text-muted small d-none d-sm-inline">Controle de Instrumentos e Calibrações</span>
+                    <span class="text-muted small d-none d-lg-inline">Controle de Instrumentos e Calibrações</span>
                 </div>
+            </div>
+
+            <!-- Campo de Busca na Tela Principal -->
+            <div class="input-group input-group-sm ms-md-2" style="max-width: 280px; min-width: 180px;">
+                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                <input type="search" id="searchInput" class="form-control border-start-0" placeholder="Tag, Descrição, Fabricante..." autocomplete="one-time-code">
             </div>
 
             <!-- Botão Novo destacado no mobile -->
             {% if can_novo_instrumento %}
-            <a href="{% url 'novo_instrumento' %}" class="btn btn-primary btn-sm shadow-sm d-md-none d-flex align-items-center gap-1">
+            <a href="{% url 'novo_instrumento' %}" class="btn btn-primary btn-sm shadow-sm d-md-none d-flex align-items-center gap-1 ms-auto">
                 <i class="bi bi-plus-lg"></i> Novo
             </a>
             {% endif %}
@@ -224,20 +230,12 @@
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body p-4">
-            <!-- Busca e ações dos filtros (sem títulos adicionais) -->
-            <div class="mb-2 flex-shrink-0">
-                <!-- Dummy inputs to intercept Chrome autofill -->
-                <input type="text" name="chrome_autofill_dummy_user" style="display:none;" aria-hidden="true" autocomplete="off" />
-                <input type="password" name="chrome_autofill_dummy_pass" style="display:none;" aria-hidden="true" autocomplete="off" />
-                <div class="input-group input-group-sm">
-                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                    <input type="search" id="searchInput" class="form-control border-start-0" placeholder="Tag, Descrição..." autocomplete="one-time-code">
-                </div>
-                <div class="d-flex justify-content-end mt-2">
-                    <button class="btn btn-sm btn-outline-secondary" type="button" onclick="limparFiltros()">Limpar filtros</button>
-                </div>
+            <!-- Ações rápidas dos filtros dentro do modal -->
+            <div class="d-flex justify-content-end align-items-center mb-3 flex-shrink-0">
+                <button class="btn btn-sm btn-outline-secondary" type="button" onclick="limparFiltros()">
+                    <i class="bi bi-x-circle me-1"></i>Limpar todos os filtros
+                </button>
             </div>
-                        <!-- keep sidebar-col open so sidebar-scroll stays inside -->
             <div class="sidebar-scroll">
                 <div class="row">
 
@@ -712,8 +710,24 @@ document.addEventListener('DOMContentLoaded', function() {
     filtrar();
     const searchInput = document.getElementById('searchInput');
     const checkboxes = document.querySelectorAll('.filter-checkbox');
-    searchInput.addEventListener('keyup', function(){ filtrar(); updateExportLink(); updateEtiquetasLink(); renderEtiquetasSummary(); });
-    checkboxes.forEach(cb => cb.addEventListener('change', function(){ filtrar(); updateExportLink(); updateEtiquetasLink(); renderEtiquetasSummary(); }));
+    if (searchInput) {
+        ['input', 'keyup', 'search', 'change'].forEach(evt => {
+            searchInput.addEventListener(evt, function(){ 
+                currentPage = 1;
+                filtrar(); 
+                updateExportLink(); 
+                updateEtiquetasLink(); 
+                renderEtiquetasSummary(); 
+            });
+        });
+    }
+    checkboxes.forEach(cb => cb.addEventListener('change', function(){ 
+        currentPage = 1;
+        filtrar(); 
+        updateExportLink(); 
+        updateEtiquetasLink(); 
+        renderEtiquetasSummary(); 
+    }));
 
     // Append filter state to detail links
     document.querySelectorAll('.detail-link').forEach(a => {
@@ -876,11 +890,14 @@ function filtrar() {
         if (mostrar && filtrosAtivos.acao.length > 0 && !filtrosAtivos.acao.includes(row.dataset.acao)) mostrar = false;
         if (mostrar && filtrosAtivos.periodo.length > 0 && !filtrosAtivos.periodo.includes(row.dataset.periodo)) mostrar = false;
         if (mostrar && filtrosAtivos.ocorrencia.length > 0) {
-            var temAberta = row.dataset.ocorrencia.includes("COM_ABERTA");
+            var ocorrenciaData = row.dataset.ocorrencia || '';
+            var temAberta = ocorrenciaData.includes("COM_ABERTA");
             var querCom = filtrosAtivos.ocorrencia.includes("COM_ABERTA");
             var querSem = filtrosAtivos.ocorrencia.includes("SEM_ABERTA");
             if (querCom && !querSem && !temAberta) mostrar = false;
             if (querSem && !querCom && temAberta) mostrar = false;
+        }
+
         if (mostrar) {
             filteredRows.push(row);
         } else {
