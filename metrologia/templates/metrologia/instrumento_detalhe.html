@@ -328,6 +328,9 @@
                                         <button type="button" class="btn btn-sm btn-info text-white fw-semibold" data-bs-toggle="modal" data-bs-target="#modalVisualizarHistorico{{ item.id }}" title="Visualizar histórico">
                                             <i class="bi bi-eye"></i> Visualizar
                                         </button>
+                                        {% if item.link_certificado %}
+                                            <a href="{{ item.link_certificado }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-success" title="Acessar link do certificado"><i class="bi bi-box-arrow-up-right"></i></a>
+                                        {% endif %}
                                         {% if item.certificado %}
                                             {% if can_download_certificado %}
                                                 <a href="/metrologia/historico/{{ item.id }}/download/" download class="btn btn-sm btn-outline-primary" title="Baixar PDF"><i class="bi bi-download"></i></a>
@@ -1418,16 +1421,22 @@ function toggleEditOcorrencia(id) {
                             {% endif %}
                         </div>
                         <div>
-                            <span class="text-muted small d-block text-end">Certificado Digital:</span>
-                            {% if item.certificado %}
-                                <div class="d-flex align-items-center gap-1">
+                            <span class="text-muted small d-block text-end">Certificado / Documento:</span>
+                            <div class="d-flex align-items-center gap-1 justify-content-end flex-wrap">
+                                {% if item.certificado %}
                                     <a href="/metrologia/historico/{{ item.id }}/download/" download class="btn btn-sm btn-outline-primary fw-semibold">
                                         <i class="bi bi-file-pdf me-1"></i> Baixar PDF
                                     </a>
-                                </div>
-                            {% else %}
-                                <span class="badge bg-light text-muted border">Nenhum PDF anexado</span>
-                            {% endif %}
+                                {% endif %}
+                                {% if item.link_certificado %}
+                                    <a href="{{ item.link_certificado }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-success fw-semibold" title="Abrir link do certificado">
+                                        <i class="bi bi-box-arrow-up-right me-1"></i> Acessar Link
+                                    </a>
+                                {% endif %}
+                                {% if not item.certificado and not item.link_certificado %}
+                                    <span class="badge bg-light text-muted border">Nenhum anexo ou link</span>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
 
@@ -1473,6 +1482,18 @@ function toggleEditOcorrencia(id) {
                                 <div class="col-12 col-md-6">
                                     <label class="form-label small text-muted mb-1 fw-bold">Anexar/Trocar PDF do Certificado</label>
                                     <input type="file" name="certificado" accept="application/pdf" class="form-control form-control-sm rounded-3">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small text-muted mb-1 fw-bold"><i class="bi bi-link-45deg text-primary"></i> Link Externo do Certificado / Nuvem (Drive, Dropbox, etc.)</label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-white"><i class="bi bi-globe2 text-muted"></i></span>
+                                        <input type="url" name="link_certificado" class="form-control form-control-sm rounded-end-3" value="{{ item.link_certificado|default:'' }}" placeholder="https://drive.google.com/... ou https://...">
+                                        {% if item.link_certificado %}
+                                            <a href="{{ item.link_certificado }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary btn-sm" title="Abrir link atual">
+                                                <i class="bi bi-box-arrow-up-right"></i>
+                                            </a>
+                                        {% endif %}
+                                    </div>
                                 </div>
                                 <div class="col-12 mt-2">
                                     <label class="form-label small text-muted mb-1 fw-bold">Observações</label>

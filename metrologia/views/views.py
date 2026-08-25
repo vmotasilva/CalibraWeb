@@ -1356,6 +1356,9 @@ def salvar_edicao_historico_modal_view(request, historico_id):
             if 'observacoes' in request.POST:
                 hist.observacoes = request.POST.get('observacoes', '').strip()
             
+            if 'link_certificado' in request.POST:
+                hist.link_certificado = request.POST.get('link_certificado', '').strip() or None
+            
             # Anexar novo certificado se enviado
             if 'certificado' in request.FILES:
                 hist.certificado = request.FILES['certificado']
