@@ -7475,11 +7475,18 @@ def iso_revisao_dashboard(request, auditoria_id):
 
     # Sobrescreve com avaliação final e calcula Heurística de Risco (Motor de Sugestão de NC)
     for item_id, data in itens_map.items():
+        status_calculado = data['pior_status']
         if item_id in avaliacoes_finais:
             av = avaliacoes_finais[item_id]
-            data['pior_status'] = av.classificacao
-            data['grau_nc_selecionado'] = av.grau_nc
-            data['justificativa_final'] = av.justificativa
+            # Se o item possui evidências reprovadas (NC), a Não Conformidade prevalece sobre OBS
+            if av.classificacao == 'OBS' and status_calculado == 'NC':
+                data['pior_status'] = 'NC'
+                data['grau_nc_selecionado'] = av.grau_nc
+                data['justificativa_final'] = av.justificativa
+            else:
+                data['pior_status'] = av.classificacao
+                data['grau_nc_selecionado'] = av.grau_nc
+                data['justificativa_final'] = av.justificativa
 
         # Coleta todas as solicitações/amostragens deste requisito
         todas_solicitacoes = []
@@ -7603,16 +7610,28 @@ def api_iso_revisao_criar_obs(request):
             conclusao='OBS'
         )
 
-        # Atualiza a avaliação final do requisito se ainda não tiver veredicto definido
+        # Atualiza a avaliação final do requisito se ainda não tiver veredicto definido e não houver NC prévia
         av_existente = AvaliacaoFinalRequisitoIso.objects.filter(auditoria=auditoria, item_norma=item_norma).first()
         if not av_existente:
-            AvaliacaoFinalRequisitoIso.objects.create(
+            # Verifica se já há alguma resposta ou solicitação NC vinculada a este item
+            has_nc = SolicitacaoEvidenciaIso.objects.filter(
+                resposta__auditoria=auditoria,
+                resposta__pergunta__itens_norma=item_norma,
+                conclusao='NC'
+            ).exists() or RespostaEntrevistaIso.objects.filter(
                 auditoria=auditoria,
-                item_norma=item_norma,
-                classificacao='OBS',
-                justificativa=f"Observação com Correção adicionada na reunião de revisão: {solicitacao_txt}",
-                atualizado_por=request.user if request.user.is_authenticated else None
-            )
+                pergunta__itens_norma=item_norma,
+                classificacao='NC'
+            ).exists()
+
+            if not has_nc:
+                AvaliacaoFinalRequisitoIso.objects.create(
+                    auditoria=auditoria,
+                    item_norma=item_norma,
+                    classificacao='OBS',
+                    justificativa=f"Observação com Correção adicionada na reunião de revisão: {solicitacao_txt}",
+                    atualizado_por=request.user if request.user.is_authenticated else None
+                )
 
         return JsonResponse({
             'success': True,
