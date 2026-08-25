@@ -252,8 +252,11 @@
                                 </a>
                             </div>
                             <div class="col-6">
-                            <i class="bi bi-download me-1"></i> ⬇️ Exportar Relatórios
-                        </button>
+                                <button type="button" class="btn btn-success btn-sm w-100 py-2 rounded-3 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalExportarAuditoria{{ aud.id }}">
+                                    <i class="bi bi-download me-1"></i> ⬇️ Exportar
+                                </button>
+                            </div>
+                        </div>
                     {% else %}
                         <div class="row g-2">
                             <div class="col-6">
@@ -585,6 +588,32 @@
         return cookieValue;
     }
 
+    function showModalSafe(modalEl) {
+        if (!modalEl) return;
+        if (window.bootstrap && bootstrap.Modal) {
+            const modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modalInstance.show();
+        } else if (typeof $ !== 'undefined' && $(modalEl).modal) {
+            $(modalEl).modal('show');
+        } else {
+            modalEl.classList.add('show');
+            modalEl.style.display = 'block';
+        }
+    }
+
+    function hideModalSafe(modalEl) {
+        if (!modalEl) return;
+        if (window.bootstrap && bootstrap.Modal) {
+            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+            if (modalInstance) modalInstance.hide();
+        } else if (typeof $ !== 'undefined' && $(modalEl).modal) {
+            $(modalEl).modal('hide');
+        } else {
+            modalEl.classList.remove('show');
+            modalEl.style.display = 'none';
+        }
+    }
+
     async function abrirModalConfigPerguntasListagem(auditoriaId, normaCodigo) {
         currentAuditoriaIdAvaliacao = auditoriaId;
         const modalEl = document.getElementById('modalConfigPerguntasAvaliacaoListagem');
@@ -596,7 +625,7 @@
             subtitulo.textContent = 'Perguntas Padrão do Sistema (Globais)';
         }
 
-        new bootstrap.Modal(modalEl).show();
+        showModalSafe(modalEl);
         await carregarPerguntasConfigListagem();
     }
 
@@ -671,7 +700,7 @@
         document.getElementById('inputPerguntaOrdemListagem').value = (perguntasAtuaisListagem.length + 1);
         document.getElementById('checkPerguntaObrigatoriaListagem').checked = true;
 
-        new bootstrap.Modal(document.getElementById('modalFormPerguntaListagem')).show();
+        showModalSafe(document.getElementById('modalFormPerguntaListagem'));
     }
 
     function abrirModalEditarPerguntaListagem(pId) {
@@ -686,7 +715,7 @@
         document.getElementById('inputPerguntaOrdemListagem').value = p.ordem || 1;
         document.getElementById('checkPerguntaObrigatoriaListagem').checked = p.obrigatoria;
 
-        new bootstrap.Modal(document.getElementById('modalFormPerguntaListagem')).show();
+        showModalSafe(document.getElementById('modalFormPerguntaListagem'));
     }
 
     async function salvarPerguntaConfigListagem() {
@@ -726,7 +755,7 @@
 
             const res = await response.json();
             if (res.success) {
-                bootstrap.Modal.getInstance(document.getElementById('modalFormPerguntaListagem')).hide();
+                hideModalSafe(document.getElementById('modalFormPerguntaListagem'));
                 await carregarPerguntasConfigListagem();
             } else {
                 alert('Erro ao salvar: ' + (res.error || 'Erro desconhecido.'));
@@ -807,7 +836,7 @@
                 document.getElementById('infoLinkAvaliacaoListagem').innerHTML = `
                     <strong>Expira em:</strong> ${res.expira_em} (${res.dias_validade} dias de validade)
                 `;
-                new bootstrap.Modal(document.getElementById('modalLinkAvaliacaoListagem')).show();
+                showModalSafe(document.getElementById('modalLinkAvaliacaoListagem'));
             } else {
                 alert('Erro ao gerar link: ' + (res.error || 'Erro desconhecido.'));
             }
@@ -833,7 +862,7 @@
         const subtitulo = document.getElementById('subtituloModalDashboard');
         
         subtitulo.textContent = `Auditoria ${normaCodigo || ''} (ID #${auditoriaId})`;
-        new bootstrap.Modal(modalEl).show();
+        showModalSafe(modalEl);
         containerFeedbacks.innerHTML = '<div class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span> Carregando avaliações...</div>';
 
         try {
