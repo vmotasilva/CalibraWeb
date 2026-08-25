@@ -7755,19 +7755,28 @@ def iso_auditoria_sintese_wizard(request, auditoria_id):
         sols_do_item = item_solicitacoes_map.get(item.id, [])
         resps_do_item = item_respostas_map.get(item.id, [])
 
+        # Prepara conclusões brutas para avaliar prevalência
+        conclusoes_sols = [s.conclusao for s in sols_do_item]
+        classificacoes_resps = [r.classificacao for r in resps_do_item]
+        todas_conclusoes = conclusoes_sols + classificacoes_resps
+
+        has_raw_nc = ('NC' in todas_conclusoes)
+        has_raw_om = ('OM' in todas_conclusoes)
+
         if av_final and av_final.classificacao:
-            status = av_final.classificacao
-            grau = av_final.grau_nc
+            # Se foi marcado como OBS mas possui evidências NC, NC prevalece
+            if av_final.classificacao == 'OBS' and has_raw_nc:
+                status = 'NC'
+                grau = av_final.grau_nc or ('MAIOR' if any(s.grau_nc == 'MAIOR' for s in sols_do_item if s.conclusao == 'NC') else 'MENOR')
+            else:
+                status = av_final.classificacao
+                grau = av_final.grau_nc
             justif = av_final.justificativa
         elif sols_do_item or resps_do_item:
-            conclusoes_sols = [s.conclusao for s in sols_do_item]
-            classificacoes_resps = [r.classificacao for r in resps_do_item]
-            todas_conclusoes = conclusoes_sols + classificacoes_resps
-
-            if 'NC' in todas_conclusoes:
+            if has_raw_nc:
                 status = 'NC'
                 grau = 'MAIOR' if any(s.grau_nc == 'MAIOR' for s in sols_do_item if s.conclusao == 'NC') else 'MENOR'
-            elif 'OM' in todas_conclusoes:
+            elif has_raw_om:
                 status = 'OM'
                 grau = None
             elif 'OBS' in todas_conclusoes:
