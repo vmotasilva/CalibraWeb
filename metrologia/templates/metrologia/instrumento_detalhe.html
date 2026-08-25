@@ -10,7 +10,7 @@
     .nav-tabs .nav-link.active { font-weight: bold; border-top: 3px solid #0d6efd; }
 </style>
 
-<div class="container py-4">
+<div class="container py-3 py-md-4 overflow-x-hidden">
     {% can_nav_view user 'editar_instrumento_custom' 'metrologia' as can_editar_instrumento %}
     {% can_nav_view user 'gerenciar_faixas_instrumento' 'metrologia' as can_gerenciar_faixas %}
     {% can_nav_view user 'substituir_instrumento' 'metrologia' as can_substituir_instrumento %}
@@ -23,40 +23,101 @@
     {% can_nav_view user 'remover_certificado_historico' 'metrologia' as can_remover_certificado %}
     {% can_nav_view user 'remover_historico' 'metrologia' as can_remover_historico %}
     
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2 class="mb-0 fw-bold">{{ instrumento.tag }}</h2>
-            <p class="text-muted mb-0">{{ instrumento.descricao }}</p>
-            <span class="badge bg-light text-dark border mt-1">
-                <i class="bi bi-upc"></i> Cód: {{ instrumento.codigo|default:"-" }}
-            </span>
-        </div>
-        <div>
-            <a href="{% url 'modulo_metrologia' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-secondary me-2">
-                <i class="bi bi-arrow-left"></i> Voltar
+    <!-- CABEÇALHO DO INSTRUMENTO (RESPONSIVO) -->
+    <div class="mb-4">
+        <!-- Linha Superior: Voltar e Status (ATIVO/INATIVO) -->
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <a href="{% url 'modulo_metrologia' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1 shadow-sm">
+                <i class="bi bi-arrow-left"></i> <span>Voltar</span>
             </a>
-            {% if instrumento.ativo %}
-                <span class="badge bg-success fs-6 px-3 py-2">ATIVO</span>
-            {% else %}
-                <span class="badge bg-secondary fs-6 px-3 py-2">INATIVO</span>
-            {% endif %}
             
-            {% if can_editar_instrumento %}
-                <a href="{{ edit_url }}" class="btn btn-outline-secondary ms-2">
-                    <i class="bi bi-pencil"></i> Editar Instrumento
-                </a>
-            {% endif %}
-            {% if can_gerenciar_faixas %}
-                <a href="{% url 'gerenciar_faixas_instrumento' instrumento.id %}" class="btn btn-outline-info ms-2">
-                    <i class="bi bi-plus-circle"></i> Gerenciar Faixas
-                </a>
-            {% endif %}
-            {% if can_substituir_instrumento %}
-                <a href="{% url 'substituir_instrumento' instrumento.id %}" class="btn btn-outline-warning ms-2">
-                    <i class="bi bi-arrow-repeat"></i> Substituição
-                </a>
-            {% endif %}
+            <div class="d-flex align-items-center gap-2">
+                {% if instrumento.ativo %}
+                    <span class="badge bg-success fs-6 px-3 py-1">ATIVO</span>
+                {% else %}
+                    <span class="badge bg-secondary fs-6 px-3 py-1">INATIVO</span>
+                {% endif %}
 
+                <!-- Dropdown de Ações para Mobile e Telas Menores -->
+                <div class="dropdown d-md-none">
+                    <button class="btn btn-outline-secondary btn-sm shadow-sm dropdown-toggle" type="button" id="instrumentoAcoesMobile" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-three-dots-vertical"></i> Ações
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="instrumentoAcoesMobile">
+                        {% if can_editar_instrumento %}
+                        <li>
+                            <a href="{{ edit_url }}" class="dropdown-item">
+                                <i class="bi bi-pencil me-2 text-primary"></i>Editar Instrumento
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if can_gerenciar_faixas %}
+                        <li>
+                            <a href="{% url 'gerenciar_faixas_instrumento' instrumento.id %}" class="dropdown-item">
+                                <i class="bi bi-rulers me-2 text-info"></i>Gerenciar Faixas
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if can_substituir_instrumento %}
+                        <li>
+                            <a href="{% url 'substituir_instrumento' instrumento.id %}" class="dropdown-item">
+                                <i class="bi bi-arrow-repeat me-2 text-warning"></i>Substituição
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Linha Principal: Título, Código e Botões de Ação Desktop -->
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+            <div class="min-w-0">
+                <h2 class="mb-0 fw-bold text-break text-primary font-monospace fs-3 fs-md-2">{{ instrumento.tag }}</h2>
+                <p class="text-muted mb-1 text-break fs-6">{{ instrumento.descricao }}</p>
+                <span class="badge bg-light text-dark border">
+                    <i class="bi bi-upc"></i> Cód: {{ instrumento.codigo|default:"-" }}
+                </span>
+            </div>
+            
+            <!-- Botões Desktop (>= 768px) -->
+            <div class="d-none d-md-flex align-items-center gap-2 flex-wrap">
+                <!-- Dropdown Ações do Instrumento Desktop -->
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary btn-sm shadow-sm dropdown-toggle d-flex align-items-center gap-1" type="button" id="instrumentoAcoesDesktop" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-gear"></i> Ações do Instrumento
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="instrumentoAcoesDesktop">
+                        {% if can_editar_instrumento %}
+                        <li>
+                            <a href="{{ edit_url }}" class="dropdown-item">
+                                <i class="bi bi-pencil me-2 text-primary"></i>Editar Instrumento
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if can_gerenciar_faixas %}
+                        <li>
+                            <a href="{% url 'gerenciar_faixas_instrumento' instrumento.id %}" class="dropdown-item">
+                                <i class="bi bi-rulers me-2 text-info"></i>Gerenciar Faixas
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if can_substituir_instrumento %}
+                        <li>
+                            <a href="{% url 'substituir_instrumento' instrumento.id %}" class="dropdown-item">
+                                <i class="bi bi-arrow-repeat me-2 text-warning"></i>Substituição
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
+
+                {% if can_editar_instrumento %}
+                    <a href="{{ edit_url }}" class="btn btn-outline-primary btn-sm shadow-sm">
+                        <i class="bi bi-pencil"></i> Editar
+                    </a>
+                {% endif %}
+            </div>
         </div>
     </div>
 
@@ -186,41 +247,44 @@
                 </div>
             </div>
 
-            <div class="d-flex justify-content-end mb-2 gap-2">
-                <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalNovaOcorrenciaDetalhe">
-                    <i class="bi bi-exclamation-triangle"></i> Nova Ocorrência
+            <!-- BOTÕES DE AÇÃO INFERIORES RESPONSIVOS -->
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end mb-3">
+                <button type="button" class="btn btn-danger btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNovaOcorrenciaDetalhe">
+                    <i class="bi bi-exclamation-triangle me-1"></i> Nova Ocorrência
                 </button>
                 {% if can_registrar_historico %}
-                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalNovoHistorico">
-                        <i class="bi bi-plus-circle"></i> Registrar novo histórico
+                    <button type="button" class="btn btn-primary btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNovoHistorico">
+                        <i class="bi bi-plus-circle me-1"></i> Registrar novo histórico
                     </button>
                 {% endif %}
             </div>
-            <ul class="nav nav-tabs" id="myTab" role="tablist">
-                <li class="nav-item">
-                    <button class="nav-link active" id="calib-tab" data-bs-toggle="tab" data-bs-target="#calib" type="button">
-                        📜 Certificados
+
+            <!-- NAVEGAÇÃO EM ABAS (ROLAGEM HORIZONTAL NO MOBILE) -->
+            <ul class="nav nav-tabs flex-nowrap overflow-x-auto overflow-y-hidden border-bottom pb-1" id="myTab" role="tablist" style="scrollbar-width: thin;">
+                <li class="nav-item flex-shrink-0" role="presentation">
+                    <button class="nav-link active py-2 px-3 text-nowrap" id="calib-tab" data-bs-toggle="tab" data-bs-target="#calib" type="button" role="tab">
+                        <i class="bi bi-file-earmark-check me-1"></i> Certificados
                     </button>
                 </li>
-                <li class="nav-item">
-                    <button class="nav-link" id="cotacoes-tab" data-bs-toggle="tab" data-bs-target="#cotacoes" type="button">
-                        📋 Cotações
+                <li class="nav-item flex-shrink-0" role="presentation">
+                    <button class="nav-link py-2 px-3 text-nowrap" id="cotacoes-tab" data-bs-toggle="tab" data-bs-target="#cotacoes" type="button" role="tab">
+                        <i class="bi bi-clipboard-data me-1"></i> Cotações
                         {% if cotacoes_calibracao or cotacoes_aquisicao %}
-                            <span class="badge bg-danger">{{ cotacoes_calibracao|length|add:cotacoes_aquisicao|length }}</span>
+                            <span class="badge bg-danger ms-1">{{ cotacoes_calibracao|length|add:cotacoes_aquisicao|length }}</span>
                         {% endif %}
                     </button>
                 </li>
-                <li class="nav-item">
-                    <button class="nav-link" id="rastreio-tab" data-bs-toggle="tab" data-bs-target="#rastreio" type="button">
-                        🚚 Rastreio (Ordens)
+                <li class="nav-item flex-shrink-0" role="presentation">
+                    <button class="nav-link py-2 px-3 text-nowrap" id="rastreio-tab" data-bs-toggle="tab" data-bs-target="#rastreio" type="button" role="tab">
+                        <i class="bi bi-truck me-1"></i> Rastreio (Ordens)
                         {% if rastreios_laboratorio %}
-                            <span class="badge bg-info">{{ rastreios_laboratorio|length }}</span>
+                            <span class="badge bg-info ms-1">{{ rastreios_laboratorio|length }}</span>
                         {% endif %}
                     </button>
                 </li>
-                <li class="nav-item">
-                    <button class="nav-link" id="ocorr-tab" data-bs-toggle="tab" data-bs-target="#ocorr" type="button">
-                        ⚠️ Ocorrências
+                <li class="nav-item flex-shrink-0" role="presentation">
+                    <button class="nav-link py-2 px-3 text-nowrap" id="ocorr-tab" data-bs-toggle="tab" data-bs-target="#ocorr" type="button" role="tab">
+                        <i class="bi bi-exclamation-octagon me-1"></i> Ocorrências
                         {% if ocorrencias %}
                             {% with total=ocorrencias|length %}
                                 <span class="badge bg-secondary ms-1">{{ total }}</span>
@@ -233,8 +297,9 @@
             <div class="tab-content card shadow-sm border-top-0 p-0" id="myTabContent">
                 
                 <div class="tab-pane fade show active" id="calib">
-                    <div class="table-responsive">
-                        <table class="table table-striped mb-0 align-middle">
+                    <!-- TABELA DESKTOP (>= 768px) -->
+                    <div class="table-responsive d-none d-md-block">
+                        <table class="table table-striped mb-0 align-middle d-none d-md-table">
                             <thead class="table-light">
                                 <tr>
                                     <th>Data</th>
@@ -299,6 +364,90 @@
                                 {% endfor %}
                             </tbody>
                         </table>
+                    </div>
+
+                    <!-- CARDS MOBILE (< 768px) -->
+                    <div class="d-block d-md-none p-3 bg-light">
+                        {% for item in historicos %}
+                        <div class="card shadow-sm mb-3 border">
+                            <!-- Cabeçalho do Card: Data e Resultado -->
+                            <div class="card-header bg-white d-flex justify-content-between align-items-center py-2">
+                                <span class="fw-bold text-dark"><i class="bi bi-calendar-event me-1 text-primary"></i> {{ item.data_calibracao|date:"d/m/Y" }}</span>
+                                {% if item.resultado == 'APROVADO_SEM_CORRECAO' %}
+                                    <span class="badge bg-success">✓ APROVADO</span>
+                                {% elif item.resultado == 'APROVADO_COM_CORRECAO' %}
+                                    <span class="badge bg-warning text-dark">⚠ CONDICIONAL</span>
+                                {% elif item.resultado == 'REPROVADO' %}
+                                    <span class="badge bg-danger">✗ REPROVADO</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">-</span>
+                                {% endif %}
+                            </div>
+
+                            <!-- Corpo do Card: Número do Certificado -->
+                            <div class="card-body py-2">
+                                <div class="label-detail mb-0">N° do Certificado</div>
+                                <div class="fw-bold text-primary font-monospace fs-6">
+                                    {{ item.numero_certificado|default:"Não informado" }}
+                                </div>
+                            </div>
+
+                            <!-- Rodapé do Card: Ações em Largura Total -->
+                            <div class="card-footer bg-white border-top py-2">
+                                <div class="d-flex flex-column gap-2">
+                                    {% if item.certificado %}
+                                        <div class="d-flex gap-2">
+                                            {% if can_download_certificado %}
+                                                <a href="/metrologia/historico/{{ item.id }}/download/" download class="btn btn-sm btn-outline-primary flex-grow-1">
+                                                    <i class="bi bi-download me-1"></i> Baixar PDF
+                                                </a>
+                                            {% endif %}
+                                            {% if can_remover_certificado %}
+                                                <form method="post" action="/metrologia/historico/{{ item.id }}/remover-certificado/" class="d-inline" onsubmit="return confirm('Remover apenas o PDF deste registro?');">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm btn-outline-warning" title="Remover PDF"><i class="bi bi-trash"></i></button>
+                                                </form>
+                                            {% endif %}
+                                        </div>
+                                    {% else %}
+                                        {% if can_anexar_certificado %}
+                                            <form method="post" action="/metrologia/historico/{{ item.id }}/anexar-certificado/" enctype="multipart/form-data" class="w-100">
+                                                {% csrf_token %}
+                                                <label class="form-label small text-muted mb-1">Anexar Certificado (PDF):</label>
+                                                <div class="input-group input-group-sm">
+                                                    <input type="file" name="certificado_pdf" accept="application/pdf" class="form-control" required />
+                                                    <button type="submit" class="btn btn-outline-success">
+                                                        <i class="bi bi-upload"></i>
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        {% endif %}
+                                    {% endif %}
+
+                                    <div class="d-flex gap-2 mt-1">
+                                        {% if can_editar_historico %}
+                                            <a href="{% url 'editar_historico_calibracao' item.id %}" class="btn btn-sm btn-primary flex-grow-1">
+                                                <i class="bi bi-pencil-square me-1"></i> Editar Dados
+                                            </a>
+                                        {% endif %}
+                                        {% if can_remover_historico %}
+                                            <form method="post" action="/metrologia/historico/{{ item.id }}/remover/" class="d-inline" onsubmit="return confirm('Tem certeza que deseja remover este registro do histórico?');">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Apagar registro">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-center py-4 text-muted bg-white rounded border">
+                            <i class="bi bi-file-earmark-x fs-2 d-block mb-1 opacity-50"></i>
+                            <p class="mb-0 small">Nenhum certificado registrado.</p>
+                        </div>
+                        {% endfor %}
                     </div>
                 </div>
 
