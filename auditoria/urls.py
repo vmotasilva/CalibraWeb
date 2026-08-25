@@ -172,7 +172,14 @@ urlpatterns = [
     # Rota Pública Aberta (Sem Login) - Avaliação
     path("avaliacao/responder/<str:token>/", views.avaliacao_portal_publico_view, name="avaliacao_portal_publico"),
     path("avaliacao/api/salvar-resposta/<str:token>/", views.api_avaliacao_salvar_resposta_publica, name="api_avaliacao_salvar_resposta_publica"),
+
+    # ==========================================
+    # DASHBOARD GLOBAL & ANALYTICS EXECUTIVO
+    # ==========================================
+    path("iso/analytics/", views.iso_analytics_global_view, name="iso_analytics_global"),
+    path("api/analytics/global/", views.api_iso_analytics_global_data, name="api_iso_analytics_global_data"),
 ]
+
 
 
 

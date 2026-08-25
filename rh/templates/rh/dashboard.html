@@ -9,8 +9,8 @@
     }
     @media (max-width: 767.98px) {
         body { overflow-y: auto !important; height: auto !important; }
-        .container-fluid-rh { height: auto !important; overflow: visible !important; min-height: 100vh; }
-        .main-rh-container { height: auto !important; flex-direction: column !important; }
+        .container-fluid-rh { height: auto !important; overflow: visible !important; min-height: 100vh; padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
+        .main-rh-container { height: auto !important; flex-direction: column !important; overflow: visible !important; }
         #table-col { 
             height: auto !important; 
             border: none !important; 
@@ -28,6 +28,12 @@
         .table-card-body { overflow: visible !important; }
         .table-container-scroll { overflow: visible !important; height: auto !important; }
         
+        #rhMobileCardsContainer {
+            overflow: visible !important;
+            height: auto !important;
+            max-height: none !important;
+        }
+
         /* Paginação compacta no mobile: oculta números intermediários */
         #pageNumbers { display: none !important; }
         .pagination-controls { justify-content: center !important; gap: 0.5rem !important; }

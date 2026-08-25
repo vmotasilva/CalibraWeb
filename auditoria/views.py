@@ -8738,15 +8738,296 @@ def api_avaliacao_salvar_resposta_publica(request, token):
         token_obj.total_respostas = (token_obj.total_respostas or 0) + 1
         token_obj.save(update_fields=["total_respostas"])
 
-        return JsonResponse({
-            "success": True,
-            "avaliacao_id": av.id,
-            "message": "Avaliação enviada com sucesso! Muito obrigado pelo seu feedback."
+@login_required
+def iso_analytics_global_view(request):
+    """
+    Renderiza a interface do Dashboard Global (Analytics Executivo) de Auditorias ISO.
+    """
+    from .models import AuditoriaIso, Norma
+
+    # Obter lista de unidades únicas cadastradas
+    unidades_raw = AuditoriaIso.objects.exclude(unidade="").values_list("unidade", flat=True).distinct()
+    unidades = sorted(list(set(filter(None, unidades_raw))))
+
+    # Obter lista de normas utilizadas
+    normas = Norma.objects.filter(auditorias__isnull=False).distinct().order_by("codigo")
+
+    context = {
+        "unidades": unidades,
+        "normas": normas,
+        "title": "Analytics Executivo de Auditorias ISO",
+    }
+    return render(request, "auditoria/iso/analytics/dashboard_global.html", context)
+
+
+@login_required
+def api_iso_analytics_global_data(request):
+    """
+    API RESTful que retorna dados agregados e estruturados para o Dashboard Global.
+    Filtros suportados:
+      - periodo: '6m' (últimos 6 meses), '12m' (últimos 12 meses), 'ano_atual' (ano corrente), 'all' (todo o histórico), ou customizado com 'data_inicio' e 'data_fim'
+      - unidade: Nome da unidade ou 'TODAS'
+      - norma_id: ID da Norma ou 'TODAS'
+    """
+    from django.db.models import Avg, Count, Q, F
+    from django.db.models.functions import TruncMonth
+    from django.http import JsonResponse
+    from datetime import datetime, timedelta
+    from .models import AuditoriaIso, SolicitacaoEvidenciaIso, AvaliacaoAuditorIso, ItemNorma
+
+    hoje = timezone.now().date()
+    periodo = request.GET.get("periodo", "12m")
+    unidade = request.GET.get("unidade", "").strip()
+    norma_id = request.GET.get("norma_id", "").strip()
+    data_inicio_custom = request.GET.get("data_inicio")
+    data_fim_custom = request.GET.get("data_fim")
+
+    # Filtro base de Auditorias
+    auditorias_qs = AuditoriaIso.objects.filter(arquivada=False)
+
+    # Aplicação de Filtros de Período
+    if periodo == "6m":
+        limite = hoje - timedelta(days=180)
+        auditorias_qs = auditorias_qs.filter(data_inicio__gte=limite)
+    elif periodo == "12m":
+        limite = hoje - timedelta(days=365)
+        auditorias_qs = auditorias_qs.filter(data_inicio__gte=limite)
+    elif periodo == "ano_atual":
+        auditorias_qs = auditorias_qs.filter(data_inicio__year=hoje.year)
+    elif periodo == "custom" and data_inicio_custom and data_fim_custom:
+        try:
+            d_ini = datetime.strptime(data_inicio_custom, "%Y-%m-%d").date()
+            d_fim = datetime.strptime(data_fim_custom, "%Y-%m-%d").date()
+            auditorias_qs = auditorias_qs.filter(data_inicio__range=[d_ini, d_fim])
+        except Exception:
+            pass
+
+    # Filtro de Unidade
+    if unidade and unidade.upper() != "TODAS":
+        auditorias_qs = auditorias_qs.filter(unidade__iexact=unidade)
+
+    # Filtro de Norma
+    if norma_id and norma_id.upper() != "TODAS":
+        try:
+            auditorias_qs = auditorias_qs.filter(norma_id=int(norma_id))
+        except ValueError:
+            pass
+
+    auditoria_ids = list(auditorias_qs.values_list("id", flat=True))
+
+    # ==========================================
+    # 1. CÁLCULO DE KPIS RÁPIDOS
+    # ==========================================
+    total_auditorias = len(auditoria_ids)
+    
+    # Consultas agregadas em SolicitacaoEvidenciaIso
+    solicitacoes_qs = SolicitacaoEvidenciaIso.objects.filter(resposta__auditoria_id__in=auditoria_ids)
+    
+    conclusoes_agg = solicitacoes_qs.aggregate(
+        total_c=Count("id", filter=Q(conclusao="C")),
+        total_obs=Count("id", filter=Q(conclusao="OBS")),
+        total_om=Count("id", filter=Q(conclusao="OM")),
+        total_nc=Count("id", filter=Q(conclusao="NC")),
+        total_nc_maior=Count("id", filter=Q(conclusao="NC", grau_nc="MAIOR")),
+        total_nc_menor=Count("id", filter=Q(conclusao="NC", grau_nc="MENOR")),
+        total_na=Count("id", filter=Q(conclusao="NA")),
+    )
+
+    total_c = conclusoes_agg["total_c"] or 0
+    total_obs = conclusoes_agg["total_obs"] or 0
+    total_om = conclusoes_agg["total_om"] or 0
+    total_nc = conclusoes_agg["total_nc"] or 0
+    total_nc_maior = conclusoes_agg["total_nc_maior"] or 0
+    total_nc_menor = conclusoes_agg["total_nc_menor"] or 0
+    total_itens_avaliados = total_c + total_obs + total_om + total_nc
+
+    # % Conformidade Global: (Conformes / (Conformes + NCs + OBS)) * 100
+    if (total_c + total_nc + total_obs) > 0:
+        taxa_conformidade = round((total_c / (total_c + total_nc + total_obs)) * 100, 1)
+    else:
+        taxa_conformidade = 100.0 if total_auditorias > 0 else 0.0
+
+    # Saúde do CAPA (% de Planos Resolvidos / Aprovados)
+    capa_agg = solicitacoes_qs.filter(conclusao__in=["NC", "OBS", "OM"]).aggregate(
+        total_desvios=Count("id"),
+        pendentes=Count("id", filter=Q(capa_status="PENDENTE")),
+        em_revisao=Count("id", filter=Q(capa_status="AGUARDANDO_REVISAO")),
+        aprovados=Count("id", filter=Q(capa_status="APROVADO")),
+        rejeitados=Count("id", filter=Q(capa_status="REJEITADO")),
+        atrasados=Count("id", filter=Q(capa_status__in=["PENDENTE", "AGUARDANDO_REVISAO"], capa_prazo__lt=hoje)),
+    )
+
+    total_capas = capa_agg["total_desvios"] or 0
+    capas_aprovados = capa_agg["aprovados"] or 0
+    capas_atrasados = capa_agg["atrasados"] or 0
+    saude_capa_pct = round((capas_aprovados / total_capas) * 100, 1) if total_capas > 0 else 100.0
+
+    # NPS / Avaliação Média dos Auditores
+    avaliacoes_qs = AvaliacaoAuditorIso.objects.filter(auditoria_id__in=auditoria_ids)
+    total_avaliacoes = avaliacoes_qs.count()
+    if total_avaliacoes > 0:
+        stats_av = avaliacoes_qs.aggregate(
+            m_pont=Avg("nota_pontualidade"),
+            m_clar=Avg("nota_clareza"),
+            m_cord=Avg("nota_cordialidade"),
+        )
+        p = stats_av["m_pont"] or 0
+        c = stats_av["m_clar"] or 0
+        co = stats_av["m_cord"] or 0
+        media_auditor = round((p + c + co) / 3, 1)
+    else:
+        media_auditor = 0.0
+
+    # ==========================================
+    # 2. GRÁFICO DE LINHA: EVOLUÇÃO TEMPORAL
+    # ==========================================
+    # Agrupa auditorias por mês de realização
+    auditorias_por_mes = (
+        auditorias_qs.annotate(mes=TruncMonth("data_inicio"))
+        .values("mes")
+        .annotate(total=Count("id"))
+        .order_by("mes")
+    )
+
+    meses_labels = []
+    conformidade_timeline = []
+    auditorias_timeline = []
+
+    for item in auditorias_por_mes:
+        m_dt = item["mes"]
+        if not m_dt: continue
+        label_mes = m_dt.strftime("%b/%Y")
+        meses_labels.append(label_mes)
+        auditorias_timeline.append(item["total"])
+
+        # Calcula a taxa de conformidade específica daquele mês
+        solic_mes = SolicitacaoEvidenciaIso.objects.filter(
+            resposta__auditoria__data_inicio__year=m_dt.year,
+            resposta__auditoria__data_inicio__month=m_dt.month,
+            resposta__auditoria_id__in=auditoria_ids
+        )
+        s_mes_agg = solic_mes.aggregate(
+            c=Count("id", filter=Q(conclusao="C")),
+            nc=Count("id", filter=Q(conclusao="NC")),
+            obs=Count("id", filter=Q(conclusao="OBS"))
+        )
+        c_m = s_mes_agg["c"] or 0
+        nc_m = s_mes_agg["nc"] or 0
+        obs_m = s_mes_agg["obs"] or 0
+        if (c_m + nc_m + obs_m) > 0:
+            tx = round((c_m / (c_m + nc_m + obs_m)) * 100, 1)
+        else:
+            tx = 100.0
+        conformidade_timeline.append(tx)
+
+    # ==========================================
+    # 3. GRÁFICO HORIZONTAL: TOP GAPS POR SEÇÃO DA NORMA
+    # ==========================================
+    # Conta Não Conformidades por cláusula pai (ex: Cláusula 4, 5, 6, 7, 8)
+    desvios_itens = solicitacoes_qs.filter(conclusao__in=["NC", "OBS"]).select_related("resposta__pergunta")
+    
+    secoes_ranking = {}
+    for desv in desvios_itens:
+        # Busca itens da norma vinculados à pergunta
+        itens = desv.resposta.pergunta.itens_norma.all()
+        for it in itens:
+            # Pega o capítulo principal (ex: '7.5.1' -> '7.5' ou '7 - Realização do Produto')
+            partes = it.referencia.split(".") if it.referencia else ["Geral"]
+            capitulo = ".".join(partes[:2]) if len(partes) >= 2 else partes[0]
+            
+            label_cap = f"Item {capitulo}"
+            if capitulo.startswith("4"):
+                label_cap = "Item 4 (SGQ)"
+            elif capitulo.startswith("5"):
+                label_cap = "Item 5 (Direção)"
+            elif capitulo.startswith("6"):
+                label_cap = "Item 6 (Recursos)"
+            elif capitulo.startswith("7"):
+                label_cap = f"Item {capitulo} (Realização)"
+            elif capitulo.startswith("8"):
+                label_cap = f"Item {capitulo} (Medição/Melhoria)"
+
+            secoes_ranking[label_cap] = secoes_ranking.get(label_cap, 0) + 1
+
+    # Ordena do maior para o menor e pega top 7
+    top_gaps = sorted(secoes_ranking.items(), key=lambda x: x[1], reverse=True)[:7]
+    gaps_labels = [x[0] for x in top_gaps]
+    gaps_values = [x[1] for x in top_gaps]
+
+    # ==========================================
+    # 4. GRÁFICO DE ROSCA: STATUS DAS TRATATIVAS (CAPA)
+    # ==========================================
+    capa_donut = {
+        "labels": ["Aguardando Plano", "Em Revisão", "Aprovado / Corrigido", "Rejeitado"],
+        "values": [
+            capa_agg["pendentes"] or 0,
+            capa_agg["em_revisao"] or 0,
+            capa_agg["aprovados"] or 0,
+            capa_agg["rejeitados"] or 0,
+        ],
+        "cores": ["#ef4444", "#f59e0b", "#10b981", "#64748b"]
+    }
+
+    # ==========================================
+    # 5. LISTA RESUMIDA DAS AUDITORIAS DO PERÍODO
+    # ==========================================
+    tabela_auditorias = []
+    for aud in auditorias_qs.select_related("norma").order_by("-data_inicio")[:20]:
+        solics = SolicitacaoEvidenciaIso.objects.filter(resposta__auditoria=aud)
+        c_count = solics.filter(conclusao="C").count()
+        nc_count = solics.filter(conclusao="NC").count()
+        obs_count = solics.filter(conclusao="OBS").count()
+        tot = c_count + nc_count + obs_count
+        conf_ind = round((c_count / tot) * 100, 1) if tot > 0 else 100.0
+
+        tabela_auditorias.append({
+            "id": aud.id,
+            "norma_codigo": aud.norma.codigo,
+            "unidade": aud.unidade or aud.empresa_auditada or "Geral",
+            "auditor_lider": aud.auditor_lider or aud.auditor_lider_nome or "Equipe",
+            "data_inicio": aud.data_inicio.strftime("%d/%m/%Y"),
+            "data_fim": aud.data_fim.strftime("%d/%m/%Y"),
+            "status": aud.get_status_display(),
+            "ncs": nc_count,
+            "conformidade": conf_ind,
         })
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+    return JsonResponse({
+        "success": True,
+        "filtros": {
+            "periodo": periodo,
+            "unidade": unidade,
+            "norma_id": norma_id,
+        },
+        "kpis": {
+            "total_auditorias": total_auditorias,
+            "taxa_conformidade": taxa_conformidade,
+            "total_ncs": total_nc,
+            "total_nc_maior": total_nc_maior,
+            "total_nc_menor": total_nc_menor,
+            "total_obs": total_obs,
+            "total_om": total_om,
+            "saude_capa_pct": saude_capa_pct,
+            "capas_atrasados": capas_atrasados,
+            "total_capas": total_capas,
+            "nps_auditor": media_auditor,
+            "total_avaliacoes": total_avaliacoes,
+        },
+        "graficos": {
+            "evolucao": {
+                "labels": meses_labels,
+                "conformidade": conformidade_timeline,
+                "total_auditorias": auditorias_timeline,
+            },
+            "top_gaps": {
+                "labels": gaps_labels,
+                "values": gaps_values,
+            },
+            "capa_status": capa_donut,
+        },
+        "tabela_auditorias": tabela_auditorias
+    })
+
 
 
 
