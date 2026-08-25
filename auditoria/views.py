@@ -8511,30 +8511,8 @@ def api_iso_avaliacao_perguntas_list_create(request, auditoria_id):
         except Exception as e:
             return JsonResponse({"success": False, "error": str(e)}, status=400)
 
-    # GET: Retorna perguntas associadas à auditoria ou herdadas da norma/globais
+    # GET: Retorna perguntas associadas à auditoria (somente as criadas pelo usuário)
     perguntas_auditoria = list(PerguntaAvaliacaoAuditorIso.objects.filter(auditoria=auditoria).order_by("ordem", "id"))
-    
-    if not perguntas_auditoria:
-        # Se ainda não possui customizações específicas, busca as perguntas padrão/globais
-        padroes = PerguntaAvaliacaoAuditorIso.objects.filter(
-            Q(norma=auditoria.norma) | Q(auditoria__isnull=True, norma__isnull=True),
-            ativa=True
-        ).order_by("ordem", "id")
-        
-        # Clona atomicamente os padrões para a auditoria
-        for p in padroes:
-            nova = PerguntaAvaliacaoAuditorIso.objects.create(
-                auditoria=auditoria,
-                norma=auditoria.norma,
-                titulo=p.titulo,
-                descricao=p.descricao,
-                tipo=p.tipo,
-                opcoes_lista=getattr(p, 'opcoes_lista', ''),
-                ordem=p.ordem,
-                obrigatoria=p.obrigatoria,
-                ativa=p.ativa
-            )
-            perguntas_auditoria.append(nova)
 
     lista = []
     for p in perguntas_auditoria:
@@ -8547,7 +8525,7 @@ def api_iso_avaliacao_perguntas_list_create(request, auditoria_id):
             "ordem": p.ordem,
             "obrigatoria": p.obrigatoria,
             "ativa": p.ativa,
-            "origem": "auditoria" if p.auditoria_id else "padrao"
+            "origem": "auditoria"
         })
 
     return JsonResponse({"success": True, "perguntas": lista})
