@@ -645,7 +645,11 @@
                 }
             }
         }
-        return cookieValue;
+        if (!cookieValue && name === 'csrftoken') {
+            const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+            if (csrfInput) cookieValue = csrfInput.value;
+        }
+        return cookieValue || '{{ csrf_token }}';
     }
 
     function showModalSafe(modalEl) {
