@@ -8364,7 +8364,7 @@ def api_iso_avaliacao_resumo(request, auditoria_id):
     """
     from django.http import JsonResponse
     from django.db.models import Avg, Count
-    from .models import AuditoriaIso, AvaliacaoAuditorIso
+    from .models import AuditoriaIso, AvaliacaoAuditorIso, PerguntaAvaliacaoAuditorIso, RespostaItemAvaliacaoIso
 
     auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
     avaliacoes = AvaliacaoAuditorIso.objects.filter(auditoria=auditoria).order_by("-criado_em")
