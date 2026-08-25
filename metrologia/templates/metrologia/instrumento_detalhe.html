@@ -1386,24 +1386,23 @@ function toggleEditOcorrencia(id) {
 <!-- Modais de Visualização e Edição Rápida do Registro de Histórico de Calibração -->
 {% for item in historicos %}
 <div class="modal fade" id="modalVisualizarHistorico{{ item.id }}" tabindex="-1" aria-labelledby="modalVisualizarHistoricoLabel{{ item.id }}" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-            <form method="post" action="{% url 'salvar_edicao_historico_modal' item.id %}" enctype="multipart/form-data">
-                {% csrf_token %}
-                <div class="modal-header bg-primary text-white p-3 px-4">
-                    <div class="d-flex align-items-center gap-2">
-                        <i class="bi bi-file-earmark-check-fill fs-5"></i>
-                        <div>
-                            <h5 class="modal-title fw-bold mb-0" id="modalVisualizarHistoricoLabel{{ item.id }}">
-                                Registro de Calibração: {{ item.numero_certificado|default:"S/N" }}
-                            </h5>
-                            <small class="text-white-50">{{ instrumento.tag }} - {{ instrumento.descricao }}</small>
-                        </div>
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" style="max-height: 90vh;">
+        <form method="post" action="{% url 'salvar_edicao_historico_modal' item.id %}" enctype="multipart/form-data" class="modal-content border-0 shadow-lg rounded-4 overflow-hidden d-flex flex-column" style="max-height: 88vh;">
+            {% csrf_token %}
+            <div class="modal-header bg-primary text-white p-3 px-4 flex-shrink-0">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-file-earmark-check-fill fs-5"></i>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="modalVisualizarHistoricoLabel{{ item.id }}">
+                            Registro de Calibração: {{ item.numero_certificado|default:"S/N" }}
+                        </h5>
+                        <small class="text-white-50">{{ instrumento.tag }} - {{ instrumento.descricao }}</small>
                     </div>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                
-                <div class="modal-body p-4 bg-light">
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <div class="modal-body p-4 bg-light overflow-y-auto" style="overflow-y: auto; max-height: calc(88vh - 140px);">
                     <!-- Card de Resumo do Status -->
                     <div class="p-3 bg-white rounded-3 border mb-3 shadow-sm d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <div>
@@ -1545,7 +1544,7 @@ function toggleEditOcorrencia(id) {
                 </div>
 
                 <!-- Rodapé do Modal com Botões de Ação -->
-                <div class="modal-footer bg-white p-3 px-4 d-flex justify-content-between">
+                <div class="modal-footer bg-white p-3 px-4 d-flex justify-content-between flex-shrink-0">
                     <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Fechar</button>
                     <div class="d-flex gap-2">
                         {% if can_editar_historico %}
