@@ -1452,7 +1452,7 @@ function toggleEditOcorrencia(id) {
                                 <table class="table table-sm table-bordered table-hover mb-0 text-center align-middle" style="font-size: 0.85rem;">
                                     <thead class="table-light">
                                         <tr>
-                                            <th class="text-start" style="min-width: 150px;">Faixa (Min - Máx)</th>
+                                            <th class="text-start" style="min-width: 100px;">Faixa<br><small class="fw-normal text-muted">(Min - Máx)</small></th>
                                             <th style="width: 100px;">Tolerância (Tol)</th>
                                             <th style="width: 130px;" class="bg-primary-subtle text-primary fw-bold">Erro (E)</th>
                                             <th style="width: 130px;" class="bg-primary-subtle text-primary fw-bold">Incerteza (U)</th>
@@ -1464,8 +1464,10 @@ function toggleEditOcorrencia(id) {
                                     <tbody>
                                         {% for rf in item.resultados_faixa.all %}
                                         <tr>
-                                            <td class="text-start fw-bold">
-                                                {{ rf.valor_minimo }} a {{ rf.valor_maximo }} {{ rf.faixa.unidade.nome|default:"" }}
+                                            <td class="text-start fw-bold" style="line-height: 1.2;">
+                                                {{ rf.valor_minimo }}<br>
+                                                <small class="text-muted fw-normal">a</small><br>
+                                                {{ rf.valor_maximo }} {{ rf.faixa.unidade.nome|default:"" }}
                                             </td>
                                             <td>
                                                 <span class="text-muted">± {{ rf.tolerancia|default:rf.faixa.tolerancia_mais_menos|default:"-" }}</span>
