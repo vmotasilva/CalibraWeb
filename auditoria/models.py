@@ -1537,6 +1537,7 @@ class PerguntaAvaliacaoAuditorIso(models.Model):
     ordem = models.PositiveIntegerField(default=1, verbose_name="Ordem de Exibição")
     obrigatoria = models.BooleanField(default=True, verbose_name="Resposta Obrigatória")
     ativa = models.BooleanField(default=True, verbose_name="Pergunta Ativa")
+    criado_em = models.DateTimeField(auto_now_add=True, verbose_name="Criado em")
 
     def get_opcoes_lista_display(self):
         if self.tipo == 'AGRUPAMENTO_ESCALA':
