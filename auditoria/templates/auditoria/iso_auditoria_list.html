@@ -47,11 +47,10 @@
                     <table class="table table-hover mb-0 align-middle">
                         <thead class="table-light">
                             <tr>
-                                <th class="ps-4" width="22%">Norma & Escopo</th>
-                                <th width="16%">Período / Datas</th>
-                                <th width="12%">Status</th>
-                                <th width="24%">Monitoramento & Magic Links</th>
-                                <th width="26%" class="text-end pe-4">Ações & Relatórios</th>
+                                <th class="ps-4" width="25%">Norma & Escopo</th>
+                                <th width="20%">Período / Datas</th>
+                                <th width="15%">Status</th>
+                                <th width="40%" class="text-end pe-4">Gestão & Ações</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -76,85 +75,129 @@
                                         <span class="badge text-white rounded-pill px-3 py-1.5 fw-bold shadow-2xs" style="background-color: #14532d;">Concluída</span>
                                     {% endif %}
                                 </td>
-                                <td>
-                                    <div class="d-flex flex-column gap-1">
-                                        <!-- Monitoramento CAPA -->
-                                        {% if aud.total_desvios_capa > 0 %}
-                                            <div class="d-flex align-items-center gap-1.5">
-                                                <a href="{% url 'auditoria:iso_auditoria_cronograma' aud.id %}#capa" class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill text-decoration-none px-2 py-1" title="Ver Planos de Ação">
-                                                    <i class="bi bi-clipboard2-check me-1"></i>CAPA: {{ aud.capa_aguardando|add:aud.capa_pendentes }} pendente{{ aud.capa_aguardando|add:aud.capa_pendentes|pluralize:"s" }}
-                                                </a>
-                                                {% if aud.tem_link_capa and aud.link_capa_url %}
-                                                    <button type="button" class="btn btn-sm btn-outline-danger p-0 px-1.5 rounded-circle" onclick="navigator.clipboard.writeText('{{ aud.link_capa_url }}'); alert('Link Público do CAPA copiado!');" title="Copiar Magic Link do CAPA">
-                                                        <i class="bi bi-link-45deg"></i>
-                                                    </button>
-                                                {% endif %}
-                                            </div>
-                                        {% else %}
-                                            <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2 py-0.5" style="font-size: 0.72rem; width: fit-content;">
-                                                <i class="bi bi-check2"></i> 100% Conforme (Sem NCs)
-                                            </span>
-                                        {% endif %}
-
-                                        <!-- Monitoramento Avaliação do Auditor -->
-                                        {% if aud.status == 'CONCLUIDA' %}
-                                            <div class="d-flex align-items-center gap-1.5 mt-0.5">
-                                                <button type="button" class="btn btn-sm btn-outline-warning text-dark rounded-pill px-2 py-0.5 d-flex align-items-center gap-1" onclick="abrirModalDashboardAvaliacoesListagem({{ aud.id }}, '{{ aud.norma.codigo }}')" title="Ver Feedbacks Recebidos">
-                                                    {% if aud.total_avaliacoes > 0 %}
-                                                        <i class="bi bi-star-fill text-warning"></i>
-                                                        <span class="fw-bold">{{ aud.media_avaliacao }} ★</span>
-                                                        <span class="text-muted small">({{ aud.total_avaliacoes }})</span>
-                                                    {% else %}
-                                                        <i class="bi bi-chat-square-dots"></i>
-                                                        <span class="small">Feedbacks (0)</span>
-                                                    {% endif %}
-                                                </button>
-
-                                                <button type="button" class="btn btn-sm btn-warning text-dark p-0 px-2 rounded-pill small fw-semibold d-flex align-items-center gap-1 shadow-2xs" onclick="gerarLinkAvaliacaoListagem({{ aud.id }})" title="Gerar / Obter Magic Link de Avaliação">
-                                                    <i class="bi bi-link-45deg"></i>
-                                                    <span>Link</span>
-                                                </button>
-
-                                                <button type="button" class="btn btn-sm btn-outline-secondary p-0 px-1.5 rounded-circle" onclick="abrirModalConfigPerguntasListagem({{ aud.id }}, '{{ aud.norma.codigo }}')" title="Personalizar Perguntas Desta Auditoria">
-                                                    <i class="bi bi-gear"></i>
-                                                </button>
-                                            </div>
-                                        {% endif %}
-                                    </div>
-                                </td>
                                 <td class="text-end pe-4">
-                                    {% if aud.status == 'CONCLUIDA' %}
-                                        <div class="d-flex justify-content-end align-items-center gap-2">
-                                            <a href="{% url 'auditoria:iso_matriz_view' aud.id %}" class="btn btn-sm btn-outline-secondary rounded-pill px-2.5 fw-semibold" title="Ver Matriz Consolidada (Apenas Leitura)">
-                                                <i class="bi bi-grid-3x3 me-1"></i> Matriz
-                                            </a>
-                                            <a href="{% url 'auditoria:iso_auditoria_cronograma' aud.id %}" class="btn btn-sm btn-outline-secondary rounded-pill px-2.5 fw-semibold" title="Cronograma / Plano de Auditoria (Apenas Leitura)" target="_blank">
-                                                <i class="bi bi-calendar3 me-1"></i> Cronograma
-                                            </a>
-                                            <a href="{% url 'auditoria:iso_auditoria_sintese' aud.id %}" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold shadow-sm" title="Wizard de Repasse e Síntese da Auditoria">
-                                                <i class="bi bi-journal-richtext me-1"></i> 📝 Repasse e Síntese
-                                            </a>
-                                            <button type="button" class="btn btn-sm btn-success rounded-pill px-3 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalExportarAuditoria{{ aud.id }}" title="Exportar Documentos e Relatórios">
-                                                <i class="bi bi-download me-1"></i> ⬇️ Exportar
+                                    <div class="d-flex gap-2 align-items-center justify-content-end">
+                                        <!-- BOTÃO 1: AÇÕES (DROPDOWN) -->
+                                        <div class="dropdown">
+                                            <button class="btn btn-outline-primary btn-sm dropdown-toggle rounded-pill px-3 fw-semibold d-flex align-items-center gap-1.5 shadow-2xs" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                <i class="bi bi-gear-wide-connected"></i>
+                                                <span>Ações</span>
                                             </button>
+                                            <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-3 p-1.5" style="font-size: 0.85rem; min-width: 200px;">
+                                                <li>
+                                                    <a class="dropdown-item rounded-2 py-1.5 d-flex align-items-center gap-2" href="{% url 'auditoria:iso_matriz_view' aud.id %}">
+                                                        <i class="bi bi-grid-3x3 text-info"></i> Matriz Consolidada
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item rounded-2 py-1.5 d-flex align-items-center gap-2" href="{% url 'auditoria:iso_auditoria_cronograma' aud.id %}" target="_blank">
+                                                        <i class="bi bi-calendar3 text-primary"></i> Cronograma / Plano
+                                                    </a>
+                                                </li>
+                                                {% if aud.status != 'CONCLUIDA' %}
+                                                    <li><hr class="dropdown-divider my-1"></li>
+                                                    <li>
+                                                        <a class="dropdown-item rounded-2 py-1.5 d-flex align-items-center gap-2" href="{% url 'auditoria:iso_revisao_dashboard' aud.id %}">
+                                                            <i class="bi bi-ui-checks-grid text-primary"></i> Revisão & Heurística
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item rounded-2 py-1.5 d-flex align-items-center gap-2" href="{% url 'auditoria:iso_fechamento_presentation' aud.id %}" target="_blank" onclick="return confirm('A auditoria ainda não foi concluída. O relatório refletirá os dados parciais. Deseja continuar?');">
+                                                            <i class="bi bi-easel-fill text-dark"></i> Apresentação Parcial
+                                                        </a>
+                                                    </li>
+                                                {% endif %}
+                                            </ul>
                                         </div>
-                                    {% else %}
-                                        <div class="btn-group shadow-2xs">
-                                            <a href="{% url 'auditoria:iso_matriz_view' aud.id %}" class="btn btn-sm btn-outline-info" title="Ver Matriz Consolidada">
-                                                <i class="bi bi-grid-3x3 me-1"></i> Matriz
-                                            </a>
-                                            <a href="{% url 'auditoria:iso_auditoria_cronograma' aud.id %}" class="btn btn-sm btn-outline-secondary" title="Cronograma / Plano de Auditoria" target="_blank">
-                                                <i class="bi bi-calendar3 me-1"></i> Cronograma
-                                            </a>
-                                            <a href="{% url 'auditoria:iso_revisao_dashboard' aud.id %}" class="btn btn-sm btn-outline-primary" title="Dashboard de Revisão & Heurística">
-                                                <i class="bi bi-ui-checks-grid me-1"></i> Revisão
-                                            </a>
-                                            <a href="{% url 'auditoria:iso_fechamento_presentation' aud.id %}" class="btn btn-sm btn-dark" title="Gerar Apresentação de Fechamento" target="_blank"
-                                                onclick="return confirm('A auditoria ainda não foi concluída. O relatório refletirá os dados parciais. Deseja continuar?');">
-                                                <i class="bi bi-easel-fill me-1"></i> Fechamento
-                                            </a>
+
+                                        <!-- BOTÃO 2: RELATÓRIOS (DROPDOWN) -->
+                                        <div class="dropdown">
+                                            <button class="btn btn-primary btn-sm dropdown-toggle rounded-pill px-3 fw-bold d-flex align-items-center gap-1.5 shadow-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                <i class="bi bi-file-earmark-text-fill"></i>
+                                                <span>Relatórios</span>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-3 p-1.5" style="font-size: 0.85rem; min-width: 220px;">
+                                                {% if aud.status == 'CONCLUIDA' %}
+                                                    <li>
+                                                        <a class="dropdown-item rounded-2 py-1.5 d-flex align-items-center gap-2 fw-semibold" href="{% url 'auditoria:iso_auditoria_sintese' aud.id %}">
+                                                            <i class="bi bi-journal-richtext text-primary"></i> 📝 Repasse e Síntese
+                                                        </a>
+                                                    </li>
+                                                {% else %}
+                                                    <li>
+                                                        <a class="dropdown-item rounded-2 py-1.5 d-flex align-items-center gap-2" href="{% url 'auditoria:iso_fechamento_presentation' aud.id %}" target="_blank" onclick="return confirm('A auditoria ainda não foi concluída. O relatório refletirá os dados parciais. Deseja continuar?');">
+                                                            <i class="bi bi-easel-fill text-primary"></i> Apresentação Executiva
+                                                        </a>
+                                                    </li>
+                                                {% endif %}
+                                                <li>
+                                                    <button type="button" class="dropdown-item rounded-2 py-1.5 d-flex align-items-center gap-2 text-success fw-semibold" data-bs-toggle="modal" data-bs-target="#modalExportarAuditoria{{ aud.id }}">
+                                                        <i class="bi bi-download"></i> ⬇️ Exportar Documentos
+                                                    </button>
+                                                </li>
+                                            </ul>
                                         </div>
-                                    {% endif %}
+
+                                        <!-- BOTÃO 3: MONITORAMENTO (DROPDOWN) -->
+                                        <div class="dropdown">
+                                            <button class="btn btn-outline-secondary btn-sm dropdown-toggle rounded-pill px-3 fw-semibold d-flex align-items-center gap-1.5 shadow-2xs position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                <i class="bi bi-bell-fill {% if aud.total_desvios_capa > 0 %}text-danger{% else %}text-secondary{% endif %}"></i>
+                                                <span>Monitoramento</span>
+                                                {% if aud.total_desvios_capa > 0 %}
+                                                    <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle">
+                                                        <span class="visually-hidden">Pendências</span>
+                                                    </span>
+                                                {% endif %}
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-3 p-1.5" style="font-size: 0.85rem; min-width: 260px;">
+                                                <li><h6 class="dropdown-header text-uppercase text-muted fw-bold pb-1" style="font-size: 0.68rem; letter-spacing: 0.5px;">Planos de Ação (CAPA)</h6></li>
+                                                <li>
+                                                    {% if aud.total_desvios_capa > 0 %}
+                                                        <a class="dropdown-item rounded-2 py-1.5 d-flex align-items-center justify-content-between" href="{% url 'auditoria:iso_auditoria_cronograma' aud.id %}#capa">
+                                                            <span><i class="bi bi-clipboard2-check text-danger me-2"></i>Plano CAPA</span>
+                                                            <span class="badge bg-danger rounded-pill">{{ aud.capa_aguardando|add:aud.capa_pendentes }} pendente{{ aud.capa_aguardando|add:aud.capa_pendentes|pluralize:"s" }}</span>
+                                                        </a>
+                                                    {% else %}
+                                                        <span class="dropdown-item-text py-1.5 text-success small d-flex align-items-center gap-2">
+                                                            <i class="bi bi-check-circle-fill text-success"></i> 100% Conforme (Sem NCs)
+                                                        </span>
+                                                    {% endif %}
+                                                </li>
+                                                {% if aud.tem_link_capa and aud.link_capa_url %}
+                                                    <li>
+                                                        <button type="button" class="dropdown-item rounded-2 py-1.5 d-flex align-items-center gap-2" onclick="navigator.clipboard.writeText('{{ aud.link_capa_url }}'); alert('Link Público do CAPA copiado!');">
+                                                            <i class="bi bi-link-45deg text-danger"></i> Copiar Magic Link CAPA
+                                                        </button>
+                                                    </li>
+                                                {% endif %}
+
+                                                {% if aud.status == 'CONCLUIDA' %}
+                                                    <li><hr class="dropdown-divider my-1"></li>
+                                                    <li><h6 class="dropdown-header text-uppercase text-muted fw-bold pb-1" style="font-size: 0.68rem; letter-spacing: 0.5px;">Avaliação & Feedbacks</h6></li>
+                                                    <li>
+                                                        <button type="button" class="dropdown-item rounded-2 py-1.5 d-flex align-items-center justify-content-between" onclick="abrirModalDashboardAvaliacoesListagem({{ aud.id }}, '{{ aud.norma.codigo }}')">
+                                                            <span><i class="bi bi-star-fill text-warning me-2"></i>Feedbacks Recebidos</span>
+                                                            {% if aud.total_avaliacoes > 0 %}
+                                                                <span class="badge bg-warning text-dark rounded-pill">{{ aud.media_avaliacao }} ★ ({{ aud.total_avaliacoes }})</span>
+                                                            {% else %}
+                                                                <span class="badge bg-light text-muted border rounded-pill">0</span>
+                                                            {% endif %}
+                                                        </button>
+                                                    </li>
+                                                    <li>
+                                                        <button type="button" class="dropdown-item rounded-2 py-1.5 d-flex align-items-center gap-2" onclick="gerarLinkAvaliacaoListagem({{ aud.id }})">
+                                                            <i class="bi bi-link-45deg text-primary"></i> Gerar Link de Avaliação
+                                                        </button>
+                                                    </li>
+                                                    <li>
+                                                        <button type="button" class="dropdown-item rounded-2 py-1.5 d-flex align-items-center gap-2" onclick="abrirModalConfigPerguntasListagem({{ aud.id }}, '{{ aud.norma.codigo }}')">
+                                                            <i class="bi bi-gear text-secondary"></i> Configurar Perguntas
+                                                        </button>
+                                                    </li>
+                                                {% endif %}
+                                            </ul>
+                                        </div>
+                                    </div>
                                 </td>
                             </tr>
                             {% empty %}
