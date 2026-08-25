@@ -337,41 +337,9 @@
                                         {% endif %}
                                     </td>
                                     <td class="text-end">
-                                        <button type="button" class="btn btn-sm btn-info text-white fw-semibold" data-bs-toggle="modal" data-bs-target="#modalVisualizarHistorico{{ item.id }}" title="Visualizar histórico">
-                                            <i class="bi bi-eye"></i> Visualizar
+                                        <button type="button" class="btn btn-sm btn-info text-white fw-semibold px-3 rounded-pill shadow-2xs" data-bs-toggle="modal" data-bs-target="#modalVisualizarHistorico{{ item.id }}" title="Visualizar e editar registro">
+                                            <i class="bi bi-eye me-1"></i> Visualizar
                                         </button>
-                                        {% if item.link_certificado %}
-                                            <a href="{{ item.link_certificado }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-success" title="Acessar link do certificado"><i class="bi bi-box-arrow-up-right"></i></a>
-                                        {% endif %}
-                                        {% if item.certificado %}
-                                            {% if can_download_certificado %}
-                                                <a href="/metrologia/historico/{{ item.id }}/download/" download class="btn btn-sm btn-outline-primary" title="Baixar PDF"><i class="bi bi-download"></i></a>
-                                            {% endif %}
-                                            {% if can_remover_certificado %}
-                                                <form method="post" action="/metrologia/historico/{{ item.id }}/remover-certificado/" class="d-inline" onsubmit="return confirm('Remover apenas o PDF deste registro?');">
-                                                    {% csrf_token %}
-                                                    <button type="submit" class="btn btn-sm btn-outline-warning ms-1" title="Remover PDF"><i class="bi bi-trash"></i></button>
-                                                </form>
-                                            {% endif %}
-                                        {% else %}
-                                            {% if can_anexar_certificado %}
-                                                <form method="post" action="/metrologia/historico/{{ item.id }}/anexar-certificado/" enctype="multipart/form-data" class="d-inline">
-                                                    {% csrf_token %}
-                                                    <input type="file" name="certificado_pdf" accept="application/pdf" class="form-control form-control-sm d-inline" style="width: 220px; display:inline-block;" />
-                                                    <button type="submit" class="btn btn-sm btn-outline-success ms-1" title="Anexar PDF">
-                                                        <i class="bi bi-paperclip"></i>
-                                                    </button>
-                                                </form>
-                                            {% endif %}
-                                        {% endif %}
-                                        {% if can_remover_historico %}
-                                            <form method="post" action="/metrologia/historico/{{ item.id }}/remover/" class="d-inline" onsubmit="return confirm('Tem certeza que deseja remover este registro do histórico? Esta ação não pode ser desfeita.');">
-                                                {% csrf_token %}
-                                                <button type="submit" class="btn btn-sm btn-outline-danger ms-1" title="Apagar registro">
-                                                    <i class="bi bi-x-circle"></i>
-                                                </button>
-                                            </form>
-                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% empty %}
@@ -409,50 +377,9 @@
 
                             <!-- Rodapé do Card: Ações em Largura Total -->
                             <div class="card-footer bg-white border-top py-2">
-                                <div class="d-flex flex-column gap-2">
-                                    {% if item.certificado %}
-                                        <div class="d-flex gap-2">
-                                            {% if can_download_certificado %}
-                                                <a href="/metrologia/historico/{{ item.id }}/download/" download class="btn btn-sm btn-outline-primary flex-grow-1">
-                                                    <i class="bi bi-download me-1"></i> Baixar PDF
-                                                </a>
-                                            {% endif %}
-                                            {% if can_remover_certificado %}
-                                                <form method="post" action="/metrologia/historico/{{ item.id }}/remover-certificado/" class="d-inline" onsubmit="return confirm('Remover apenas o PDF deste registro?');">
-                                                    {% csrf_token %}
-                                                    <button type="submit" class="btn btn-sm btn-outline-warning" title="Remover PDF"><i class="bi bi-trash"></i></button>
-                                                </form>
-                                            {% endif %}
-                                        </div>
-                                    {% else %}
-                                        {% if can_anexar_certificado %}
-                                            <form method="post" action="/metrologia/historico/{{ item.id }}/anexar-certificado/" enctype="multipart/form-data" class="w-100">
-                                                {% csrf_token %}
-                                                <label class="form-label small text-muted mb-1">Anexar Certificado (PDF):</label>
-                                                <div class="input-group input-group-sm">
-                                                    <input type="file" name="certificado_pdf" accept="application/pdf" class="form-control" required />
-                                                    <button type="submit" class="btn btn-outline-success">
-                                                        <i class="bi bi-upload"></i>
-                                                    </button>
-                                                </div>
-                                            </form>
-                                        {% endif %}
-                                    {% endif %}
-
-                                    <div class="d-flex gap-2 mt-1">
-                                        <button type="button" class="btn btn-sm btn-info text-white fw-semibold flex-grow-1" data-bs-toggle="modal" data-bs-target="#modalVisualizarHistorico{{ item.id }}">
-                                            <i class="bi bi-eye me-1"></i> Visualizar Registro
-                                        </button>
-                                        {% if can_remover_historico %}
-                                            <form method="post" action="/metrologia/historico/{{ item.id }}/remover/" class="d-inline" onsubmit="return confirm('Tem certeza que deseja remover este registro do histórico?');">
-                                                {% csrf_token %}
-                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Apagar registro">
-                                                    <i class="bi bi-trash"></i>
-                                                </button>
-                                            </form>
-                                        {% endif %}
-                                    </div>
-                                </div>
+                                <button type="button" class="btn btn-sm btn-info text-white fw-semibold w-100 rounded-pill" data-bs-toggle="modal" data-bs-target="#modalVisualizarHistorico{{ item.id }}">
+                                    <i class="bi bi-eye me-1"></i> Visualizar Registro
+                                </button>
                             </div>
                         </div>
                         {% empty %}
@@ -1577,7 +1504,14 @@ function toggleEditOcorrencia(id) {
 
                 <!-- Rodapé do Modal com Botões de Ação -->
                 <div class="modal-footer bg-white p-3 px-4 d-flex justify-content-between flex-shrink-0">
-                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Fechar</button>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">Fechar</button>
+                        {% if can_remover_historico %}
+                            <button type="button" class="btn btn-outline-danger rounded-pill px-3 fw-semibold" onclick="if(confirm('Tem certeza que deseja remover este registro do histórico permanentemente? Esta ação não poderá ser desfeita.')) { document.getElementById('formExcluirHistoricoModal{{ item.id }}').submit(); }">
+                                <i class="bi bi-trash me-1"></i> Excluir Registro
+                            </button>
+                        {% endif %}
+                    </div>
                     <div class="d-flex gap-2">
                         {% if can_editar_historico %}
                             <a href="{% url 'editar_historico_calibracao' item.id %}" class="btn btn-outline-primary rounded-pill px-3 fw-semibold" title="Abrir em página completa com carimbo e padrões">
@@ -1590,6 +1524,11 @@ function toggleEditOcorrencia(id) {
                     </div>
                 </div>
             </form>
+            {% if can_remover_historico %}
+                <form id="formExcluirHistoricoModal{{ item.id }}" method="post" action="/metrologia/historico/{{ item.id }}/remover/" class="d-none">
+                    {% csrf_token %}
+                </form>
+            {% endif %}
         </div>
     </div>
 </div>
