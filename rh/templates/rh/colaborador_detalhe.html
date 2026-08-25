@@ -1,135 +1,177 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container-fluid">
+<div class="container-fluid py-3">
     
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div class="d-flex align-items-center gap-3">
-            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px; font-size: 24px;">
+    <!-- CABEÇALHO RESPONSIVO DO PERFIL -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4 border-bottom pb-3">
+        
+        <!-- Perfil (Avatar + Nome/Cargo) e Botão Voltar Compacto -->
+        <div class="d-flex align-items-center gap-3 w-100 w-md-auto">
+            <a href="{% url 'modulo_rh' %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px; border-radius: 50%;" title="Voltar para Gestão de Pessoas">
+                <i class="bi bi-arrow-left fs-6"></i>
+            </a>
+            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-sm flex-shrink-0" style="width: 52px; height: 52px; font-size: 20px;">
                 {{ alvo.nome_completo|slice:":1" }}
             </div>
-            <div>
-                <h2 class="fw-bold mb-0">{{ alvo.nome_completo }}</h2>
-                <p class="text-muted mb-0">{{ alvo.cargo|default:"Sem cargo" }} | Matrícula: <strong>{{ alvo.matricula }}</strong>{% if alvo.matricula_global %} | Matrícula Global: <strong class="text-primary">{{ alvo.matricula_global }}</strong>{% endif %}</p>
-
+            <div class="min-w-0">
+                <h3 class="fw-bold mb-0 text-truncate fs-5 fs-md-3" title="{{ alvo.nome_completo }}">{{ alvo.nome_completo }}</h3>
+                <p class="text-muted mb-0 small text-truncate">
+                    {{ alvo.cargo|default:"Sem cargo" }} | Matrícula: <strong>{{ alvo.matricula }}</strong>{% if alvo.matricula_global %} | Mat. Global: <strong class="text-primary">{{ alvo.matricula_global }}</strong>{% endif %}
+                </p>
             </div>
         </div>
         
-        <div>
+        <!-- Ações Desktop (>= 768px) -->
+        <div class="d-none d-md-flex flex-wrap gap-2 align-items-center">
             {% if can_edit_colaborador %}
-            <a href="/rh/colaborador/{{ alvo.id }}/editar/" class="btn btn-outline-secondary">
-                <i class="bi bi-pencil"></i> Editar Dados
+            <a href="/rh/colaborador/{{ alvo.id }}/editar/" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-pencil me-1"></i> Editar Dados
             </a>
             {% endif %}
             {% if can_register_occ %}
-                <a href="{% url 'registrar_ocorrencia' %}?colab_id={{ alvo.id }}" class="btn btn-outline-primary ms-2">
-                    <i class="bi bi-exclamation-triangle"></i> Nova Ocorrência
-                </a>
+            <a href="{% url 'registrar_ocorrencia' %}?colab_id={{ alvo.id }}" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-exclamation-triangle me-1"></i> Nova Ocorrência
+            </a>
             {% endif %}
             {% if can_register_ferias %}
-                <a href="/rh/colaborador/{{ alvo.id }}/ferias/registrar/" class="btn btn-outline-success ms-2">
-                    <i class="bi bi-calendar-check"></i> Registrar Férias
-                </a>
-            {% endif %}
-            <a href="{% url 'modulo_rh' %}" class="btn btn-outline-dark ms-2">
-                ⬅ Voltar
+            <a href="/rh/colaborador/{{ alvo.id }}/ferias/registrar/" class="btn btn-outline-success btn-sm">
+                <i class="bi bi-calendar-check me-1"></i> Registrar Férias
             </a>
+            {% endif %}
+            <a href="{% url 'modulo_rh' %}" class="btn btn-outline-dark btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Voltar
+            </a>
+        </div>
+
+        <!-- Ações Mobile (< 768px): Dropdown "Ações" 100% -->
+        <div class="d-flex d-md-none w-100">
+            <div class="dropdown w-100">
+                <button class="btn btn-outline-primary w-100 dropdown-toggle d-flex align-items-center justify-content-center shadow-sm" type="button" id="dropdownAcoesColabMobile" data-bs-toggle="dropdown" aria-expanded="false" style="min-height: 38px;">
+                    <i class="bi bi-three-dots-vertical me-2"></i> Ações do Colaborador
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end w-100 shadow py-2" aria-labelledby="dropdownAcoesColabMobile">
+                    {% if can_edit_colaborador %}
+                    <li>
+                        <a href="/rh/colaborador/{{ alvo.id }}/editar/" class="dropdown-item py-2">
+                            <i class="bi bi-pencil text-secondary me-2"></i> Editar Dados Cadastrais
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% if can_register_occ %}
+                    <li>
+                        <a href="{% url 'registrar_ocorrencia' %}?colab_id={{ alvo.id }}" class="dropdown-item py-2">
+                            <i class="bi bi-exclamation-triangle text-primary me-2"></i> Nova Ocorrência / Feedback
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% if can_register_ferias %}
+                    <li>
+                        <a href="/rh/colaborador/{{ alvo.id }}/ferias/registrar/" class="dropdown-item py-2">
+                            <i class="bi bi-calendar-check text-success me-2"></i> Registrar Férias
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
         </div>
     </div>
 
     <div class="row">
-        <!-- COLUNA DA ESQUERDA -->
+        <!-- COLUNA DA ESQUERDA (FICHA CADASTRAL) -->
         <div class="col-md-4">
             <div class="card shadow-sm mb-4 border-0">
-                <div class="card-header bg-dark text-white fw-bold">
-                    <i class="bi bi-person-badge"></i> Ficha Cadastral
+                <div class="card-header bg-dark text-white fw-bold d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-person-badge me-1"></i> Ficha Cadastral</span>
+                    {% if alvo.is_active %}
+                        <span class="badge bg-success">ATIVO</span>
+                    {% else %}
+                        <span class="badge bg-danger">DESLIGADO</span>
+                    {% endif %}
                 </div>
-                <div class="card-body">
-                    <ul class="list-group list-group-flush">
-                        <li class="list-group-item d-flex flex-wrap justify-content-between gap-2">
-                            <span class="text-muted">Status:</span>
+                <div class="card-body p-3">
+                    <div class="d-flex flex-column">
+                        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                            <span class="text-muted small">Status:</span>
                             {% if alvo.is_active %}
                                 <span class="badge bg-success">ATIVO</span>
                             {% else %}
                                 <span class="badge bg-danger">DESLIGADO</span>
                             {% endif %}
-                        </li>
-                        <li class="list-group-item d-flex flex-wrap justify-content-between gap-2">
-                            <span class="text-muted">Setor:</span>
-                            <strong>{{ alvo.setor.nome|default:"-" }}</strong>
-                        </li>
-                        <li class="list-group-item d-flex flex-wrap justify-content-between gap-2">
-                            <span class="text-muted">Centro de Custo:</span>
-                            <span>{{ alvo.centro_custo.codigo|default:"-" }}</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between">
-                            <span class="text-muted">Líder Imediato:</span>
-                            <strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                            <span class="text-muted small">Setor:</span>
+                            <strong class="text-dark small text-end">{{ alvo.setor.nome|default:"-" }}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                            <span class="text-muted small">Centro de Custo:</span>
+                            <span class="small text-end">{{ alvo.centro_custo.codigo|default:"-" }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                            <span class="text-muted small">Líder Imediato:</span>
+                            <strong class="small text-end">
                                 {% if alvo.lider %}
                                     <a href="{% url 'detalhe_colaborador' alvo.lider.id %}" class="text-decoration-none">
-                                        {{ alvo.lider.matricula }} — {{ alvo.lider.nome_completo }}
+                                        {{ alvo.lider.nome_completo|truncatewords:3 }}
                                     </a>
                                 {% else %}-{% endif %}
                             </strong>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between">
-                            <span class="text-muted">Supervisor:</span>
-                            <strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                            <span class="text-muted small">Supervisor:</span>
+                            <strong class="small text-end">
                                 {% if alvo.supervisor %}
                                     <a href="{% url 'detalhe_colaborador' alvo.supervisor.id %}" class="text-decoration-none">
-                                        {{ alvo.supervisor.matricula }} — {{ alvo.supervisor.nome_completo }}
+                                        {{ alvo.supervisor.nome_completo|truncatewords:3 }}
                                     </a>
                                 {% else %}-{% endif %}
                             </strong>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between">
-                            <span class="text-muted">Gerente:</span>
-                            <strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                            <span class="text-muted small">Gerente:</span>
+                            <strong class="small text-end">
                                 {% if alvo.gerente %}
                                     <a href="{% url 'detalhe_colaborador' alvo.gerente.id %}" class="text-decoration-none">
-                                        {{ alvo.gerente.matricula }} — {{ alvo.gerente.nome_completo }}
+                                        {{ alvo.gerente.nome_completo|truncatewords:3 }}
                                     </a>
                                 {% else %}-{% endif %}
                             </strong>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between">
-                            <span class="text-muted">Turno:</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                            <span class="text-muted small">Turno:</span>
                             <span class="badge bg-secondary">{{ alvo.get_turno_display }}</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center bg-light-subtle">
-                            <span class="text-muted fw-semibold"><i class="bi bi-globe me-1 text-primary"></i>Matrícula Global:</span>
-                            <span class="badge bg-primary bg-opacity-10 text-primary fw-bold px-2 py-1 border border-primary border-opacity-25" style="font-size: 0.95rem;">
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center border-bottom py-2 bg-light-subtle px-1 rounded">
+                            <span class="text-muted small fw-semibold"><i class="bi bi-globe me-1 text-primary"></i>Matrícula Global:</span>
+                            <span class="badge bg-primary bg-opacity-10 text-primary fw-bold border border-primary border-opacity-25" style="font-size: 0.85rem;">
                                 {{ alvo.matricula_global|default:"Não cadastrada" }}
                             </span>
-                        </li>
-
-                        <li class="list-group-item d-flex justify-content-between">
-                            <span class="text-muted">Posto de Trabalho:</span>
-                            <span>{{ alvo.posto_trabalho|default:"-" }}</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between">
-                            <span class="text-muted">Grupo:</span>
-                            <span>{{ alvo.grupo|default:"-" }}</span>
-                        </li>
-
-                        <li class="list-group-item d-flex justify-content-between">
-                            <span class="text-muted">CPF:</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                            <span class="text-muted small">Posto de Trabalho:</span>
+                            <span class="small text-end">{{ alvo.posto_trabalho|default:"-" }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                            <span class="text-muted small">Grupo:</span>
+                            <span class="small text-end">{{ alvo.grupo|default:"-" }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                            <span class="text-muted small">CPF:</span>
                             {% if can_see_salary and alvo.cpf %}
-                                <span>{{ alvo.cpf|slice:":3" }}.{{ alvo.cpf|slice:"3:6" }}.{{ alvo.cpf|slice:"6:9" }}-{{ alvo.cpf|slice:"9:11" }}</span>
+                                <span class="small">{{ alvo.cpf|slice:":3" }}.{{ alvo.cpf|slice:"3:6" }}.{{ alvo.cpf|slice:"6:9" }}-{{ alvo.cpf|slice:"9:11" }}</span>
                             {% else %}
-                                <span style="filter: blur(4px);" title="Oculto por segurança">###.###.###-##</span>
+                                <span class="small" style="filter: blur(4px);" title="Oculto por segurança">###.###.###-##</span>
                             {% endif %}
-                        </li>
-                        
-                        <li class="list-group-item d-flex flex-wrap justify-content-between align-items-center gap-2 bg-light mt-2 border">
-                            <span class="fw-bold text-dark"><i class="bi bi-cash"></i> Salário Base:</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center bg-light mt-2 p-2 rounded border">
+                            <span class="fw-bold text-dark small"><i class="bi bi-cash me-1"></i> Salário Base:</span>
                             {% if can_see_salary %}
-                                <span class="text-success fw-bold fs-5">R$ {{ alvo.salario|floatformat:2 }}</span>
+                                <span class="text-success fw-bold fs-6">R$ {{ alvo.salario|floatformat:2 }}</span>
                             {% else %}
                                 <span class="badge bg-secondary"><i class="bi bi-lock-fill"></i> RESTRITO</span>
                             {% endif %}
-                        </li>
-                    </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -163,17 +205,18 @@
             <!-- CARD DE VENCIMENTOS DE FÉRIAS (PERÍODOS AQUISITIVOS) -->
             <div class="card shadow-sm mb-4 border-0">
                 <div class="card-header bg-warning text-dark">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                        <span class="fw-bold"><i class="bi bi-clock-history"></i> Períodos Aquisitivos (Vencimentos)</span>
+                    <div class="d-flex justify-content-between align-items-center gap-2">
+                        <span class="fw-bold fs-6"><i class="bi bi-clock-history me-1"></i> Períodos Aquisitivos</span>
                         {% if can_register_ferias %}
-                        <button class="btn btn-sm btn-dark fw-bold" data-bs-toggle="modal" data-bs-target="#modalVencimentoFerias">
-                            <i class="bi bi-plus-circle"></i> Novo Vencimento
+                        <button class="btn btn-sm btn-dark fw-bold d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#modalVencimentoFerias">
+                            <i class="bi bi-plus-circle"></i> <span class="d-none d-sm-inline">Novo Vencimento</span>
                         </button>
                         {% endif %}
                     </div>
                 </div>
                 <div class="card-body p-0">
-                    <div class="table-responsive">
+                    <!-- TABELA DESKTOP (>= 768px) -->
+                    <div class="table-responsive d-none d-md-block">
                         <table class="table table-hover mb-0 text-center align-middle" style="font-size: 0.9rem;">
                             <thead class="table-light">
                                 <tr>
@@ -214,33 +257,63 @@
                             </tbody>
                         </table>
                     </div>
+
+                    <!-- CARDS MOBILE (< 768px) -->
+                    <div class="d-block d-md-none p-3">
+                        {% for v in vencimentos_ferias %}
+                        <div class="card mb-2 border shadow-sm p-2" style="background-color: #fffdf5;">
+                            <div class="d-flex justify-content-between align-items-start mb-1">
+                                <span class="small fw-bold text-dark">{{ v.data_inicio_aquisitivo|date:"d/m/Y" }} a {{ v.data_fim_aquisitivo|date:"d/m/Y" }}</span>
+                                <span class="badge bg-secondary" style="font-size: 0.7rem;">{{ v.dias_direito }} dias</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mt-1 pt-1 border-top">
+                                <small class="text-muted">
+                                    Limite: <strong class="{% if v.data_limite_gozo < today %}text-danger{% else %}text-dark{% endif %}">{{ v.data_limite_gozo|date:"d/m/Y" }}</strong>
+                                </small>
+                                {% if can_register_ferias %}
+                                <form method="post" action="{% url 'rh:excluir_vencimento_ferias' colab_id=alvo.id venc_id=v.id %}" style="display:inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="return confirm('Tem certeza?');">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-muted text-center py-3 small">Nenhum período aquisitivo cadastrado.</div>
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
+
             <!-- CARD DE FÉRIAS (ATUALIZADO COM DIAS VENDIDOS) -->
             <div class="card shadow-sm mb-4 border-0">
                 <div class="card-header bg-info text-white">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                        <span class="fw-bold"><i class="bi bi-airplane"></i> Gestão de Férias</span>
-                        <div class="d-flex flex-wrap gap-2">
-                            <span class="badge bg-white text-danger fw-bold" title="Períodos Vencidos/Pendentes">
+                    <div class="d-flex justify-content-between align-items-center gap-2">
+                        <span class="fw-bold fs-6"><i class="bi bi-airplane me-1"></i> Gestão de Férias</span>
+                        <div class="d-flex gap-1">
+                            <span class="badge bg-white text-danger fw-bold" title="Períodos Vencidos/Pendentes" style="font-size: 0.75rem;">
                                 Vencidas: {{ kpi_ferias_vencidas }}
                             </span>
-                            <span class="badge bg-white text-success fw-bold" title="Períodos Programados">
-                                Programadas: {{ kpi_ferias_programadas }}
+                            <span class="badge bg-white text-success fw-bold" title="Períodos Programados" style="font-size: 0.75rem;">
+                                Prog.: {{ kpi_ferias_programadas }}
                             </span>
                         </div>
                     </div>
                 </div>
                 <div class="card-body p-0">
-                    <div class="table-responsive">
+                    <!-- TABELA DESKTOP (>= 768px) -->
+                    <div class="table-responsive d-none d-md-block">
                         <table class="table table-hover mb-0 text-center align-middle" style="font-size: 0.9rem;">
                             <thead class="table-light">
                                 <tr>
                                     <th>Limite / Vencimento</th>
                                     <th>Programação</th>
                                     <th>Dias Gozo</th>
-                                    <th>Dias Vendidos</th> <!-- COLUNA NOVA -->
+                                    <th>Dias Vendidos</th>
                                     <th>Status</th>
+                                    <th>Ações</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -279,6 +352,44 @@
                                 {% endfor %}
                             </tbody>
                         </table>
+                    </div>
+
+                    <!-- CARDS MOBILE (< 768px) -->
+                    <div class="d-block d-md-none p-3">
+                        {% for f in ferias %}
+                        <div class="card mb-2 border shadow-sm p-2" style="background-color: #f8fafc;">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="small text-muted">
+                                    Limite: <strong class="{% if f.vencimento and f.vencimento < today %}text-danger{% else %}text-dark{% endif %}">{{ f.vencimento|date:"d/m/Y"|default:"-" }}</strong>
+                                </span>
+                                <span class="badge bg-secondary" style="font-size: 0.7rem;">{{ f.status|default:"-" }}</span>
+                            </div>
+                            <div class="mb-1">
+                                <small class="text-muted d-block">
+                                    Programação: 
+                                    {% if f.data_inicio %}
+                                        <strong class="text-primary">{{ f.data_inicio|date:"d/m/Y" }}</strong> a <strong class="text-primary">{{ f.data_fim|date:"d/m/Y" }}</strong>
+                                    {% else %}
+                                        <span class="text-muted">Não programado</span>
+                                    {% endif %}
+                                </small>
+                                <small class="text-muted">Dias Gozo: <strong>{{ f.dias_solicitados|default:"-" }}</strong></small>
+                            </div>
+                            <div class="d-flex justify-content-end gap-2 mt-2 pt-1 border-top">
+                                <a href="{% url 'editar_ferias' colab_id=alvo.id ferias_id=f.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar férias">
+                                    <i class="bi bi-pencil me-1"></i> Editar
+                                </a>
+                                <form method="post" action="{% url 'excluir_ferias' colab_id=alvo.id ferias_id=f.id %}" style="display:inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" title="Excluir férias" onclick="return confirm('Tem certeza que deseja excluir este registro de férias?');">
+                                        <i class="bi bi-trash me-1"></i> Excluir
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-muted text-center py-3 small">Nenhum registro de férias encontrado.</div>
+                        {% endfor %}
                     </div>
                 </div>
             </div>
@@ -368,8 +479,8 @@
                                                                 </h4>
                                                                 <div id="subgrupo-{{ subgrupo_id }}" class="accordion-collapse collapse show" data-bs-parent="#accordion-subgrupo-{{ subgrupo_id }}">
                                                                     <div class="accordion-body p-0">
-                                                                        <!-- PROCEDIMENTOS -->
-                                                                        <div class="table-responsive">
+                                                                        <!-- PROCEDIMENTOS (TABELA DESKTOP >= 768px) -->
+                                                                        <div class="table-responsive d-none d-md-block">
                                                                             <table class="table table-hover mb-0 text-center align-middle" style="font-size: 0.85rem;">
                                                                                 <thead class="table-light">
                                                                                     <tr>
@@ -425,6 +536,39 @@
                                                                                 </tbody>
                                                                             </table>
                                                                         </div>
+
+                                                                        <!-- PROCEDIMENTOS (CARDS MOBILE < 768px) -->
+                                                                        <div class="d-block d-md-none p-2">
+                                                                            {% for item in subgrupo_data.procedimentos %}
+                                                                            <div class="card mb-2 border shadow-sm p-2" style="background-color: #f8fafc;">
+                                                                                <div class="d-flex justify-content-between align-items-start mb-1">
+                                                                                    <div>
+                                                                                        <strong class="text-primary small d-block">{{ item.procedimento.codigo }}</strong>
+                                                                                        <small class="text-dark d-block" style="font-size: 0.8rem;">{{ item.procedimento.nome }}</small>
+                                                                                    </div>
+                                                                                    {% if item.treinamento %}
+                                                                                        {% if item.treinamento.status_treinamento == 'OK' %}
+                                                                                            <span class="badge bg-success" style="font-size: 0.65rem;">OK</span>
+                                                                                        {% else %}
+                                                                                            <span class="badge bg-danger" style="font-size: 0.65rem;">PENDENTE</span>
+                                                                                        {% endif %}
+                                                                                    {% else %}
+                                                                                        <span class="badge bg-warning text-dark" style="font-size: 0.65rem;">NÃO TREINADO</span>
+                                                                                    {% endif %}
+                                                                                </div>
+                                                                                <div class="d-flex justify-content-between align-items-center mt-1 pt-1 border-top" style="font-size: 0.75rem;">
+                                                                                    <span class="badge bg-info bg-opacity-10 text-info border">Rev. {{ item.procedimento.numero_revisao|default:"?" }}</span>
+                                                                                    <span class="text-muted">
+                                                                                        {% if item.treinamento and item.treinamento.data_treinamento %}
+                                                                                            Treino: <strong>{{ item.treinamento.data_treinamento|date:"d/m/Y" }}</strong>
+                                                                                        {% else %}
+                                                                                            <span class="text-muted">Sem data</span>
+                                                                                        {% endif %}
+                                                                                    </span>
+                                                                                </div>
+                                                                            </div>
+                                                                            {% endfor %}
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -451,13 +595,14 @@
 
             {% if can_view_occ %}
             <!-- OCORRÊNCIAS (RESTRITO A RH/LIDERANÇA) -->
-            <div class="card shadow-sm border-0">
+            <div class="card shadow-sm border-0 mb-4">
                 <div class="card-header bg-warning text-dark fw-bold d-flex justify-content-between align-items-center">
-                    <span><i class="bi bi-exclamation-triangle"></i> Ocorrências / Feedback</span>
+                    <span class="fs-6"><i class="bi bi-exclamation-triangle me-1"></i> Ocorrências / Feedback</span>
                     <span class="badge bg-dark text-warning">{{ ocorrencias.count }}</span>
                 </div>
                 <div class="card-body p-0">
-                    <div class="table-responsive">
+                    <!-- TABELA DESKTOP (>= 768px) -->
+                    <div class="table-responsive d-none d-md-block">
                         <table class="table table-hover mb-0 align-middle">
                             <thead class="table-light">
                                 <tr>
@@ -489,101 +634,133 @@
                                         </button>
                                     </td>
                                 </tr>
-                                
-                                <!-- Modal de Detalhes da Ocorrência -->
-                                <div class="modal fade" id="ocorrenciaModal{{ o.id }}" tabindex="-1">
-                                    <div class="modal-dialog modal-lg">
-                                        <div class="modal-content">
-                                            <div class="modal-header bg-warning bg-opacity-10">
-                                                <h5 class="modal-title">Detalhes da Ocorrência</h5>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                            </div>
-                                            <div class="modal-body">
-                                                <div class="row mb-3">
-                                                    <div class="col-md-4">
-                                                        <strong>Data:</strong>
-                                                        <p>{{ o.data_ocorrencia|date:"d/m/Y" }}</p>
-                                                    </div>
-                                                    <div class="col-md-4">
-                                                        <strong>Tipo:</strong>
-                                                        <p><span class="badge bg-primary">{{ o.get_tipo_display }}</span></p>
-                                                    </div>
-                                                    <div class="col-md-4">
-                                                        <strong>Natureza:</strong>
-                                                        <p>
-                                                            {% if o.natureza == 'NEGATIVA' %}
-                                                                <span class="badge bg-danger">NEGATIVA</span>
-                                                            {% elif o.natureza == 'POSITIVA' %}
-                                                                <span class="badge bg-success">POSITIVA</span>
-                                                            {% else %}
-                                                                <span class="badge bg-secondary">NEUTRA</span>
-                                                            {% endif %}
-                                                        </p>
-                                                    </div>
-                                                </div>
-
-                                                {% if o.condutor %}
-                                                <div class="row mb-3">
-                                                    <div class="col-md-12">
-                                                        <strong>Responsável pela Ocorrência:</strong>
-                                                        <p><span class="badge bg-info">{{ o.condutor.get_full_name|default:o.condutor.username }}</span></p>
-                                                    </div>
-                                                </div>
-                                                {% endif %}
-                                                
-                                                <div class="mb-3">
-                                                    <strong>Descrição:</strong>
-                                                    <div class="alert alert-light border">
-                                                        <p>{{ o.descricao }}</p>
-                                                    </div>
-                                                </div>
-                                                
-                                                {% if o.motivo %}
-                                                <div class="mb-3">
-                                                    <strong>Motivo:</strong>
-                                                    <p>{{ o.motivo }}</p>
-                                                </div>
-                                                {% endif %}
-                                                
-                                                {% if o.arquivo_evidencia %}
-                                                <div class="mb-3">
-                                                    <strong>Arquivo de Evidência:</strong>
-                                                    <p>
-                                                        <a href="{{ o.arquivo_evidencia.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">
-                                                            <i class="bi bi-download"></i> Baixar
-                                                        </a>
-                                                    </p>
-                                                </div>
-                                                {% endif %}
-                                            </div>
-                                            <div class="modal-footer">
-                                                {% if can_delete_occ %}
-                                                <form method="post" action="{% url 'deletar_ocorrencia' o.id %}" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir esta ocorrência?');">
-                                                    {% csrf_token %}
-                                                    <button type="submit" class="btn btn-outline-danger">
-                                                        <i class="bi bi-trash"></i> Excluir
-                                                    </button>
-                                                </form>
-                                                {% endif %}
-                                                {% if can_edit_occ %}
-                                                <a href="/rh/ocorrencia/{{ o.id }}/editar/" class="btn btn-primary">
-                                                    <i class="bi bi-pencil"></i> Editar
-                                                </a>
-                                                {% endif %}
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <!-- FIM Modal -->
                                 {% empty %}
                                 <tr><td colspan="5" class="p-4 text-center text-muted">Nenhuma ocorrência registrada.</td></tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
+
+                    <!-- CARDS MOBILE (< 768px) -->
+                    <div class="d-block d-md-none p-3">
+                        {% for o in ocorrencias %}
+                        <div class="card mb-2 border shadow-sm p-2" style="background-color: #fffdf5;">
+                            <div class="d-flex justify-content-between align-items-start mb-1">
+                                <div>
+                                    <span class="fw-bold text-dark small">{{ o.get_tipo_display }}</span>
+                                    <small class="text-muted d-block" style="font-size: 0.75rem;">{{ o.data_ocorrencia|date:"d/m/Y" }}</small>
+                                </div>
+                                <div>
+                                    {% if o.natureza == 'NEGATIVA' %}
+                                        <span class="badge bg-danger" style="font-size: 0.65rem;">NEGATIVA</span>
+                                    {% elif o.natureza == 'POSITIVA' %}
+                                        <span class="badge bg-success" style="font-size: 0.65rem;">POSITIVA</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary" style="font-size: 0.65rem;">NEUTRA</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <p class="small text-muted mb-2 text-truncate" style="font-size: 0.8rem;">{{ o.descricao }}</p>
+                            <div class="d-flex justify-content-end border-top pt-1">
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 0.75rem;" data-bs-toggle="modal" data-bs-target="#ocorrenciaModal{{ o.id }}">
+                                    <i class="bi bi-eye me-1"></i> Detalhes
+                                </button>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-muted text-center py-3 small">Nenhuma ocorrência registrada.</div>
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
+
+            <!-- Modais de Ocorrências -->
+            {% for o in ocorrencias %}
+            <div class="modal fade" id="ocorrenciaModal{{ o.id }}" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header bg-warning bg-opacity-10">
+                            <h5 class="modal-title">Detalhes da Ocorrência</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <strong>Data:</strong>
+                                    <p>{{ o.data_ocorrencia|date:"d/m/Y" }}</p>
+                                </div>
+                                <div class="col-md-4">
+                                    <strong>Tipo:</strong>
+                                    <p><span class="badge bg-primary">{{ o.get_tipo_display }}</span></p>
+                                </div>
+                                <div class="col-md-4">
+                                    <strong>Natureza:</strong>
+                                    <p>
+                                        {% if o.natureza == 'NEGATIVA' %}
+                                            <span class="badge bg-danger">NEGATIVA</span>
+                                        {% elif o.natureza == 'POSITIVA' %}
+                                            <span class="badge bg-success">POSITIVA</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">NEUTRA</span>
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {% if o.condutor %}
+                            <div class="row mb-3">
+                                <div class="col-md-12">
+                                    <strong>Responsável pela Ocorrência:</strong>
+                                    <p><span class="badge bg-info">{{ o.condutor.get_full_name|default:o.condutor.username }}</span></p>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            <div class="mb-3">
+                                <strong>Descrição:</strong>
+                                <div class="alert alert-light border">
+                                    <p class="mb-0">{{ o.descricao }}</p>
+                                </div>
+                            </div>
+                            
+                            {% if o.motivo %}
+                            <div class="mb-3">
+                                <strong>Motivo:</strong>
+                                <p>{{ o.motivo }}</p>
+                            </div>
+                            {% endif %}
+                            
+                            {% if o.arquivo_evidencia %}
+                            <div class="mb-3">
+                                <strong>Arquivo de Evidência:</strong>
+                                <p>
+                                    <a href="{{ o.arquivo_evidencia.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-download"></i> Baixar
+                                    </a>
+                                </p>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="modal-footer">
+                            {% if can_delete_occ %}
+                            <form method="post" action="{% url 'deletar_ocorrencia' o.id %}" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir esta ocorrência?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-outline-danger">
+                                    <i class="bi bi-trash"></i> Excluir
+                                </button>
+                            </form>
+                            {% endif %}
+                            {% if can_edit_occ %}
+                            <a href="/rh/ocorrencia/{{ o.id }}/editar/" class="btn btn-primary">
+                                <i class="bi bi-pencil"></i> Editar
+                            </a>
+                            {% endif %}
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
             {% else %}
             <div class="alert alert-secondary">
                 Ocorrências deste colaborador são visíveis apenas para RH e liderança.
@@ -591,14 +768,15 @@
             {% endif %}
 
             <!-- HISTÓRICO DE MUDANÇAS -->
-            <div class="card shadow-sm border-0">
+            <div class="card shadow-sm border-0 mb-4">
                 <div class="card-header bg-dark text-white fw-bold">
-                    <i class="bi bi-clock-history"></i> Histórico de Mudanças
+                    <i class="bi bi-clock-history me-1"></i> Histórico de Mudanças
                 </div>
-                <div class="card-body">
+                <div class="card-body p-0">
                     {% if alvo.get_historico_completo %}
-                    <div class="table-responsive">
-                        <table class="table table-hover table-sm">
+                    <!-- TABELA DESKTOP (>= 768px) -->
+                    <div class="table-responsive d-none d-md-block p-3">
+                        <table class="table table-hover table-sm mb-0 align-middle">
                             <thead class="table-light">
                                 <tr>
                                     <th>Data</th>
@@ -641,13 +819,52 @@
                             </tbody>
                         </table>
                     </div>
+
+                    <!-- CARDS MOBILE (< 768px) -->
+                    <div class="d-block d-md-none p-3">
+                        {% for hist in alvo.get_historico_completo|slice:":10" %}
+                        <div class="card mb-2 border shadow-sm p-2" style="background-color: #f8fafc;">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="small text-muted">{{ hist.data_mudanca|date:"d/m/Y" }}</span>
+                                {% if hist.tipo_mudanca == "SETOR" %}
+                                    <span class="badge bg-info" style="font-size: 0.65rem;">Setor</span>
+                                {% elif hist.tipo_mudanca == "CARGO" %}
+                                    <span class="badge bg-warning" style="font-size: 0.65rem;">Cargo</span>
+                                {% elif hist.tipo_mudanca == "SALARIO" %}
+                                    <span class="badge bg-success" style="font-size: 0.65rem;">Salário</span>
+                                {% elif hist.tipo_mudanca == "TURNO" %}
+                                    <span class="badge bg-primary" style="font-size: 0.65rem;">Turno</span>
+                                {% elif hist.tipo_mudanca == "STATUS" %}
+                                    <span class="badge bg-danger" style="font-size: 0.65rem;">Status</span>
+                                {% else %}
+                                    <span class="badge bg-secondary" style="font-size: 0.65rem;">{{ hist.get_tipo_mudanca_display }}</span>
+                                {% endif %}
+                            </div>
+                            <p class="small text-dark mb-1" style="font-size: 0.8rem;">{{ hist.descricao }}</p>
+                            <div class="text-end">
+                                {% if hist.aprovado %}
+                                    <span class="badge bg-success" style="font-size: 0.65rem;">Aprovado</span>
+                                {% else %}
+                                    <span class="badge bg-secondary" style="font-size: 0.65rem;">Pendente</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-muted text-center py-3 small">Sem mudanças registradas.</div>
+                        {% endfor %}
+                    </div>
+
                     {% if alvo.get_historico_completo|length > 10 %}
-                    <div class="alert alert-info mt-3 mb-0">
-                        <small><i class="bi bi-info-circle"></i> Mostrando últimas 10 mudanças. Total: <strong>{{ alvo.get_historico_completo|length }}</strong> registros.</small>
+                    <div class="p-3 pt-0">
+                        <div class="alert alert-info mt-2 mb-0 py-2">
+                            <small><i class="bi bi-info-circle me-1"></i> Mostrando últimas 10 mudanças. Total: <strong>{{ alvo.get_historico_completo|length }}</strong> registros.</small>
+                        </div>
                     </div>
                     {% endif %}
                     {% else %}
-                    <p class="text-muted mb-0">Nenhuma mudança registrada ainda.</p>
+                    <div class="p-4 text-center text-muted">
+                        <p class="mb-0">Nenhuma mudança registrada ainda.</p>
+                    </div>
                     {% endif %}
                 </div>
             </div>
