@@ -325,9 +325,9 @@
                                         {% endif %}
                                     </td>
                                     <td class="text-end">
-                                        {% if can_editar_historico %}
-                                            <a href="{% url 'editar_historico_calibracao' item.id %}" class="btn btn-sm btn-primary" title="Editar histórico"><i class="bi bi-pencil-square"></i> Editar</a>
-                                        {% endif %}
+                                        <button type="button" class="btn btn-sm btn-info text-white fw-semibold" data-bs-toggle="modal" data-bs-target="#modalVisualizarHistorico{{ item.id }}" title="Visualizar histórico">
+                                            <i class="bi bi-eye"></i> Visualizar
+                                        </button>
                                         {% if item.certificado %}
                                             {% if can_download_certificado %}
                                                 <a href="/metrologia/historico/{{ item.id }}/download/" download class="btn btn-sm btn-outline-primary" title="Baixar PDF"><i class="bi bi-download"></i></a>
@@ -425,11 +425,9 @@
                                     {% endif %}
 
                                     <div class="d-flex gap-2 mt-1">
-                                        {% if can_editar_historico %}
-                                            <a href="{% url 'editar_historico_calibracao' item.id %}" class="btn btn-sm btn-primary flex-grow-1">
-                                                <i class="bi bi-pencil-square me-1"></i> Editar Dados
-                                            </a>
-                                        {% endif %}
+                                        <button type="button" class="btn btn-sm btn-info text-white fw-semibold flex-grow-1" data-bs-toggle="modal" data-bs-target="#modalVisualizarHistorico{{ item.id }}">
+                                            <i class="bi bi-eye me-1"></i> Visualizar Registro
+                                        </button>
                                         {% if can_remover_historico %}
                                             <form method="post" action="/metrologia/historico/{{ item.id }}/remover/" class="d-inline" onsubmit="return confirm('Tem certeza que deseja remover este registro do histórico?');">
                                                 {% csrf_token %}
@@ -1384,5 +1382,161 @@ function toggleEditOcorrencia(id) {
         </div>
     </div>
 </div>
+
+<!-- Modais de Visualização do Registro de Histórico de Calibração -->
+{% for item in historicos %}
+<div class="modal fade" id="modalVisualizarHistorico{{ item.id }}" tabindex="-1" aria-labelledby="modalVisualizarHistoricoLabel{{ item.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-primary text-white p-3 px-4">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-file-earmark-check-fill fs-5"></i>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="modalVisualizarHistoricoLabel{{ item.id }}">
+                            Registro de Calibração: {{ item.numero_certificado|default:"S/N" }}
+                        </h5>
+                        <small class="text-white-50">{{ instrumento.tag }} - {{ instrumento.descricao }}</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <div class="modal-body p-4 bg-light">
+                <!-- Card de Resumo do Status -->
+                <div class="p-3 bg-white rounded-3 border mb-3 shadow-sm d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div>
+                        <span class="text-muted small d-block">Resultado da Avaliação:</span>
+                        {% if item.resultado == 'APROVADO_SEM_CORRECAO' %}
+                            <span class="badge bg-success fs-6"><i class="bi bi-check-circle me-1"></i> Aprovado sem Correção</span>
+                        {% elif item.resultado == 'APROVADO_COM_CORRECAO' %}
+                            <span class="badge bg-warning text-dark fs-6"><i class="bi bi-exclamation-triangle me-1"></i> Aprovado com Correção</span>
+                        {% elif item.resultado == 'REPROVADO' %}
+                            <span class="badge bg-danger fs-6"><i class="bi bi-x-circle me-1"></i> Reprovado / Restrição</span>
+                        {% else %}
+                            <span class="badge bg-secondary fs-6">{{ item.get_resultado_display|default:item.resultado }}</span>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <span class="text-muted small d-block text-end">Certificado Digital:</span>
+                        {% if item.certificado %}
+                            <a href="/metrologia/historico/{{ item.id }}/download/" download class="btn btn-sm btn-outline-primary fw-semibold">
+                                <i class="bi bi-file-pdf me-1"></i> Baixar PDF Anexado
+                            </a>
+                        {% else %}
+                            <span class="badge bg-light text-muted border">Nenhum PDF anexado</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Grid de Informações Gerais -->
+                <div class="card border-0 shadow-sm rounded-3 mb-3">
+                    <div class="card-body p-3">
+                        <h6 class="fw-bold text-dark border-bottom pb-2 mb-3"><i class="bi bi-info-circle text-primary me-1"></i> Informações Gerais</h6>
+                        <div class="row g-3">
+                            <div class="col-6 col-md-4">
+                                <small class="text-muted d-block">Data da Calibração</small>
+                                <strong class="text-dark">{{ item.data_calibracao|date:"d/m/Y"|default:"-" }}</strong>
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <small class="text-muted d-block">Próxima Calibração</small>
+                                <strong class="text-dark">{{ item.proxima_calibracao|date:"d/m/Y"|default:"-" }}</strong>
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <small class="text-muted d-block">Nº do Certificado</small>
+                                <strong class="text-primary font-monospace">{{ item.numero_certificado|default:"Não informado" }}</strong>
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <small class="text-muted d-block">Tipo de Calibração</small>
+                                <span class="badge bg-secondary bg-opacity-10 text-dark">{{ item.get_tipo_calibracao_display|default:item.tipo_calibracao }}</span>
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <small class="text-muted d-block">Laboratório / Fornecedor</small>
+                                <strong class="text-dark">{{ item.fornecedor|default:"Não informado" }}</strong>
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <small class="text-muted d-block">Responsável Técnico</small>
+                                <strong class="text-dark">{{ item.responsavel|default:"Não informado" }}</strong>
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <small class="text-muted d-block">Selo RBC Acreditado?</small>
+                                {% if item.tem_selo_rbc %}
+                                    <span class="badge bg-success-subtle text-success border border-success">✓ Sim (RBC)</span>
+                                {% else %}
+                                    <span class="badge bg-light text-muted border">Não</span>
+                                {% endif %}
+                            </div>
+                            <div class="col-12">
+                                <small class="text-muted d-block">Observações</small>
+                                <p class="text-dark small mb-0 bg-light p-2 rounded border">{{ item.observacoes|default:"Nenhuma observação registrada." }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabela de Resultados por Faixa de Medição -->
+                <div class="card border-0 shadow-sm rounded-3">
+                    <div class="card-body p-3">
+                        <h6 class="fw-bold text-dark border-bottom pb-2 mb-2"><i class="bi bi-table text-info me-1"></i> Avaliação das Faixas de Medição</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-striped table-hover mb-0 text-center align-middle" style="font-size: 0.85rem;">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="text-start">Faixa (Min - Máx)</th>
+                                        <th>Tolerância (Tol)</th>
+                                        <th>Erro (E)</th>
+                                        <th>Incerteza (U)</th>
+                                        <th>EME (|E|+U)</th>
+                                        <th>Resultado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for rf in item.resultados_faixa.all %}
+                                    <tr>
+                                        <td class="text-start fw-bold">
+                                            {{ rf.valor_minimo }} a {{ rf.valor_maximo }} {{ rf.faixa.unidade.nome|default:"" }}
+                                        </td>
+                                        <td>± {{ rf.tolerancia|default:"-" }}</td>
+                                        <td>{{ rf.erro|default:"-" }}</td>
+                                        <td>{{ rf.incerteza|default:"-" }}</td>
+                                        <td class="fw-bold">{{ rf.eme|default:"-" }}</td>
+                                        <td>
+                                            {% if rf.resultado == 'APROVADO_SEM_CORRECAO' %}
+                                                <span class="badge bg-success small">✓ Aprovado</span>
+                                            {% elif rf.resultado == 'APROVADO_COM_CORRECAO' %}
+                                                <span class="badge bg-warning text-dark small">⚠ Condicional</span>
+                                            {% elif rf.resultado == 'REPROVADO' %}
+                                                <span class="badge bg-danger small">✗ Reprovado</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary small">-</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="6" class="text-muted py-2">Nenhum resultado por faixa detalhado neste registro.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rodapé do Modal com Botão de Edição -->
+            <div class="modal-footer bg-white p-3 px-4 d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Fechar</button>
+                <div class="d-flex gap-2">
+                    {% if can_editar_historico %}
+                        <a href="{% url 'editar_historico_calibracao' item.id %}" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">
+                            <i class="bi bi-pencil-square me-1"></i> Editar Certificado / Histórico
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
 
 {% endblock %}
