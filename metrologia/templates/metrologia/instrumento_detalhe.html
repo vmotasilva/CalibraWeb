@@ -1469,8 +1469,8 @@ function toggleEditOcorrencia(id) {
                                                 <small class="text-muted fw-normal">a</small><br>
                                                 {{ rf.valor_maximo }} {{ rf.faixa.unidade.nome|default:"" }}
                                             </td>
-                                            <td>
-                                                <span class="text-muted">± {{ rf.tolerancia|default:rf.faixa.tolerancia_mais_menos|default:"-" }}</span>
+                                            <td class="clickable-calculo" id="tol_cell_{{ rf.id }}" data-rfid="{{ rf.id }}" style="cursor: pointer;" title="Clique para calcular/atualizar EMA e EME">
+                                                <span class="text-muted" id="tol_text_{{ rf.id }}">± {{ rf.tolerancia|default:rf.faixa.tolerancia_mais_menos|default:"-" }}</span>
                                             </td>
                                             <td class="p-1">
                                                 <input type="number" step="0.0001"
@@ -1492,11 +1492,11 @@ function toggleEditOcorrencia(id) {
                                                     value="{{ rf.incerteza|stringformat:'.4f'|default:'' }}"
                                                     placeholder="0.0000">
                                             </td>
-                                            <td class="fw-bold text-secondary" id="eme_display_{{ rf.id }}"
-                                                data-tol="{{ rf.tolerancia|default:rf.faixa.tolerancia_mais_menos|default:'' }}">
+                                            <td class="fw-bold text-secondary clickable-calculo" id="eme_display_{{ rf.id }}" data-rfid="{{ rf.id }}"
+                                                data-tol="{{ rf.tolerancia|default:rf.faixa.tolerancia_mais_menos|default:'' }}" style="cursor: pointer;" title="Clique para calcular/atualizar EMA e EME">
                                                 {% if rf.eme %}{{ rf.eme|stringformat:'.4f' }}{% else %}-{% endif %}
                                             </td>
-                                            <td class="text-muted" id="ema_display_{{ rf.id }}">
+                                            <td class="text-muted clickable-calculo fw-bold font-monospace" id="ema_display_{{ rf.id }}" data-rfid="{{ rf.id }}" style="cursor: pointer;" title="Clique para calcular/atualizar EMA e EME">
                                                 {% if rf.ema %}{{ rf.ema|stringformat:'.4f' }}{% else %}-{% endif %}
                                             </td>
                                             <td>
@@ -1561,26 +1561,53 @@ function toggleEditOcorrencia(id) {
 (function () {
     "use strict";
 
+    function extrairTolerancia(rfId) {
+        const emeCell = document.getElementById('eme_display_' + rfId);
+        let raw = emeCell ? (emeCell.dataset.tol || '') : '';
+        
+        if (!raw) {
+            const tolText = document.getElementById('tol_text_' + rfId);
+            if (tolText) raw = tolText.textContent || '';
+        }
+        
+        // Trata vírgula e caracteres como ±, espaços, etc.
+        raw = String(raw).replace('±', '').replace(/\s+/g, '').replace(',', '.');
+        const match = raw.match(/[-+]?\d*\.?\d+/);
+        if (match) {
+            return Math.abs(parseFloat(match[0]));
+        }
+        return NaN;
+    }
+
     function calcularEme(rfId) {
+        if (!rfId) return;
         const erroInput = document.getElementById('erro_faixa_' + rfId);
         const incInput  = document.getElementById('incerteza_faixa_' + rfId);
         const emeCell   = document.getElementById('eme_display_' + rfId);
         const emaCell   = document.getElementById('ema_display_' + rfId);
         const badgeCell = document.getElementById('resultado_badge_' + rfId);
-        if (!erroInput || !incInput || !emeCell) return;
-
-        const erroVal = parseFloat(erroInput.value);
-        const incVal  = parseFloat(incInput.value);
+        if (!emeCell) return;
 
         // Calcular EMA = Tol * 2 / 4
-        const tolRaw = emeCell.dataset.tol;
-        const tol    = parseFloat(tolRaw);
-        const ema    = !isNaN(tol) ? Math.abs(tol) * 2 / 4 : NaN;
+        const tol = extrairTolerancia(rfId);
+        const ema = !isNaN(tol) ? (tol * 2 / 4) : NaN;
 
         // Exibir EMA
         if (emaCell) {
-            emaCell.textContent = !isNaN(ema) ? ema.toFixed(4) : '-';
+            if (!isNaN(ema)) {
+                emaCell.textContent = ema.toFixed(4);
+                emaCell.classList.remove('text-muted');
+                emaCell.classList.add('text-primary');
+            } else {
+                emaCell.textContent = '-';
+            }
         }
+
+        const erroStr = erroInput ? String(erroInput.value).replace(',', '.').trim() : '';
+        const incStr  = incInput ? String(incInput.value).replace(',', '.').trim() : '';
+
+        const erroVal = erroStr !== '' ? parseFloat(erroStr) : NaN;
+        const incVal  = incStr !== '' ? parseFloat(incStr) : NaN;
 
         if (isNaN(erroVal) || isNaN(incVal)) {
             emeCell.textContent = '-';
@@ -1594,7 +1621,7 @@ function toggleEditOcorrencia(id) {
 
         // Preview de resultado: EME vs EMA
         if (!isNaN(ema) && badgeCell) {
-            if (eme > ema * 3) {
+            if (eme > (ema * 3)) {
                 // EME > EMA*3 → REPROVADO
                 badgeCell.innerHTML = '<span class="badge bg-danger small">✗ Reprovado</span>';
                 emeCell.className = emeCell.className.replace(/text-\w+/g, '') + ' text-danger';
@@ -1610,18 +1637,47 @@ function toggleEditOcorrencia(id) {
         }
     }
 
+    // Recalcula todas as faixas da página/modais
+    function recalcularTodasFaixas() {
+        document.querySelectorAll('.campo-eme[data-field="erro"]').forEach(function (el) {
+            if (el.dataset.rfid) {
+                calcularEme(el.dataset.rfid);
+            }
+        });
+    }
+
+    // 1. Ao digitar no Erro ou Incerteza
     document.addEventListener('input', function (e) {
         if (e.target && e.target.classList.contains('campo-eme')) {
             calcularEme(e.target.dataset.rfid);
         }
     });
 
-    // Calcular EME/EMA assim que o modal abre (campos já preenchidos)
-    document.addEventListener('shown.bs.modal', function () {
-        document.querySelectorAll('.campo-eme[data-field="erro"]').forEach(function (el) {
-            calcularEme(el.dataset.rfid);
-        });
+    // 2. Ao clicar na célula de Tolerância (Tol), EMA ou EME
+    document.addEventListener('click', function (e) {
+        const target = e.target.closest('.clickable-calculo');
+        if (target && target.dataset.rfid) {
+            calcularEme(target.dataset.rfid);
+            // Feedback visual sutil de clique
+            target.classList.add('table-primary');
+            setTimeout(function() {
+                target.classList.remove('table-primary');
+            }, 300);
+        }
     });
+
+    // 3. Ao abrir qualquer modal de calibração
+    document.addEventListener('shown.bs.modal', function () {
+        recalcularTodasFaixas();
+    });
+
+    // 4. No carregamento inicial do DOM
+    document.addEventListener('DOMContentLoaded', function () {
+        recalcularTodasFaixas();
+    });
+
+    // Executa imediatamente para garantir
+    recalcularTodasFaixas();
 })();
 </script>
 
