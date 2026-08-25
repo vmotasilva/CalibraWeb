@@ -379,9 +379,9 @@ class ResultadoFaixaCalibracao(models.Model):
         if self.tolerancia is not None:
             self.ema = self.tolerancia / 2
         
-        # Calcular EME = |Erro| + Incerteza
+        # Calcular EME = |Erro + Incerteza|
         if self.erro is not None and self.incerteza is not None:
-            self.eme = abs(self.erro) + self.incerteza
+            self.eme = abs(self.erro + self.incerteza)
         
         # Calcular resultado baseado em EME e Tolerância
         # Padrão metrológico: comparar EME com Tolerância (não com EMA×3)

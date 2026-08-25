@@ -1571,7 +1571,7 @@ function toggleEditOcorrencia(id) {
             return;
         }
 
-        const eme = Math.abs(erroVal) + incVal;
+        const eme = Math.abs(erroVal + incVal);
         emeCell.textContent = eme.toFixed(4);
 
         // Preview de resultado
