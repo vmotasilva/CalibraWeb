@@ -375,29 +375,27 @@ class ResultadoFaixaCalibracao(models.Model):
 
     def save(self, *args, **kwargs):
         """Auto-calculate EMA, EME and resultado."""
-        # Calcular EMA = Tolerância/2
+        # Calcular EMA = Tolerância * 2 / 4
         if self.tolerancia is not None:
-            self.ema = self.tolerancia / 2
+            self.ema = self.tolerancia * 2 / 4
         
         # Calcular EME = |Erro + Incerteza|
         if self.erro is not None and self.incerteza is not None:
             self.eme = abs(self.erro + self.incerteza)
         
-        # Calcular resultado baseado em EME e Tolerância
-        # Padrão metrológico: comparar EME com Tolerância (não com EMA×3)
-        if self.eme is not None and self.tolerancia is not None:
-            eme_abs = abs(self.eme)
-            tolerancia_abs = abs(self.tolerancia)
-            ema_abs = tolerancia_abs / 2
+        # Calcular resultado baseado em EME vs EMA
+        if self.eme is not None and self.ema is not None:
+            eme_val = abs(self.eme)
+            ema_val = abs(self.ema)
             
-            if eme_abs > tolerancia_abs:
-                # EME > Tolerância → REPROVADO
+            if eme_val > ema_val * 3:
+                # EME > EMA*3 → REPROVADO / RESTRIÇÃO
                 self.resultado = 'REPROVADO'
-            elif eme_abs <= ema_abs:
-                # EME ≤ EMA (EMA = Tolerância/2) → APROVADO SEM CORREÇÃO
+            elif eme_val <= ema_val:
+                # EME <= EMA → APROVADO SEM CORREÇÃO
                 self.resultado = 'APROVADO_SEM_CORRECAO'
             else:
-                # EMA < EME ≤ Tolerância → APROVADO COM CORREÇÃO
+                # EMA < EME <= EMA*3 → APROVADO COM CORREÇÃO
                 self.resultado = 'APROVADO_COM_CORRECAO'
         
         super().save(*args, **kwargs)

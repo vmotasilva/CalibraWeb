@@ -1453,10 +1453,11 @@ function toggleEditOcorrencia(id) {
                                     <thead class="table-light">
                                         <tr>
                                             <th class="text-start" style="min-width: 150px;">Faixa (Min - Máx)</th>
-                                            <th style="width: 110px;">Tolerância (Tol)</th>
-                                            <th style="width: 140px;" class="bg-primary-subtle text-primary fw-bold">Erro Encontrado (E)</th>
-                                            <th style="width: 140px;" class="bg-primary-subtle text-primary fw-bold">Incerteza (U)</th>
-                                            <th style="width: 110px;">EME (|E|+U)</th>
+                                            <th style="width: 100px;">Tolerância (Tol)</th>
+                                            <th style="width: 130px;" class="bg-primary-subtle text-primary fw-bold">Erro (E)</th>
+                                            <th style="width: 130px;" class="bg-primary-subtle text-primary fw-bold">Incerteza (U)</th>
+                                            <th style="width: 100px;">EME |E+U|</th>
+                                            <th style="width: 100px;">EMA</th>
                                             <th style="width: 120px;">Resultado</th>
                                         </tr>
                                     </thead>
@@ -1493,6 +1494,9 @@ function toggleEditOcorrencia(id) {
                                                 data-tol="{{ rf.tolerancia|default:rf.faixa.tolerancia_mais_menos|default:'' }}">
                                                 {% if rf.eme %}{{ rf.eme|stringformat:'.4f' }}{% else %}-{% endif %}
                                             </td>
+                                            <td class="text-muted" id="ema_display_{{ rf.id }}">
+                                                {% if rf.ema %}{{ rf.ema|stringformat:'.4f' }}{% else %}-{% endif %}
+                                            </td>
                                             <td>
                                                 <span id="resultado_badge_{{ rf.id }}">
                                                 {% if rf.resultado == 'APROVADO_SEM_CORRECAO' %}
@@ -1509,7 +1513,7 @@ function toggleEditOcorrencia(id) {
                                         </tr>
                                         {% empty %}
                                         <tr>
-                                            <td colspan="6" class="text-muted py-3">Nenhuma faixa associada ao instrumento.</td>
+                                            <td colspan="7" class="text-muted py-3">Nenhuma faixa associada ao instrumento.</td>
                                         </tr>
                                         {% endfor %}
                                     </tbody>
@@ -1559,11 +1563,22 @@ function toggleEditOcorrencia(id) {
         const erroInput = document.getElementById('erro_faixa_' + rfId);
         const incInput  = document.getElementById('incerteza_faixa_' + rfId);
         const emeCell   = document.getElementById('eme_display_' + rfId);
+        const emaCell   = document.getElementById('ema_display_' + rfId);
         const badgeCell = document.getElementById('resultado_badge_' + rfId);
         if (!erroInput || !incInput || !emeCell) return;
 
         const erroVal = parseFloat(erroInput.value);
         const incVal  = parseFloat(incInput.value);
+
+        // Calcular EMA = Tol * 2 / 4
+        const tolRaw = emeCell.dataset.tol;
+        const tol    = parseFloat(tolRaw);
+        const ema    = !isNaN(tol) ? Math.abs(tol) * 2 / 4 : NaN;
+
+        // Exibir EMA
+        if (emaCell) {
+            emaCell.textContent = !isNaN(ema) ? ema.toFixed(4) : '-';
+        }
 
         if (isNaN(erroVal) || isNaN(incVal)) {
             emeCell.textContent = '-';
@@ -1571,22 +1586,22 @@ function toggleEditOcorrencia(id) {
             return;
         }
 
+        // EME = |E + U|
         const eme = Math.abs(erroVal + incVal);
         emeCell.textContent = eme.toFixed(4);
 
-        // Preview de resultado
-        const tolRaw = emeCell.dataset.tol;
-        const tol    = parseFloat(tolRaw);
-        if (!isNaN(tol) && badgeCell) {
-            const tolAbs = Math.abs(tol);
-            const ema    = tolAbs / 2;
-            if (eme > tolAbs) {
+        // Preview de resultado: EME vs EMA
+        if (!isNaN(ema) && badgeCell) {
+            if (eme > ema * 3) {
+                // EME > EMA*3 → REPROVADO
                 badgeCell.innerHTML = '<span class="badge bg-danger small">✗ Reprovado</span>';
                 emeCell.className = emeCell.className.replace(/text-\w+/g, '') + ' text-danger';
             } else if (eme <= ema) {
+                // EME <= EMA → APROVADO SEM CORREÇÃO
                 badgeCell.innerHTML = '<span class="badge bg-success small">✓ Aprovado</span>';
                 emeCell.className = emeCell.className.replace(/text-\w+/g, '') + ' text-success';
             } else {
+                // EMA < EME <= EMA*3 → APROVADO COM CORREÇÃO
                 badgeCell.innerHTML = '<span class="badge bg-warning text-dark small">⚠ Condicional</span>';
                 emeCell.className = emeCell.className.replace(/text-\w+/g, '') + ' text-warning';
             }
@@ -1599,7 +1614,7 @@ function toggleEditOcorrencia(id) {
         }
     });
 
-    // Calcular EME assim que o modal abre (campos já preenchidos)
+    // Calcular EME/EMA assim que o modal abre (campos já preenchidos)
     document.addEventListener('shown.bs.modal', function () {
         document.querySelectorAll('.campo-eme[data-field="erro"]').forEach(function (el) {
             calcularEme(el.dataset.rfid);
