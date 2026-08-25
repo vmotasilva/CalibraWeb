@@ -7789,6 +7789,7 @@ def iso_auditoria_sintese_wizard(request, auditoria_id):
         if status in ['NC', 'OM', 'OBS']:
             grau_label = "NC Maior" if (status == 'NC' and grau == 'MAIOR') else ("NC Menor" if status == 'NC' else ("Observação com Correção" if status == 'OBS' else "Oportunidade de Melhoria"))
             sec_data['gaps'].append({
+                'item_id': item.id,
                 'item_referencia': item.referencia,
                 'item_titulo': item.titulo,
                 'status': status,

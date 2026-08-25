@@ -72,7 +72,10 @@
             </div>
         </div>
 
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{% url 'auditoria:iso_revisao_dashboard' auditoria.id %}" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold shadow-2xs">
+                <i class="bi bi-ui-checks-grid me-1"></i> Revisão & Status
+            </a>
             <a href="{% url 'auditoria:iso_auditoria_cronograma' auditoria.id %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-semibold">
                 <i class="bi bi-calendar3 me-1"></i> Cronograma
             </a>
@@ -195,6 +198,9 @@
                                         <strong class="text-dark">Requisito {{ gap.item_referencia }}</strong>
                                         <span class="text-muted small">• {{ gap.item_titulo }}</span>
                                     </div>
+                                    <a href="{% url 'auditoria:iso_revisao_dashboard' auditoria.id %}#bloco_{{ gap.item_id }}" class="btn btn-sm btn-outline-dark rounded-pill px-2 py-0.5 small" title="Alterar classificação no painel de Revisão" target="_blank">
+                                        <i class="bi bi-pencil me-1"></i> Alterar para NC Menor / Maior
+                                    </a>
                                 </div>
 
                                 {% if gap.justificativa %}
