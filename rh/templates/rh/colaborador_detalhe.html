@@ -962,11 +962,13 @@
 
 <!-- 1. Offcanvas Ficha Cadastral -->
 <div class="offcanvas offcanvas-bottom h-75 rounded-top-4 shadow-lg d-md-none" tabindex="-1" id="offcanvasFichaCadastral" aria-labelledby="offcanvasFichaCadastralLabel">
-    <div class="offcanvas-header bg-dark text-white rounded-top-4 py-3">
-        <h5 class="offcanvas-title fw-bold fs-6" id="offcanvasFichaCadastralLabel">
-            <i class="bi bi-person-badge me-2 text-warning"></i> Ficha Cadastral
-        </h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    <div class="offcanvas-header bg-dark text-white rounded-top-4 py-3 px-3">
+        <div class="d-flex justify-content-between align-items-center w-100">
+            <h5 class="offcanvas-title fw-bold fs-6 mb-0 d-flex align-items-center" id="offcanvasFichaCadastralLabel">
+                <i class="bi bi-person-badge me-2 text-warning fs-5"></i> Ficha Cadastral
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
     </div>
     <div class="offcanvas-body p-3">
         <div class="d-flex flex-column">
@@ -1054,13 +1056,15 @@
     </div>
 </div>
 
-<!-- 2. Offcanvas Documentos Pessoais -->
-<div class="offcanvas offcanvas-bottom h-75 rounded-top-4 shadow-lg d-md-none" tabindex="-1" id="offcanvasDocumentos" aria-labelledby="offcanvasDocumentosLabel">
-    <div class="offcanvas-header bg-secondary text-white rounded-top-4 py-3">
-        <h5 class="offcanvas-title fw-bold fs-6" id="offcanvasDocumentosLabel">
-            <i class="bi bi-folder me-2"></i> Documentos Pessoais
-        </h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+<!-- 2. Offcanvas Documentos Pessoais (h-auto com limite maximo de 75vh para evitar espaco em branco quando vazio) -->
+<div class="offcanvas offcanvas-bottom rounded-top-4 shadow-lg d-md-none" style="height: auto; max-height: 75vh;" tabindex="-1" id="offcanvasDocumentos" aria-labelledby="offcanvasDocumentosLabel">
+    <div class="offcanvas-header bg-secondary text-white rounded-top-4 py-3 px-3">
+        <div class="d-flex justify-content-between align-items-center w-100">
+            <h5 class="offcanvas-title fw-bold fs-6 mb-0 d-flex align-items-center" id="offcanvasDocumentosLabel">
+                <i class="bi bi-folder me-2 text-white-50 fs-5"></i> Documentos Pessoais
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
     </div>
     <div class="offcanvas-body p-3">
         <ul class="list-group list-group-flush">
@@ -1086,17 +1090,19 @@
 
 <!-- 3. Offcanvas Períodos Aquisitivos (Vencimentos) -->
 <div class="offcanvas offcanvas-bottom h-75 rounded-top-4 shadow-lg d-md-none" tabindex="-1" id="offcanvasVencimentos" aria-labelledby="offcanvasVencimentosLabel">
-    <div class="offcanvas-header bg-warning text-dark rounded-top-4 py-3">
-        <h5 class="offcanvas-title fw-bold fs-6" id="offcanvasVencimentosLabel">
-            <i class="bi bi-clock-history me-2"></i> Períodos Aquisitivos
-        </h5>
-        <div class="d-flex align-items-center gap-2">
-            {% if can_register_ferias %}
-            <button class="btn btn-sm btn-dark fw-bold" data-bs-toggle="modal" data-bs-target="#modalVencimentoFerias">
-                <i class="bi bi-plus-lg"></i> Novo
-            </button>
-            {% endif %}
-            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    <div class="offcanvas-header bg-warning text-dark rounded-top-4 py-3 px-3">
+        <div class="d-flex justify-content-between align-items-center w-100">
+            <h5 class="offcanvas-title fw-bold fs-6 mb-0 d-flex align-items-center" id="offcanvasVencimentosLabel">
+                <i class="bi bi-clock-history me-2 fs-5"></i> Períodos Aquisitivos
+            </h5>
+            <div class="d-flex align-items-center gap-2">
+                {% if can_register_ferias %}
+                <button class="btn btn-sm btn-dark fw-bold py-1 px-2" style="font-size: 0.75rem;" data-bs-toggle="modal" data-bs-target="#modalVencimentoFerias">
+                    <i class="bi bi-plus-lg"></i> Novo
+                </button>
+                {% endif %}
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
         </div>
     </div>
     <div class="offcanvas-body p-3">
@@ -1131,14 +1137,16 @@
 
 <!-- 4. Offcanvas Gestão de Férias -->
 <div class="offcanvas offcanvas-bottom h-75 rounded-top-4 shadow-lg d-md-none" tabindex="-1" id="offcanvasFerias" aria-labelledby="offcanvasFeriasLabel">
-    <div class="offcanvas-header bg-info text-white rounded-top-4 py-3">
-        <h5 class="offcanvas-title fw-bold fs-6" id="offcanvasFeriasLabel">
-            <i class="bi bi-airplane me-2"></i> Gestão de Férias
-        </h5>
-        <div class="d-flex align-items-center gap-2">
-            <span class="badge bg-white text-danger fw-bold" style="font-size: 0.7rem;">Venc.: {{ kpi_ferias_vencidas }}</span>
-            <span class="badge bg-white text-success fw-bold" style="font-size: 0.7rem;">Prog.: {{ kpi_ferias_programadas }}</span>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    <div class="offcanvas-header bg-info text-white rounded-top-4 py-3 px-3">
+        <div class="d-flex justify-content-between align-items-center w-100">
+            <h5 class="offcanvas-title fw-bold fs-6 mb-0 d-flex align-items-center" id="offcanvasFeriasLabel">
+                <i class="bi bi-airplane me-2 fs-5"></i> Gestão de Férias
+            </h5>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-white text-danger fw-bold" style="font-size: 0.7rem;">Venc.: {{ kpi_ferias_vencidas }}</span>
+                <span class="badge bg-white text-success fw-bold" style="font-size: 0.7rem;">Prog.: {{ kpi_ferias_programadas }}</span>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
         </div>
     </div>
     <div class="offcanvas-body p-3">
@@ -1184,17 +1192,19 @@
 
 <!-- 5. Offcanvas Matriz de Treinamentos -->
 <div class="offcanvas offcanvas-bottom h-75 rounded-top-4 shadow-lg d-md-none" tabindex="-1" id="offcanvasTreinamentos" aria-labelledby="offcanvasTreinamentosLabel">
-    <div class="offcanvas-header bg-primary text-white rounded-top-4 py-3">
-        <h5 class="offcanvas-title fw-bold fs-6" id="offcanvasTreinamentosLabel">
-            <i class="bi bi-mortarboard me-2"></i> Matriz de Treinamentos
-        </h5>
-        <div class="d-flex align-items-center gap-2">
-            {% if can_edit %}
-            <button type="button" class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#modalAssociarPerfil">
-                <i class="bi bi-plus-lg"></i> Perfil
-            </button>
-            {% endif %}
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    <div class="offcanvas-header bg-primary text-white rounded-top-4 py-3 px-3">
+        <div class="d-flex justify-content-between align-items-center w-100">
+            <h5 class="offcanvas-title fw-bold fs-6 mb-0 d-flex align-items-center" id="offcanvasTreinamentosLabel">
+                <i class="bi bi-mortarboard me-2 fs-5"></i> Matriz de Treinamentos
+            </h5>
+            <div class="d-flex align-items-center gap-2">
+                {% if can_edit %}
+                <button type="button" class="btn btn-sm btn-light py-1 px-2" style="font-size: 0.75rem;" data-bs-toggle="modal" data-bs-target="#modalAssociarPerfil">
+                    <i class="bi bi-plus-lg"></i> Perfil
+                </button>
+                {% endif %}
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
         </div>
     </div>
     <div class="offcanvas-body p-2">
@@ -1266,13 +1276,15 @@
 <!-- 6. Offcanvas Ocorrências -->
 {% if can_view_occ %}
 <div class="offcanvas offcanvas-bottom h-75 rounded-top-4 shadow-lg d-md-none" tabindex="-1" id="offcanvasOcorrencias" aria-labelledby="offcanvasOcorrenciasLabel">
-    <div class="offcanvas-header bg-warning text-dark rounded-top-4 py-3">
-        <h5 class="offcanvas-title fw-bold fs-6" id="offcanvasOcorrenciasLabel">
-            <i class="bi bi-exclamation-triangle me-2"></i> Ocorrências / Feedback
-        </h5>
-        <div class="d-flex align-items-center gap-2">
-            <span class="badge bg-dark text-warning">{{ ocorrencias.count }}</span>
-            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    <div class="offcanvas-header bg-warning text-dark rounded-top-4 py-3 px-3">
+        <div class="d-flex justify-content-between align-items-center w-100">
+            <h5 class="offcanvas-title fw-bold fs-6 mb-0 d-flex align-items-center" id="offcanvasOcorrenciasLabel">
+                <i class="bi bi-exclamation-triangle me-2 fs-5"></i> Ocorrências / Feedback
+            </h5>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-dark text-warning">{{ ocorrencias.count }}</span>
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
         </div>
     </div>
     <div class="offcanvas-body p-3">
@@ -1312,11 +1324,13 @@
 
 <!-- 7. Offcanvas Histórico de Mudanças -->
 <div class="offcanvas offcanvas-bottom h-75 rounded-top-4 shadow-lg d-md-none" tabindex="-1" id="offcanvasHistorico" aria-labelledby="offcanvasHistoricoLabel">
-    <div class="offcanvas-header bg-dark text-white rounded-top-4 py-3">
-        <h5 class="offcanvas-title fw-bold fs-6" id="offcanvasHistoricoLabel">
-            <i class="bi bi-clock-history me-2"></i> Histórico de Mudanças
-        </h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    <div class="offcanvas-header bg-dark text-white rounded-top-4 py-3 px-3">
+        <div class="d-flex justify-content-between align-items-center w-100">
+            <h5 class="offcanvas-title fw-bold fs-6 mb-0 d-flex align-items-center" id="offcanvasHistoricoLabel">
+                <i class="bi bi-clock-history me-2 text-warning fs-5"></i> Histórico de Mudanças
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
     </div>
     <div class="offcanvas-body p-3">
         {% for hist in alvo.get_historico_completo %}
