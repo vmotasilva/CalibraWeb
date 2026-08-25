@@ -48,7 +48,7 @@
         <div class="d-flex d-md-none w-100">
             <div class="dropdown w-100">
                 <button class="btn btn-outline-primary w-100 dropdown-toggle d-flex align-items-center justify-content-center shadow-sm" type="button" id="dropdownAcoesColabMobile" data-bs-toggle="dropdown" aria-expanded="false" style="min-height: 38px;">
-                    <i class="bi bi-three-dots-vertical me-2"></i> Ações do Colaborador
+                    <i class="bi bi-three-dots-vertical me-2"></i> Ações Rápidas
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end w-100 shadow py-2" aria-labelledby="dropdownAcoesColabMobile">
                     {% if can_edit_colaborador %}
@@ -77,7 +77,90 @@
         </div>
     </div>
 
-    <div class="row">
+    <!-- ========================================================================= -->
+    <!-- MENU DE MÓDULOS MOBILE (APP DASHBOARD GRID: VISÍVEL APENAS EM < 768px)    -->
+    <!-- ========================================================================= -->
+    <div class="d-block d-md-none mb-4">
+        <div class="row row-cols-2 g-2">
+            
+            <!-- 1. Ficha Cadastral -->
+            <div class="col">
+                <button type="button" class="btn btn-outline-dark w-100 h-100 py-3 shadow-sm d-flex flex-column align-items-center justify-content-center text-center rounded-3" data-bs-toggle="offcanvas" data-bs-target="#offcanvasFichaCadastral">
+                    <i class="bi bi-person-badge fs-2 mb-1 text-dark"></i>
+                    <span class="fw-bold small">Ficha Cadastral</span>
+                    <span class="badge {% if alvo.is_active %}bg-success{% else %}bg-danger{% endif %} mt-1" style="font-size: 0.65rem;">
+                        {% if alvo.is_active %}ATIVO{% else %}DESLIGADO{% endif %}
+                    </span>
+                </button>
+            </div>
+
+            <!-- 2. Documentos Pessoais -->
+            <div class="col">
+                <button type="button" class="btn btn-outline-secondary w-100 h-100 py-3 shadow-sm d-flex flex-column align-items-center justify-content-center text-center rounded-3" data-bs-toggle="offcanvas" data-bs-target="#offcanvasDocumentos">
+                    <i class="bi bi-folder fs-2 mb-1 text-secondary"></i>
+                    <span class="fw-bold small">Documentos</span>
+                    <span class="badge bg-secondary mt-1" style="font-size: 0.65rem;">{{ documentos|length }} anexos</span>
+                </button>
+            </div>
+
+            <!-- 3. Períodos Aquisitivos -->
+            <div class="col">
+                <button type="button" class="btn btn-outline-warning text-dark w-100 h-100 py-3 shadow-sm d-flex flex-column align-items-center justify-content-center text-center rounded-3" data-bs-toggle="offcanvas" data-bs-target="#offcanvasVencimentos">
+                    <i class="bi bi-clock-history fs-2 mb-1 text-warning"></i>
+                    <span class="fw-bold small">Períodos Aquisitivos</span>
+                    <span class="badge bg-warning text-dark mt-1" style="font-size: 0.65rem;">{{ vencimentos_ferias|length }} registros</span>
+                </button>
+            </div>
+
+            <!-- 4. Gestão de Férias -->
+            <div class="col">
+                <button type="button" class="btn btn-outline-info text-dark w-100 h-100 py-3 shadow-sm d-flex flex-column align-items-center justify-content-center text-center rounded-3" data-bs-toggle="offcanvas" data-bs-target="#offcanvasFerias">
+                    <i class="bi bi-airplane fs-2 mb-1 text-info"></i>
+                    <span class="fw-bold small">Gestão de Férias</span>
+                    <span class="badge bg-info text-white mt-1" style="font-size: 0.65rem;">{{ ferias|length }} registros</span>
+                </button>
+            </div>
+
+            <!-- 5. Matriz de Treinamentos -->
+            <div class="col">
+                <button type="button" class="btn btn-outline-primary w-100 h-100 py-3 shadow-sm d-flex flex-column align-items-center justify-content-center text-center rounded-3" data-bs-toggle="offcanvas" data-bs-target="#offcanvasTreinamentos">
+                    <i class="bi bi-mortarboard fs-2 mb-1 text-primary"></i>
+                    <span class="fw-bold small">Treinamentos</span>
+                    {% if total_pendentes > 0 %}
+                        <span class="badge bg-danger mt-1" style="font-size: 0.65rem;">{{ total_pendentes }} pendente{{ total_pendentes|pluralize }}</span>
+                    {% else %}
+                        <span class="badge bg-success mt-1" style="font-size: 0.65rem;">Em Dia</span>
+                    {% endif %}
+                </button>
+            </div>
+
+            <!-- 6. Ocorrências / Feedback -->
+            {% if can_view_occ %}
+            <div class="col">
+                <button type="button" class="btn btn-outline-danger w-100 h-100 py-3 shadow-sm d-flex flex-column align-items-center justify-content-center text-center rounded-3" data-bs-toggle="offcanvas" data-bs-target="#offcanvasOcorrencias">
+                    <i class="bi bi-exclamation-triangle fs-2 mb-1 text-danger"></i>
+                    <span class="fw-bold small">Ocorrências</span>
+                    <span class="badge bg-danger mt-1" style="font-size: 0.65rem;">{{ ocorrencias.count }} ocorrência{{ ocorrencias.count|pluralize }}</span>
+                </button>
+            </div>
+            {% endif %}
+
+            <!-- 7. Histórico de Mudanças (Largura Total se ímpar ou adaptado) -->
+            <div class="col {% if not can_view_occ %}col-12{% endif %}">
+                <button type="button" class="btn btn-outline-dark w-100 h-100 py-3 shadow-sm d-flex flex-column align-items-center justify-content-center text-center rounded-3" data-bs-toggle="offcanvas" data-bs-target="#offcanvasHistorico">
+                    <i class="bi bi-clock-history fs-2 mb-1 text-muted"></i>
+                    <span class="fw-bold small">Histórico</span>
+                    <span class="badge bg-secondary mt-1" style="font-size: 0.65rem;">{{ alvo.get_historico_completo|length }} mudanças</span>
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- VISUALIZAÇÃO ORIGINAL DESKTOP (>= 768px)                                   -->
+    <!-- ========================================================================= -->
+    <div class="row d-none d-md-flex">
         <!-- COLUNA DA ESQUERDA (FICHA CADASTRAL) -->
         <div class="col-md-4">
             <div class="card shadow-sm mb-4 border-0">
@@ -870,6 +953,405 @@
             </div>
 
         </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- COMPONENTES OFFCANVAS BOTTOM (POP-UPS EXCLUSIVOS PARA MOBILE)              -->
+<!-- ========================================================================= -->
+
+<!-- 1. Offcanvas Ficha Cadastral -->
+<div class="offcanvas offcanvas-bottom h-75 rounded-top-4 shadow-lg d-md-none" tabindex="-1" id="offcanvasFichaCadastral" aria-labelledby="offcanvasFichaCadastralLabel">
+    <div class="offcanvas-header bg-dark text-white rounded-top-4 py-3">
+        <h5 class="offcanvas-title fw-bold fs-6" id="offcanvasFichaCadastralLabel">
+            <i class="bi bi-person-badge me-2 text-warning"></i> Ficha Cadastral
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body p-3">
+        <div class="d-flex flex-column">
+            <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                <span class="text-muted small">Status:</span>
+                {% if alvo.is_active %}
+                    <span class="badge bg-success">ATIVO</span>
+                {% else %}
+                    <span class="badge bg-danger">DESLIGADO</span>
+                {% endif %}
+            </div>
+            <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                <span class="text-muted small">Setor:</span>
+                <strong class="text-dark small text-end">{{ alvo.setor.nome|default:"-" }}</strong>
+            </div>
+            <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                <span class="text-muted small">Centro de Custo:</span>
+                <span class="small text-end">{{ alvo.centro_custo.codigo|default:"-" }}</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                <span class="text-muted small">Líder Imediato:</span>
+                <strong class="small text-end">
+                    {% if alvo.lider %}
+                        <a href="{% url 'detalhe_colaborador' alvo.lider.id %}" class="text-decoration-none">
+                            {{ alvo.lider.nome_completo|truncatewords:3 }}
+                        </a>
+                    {% else %}-{% endif %}
+                </strong>
+            </div>
+            <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                <span class="text-muted small">Supervisor:</span>
+                <strong class="small text-end">
+                    {% if alvo.supervisor %}
+                        <a href="{% url 'detalhe_colaborador' alvo.supervisor.id %}" class="text-decoration-none">
+                            {{ alvo.supervisor.nome_completo|truncatewords:3 }}
+                        </a>
+                    {% else %}-{% endif %}
+                </strong>
+            </div>
+            <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                <span class="text-muted small">Gerente:</span>
+                <strong class="small text-end">
+                    {% if alvo.gerente %}
+                        <a href="{% url 'detalhe_colaborador' alvo.gerente.id %}" class="text-decoration-none">
+                            {{ alvo.gerente.nome_completo|truncatewords:3 }}
+                        </a>
+                    {% else %}-{% endif %}
+                </strong>
+            </div>
+            <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                <span class="text-muted small">Turno:</span>
+                <span class="badge bg-secondary">{{ alvo.get_turno_display }}</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center border-bottom py-2 bg-light px-2 rounded">
+                <span class="text-muted small fw-semibold"><i class="bi bi-globe me-1 text-primary"></i>Matrícula Global:</span>
+                <span class="badge bg-primary bg-opacity-10 text-primary fw-bold border border-primary border-opacity-25" style="font-size: 0.85rem;">
+                    {{ alvo.matricula_global|default:"Não cadastrada" }}
+                </span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                <span class="text-muted small">Posto de Trabalho:</span>
+                <span class="small text-end">{{ alvo.posto_trabalho|default:"-" }}</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                <span class="text-muted small">Grupo:</span>
+                <span class="small text-end">{{ alvo.grupo|default:"-" }}</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                <span class="text-muted small">CPF:</span>
+                {% if can_see_salary and alvo.cpf %}
+                    <span class="small">{{ alvo.cpf|slice:":3" }}.{{ alvo.cpf|slice:"3:6" }}.{{ alvo.cpf|slice:"6:9" }}-{{ alvo.cpf|slice:"9:11" }}</span>
+                {% else %}
+                    <span class="small" style="filter: blur(4px);" title="Oculto por segurança">###.###.###-##</span>
+                {% endif %}
+            </div>
+            <div class="d-flex justify-content-between align-items-center bg-light mt-2 p-2 rounded border">
+                <span class="fw-bold text-dark small"><i class="bi bi-cash me-1"></i> Salário Base:</span>
+                {% if can_see_salary %}
+                    <span class="text-success fw-bold fs-6">R$ {{ alvo.salario|floatformat:2 }}</span>
+                {% else %}
+                    <span class="badge bg-secondary"><i class="bi bi-lock-fill"></i> RESTRITO</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 2. Offcanvas Documentos Pessoais -->
+<div class="offcanvas offcanvas-bottom h-75 rounded-top-4 shadow-lg d-md-none" tabindex="-1" id="offcanvasDocumentos" aria-labelledby="offcanvasDocumentosLabel">
+    <div class="offcanvas-header bg-secondary text-white rounded-top-4 py-3">
+        <h5 class="offcanvas-title fw-bold fs-6" id="offcanvasDocumentosLabel">
+            <i class="bi bi-folder me-2"></i> Documentos Pessoais
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body p-3">
+        <ul class="list-group list-group-flush">
+            {% for doc in documentos %}
+                <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2 border-bottom">
+                    <div>
+                        <i class="bi bi-file-earmark-text text-primary me-1"></i> <strong>{{ doc.tipo }}</strong>
+                        <br><small class="text-muted">{{ doc.data_upload|date:"d/m/Y" }}</small>
+                    </div>
+                    <a href="{{ doc.arquivo.url }}" target="_blank" class="btn btn-sm btn-outline-primary" title="Baixar Documento">
+                        <i class="bi bi-download"></i>
+                    </a>
+                </li>
+            {% empty %}
+                <li class="list-group-item text-center text-muted py-4 border-0">
+                    <i class="bi bi-folder-x fs-2 d-block mb-1 opacity-50"></i>
+                    <small>Nenhum documento anexado.</small>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+
+<!-- 3. Offcanvas Períodos Aquisitivos (Vencimentos) -->
+<div class="offcanvas offcanvas-bottom h-75 rounded-top-4 shadow-lg d-md-none" tabindex="-1" id="offcanvasVencimentos" aria-labelledby="offcanvasVencimentosLabel">
+    <div class="offcanvas-header bg-warning text-dark rounded-top-4 py-3">
+        <h5 class="offcanvas-title fw-bold fs-6" id="offcanvasVencimentosLabel">
+            <i class="bi bi-clock-history me-2"></i> Períodos Aquisitivos
+        </h5>
+        <div class="d-flex align-items-center gap-2">
+            {% if can_register_ferias %}
+            <button class="btn btn-sm btn-dark fw-bold" data-bs-toggle="modal" data-bs-target="#modalVencimentoFerias">
+                <i class="bi bi-plus-lg"></i> Novo
+            </button>
+            {% endif %}
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+    </div>
+    <div class="offcanvas-body p-3">
+        {% for v in vencimentos_ferias %}
+        <div class="card mb-2 border shadow-sm p-3" style="background-color: #fffdf5;">
+            <div class="d-flex justify-content-between align-items-start mb-1">
+                <span class="small fw-bold text-dark">{{ v.data_inicio_aquisitivo|date:"d/m/Y" }} a {{ v.data_fim_aquisitivo|date:"d/m/Y" }}</span>
+                <span class="badge bg-secondary" style="font-size: 0.7rem;">{{ v.dias_direito }} dias</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top">
+                <small class="text-muted">
+                    Limite Gozo: <strong class="{% if v.data_limite_gozo < today %}text-danger{% else %}text-dark{% endif %}">{{ v.data_limite_gozo|date:"d/m/Y" }}</strong>
+                </small>
+                {% if can_register_ferias %}
+                <form method="post" action="{% url 'rh:excluir_vencimento_ferias' colab_id=alvo.id venc_id=v.id %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="return confirm('Tem certeza que deseja excluir?');">
+                        <i class="bi bi-trash"></i> Excluir
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <div class="text-muted text-center py-5">
+            <i class="bi bi-calendar-x fs-1 d-block mb-2 opacity-50"></i>
+            <p class="mb-0 small">Nenhum período aquisitivo cadastrado.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- 4. Offcanvas Gestão de Férias -->
+<div class="offcanvas offcanvas-bottom h-75 rounded-top-4 shadow-lg d-md-none" tabindex="-1" id="offcanvasFerias" aria-labelledby="offcanvasFeriasLabel">
+    <div class="offcanvas-header bg-info text-white rounded-top-4 py-3">
+        <h5 class="offcanvas-title fw-bold fs-6" id="offcanvasFeriasLabel">
+            <i class="bi bi-airplane me-2"></i> Gestão de Férias
+        </h5>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-white text-danger fw-bold" style="font-size: 0.7rem;">Venc.: {{ kpi_ferias_vencidas }}</span>
+            <span class="badge bg-white text-success fw-bold" style="font-size: 0.7rem;">Prog.: {{ kpi_ferias_programadas }}</span>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+    </div>
+    <div class="offcanvas-body p-3">
+        {% for f in ferias %}
+        <div class="card mb-2 border shadow-sm p-3" style="background-color: #f8fafc;">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="small text-muted">
+                    Limite: <strong class="{% if f.vencimento and f.vencimento < today %}text-danger{% else %}text-dark{% endif %}">{{ f.vencimento|date:"d/m/Y"|default:"-" }}</strong>
+                </span>
+                <span class="badge bg-secondary" style="font-size: 0.7rem;">{{ f.status|default:"-" }}</span>
+            </div>
+            <div class="mb-1">
+                <small class="text-muted d-block">
+                    Programação: 
+                    {% if f.data_inicio %}
+                        <strong class="text-primary">{{ f.data_inicio|date:"d/m/Y" }}</strong> a <strong class="text-primary">{{ f.data_fim|date:"d/m/Y" }}</strong>
+                    {% else %}
+                        <span class="text-muted">Não programado</span>
+                    {% endif %}
+                </small>
+                <small class="text-muted">Dias de Gozo: <strong>{{ f.dias_solicitados|default:"-" }}</strong></small>
+            </div>
+            <div class="d-flex justify-content-end gap-2 mt-2 pt-2 border-top">
+                <a href="{% url 'editar_ferias' colab_id=alvo.id ferias_id=f.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar férias">
+                    <i class="bi bi-pencil me-1"></i> Editar
+                </a>
+                <form method="post" action="{% url 'excluir_ferias' colab_id=alvo.id ferias_id=f.id %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" title="Excluir férias" onclick="return confirm('Tem certeza que deseja excluir este registro de férias?');">
+                        <i class="bi bi-trash me-1"></i> Excluir
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% empty %}
+        <div class="text-muted text-center py-5">
+            <i class="bi bi-airplane fs-1 d-block mb-2 opacity-50"></i>
+            <p class="mb-0 small">Nenhum registro de férias encontrado.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- 5. Offcanvas Matriz de Treinamentos -->
+<div class="offcanvas offcanvas-bottom h-75 rounded-top-4 shadow-lg d-md-none" tabindex="-1" id="offcanvasTreinamentos" aria-labelledby="offcanvasTreinamentosLabel">
+    <div class="offcanvas-header bg-primary text-white rounded-top-4 py-3">
+        <h5 class="offcanvas-title fw-bold fs-6" id="offcanvasTreinamentosLabel">
+            <i class="bi bi-mortarboard me-2"></i> Matriz de Treinamentos
+        </h5>
+        <div class="d-flex align-items-center gap-2">
+            {% if can_edit %}
+            <button type="button" class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#modalAssociarPerfil">
+                <i class="bi bi-plus-lg"></i> Perfil
+            </button>
+            {% endif %}
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+    </div>
+    <div class="offcanvas-body p-2">
+        {% if matriz_treinamentos %}
+            {% for perfil_codigo, perfil_data in matriz_treinamentos.items %}
+            <div class="card mb-3 border shadow-sm">
+                <div class="card-header bg-light fw-bold small d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="bi bi-person-workspace text-primary me-1"></i> {{ perfil_data.perfil.codigo }} - {{ perfil_data.perfil.nome }}
+                    </div>
+                    {% if perfil_data.pendentes > 0 %}
+                    <span class="badge bg-danger">{{ perfil_data.pendentes }} pendente{{ perfil_data.pendentes|pluralize }}</span>
+                    {% else %}
+                    <span class="badge bg-success"><i class="bi bi-check-circle"></i> OK</span>
+                    {% endif %}
+                </div>
+                <div class="card-body p-2">
+                    {% for grupo_id, grupo_data in perfil_data.grupos.items %}
+                        <div class="mb-2">
+                            <span class="fw-bold text-dark small"><i class="bi bi-folder2-open text-primary me-1"></i> {{ grupo_data.grupo.nome }}</span>
+                            {% for subgrupo_id, subgrupo_data in grupo_data.subgrupos.items %}
+                                <div class="ms-2 mt-1">
+                                    <span class="text-secondary small fw-semibold"><i class="bi bi-folder me-1"></i> {{ subgrupo_data.subgrupo.nome }}</span>
+                                    {% for item in subgrupo_data.procedimentos %}
+                                    <div class="card my-1 p-2 border bg-white shadow-none">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <strong class="text-primary small d-block">{{ item.procedimento.codigo }}</strong>
+                                                <small class="text-dark d-block" style="font-size: 0.8rem;">{{ item.procedimento.nome }}</small>
+                                            </div>
+                                            {% if item.treinamento %}
+                                                {% if item.treinamento.status_treinamento == 'OK' %}
+                                                    <span class="badge bg-success" style="font-size: 0.65rem;">OK</span>
+                                                {% else %}
+                                                    <span class="badge bg-danger" style="font-size: 0.65rem;">PENDENTE</span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="badge bg-warning text-dark" style="font-size: 0.65rem;">NÃO TREINADO</span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center mt-1 pt-1 border-top" style="font-size: 0.75rem;">
+                                            <span class="badge bg-info bg-opacity-10 text-info border">Rev. {{ item.procedimento.numero_revisao|default:"?" }}</span>
+                                            <span class="text-muted">
+                                                {% if item.treinamento and item.treinamento.data_treinamento %}
+                                                    Treino: <strong>{{ item.treinamento.data_treinamento|date:"d/m/Y" }}</strong>
+                                                {% else %}
+                                                    <span class="text-muted">Sem data</span>
+                                                {% endif %}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-mortarboard fs-1 d-block mb-2 opacity-50"></i>
+                <p class="small mb-0">Nenhum perfil de treinamento atribuído.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 6. Offcanvas Ocorrências -->
+{% if can_view_occ %}
+<div class="offcanvas offcanvas-bottom h-75 rounded-top-4 shadow-lg d-md-none" tabindex="-1" id="offcanvasOcorrencias" aria-labelledby="offcanvasOcorrenciasLabel">
+    <div class="offcanvas-header bg-warning text-dark rounded-top-4 py-3">
+        <h5 class="offcanvas-title fw-bold fs-6" id="offcanvasOcorrenciasLabel">
+            <i class="bi bi-exclamation-triangle me-2"></i> Ocorrências / Feedback
+        </h5>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-dark text-warning">{{ ocorrencias.count }}</span>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+    </div>
+    <div class="offcanvas-body p-3">
+        {% for o in ocorrencias %}
+        <div class="card mb-2 border shadow-sm p-3" style="background-color: #fffdf5;">
+            <div class="d-flex justify-content-between align-items-start mb-1">
+                <div>
+                    <span class="fw-bold text-dark small">{{ o.get_tipo_display }}</span>
+                    <small class="text-muted d-block" style="font-size: 0.75rem;">{{ o.data_ocorrencia|date:"d/m/Y" }}</small>
+                </div>
+                <div>
+                    {% if o.natureza == 'NEGATIVA' %}
+                        <span class="badge bg-danger" style="font-size: 0.65rem;">NEGATIVA</span>
+                    {% elif o.natureza == 'POSITIVA' %}
+                        <span class="badge bg-success" style="font-size: 0.65rem;">POSITIVA</span>
+                    {% else %}
+                        <span class="badge bg-secondary" style="font-size: 0.65rem;">NEUTRA</span>
+                    {% endif %}
+                </div>
+            </div>
+            <p class="small text-muted mb-2" style="font-size: 0.8rem;">{{ o.descricao }}</p>
+            <div class="d-flex justify-content-end border-top pt-2">
+                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 0.75rem;" data-bs-toggle="modal" data-bs-target="#ocorrenciaModal{{ o.id }}">
+                    <i class="bi bi-eye me-1"></i> Detalhes Completos
+                </button>
+            </div>
+        </div>
+        {% empty %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-check-circle fs-1 d-block mb-2 opacity-50"></i>
+            <p class="small mb-0">Nenhuma ocorrência registrada.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- 7. Offcanvas Histórico de Mudanças -->
+<div class="offcanvas offcanvas-bottom h-75 rounded-top-4 shadow-lg d-md-none" tabindex="-1" id="offcanvasHistorico" aria-labelledby="offcanvasHistoricoLabel">
+    <div class="offcanvas-header bg-dark text-white rounded-top-4 py-3">
+        <h5 class="offcanvas-title fw-bold fs-6" id="offcanvasHistoricoLabel">
+            <i class="bi bi-clock-history me-2"></i> Histórico de Mudanças
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body p-3">
+        {% for hist in alvo.get_historico_completo %}
+        <div class="card mb-2 border shadow-sm p-3" style="background-color: #f8fafc;">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="small text-muted">{{ hist.data_mudanca|date:"d/m/Y" }}</span>
+                {% if hist.tipo_mudanca == "SETOR" %}
+                    <span class="badge bg-info" style="font-size: 0.65rem;">Setor</span>
+                {% elif hist.tipo_mudanca == "CARGO" %}
+                    <span class="badge bg-warning" style="font-size: 0.65rem;">Cargo</span>
+                {% elif hist.tipo_mudanca == "SALARIO" %}
+                    <span class="badge bg-success" style="font-size: 0.65rem;">Salário</span>
+                {% elif hist.tipo_mudanca == "TURNO" %}
+                    <span class="badge bg-primary" style="font-size: 0.65rem;">Turno</span>
+                {% elif hist.tipo_mudanca == "STATUS" %}
+                    <span class="badge bg-danger" style="font-size: 0.65rem;">Status</span>
+                {% else %}
+                    <span class="badge bg-secondary" style="font-size: 0.65rem;">{{ hist.get_tipo_mudanca_display }}</span>
+                {% endif %}
+            </div>
+            <p class="small text-dark mb-1" style="font-size: 0.85rem;">{{ hist.descricao }}</p>
+            <div class="text-end">
+                {% if hist.aprovado %}
+                    <span class="badge bg-success" style="font-size: 0.65rem;">Aprovado</span>
+                {% else %}
+                    <span class="badge bg-secondary" style="font-size: 0.65rem;">Pendente</span>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-clock-history fs-1 d-block mb-2 opacity-50"></i>
+            <p class="small mb-0">Sem mudanças registradas.</p>
+        </div>
+        {% endfor %}
     </div>
 </div>
 
