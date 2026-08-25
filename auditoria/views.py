@@ -8819,6 +8819,7 @@ def avaliacao_portal_publico_view(request, token):
     return render(request, "auditoria/iso/avaliacao/portal_publico.html", context)
 
 
+@csrf_exempt
 @require_POST
 def api_avaliacao_salvar_resposta_publica(request, token):
     """
