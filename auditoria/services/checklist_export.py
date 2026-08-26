@@ -438,12 +438,16 @@ def generate_auditoria_excel_buffer(auditoria) -> io.BytesIO:
     safe_set_cell(ws, 'C7', data_str)
     safe_set_cell(ws, 'C8', escopo_str)
 
-    # Tipo de Auditoria (H6 = Presencial / H7 = Remota)
+    # Tipo de Auditoria (I6 = Remota / I7 = Presencial no template FOR.143)
     is_remota = (str(getattr(auditoria, 'tipo_auditoria', '')).upper() == 'REMOTA') or ('REMOT' in str(getattr(auditoria, 'tipo', '')).upper())
     if is_remota:
+        safe_set_cell(ws, 'I6', "X")
+        safe_set_cell(ws, 'I7', "   ")
         safe_set_cell(ws, 'H6', "")
         safe_set_cell(ws, 'H7', "X")
     else:
+        safe_set_cell(ws, 'I6', "   ")
+        safe_set_cell(ws, 'I7', "X")
         safe_set_cell(ws, 'H6', "X")
         safe_set_cell(ws, 'H7', "")
 
