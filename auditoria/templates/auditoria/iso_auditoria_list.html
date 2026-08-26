@@ -480,7 +480,10 @@
                     <p class="text-secondary small mb-0">
                         Defina os critérios e perguntas que serão respondidos pelos auditados via link público.
                     </p>
-                    <div class="d-flex gap-2">
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button type="button" class="btn btn-sm btn-outline-success rounded-pill px-3 shadow-2xs fw-semibold" onclick="salvarComoModeloPadraoListagem()" title="Tornar este conjunto de perguntas o Modelo Padrão para auditorias e planejamentos futuros">
+                            <i class="bi bi-bookmark-star-fill me-1 text-success"></i> Salvar como Modelo Padrão
+                        </button>
                         <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="restaurarPadroesPerguntasListagem()">
                             <i class="bi bi-arrow-counterclockwise me-1"></i> Restaurar Padrões
                         </button>
@@ -906,6 +909,34 @@
         } catch (err) {
             console.error(err);
             alert('Erro de comunicação.');
+        }
+    }
+
+    async function salvarComoModeloPadraoListagem() {
+        if (!currentAuditoriaIdAvaliacao) return;
+
+        if (!confirm("Deseja definir as perguntas atuais desta auditoria como o MODELO PADRÃO para todas as auditorias e planejamentos futuros?")) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/auditoria/iso/${currentAuditoriaIdAvaliacao}/api/avaliacao/salvar-como-padrao/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+
+            const res = await response.json();
+            if (res.success) {
+                alert('🎉 ' + res.message);
+            } else {
+                alert('Erro ao salvar modelo: ' + (res.error || 'Erro desconhecido.'));
+            }
+        } catch(err) {
+            console.error(err);
+            alert('Erro de comunicação ao salvar modelo padrão.');
         }
     }
 

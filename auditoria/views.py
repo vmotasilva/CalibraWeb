@@ -8662,8 +8662,38 @@ def api_iso_avaliacao_perguntas_list_create(request, auditoria_id):
         except Exception as e:
             return JsonResponse({"success": False, "error": str(e)}, status=400)
 
-    # GET: Retorna perguntas associadas à auditoria (somente as criadas pelo usuário)
+    # GET: Retorna perguntas associadas à auditoria. Se não houver perguntas próprias, herda e clona o modelo padrão.
     perguntas_auditoria = list(PerguntaAvaliacaoAuditorIso.objects.filter(auditoria=auditoria).order_by("ordem", "id"))
+    
+    if not perguntas_auditoria:
+        # Busca modelo padrão existente (específico da norma ou global)
+        padroes_qs = list(PerguntaAvaliacaoAuditorIso.objects.filter(
+            Q(auditoria__isnull=True, norma=auditoria.norma) | Q(auditoria__isnull=True, norma__isnull=True),
+            ativa=True
+        ).order_by("ordem", "id"))
+
+        # Elimina duplicatas se houver norma e global
+        titulos_vistos = set()
+        padroes_unicos = []
+        for p in padroes_qs:
+            if p.titulo not in titulos_vistos:
+                titulos_vistos.add(p.titulo)
+                padroes_unicos.append(p)
+
+        if padroes_unicos:
+            for p in padroes_unicos:
+                nova = PerguntaAvaliacaoAuditorIso.objects.create(
+                    auditoria=auditoria,
+                    norma=auditoria.norma,
+                    titulo=p.titulo,
+                    descricao=p.descricao,
+                    tipo=p.tipo,
+                    opcoes_lista=getattr(p, 'opcoes_lista', ''),
+                    ordem=p.ordem,
+                    obrigatoria=p.obrigatoria,
+                    ativa=True
+                )
+                perguntas_auditoria.append(nova)
 
     lista = []
     for p in perguntas_auditoria:
@@ -8680,6 +8710,61 @@ def api_iso_avaliacao_perguntas_list_create(request, auditoria_id):
         })
 
     return JsonResponse({"success": True, "perguntas": lista})
+
+
+@login_required
+@csrf_exempt
+@require_POST
+def api_iso_avaliacao_salvar_como_padrao(request, auditoria_id):
+    """
+    Salva o conjunto atual de perguntas desta auditoria como o MODELO PADRÃO
+    para ser utilizado em todas as auditorias e planejamentos futuros (tanto desta norma quanto global).
+    """
+    from .models import PerguntaAvaliacaoAuditorIso, AuditoriaIso
+    auditoria = get_object_or_404(AuditoriaIso, pk=auditoria_id)
+
+    perguntas_origem = list(PerguntaAvaliacaoAuditorIso.objects.filter(auditoria=auditoria, ativa=True).order_by("ordem", "id"))
+    if not perguntas_origem:
+        return JsonResponse({
+            "success": False, 
+            "error": "Não há perguntas ativas nesta auditoria para salvar como modelo padrão."
+        }, status=400)
+
+    # Limpa os modelos padrão antigos (da norma e globais)
+    PerguntaAvaliacaoAuditorIso.objects.filter(auditoria__isnull=True).delete()
+
+    # Recria as perguntas como modelo padrão (global e associado à norma)
+    for p in perguntas_origem:
+        # Padrão Global Master
+        PerguntaAvaliacaoAuditorIso.objects.create(
+            auditoria=None,
+            norma=None,
+            titulo=p.titulo,
+            descricao=p.descricao,
+            tipo=p.tipo,
+            opcoes_lista=getattr(p, 'opcoes_lista', ''),
+            ordem=p.ordem,
+            obrigatoria=p.obrigatoria,
+            ativa=True
+        )
+        if auditoria.norma:
+            PerguntaAvaliacaoAuditorIso.objects.create(
+                auditoria=None,
+                norma=auditoria.norma,
+                titulo=p.titulo,
+                descricao=p.descricao,
+                tipo=p.tipo,
+                opcoes_lista=getattr(p, 'opcoes_lista', ''),
+                ordem=p.ordem,
+                obrigatoria=p.obrigatoria,
+                ativa=True
+            )
+
+    return JsonResponse({
+        "success": True,
+        "total_salvas": len(perguntas_origem),
+        "message": "Modelo Padrão atualizado com sucesso! As novas auditorias e planejamentos futuros utilizarão exatamente este conjunto de perguntas."
+    })
 
 
 @login_required
@@ -8740,64 +8825,56 @@ def api_iso_avaliacao_restaurar_padroes(request, auditoria_id):
     # Remove perguntas existentes da auditoria
     PerguntaAvaliacaoAuditorIso.objects.filter(auditoria=auditoria).delete()
     
-    # Recria os 5 critérios fundamentais padrão
-    padroes = [
-        {
-            'titulo': 'Pontualidade e Cumprimento da Agenda',
-            'descricao': 'Organização do tempo, cumprimento dos horários e planejamento das entrevistas.',
-            'tipo': 'ESTRELAS_1_5',
-            'opcoes_lista': '',
-            'ordem': 1,
-            'obrigatoria': True
-        },
-        {
-            'titulo': 'Clareza e Comunicação',
-            'descricao': 'Clareza nas perguntas, explicações dos requisitos normativos e feedback objetivo.',
-            'tipo': 'ESTRELAS_1_5',
-            'opcoes_lista': '',
-            'ordem': 2,
-            'obrigatoria': True
-        },
-        {
-            'titulo': 'Cordialidade, Postura e Empatia',
-            'descricao': 'Postura profissional, respeito com os auditados, escuta ativa e conduta ética.',
-            'tipo': 'ESTRELAS_1_5',
-            'opcoes_lista': '',
-            'ordem': 3,
-            'obrigatoria': True
-        },
-        {
-            'titulo': 'Pontos Fortes do Auditor',
-            'descricao': 'O que o auditor fez bem durante a condução da auditoria?',
-            'tipo': 'TEXTO_LIVRE',
-            'opcoes_lista': '',
-            'ordem': 4,
-            'obrigatoria': False
-        },
-        {
-            'titulo': 'Oportunidades de Melhoria',
-            'descricao': 'O que a equipe auditora pode aprimorar em futuras auditorias?',
-            'tipo': 'TEXTO_LIVRE',
-            'opcoes_lista': '',
-            'ordem': 5,
-            'obrigatoria': False
-        }
-    ]
+    # Busca modelo padrão customizado existente
+    padroes_qs = list(PerguntaAvaliacaoAuditorIso.objects.filter(
+        Q(auditoria__isnull=True, norma=auditoria.norma) | Q(auditoria__isnull=True, norma__isnull=True),
+        ativa=True
+    ).order_by("ordem", "id"))
 
-    for p in padroes:
-        PerguntaAvaliacaoAuditorIso.objects.create(
-            auditoria=auditoria,
-            norma=auditoria.norma,
-            titulo=p['titulo'],
-            descricao=p['descricao'],
-            tipo=p['tipo'],
-            opcoes_lista=p.get('opcoes_lista', ''),
-            ordem=p['ordem'],
-            obrigatoria=p['obrigatoria'],
-            ativa=True
-        )
+    titulos_vistos = set()
+    padroes_unicos = []
+    for p in padroes_qs:
+        if p.titulo not in titulos_vistos:
+            titulos_vistos.add(p.titulo)
+            padroes_unicos.append(p)
 
-    return JsonResponse({"success": True, "message": "Perguntas padrão restauradas com sucesso!"})
+    if padroes_unicos:
+        for p in padroes_unicos:
+            PerguntaAvaliacaoAuditorIso.objects.create(
+                auditoria=auditoria,
+                norma=auditoria.norma,
+                titulo=p.titulo,
+                descricao=p.descricao,
+                tipo=p.tipo,
+                opcoes_lista=getattr(p, 'opcoes_lista', ''),
+                ordem=p.ordem,
+                obrigatoria=p.obrigatoria,
+                ativa=True
+            )
+    else:
+        # Recria os 5 critérios fundamentais padrão caso não haja nenhum template salvo
+        padroes = [
+            {'titulo': 'Pontualidade e Cumprimento da Agenda', 'descricao': 'Organização do tempo, cumprimento dos horários e planejamento das entrevistas.', 'tipo': 'ESTRELAS_1_5', 'opcoes_lista': '', 'ordem': 1, 'obrigatoria': True},
+            {'titulo': 'Clareza e Comunicação', 'descricao': 'Clareza nas perguntas, explicações dos requisitos normativos e feedback objetivo.', 'tipo': 'ESTRELAS_1_5', 'opcoes_lista': '', 'ordem': 2, 'obrigatoria': True},
+            {'titulo': 'Cordialidade, Postura e Empatia', 'descricao': 'Postura profissional, respeito com os auditados, escuta ativa e conduta ética.', 'tipo': 'ESTRELAS_1_5', 'opcoes_lista': '', 'ordem': 3, 'obrigatoria': True},
+            {'titulo': 'Pontos Fortes do Auditor', 'descricao': 'O que o auditor fez bem durante a condução da auditoria?', 'tipo': 'TEXTO_LIVRE', 'opcoes_lista': '', 'ordem': 4, 'obrigatoria': False},
+            {'titulo': 'Oportunidades de Melhoria', 'descricao': 'O que a equipe auditora pode aprimorar em futuras auditorias?', 'tipo': 'TEXTO_LIVRE', 'opcoes_lista': '', 'ordem': 5, 'obrigatoria': False}
+        ]
+
+        for p in padroes:
+            PerguntaAvaliacaoAuditorIso.objects.create(
+                auditoria=auditoria,
+                norma=auditoria.norma,
+                titulo=p['titulo'],
+                descricao=p['descricao'],
+                tipo=p['tipo'],
+                opcoes_lista=p.get('opcoes_lista', ''),
+                ordem=p['ordem'],
+                obrigatoria=p['obrigatoria'],
+                ativa=True
+            )
+
+    return JsonResponse({"success": True, "message": "Perguntas restauradas para o Modelo Padrão com sucesso!"})
 
 
 @login_required

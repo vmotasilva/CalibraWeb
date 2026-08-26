@@ -169,6 +169,7 @@ urlpatterns = [
     path("iso/api/avaliacao/<int:avaliacao_id>/excluir/", views.api_iso_avaliacao_excluir, name="api_iso_avaliacao_excluir"),
     path("api/avaliacao/<int:avaliacao_id>/excluir/", views.api_iso_avaliacao_excluir, name="api_iso_avaliacao_excluir_alias"),
     path("iso/<int:auditoria_id>/api/avaliacao/perguntas/", views.api_iso_avaliacao_perguntas_list_create, name="api_iso_avaliacao_perguntas_list_create"),
+    path("iso/<int:auditoria_id>/api/avaliacao/salvar-como-padrao/", views.api_iso_avaliacao_salvar_como_padrao, name="api_iso_avaliacao_salvar_como_padrao"),
     path("iso/api/avaliacao/perguntas/global/", views.api_iso_avaliacao_perguntas_global_list_create, name="api_iso_avaliacao_perguntas_global_list_create"),
     path("iso/api/avaliacao/perguntas/<int:pk>/", views.api_iso_avaliacao_pergunta_update_delete, name="api_iso_avaliacao_pergunta_update_delete"),
     path("iso/<int:auditoria_id>/api/avaliacao/perguntas/restaurar-padroes/", views.api_iso_avaliacao_restaurar_padroes, name="api_iso_avaliacao_restaurar_padroes"),
