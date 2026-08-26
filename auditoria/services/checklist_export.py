@@ -416,16 +416,47 @@ def generate_auditoria_excel_buffer(auditoria) -> io.BytesIO:
     else:
         unidade_nome = getattr(auditoria, 'empresa_auditada', '') or "Tecnolens Laboratório Ótico Feira Ltda"
 
-    auditores_list = [a.get_full_name() or a.username for a in auditoria.auditores.all()]
-    if auditoria.auditor_lider:
-        auditor_lider_nome = auditoria.auditor_lider
-        if auditor_lider_nome not in auditores_list:
-            auditores_list.insert(0, auditor_lider_nome)
+    def normalize_name_for_dedup(text):
+        if not text:
+            return ""
+        import unicodedata
+        nfkd = unicodedata.normalize('NFKD', text)
+        return "".join([c for c in nfkd if not unicodedata.combining(c)]).strip().lower()
 
-    if not auditores_list and auditoria.abertura_auditores:
-        auditores_str = auditoria.abertura_auditores
-    else:
-        auditores_str = ", ".join(auditores_list) if auditores_list else "Auditores Designados"
+    nomes_finais = []
+    nomes_norm_set = set()
+
+    # 1. Auditor Líder exatamente como foi escrito
+    if auditoria.auditor_lider and str(auditoria.auditor_lider).strip():
+        lider_raw = str(auditoria.auditor_lider).strip()
+        nomes_finais.append(lider_raw)
+        nomes_norm_set.add(normalize_name_for_dedup(lider_raw))
+
+    # 2. Outros auditores cadastrados na equipe ou abertura
+    outros_candidatos = []
+    for a in auditoria.auditores.all():
+        fn = (a.get_full_name() or a.username or "").strip()
+        if fn:
+            outros_candidatos.append(fn)
+
+    if auditoria.abertura_auditores and str(auditoria.abertura_auditores).strip():
+        for parte in str(auditoria.abertura_auditores).split(','):
+            p = parte.strip()
+            if p:
+                outros_candidatos.append(p)
+
+    for cand in outros_candidatos:
+        cand_norm = normalize_name_for_dedup(cand)
+        is_duplicate = False
+        for existing_norm in nomes_norm_set:
+            if cand_norm == existing_norm or cand_norm.startswith(existing_norm) or existing_norm.startswith(cand_norm):
+                is_duplicate = True
+                break
+        if not is_duplicate and cand_norm:
+            nomes_finais.append(cand)
+            nomes_norm_set.add(cand_norm)
+
+    auditores_str = ", ".join(nomes_finais) if nomes_finais else (getattr(auditoria, 'abertura_auditores', '') or "Auditores Designados")
 
     dt_ini = auditoria.data_inicio.strftime('%d/%m/%Y') if auditoria.data_inicio else ""
     dt_fim = auditoria.data_fim.strftime('%d/%m/%Y') if auditoria.data_fim else ""
