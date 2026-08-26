@@ -9057,20 +9057,107 @@ def iso_analytics_global_view(request):
     return render(request, "auditoria/iso/analytics/dashboard_global.html", context)
 
 
+def calcular_metricas_matriz_auditoria(auditoria):
+    """
+    Calcula as métricas de conformidade e desvios de uma auditoria exatamente como a Matriz de Conformidade.
+    Conta apenas NC e OM como desvios fora da conformidade (OBS e NA não entram no percentual de conformidade).
+    """
+    from .models import ItemNorma, RespostaEntrevistaIso, SolicitacaoEvidenciaIso
+    
+    itens_escopo = auditoria.escopo_itens.all()
+    if not itens_escopo.exists():
+        itens_escopo = ItemNorma.objects.filter(norma=auditoria.norma)
+    itens_escopo_list = list(itens_escopo)
+
+    parent_ids = set()
+    for item in itens_escopo_list:
+        prefix = item.referencia + '.'
+        if any(other.referencia.startswith(prefix) for other in itens_escopo_list):
+            parent_ids.add(item.id)
+
+    respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).prefetch_related('solicitacoes', 'pergunta__itens_norma')
+    na_item_ids = set(auditoria.itens_nao_aplicaveis.values_list('id', flat=True))
+
+    item_solicitacoes_map = {}
+    for r in respostas:
+        for it in r.pergunta.itens_norma.all():
+            if it.id not in item_solicitacoes_map:
+                item_solicitacoes_map[it.id] = []
+            for s in r.solicitacoes.all():
+                item_solicitacoes_map[it.id].append(s)
+
+    count_c = 0
+    count_nc = 0
+    count_nc_maior = 0
+    count_nc_menor = 0
+    count_om = 0
+    count_na = 0
+    count_p = 0
+
+    for item in itens_escopo_list:
+        if item.id in parent_ids:
+            continue  # Apenas folhas
+
+        if item.id in na_item_ids:
+            count_na += 1
+            continue
+
+        sols = item_solicitacoes_map.get(item.id, [])
+        if sols:
+            conclusoes = [s.conclusao for s in sols]
+            if "NC" in conclusoes:
+                count_nc += 1
+                if any(s.conclusao == "NC" and s.grau_nc == "MAIOR" for s in sols):
+                    count_nc_maior += 1
+                else:
+                    count_nc_menor += 1
+            elif "OM" in conclusoes:
+                count_om += 1
+            elif any(c in ["C", "OBS"] for c in conclusoes):
+                count_c += 1
+            elif all(c == "NA" for c in conclusoes):
+                count_na += 1
+            else:
+                count_p += 1
+        else:
+            count_c += 1  # Sem apontamentos no escopo = conforme
+
+    # Total de observações registradas na auditoria
+    total_obs_sols = SolicitacaoEvidenciaIso.objects.filter(resposta__auditoria=auditoria, conclusao="OBS").count()
+    count_obs = total_obs_sols
+
+    base = count_c + count_nc + count_om
+    taxa = round((count_c / base * 100), 1) if base > 0 else 100.0
+
+    return {
+        "count_c": count_c,
+        "count_nc": count_nc,
+        "count_nc_maior": count_nc_maior,
+        "count_nc_menor": count_nc_menor,
+        "count_om": count_om,
+        "count_obs": count_obs,
+        "count_na": count_na,
+        "count_p": count_p,
+        "base": base,
+        "taxa_conformidade": taxa,
+    }
+
+
 @login_required
+@never_cache
 def api_iso_analytics_global_data(request):
     """
     API RESTful que retorna dados agregados e estruturados para o Dashboard Global.
-    Filtros suportados:
-      - periodo: '6m' (últimos 6 meses), '12m' (últimos 12 meses), 'ano_atual' (ano corrente), 'all' (todo o histórico), ou customizado com 'data_inicio' e 'data_fim'
-      - unidade: Nome da unidade ou 'TODAS'
-      - norma_id: ID da Norma ou 'TODAS'
+    Utiliza rigorosamente a regra da Matriz de Conformidade:
+    - Base de cálculo = Conforme (C) + Não Conforme (NC) + Oportunidade (OM).
+    - Observações com Correção (OBS) e Não Aplicáveis (N/A) não contam no percentual de conformidade.
+    - Gráfico e KPIs dedicados para acompanhamento de cada situação (NC, OM e OBS).
     """
-    from django.db.models import Avg, Count, Q, F
+    from django.db.models import Avg, Count, Q
     from django.db.models.functions import TruncMonth
     from django.http import JsonResponse
     from datetime import datetime, timedelta
-    from .models import AuditoriaIso, SolicitacaoEvidenciaIso, AvaliacaoAuditorIso, ItemNorma
+    from .models import AuditoriaIso, SolicitacaoEvidenciaIso, AvaliacaoAuditorIso
 
     hoje = timezone.now().date()
     periodo = request.GET.get("periodo", "12m")
@@ -9110,41 +9197,38 @@ def api_iso_analytics_global_data(request):
         except ValueError:
             pass
 
-    auditoria_ids = list(auditorias_qs.values_list("id", flat=True))
-
-    # ==========================================
-    # 1. CÁLCULO DE KPIS RÁPIDOS
-    # ==========================================
+    auditorias_list = list(auditorias_qs.select_related("norma"))
+    auditoria_ids = [a.id for a in auditorias_list]
     total_auditorias = len(auditoria_ids)
-    
-    # Consultas agregadas em SolicitacaoEvidenciaIso
-    solicitacoes_qs = SolicitacaoEvidenciaIso.objects.filter(resposta__auditoria_id__in=auditoria_ids)
-    
-    conclusoes_agg = solicitacoes_qs.aggregate(
-        total_c=Count("id", filter=Q(conclusao="C")),
-        total_obs=Count("id", filter=Q(conclusao="OBS")),
-        total_om=Count("id", filter=Q(conclusao="OM")),
-        total_nc=Count("id", filter=Q(conclusao="NC")),
-        total_nc_maior=Count("id", filter=Q(conclusao="NC", grau_nc="MAIOR")),
-        total_nc_menor=Count("id", filter=Q(conclusao="NC", grau_nc="MENOR")),
-        total_na=Count("id", filter=Q(conclusao="NA")),
-    )
 
-    total_c = conclusoes_agg["total_c"] or 0
-    total_obs = conclusoes_agg["total_obs"] or 0
-    total_om = conclusoes_agg["total_om"] or 0
-    total_nc = conclusoes_agg["total_nc"] or 0
-    total_nc_maior = conclusoes_agg["total_nc_maior"] or 0
-    total_nc_menor = conclusoes_agg["total_nc_menor"] or 0
-    total_itens_avaliados = total_c + total_obs + total_om + total_nc
+    # ==========================================
+    # 1. CÁLCULO DE MÉTRICAS (BASE MATRIZ DE CONFORMIDADE)
+    # ==========================================
+    auditorias_metricas_map = {}
+    total_c = 0
+    total_nc = 0
+    total_nc_maior = 0
+    total_nc_menor = 0
+    total_om = 0
+    total_obs = 0
+    total_na = 0
 
-    # % Conformidade Global: (Conformes / (Conformes + NCs + OBS)) * 100
-    if (total_c + total_nc + total_obs) > 0:
-        taxa_conformidade = round((total_c / (total_c + total_nc + total_obs)) * 100, 1)
-    else:
-        taxa_conformidade = 100.0 if total_auditorias > 0 else 0.0
+    for aud in auditorias_list:
+        m = calcular_metricas_matriz_auditoria(aud)
+        auditorias_metricas_map[aud.id] = m
+        total_c += m["count_c"]
+        total_nc += m["count_nc"]
+        total_nc_maior += m["count_nc_maior"]
+        total_nc_menor += m["count_nc_menor"]
+        total_om += m["count_om"]
+        total_obs += m["count_obs"]
+        total_na += m["count_na"]
+
+    total_base = total_c + total_nc + total_om
+    taxa_conformidade = round((total_c / total_base * 100), 1) if total_base > 0 else (100.0 if total_auditorias > 0 else 0.0)
 
     # Saúde do CAPA (% de Planos Resolvidos / Aprovados)
+    solicitacoes_qs = SolicitacaoEvidenciaIso.objects.filter(resposta__auditoria_id__in=auditoria_ids)
     capa_agg = solicitacoes_qs.filter(conclusao__in=["NC", "OBS", "OM"]).aggregate(
         total_desvios=Count("id"),
         pendentes=Count("id", filter=Q(capa_status="PENDENTE")),
@@ -9178,7 +9262,6 @@ def api_iso_analytics_global_data(request):
     # ==========================================
     # 2. GRÁFICO DE LINHA: EVOLUÇÃO TEMPORAL
     # ==========================================
-    # Agrupa auditorias por mês de realização
     auditorias_por_mes = (
         auditorias_qs.annotate(mes=TruncMonth("data_inicio"))
         .values("mes")
@@ -9197,22 +9280,14 @@ def api_iso_analytics_global_data(request):
         meses_labels.append(label_mes)
         auditorias_timeline.append(item["total"])
 
-        # Calcula a taxa de conformidade específica daquele mês
-        solic_mes = SolicitacaoEvidenciaIso.objects.filter(
-            resposta__auditoria__data_inicio__year=m_dt.year,
-            resposta__auditoria__data_inicio__month=m_dt.month,
-            resposta__auditoria_id__in=auditoria_ids
-        )
-        s_mes_agg = solic_mes.aggregate(
-            c=Count("id", filter=Q(conclusao="C")),
-            nc=Count("id", filter=Q(conclusao="NC")),
-            obs=Count("id", filter=Q(conclusao="OBS"))
-        )
-        c_m = s_mes_agg["c"] or 0
-        nc_m = s_mes_agg["nc"] or 0
-        obs_m = s_mes_agg["obs"] or 0
-        if (c_m + nc_m + obs_m) > 0:
-            tx = round((c_m / (c_m + nc_m + obs_m)) * 100, 1)
+        # Calcula a taxa de conformidade com a regra da Matriz para as auditorias daquele mês
+        auds_do_mes = [a for a in auditorias_list if a.data_inicio and a.data_inicio.year == m_dt.year and a.data_inicio.month == m_dt.month]
+        c_m = sum(auditorias_metricas_map[a.id]["count_c"] for a in auds_do_mes if a.id in auditorias_metricas_map)
+        nc_m = sum(auditorias_metricas_map[a.id]["count_nc"] for a in auds_do_mes if a.id in auditorias_metricas_map)
+        om_m = sum(auditorias_metricas_map[a.id]["count_om"] for a in auds_do_mes if a.id in auditorias_metricas_map)
+        base_m = c_m + nc_m + om_m
+        if base_m > 0:
+            tx = round((c_m / base_m) * 100, 1)
         else:
             tx = 100.0
         conformidade_timeline.append(tx)
@@ -9220,15 +9295,12 @@ def api_iso_analytics_global_data(request):
     # ==========================================
     # 3. GRÁFICO HORIZONTAL: TOP GAPS POR SEÇÃO DA NORMA
     # ==========================================
-    # Conta Não Conformidades por cláusula pai (ex: Cláusula 4, 5, 6, 7, 8)
-    desvios_itens = solicitacoes_qs.filter(conclusao__in=["NC", "OBS"]).select_related("resposta__pergunta")
+    desvios_itens = solicitacoes_qs.filter(conclusao__in=["NC", "OM"]).select_related("resposta__pergunta")
     
     secoes_ranking = {}
     for desv in desvios_itens:
-        # Busca itens da norma vinculados à pergunta
         itens = desv.resposta.pergunta.itens_norma.all()
         for it in itens:
-            # Pega o capítulo principal (ex: '7.5.1' -> '7.5' ou '7 - Realização do Produto')
             partes = it.referencia.split(".") if it.referencia else ["Geral"]
             capitulo = ".".join(partes[:2]) if len(partes) >= 2 else partes[0]
             
@@ -9246,7 +9318,6 @@ def api_iso_analytics_global_data(request):
 
             secoes_ranking[label_cap] = secoes_ranking.get(label_cap, 0) + 1
 
-    # Ordena do maior para o menor e pega top 7
     top_gaps = sorted(secoes_ranking.items(), key=lambda x: x[1], reverse=True)[:7]
     gaps_labels = [x[0] for x in top_gaps]
     gaps_values = [x[1] for x in top_gaps]
@@ -9266,17 +9337,25 @@ def api_iso_analytics_global_data(request):
     }
 
     # ==========================================
-    # 5. LISTA RESUMIDA DAS AUDITORIAS DO PERÍODO
+    # 5. GRÁFICO DEDICADO: DISTRIBUIÇÃO DE DESVIOS & APONTAMENTOS (NC, OM, OBS)
+    # ==========================================
+    distribuicao_desvios = {
+        "labels": ["Não Conforme (NC)", "Oportunidade (OM)", "Obs. Correção (OBS)"],
+        "values": [total_nc, total_om, total_obs],
+        "cores": ["#ef4444", "#f59e0b", "#84cc16"],
+        "total_nc": total_nc,
+        "total_nc_maior": total_nc_maior,
+        "total_nc_menor": total_nc_menor,
+        "total_om": total_om,
+        "total_obs": total_obs,
+    }
+
+    # ==========================================
+    # 6. LISTA RESUMIDA DAS AUDITORIAS DO PERÍODO
     # ==========================================
     tabela_auditorias = []
-    for aud in auditorias_qs.select_related("norma").order_by("-data_inicio")[:20]:
-        solics = SolicitacaoEvidenciaIso.objects.filter(resposta__auditoria=aud)
-        c_count = solics.filter(conclusao="C").count()
-        nc_count = solics.filter(conclusao="NC").count()
-        obs_count = solics.filter(conclusao="OBS").count()
-        tot = c_count + nc_count + obs_count
-        conf_ind = round((c_count / tot) * 100, 1) if tot > 0 else 100.0
-
+    for aud in auditorias_list[:20]:
+        m = auditorias_metricas_map.get(aud.id, {})
         tabela_auditorias.append({
             "id": aud.id,
             "norma_codigo": aud.norma.codigo,
@@ -9285,8 +9364,8 @@ def api_iso_analytics_global_data(request):
             "data_inicio": aud.data_inicio.strftime("%d/%m/%Y"),
             "data_fim": aud.data_fim.strftime("%d/%m/%Y"),
             "status": aud.get_status_display(),
-            "ncs": nc_count,
-            "conformidade": conf_ind,
+            "ncs": m.get("count_nc", 0),
+            "conformidade": m.get("taxa_conformidade", 100.0),
         })
 
     return JsonResponse({
@@ -9321,6 +9400,7 @@ def api_iso_analytics_global_data(request):
                 "values": gaps_values,
             },
             "capa_status": capa_donut,
+            "distribuicao_desvios": distribuicao_desvios,
         },
         "tabela_auditorias": tabela_auditorias
     })
