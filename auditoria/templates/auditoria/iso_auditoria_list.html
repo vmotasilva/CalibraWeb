@@ -1039,7 +1039,14 @@
                                     <span class="text-dark fw-semibold small">${av.setor_avaliador}</span>
                                     ${av.nome_avaliador !== 'Anônimo' ? `<span class="badge bg-secondary bg-opacity-10 text-secondary small ms-1">${av.nome_avaliador}</span>` : '<span class="badge bg-light text-muted small ms-1">Anônimo</span>'}
                                 </div>
-                                <small class="text-muted">${av.criado_em}</small>
+                                <div class="d-flex align-items-center gap-2">
+                                    <small class="text-muted">${av.criado_em}</small>
+                                    ${res.is_superuser ? `
+                                        <button type="button" class="btn btn-outline-danger btn-sm py-0 px-2 rounded-pill shadow-2xs" title="Excluir Avaliação (Superusuário)" onclick="excluirAvaliacaoAuditor(${av.id})">
+                                            <i class="bi bi-trash"></i> Excluir
+                                        </button>
+                                    ` : ''}
+                                </div>
                             </div>
                             <div class="d-flex flex-wrap gap-2 text-muted small font-monospace mb-2">
                                 ${notasHtml}
@@ -1062,6 +1069,33 @@
         } catch(err) {
             console.error(err);
             containerFeedbacks.innerHTML = '<div class="text-center text-danger py-3">Erro de comunicação.</div>';
+        }
+    }
+
+    async function excluirAvaliacaoAuditor(avaliacaoId) {
+        if (!confirm("Tem certeza que deseja excluir esta avaliação feita? Esta ação é irreversível e permitida apenas para Superusuários.")) {
+            return;
+        }
+
+        try {
+            const resp = await fetch(`/auditoria/iso/api/avaliacao/${avaliacaoId}/excluir/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
+                    'Content-Type': 'application/json'
+                }
+            });
+            const res = await resp.json();
+            if (res.success) {
+                if (currentAuditoriaIdAvaliacao) {
+                    abrirModalDashboardAvaliacoesListagem(currentAuditoriaIdAvaliacao);
+                }
+            } else {
+                alert(res.error || "Erro ao excluir avaliação.");
+            }
+        } catch(err) {
+            console.error(err);
+            alert("Erro de comunicação ao excluir avaliação.");
         }
     }
 </script>

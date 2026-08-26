@@ -166,6 +166,8 @@ urlpatterns = [
     # ==========================================
     path("iso/<int:auditoria_id>/api/avaliacao/gerar-link/", views.api_iso_avaliacao_gerar_link, name="api_iso_avaliacao_gerar_link"),
     path("iso/<int:auditoria_id>/api/avaliacao/resumo/", views.api_iso_avaliacao_resumo, name="api_iso_avaliacao_resumo"),
+    path("iso/api/avaliacao/<int:avaliacao_id>/excluir/", views.api_iso_avaliacao_excluir, name="api_iso_avaliacao_excluir"),
+    path("api/avaliacao/<int:avaliacao_id>/excluir/", views.api_iso_avaliacao_excluir, name="api_iso_avaliacao_excluir_alias"),
     path("iso/<int:auditoria_id>/api/avaliacao/perguntas/", views.api_iso_avaliacao_perguntas_list_create, name="api_iso_avaliacao_perguntas_list_create"),
     path("iso/api/avaliacao/perguntas/global/", views.api_iso_avaliacao_perguntas_global_list_create, name="api_iso_avaliacao_perguntas_global_list_create"),
     path("iso/api/avaliacao/perguntas/<int:pk>/", views.api_iso_avaliacao_pergunta_update_delete, name="api_iso_avaliacao_pergunta_update_delete"),

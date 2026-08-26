@@ -8567,6 +8567,7 @@ def api_iso_avaliacao_resumo(request, auditoria_id):
 
     return JsonResponse({
         "success": True,
+        "is_superuser": bool(request.user and request.user.is_authenticated and request.user.is_superuser),
         "total_avaliacoes": total_avaliacoes,
         "media_geral": m_geral,
         "media_pontualidade": m_pont,
@@ -8574,6 +8575,38 @@ def api_iso_avaliacao_resumo(request, auditoria_id):
         "media_cordialidade": m_cord,
         "criterios_estrelas": criterios_estrelas,
         "avaliacoes": lista_avaliacoes
+    })
+
+
+@login_required
+@require_POST
+def api_iso_avaliacao_excluir(request, avaliacao_id):
+    """
+    Exclui uma avaliação/feedback de auditor.
+    Restrito exclusivamente a Superusuários.
+    """
+    from .models import AvaliacaoAuditorIso
+
+    if not request.user.is_superuser:
+        return JsonResponse({
+            "success": False,
+            "error": "Acesso negado. Apenas superusuários têm permissão para excluir avaliações de auditores."
+        }, status=403)
+
+    av = get_object_or_404(AvaliacaoAuditorIso, pk=avaliacao_id)
+    token_origem = av.token_origem
+
+    # Exclui a avaliação (e suas respostas filhas em cascata)
+    av.delete()
+
+    # Decrementa o contador de respostas do token se existente
+    if token_origem and (token_origem.total_respostas or 0) > 0:
+        token_origem.total_respostas = max(0, token_origem.total_respostas - 1)
+        token_origem.save(update_fields=["total_respostas"])
+
+    return JsonResponse({
+        "success": True,
+        "message": "Avaliação excluída com sucesso pelo Superusuário."
     })
 
 
