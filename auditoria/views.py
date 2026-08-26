@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
+from django.views.decorators.cache import never_cache
 from django.core import signing
 from django.db import models, transaction
 from django.db.models.deletion import ProtectedError
@@ -4335,6 +4336,7 @@ def chunks_list(lst, n):
 
 
 @login_required
+@never_cache
 def iso_fechamento_presentation_view(request, auditoria_id):
     """
     MOTOR DE ENCERRAMENTO & APRESENTAÇÃO EXECUTIVA (16:9 SLIDE DECK)
@@ -4424,6 +4426,8 @@ def iso_fechamento_presentation_view(request, auditoria_id):
         # 1. Fallback/Override global: garante que NCs ou OMs transferidos sejam refletidos no status global do item
         has_dangling_nc = False
         has_dangling_om = False
+        has_dangling_obs = False
+        has_dangling_c = False
         for p in todas_perguntas_item:
             r = respostas_map.get(p.id)
             if r:
@@ -4432,9 +4436,23 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                         has_dangling_nc = True
                     elif s.conclusao == 'OM':
                         has_dangling_om = True
+                    elif s.conclusao == 'OBS':
+                        has_dangling_obs = True
+                    elif s.conclusao == 'C':
+                        has_dangling_c = True
         
         if has_dangling_nc:
             status_item = 'NC'
+        elif not has_dangling_nc and (status_item == 'NC' or (av_final and av_final.classificacao == 'NC')):
+            # Se não há mais nenhuma solicitação filha com NC, o requisito volta para Conforme / OM / OBS
+            if has_dangling_om:
+                status_item = 'OM'
+            elif has_dangling_obs:
+                status_item = 'C'
+            elif has_dangling_c or todas_perguntas_item:
+                status_item = 'C'
+            else:
+                status_item = 'P'
         elif has_dangling_om and status_item != 'NC':
             status_item = 'OM'
 
@@ -4462,12 +4480,6 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                     if ev_txt and ev_txt not in evidencias_globais_vistas:
                         evidencias_globais_vistas.add(ev_txt)
                         evidencias_globais.append(ev_txt)
-                
-                if r.texto_resposta and r.texto_resposta.strip():
-                    txt = r.texto_resposta.strip()
-                    if txt not in evidencias_globais_vistas:
-                        evidencias_globais_vistas.add(txt)
-                        evidencias_globais.append(txt)
 
         if av_final and av_final.justificativa and av_final.justificativa.strip():
             just_txt = f"Revisão: {av_final.justificativa.strip()}"
@@ -4524,11 +4536,20 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                 if r:
                     for s in r.solicitacoes.all():
                         tit = s.solicitacao.strip() if s.solicitacao else ""
-                        if not tit or tit.lower() == "sem título":
+                        ev_corpo = s.evidencia.strip() if s.evidencia else ""
+                        
+                        if not tit and not ev_corpo:
                             continue
+                        if tit.lower() in ["sem título", "sem titulo", "nova solicitação de evidência", "nova solicitacao de evidencia"]:
+                            if not ev_corpo:
+                                continue
                             
+                        # Filtro de registros legados vazios ou que são apenas títulos de manuais sem descrição de desvio
+                        if s.conclusao == 'NC' and not ev_corpo and len(tit) < 40 and not any(k in tit.lower() for k in ['falha', 'não ', 'nao ', 'ausênc', 'ausenc', 'diverg', 'erro', 'atraso', 'sem ', 'pendên', 'penden', 'reprov', 'desvio', 'falta', 'incompleto', 'vencid']):
+                            continue
+
                         bloco = s.agenda.titulo if s.agenda else "Geral"
-                        ev_txt = f"[{bloco}] {tit}: {s.evidencia.strip()}" if s.evidencia else f"[{bloco}] {tit}"
+                        ev_txt = f"[{bloco}] {tit}: {ev_corpo}" if (tit and ev_corpo) else (f"[{bloco}] {tit}" if tit else f"[{bloco}] {ev_corpo}")
                         
                         if s.conclusao == 'NC' and status_item == 'NC':
                             if ev_txt and ev_txt not in evidencias_vistas:
@@ -4545,8 +4566,9 @@ def iso_fechamento_presentation_view(request, auditoria_id):
                     
                     if r.texto_resposta and r.texto_resposta.strip():
                         txt = r.texto_resposta.strip()
-                        if txt not in evidencias_vistas:
-                            if r.classificacao == 'NC' and status_item == 'NC':
+                        is_legacy_doc_title = len(txt) < 40 and not any(k in txt.lower() for k in ['falha', 'não ', 'nao ', 'ausênc', 'ausenc', 'diverg', 'erro', 'atraso', 'sem ', 'pendên', 'penden', 'reprov', 'desvio', 'falta'])
+                        if not is_legacy_doc_title and r.classificacao == 'NC' and status_item == 'NC' and not r.solicitacoes.filter(conclusao='NC').exists():
+                            if txt not in evidencias_vistas:
                                 evidencias_vistas.add(txt)
                                 evidencias_nc.append(txt)
                             elif r.classificacao == 'OM':
@@ -7414,6 +7436,7 @@ def api_iso_agenda_salvar_intervalo_evento(request, auditoria_id):
 
 
 @login_required
+@never_cache
 def iso_revisao_dashboard(request, auditoria_id):
     from .models import AuditoriaIso, RespostaEntrevistaIso, AgendaAuditoriaIso, ItemNorma, AvaliacaoFinalRequisitoIso
     from collections import defaultdict
@@ -7457,29 +7480,36 @@ def iso_revisao_dashboard(request, auditoria_id):
                 }
             itens_map[item.id]['respostas'].append(resp)
             
-            # Atualiza o pior status bruto (P > NC > OM > OBS > C)
-            peso = {'P': 5, 'NC': 4, 'OM': 3, 'OBS': 2, 'C': 1}
-            status_atual = itens_map[item.id]['pior_status']
-            
-            # Status da resposta
-            novo_status = resp.classificacao
-            if peso.get(novo_status, 0) > peso.get(status_atual, 0):
-                itens_map[item.id]['pior_status'] = novo_status
-                status_atual = novo_status
-
-            # Status das solicitações/amostragens vinculadas
-            for sol in resp.solicitacoes.all():
-                if peso.get(sol.conclusao, 0) > peso.get(status_atual, 0):
-                    itens_map[item.id]['pior_status'] = sol.conclusao
-                    status_atual = sol.conclusao
-
     # Sobrescreve com avaliação final e calcula Heurística de Risco (Motor de Sugestão de NC)
     for item_id, data in itens_map.items():
-        status_calculado = data['pior_status']
+        # Coleta todas as solicitações/amostragens deste requisito
+        todas_solicitacoes = []
+        for r in data['respostas']:
+            todas_solicitacoes.extend(list(r.solicitacoes.all()))
+
+        has_sol_nc = any(s.conclusao == 'NC' for s in todas_solicitacoes)
+        has_sol_om = any(s.conclusao == 'OM' for s in todas_solicitacoes)
+        has_sol_obs = any(s.conclusao == 'OBS' for s in todas_solicitacoes)
+
+        if has_sol_nc:
+            status_calculado = 'NC'
+        elif has_sol_om:
+            status_calculado = 'OM'
+        elif has_sol_obs:
+            status_calculado = 'OBS'
+        else:
+            status_calculado = 'C'
+
+        data['pior_status'] = status_calculado
+
         if item_id in avaliacoes_finais:
             av = avaliacoes_finais[item_id]
-            # Se o item possui evidências reprovadas (NC), a Não Conformidade prevalece sobre OBS
-            if av.classificacao == 'OBS' and status_calculado == 'NC':
+            if av.classificacao == 'NC' and not has_sol_nc:
+                # Se não há mais evidências de NC, o requisito volta para o status natural
+                data['pior_status'] = status_calculado
+                data['grau_nc_selecionado'] = None
+                data['justificativa_final'] = av.justificativa
+            elif av.classificacao == 'OBS' and status_calculado == 'NC':
                 data['pior_status'] = 'NC'
                 data['grau_nc_selecionado'] = av.grau_nc
                 data['justificativa_final'] = av.justificativa
@@ -7487,11 +7517,6 @@ def iso_revisao_dashboard(request, auditoria_id):
                 data['pior_status'] = av.classificacao
                 data['grau_nc_selecionado'] = av.grau_nc
                 data['justificativa_final'] = av.justificativa
-
-        # Coleta todas as solicitações/amostragens deste requisito
-        todas_solicitacoes = []
-        for r in data['respostas']:
-            todas_solicitacoes.extend(list(r.solicitacoes.all()))
 
         # Cálculo da Heurística de Sugestão Inteligente
         T = len(todas_solicitacoes)
@@ -7686,6 +7711,7 @@ def api_iso_revisao_reverter(request):
 
 
 @login_required
+@never_cache
 def iso_auditoria_sintese_wizard(request, auditoria_id):
     """
     TELA DE REPASSE E SÍNTESE (WIZARD DO AUDITOR)
@@ -7757,10 +7783,10 @@ def iso_auditoria_sintese_wizard(request, auditoria_id):
 
         # Prepara conclusões brutas para avaliar prevalência
         conclusoes_sols = [s.conclusao for s in sols_do_item]
-        classificacoes_resps = [r.classificacao for r in resps_do_item]
+        classificacoes_resps = [r.classificacao for r in resps_do_item if not r.solicitacoes.exists()]
         todas_conclusoes = conclusoes_sols + classificacoes_resps
 
-        has_raw_nc = ('NC' in todas_conclusoes)
+        has_raw_nc = ('NC' in conclusoes_sols)
         has_raw_om = ('OM' in todas_conclusoes)
 
         if av_final and av_final.classificacao:
@@ -7768,6 +7794,10 @@ def iso_auditoria_sintese_wizard(request, auditoria_id):
             if av_final.classificacao == 'OBS' and has_raw_nc:
                 status = 'NC'
                 grau = av_final.grau_nc or ('MAIOR' if any(s.grau_nc == 'MAIOR' for s in sols_do_item if s.conclusao == 'NC') else 'MENOR')
+            elif av_final.classificacao == 'NC' and not has_raw_nc:
+                # Não há mais NC no item: reverte para o status das evidências reais
+                status = 'OM' if has_raw_om else ('OBS' if 'OBS' in todas_conclusoes else 'C')
+                grau = None
             else:
                 status = av_final.classificacao
                 grau = av_final.grau_nc

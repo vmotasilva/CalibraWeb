@@ -128,25 +128,35 @@
                             <span class="text-primary small fw-bold"><i class="bi bi-pin-angle-fill me-1"></i>Solicitações / Amostras / Observações associadas:</span>
                             <div class="d-flex flex-column gap-1.5 ms-2 mt-1.5">
                                 {% for sol in resp.solicitacoes.all %}
-                                <div class="p-2 rounded bg-light border d-flex justify-content-between align-items-start gap-2">
-                                    <div>
+                                <div class="p-2 rounded bg-light border d-flex justify-content-between align-items-start gap-2" id="solicitacao_row_{{ sol.id }}">
+                                    <div class="flex-grow-1">
                                         <div class="fw-semibold text-dark small" style="white-space: pre-line;">{{ sol.solicitacao }}</div>
                                         {% if sol.evidencia %}
                                             <div class="text-secondary small font-monospace mt-0.5" style="font-size: 0.78rem; white-space: pre-line;">{{ sol.evidencia }}</div>
                                         {% endif %}
                                     </div>
-                                    <div class="flex-shrink-0">
-                                        {% if sol.conclusao == 'NC' %}
-                                            <span class="badge bg-danger rounded-pill px-2 py-0.5 font-monospace" style="font-size: 0.72rem;">NC</span>
-                                        {% elif sol.conclusao == 'OM' %}
-                                            <span class="badge bg-warning text-dark rounded-pill px-2 py-0.5 font-monospace" style="font-size: 0.72rem;">OM</span>
-                                        {% elif sol.conclusao == 'OBS' %}
-                                            <span class="badge text-dark rounded-pill px-2 py-0.5 font-monospace fw-bold" style="background-color: #d4e157; font-size: 0.72rem;">Obs. Correção</span>
-                                        {% elif sol.conclusao == 'C' %}
-                                            <span class="badge bg-success rounded-pill px-2 py-0.5 font-monospace" style="font-size: 0.72rem;">Conforme</span>
-                                        {% else %}
-                                            <span class="badge bg-secondary rounded-pill px-2 py-0.5 font-monospace" style="font-size: 0.72rem;">Pendente</span>
-                                        {% endif %}
+                                    <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                                        <div>
+                                            {% if sol.conclusao == 'NC' %}
+                                                <span class="badge bg-danger rounded-pill px-2 py-0.5 font-monospace" style="font-size: 0.72rem;">NC {% if sol.grau_nc %}({{ sol.grau_nc }}){% endif %}</span>
+                                            {% elif sol.conclusao == 'OM' %}
+                                                <span class="badge bg-warning text-dark rounded-pill px-2 py-0.5 font-monospace" style="font-size: 0.72rem;">OM</span>
+                                            {% elif sol.conclusao == 'OBS' %}
+                                                <span class="badge text-dark rounded-pill px-2 py-0.5 font-monospace fw-bold" style="background-color: #d4e157; font-size: 0.72rem;">Obs. Correção</span>
+                                            {% elif sol.conclusao == 'C' %}
+                                                <span class="badge bg-success rounded-pill px-2 py-0.5 font-monospace" style="font-size: 0.72rem;">Conforme</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary rounded-pill px-2 py-0.5 font-monospace" style="font-size: 0.72rem;">Pendente</span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="btn-group btn-group-sm">
+                                            <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1.5" title="Editar Evidência" onclick="abrirModalEditarSolicitacaoRevisao({{ sol.id }}, '{{ sol.solicitacao|escapejs }}', '{{ sol.evidencia|escapejs }}', '{{ sol.conclusao }}', '{{ sol.grau_nc|default:'' }}')">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-outline-danger btn-sm py-0 px-1.5" title="Excluir Evidência Órfã / Incorreta" onclick="excluirSolicitacaoRevisao({{ sol.id }})">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                                 {% endfor %}
@@ -524,5 +534,155 @@
     function reverterStatus(itemNormaId, novoStatus) {
         reverterStatusComGrau(itemNormaId, novoStatus);
     }
+
+    // Exclusão rápida de evidência diretamente pelo Dashboard de Revisão
+    function excluirSolicitacaoRevisao(solId) {
+        if (!confirm('Deseja realmente excluir esta evidência/solicitação? Esta ação atualizará o status consolidado do requisito.')) {
+            return;
+        }
+
+        const loading = new bootstrap.Modal(document.getElementById('modalLoading'));
+        loading.show();
+
+        fetch(`/auditoria/iso/api/solicitacoes/${solId}/deletar/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            loading.hide();
+            if (data.success) {
+                const el = document.getElementById('solicitacao_row_' + solId);
+                if (el) el.remove();
+                // Recarrega a página para atualizar todos os cálculos e heurísticas em cascata
+                window.location.reload();
+            } else {
+                alert('Erro ao excluir evidência: ' + (data.error || 'Erro desconhecido.'));
+            }
+        })
+        .catch(err => {
+            loading.hide();
+            alert('Erro de conexão ao tentar excluir.');
+            console.error(err);
+        });
+    }
+
+    // Modal de Edição de Evidência / Solicitação
+    function abrirModalEditarSolicitacaoRevisao(solId, solicitacao, evidencia, conclusao, grauNc) {
+        document.getElementById('editSolId').value = solId;
+        document.getElementById('editSolTexto').value = solicitacao || '';
+        document.getElementById('editSolEvidencia').value = evidencia || '';
+        document.getElementById('editSolConclusao').value = conclusao || 'C';
+        document.getElementById('editSolGrauNc').value = grauNc || 'MENOR';
+
+        toggleEditGrauNcVisibility();
+        const modal = new bootstrap.Modal(document.getElementById('modalEditarSolicitacaoRevisao'));
+        modal.show();
+    }
+
+    function toggleEditGrauNcVisibility() {
+        const conc = document.getElementById('editSolConclusao').value;
+        const container = document.getElementById('containerEditGrauNc');
+        if (conc === 'NC') {
+            container.classList.remove('d-none');
+        } else {
+            container.classList.add('d-none');
+        }
+    }
+
+    function salvarEdicaoSolicitacaoRevisao() {
+        const solId = document.getElementById('editSolId').value;
+        const solicitacao = document.getElementById('editSolTexto').value.trim();
+        const evidencia = document.getElementById('editSolEvidencia').value.trim();
+        const conclusao = document.getElementById('editSolConclusao').value;
+        const grauNc = conclusao === 'NC' ? document.getElementById('editSolGrauNc').value : null;
+
+        if (!solicitacao) {
+            alert('Por favor, informe a descrição da solicitação/item.');
+            return;
+        }
+
+        const loading = new bootstrap.Modal(document.getElementById('modalLoading'));
+        loading.show();
+
+        fetch(`/auditoria/iso/api/solicitacoes/${solId}/editar/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                solicitacao: solicitacao,
+                evidencia: evidencia,
+                conclusao: conclusao,
+                grau_nc: grauNc
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            loading.hide();
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert('Erro ao atualizar: ' + (data.error || 'Erro desconhecido.'));
+            }
+        })
+        .catch(err => {
+            loading.hide();
+            alert('Erro de conexão ao salvar.');
+            console.error(err);
+        });
+    }
 </script>
+
+<!-- Modal de Edição de Evidência / Solicitação -->
+<div class="modal fade" id="modalEditarSolicitacaoRevisao" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header bg-light border-bottom">
+                <h6 class="modal-title fw-bold text-dark"><i class="bi bi-pencil-square me-2 text-primary"></i>Editar Evidência / Apontamento</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body p-3">
+                <input type="hidden" id="editSolId">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small text-dark">Solicitação / Item Amostrado:</label>
+                    <textarea class="form-control form-control-sm" id="editSolTexto" rows="2" placeholder="Descreva o que foi solicitado..."></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small text-dark">Evidência / Constatação Apresentada:</label>
+                    <textarea class="form-control form-control-sm" id="editSolEvidencia" rows="3" placeholder="Descreva o achado ou evidência verificada..."></textarea>
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col-6">
+                        <label class="form-label fw-semibold small text-dark">Classificação / Conclusão:</label>
+                        <select class="form-select form-select-sm fw-bold" id="editSolConclusao" onchange="toggleEditGrauNcVisibility()">
+                            <option value="C" class="text-success">Conforme (C)</option>
+                            <option value="OBS" class="text-dark" style="background-color: #f9fbe7;">Obs. com Correção (OBS)</option>
+                            <option value="OM" class="text-warning">Oportunidade (OM)</option>
+                            <option value="NC" class="text-danger">Não Conforme (NC)</option>
+                            <option value="P" class="text-secondary">Pendente (P)</option>
+                        </select>
+                    </div>
+                    <div class="col-6" id="containerEditGrauNc">
+                        <label class="form-label fw-semibold small text-dark">Grau da NC:</label>
+                        <select class="form-select form-select-sm fw-bold text-danger" id="editSolGrauNc">
+                            <option value="MENOR">NC Menor (Pontual)</option>
+                            <option value="MAIOR">NC Maior (Sistêmica)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-top d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-secondary rounded-pill btn-sm px-3" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary rounded-pill btn-sm px-4 fw-bold shadow-sm" onclick="salvarEdicaoSolicitacaoRevisao()">
+                    <i class="bi bi-check2-circle me-1"></i> Salvar Alterações
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
