@@ -500,7 +500,35 @@ def generate_auditoria_excel_buffer(auditoria) -> io.BytesIO:
         bottom=Side(style='thin', color=gray_border)
     )
 
-    current_row = 13  # Linha inicial dos itens de checklist
+    # -------------------------------------------------------------
+    # Mapeamento por Âncoras do Template & Estilização de Títulos
+    # -------------------------------------------------------------
+    def normalize_ref(val):
+        if val is None:
+            return ""
+        if hasattr(val, 'strftime'):
+            return "6.3"
+        s = str(val).strip()
+        if s.startswith("2022-03-06"):
+            return "6.3"
+        return s
+
+    title_font = Font(name="Segoe UI", size=10, bold=True, color="000000")
+    title_fill = PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid")
+    title_align = Alignment(horizontal="center", vertical="center")
+
+    row_by_ref = {}
+    for r in range(12, ws.max_row + 1):
+        c_val = ws.cell(r, 2).value
+        q_val = ws.cell(r, 3).value
+        ref_norm = normalize_ref(c_val)
+        if ref_norm and q_val is not None:
+            row_by_ref[ref_norm] = r
+        elif c_val and q_val is None:
+            # Título de Seção
+            safe_set_cell(ws, f'B{r}', c_val, font=title_font, alignment=title_align, fill=title_fill)
+
+    current_fallback_row = 13
 
     for item in sorted(itens_list, key=lambda x: (x.ordem or 0, natural_sort_key(x.referencia))):
         is_parent = item.id in parent_ids
@@ -578,26 +606,31 @@ def generate_auditoria_excel_buffer(auditoria) -> io.BytesIO:
 
         observacao_compilada = "\n".join(observacoes_list)
 
-        # Injeção nas Células da Linha Segura
-        safe_set_cell(ws, f'B{current_row}', item.referencia, font=font_item, alignment=align_center, border=border_cell)
-        safe_set_cell(ws, f'C{current_row}', item.titulo or item.descricao or "", font=font_text, alignment=align_left_wrap, border=border_cell)
+        # Determina a linha de destino no template
+        target_row = row_by_ref.get(item.referencia)
+        if not target_row:
+            target_row = current_fallback_row
+            current_fallback_row += 1
+            safe_set_cell(ws, f'B{target_row}', item.referencia, font=font_item, alignment=align_center, border=border_cell)
+            safe_set_cell(ws, f'C{target_row}', item.titulo or item.descricao or "", font=font_text, alignment=align_left_wrap, border=border_cell)
 
-        # Colunas D (C), E (NC), F (NA), G (OM)
+        # Limpa colunas de status D (C), E (NC), F (NA), G (OM)
         col_map = {"C": "D", "NC": "E", "NA": "F", "OM": "G"}
-        for k, col_let in col_map.items():
-            safe_set_cell(ws, f'{col_let}{current_row}', "X" if (status_item == k) else "", font=font_x, alignment=align_center, border=border_cell)
+        for col_let in ["D", "E", "F", "G"]:
+            safe_set_cell(ws, f'{col_let}{target_row}', "", font=font_x, alignment=align_center, border=border_cell)
 
-        safe_set_cell(ws, f'H{current_row}', evidencia_compilada, font=font_text, alignment=align_left_wrap, border=border_cell)
-        safe_set_cell(ws, f'I{current_row}', observacao_compilada, font=font_text, alignment=align_left_wrap, border=border_cell)
+        if status_item in col_map:
+            safe_set_cell(ws, f'{col_map[status_item]}{target_row}', "X", font=font_x, alignment=align_center, border=border_cell)
+
+        safe_set_cell(ws, f'H{target_row}', evidencia_compilada, font=font_text, alignment=align_left_wrap, border=border_cell)
+        safe_set_cell(ws, f'I{target_row}', observacao_compilada, font=font_text, alignment=align_left_wrap, border=border_cell)
 
         # Ajuste de altura automática da linha se houver múltiplas linhas de evidência
         num_lines = max(evidencia_compilada.count('\n') + 1, observacao_compilada.count('\n') + 1, 1)
         if num_lines > 1:
-            ws.row_dimensions[current_row].height = max(20, num_lines * 16)
+            ws.row_dimensions[target_row].height = max(20, num_lines * 16)
         else:
-            ws.row_dimensions[current_row].height = 20
-
-        current_row += 1
+            ws.row_dimensions[target_row].height = 20
 
     # -------------------------------------------------------------
     # 2. ABA 'Evidências' (Injeção de Fotos e Imagens)
