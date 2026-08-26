@@ -525,6 +525,7 @@ def generate_auditoria_excel_buffer(auditoria) -> io.BytesIO:
             safe_set_cell(ws, f'B{r}', c_val, font=title_font, alignment=title_align, fill=title_fill)
 
     current_fallback_row = 13
+    achados_por_secao = {'4': [], '5': [], '6': [], '7': [], '8': []}
 
     for item in sorted(itens_list, key=lambda x: (x.ordem or 0, natural_sort_key(x.referencia))):
         is_parent = item.id in parent_ids
@@ -627,6 +628,25 @@ def generate_auditoria_excel_buffer(auditoria) -> io.BytesIO:
                     observacoes_list.append(f"[OBS com Correção] {obs_detalhe}")
 
         observacao_compilada = "\n".join(observacoes_list)
+
+        # Agrupa achados relevantes por seção da norma para a aba Resultados
+        sec_num = item.referencia.split('.')[0] if '.' in item.referencia else item.referencia[:1]
+        if sec_num in achados_por_secao:
+            if status_item == 'NC':
+                resumos_nc = []
+                for s in sols_do_item:
+                    if s.conclusao == 'NC':
+                        resumos_nc.append(f"{s.solicitacao or item.titulo or item.referencia}: {s.evidencia or ''}".strip(': '))
+                if not resumos_nc and av_final and av_final.justificativa:
+                    resumos_nc.append(av_final.justificativa.strip())
+                if not resumos_nc and evidencia_compilada:
+                    for ev_line in evidencia_compilada.split('\n'):
+                        if '[NÃO CONFORME]' in ev_line.upper() or '[NC]' in ev_line.upper():
+                            resumos_nc.append(ev_line.replace('• ', ''))
+                txt_nc = " / ".join(resumos_nc) if resumos_nc else (item.titulo or f"Requisito {item.referencia}")
+                achados_por_secao[sec_num].append(f"• Item {item.referencia} [NC]: {txt_nc}")
+            elif status_item == 'OM':
+                achados_por_secao[sec_num].append(f"• Item {item.referencia} [OM]: {item.titulo or ''}")
 
         # Determina a linha de destino no template
         target_row = row_by_ref.get(item.referencia)
@@ -767,8 +787,32 @@ def generate_auditoria_excel_buffer(auditoria) -> io.BytesIO:
         msg_cell = ws_evid['C5']
         msg_cell.value = "Nenhuma foto de evidência foi anexada às solicitações desta auditoria até o momento.\nPara incluir registros fotográficos neste relatório, utilize o botão de anexo na tela de entrevista ou na matriz."
         msg_cell.font = Font(name="Segoe UI", size=9.5, italic=True, color="64748B")
-        msg_cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-        msg_cell.fill = PatternFill(start_color="F8FAFC", end_color="F8FAFC", fill_type="solid")
+    # -------------------------------------------------------------
+    # 3. ABA 'Resultados' (Preenchimento dos Principais Itens com NC/OM)
+    # -------------------------------------------------------------
+    if "Resultados" in wb.sheetnames:
+        ws_res = wb["Resultados"]
+        secao_res_rows = {
+            '4': 44,
+            '5': 45,
+            '6': 46,
+            '7': 47,
+            '8': 48,
+        }
+        font_res_item = Font(name="Segoe UI", size=9)
+        align_res_left = Alignment(horizontal="left", vertical="center", wrap_text=True)
+
+        for sec_key, target_row in secao_res_rows.items():
+            achados = achados_por_secao.get(sec_key, [])
+            texto_achados = "\n".join(achados) if achados else ""
+            
+            safe_set_cell(ws_res, f'E{target_row}', texto_achados, font=font_res_item, alignment=align_res_left)
+            
+            if achados:
+                num_lines = max(texto_achados.count('\n') + 1, 1)
+                ws_res.row_dimensions[target_row].height = max(26, num_lines * 18)
+            else:
+                ws_res.row_dimensions[target_row].height = 20
 
     buffer = io.BytesIO()
     wb.save(buffer)
