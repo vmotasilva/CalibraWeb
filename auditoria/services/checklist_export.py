@@ -609,6 +609,10 @@ def generate_auditoria_excel_buffer(auditoria) -> io.BytesIO:
         # Determina a linha de destino no template
         target_row = row_by_ref.get(item.referencia)
         if not target_row:
+            # Se for um template estruturado com linhas pré-definidas (como o FOR.143),
+            # ignora itens pai/agrupadores (ex: 4.1, 4.2, 5, 5.4, 6, 7, 8) para não injetar linhas extras.
+            if row_by_ref:
+                continue
             target_row = current_fallback_row
             current_fallback_row += 1
             safe_set_cell(ws, f'B{target_row}', item.referencia, font=font_item, alignment=align_center, border=border_cell)
