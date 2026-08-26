@@ -9174,6 +9174,7 @@ def calcular_metricas_matriz_auditoria(auditoria):
     """
     from .models import ItemNorma, RespostaEntrevistaIso, SolicitacaoEvidenciaIso
     
+    agendas = list(auditoria.agendas.all().prefetch_related('perguntas', 'itens_norma', 'perguntas__itens_norma'))
     itens_escopo = auditoria.escopo_itens.all()
     if not itens_escopo.exists():
         itens_escopo = ItemNorma.objects.filter(norma=auditoria.norma)
@@ -9185,16 +9186,16 @@ def calcular_metricas_matriz_auditoria(auditoria):
         if any(other.referencia.startswith(prefix) for other in itens_escopo_list):
             parent_ids.add(item.id)
 
-    respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).prefetch_related('solicitacoes', 'pergunta__itens_norma')
+    respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).prefetch_related('solicitacoes')
+    respostas_map = {r.pergunta_id: r for r in respostas}
+    agenda_item_ids_map = {agenda.id: set(item.id for item in agenda.itens_norma.all()) for agenda in agendas}
+    pergunta_item_ids_map = {}
+    for agenda in agendas:
+        for p in agenda.perguntas.all():
+            if p.id not in pergunta_item_ids_map:
+                pergunta_item_ids_map[p.id] = set(item.id for item in p.itens_norma.all())
+                
     na_item_ids = set(auditoria.itens_nao_aplicaveis.values_list('id', flat=True))
-
-    item_solicitacoes_map = {}
-    for r in respostas:
-        for it in r.pergunta.itens_norma.all():
-            if it.id not in item_solicitacoes_map:
-                item_solicitacoes_map[it.id] = []
-            for s in r.solicitacoes.all():
-                item_solicitacoes_map[it.id].append(s)
 
     count_c = 0
     count_nc = 0
@@ -9206,31 +9207,59 @@ def calcular_metricas_matriz_auditoria(auditoria):
 
     for item in itens_escopo_list:
         if item.id in parent_ids:
-            continue  # Apenas folhas
+            continue  # Apenas folhas são computadas
+
+        todas_perguntas_item_set = set()
+        tem_bloco_associado = False
+        for agenda in agendas:
+            ag_item_ids = agenda_item_ids_map.get(agenda.id, set())
+            perguntas_bloco = []
+            for p in agenda.perguntas.all():
+                p_item_ids = pergunta_item_ids_map.get(p.id, set())
+                if item.id in p_item_ids or (not p_item_ids and item.id in ag_item_ids):
+                    perguntas_bloco.append(p)
+                    todas_perguntas_item_set.add(p.id)
+            if perguntas_bloco or (item.id in ag_item_ids):
+                tem_bloco_associado = True
+
+        sols_do_item = []
+        for p_id in todas_perguntas_item_set:
+            r = respostas_map.get(p_id)
+            if r:
+                for s in r.solicitacoes.all():
+                    sols_do_item.append(s)
 
         if item.id in na_item_ids:
-            count_na += 1
-            continue
-
-        sols = item_solicitacoes_map.get(item.id, [])
-        if sols:
-            conclusoes = [s.conclusao for s in sols]
+            status_item = "NA"
+        elif sols_do_item:
+            conclusoes = [s.conclusao for s in sols_do_item]
             if "NC" in conclusoes:
-                count_nc += 1
-                if any(s.conclusao == "NC" and s.grau_nc == "MAIOR" for s in sols):
+                status_item = "NC"
+                if any(s.conclusao == "NC" and s.grau_nc == "MAIOR" for s in sols_do_item):
                     count_nc_maior += 1
                 else:
                     count_nc_menor += 1
             elif "OM" in conclusoes:
-                count_om += 1
+                status_item = "OM"
             elif any(c in ["C", "OBS"] for c in conclusoes):
-                count_c += 1
+                status_item = "C"
             elif all(c == "NA" for c in conclusoes):
-                count_na += 1
+                status_item = "NA"
             else:
-                count_p += 1
+                status_item = "P"
         else:
-            count_c += 1  # Sem apontamentos no escopo = conforme
+            status_item = "P" if tem_bloco_associado else "NA"
+
+        if status_item == "C":
+            count_c += 1
+        elif status_item == "NC":
+            count_nc += 1
+        elif status_item == "OM":
+            count_om += 1
+        elif status_item == "NA":
+            count_na += 1
+        elif status_item == "P":
+            count_p += 1
 
     # Total de observações registradas na auditoria
     total_obs_sols = SolicitacaoEvidenciaIso.objects.filter(resposta__auditoria=auditoria, conclusao="OBS").count()
