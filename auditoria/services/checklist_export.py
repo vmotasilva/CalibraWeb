@@ -443,13 +443,9 @@ def generate_auditoria_excel_buffer(auditoria) -> io.BytesIO:
     if is_remota:
         safe_set_cell(ws, 'I6', "X")
         safe_set_cell(ws, 'I7', "   ")
-        safe_set_cell(ws, 'H6', "")
-        safe_set_cell(ws, 'H7', "X")
     else:
         safe_set_cell(ws, 'I6', "   ")
         safe_set_cell(ws, 'I7', "X")
-        safe_set_cell(ws, 'H6', "X")
-        safe_set_cell(ws, 'H7', "")
 
     # -------------------------------------------------------------
     # 2. Respostas da Auditoria (Loop Dinâmico a partir da Linha 13)
@@ -536,32 +532,51 @@ def generate_auditoria_excel_buffer(auditoria) -> io.BytesIO:
         # Perguntas e Solicitações vinculadas a este item
         perguntas_do_item = [p_id for p_id, item_ids in pergunta_item_ids_map.items() if item.id in item_ids]
         sols_do_item = []
+        respostas_do_item = []
         for p_id in perguntas_do_item:
             r = respostas_map.get(p_id)
             if r:
+                respostas_do_item.append(r)
                 for s in r.solicitacoes.all():
                     sols_do_item.append(s)
 
         # Determinação do Status / Classificação do Item
         av_final = avaliacoes_finais_map.get(item.id)
+        
+        # Coleta todas as conclusões das solicitações e respostas
+        conclusoes_sols = [s.conclusao for s in sols_do_item]
+        conclusoes_resps = []
+        for r in respostas_do_item:
+            r_val = str(getattr(r, 'resposta', '') or '').strip().upper()
+            if r_val in ['NC', 'NÃO CONFORME', 'NAO CONFORME']:
+                conclusoes_resps.append('NC')
+            elif r_val in ['OM', 'OPORTUNIDADE DE MELHORIA', 'OPORTUNIDADE DE MELHORIA (OM)']:
+                conclusoes_resps.append('OM')
+            elif r_val in ['NA', 'NÃO SE APLICA', 'NAO SE APLICA', 'NÃO APLICÁVEL']:
+                conclusoes_resps.append('NA')
+            elif r_val in ['C', 'CONFORME']:
+                conclusoes_resps.append('C')
+            elif r_val in ['OBS']:
+                conclusoes_resps.append('OBS')
+            if getattr(r, 'classificacao', None) and str(r.classificacao).upper() == 'NC':
+                conclusoes_resps.append('NC')
+
+        todas_conclusoes = conclusoes_sols + conclusoes_resps
+
         if av_final and av_final.classificacao:
             status_item = av_final.classificacao
         elif is_parent:
             status_item = ""
         elif item.id in na_item_ids:
             status_item = "NA"
-        elif sols_do_item:
-            conclusoes = [s.conclusao for s in sols_do_item]
-            if "NC" in conclusoes:
-                status_item = "NC"
-            elif "OM" in conclusoes:
-                status_item = "OM"
-            elif any(c in ["C", "OBS"] for c in conclusoes):
-                status_item = "P" if all(c == "P" for c in conclusoes) else "C"
-            elif all(c == "NA" for c in conclusoes):
-                status_item = "NA"
-            else:
-                status_item = "P"
+        elif "NC" in todas_conclusoes:
+            status_item = "NC"
+        elif "OM" in todas_conclusoes:
+            status_item = "OM"
+        elif any(c in ["C", "OBS"] for c in todas_conclusoes):
+            status_item = "P" if all(c == "P" for c in todas_conclusoes) else "C"
+        elif all(c == "NA" for c in todas_conclusoes) and todas_conclusoes:
+            status_item = "NA"
         elif perguntas_do_item:
             status_item = "C" if not is_parent else ""
         else:
@@ -572,7 +587,7 @@ def generate_auditoria_excel_buffer(auditoria) -> io.BytesIO:
         for s in sols_do_item:
             sol_nome = (s.solicitacao or "").strip()
             evid_desc = (s.evidencia or "").strip()
-            concl = s.get_conclusao_display()
+            concl = s.get_conclusao_display() if hasattr(s, 'get_conclusao_display') else s.conclusao
             imgs_count = len(s.imagens.all()) if hasattr(s, 'imagens') else 0
             img_suffix = f" [📷 {imgs_count} foto(s)]" if imgs_count > 0 else ""
             
@@ -587,8 +602,15 @@ def generate_auditoria_excel_buffer(auditoria) -> io.BytesIO:
         if not evidencias_textos:
             for p in perguntas_do_item:
                 r = respostas_map.get(p.id)
-                if r and r.texto_resposta and r.texto_resposta.strip():
-                    evidencias_textos.append(f"• {r.texto_resposta.strip()}")
+                if r:
+                    if r.texto_resposta and r.texto_resposta.strip():
+                        evidencias_textos.append(f"• {r.texto_resposta.strip()}")
+                    elif r.resposta and str(r.resposta).strip():
+                        evidencias_textos.append(f"• [{r.resposta.strip()}]")
+
+        # Verificação adicional por texto de evidências (se contiver [Não Conforme] ou [NC])
+        if status_item != "NC" and any("[NÃO CONFORME]" in ev.upper() or "[NC]" in ev.upper() for ev in evidencias_textos):
+            status_item = "NC"
 
         evidencia_compilada = "\n".join(evidencias_textos)
 
