@@ -6,7 +6,7 @@ from django.db import transaction
 from django.db.models import Q, Count
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_time
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from datetime import datetime, timedelta
 
 from procedures.models import (
