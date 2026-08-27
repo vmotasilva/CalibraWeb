@@ -1379,7 +1379,17 @@ class TemplateDocumentoTreinamento(models.Model):
     )
     arquivo = models.FileField(
         upload_to='templates_treinamento_docs/',
+        null=True, blank=True,
         verbose_name="Arquivo do Template"
+    )
+    arquivo_base64 = models.TextField(
+        blank=True, default="",
+        verbose_name="Conteúdo em Base64",
+        help_text="Persistência em banco de dados para compatibilidade serverless / nuvem"
+    )
+    nome_arquivo_original = models.CharField(
+        max_length=255, blank=True, default="",
+        verbose_name="Nome Original do Arquivo"
     )
     ativo = models.BooleanField(
         default=True,

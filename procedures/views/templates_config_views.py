@@ -104,7 +104,9 @@ def templates_config_list_view(request):
 
 @login_required
 def template_config_upload_view(request):
-    """Processa o upload de um novo template de documento."""
+    """Processa o upload de um novo template de documento com persistência em Base64 no BD."""
+    import base64
+
     if request.method != 'POST':
         return redirect('procedures:templates_config')
 
@@ -126,6 +128,13 @@ def template_config_upload_view(request):
         messages.error(request, f'⚠️ Formato de arquivo .{ext} não é suportado. Envie arquivos .xlsx, .docx ou .pdf.')
         return redirect('procedures:templates_config')
 
+    # Ler os bytes e converter para base64 para persistência total em banco de dados
+    try:
+        file_bytes = arquivo.read()
+        file_b64 = base64.b64encode(file_bytes).decode('utf-8')
+    except Exception as e:
+        file_b64 = ""
+
     with transaction.atomic():
         # Se este template for definido como ativo, desativa os outros da mesma função
         if definir_ativo:
@@ -138,6 +147,8 @@ def template_config_upload_view(request):
             tipo_arquivo=tipo_arquivo,
             descricao=descricao,
             arquivo=arquivo,
+            arquivo_base64=file_b64,
+            nome_arquivo_original=arquivo.name,
             ativo=definir_ativo,
             criado_por=request.user
         )
@@ -168,21 +179,40 @@ def template_config_toggle_active_view(request, template_id):
 
 @login_required
 def template_config_download_view(request, template_id):
-    """Permite fazer o download do arquivo do template armazenado."""
+    """Permite fazer o download do arquivo do template armazenado (via Base64 ou FileField)."""
+    import base64
     from django.http import FileResponse
 
     template = get_object_or_404(TemplateDocumentoTreinamento, id=template_id)
     
-    if not template.arquivo:
-        messages.error(request, '⚠️ Este template não possui arquivo anexado.')
-        return redirect('procedures:templates_config')
+    content_types = {
+        'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'pdf': 'application/pdf',
+    }
+    content_type = content_types.get(template.tipo_arquivo, 'application/octet-stream')
+    filename = template.nome_arquivo_original or (os.path.basename(template.arquivo.name) if template.arquivo else f"{template.codigo}.{template.tipo_arquivo}")
 
-    try:
-        filename = os.path.basename(template.arquivo.name)
-        return FileResponse(template.arquivo.open('rb'), as_attachment=True, filename=filename)
-    except Exception as e:
-        messages.error(request, f'⚠️ Não foi possível abrir o arquivo do template: {str(e)}')
-        return redirect('procedures:templates_config')
+    # 1. Prioridade: Servir diretamente do Base64 gravado no banco de dados
+    if template.arquivo_base64:
+        try:
+            data = base64.b64decode(template.arquivo_base64)
+            response = HttpResponse(data, content_type=content_type)
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
+        except Exception:
+            pass
+
+    # 2. Fallback: Abrir via FileField
+    if template.arquivo:
+        try:
+            return FileResponse(template.arquivo.open('rb'), as_attachment=True, filename=filename)
+        except Exception as e:
+            messages.error(request, f'⚠️ Não foi possível abrir o arquivo do template: {str(e)}')
+            return redirect('procedures:templates_config')
+
+    messages.error(request, '⚠️ Este template não possui arquivo anexado.')
+    return redirect('procedures:templates_config')
 
 
 @login_required

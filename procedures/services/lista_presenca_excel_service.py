@@ -152,6 +152,7 @@ def _copiar_estilo_celula(origem, destino):
 
 def gerar_lista_presenca_xlsx(planejamento: PlanejamentoTreinamento, overrides: dict = None) -> BytesIO:
     """Carrega o template e preenche cabeçalhos, checkboxes e procedimentos em todas as abas."""
+    import base64
     from procedures.models import TemplateDocumentoTreinamento
 
     wb = None
@@ -162,13 +163,23 @@ def gerar_lista_presenca_xlsx(planejamento: PlanejamentoTreinamento, overrides: 
         ativo=True
     ).first()
 
-    if template_config and template_config.arquivo:
-        try:
-            template_config.arquivo.seek(0)
-            arquivo_bytes = BytesIO(template_config.arquivo.read())
-            wb = openpyxl.load_workbook(arquivo_bytes)
-        except Exception:
-            wb = None
+    if template_config:
+        # A. Tentar ler do Base64 gravado no banco de dados (100% persistente em ambientes em nuvem)
+        if getattr(template_config, 'arquivo_base64', None):
+            try:
+                arquivo_bytes = base64.b64decode(template_config.arquivo_base64)
+                wb = openpyxl.load_workbook(BytesIO(arquivo_bytes))
+            except Exception:
+                wb = None
+
+        # B. Tentar ler do FileField se não carregou por Base64
+        if wb is None and template_config.arquivo:
+            try:
+                template_config.arquivo.seek(0)
+                arquivo_bytes = BytesIO(template_config.arquivo.read())
+                wb = openpyxl.load_workbook(arquivo_bytes)
+            except Exception:
+                wb = None
 
     # 2. Fallback: Diretórios padrão do sistema de arquivos
     if wb is None:
@@ -185,7 +196,7 @@ def gerar_lista_presenca_xlsx(planejamento: PlanejamentoTreinamento, overrides: 
             wb = openpyxl.load_workbook(template_path)
 
     if wb is None:
-        raise FileNotFoundError("Nenhum template ativo foi encontrado. Faça o upload do arquivo na sessão de 'Templates de Documentos'.")
+        raise FileNotFoundError("O arquivo do template ativo precisa ser recadastrado. Acesse 'Templates de Documentos' e faça o upload do arquivo para salvar na nuvem.")
 
     # 1. Montar substituição de texto com formato "DD/MM/YYYY às HH:MM"
     if planejamento.horario_previsto:
