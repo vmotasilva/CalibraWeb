@@ -300,6 +300,7 @@ urlpatterns = [
     path('configuracoes/templates/', templates_config_views.templates_config_list_view, name='templates_config'),
     path('configuracoes/templates/upload/', templates_config_views.template_config_upload_view, name='template_config_upload'),
     path('configuracoes/templates/<int:template_id>/download/', templates_config_views.template_config_download_view, name='template_config_download'),
+    path('configuracoes/templates/<int:template_id>/substituir-arquivo/', templates_config_views.template_config_replace_file_view, name='template_config_replace_file'),
     path('configuracoes/templates/<int:template_id>/ativar/', templates_config_views.template_config_toggle_active_view, name='template_config_toggle_active'),
     path('configuracoes/templates/<int:template_id>/deletar/', templates_config_views.template_config_delete_view, name='template_config_delete'),
 ]

@@ -216,14 +216,51 @@ def template_config_download_view(request, template_id):
 
 
 @login_required
+def template_config_replace_file_view(request, template_id):
+    """Substitui o arquivo de um template existente com persistência em Base64."""
+    import base64
+
+    if request.method != 'POST':
+        return redirect('procedures:templates_config')
+
+    template = get_object_or_404(TemplateDocumentoTreinamento, id=template_id)
+    novo_arquivo = request.FILES.get('arquivo')
+
+    if not novo_arquivo:
+        messages.error(request, '⚠️ Selecione um arquivo para substituir.')
+        return redirect('procedures:templates_config')
+
+    # Validação da extensão
+    ext = os.path.splitext(novo_arquivo.name)[1].lower().replace('.', '')
+    if ext not in ['xlsx', 'docx', 'pdf']:
+        messages.error(request, f'⚠️ Formato de arquivo .{ext} não é suportado. Envie .xlsx, .docx ou .pdf.')
+        return redirect('procedures:templates_config')
+
+    try:
+        file_bytes = novo_arquivo.read()
+        file_b64 = base64.b64encode(file_bytes).decode('utf-8')
+    except Exception as e:
+        messages.error(request, f'⚠️ Erro ao processar o arquivo: {str(e)}')
+        return redirect('procedures:templates_config')
+
+    template.arquivo = novo_arquivo
+    template.arquivo_base64 = file_b64
+    template.nome_arquivo_original = novo_arquivo.name
+    template.tipo_arquivo = ext
+    template.save()
+
+    messages.success(request, f'🔄 Arquivo do template "{template.codigo} - {template.nome}" substituído com sucesso!')
+    return redirect('procedures:templates_config')
+
+
+@login_required
 def template_config_delete_view(request, template_id):
     """Exclui um template do sistema."""
     template = get_object_or_404(TemplateDocumentoTreinamento, id=template_id)
     
     if request.method == 'POST':
         nome_template = str(template)
-        # Apagar o arquivo físico se existir
-        if template.arquivo and os.path.exists(template.arquivo.path):
+        if template.arquivo and hasattr(template.arquivo, 'path') and os.path.exists(template.arquivo.path):
             try:
                 os.remove(template.arquivo.path)
             except Exception:

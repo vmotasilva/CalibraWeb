@@ -168,10 +168,14 @@
                         </div>
 
                         <!-- Ações do Card -->
-                        <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex flex-wrap align-items-center gap-2">
                             <a href="{% url 'procedures:template_config_download' t.id %}" class="btn btn-sm btn-outline-primary" title="Baixar Arquivo Template">
                                 <i class="bi bi-download me-1"></i> Download
                             </a>
+
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#substituirModal{{ t.id }}" title="Substituir o arquivo deste template">
+                                <i class="bi bi-arrow-repeat me-1"></i> Substituir Arquivo
+                            </button>
 
                             <a href="{% url 'procedures:template_config_toggle_active' t.id %}" class="btn btn-sm {% if t.ativo %}btn-outline-warning{% else %}btn-outline-success{% endif %}" title="{% if t.ativo %}Desativar{% else %}Definir como Padrão Ativo{% endif %}">
                                 {% if t.ativo %}
@@ -186,6 +190,49 @@
                                 <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir Template">
                                     <i class="bi bi-trash"></i>
                                 </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal: Substituir Arquivo do Template -->
+                <div class="modal fade" id="substituirModal{{ t.id }}" tabindex="-1" aria-labelledby="substituirModalLabel{{ t.id }}" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content border-0 shadow">
+                            <form method="POST" action="{% url 'procedures:template_config_replace_file' t.id %}" enctype="multipart/form-data">
+                                {% csrf_token %}
+                                <div class="modal-header bg-light border-bottom">
+                                    <h5 class="modal-title font-weight-bold" id="substituirModalLabel{{ t.id }}">
+                                        <i class="bi bi-arrow-repeat text-primary me-2"></i>
+                                        Substituir Arquivo: {{ t.codigo }}
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                                </div>
+                                <div class="modal-body p-4">
+                                    <div class="mb-3">
+                                        <div class="small text-muted mb-1">Template:</div>
+                                        <div class="fw-bold text-dark">{{ t.nome }}</div>
+                                        <div class="small text-muted mt-1">
+                                            Arquivo atual: <code>{{ t.nome_arquivo_original|default:t.codigo }}</code>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3 p-3 bg-light rounded-3 border">
+                                        <label class="form-label font-weight-bold text-dark mb-2">
+                                            Selecione o Novo Arquivo (.xlsx, .docx, .pdf):
+                                        </label>
+                                        <input type="file" name="arquivo" class="form-control" accept=".xlsx,.docx,.pdf" required>
+                                        <div class="form-text small mt-2">
+                                            O novo arquivo será salvo diretamente no banco de dados e ficará disponível imediatamente.
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer bg-light border-top">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="submit" class="btn btn-primary px-4 shadow-sm">
+                                        <i class="bi bi-cloud-arrow-up me-1"></i> Substituir Arquivo
+                                    </button>
+                                </div>
                             </form>
                         </div>
                     </div>
