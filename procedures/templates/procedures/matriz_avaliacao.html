@@ -1364,28 +1364,56 @@
     });
 
     function atualizarCelulaMatriz(btnElement, nivel) {
-        // Mapeamento de níveis para classes e texto
+        // Mapeamento de níveis para classes de farol e texto exibido
         const nivelMap = {
-            '-1': { classe: 'nivel--1', texto: 'N/A' },
-            '0': { classe: 'nivel-0', texto: '0' },
-            '1': { classe: 'nivel-1', texto: '1' },
-            '2': { classe: 'nivel-2', texto: '2' },
-            '3': { classe: 'nivel-3', texto: '3' }
+            '-1': { classe: 'farol-na', texto: 'N/A', nivelNome: 'N/A (Não se Aplica)' },
+            '0': { classe: 'farol-vermelho', texto: '0', nivelNome: 'Nível 0 (Há Intenção)' },
+            '1': { classe: 'farol-amarelo', texto: '1', nivelNome: 'Nível 1 (Em Treinamento)' },
+            '2': { classe: 'farol-verde', texto: '2', nivelNome: 'Nível 2 (Treinado)' },
+            '3': { classe: 'farol-azul', texto: '3', nivelNome: 'Nível 3 (LOFT)' }
         };
         
-        const config = nivelMap[String(nivel)];
-        if (config) {
-            // Encontrar o span dentro do link
-            const span = btnElement.querySelector('.nivel-badge');
-            if (span) {
-                // Remover todas as classes de nível
-                span.classList.remove('nivel--1', 'nivel-0', 'nivel-1', 'nivel-2', 'nivel-3', 'nivel-vazio');
-                // Adicionar a nova classe
-                span.classList.add(config.classe);
-                // Atualizar texto
-                span.textContent = config.texto;
-            }
+        const config = nivelMap[String(nivel)] || { classe: 'farol-pendente', texto: '+', nivelNome: 'Pendente' };
+
+        // Lista de elementos a atualizar (o botão clicado e qualquer outro com mesmo colaborador/disciplina)
+        const botoes = [];
+        if (btnElement) botoes.push(btnElement);
+        
+        if (avaliacaoAtual.colaboradorId && avaliacaoAtual.disciplinaId) {
+            document.querySelectorAll(`.btn-avaliar[data-colaborador="${avaliacaoAtual.colaboradorId}"][data-disciplina="${avaliacaoAtual.disciplinaId}"]`).forEach(b => {
+                if (!botoes.includes(b)) botoes.push(b);
+            });
         }
+
+        botoes.forEach(btn => {
+            // 1. Remover classes de cores anteriores
+            btn.classList.remove(
+                'farol-na', 'farol-vermelho', 'farol-amarelo', 'farol-verde', 'farol-azul', 'farol-pendente',
+                'nivel--1', 'nivel-0', 'nivel-1', 'nivel-2', 'nivel-3', 'nivel-vazio'
+            );
+            
+            // 2. Adicionar nova classe de farol e texto
+            btn.classList.add(config.classe);
+            btn.textContent = config.texto;
+
+            // 3. Atualizar Tooltip se existir
+            const colaboradorCard = btn.closest('.colaborador-card');
+            const colabNome = colaboradorCard ? colaboradorCard.querySelector('.colaborador-nome')?.textContent.trim() : '';
+            const disciplinaBox = btn.closest('.disciplina-box');
+            const discNome = disciplinaBox ? disciplinaBox.querySelector('.disciplina-label')?.textContent.trim() : '';
+            const hojeStr = new Date().toLocaleDateString('pt-BR');
+            const novoTitulo = `${colabNome} • ${discNome} • ${config.nivelNome} • ${hojeStr}`;
+            
+            btn.setAttribute('title', novoTitulo);
+            btn.setAttribute('data-bs-original-title', novoTitulo);
+
+            // 4. Animação de pulso para feedback visual instantâneo
+            btn.style.transition = 'transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+            btn.style.transform = 'scale(1.35)';
+            setTimeout(() => {
+                btn.style.transform = '';
+            }, 300);
+        });
     }
 
     function mostrarToast(mensagem, tipo) {
@@ -1855,11 +1883,38 @@
                 // Fechar modal
                 bootstrap.Modal.getInstance(document.getElementById('modalLoteAvaliacao')).hide();
                 
-                // Feedback visual e recarregar a página
+                // Atualizar em tempo real todos os faróis afetados no DOM
+                const nivelNovo = parseInt(loteAvaliacaoAtual.nivelSelecionado);
+                const nivelMap = {
+                    '-1': { classe: 'farol-na', texto: 'N/A' },
+                    '0': { classe: 'farol-vermelho', texto: '0' },
+                    '1': { classe: 'farol-amarelo', texto: '1' },
+                    '2': { classe: 'farol-verde', texto: '2' },
+                    '3': { classe: 'farol-azul', texto: '3' }
+                };
+                const configLote = nivelMap[String(nivelNovo)] || { classe: 'farol-pendente', texto: '+' };
+
+                document.querySelectorAll(`.btn-avaliar[data-disciplina="${loteAvaliacaoAtual.disciplinaId}"]`).forEach(btn => {
+                    const colabCard = btn.closest('.colaborador-card');
+                    const cb = colabCard ? colabCard.querySelector('.checkbox-colaborador') : null;
+                    const colabId = cb ? parseInt(cb.value) : null;
+                    
+                    const deveAtualizar = (colaboradorIds.length === 0) || (colabId && colaboradorIds.includes(colabId));
+                    if (deveAtualizar) {
+                        const ehPendente = btn.classList.contains('farol-pendente') || btn.textContent.trim() === '+';
+                        if (!somenteSemAvaliacao || ehPendente) {
+                            btn.classList.remove('farol-na', 'farol-vermelho', 'farol-amarelo', 'farol-verde', 'farol-azul', 'farol-pendente');
+                            btn.classList.add(configLote.classe);
+                            btn.textContent = configLote.texto;
+                            btn.style.transition = 'transform 0.25s ease';
+                            btn.style.transform = 'scale(1.25)';
+                            setTimeout(() => { btn.style.transform = ''; }, 300);
+                        }
+                    }
+                });
+
+                // Feedback visual instantâneo
                 mostrarToast(data.mensagem || 'Avaliações em lote salvas com sucesso!', 'success');
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1500);
             } else {
                 alert('Erro: ' + data.erro);
                 this.disabled = false;
