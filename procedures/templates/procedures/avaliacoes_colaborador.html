@@ -1,94 +1,373 @@
 {% extends "procedures/procedimento_base.html" %}
 
-{% block title %}Avaliações - {{ colaborador.nome }}{% endblock %}
-{% block header_title %}Histórico de Avaliações{% endblock %}
+{% block title %}Matrizes - {{ colaborador.nome_completo }}{% endblock %}
+{% block header_title %}Visão por Colaborador - Matrizes de Habilidade{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* =======================================================
+       1. GRID CONTAINER PRINCIPAL (CARDS DOS COLABORADORES)
+       ======================================================= */
+    .matriz-cards-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+        width: 100%;
+    }
+
+    /* =======================================================
+       2. ESTRUTURA DO CARD INDIVIDUAL
+       ======================================================= */
+    .colaborador-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.75rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+        display: flex;
+        flex-direction: column;
+        transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+        padding: 1.1rem;
+    }
+
+    .colaborador-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+        border-color: #cbd5e1;
+    }
+
+    /* Cabeçalho do Card */
+    .colaborador-card-header {
+        border-bottom: 1px solid #e5e7eb;
+        padding-bottom: 0.75rem;
+        margin-bottom: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .colaborador-card-header .colaborador-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .colaborador-card-header .colaborador-nome {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #0d6efd;
+        text-decoration: none;
+        line-height: 1.3;
+        display: block;
+        word-break: break-word;
+    }
+
+    .colaborador-card-header .colaborador-cargo {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: #64748b;
+        letter-spacing: 0.025em;
+        margin-top: 1px;
+        display: block;
+    }
+
+    /* =======================================================
+       3. CORPO DO CARD (DISCIPLINAS FLUIDAS SEM BORDAS)
+       ======================================================= */
+    .colaborador-card-body {
+        padding: 0;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        gap: 1rem 0.6rem;
+        background-color: transparent;
+        flex-grow: 1;
+        align-content: start;
+    }
+
+    /* Responsividade Mobile */
+    @media (max-width: 767.98px) {
+        .matriz-cards-grid {
+            grid-template-columns: 1fr !important;
+            gap: 1rem !important;
+        }
+
+        .colaborador-card {
+            padding: 0.85rem !important;
+        }
+
+        .colaborador-card-body {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 1.1rem 0.75rem !important;
+        }
+
+        .disciplina-box {
+            background-color: #f8fafc;
+            border-radius: 8px;
+            padding: 0.6rem 0.4rem !important;
+            border: 1px solid #f1f5f9;
+        }
+
+        .disciplina-label {
+            font-size: 0.75rem !important;
+            min-height: auto !important;
+            margin-bottom: 2px;
+        }
+    }
+
+    /* Bloco individual de cada disciplina */
+    .disciplina-box {
+        background: transparent;
+        border: none;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        text-align: center;
+        gap: 0.45rem;
+    }
+
+    .disciplina-label {
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: #475569;
+        text-transform: uppercase;
+        line-height: 1.2;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        min-height: 1.8rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        word-break: break-word;
+    }
+
+    /* =======================================================
+       4. INDICADORES VISUAIS EM FAROL
+       ======================================================= */
+    .farol-indicador {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.95rem;
+        font-weight: 700;
+        text-decoration: none;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+        transition: transform 0.15s ease, filter 0.15s ease;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .farol-indicador:hover {
+        transform: scale(1.12);
+        filter: brightness(1.05);
+    }
+
+    .farol-verde {
+        background-color: #198754;
+        color: #ffffff;
+        border: 1px solid #157347;
+    }
+
+    .farol-amarelo {
+        background-color: #ffc107;
+        color: #ffffff;
+        border: 1px solid #e0a800;
+    }
+
+    .farol-vermelho {
+        background-color: #dc3545;
+        color: #ffffff;
+        border: 1px solid #b02a37;
+    }
+
+    .farol-azul {
+        background-color: #0d6efd;
+        color: #ffffff;
+        border: 1px solid #0a58ca;
+    }
+
+    .farol-na {
+        background-color: #f1f5f9;
+        color: #64748b;
+        border: 1.5px solid #cbd5e1;
+        font-size: 0.8rem;
+    }
+
+    .farol-pendente {
+        background-color: #ffffff;
+        color: #94a3b8;
+        border: 1.5px dashed #cbd5e1;
+        font-size: 0.85rem;
+    }
+
+    .farol-pendente:hover {
+        border-color: #0d6efd;
+        color: #0d6efd;
+    }
+
+    /* Modal de Avaliação */
+    .nivel-card-modal {
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: 2px solid transparent;
+    }
+    
+    .nivel-card-modal:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .nivel-card-modal.selected {
+        border-color: #0d6efd !important;
+        background-color: #e7f1ff;
+    }
+    
+    .nivel-badge-modal {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        font-weight: bold;
+        font-size: 1.1rem;
+    }
+    
+    .nivel-na-bg { background: #e9ecef; color: #6c757d; border: 2px solid #adb5bd; }
+    .nivel-0-bg { background: #dc3545; color: white; }
+    .nivel-1-bg { background: #ffc107; color: #212529; }
+    .nivel-2-bg { background: #198754; color: white; }
+    .nivel-3-bg { background: #0d6efd; color: white; }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
-    <div class="card mb-3">
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">
-                <i class="bi bi-person-badge"></i> {{ colaborador.nome }}
-            </h5>
-            <a href="{% url 'procedures:matriz_avaliacoes' %}" class="btn btn-light btn-sm">
-                <i class="bi bi-arrow-left"></i> Voltar
-            </a>
-        </div>
-        <div class="card-body">
-            <p class="mb-1"><strong>Matrícula:</strong> {{ colaborador.matricula|default:"N/A" }}</p>
-            <p class="mb-1"><strong>Setor:</strong> {{ colaborador.setor|default:"N/A" }}</p>
-            <p class="mb-0"><strong>Total de Avaliações:</strong> {{ colaborador.avaliacaohabilidade_set.count }}</p>
+    <!-- Barra Superior: Informações do Colaborador e Botão Voltar -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; font-size: 1.5rem;">
+                    <i class="bi bi-person-badge"></i>
+                </div>
+                <div>
+                    <h5 class="mb-0 fw-bold text-dark">{{ colaborador.nome_completo }}</h5>
+                    <div class="small text-muted d-flex flex-wrap gap-2 mt-1">
+                        <span><i class="bi bi-card-text me-1"></i> Matrícula: <strong>{{ colaborador.matricula|default:"N/A" }}</strong></span>
+                        <span>•</span>
+                        <span><i class="bi bi-diagram-3 me-1"></i> Setor: <strong>{{ colaborador.setor|default:"Sem Setor" }}</strong></span>
+                        <span>•</span>
+                        <span><i class="bi bi-clock me-1"></i> Turno: <strong>{{ colaborador.turno|default:"-" }}</strong></span>
+                        <span>•</span>
+                        <span><i class="bi bi-grid-3x3 me-1"></i> Matrizes Vinculadas: <strong class="badge bg-primary rounded-pill">{{ matrizes_dados|length }}</strong></span>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <a href="{% url 'procedures:matriz_avaliacoes' %}" class="btn btn-outline-secondary d-flex align-items-center gap-2">
+                    <i class="bi bi-arrow-left"></i> Voltar à Matriz Geral
+                </a>
+            </div>
         </div>
     </div>
 
-    {% if avaliacoes_por_matriz %}
-        {% for matriz_nome, dados in avaliacoes_por_matriz.items %}
-        <div class="card mb-3">
-            <div class="card-header">
-                <h6 class="mb-0">
-                    <i class="bi bi-grid-3x3"></i> {{ matriz_nome }}
-                </h6>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-sm table-hover">
-                        <thead>
-                            <tr>
-                                <th>Disciplina</th>
-                                <th>Código</th>
-                                <th class="text-center">Nível</th>
-                                <th>Data Avaliação</th>
-                                <th>Avaliador</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for av in dados.avaliacoes %}
-                            <tr>
-                                <td><strong>{{ av.disciplina.nome }}</strong></td>
-                                <td>{{ av.disciplina.codigo }}</td>
-                                <td class="text-center">
-                                    {% if av.nivel == 0 %}
-                                        <span class="badge bg-secondary">0 - Não Possui</span>
-                                    {% elif av.nivel == 1 %}
-                                        <span class="badge bg-warning text-dark">1 - Básico</span>
-                                    {% elif av.nivel == 2 %}
-                                        <span class="badge bg-info">2 - Intermediário</span>
-                                    {% elif av.nivel == 3 %}
-                                        <span class="badge bg-success">3 - Avançado</span>
-                                    {% endif %}
-                                </td>
-                                <td>{{ av.data_avaliacao|date:"d/m/Y" }}</td>
-                                <td>{{ av.avaliador.nome|default:"N/A" }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+    <!-- Lista de Matrizes do Colaborador (Uma abaixo da outra) -->
+    {% if matrizes_dados %}
+        {% for item in matrizes_dados %}
+        <div class="card shadow-sm border-0 mb-4">
+            <!-- Header da Matriz -->
+            <div class="card-header bg-white border-bottom py-3">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-grid-3x3-gap-fill text-primary fs-4"></i>
+                        <div>
+                            <h5 class="mb-0 fw-bold text-dark text-uppercase tracking-wide">{{ item.matriz.nome }}</h5>
+                            <div class="d-flex align-items-center gap-2 mt-1">
+                                <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill fw-medium">
+                                    {{ item.total_disciplinas }} disciplinas
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <a href="{% url 'procedures:matriz_avaliacoes' %}?matriz={{ item.matriz.id }}" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1">
+                            <i class="bi bi-box-arrow-up-right"></i> Ver Matriz Completa
+                        </a>
+                    </div>
                 </div>
-                
-                <!-- Estatísticas rápidas -->
-                <div class="row mt-3">
-                    <div class="col-md-3">
-                        <div class="text-center">
-                            <small class="text-muted">Nível 0</small>
-                            <h4>{{ dados.contagem_nivel_0 }}</h4>
+            </div>
+
+            <!-- Corpo da Matriz: Card do Colaborador com suas Disciplinas -->
+            <div class="card-body p-3">
+                <div class="matriz-cards-grid">
+                    <div class="colaborador-card">
+                        <!-- Cabeçalho do Card -->
+                        <div class="colaborador-card-header">
+                            <div class="colaborador-info">
+                                <span class="colaborador-nome">
+                                    {{ colaborador.nome_completo }}
+                                </span>
+                                {% if colaborador.setor %}
+                                <span class="colaborador-cargo">{{ colaborador.setor }}</span>
+                                {% endif %}
+                            </div>
+                            {% if not colaborador.is_active %}
+                            <span class="badge bg-danger text-white px-2 py-1" style="font-size: 0.65rem;" title="Colaborador desligado no RH">Desligado</span>
+                            {% endif %}
                         </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="text-center">
-                            <small class="text-muted">Nível 1</small>
-                            <h4>{{ dados.contagem_nivel_1 }}</h4>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="text-center">
-                            <small class="text-muted">Nível 2</small>
-                            <h4>{{ dados.contagem_nivel_2 }}</h4>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="text-center">
-                            <small class="text-muted">Nível 3</small>
-                            <h4>{{ dados.contagem_nivel_3 }}</h4>
+
+                        <!-- Corpo do Card (Disciplinas e Faróis) -->
+                        <div class="colaborador-card-body">
+                            {% for celula in item.celulas %}
+                            <div class="disciplina-box">
+                                <span class="disciplina-label" title="{{ celula.disciplina.nome }}">
+                                    {{ celula.disciplina.nome }}
+                                </span>
+
+                                <!-- Farol com Lógica de Níveis -->
+                                {% if celula.avaliacao %}
+                                <a href="javascript:void(0)" 
+                                   class="farol-indicador {% if celula.avaliacao.nivel == -1 %}farol-na{% elif celula.avaliacao.nivel == 0 %}farol-vermelho{% elif celula.avaliacao.nivel == 1 %}farol-amarelo{% elif celula.avaliacao.nivel == 2 %}farol-verde{% elif celula.avaliacao.nivel == 3 %}farol-azul{% else %}farol-verde{% endif %} btn-avaliar"
+                                   data-matriz="{{ item.matriz.id }}"
+                                   data-colaborador="{{ colaborador.id }}"
+                                   data-disciplina="{{ celula.disciplina.id }}"
+                                   data-bs-toggle="tooltip"
+                                   title="{{ colaborador.nome_completo }} • {{ celula.disciplina.nome }} • {% if celula.avaliacao.nivel == -1 %}N/A{% elif celula.avaliacao.nivel == 0 %}Nível 0{% elif celula.avaliacao.nivel == 1 %}Nível 1{% elif celula.avaliacao.nivel == 2 %}Nível 2{% elif celula.avaliacao.nivel == 3 %}Nível 3{% endif %} • {{ celula.avaliacao.data_avaliacao|date:'d/m/Y' }}">
+                                    {% if celula.avaliacao.nivel == -1 %}
+                                    N/A
+                                    {% elif celula.avaliacao.nivel == 0 %}
+                                    0
+                                    {% elif celula.avaliacao.nivel == 1 %}
+                                    1
+                                    {% elif celula.avaliacao.nivel == 2 %}
+                                    2
+                                    {% elif celula.avaliacao.nivel == 3 %}
+                                    3
+                                    {% else %}
+                                    {{ celula.avaliacao.nivel }}
+                                    {% endif %}
+                                </a>
+                                {% else %}
+                                <a href="javascript:void(0)" 
+                                   class="farol-indicador farol-pendente btn-avaliar"
+                                   data-matriz="{{ item.matriz.id }}"
+                                   data-colaborador="{{ colaborador.id }}"
+                                   data-disciplina="{{ celula.disciplina.id }}"
+                                   data-bs-toggle="tooltip"
+                                   title="{{ colaborador.nome_completo }} • {{ celula.disciplina.nome }} • Clique para avaliar">
+                                    +
+                                </a>
+                                {% endif %}
+                            </div>
+                            {% empty %}
+                            <div class="text-muted small py-2">Nenhuma disciplina cadastrada nesta matriz.</div>
+                            {% endfor %}
                         </div>
                     </div>
                 </div>
@@ -96,9 +375,341 @@
         </div>
         {% endfor %}
     {% else %}
-    <div class="alert alert-info text-center">
-        <i class="bi bi-info-circle"></i> Este colaborador ainda não possui avaliações registradas.
+    <div class="alert alert-info text-center py-5 shadow-sm">
+        <i class="bi bi-info-circle fs-3 d-block mb-2 text-primary"></i>
+        <h5>Nenhuma Matriz Encontrada</h5>
+        <p class="text-muted mb-0">Este colaborador ainda não está associado a nenhuma matriz de habilidades.</p>
     </div>
     {% endif %}
 </div>
+
+<!-- Modal de Avaliação -->
+<div class="modal fade" id="modalAvaliacao" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-person-check"></i> Avaliar Habilidade
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Loading -->
+                <div id="modalAvaliacaoLoading" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Carregando dados...</p>
+                </div>
+                
+                <!-- Conteúdo -->
+                <div id="modalAvaliacaoContent" style="display: none;">
+                    <!-- Informações -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <p class="mb-2"><strong>Colaborador:</strong></p>
+                            <p class="text-primary fs-5" id="modalColaboradorNome"></p>
+                            <p class="text-muted small" id="modalColaboradorMatricula"></p>
+                            <p class="text-muted small" id="modalColaboradorSetor"></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-2"><strong>Disciplina:</strong></p>
+                            <p class="text-info fs-5" id="modalDisciplinaNome"></p>
+                        </div>
+                    </div>
+
+                    <!-- Alerta de avaliação existente -->
+                    <div id="modalAvaliacaoExistente" class="alert alert-info" style="display: none;">
+                        <i class="bi bi-info-circle"></i> 
+                        <strong>Avaliação existente:</strong> 
+                        <span id="modalAvaliacaoInfo"></span>
+                    </div>
+
+                    <hr>
+
+                    <!-- Seleção de Nível -->
+                    <h6 class="mb-3">Selecione o nível de competência:</h6>
+                    
+                    <div class="row g-2 mb-4">
+                        <div class="col-4 col-md-2">
+                            <div class="card nivel-card-modal text-center h-100" data-nivel="-1" onclick="selecionarNivelModal(this)">
+                                <div class="card-body p-2">
+                                    <span class="nivel-badge-modal nivel-na-bg">N/A</span>
+                                    <p class="small mb-0 mt-1">Não se Aplica</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-4 col-md-2">
+                            <div class="card nivel-card-modal text-center h-100" data-nivel="0" onclick="selecionarNivelModal(this)">
+                                <div class="card-body p-2">
+                                    <span class="nivel-badge-modal nivel-0-bg">0</span>
+                                    <p class="small mb-0 mt-1">Há Intenção</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-4 col-md-2">
+                            <div class="card nivel-card-modal text-center h-100" data-nivel="1" onclick="selecionarNivelModal(this)">
+                                <div class="card-body p-2">
+                                    <span class="nivel-badge-modal nivel-1-bg">1</span>
+                                    <p class="small mb-0 mt-1">Em Treinamento</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-4 col-md-2">
+                            <div class="card nivel-card-modal text-center h-100" data-nivel="2" onclick="selecionarNivelModal(this)">
+                                <div class="card-body p-2">
+                                    <span class="nivel-badge-modal nivel-2-bg">2</span>
+                                    <p class="small mb-0 mt-1">Treinado</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-4 col-md-2">
+                            <div class="card nivel-card-modal text-center h-100" data-nivel="3" onclick="selecionarNivelModal(this)">
+                                <div class="card-body p-2">
+                                    <span class="nivel-badge-modal nivel-3-bg">3</span>
+                                    <p class="small mb-0 mt-1">LOFT</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Data da Avaliação -->
+                    <div class="mb-3">
+                        <label for="modalDataAvaliacao" class="form-label">Data da Avaliação:</label>
+                        <input type="date" class="form-control" id="modalDataAvaliacao" required>
+                    </div>
+
+                    <!-- Observações -->
+                    <div class="mb-3">
+                        <label for="modalObservacoes" class="form-label">Observações (opcional):</label>
+                        <textarea class="form-control" id="modalObservacoes" rows="3" placeholder="Insira observações sobre o nível de habilidade..."></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnSalvarAvaliacao" disabled>
+                    <i class="bi bi-check-circle"></i> Salvar Avaliação
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% csrf_token %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]') ? document.querySelector('[name=csrfmiddlewaretoken]').value : '';
+
+        // Inicializar tooltips do Bootstrap
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+
+        // Objeto para armazenar dados da avaliação atual
+        let avaliacaoAtual = {
+            matrizId: null,
+            colaboradorId: null,
+            disciplinaId: null,
+            btnElement: null,
+            nivelSelecionado: null
+        };
+
+        // Adicionar eventos para botões de avaliação
+        document.querySelectorAll('.btn-avaliar').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const matrizId = this.getAttribute('data-matriz');
+                const colaboradorId = this.getAttribute('data-colaborador');
+                const disciplinaId = this.getAttribute('data-disciplina');
+                
+                abrirModalAvaliacao(matrizId, colaboradorId, disciplinaId, this);
+            });
+        });
+
+        function abrirModalAvaliacao(matrizId, colaboradorId, disciplinaId, btnElement) {
+            avaliacaoAtual = {
+                matrizId: matrizId,
+                colaboradorId: colaboradorId,
+                disciplinaId: disciplinaId,
+                btnElement: btnElement,
+                nivelSelecionado: null
+            };
+            
+            // Resetar modal
+            document.getElementById('modalAvaliacaoLoading').style.display = 'block';
+            document.getElementById('modalAvaliacaoContent').style.display = 'none';
+            document.getElementById('btnSalvarAvaliacao').disabled = true;
+            document.querySelectorAll('.nivel-card-modal').forEach(c => c.classList.remove('selected'));
+            
+            // Abrir modal
+            const modal = new bootstrap.Modal(document.getElementById('modalAvaliacao'));
+            modal.show();
+            
+            // Buscar dados via AJAX
+            fetch(`/procedures/api/avaliacoes/${matrizId}/${colaboradorId}/${disciplinaId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.sucesso) {
+                        preencherModalAvaliacao(data);
+                    } else {
+                        alert('Erro ao carregar dados: ' + data.erro);
+                        modal.hide();
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    alert('Erro ao carregar dados da avaliação');
+                    modal.hide();
+                });
+        }
+
+        function preencherModalAvaliacao(data) {
+            document.getElementById('modalColaboradorNome').textContent = data.colaborador.nome;
+            document.getElementById('modalColaboradorMatricula').textContent = 'Matrícula: ' + (data.colaborador.matricula || 'N/A');
+            document.getElementById('modalColaboradorSetor').textContent = data.colaborador.setor ? 'Setor: ' + data.colaborador.setor : '';
+            
+            document.getElementById('modalDisciplinaNome').textContent = data.disciplina.codigo + ' - ' + data.disciplina.nome;
+            
+            const hoje = new Date().toISOString().split('T')[0];
+            document.getElementById('modalDataAvaliacao').value = data.avaliacao.data_avaliacao || hoje;
+            document.getElementById('modalObservacoes').value = data.avaliacao.observacoes || '';
+            
+            if (data.avaliacao.existe) {
+                document.getElementById('modalAvaliacaoExistente').style.display = 'block';
+                const nivelTexto = getNivelTexto(data.avaliacao.nivel);
+                document.getElementById('modalAvaliacaoInfo').textContent = 
+                    `Nível ${data.avaliacao.nivel} (${nivelTexto})` + 
+                    (data.avaliacao.avaliador ? ` - por ${data.avaliacao.avaliador}` : '');
+                
+                const cardNivel = document.querySelector(`.nivel-card-modal[data-nivel="${data.avaliacao.nivel}"]`);
+                if (cardNivel) {
+                    cardNivel.classList.add('selected');
+                    avaliacaoAtual.nivelSelecionado = data.avaliacao.nivel;
+                    document.getElementById('btnSalvarAvaliacao').disabled = false;
+                }
+            } else {
+                document.getElementById('modalAvaliacaoExistente').style.display = 'none';
+            }
+            
+            document.getElementById('modalAvaliacaoLoading').style.display = 'none';
+            document.getElementById('modalAvaliacaoContent').style.display = 'block';
+        }
+
+        function getNivelTexto(nivel) {
+            const niveis = {
+                '-1': 'Não se Aplica',
+                '0': 'Há Intenção',
+                '1': 'Em Treinamento',
+                '2': 'Treinado',
+                '3': 'LOFT'
+            };
+            return niveis[String(nivel)] || 'Desconhecido';
+        }
+
+        window.selecionarNivelModal = function(element) {
+            document.querySelectorAll('.nivel-card-modal').forEach(c => c.classList.remove('selected'));
+            element.classList.add('selected');
+            avaliacaoAtual.nivelSelecionado = element.getAttribute('data-nivel');
+            document.getElementById('btnSalvarAvaliacao').disabled = false;
+        };
+
+        // Salvar avaliação
+        document.getElementById('btnSalvarAvaliacao').addEventListener('click', function() {
+            if (avaliacaoAtual.nivelSelecionado === null) {
+                alert('Por favor, selecione um nível de competência!');
+                return;
+            }
+            
+            const dataAvaliacao = document.getElementById('modalDataAvaliacao').value;
+            if (!dataAvaliacao) {
+                alert('Por favor, informe a data da avaliação!');
+                return;
+            }
+            
+            const observacoes = document.getElementById('modalObservacoes').value;
+            
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Salvando...';
+            
+            fetch(`/procedures/api/avaliacoes/${avaliacaoAtual.matrizId}/${avaliacaoAtual.colaboradorId}/${avaliacaoAtual.disciplinaId}/salvar/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    nivel: avaliacaoAtual.nivelSelecionado,
+                    data_avaliacao: dataAvaliacao,
+                    observacoes: observacoes
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.sucesso) {
+                    atualizarCelulaMatriz(avaliacaoAtual.btnElement, parseInt(avaliacaoAtual.nivelSelecionado));
+                    bootstrap.Modal.getInstance(document.getElementById('modalAvaliacao')).hide();
+                    mostrarToast('Avaliação salva com sucesso!', 'success');
+                } else {
+                    alert('Erro: ' + data.erro);
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                alert('Erro ao salvar avaliação');
+            })
+            .finally(() => {
+                document.getElementById('btnSalvarAvaliacao').disabled = false;
+                document.getElementById('btnSalvarAvaliacao').innerHTML = '<i class="bi bi-check-circle"></i> Salvar Avaliação';
+            });
+        });
+
+        function atualizarCelulaMatriz(btnElement, nivel) {
+            const nivelMap = {
+                '-1': { classe: 'farol-na', texto: 'N/A' },
+                '0': { classe: 'farol-vermelho', texto: '0' },
+                '1': { classe: 'farol-amarelo', texto: '1' },
+                '2': { classe: 'farol-verde', texto: '2' },
+                '3': { classe: 'farol-azul', texto: '3' }
+            };
+            
+            const config = nivelMap[String(nivel)];
+            if (config && btnElement) {
+                btnElement.classList.remove('farol-na', 'farol-vermelho', 'farol-amarelo', 'farol-verde', 'farol-azul', 'farol-pendente');
+                btnElement.classList.add(config.classe);
+                btnElement.textContent = config.texto;
+            }
+        }
+
+        function mostrarToast(mensagem, tipo) {
+            let container = document.getElementById('toastContainer');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toastContainer';
+                container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+                document.body.appendChild(container);
+            }
+            
+            const toastId = 'toast_' + Date.now();
+            const bgClass = tipo === 'success' ? 'bg-success' : 'bg-danger';
+            const toastHtml = `
+                <div id="${toastId}" class="toast ${bgClass} text-white" role="alert">
+                    <div class="toast-body d-flex justify-content-between align-items-center">
+                        <span>${mensagem}</span>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', toastHtml);
+            
+            const toastEl = document.getElementById(toastId);
+            const toast = new bootstrap.Toast(toastEl, { autohide: true, delay: 3000 });
+            toast.show();
+            toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+        }
+    });
+</script>
 {% endblock %}

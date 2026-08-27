@@ -425,44 +425,68 @@ def editar_avaliacao_view(request, matriz_id, colaborador_id, disciplina_id):
 @login_required
 def avaliacoes_colaborador_view(request, colaborador_id):
     """
-    Exibe todas as avaliações de um colaborador específico
-    agrupadas por matriz
+    Exibe todas as matrizes e avaliações de um colaborador específico,
+    renderizando cada matriz no formato visual de cards/faróis (uma abaixo da outra).
     """
-    colaborador = get_object_or_404(Colaborador, id=colaborador_id)
+    colaborador = get_object_or_404(
+        Colaborador.objects.select_related('setor'), 
+        id=colaborador_id
+    )
     
-    # Buscar avaliações do colaborador
+    from procedures.models import ColaboradorMatrizHabilidade, MatrizHabilidade
+    from django.db.models.functions import Lower
+
+    # Matrizes vinculadas ativas
+    matrizes_assoc_ids = list(
+        ColaboradorMatrizHabilidade.objects.filter(
+            colaborador=colaborador,
+            ativo=True
+        ).values_list('matriz_id', flat=True)
+    )
+    
+    # Matrizes onde o colaborador tem alguma avaliação
+    matrizes_com_avaliacao_ids = list(
+        AvaliacaoHabilidade.objects.filter(
+            colaborador=colaborador
+        ).values_list('matriz_id', flat=True)
+    )
+    
+    todas_matrizes_ids = list(set(matrizes_assoc_ids + matrizes_com_avaliacao_ids))
+    
+    matrizes = MatrizHabilidade.objects.filter(
+        id__in=todas_matrizes_ids,
+        ativo=True
+    ).order_by(Lower('nome'))
+    
+    # Buscar todas as avaliações deste colaborador nestas matrizes
     avaliacoes = AvaliacaoHabilidade.objects.filter(
-        colaborador=colaborador
-    ).select_related('matriz', 'disciplina', 'avaliador').order_by('matriz__nome', 'disciplina__codigo')
+        colaborador=colaborador,
+        matriz__in=matrizes
+    ).select_related('matriz', 'disciplina', 'avaliador')
     
-    # Agrupar por matriz
-    avaliacoes_por_matriz = {}
-    for av in avaliacoes:
-        matriz_nome = av.matriz.nome
-        if matriz_nome not in avaliacoes_por_matriz:
-            avaliacoes_por_matriz[matriz_nome] = {
-                'matriz': av.matriz,
-                'avaliacoes': [],
-                'contagem_nivel_0': 0,
-                'contagem_nivel_1': 0,
-                'contagem_nivel_2': 0,
-                'contagem_nivel_3': 0,
-            }
-        avaliacoes_por_matriz[matriz_nome]['avaliacoes'].append(av)
+    avaliacoes_map = {(av.matriz_id, av.disciplina_id): av for av in avaliacoes}
+    
+    matrizes_dados = []
+    for matriz in matrizes:
+        disciplinas = list(matriz.disciplinas_matriz.filter(ativo=True).order_by(Lower('nome')))
+        celulas = []
+        for disc in disciplinas:
+            av = avaliacoes_map.get((matriz.id, disc.id))
+            celulas.append({
+                'disciplina': disc,
+                'avaliacao': av
+            })
         
-        # Contagem
-        if av.nivel == 0:
-            avaliacoes_por_matriz[matriz_nome]['contagem_nivel_0'] += 1
-        elif av.nivel == 1:
-            avaliacoes_por_matriz[matriz_nome]['contagem_nivel_1'] += 1
-        elif av.nivel == 2:
-            avaliacoes_por_matriz[matriz_nome]['contagem_nivel_2'] += 1
-        elif av.nivel == 3:
-            avaliacoes_por_matriz[matriz_nome]['contagem_nivel_3'] += 1
+        matrizes_dados.append({
+            'matriz': matriz,
+            'disciplinas': disciplinas,
+            'total_disciplinas': len(disciplinas),
+            'celulas': celulas,
+        })
     
     context = {
         'colaborador': colaborador,
-        'avaliacoes_por_matriz': avaliacoes_por_matriz,
+        'matrizes_dados': matrizes_dados,
     }
     
     return render(request, 'procedures/avaliacoes_colaborador.html', context)
