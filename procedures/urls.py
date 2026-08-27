@@ -6,7 +6,7 @@ Consolida training + procurements
 
 from django.urls import path
 from . import views
-from .views import habilidades_views, perfis_views, avaliacoes_views, planejamento_views, gap_analysis_views, lista_presenca_views, validacao_views, template_mapeamento_views, acompanhamento_views
+from .views import habilidades_views, perfis_views, avaliacoes_views, planejamento_views, gap_analysis_views, lista_presenca_views, validacao_views, template_mapeamento_views, acompanhamento_views, templates_config_views
 from .views.planejamento_api_matriz import api_disciplinas_por_matriz_view, api_procedimentos_por_disciplina_view, api_colaboradores_por_matriz_view, api_procedimentos_buscar_view, api_colaboradores_buscar_view
 from training.views import views as training_views
 
@@ -293,4 +293,13 @@ urlpatterns = [
     path('api/template-mapeamento/<int:pk>/atualizar-campo/', template_mapeamento_views.atualizar_mapeamento_campo_api, name='atualizar_mapeamento_campo_api'),
     path('api/template-mapeamento/<int:pk>/remover-campo/', template_mapeamento_views.remover_mapeamento_campo_api, name='remover_mapeamento_campo_api'),
     path('api/template-mapeamento/<int:pk>/status/', template_mapeamento_views.status_mapeamento_api, name='status_mapeamento_api'),
+
+    # ==========================
+    # CONFIGURAÇÃO DE TEMPLATES DE DOCUMENTOS
+    # ==========================
+    path('configuracoes/templates/', templates_config_views.templates_config_list_view, name='templates_config'),
+    path('configuracoes/templates/upload/', templates_config_views.template_config_upload_view, name='template_config_upload'),
+    path('configuracoes/templates/<int:template_id>/download/', templates_config_views.template_config_download_view, name='template_config_download'),
+    path('configuracoes/templates/<int:template_id>/ativar/', templates_config_views.template_config_toggle_active_view, name='template_config_toggle_active'),
+    path('configuracoes/templates/<int:template_id>/deletar/', templates_config_views.template_config_delete_view, name='template_config_delete'),
 ]

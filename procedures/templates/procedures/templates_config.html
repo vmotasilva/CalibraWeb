@@ -1,0 +1,354 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Configuração de Templates de Treinamentos - CalibraWEB{% endblock %}
+
+{% block extra_css %}
+<style>
+    .template-card {
+        transition: all 0.25s ease-in-out;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        background: #ffffff;
+    }
+    .template-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+        border-color: #cbd5e1;
+    }
+    .template-card.active-template {
+        border-left: 5px solid #10b981;
+        background: linear-gradient(to right, #f0fdf4, #ffffff 30%);
+    }
+    .tag-badge {
+        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        font-size: 0.82rem;
+        background-color: #f1f5f9;
+        color: #334155;
+        border: 1px solid #e2e8f0;
+        padding: 0.2rem 0.5rem;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .tag-badge:hover {
+        background-color: #e2e8f0;
+        color: #0f172a;
+        transform: scale(1.02);
+    }
+    .tag-badge i {
+        font-size: 0.75rem;
+        opacity: 0.7;
+    }
+    .stat-box {
+        border-radius: 12px;
+        padding: 1.25rem;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <!-- Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 pb-3 border-bottom gap-3">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill font-weight-medium">
+                    <i class="bi bi-file-earmark-code me-1"></i> Configurações
+                </span>
+                <span class="text-muted fs-7">• Treinamentos</span>
+            </div>
+            <h2 class="h3 font-weight-bold text-dark mb-1">Templates de Documentos</h2>
+            <p class="text-muted mb-0">Gerencie modelos de planilhas (.xlsx), formulários e certificados com substituição dinâmica de tags.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-primary d-flex align-items-center gap-2 shadow-sm px-3" data-bs-toggle="modal" data-bs-target="#uploadTemplateModal">
+                <i class="bi bi-cloud-arrow-up-fill fs-5"></i>
+                <span>Novo Template</span>
+            </button>
+            <a href="{% url 'procedures:planejamentos_list' %}" class="btn btn-outline-secondary d-flex align-items-center gap-2">
+                <i class="bi bi-arrow-left"></i>
+                <span>Voltar</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Estatísticas & Resumo -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="stat-box d-flex align-items-center justify-content-between shadow-sm">
+                <div>
+                    <span class="text-muted small text-uppercase font-weight-bold">Total de Templates</span>
+                    <h3 class="h2 font-weight-bold text-dark mb-0 mt-1">{{ total_templates }}</h3>
+                </div>
+                <div class="bg-primary bg-opacity-10 p-3 rounded-circle text-primary">
+                    <i class="bi bi-folder2-open fs-3"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-box d-flex align-items-center justify-content-between shadow-sm">
+                <div>
+                    <span class="text-muted small text-uppercase font-weight-bold">Templates Ativos (Padrão)</span>
+                    <h3 class="h2 font-weight-bold text-success mb-0 mt-1">{{ total_ativos }}</h3>
+                </div>
+                <div class="bg-success bg-opacity-10 p-3 rounded-circle text-success">
+                    <i class="bi bi-check-circle-fill fs-3"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-box d-flex align-items-center justify-content-between shadow-sm">
+                <div>
+                    <span class="text-muted small text-uppercase font-weight-bold">Formato Principal</span>
+                    <h3 class="h2 font-weight-bold text-info mb-0 mt-1">Excel (.xlsx)</h3>
+                </div>
+                <div class="bg-info bg-opacity-10 p-3 rounded-circle text-info">
+                    <i class="bi bi-file-earmark-spreadsheet-fill fs-3"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros de Função -->
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-4">
+        <span class="text-muted small me-2"><i class="bi bi-funnel"></i> Filtrar por Função:</span>
+        <a href="{% url 'procedures:templates_config' %}" class="btn btn-sm {% if not funcao_filtro %}btn-dark{% else %}btn-outline-secondary{% endif %} rounded-pill px-3">
+            Todos
+        </a>
+        {% for chave, label in funcoes_choices %}
+        <a href="{% url 'procedures:templates_config' %}?funcao={{ chave }}" class="btn btn-sm {% if funcao_filtro == chave %}btn-primary{% else %}btn-outline-secondary{% endif %} rounded-pill px-3">
+            {{ label }}
+        </a>
+        {% endfor %}
+    </div>
+
+    <div class="row g-4">
+        <!-- Coluna Principal: Lista de Templates -->
+        <div class="col-lg-8">
+            {% if templates %}
+            <div class="d-flex flex-column gap-3">
+                {% for t in templates %}
+                <div class="template-card p-4 {% if t.ativo %}active-template{% endif %}">
+                    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start gap-3">
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                                <span class="badge bg-secondary bg-opacity-10 text-dark border font-monospace px-2 py-1">
+                                    {{ t.codigo }}
+                                </span>
+                                <span class="badge {% if t.tipo_arquivo == 'xlsx' %}bg-success{% elif t.tipo_arquivo == 'docx' %}bg-primary{% else %}bg-danger{% endif %} text-uppercase">
+                                    {{ t.tipo_arquivo }}
+                                </span>
+                                <span class="badge bg-light text-secondary border">
+                                    {{ t.get_funcao_display }}
+                                </span>
+                                {% if t.ativo %}
+                                <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25">
+                                    <i class="bi bi-check2-circle me-1"></i> Padrão Ativo
+                                </span>
+                                {% endif %}
+                            </div>
+
+                            <h5 class="font-weight-bold text-dark mb-1">{{ t.nome }}</h5>
+                            {% if t.descricao %}
+                            <p class="text-muted small mb-2">{{ t.descricao }}</p>
+                            {% endif %}
+
+                            <div class="d-flex align-items-center gap-3 text-muted small mt-2">
+                                <span><i class="bi bi-clock-history me-1"></i> Atualizado em {{ t.atualizado_em|date:"d/m/Y H:i" }}</span>
+                                {% if t.criado_por %}
+                                <span><i class="bi bi-person me-1"></i> {{ t.criado_por.get_full_name|default:t.criado_por.username }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Ações do Card -->
+                        <div class="d-flex align-items-center gap-2">
+                            <a href="{% url 'procedures:template_config_download' t.id %}" class="btn btn-sm btn-outline-primary" title="Baixar Arquivo Template">
+                                <i class="bi bi-download me-1"></i> Download
+                            </a>
+
+                            <a href="{% url 'procedures:template_config_toggle_active' t.id %}" class="btn btn-sm {% if t.ativo %}btn-outline-warning{% else %}btn-outline-success{% endif %}" title="{% if t.ativo %}Desativar{% else %}Definir como Padrão Ativo{% endif %}">
+                                {% if t.ativo %}
+                                    <i class="bi bi-toggle-on"></i> Ativo
+                                {% else %}
+                                    <i class="bi bi-toggle-off"></i> Ativar
+                                {% endif %}
+                            </a>
+
+                            <form method="POST" action="{% url 'procedures:template_config_delete' t.id %}" onsubmit="return confirm('Tem certeza que deseja excluir o template {{ t.codigo }}?');" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir Template">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-5 bg-white rounded-3 border">
+                <div class="bg-light d-inline-block p-4 rounded-circle mb-3">
+                    <i class="bi bi-file-earmark-plus text-muted fs-1"></i>
+                </div>
+                <h5 class="text-dark font-weight-bold">Nenhum template cadastrado</h5>
+                <p class="text-muted mb-3">Faça o upload do seu primeiro modelo de documento (ex: FOR.033.r07 de Lista de Presença).</p>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadTemplateModal">
+                    <i class="bi bi-cloud-arrow-up me-1"></i> Cadastrar Template Agora
+                </button>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Coluna Lateral: Guia de Tags Dinâmicas -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0 rounded-3">
+                <div class="card-header bg-white border-bottom py-3">
+                    <h6 class="mb-0 font-weight-bold text-dark d-flex align-items-center gap-2">
+                        <i class="bi bi-code-slash text-primary"></i>
+                        Tags Dinâmicas Suportadas
+                    </h6>
+                    <small class="text-muted">Clique em qualquer tag para copiar para a área de transferência.</small>
+                </div>
+                <div class="card-body p-3" style="max-height: 580px; overflow-y: auto;">
+                    {% for funcao, tags in tags_referencia.items %}
+                    <div class="mb-4">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="badge bg-light text-dark border text-uppercase font-weight-bold">
+                                {{ funcao|title }}
+                            </span>
+                            <span class="badge bg-secondary rounded-pill">{{ tags|length }} tags</span>
+                        </div>
+                        <div class="d-flex flex-column gap-2">
+                            {% for item in tags %}
+                            <div class="d-flex align-items-center justify-content-between p-2 bg-light rounded border border-light">
+                                <div>
+                                    <span class="tag-badge" onclick="copiarTag('{{ item.tag }}')" title="Clique para copiar">
+                                        {{ item.tag }} <i class="bi bi-clipboard"></i>
+                                    </span>
+                                    <div class="text-muted small mt-1" style="font-size: 0.78rem;">
+                                        {{ item.descricao }}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Upload de Novo Template -->
+<div class="modal fade" id="uploadTemplateModal" tabindex="-1" aria-labelledby="uploadTemplateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <form method="POST" action="{% url 'procedures:template_config_upload' %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-header bg-light border-bottom">
+                    <h5 class="modal-title font-weight-bold" id="uploadTemplateModalLabel">
+                        <i class="bi bi-cloud-arrow-up text-primary me-2"></i>
+                        Upload de Novo Template
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label font-weight-bold">Função / Finalidade <span class="text-danger">*</span></label>
+                            <select name="funcao" class="form-select" required>
+                                {% for chave, label in funcoes_choices %}
+                                <option value="{{ chave }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted">Determina onde o sistema utilizará este modelo.</small>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label font-weight-bold">Formato do Arquivo <span class="text-danger">*</span></label>
+                            <select name="tipo_arquivo" class="form-select" required>
+                                {% for chave, label in tipos_choices %}
+                                <option value="{{ chave }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label font-weight-bold">Código do Formulário <span class="text-danger">*</span></label>
+                            <input type="text" name="codigo" class="form-control font-monospace" placeholder="ex: FOR.033.r07" required>
+                        </div>
+
+                        <div class="col-md-8">
+                            <label class="form-label font-weight-bold">Nome Descritivo <span class="text-danger">*</span></label>
+                            <input type="text" name="nome" class="form-control" placeholder="ex: Lista de Presença Oficial de Treinamento" required>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label font-weight-bold">Descrição / Observações</label>
+                            <textarea name="descricao" class="form-control" rows="2" placeholder="Instruções sobre este modelo ou histórico de revisões..."></textarea>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label font-weight-bold">Arquivo do Template (.xlsx, .docx, .pdf) <span class="text-danger">*</span></label>
+                            <input type="file" name="arquivo" class="form-control" accept=".xlsx,.docx,.pdf" required>
+                            <small class="text-muted">Certifique-se de que o documento contém as tags dinâmicas como <code>&#123;&#123;TITULO&#125;&#125;</code>, <code>&#123;&#123;INSTRUTOR&#125;&#125;</code>, etc.</small>
+                        </div>
+
+                        <div class="col-12 mt-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="ativo" id="ativoCheck" checked>
+                                <label class="form-check-label font-weight-medium" for="ativoCheck">
+                                    Definir imediatamente como template padrão ativo para esta função
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-light border-top">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-upload me-1"></i> Salvar Template
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="toastContainer" class="position-fixed bottom-0 end-0 p-3" style="z-index: 1080;"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function copiarTag(tag) {
+    navigator.clipboard.writeText(tag).then(() => {
+        const toastContainer = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = 'toast align-items-center text-white bg-dark border-0 show';
+        toast.setAttribute('role', 'alert');
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="bi bi-clipboard-check text-success me-2"></i> Tag <code>${tag}</code> copiada com sucesso!
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        `;
+        toastContainer.appendChild(toast);
+        setTimeout(() => {
+            toast.remove();
+        }, 2500);
+    });
+}
+</script>
+{% endblock %}

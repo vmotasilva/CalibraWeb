@@ -497,6 +497,7 @@ NAV_STRUCTURE = [
                     {"nome": "Deletar Planejamento", "view_name": "procedures:deletar_planejamento", "perm": "core.nav_treinamentos_planejamento_delete"},
                     {"nome": "Excluir Planejamentos (Massa)", "view_name": "procedures:excluir_planejamentos_massa", "perm": "core.nav_treinamentos_planejamento_mass_delete"},
                     {"nome": "Exportar Planejamentos (Excel)", "view_name": ["procedures:exportar_lista_planejamentos_excel", "procedures:exportar_detalhe_planejamento_excel", "procedures:gerar_lista_presenca"], "perm": "core.nav_treinamentos_planejamento_export"},
+                    {"nome": "Configuração de Templates", "view_name": ["procedures:templates_config", "procedures:template_config_upload", "procedures:template_config_download", "procedures:template_config_toggle_active", "procedures:template_config_delete"], "perm": "core.nav_treinamentos_templates_config"},
 
                     {"nome": "Novo Fornecedor (Treinamentos)", "view_name": "procedures:novo_fornecedor", "perm": "core.nav_treinamentos_fornecedor_create"},
                     {"nome": "Editar Fornecedor (Treinamentos)", "view_name": "procedures:editar_fornecedor", "perm": "core.nav_treinamentos_fornecedor_update"},

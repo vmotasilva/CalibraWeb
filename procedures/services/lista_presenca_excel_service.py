@@ -109,17 +109,37 @@ def _copiar_estilo_celula(origem, destino):
 
 def gerar_lista_presenca_xlsx(planejamento: PlanejamentoTreinamento) -> BytesIO:
     """Carrega o template e preenche cabeçalhos, checkboxes, participantes e procedimentos."""
-    nome_arquivo_template = "FOR.033.r07_Lista_de_Presenca_de_Treinamento.xlsx"
-    caminhos = [
-        os.path.join(settings.BASE_DIR, "templates", nome_arquivo_template),
-        os.path.join(settings.BASE_DIR, "procedures", "templates", nome_arquivo_template),
-        os.path.join(settings.BASE_DIR, "static", "templates", nome_arquivo_template),
-        os.path.join(settings.BASE_DIR, nome_arquivo_template),
-    ]
+    from procedures.models import TemplateDocumentoTreinamento
 
-    template_path = next((p for p in caminhos if os.path.exists(p)), None)
+    template_path = None
+
+    # 1. Prioridade: Buscar template ativo configurado na sessão de Templates de Treinamento
+    template_config = TemplateDocumentoTreinamento.objects.filter(
+        funcao='LISTA_PRESENCA',
+        ativo=True
+    ).first()
+
+    if template_config and template_config.arquivo:
+        try:
+            if os.path.exists(template_config.arquivo.path):
+                template_path = template_config.arquivo.path
+        except Exception:
+            pass
+
+    # 2. Fallback: Diretórios padrão do sistema
     if not template_path:
-        raise FileNotFoundError(f"Template '{nome_arquivo_template}' não encontrado nos diretórios do sistema.")
+        nome_arquivo_template = "FOR.033.r07_Lista_de_Presenca_de_Treinamento.xlsx"
+        caminhos = [
+            os.path.join(settings.BASE_DIR, "templates", nome_arquivo_template),
+            os.path.join(settings.BASE_DIR, "procedures", "templates", nome_arquivo_template),
+            os.path.join(settings.BASE_DIR, "static", "templates", nome_arquivo_template),
+            os.path.join(settings.BASE_DIR, nome_arquivo_template),
+            os.path.join(settings.MEDIA_ROOT, "templates_treinamento_docs", nome_arquivo_template),
+        ]
+        template_path = next((p for p in caminhos if os.path.exists(p)), None)
+
+    if not template_path:
+        raise FileNotFoundError("Nenhum template ativo foi encontrado. Faça o upload do template na sessão de 'Templates de Treinamento'.")
 
     wb = openpyxl.load_workbook(template_path)
     ws_frente = wb.worksheets[0]

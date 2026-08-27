@@ -11,7 +11,7 @@ from .models import (
     Area, Procedimento, ProcedimentoRevisao, PacoteTreinamento, RegistroTreinamento,
     MatrizProcedimento, SubAreaProcedimento, PacoteIntegracao,
     Disciplina, DisciplinaProcedimento, PlanejamentoTreinamento, ListaPresenca,
-    TemplateListaPresenca, MapeamentoCampoListaPresenca,
+    TemplateListaPresenca, MapeamentoCampoListaPresenca, TemplateDocumentoTreinamento,
     Fornecedor, AvaliacaoFornecedor, ProcessoCotacao, Orcamento
 )
 from qms.admin import admin_site
@@ -277,6 +277,14 @@ admin_site.register(DisciplinaProcedimento, DisciplinaProcedimentoAdmin)
 admin_site.register(PlanejamentoTreinamento, PlanejamentoTreinamentoAdmin)
 admin_site.register(ListaPresenca, ListaPresencaAdmin)
 admin_site.register(TemplateListaPresenca, TemplateListaPresencaAdmin)
+
+class TemplateDocumentoTreinamentoAdmin(admin.ModelAdmin):
+    list_display = ('codigo', 'nome', 'funcao', 'tipo_arquivo', 'ativo', 'atualizado_em')
+    list_filter = ('funcao', 'tipo_arquivo', 'ativo')
+    search_fields = ('codigo', 'nome', 'descricao')
+    readonly_fields = ('criado_em', 'atualizado_em')
+
+admin_site.register(TemplateDocumentoTreinamento, TemplateDocumentoTreinamentoAdmin)
 
 class PacoteIntegracaoAdmin(admin.ModelAdmin):
     list_display = ('perfil', 'ativo', 'criado_em')

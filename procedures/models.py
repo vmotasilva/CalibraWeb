@@ -1333,3 +1333,77 @@ class MapeamentoCampoListaPresenca(models.Model):
         verbose_name_plural = "Mapeamentos de Placeholders"
         ordering = ["placeholder"]
         unique_together = [["template", "placeholder"]]  # Um placeholder por template
+
+
+class TemplateDocumentoTreinamento(models.Model):
+    """Template/Modelo de documento configurável para o módulo de treinamentos."""
+    
+    FUNCAO_CHOICES = [
+        ('LISTA_PRESENCA', 'Lista de Presença (Excel/Word/PDF)'),
+        ('AVALIACAO_EFICACIA', 'Avaliação de Eficácia de Treinamento'),
+        ('CERTIFICADO', 'Certificado de Conclusão'),
+        ('INTEGRACAO', 'Checklist de Integração'),
+        ('OUTROS', 'Outros Templates e Formulários'),
+    ]
+    
+    TIPO_ARQUIVO_CHOICES = [
+        ('xlsx', 'Excel (.xlsx)'),
+        ('docx', 'Word (.docx)'),
+        ('pdf', 'PDF (.pdf)'),
+    ]
+    
+    funcao = models.CharField(
+        max_length=50,
+        choices=FUNCAO_CHOICES,
+        default='LISTA_PRESENCA',
+        verbose_name="Função / Finalidade"
+    )
+    codigo = models.CharField(
+        max_length=50,
+        verbose_name="Código do Formulário",
+        help_text="Ex: FOR.033.r07, FOR.143, etc."
+    )
+    nome = models.CharField(
+        max_length=200,
+        verbose_name="Nome do Template"
+    )
+    descricao = models.TextField(
+        null=True, blank=True,
+        verbose_name="Descrição / Instruções"
+    )
+    tipo_arquivo = models.CharField(
+        max_length=10,
+        choices=TIPO_ARQUIVO_CHOICES,
+        default='xlsx',
+        verbose_name="Tipo de Arquivo"
+    )
+    arquivo = models.FileField(
+        upload_to='templates_treinamento_docs/',
+        verbose_name="Arquivo do Template"
+    )
+    ativo = models.BooleanField(
+        default=True,
+        verbose_name="Template Padrão/Ativo?",
+        help_text="Se ativado, será o template utilizado automaticamente na geração deste tipo de documento"
+    )
+    tags_disponiveis = models.TextField(
+        null=True, blank=True,
+        verbose_name="Tags Suportadas",
+        help_text="Lista explicativa de tags dinâmicas aceitas neste template"
+    )
+    criado_por = models.ForeignKey(
+        'auth.User',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="templates_treinamento_criados"
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Template de Documento de Treinamento"
+        verbose_name_plural = "Configuração de Templates de Treinamentos"
+        ordering = ['funcao', '-ativo', '-atualizado_em']
+
+    def __str__(self):
+        return f"[{self.get_funcao_display()}] {self.codigo} - {self.nome}"
