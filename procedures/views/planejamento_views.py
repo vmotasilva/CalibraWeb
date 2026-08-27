@@ -371,6 +371,23 @@ def detalhe_planejamento_view(request, planejamento_id):
         })
     
     pendentes_count = len(colaboradores_info) - treinados_count
+
+    # Inferência para o modal de emissão da Lista de Presença
+    tem_procedimento_critico = planejamento.procedimentos.filter(criticidade='CRITICO').exists()
+    areas_procs = [p.area_conhecimento for p in planejamento.procedimentos.all() if p.area_conhecimento]
+    area_sugerida = 'QUALIDADE'
+    if areas_procs:
+        a_str = " ".join(areas_procs).upper()
+        if "ADM" in a_str:
+            area_sugerida = 'ADM'
+        elif "EHS" in a_str or "SEGURAN" in a_str or "AMBIENTE" in a_str:
+            area_sugerida = 'EHS'
+        elif "ESTOQUE" in a_str or "ALMOXARIF" in a_str:
+            area_sugerida = 'ESTOQUE'
+        elif "PRODU" in a_str:
+            area_sugerida = 'PRODUCAO'
+        elif "QUALIDADE" in a_str or "SGQ" in a_str or "ISO" in a_str:
+            area_sugerida = 'QUALIDADE'
     
     context = {
         'planejamento': planejamento,
@@ -379,6 +396,8 @@ def detalhe_planejamento_view(request, planejamento_id):
         'treinados_count': treinados_count,
         'pendentes_count': pendentes_count,
         'total_colaboradores': len(colaboradores_info),
+        'tem_procedimento_critico': tem_procedimento_critico,
+        'area_sugerida': area_sugerida,
     }
     return render(request, 'procedures/planejamento_detalhe.html', context)
 
@@ -1261,7 +1280,7 @@ def exportar_detalhe_planejamento_excel_view(request, planejamento_id):
 
 @login_required
 def gerar_lista_presenca_view(request, planejamento_id):
-    """Gera a Lista de Presença (FOR.033) baseada em template Excel com tags dinâmicas."""
+    """Gera a Lista de Presença (FOR.033) baseada em template Excel com tags dinâmicas e respostas do usuário."""
     from procedures.services.lista_presenca_excel_service import gerar_lista_presenca_xlsx
     
     planejamento = get_object_or_404(
@@ -1270,8 +1289,23 @@ def gerar_lista_presenca_view(request, planejamento_id):
         id=planejamento_id
     )
     
+    # Capturar respostas / marcações manuais enviadas pelo usuário
+    overrides = {}
+    params = request.POST if request.method == 'POST' else request.GET
+
+    if 'categoria' in params:
+        overrides['categoria'] = params.get('categoria')
+    if 'metodologia' in params:
+        overrides['metodologia'] = params.get('metodologia')
+    if 'necessita_avaliacao' in params:
+        overrides['necessita_avaliacao'] = params.get('necessita_avaliacao')
+    if 'area_conhecimento' in params:
+        overrides['area_conhecimento'] = params.get('area_conhecimento')
+    if 'outros_texto' in params:
+        overrides['outros_texto'] = params.get('outros_texto')
+
     try:
-        excel_buffer = gerar_lista_presenca_xlsx(planejamento)
+        excel_buffer = gerar_lista_presenca_xlsx(planejamento, overrides=overrides)
     except FileNotFoundError as e:
         messages.error(request, f"Erro ao localizar template: {str(e)}")
         return redirect('procedures:detalhe_planejamento', planejamento_id=planejamento.id)

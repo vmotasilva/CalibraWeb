@@ -90,9 +90,9 @@
                 <a href="{% url 'procedures:exportar_detalhe_planejamento_excel' planejamento.id %}" class="btn btn-success btn-sm" title="Exportar para Excel">
                     <i class="bi bi-file-earmark-spreadsheet"></i> Exportar Excel
                 </a>
-                <a href="{% url 'procedures:gerar_lista_presenca' planejamento.id %}" class="btn btn-primary btn-sm" title="Gerar Lista de Presença Oficial (FOR.033)">
+                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalGerarListaPresenca" title="Configurar e Gerar Lista de Presença Oficial (FOR.033)">
                     <i class="bi bi-file-earmark-check"></i> Gerar Lista de Presença
-                </a>
+                </button>
                 <a href="{% url 'procedures:planejamentos_list' %}" class="btn btn-secondary btn-sm">
                     <i class="bi bi-arrow-left"></i> Voltar
                 </a>
@@ -1004,5 +1004,196 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+</script>
+
+<!-- Modal de Emissão da Lista de Presença com Configuração de Marcadores -->
+<div class="modal fade" id="modalGerarListaPresenca" tabindex="-1" aria-labelledby="modalGerarListaPresencaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <form method="GET" action="{% url 'procedures:gerar_lista_presenca' planejamento.id %}">
+                <div class="modal-header bg-light border-bottom">
+                    <h5 class="modal-title font-weight-bold" id="modalGerarListaPresencaLabel">
+                        <i class="bi bi-file-earmark-spreadsheet-fill text-primary me-2"></i>
+                        Gerar Lista de Presença Oficial (FOR.033)
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+
+                <div class="modal-body p-4">
+                    <p class="text-muted small mb-4">
+                        Confirme as marcações do documento antes de gerar a planilha. O sistema já pré-selecionou as opções recomendadas com base nos dados do treinamento.
+                    </p>
+
+                    <!-- Pergunta 1: Categoria do Treinamento -->
+                    <div class="mb-4 p-3 bg-light rounded-3 border">
+                        <label class="form-label font-weight-bold text-dark d-flex align-items-center gap-2 mb-2">
+                            <span class="badge bg-primary rounded-circle px-2 py-1">1</span>
+                            Qual é a Categoria do Treinamento?
+                        </label>
+                        <div class="d-flex flex-wrap gap-4 mt-2">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="categoria" id="catTreinamento" value="TREINAMENTO" {% if "REUN" not in planejamento.origem and "RECIC" not in planejamento.origem %}checked{% endif %}>
+                                <label class="form-check-label" for="catTreinamento">
+                                    <strong>Treinamento</strong> <code class="text-muted small">(&#123;&#123;CHK_TREIN&#125;&#125;)</code>
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="categoria" id="catReuniao" value="REUNIAO" {% if "REUN" in planejamento.origem or "REUN" in planejamento.titulo %}checked{% endif %}>
+                                <label class="form-check-label" for="catReuniao">
+                                    <strong>Reunião</strong> <code class="text-muted small">(&#123;&#123;CHK_REUN&#125;&#125;)</code>
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="categoria" id="catReciclagem" value="RECICLAGEM" {% if "RECIC" in planejamento.origem or "RECIC" in planejamento.titulo %}checked{% endif %}>
+                                <label class="form-check-label" for="catReciclagem">
+                                    <strong>Reciclagem</strong> <code class="text-muted small">(&#123;&#123;CHK_RECIC&#125;&#125;)</code>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pergunta 2: Metodologia -->
+                    <div class="mb-4 p-3 bg-light rounded-3 border">
+                        <label class="form-label font-weight-bold text-dark d-flex align-items-center gap-2 mb-2">
+                            <span class="badge bg-primary rounded-circle px-2 py-1">2</span>
+                            Qual é a Metodologia Aplicada?
+                        </label>
+                        <div class="d-flex flex-wrap gap-4 mt-2">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="metodologia" id="metLoft" value="LOFT" checked>
+                                <label class="form-check-label" for="metLoft">
+                                    <strong>LOFT (Prática / Plataforma)</strong> <code class="text-muted small">(&#123;&#123;CHK_LOFT&#125;&#125;)</code>
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="metodologia" id="metTradicional" value="TRADICIONAL">
+                                <label class="form-check-label" for="metTradicional">
+                                    <strong>Tradicional (Teórica / Sala de Aula)</strong> <code class="text-muted small">(&#123;&#123;CHK_TRAD&#125;&#125;)</code>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pergunta 3: Necessita de Avaliação -->
+                    <div class="mb-4 p-3 bg-light rounded-3 border">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label font-weight-bold text-dark d-flex align-items-center gap-2 mb-0">
+                                <span class="badge bg-primary rounded-circle px-2 py-1">3</span>
+                                Necessita de Avaliação de Eficácia?
+                            </label>
+                            {% if tem_procedimento_critico %}
+                            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 small">
+                                <i class="bi bi-shield-exclamation me-1"></i> Procedimento Crítico Identificado
+                            </span>
+                            {% else %}
+                            <span class="badge bg-secondary bg-opacity-10 text-secondary border small">
+                                Procedimento Padrão / Não Crítico
+                            </span>
+                            {% endif %}
+                        </div>
+                        <div class="d-flex flex-wrap gap-4 mt-2">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="necessita_avaliacao" id="avalSim" value="SIM" {% if tem_procedimento_critico %}checked{% endif %}>
+                                <label class="form-check-label" for="avalSim">
+                                    <strong>Sim</strong> <code class="text-muted small">(&#123;&#123;CHK_AVAL_SIM&#125;&#125;)</code>
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="necessita_avaliacao" id="avalNao" value="NAO" {% if not tem_procedimento_critico %}checked{% endif %}>
+                                <label class="form-check-label" for="avalNao">
+                                    <strong>Não</strong> <code class="text-muted small">(&#123;&#123;CHK_AVAL_NAO&#125;&#125;)</code>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pergunta 4: Área de Conhecimento -->
+                    <div class="mb-3 p-3 bg-light rounded-3 border">
+                        <label class="form-label font-weight-bold text-dark d-flex align-items-center gap-2 mb-2">
+                            <span class="badge bg-primary rounded-circle px-2 py-1">4</span>
+                            Qual é a Área de Conhecimento?
+                        </label>
+                        <div class="row g-2 mt-1">
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="area_conhecimento" id="areaAdm" value="ADM" {% if area_sugerida == 'ADM' %}checked{% endif %} onchange="toggleOutrosTexto(false)">
+                                    <label class="form-check-label" for="areaAdm">
+                                        Administrativo <code class="text-muted small">(&#123;&#123;CHK_ADM&#125;&#125;)</code>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="area_conhecimento" id="areaQualidade" value="QUALIDADE" {% if area_sugerida == 'QUALIDADE' %}checked{% endif %} onchange="toggleOutrosTexto(false)">
+                                    <label class="form-check-label" for="areaQualidade">
+                                        Qualidade <code class="text-muted small">(&#123;&#123;CHK_QUALIDADE&#125;&#125;)</code>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="area_conhecimento" id="areaEhs" value="EHS" {% if area_sugerida == 'EHS' %}checked{% endif %} onchange="toggleOutrosTexto(false)">
+                                    <label class="form-check-label" for="areaEhs">
+                                        EHS <code class="text-muted small">(&#123;&#123;CHK_EHS&#125;&#125;)</code>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="area_conhecimento" id="areaEstoque" value="ESTOQUE" {% if area_sugerida == 'ESTOQUE' %}checked{% endif %} onchange="toggleOutrosTexto(false)">
+                                    <label class="form-check-label" for="areaEstoque">
+                                        Estoque <code class="text-muted small">(&#123;&#123;CHK_ESTOQUE&#125;&#125;)</code>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="area_conhecimento" id="areaProducao" value="PRODUCAO" {% if area_sugerida == 'PRODUCAO' %}checked{% endif %} onchange="toggleOutrosTexto(false)">
+                                    <label class="form-check-label" for="areaProducao">
+                                        Produção <code class="text-muted small">(&#123;&#123;CHK_PRODUCAO&#125;&#125;)</code>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="area_conhecimento" id="areaOutros" value="OUTROS" onchange="toggleOutrosTexto(true)">
+                                    <label class="form-check-label" for="areaOutros">
+                                        Outros <code class="text-muted small">(&#123;&#123;CHK_OUTROS&#125;&#125;)</code>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Campo de Texto para Outros -->
+                        <div id="divOutrosTexto" class="mt-3" style="display: none;">
+                            <label class="form-label small text-muted">Especifique a Área:</label>
+                            <input type="text" name="outros_texto" id="inputOutrosTexto" class="form-control form-control-sm" placeholder="Digite o nome da área...">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-light border-top">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary px-4 shadow-sm">
+                        <i class="bi bi-file-earmark-arrow-down me-1"></i> Gerar e Baixar Lista de Presença (.xlsx)
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleOutrosTexto(show) {
+    const div = document.getElementById('divOutrosTexto');
+    const input = document.getElementById('inputOutrosTexto');
+    if (show) {
+        div.style.display = 'block';
+        input.focus();
+    } else {
+        div.style.display = 'none';
+        input.value = '';
+    }
+}
 </script>
 {% endblock %}
