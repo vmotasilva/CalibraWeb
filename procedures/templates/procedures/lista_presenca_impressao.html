@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista de Presença - {{ planejamento.id }}</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 8mm 10mm 8mm 10mm;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+            margin: 0;
+            padding: 0;
+            font-size: 11px;
+        }
+
+        .no-print-bar {
+            background-color: #1e293b;
+            color: #ffffff;
+            padding: 10px 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .page-sheet {
+            background: #ffffff;
+            width: 210mm;
+            min-height: 297mm;
+            margin: 15px auto;
+            padding: 10mm 12mm;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            box-sizing: border-box;
+        }
+
+        .table-doc {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 0;
+        }
+
+        .table-doc th, .table-doc td {
+            border: 1px solid #334155;
+            padding: 4px 6px;
+            vertical-align: middle;
+        }
+
+        .bg-head {
+            background-color: #f1f5f9 !important;
+            font-weight: 600;
+        }
+
+        .table-part {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+        }
+
+        .table-part th {
+            border: 1px solid #334155;
+            background-color: #e2e8f0 !important;
+            text-align: center;
+            font-weight: bold;
+            padding: 5px 4px;
+            font-size: 11px;
+        }
+
+        .table-part td {
+            border: 1px solid #334155;
+            height: 28px;
+            padding: 2px 4px;
+        }
+
+        .box-procs {
+            border: 1px solid #334155;
+            margin-top: 10px;
+        }
+
+        .box-procs-header {
+            background-color: #e2e8f0;
+            font-weight: bold;
+            padding: 4px 8px;
+            border-bottom: 1px solid #334155;
+            font-size: 11px;
+        }
+
+        .box-procs-body {
+            padding: 6px 10px;
+            font-size: 11px;
+            line-height: 1.5;
+        }
+
+        @media print {
+            .no-print-bar {
+                display: none !important;
+            }
+            body {
+                background: transparent;
+            }
+            .page-sheet {
+                width: 100% !important;
+                min-height: auto !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Barra Superior de Controle (Oculta na Impressão) -->
+    <div class="no-print-bar d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-printer text-primary fs-5"></i>
+            <span class="fw-bold">Visualização de Impressão - Lista de Presença Oficial (FOR.033)</span>
+        </div>
+        <div class="d-flex gap-2">
+            <button onclick="window.print()" class="btn btn-primary btn-sm px-3 shadow-sm">
+                <i class="bi bi-printer-fill me-1"></i> Imprimir Agora
+            </button>
+            <a href="?formato=pdf&categoria={{ categoria_sel }}&metodologia={{ metodologia_sel }}&necessita_avaliacao={{ avaliacao_sel }}&area_conhecimento={{ area_sel }}&outros_texto={{ outros_texto }}" class="btn btn-outline-light btn-sm px-3">
+                <i class="bi bi-file-earmark-pdf me-1"></i> Baixar em PDF
+            </a>
+            <button onclick="window.close()" class="btn btn-secondary btn-sm px-3">
+                <i class="bi bi-x-lg me-1"></i> Fechar
+            </button>
+        </div>
+    </div>
+
+    <!-- Folha A4 Oficial -->
+    <div class="page-sheet">
+        <!-- Cabeçalho Oficial FOR.033 -->
+        <table class="table-doc">
+            <tr>
+                <td colspan="2" class="text-center bg-head py-2" style="font-size: 14px; font-weight: bold;">
+                    Lista de Presença de Treinamento
+                </td>
+            </tr>
+            <tr>
+                <td class="bg-head" style="width: 22%;">Título do treinamento:</td>
+                <td><strong>{{ planejamento.titulo|default:"-" }}</strong></td>
+            </tr>
+            <tr>
+                <td class="bg-head">Categoria do Treinamento:</td>
+                <td>
+                    {{ chk_map.CHK_TREIN }} Treinamento &nbsp;&nbsp;&nbsp;&nbsp;
+                    {{ chk_map.CHK_REUN }} Reunião &nbsp;&nbsp;&nbsp;&nbsp;
+                    {{ chk_map.CHK_RECIC }} Reciclagem
+                    <span class="float-end">
+                        <strong>Metodologia:</strong> &nbsp;&nbsp;
+                        {{ chk_map.CHK_TRAD }} Tradicional &nbsp;&nbsp;&nbsp;&nbsp;
+                        {{ chk_map.CHK_LOFT }} LOFT
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="bg-head">Área de Conhecimento:</td>
+                <td>
+                    {{ chk_map.CHK_ADM }} Administrativo &nbsp;&nbsp;
+                    {{ chk_map.CHK_QUALIDADE }} Qualidade &nbsp;&nbsp;
+                    {{ chk_map.CHK_EHS }} EHS &nbsp;&nbsp;
+                    {{ chk_map.CHK_ESTOQUE }} Estoque &nbsp;&nbsp;
+                    {{ chk_map.CHK_PRODUCAO }} Produção &nbsp;&nbsp;
+                    {{ chk_map.CHK_OUTROS }} {% if outros_texto %}Outros: {{ outros_texto }}{% else %}Outros: _____________{% endif %}
+                </td>
+            </tr>
+            <tr>
+                <td class="bg-head">Necessita de Avaliação:</td>
+                <td>
+                    {{ chk_map.CHK_AVAL_SIM }} Sim &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                    {{ chk_map.CHK_AVAL_NAO }} Não
+                </td>
+            </tr>
+            <tr>
+                <td class="bg-head">Nome do Facilitador ou Fornecedor:</td>
+                <td>{{ planejamento.instrutor.nome_completo|default:"-" }}</td>
+            </tr>
+            <tr>
+                <td class="bg-head">Data e hora:</td>
+                <td>
+                    {{ data_hora_str }}
+                    <span class="float-end">
+                        <strong>Carga horária:</strong> {% if planejamento.carga_horaria %}{{ planejamento.carga_horaria }} Minutos{% else %}-{% endif %}
+                    </span>
+                </td>
+            </tr>
+        </table>
+
+        <!-- Tabela de Participantes -->
+        <table class="table-part">
+            <thead>
+                <tr>
+                    <th style="width: 32%;">Nome do Colaborador</th>
+                    <th style="width: 17%;">CPF / Matrícula</th>
+                    <th style="width: 16%;">Cargo</th>
+                    <th style="width: 16%;">Departamento</th>
+                    <th style="width: 19%;">Assinatura</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for i in "123456789012345" %}
+                <tr>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Conteúdo do Treinamento (Procedimentos) -->
+        <div class="box-procs">
+            <div class="box-procs-header">
+                CONTEÚDO DO TREINAMENTO / PROCEDIMENTOS ABORDADOS
+            </div>
+            <div class="box-procs-body">
+                {% if planejamento.procedimentos.all %}
+                    {% for proc in planejamento.procedimentos.all %}
+                        <div>• <strong>{{ proc.codigo }}</strong> - {{ proc.nome }}</div>
+                    {% endfor %}
+                {% else %}
+                    <div>• Conteúdo programático e instruções gerais de treinamento.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% if auto_print %}
+    <script>
+        window.onload = function() {
+            setTimeout(function() {
+                window.print();
+            }, 350);
+        };
+    </script>
+    {% endif %}
+
+</body>
+</html>

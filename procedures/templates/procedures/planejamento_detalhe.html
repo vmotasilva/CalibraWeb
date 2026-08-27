@@ -1172,11 +1172,27 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
 
-                <div class="modal-footer bg-light border-top">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary px-4 shadow-sm">
-                        <i class="bi bi-file-earmark-arrow-down me-1"></i> Gerar e Baixar Lista de Presença (.xlsx)
+                <div class="modal-footer bg-light border-top d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        Cancelar
                     </button>
+                    
+                    <div class="d-flex flex-wrap gap-2">
+                        <!-- Opção 1: Planilha Excel -->
+                        <button type="submit" name="formato" value="xlsx" class="btn btn-outline-success shadow-sm" title="Baixar planilha Excel (.xlsx)">
+                            <i class="bi bi-file-earmark-excel me-1"></i> Baixar Excel (.xlsx)
+                        </button>
+
+                        <!-- Opção 2: Documento PDF -->
+                        <button type="submit" name="formato" value="pdf" class="btn btn-outline-danger shadow-sm" title="Baixar documento PDF pronto (.pdf)">
+                            <i class="bi bi-file-earmark-pdf me-1"></i> Baixar PDF (.pdf)
+                        </button>
+
+                        <!-- Opção 3: Imprimir Diretamente -->
+                        <button type="submit" name="formato" value="print" formtarget="_blank" class="btn btn-primary px-3 shadow-sm" title="Abrir direto na tela de impressão">
+                            <i class="bi bi-printer-fill me-1"></i> Imprimir Diretamente
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>

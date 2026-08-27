@@ -1280,8 +1280,9 @@ def exportar_detalhe_planejamento_excel_view(request, planejamento_id):
 
 @login_required
 def gerar_lista_presenca_view(request, planejamento_id):
-    """Gera a Lista de Presença (FOR.033) baseada em template Excel com tags dinâmicas e respostas do usuário."""
-    from procedures.services.lista_presenca_excel_service import gerar_lista_presenca_xlsx
+    """Gera a Lista de Presença (FOR.033) em Excel (.xlsx), PDF (.pdf) ou tela de impressão direta."""
+    from procedures.services.lista_presenca_excel_service import gerar_lista_presenca_xlsx, _obter_mapeamento_checkboxes
+    from procedures.services.lista_presenca_pdf_service import gerar_lista_presenca_pdf
     
     planejamento = get_object_or_404(
         PlanejamentoTreinamento.objects.select_related('instrutor')
@@ -1289,9 +1290,11 @@ def gerar_lista_presenca_view(request, planejamento_id):
         id=planejamento_id
     )
     
-    # Capturar respostas / marcações manuais enviadas pelo usuário
+    # Capturar respostas / marcações manuais e formato escolhido
     overrides = {}
     params = request.POST if request.method == 'POST' else request.GET
+
+    formato = params.get('formato', 'xlsx').lower()
 
     if 'categoria' in params:
         overrides['categoria'] = params.get('categoria')
@@ -1304,6 +1307,47 @@ def gerar_lista_presenca_view(request, planejamento_id):
     if 'outros_texto' in params:
         overrides['outros_texto'] = params.get('outros_texto')
 
+    # Opção 1: Tela de Impressão Direta (HTML @media print + auto print)
+    if formato in ['print', 'impressao']:
+        if planejamento.horario_previsto:
+            data_hora_str = planejamento.horario_previsto.strftime("%d/%m/%Y às %H:%M")
+        elif planejamento.data_prevista and hasattr(planejamento, 'horario_inicio') and planejamento.horario_inicio:
+            data_hora_str = f"{planejamento.data_prevista.strftime('%d/%m/%Y')} às {planejamento.horario_inicio.strftime('%H:%M')}"
+        elif planejamento.data_prevista:
+            data_hora_str = planejamento.data_prevista.strftime("%d/%m/%Y")
+        else:
+            data_hora_str = "-"
+
+        raw_map = _obter_mapeamento_checkboxes(planejamento, overrides=overrides)
+        # Limpar chaves {{ }} para facilitar acesso no template
+        chk_clean = {k.replace('{{', '').replace('}}', ''): v for k, v in raw_map.items()}
+
+        context = {
+            'planejamento': planejamento,
+            'data_hora_str': data_hora_str,
+            'chk_map': chk_clean,
+            'auto_print': True,
+            'categoria_sel': overrides.get('categoria', ''),
+            'metodologia_sel': overrides.get('metodologia', ''),
+            'avaliacao_sel': overrides.get('necessita_avaliacao', ''),
+            'area_sel': overrides.get('area_conhecimento', ''),
+            'outros_texto': overrides.get('outros_texto', ''),
+        }
+        return render(request, 'procedures/lista_presenca_impressao.html', context)
+
+    # Opção 2: Documento PDF Nativo (.pdf)
+    if formato == 'pdf':
+        try:
+            pdf_buffer = gerar_lista_presenca_pdf(planejamento, overrides=overrides)
+            filename = f"Lista_Presenca_{planejamento.id}.pdf"
+            response = HttpResponse(pdf_buffer.getvalue(), content_type="application/pdf")
+            response["Content-Disposition"] = f'inline; filename="{filename}"'
+            return response
+        except Exception as e:
+            messages.error(request, f"Erro ao gerar PDF: {str(e)}")
+            return redirect('procedures:detalhe_planejamento', planejamento_id=planejamento.id)
+
+    # Opção 3: Planilha Excel (.xlsx) com Template Dinâmico
     try:
         excel_buffer = gerar_lista_presenca_xlsx(planejamento, overrides=overrides)
     except FileNotFoundError as e:
