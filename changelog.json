@@ -1,35 +1,38 @@
 [
   {
-    "version": "30/07/2026 17:20 - 326e8b8",
-    "date": "30/07/2026",
+    "version": "1.0.0",
+    "date": "2026-08-19",
     "changes": [
-      "Suporte a múltiplos grids por equipamento, separados por abas."
-    ]
-  },
-  {
-    "version": "22/07/2026 14:15 - abc1234",
-    "date": "22/07/2026",
-    "changes": [
-      "Separação da Caixa de Entrada (Inbox) do Hub principal.",
-      "Novo layout em tabela sanfona para seleção de modelos de auditoria.",
-      "Correção do auto-preenchimento indevido de senhas nos campos de busca de colaboradores.",
-      "Novo sistema de histórico de alterações dinâmico em página inteira."
-    ]
-  },
-  {
-    "version": "20/07/2026 10:30 - f3d9a8c",
-    "date": "20/07/2026",
-    "changes": [
-      "Melhorias de responsividade na visualização mobile do Hub.",
-      "Ajustes de permissões e segurança de rotas."
-    ]
-  },
-  {
-    "version": "15/07/2026 16:45 - 9b8c7d6",
-    "date": "15/07/2026",
-    "changes": [
-      "Lançamento do módulo de Quadros (Kanban) para gestão visual de tarefas.",
-      "Sistema de marcações em comentários."
+      "Sistema integrado de gestão metrológica (CalibraWeb)",
+      "Módulo de Calibração e Instrumentos (metrologia)",
+      "Módulo de Recursos Humanos (rh)",
+      "Módulo de Procedimentos, Treinamentos e Cotações (procedures)",
+      "Dashboard principal com estatísticas",
+      "Autenticação de usuários com roles e permissões",
+      "Integração com AWS S3 para armazenamento de arquivos",
+      "Sistema de cache com Redis",
+      "Processamento assíncrono com Celery",
+      "Deploy automático na Vercel",
+      "Banco de dados PostgreSQL (Neon)",
+      "Design responsivo com Bootstrap 5",
+      "Templates reutilizáveis",
+      "Sistema de navegação intuitivo",
+      "Configuração para Vercel + Neon + Redis",
+      "Variáveis de ambiente seguras",
+      "Arquivo vercel.json para CI/CD automático",
+      "Testes iniciais com pytest",
+      "Linting com flake8 e black",
+      "Checklist pré-deploy",
+      "Quando novas funcionalidades estarão disponíveis",
+      "O que foi corrigido na última versão",
+      "O que mudou que possa afetar seu uso do sistema",
+      "**Última Atualização**: 19 de Agosto de 2026",
+      "**Versão**: 1.0.0",
+      "**Status**: ✅ Em Produção",
+      "🌐 [CalibraWeb Online](https://calibra-web.vercel.app)",
+      "📚 [Documentação](docs/README.md)",
+      "🐛 [Issues & Bugs](https://github.com/vmotasilva/CalibraWeb/issues)",
+      "🔀 [Pull Requests](https://github.com/vmotasilva/CalibraWeb/pulls)"
     ]
   }
 ]

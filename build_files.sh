@@ -25,3 +25,6 @@ if [ -z "$SHORT_SHA" ]; then
 fi
 echo "{\"hash\": \"$SHORT_SHA\", \"date\": \"$BUILD_DATE\"}" > version_info.json
 
+# Sincronizar Changelog
+echo "==> Sincronizando changelog..."
+python3 manage.py shell -c "from shared.changelog_sync import sync_changelog; sync_changelog()"
