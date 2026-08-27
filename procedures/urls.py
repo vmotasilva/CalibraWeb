@@ -221,6 +221,7 @@ urlpatterns = [
     # Export para Excel
     path('planejamentos/export/lista-excel/', planejamento_views.exportar_lista_planejamentos_excel_view, name='exportar_lista_planejamentos_excel'),
     path('planejamentos/<int:planejamento_id>/export/excel/', planejamento_views.exportar_detalhe_planejamento_excel_view, name='exportar_detalhe_planejamento_excel'),
+    path('planejamentos/<int:planejamento_id>/gerar-lista-presenca/', planejamento_views.gerar_lista_presenca_view, name='gerar_lista_presenca'),
     
     # Gerenciar itens do planejamento via AJAX
     path('planejamentos/<int:planejamento_id>/procedimentos/adicionar/', planejamento_views.adicionar_procedimento_planejamento, name='adicionar_procedimento_planejamento'),

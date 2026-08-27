@@ -90,6 +90,9 @@
                 <a href="{% url 'procedures:exportar_detalhe_planejamento_excel' planejamento.id %}" class="btn btn-success btn-sm" title="Exportar para Excel">
                     <i class="bi bi-file-earmark-spreadsheet"></i> Exportar Excel
                 </a>
+                <a href="{% url 'procedures:gerar_lista_presenca' planejamento.id %}" class="btn btn-primary btn-sm" title="Gerar Lista de Presença Oficial (FOR.033)">
+                    <i class="bi bi-file-earmark-check"></i> Gerar Lista de Presença
+                </a>
                 <a href="{% url 'procedures:planejamentos_list' %}" class="btn btn-secondary btn-sm">
                     <i class="bi bi-arrow-left"></i> Voltar
                 </a>

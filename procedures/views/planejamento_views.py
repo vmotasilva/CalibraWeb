@@ -1257,3 +1257,33 @@ def exportar_detalhe_planejamento_excel_view(request, planejamento_id):
     
     exporter = PlanejamentoExcelExporter()
     return exporter.export_detalhe_planejamento(planejamento)
+
+
+@login_required
+def gerar_lista_presenca_view(request, planejamento_id):
+    """Gera a Lista de Presença (FOR.033) baseada em template Excel com tags dinâmicas."""
+    from procedures.services.lista_presenca_excel_service import gerar_lista_presenca_xlsx
+    
+    planejamento = get_object_or_404(
+        PlanejamentoTreinamento.objects.select_related('instrutor')
+        .prefetch_related('colaboradores__setor', 'procedimentos'),
+        id=planejamento_id
+    )
+    
+    try:
+        excel_buffer = gerar_lista_presenca_xlsx(planejamento)
+    except FileNotFoundError as e:
+        messages.error(request, f"Erro ao localizar template: {str(e)}")
+        return redirect('procedures:detalhe_planejamento', planejamento_id=planejamento.id)
+    except Exception as e:
+        messages.error(request, f"Erro ao processar template Excel: {str(e)}")
+        return redirect('procedures:detalhe_planejamento', planejamento_id=planejamento.id)
+        
+    filename = f"Lista_Treinamento_{planejamento.id}.xlsx"
+    response = HttpResponse(
+        excel_buffer.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response["Access-Control-Expose-Headers"] = "Content-Disposition"
+    return response
