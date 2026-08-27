@@ -276,10 +276,48 @@
         </div>
     </div>
 
+    <!-- Seletor / Filtro de Matrizes do Colaborador -->
+    {% if matrizes_dados %}
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-3">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-2">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-funnel-fill text-primary"></i>
+                    <span class="fw-bold text-dark">Filtrar Matrizes Visíveis:</span>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill small" id="contadorMatrizesVisiveis">
+                        Exibindo {{ matrizes_dados|length }} de {{ matrizes_dados|length }}
+                    </span>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="btnMarcarTodasMatrizes">
+                        <i class="bi bi-check-all"></i> Marcar Todas
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btnDesmarcarTodasMatrizes">
+                        <i class="bi bi-x"></i> Desmarcar Todas
+                    </button>
+                </div>
+            </div>
+            
+            <div class="d-flex flex-wrap gap-2 pt-2" id="containerPillsMatrizes">
+                {% for item in matrizes_dados %}
+                <button type="button" 
+                        class="btn btn-sm btn-primary pill-filtro-matriz d-flex align-items-center gap-2 active" 
+                        data-matriz-id="{{ item.matriz.id }}"
+                        style="transition: all 0.2s ease;">
+                    <i class="bi bi-check-circle-fill"></i>
+                    <span>{{ item.matriz.nome }}</span>
+                    <span class="badge bg-white text-primary rounded-pill">{{ item.total_disciplinas }}</span>
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Lista de Matrizes do Colaborador (Uma abaixo da outra) -->
     {% if matrizes_dados %}
         {% for item in matrizes_dados %}
-        <div class="card shadow-sm border-0 mb-4">
+        <div class="card shadow-sm border-0 mb-4 matriz-bloco" data-matriz-id="{{ item.matriz.id }}">
             <!-- Header da Matriz -->
             <div class="card-header bg-white border-bottom py-3">
                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
@@ -710,6 +748,93 @@
             toast.show();
             toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
         }
+
+        // ===== CONTROLE DO FILTRO INTERATIVO DE MATRIZES =====
+        const pills = document.querySelectorAll('.pill-filtro-matriz');
+        const blocos = document.querySelectorAll('.matriz-bloco');
+        const contador = document.getElementById('contadorMatrizesVisiveis');
+        const totalMatrizes = blocos.length;
+
+        function atualizarVisibilidadeMatrizes() {
+            let visiveis = 0;
+            pills.forEach(pill => {
+                const matrizId = pill.getAttribute('data-matriz-id');
+                const isActive = pill.classList.contains('active');
+                const bloco = document.querySelector(`.matriz-bloco[data-matriz-id="${matrizId}"]`);
+                if (bloco) {
+                    if (isActive) {
+                        bloco.style.display = '';
+                        visiveis++;
+                    } else {
+                        bloco.style.display = 'none';
+                    }
+                }
+            });
+            if (contador) {
+                contador.textContent = `Exibindo ${visiveis} de ${totalMatrizes}`;
+            }
+        }
+
+        // Verificar se há parâmetros na URL para pré-filtrar (ex: ?matriz=4 ou ?matrizes=4,5)
+        const urlParams = new URLSearchParams(window.location.search);
+        const matrizParam = urlParams.get('matriz');
+        const matrizesParam = urlParams.get('matrizes');
+        if (matrizParam || matrizesParam) {
+            const permitidos = (matrizesParam ? matrizesParam.split(',') : []).concat(matrizParam ? [matrizParam] : []);
+            pills.forEach(pill => {
+                const matrizId = pill.getAttribute('data-matriz-id');
+                if (permitidos.includes(matrizId)) {
+                    pill.classList.add('active', 'btn-primary');
+                    pill.classList.remove('btn-outline-secondary');
+                    pill.querySelector('i').className = 'bi bi-check-circle-fill';
+                    pill.querySelector('.badge').className = 'badge bg-white text-primary rounded-pill';
+                } else {
+                    pill.classList.remove('active', 'btn-primary');
+                    pill.classList.add('btn-outline-secondary');
+                    pill.querySelector('i').className = 'bi bi-circle';
+                    pill.querySelector('.badge').className = 'badge bg-secondary rounded-pill';
+                }
+            });
+            atualizarVisibilidadeMatrizes();
+        }
+
+        pills.forEach(pill => {
+            pill.addEventListener('click', function() {
+                this.classList.toggle('active');
+                if (this.classList.contains('active')) {
+                    this.classList.remove('btn-outline-secondary');
+                    this.classList.add('btn-primary');
+                    this.querySelector('i').className = 'bi bi-check-circle-fill';
+                    this.querySelector('.badge').className = 'badge bg-white text-primary rounded-pill';
+                } else {
+                    this.classList.remove('btn-primary');
+                    this.classList.add('btn-outline-secondary');
+                    this.querySelector('i').className = 'bi bi-circle';
+                    this.querySelector('.badge').className = 'badge bg-secondary rounded-pill';
+                }
+                atualizarVisibilidadeMatrizes();
+            });
+        });
+
+        document.getElementById('btnMarcarTodasMatrizes')?.addEventListener('click', function() {
+            pills.forEach(pill => {
+                pill.classList.add('active', 'btn-primary');
+                pill.classList.remove('btn-outline-secondary');
+                pill.querySelector('i').className = 'bi bi-check-circle-fill';
+                pill.querySelector('.badge').className = 'badge bg-white text-primary rounded-pill';
+            });
+            atualizarVisibilidadeMatrizes();
+        });
+
+        document.getElementById('btnDesmarcarTodasMatrizes')?.addEventListener('click', function() {
+            pills.forEach(pill => {
+                pill.classList.remove('active', 'btn-primary');
+                pill.classList.add('btn-outline-secondary');
+                pill.querySelector('i').className = 'bi bi-circle';
+                pill.querySelector('.badge').className = 'badge bg-secondary rounded-pill';
+            });
+            atualizarVisibilidadeMatrizes();
+        });
     });
 </script>
 {% endblock %}

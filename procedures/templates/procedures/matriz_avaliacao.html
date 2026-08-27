@@ -776,15 +776,27 @@
                 <div class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 py-3">
                     <div>
                         <h6 class="mb-1 text-primary fw-bold">{{ colab.nome_completo }}</h6>
-                        <div class="small text-muted">
+                        <div class="small text-muted mb-2">
                             <i class="bi bi-person-badge"></i> {{ colab.matricula }} &nbsp;
                             <i class="bi bi-diagram-3"></i> {{ colab.setor|default:"Sem Setor" }} &nbsp;
                             <i class="bi bi-clock"></i> {{ colab.turno|default:"-" }}
                         </div>
+                        {% if colab.matrizes_vinculadas %}
+                        <div class="d-flex flex-wrap align-items-center gap-1">
+                            <span class="small text-muted me-1"><i class="bi bi-grid-3x3"></i> Matrizes:</span>
+                            {% for m in colab.matrizes_vinculadas %}
+                            <a href="{% url 'procedures:matriz_avaliacoes' %}?matriz={{ m.id }}" class="badge bg-light text-dark border text-decoration-none py-1 px-2" title="Abrir esta matriz">
+                                {{ m.nome }}
+                            </a>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <span class="badge bg-secondary-subtle text-secondary small">Nenhuma matriz vinculada</span>
+                        {% endif %}
                     </div>
-                    <div>
-                        <a href="{% url 'procedures:avaliacoes_colaborador' colab.id %}" class="btn btn-outline-primary btn-sm">
-                            <i class="bi bi-grid-3x3"></i> Ver Todas as Matrizes
+                    <div class="d-flex flex-wrap gap-2">
+                        <a href="{% url 'procedures:avaliacoes_colaborador' colab.id %}" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1">
+                            <i class="bi bi-grid-3x3-gap"></i> Ver Todas as Matrizes
                         </a>
                     </div>
                 </div>

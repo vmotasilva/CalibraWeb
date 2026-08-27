@@ -220,7 +220,7 @@ def matriz_avaliacoes_view(request):
     # Busca Global de Colaboradores (Quando não há matriz, mas há termo)
     colaboradores_globais = None
     if not matriz_id and termo_colab:
-        colaboradores_globais = Colaborador.objects.filter(
+        colaboradores_qs = Colaborador.objects.filter(
             Q(nome_completo__icontains=termo_colab) |
             Q(matricula__icontains=termo_colab),
             is_active=True
@@ -229,8 +229,8 @@ def matriz_avaliacoes_view(request):
         from qms.pagination import OffsetPaginator, PaginationHelper
         page = PaginationHelper.get_page_from_request(request)
         paginator = OffsetPaginator(page_size=20)
-        colaboradores_globais, pagination_metadata = paginator.paginate_queryset(
-            colaboradores_globais,
+        colabs_page, pagination_metadata = paginator.paginate_queryset(
+            colaboradores_qs,
             page=page
         )
         pagination = pagination_metadata.to_dict()
@@ -238,6 +238,26 @@ def matriz_avaliacoes_view(request):
         query_params = request.GET.copy()
         if 'page' in query_params:
             query_params.pop('page')
+
+        # Buscar matrizes vinculadas de cada colaborador da página
+        from procedures.models import ColaboradorMatrizHabilidade
+        colab_ids = [c.id for c in colabs_page]
+        vinculos = ColaboradorMatrizHabilidade.objects.filter(
+            colaborador_id__in=colab_ids,
+            ativo=True,
+            matriz__ativo=True
+        ).select_related('matriz').order_by('matriz__nome')
+        
+        matrizes_map = {}
+        for v in vinculos:
+            if v.colaborador_id not in matrizes_map:
+                matrizes_map[v.colaborador_id] = []
+            matrizes_map[v.colaborador_id].append(v.matriz)
+            
+        colaboradores_globais = []
+        for c in colabs_page:
+            c.matrizes_vinculadas = matrizes_map.get(c.id, [])
+            colaboradores_globais.append(c)
 
     context = {
         'matrizes': matrizes,
