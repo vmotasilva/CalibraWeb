@@ -50,7 +50,7 @@ def _obter_mapeamento_checkboxes(planejamento: PlanejamentoTreinamento, override
         mapping["{{CHK_INTEGRACAO}}"] = CHECK_ON if is_integracao else CHECK_OFF
 
     # -------------------------------------------------------------
-    # 2. Metodologia (LOFT / Prático vs Tradicional / Teórico)
+    # 2. Metodologia (Tradicional / Teórico vs LOFT / Prático)
     # -------------------------------------------------------------
     met_override = overrides.get('metodologia')
     if met_override:
@@ -58,12 +58,11 @@ def _obter_mapeamento_checkboxes(planejamento: PlanejamentoTreinamento, override
         is_loft = met_sel in ['LOFT', 'PRATICA', 'PRÁTICA']
     else:
         metodologia = getattr(planejamento, 'metodologia', '')
-        if not metodologia:
-            titulo = (planejamento.titulo or '').upper()
-            obs = (getattr(planejamento, 'observacoes', '') or '').upper()
-            is_loft = "LOFT" in titulo or "LOFT" in obs or "PRAT" in obs
-        else:
+        if metodologia:
             is_loft = "LOFT" in str(metodologia).upper() or "PRAT" in str(metodologia).upper()
+        else:
+            # Padrão: Tradicional
+            is_loft = False
 
     mapping["{{CHK_LOFT}}"] = CHECK_ON if is_loft else CHECK_OFF
     mapping["{{CHK_TRAD}}"] = CHECK_OFF if is_loft else CHECK_ON
