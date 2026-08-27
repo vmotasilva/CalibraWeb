@@ -69,16 +69,48 @@
         color: #212529;
         font-size: 0.9rem;
     }
+
+    /* Estilos para seções recolhíveis / expansíveis */
+    .card-header-collapsible {
+        cursor: pointer;
+        user-select: none;
+        transition: background-color 0.2s ease;
+    }
+    .card-header-collapsible:hover {
+        filter: brightness(0.95);
+    }
+    .collapse-chevron {
+        transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        display: inline-block;
+    }
+    .card-header-collapsible.collapsed .collapse-chevron,
+    [aria-expanded="false"] .collapse-chevron {
+        transform: rotate(-90deg);
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
+    <!-- Barra de Atalho para Expandir/Recolher Todas as Seções -->
+    <div class="d-flex justify-content-end mb-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-toggle-all-sections" title="Expandir ou Recolher todas as seções simultaneamente">
+            <i class="bi bi-arrows-expand me-1"></i> <span id="lbl-toggle-all">Recolher Todas</span>
+        </button>
+    </div>
+
     <!-- Informações Principais -->
-    <div class="card mb-3">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">Informações do Planejamento</h5>
-            <div>
+    <div class="card mb-3 shadow-sm">
+        <div class="card-header card-header-collapsible d-flex justify-content-between align-items-center" 
+             data-bs-toggle="collapse" 
+             data-bs-target="#collapseInfoPlanejamento" 
+             aria-expanded="true" 
+             aria-controls="collapseInfoPlanejamento">
+            <h5 class="mb-0 d-flex align-items-center">
+                <i class="bi bi-chevron-down me-2 collapse-chevron"></i>
+                <span>Informações do Planejamento</span>
+            </h5>
+            <div onclick="event.stopPropagation();">
                 {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
                 <a href="{% url 'procedures:editar_planejamento' planejamento.id %}" class="btn btn-warning btn-sm">
                     <i class="bi bi-pencil"></i> Editar
@@ -98,7 +130,8 @@
                 </a>
             </div>
         </div>
-        <div class="card-body">
+        <div class="collapse show" id="collapseInfoPlanejamento">
+            <div class="card-body">
             <div class="row g-3">
                 <div class="col-md-6">
                     <div class="mb-3">
@@ -186,62 +219,71 @@
                 </div>
             </div>
         </div>
+        </div>
     </div>
 
     <!-- Procedimentos -->
-    <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h6>
-                <i class="bi bi-file-text"></i> 
-                Procedimentos ({{ planejamento.procedimentos.count }})
+    <div class="card mb-3 shadow-sm">
+        <div class="card-header card-header-collapsible d-flex justify-content-between align-items-center"
+             data-bs-toggle="collapse"
+             data-bs-target="#collapseProcedimentos"
+             aria-expanded="true"
+             aria-controls="collapseProcedimentos">
+            <h6 class="mb-0 d-flex align-items-center">
+                <i class="bi bi-chevron-down me-2 collapse-chevron"></i>
+                <span><i class="bi bi-file-text me-1"></i> Procedimentos ({{ planejamento.procedimentos.count }})</span>
             </h6>
-            {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
-            <button type="button" class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#procedimentosModal">
-                <i class="bi bi-plus-circle"></i> Adicionar
-            </button>
-            {% endif %}
+            <div onclick="event.stopPropagation();">
+                {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
+                <button type="button" class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#procedimentosModal">
+                    <i class="bi bi-plus-circle"></i> Adicionar
+                </button>
+                {% endif %}
+            </div>
         </div>
-        <div class="card-body p-0">
-            {% if planejamento.procedimentos.exists %}
-            <div class="table-responsive">
-                <table class="table table-clean table-hover" id="procedimentos-list">
-                    <thead>
-                        <tr>
-                            <th width="100">Código</th>
-                            <th>Nome</th>
-                            <th width="140">Matriz</th>
-                            <th width="150">Sub-área</th>
-                            {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
-                            <th width="60" class="text-center">Ação</th>
-                            {% endif %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for proc in planejamento.procedimentos.all %}
-                        <tr data-proc-id="{{ proc.id }}">
-                            <td>
-                                <span class="badge bg-primary badge-code">{{ proc.codigo }}</span>
-                            </td>
-                            <td>{{ proc.nome }}</td>
-                            <td><span class="text-muted">{{ proc.matriz|default:"-" }}</span></td>
-                            <td><span class="text-muted">{{ proc.sub_area|default:"-" }}</span></td>
-                            {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
-                            <td class="text-center">
-                                <button class="btn btn-sm btn-outline-danger btn-remove remover-proc-btn" data-proc-id="{{ proc.id }}" title="Remover">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </td>
-                            {% endif %}
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+        <div class="collapse show" id="collapseProcedimentos">
+            <div class="card-body p-0">
+                {% if planejamento.procedimentos.exists %}
+                <div class="table-responsive">
+                    <table class="table table-clean table-hover" id="procedimentos-list">
+                        <thead>
+                            <tr>
+                                <th width="100">Código</th>
+                                <th>Nome</th>
+                                <th width="140">Matriz</th>
+                                <th width="150">Sub-área</th>
+                                {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
+                                <th width="60" class="text-center">Ação</th>
+                                {% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for proc in planejamento.procedimentos.all %}
+                            <tr data-proc-id="{{ proc.id }}">
+                                <td>
+                                    <span class="badge bg-primary badge-code">{{ proc.codigo }}</span>
+                                </td>
+                                <td>{{ proc.nome }}</td>
+                                <td><span class="text-muted">{{ proc.matriz|default:"-" }}</span></td>
+                                <td><span class="text-muted">{{ proc.sub_area|default:"-" }}</span></td>
+                                {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-outline-danger btn-remove remover-proc-btn" data-proc-id="{{ proc.id }}" title="Remover">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                                {% endif %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    Nenhum procedimento associado
+                </div>
+                {% endif %}
             </div>
-            {% else %}
-            <div class="text-center text-muted py-4">
-                Nenhum procedimento associado
-            </div>
-            {% endif %}
         </div>
     </div>
 
@@ -280,116 +322,124 @@
     </div>
 
     <!-- Lista de Participantes -->
-    <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h6>
-                <i class="bi bi-people"></i> 
-                Participantes ({{ colaboradores_info|length }})
+    <div class="card mb-3 shadow-sm">
+        <div class="card-header card-header-collapsible d-flex justify-content-between align-items-center"
+             data-bs-toggle="collapse"
+             data-bs-target="#collapseParticipantes"
+             aria-expanded="true"
+             aria-controls="collapseParticipantes">
+            <h6 class="mb-0 d-flex align-items-center">
+                <i class="bi bi-chevron-down me-2 collapse-chevron"></i>
+                <span><i class="bi bi-people me-1"></i> Participantes ({{ colaboradores_info|length }})</span>
             </h6>
-            {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
-            <button type="button" class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#colaboradoresModal">
-                <i class="bi bi-plus-circle"></i> Adicionar
-            </button>
-            {% endif %}
-        </div>
-        <div class="card-body p-0">
-            {% if colaboradores_info %}
-            <div class="table-responsive">
-                <table class="table table-clean table-hover" id="colaboradores-list">
-                    <thead>
-                        <tr>
-                            <th>Nome</th>
-                            <th width="110">Matrícula</th>
-                            <th width="180">Setor</th>
-                            <th width="130" class="text-center">Progresso</th>
-                            <th width="320">Status por Procedimento</th>
-                            {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
-                            <th width="60" class="text-center">Ação</th>
-                            {% endif %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for info in colaboradores_info %}
-                        <tr data-colab-id="{{ info.colaborador.id }}">
-                            <td>
-                                {% if info.colaborador.nome_completo %}
-                                    {{ info.colaborador.nome_completo }}
-                                {% else %}
-                                    <span class="text-muted">Colaborador {{ info.colaborador.matricula|default:info.colaborador.id }}</span>
-                                {% endif %}
-                            </td>
-                            <td>{{ info.colaborador.matricula|default:"-" }}</td>
-                            <td><span class="text-muted">{{ info.colaborador.setor|default:"-" }}</span></td>
-                            <td class="text-center">
-                                <span class="badge {% if info.quantidade_treinada == info.total_procedimentos %}bg-success{% else %}bg-warning{% endif %} badge-code">
-                                    {{ info.quantidade_treinada }} / {{ info.total_procedimentos }}
-                                </span>
-                            </td>
-                            <td>
-                                <div class="d-flex flex-column gap-1">
-                                    {% for sp in info.procedimentos_status %}
-                                        <div class="d-flex align-items-center justify-content-between small py-1 border-bottom border-light">
-                                            <span class="badge bg-secondary badge-code me-2" title="{{ sp.procedimento.nome }}">{{ sp.procedimento.codigo }}</span>
-                                            <div class="d-flex align-items-center gap-2">
-                                                {% if sp.treinado %}
-                                                    <span class="text-success small">
-                                                        <i class="bi bi-check-circle-fill"></i> Treinado
-                                                    </span>
-                                                    <span class="text-muted small">({{ sp.registro.data_treinamento|date:"d/m/Y" }})</span>
-                                                {% else %}
-                                                    <span class="text-warning small">
-                                                        <i class="bi bi-clock-fill"></i> Pendente
-                                                    </span>
-                                                    <span class="text-muted small">(-)</span>
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                    {% empty %}
-                                        <span class="text-muted small">Nenhum procedimento associado</span>
-                                    {% endfor %}
-                                </div>
-                            </td>
-                            {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
-                            <td class="text-center">
-                                <button class="btn btn-sm btn-outline-danger btn-remove remover-colab-btn" data-colab-id="{{ info.colaborador.id }}" title="Remover">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </td>
-                            {% endif %}
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div onclick="event.stopPropagation();">
+                {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
+                <button type="button" class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#colaboradoresModal">
+                    <i class="bi bi-plus-circle"></i> Adicionar
+                </button>
+                {% endif %}
             </div>
-            
-            <!-- Resumo -->
-            <div class="bg-light border-top p-3">
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <div class="d-flex align-items-center">
-                            <i class="bi bi-check-circle-fill text-success me-2"></i>
-                            <div>
-                                <small class="text-muted d-block">Treinados</small>
-                                <strong>{{ treinados_count }} de {{ total_colaboradores }}</strong>
+        </div>
+        <div class="collapse show" id="collapseParticipantes">
+            <div class="card-body p-0">
+                {% if colaboradores_info %}
+                <div class="table-responsive">
+                    <table class="table table-clean table-hover" id="colaboradores-list">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th width="110">Matrícula</th>
+                                <th width="180">Setor</th>
+                                <th width="130" class="text-center">Progresso</th>
+                                <th width="320">Status por Procedimento</th>
+                                {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
+                                <th width="60" class="text-center">Ação</th>
+                                {% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for info in colaboradores_info %}
+                            <tr data-colab-id="{{ info.colaborador.id }}">
+                                <td>
+                                    {% if info.colaborador.nome_completo %}
+                                        {{ info.colaborador.nome_completo }}
+                                    {% else %}
+                                        <span class="text-muted">Colaborador {{ info.colaborador.matricula|default:info.colaborador.id }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ info.colaborador.matricula|default:"-" }}</td>
+                                <td><span class="text-muted">{{ info.colaborador.setor|default:"-" }}</td>
+                                <td class="text-center">
+                                    <span class="badge {% if info.quantidade_treinada == info.total_procedimentos %}bg-success{% else %}bg-warning{% endif %} badge-code">
+                                        {{ info.quantidade_treinada }} / {{ info.total_procedimentos }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-column gap-1">
+                                        {% for sp in info.procedimentos_status %}
+                                            <div class="d-flex align-items-center justify-content-between small py-1 border-bottom border-light">
+                                                <span class="badge bg-secondary badge-code me-2" title="{{ sp.procedimento.nome }}">{{ sp.procedimento.codigo }}</span>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    {% if sp.treinado %}
+                                                        <span class="text-success small">
+                                                            <i class="bi bi-check-circle-fill"></i> Treinado
+                                                        </span>
+                                                        <span class="text-muted small">({{ sp.registro.data_treinamento|date:"d/m/Y" }})</span>
+                                                    {% else %}
+                                                        <span class="text-warning small">
+                                                            <i class="bi bi-clock-fill"></i> Pendente
+                                                        </span>
+                                                        <span class="text-muted small">(-)</span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        {% empty %}
+                                            <span class="text-muted small">Nenhum procedimento associado</span>
+                                        {% endfor %}
+                                    </div>
+                                </td>
+                                {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-outline-danger btn-remove remover-colab-btn" data-colab-id="{{ info.colaborador.id }}" title="Remover">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                                {% endif %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Resumo -->
+                <div class="bg-light border-top p-3">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                <div>
+                                    <small class="text-muted d-block">Treinados</small>
+                                    <strong>{{ treinados_count }} de {{ total_colaboradores }}</strong>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="d-flex align-items-center">
-                            <i class="bi bi-clock-fill text-warning me-2"></i>
-                            <div>
-                                <small class="text-muted d-block">Pendentes</small>
-                                <strong>{{ pendentes_count }}</strong>
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-clock-fill text-warning me-2"></i>
+                                <div>
+                                    <small class="text-muted d-block">Pendentes</small>
+                                    <strong>{{ pendentes_count }}</strong>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    Nenhum participante cadastrado
+                </div>
+                {% endif %}
             </div>
-            {% else %}
-            <div class="text-center text-muted py-4">
-                Nenhum participante cadastrado
-            </div>
-            {% endif %}
         </div>
     </div>
 
@@ -1247,7 +1297,53 @@ document.addEventListener('DOMContentLoaded', function() {
         modalLista.addEventListener('show.bs.modal', updateBtnFor141Visibility);
     }
     updateBtnFor141Visibility();
+
+    // Controle do Botão "Expandir Todas / Recolher Todas"
+    const btnToggleAll = document.getElementById('btn-toggle-all-sections');
+    const lblToggleAll = document.getElementById('lbl-toggle-all');
+    const collapsibleIds = ['collapseInfoPlanejamento', 'collapseProcedimentos', 'collapseParticipantes'];
+
+    if (btnToggleAll) {
+        btnToggleAll.addEventListener('click', function() {
+            const anyOpen = collapsibleIds.some(id => {
+                const el = document.getElementById(id);
+                return el && el.classList.contains('show');
+            });
+
+            collapsibleIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    const bsCollapse = bootstrap.Collapse.getOrCreateInstance(el, { toggle: false });
+                    if (anyOpen) {
+                        bsCollapse.hide();
+                    } else {
+                        bsCollapse.show();
+                    }
+                }
+            });
+        });
+
+        // Atualizar texto do botão master conforme o estado das seções
+        function syncMasterToggleButton() {
+            const anyOpen = collapsibleIds.some(id => {
+                const el = document.getElementById(id);
+                return el && el.classList.contains('show');
+            });
+            if (lblToggleAll) {
+                lblToggleAll.textContent = anyOpen ? 'Recolher Todas' : 'Expandir Todas';
+            }
+        }
+
+        collapsibleIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('shown.bs.collapse', syncMasterToggleButton);
+                el.addEventListener('hidden.bs.collapse', syncMasterToggleButton);
+            }
+        });
+    }
 });
 </script>
 {% endblock %}
+
 
