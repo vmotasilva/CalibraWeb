@@ -165,26 +165,20 @@ def template_config_toggle_active_view(request, template_id):
 @login_required
 def template_config_download_view(request, template_id):
     """Permite fazer o download do arquivo do template armazenado."""
+    from django.http import FileResponse
+
     template = get_object_or_404(TemplateDocumentoTreinamento, id=template_id)
     
-    if not template.arquivo or not os.path.exists(template.arquivo.path):
-        messages.error(request, '⚠️ O arquivo físico do template não foi encontrado no servidor.')
+    if not template.arquivo:
+        messages.error(request, '⚠️ Este template não possui arquivo anexado.')
         return redirect('procedures:templates_config')
 
-    with open(template.arquivo.path, 'rb') as f:
-        file_data = f.read()
-
-    content_types = {
-        'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'pdf': 'application/pdf',
-    }
-    content_type = content_types.get(template.tipo_arquivo, 'application/octet-stream')
-    
-    response = HttpResponse(file_data, content_type=content_type)
-    filename = os.path.basename(template.arquivo.name)
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    return response
+    try:
+        filename = os.path.basename(template.arquivo.name)
+        return FileResponse(template.arquivo.open('rb'), as_attachment=True, filename=filename)
+    except Exception as e:
+        messages.error(request, f'⚠️ Não foi possível abrir o arquivo do template: {str(e)}')
+        return redirect('procedures:templates_config')
 
 
 @login_required

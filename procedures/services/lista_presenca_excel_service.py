@@ -111,7 +111,7 @@ def gerar_lista_presenca_xlsx(planejamento: PlanejamentoTreinamento) -> BytesIO:
     """Carrega o template e preenche cabeçalhos, checkboxes, participantes e procedimentos."""
     from procedures.models import TemplateDocumentoTreinamento
 
-    template_path = None
+    wb = None
 
     # 1. Prioridade: Buscar template ativo configurado na sessão de Templates de Treinamento
     template_config = TemplateDocumentoTreinamento.objects.filter(
@@ -121,13 +121,15 @@ def gerar_lista_presenca_xlsx(planejamento: PlanejamentoTreinamento) -> BytesIO:
 
     if template_config and template_config.arquivo:
         try:
-            if os.path.exists(template_config.arquivo.path):
-                template_path = template_config.arquivo.path
+            # Tenta carregar os bytes diretamente do FileField (compatível com nuvem, storages e local)
+            template_config.arquivo.seek(0)
+            arquivo_bytes = BytesIO(template_config.arquivo.read())
+            wb = openpyxl.load_workbook(arquivo_bytes)
         except Exception:
-            pass
+            wb = None
 
-    # 2. Fallback: Diretórios padrão do sistema
-    if not template_path:
+    # 2. Fallback: Diretórios padrão do sistema de arquivos
+    if wb is None:
         nome_arquivo_template = "FOR.033.r07_Lista_de_Presenca_de_Treinamento.xlsx"
         caminhos = [
             os.path.join(settings.BASE_DIR, "templates", nome_arquivo_template),
@@ -137,11 +139,12 @@ def gerar_lista_presenca_xlsx(planejamento: PlanejamentoTreinamento) -> BytesIO:
             os.path.join(settings.MEDIA_ROOT, "templates_treinamento_docs", nome_arquivo_template),
         ]
         template_path = next((p for p in caminhos if os.path.exists(p)), None)
+        if template_path:
+            wb = openpyxl.load_workbook(template_path)
 
-    if not template_path:
-        raise FileNotFoundError("Nenhum template ativo foi encontrado. Faça o upload do template na sessão de 'Templates de Treinamento'.")
+    if wb is None:
+        raise FileNotFoundError("Nenhum template ativo foi encontrado. Faça o upload do arquivo na sessão de 'Templates de Documentos'.")
 
-    wb = openpyxl.load_workbook(template_path)
     ws_frente = wb.worksheets[0]
 
     # 1. Montar substituição de texto e dados básicos
