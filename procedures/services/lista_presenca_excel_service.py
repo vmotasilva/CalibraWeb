@@ -112,7 +112,7 @@ def _obter_mapeamento_checkboxes(planejamento: PlanejamentoTreinamento, override
         is_producao = "PRODU" in areas_str or "FABRICA" in areas_str
         is_adm = "ADM" in areas_str or "ADMINISTRATIV" in areas_str or "RH" in areas_str
 
-        # Se nenhuma for detectada, padrão é Qualidade ou Produção conforme o contexto
+        # Se nenhuma for detectada, padrão é Qualidade
         if not (is_qualidade or is_ehs or is_estoque or is_producao or is_adm):
             is_qualidade = True
 
@@ -129,6 +129,7 @@ def _obter_mapeamento_checkboxes(planejamento: PlanejamentoTreinamento, override
 def _search_and_replace_sheet(sheet, mapping: dict):
     """
     Substitui todas as tags de texto e checkboxes nas células da planilha.
+    Preserva tags de loop como {{PROCEDIMENTOS}} para tratamento específico posterior se necessário.
     """
     for row in sheet.iter_rows():
         for cell in row:
@@ -152,7 +153,7 @@ def _copiar_estilo_celula(origem, destino):
 
 
 def gerar_lista_presenca_xlsx(planejamento: PlanejamentoTreinamento, overrides: dict = None) -> BytesIO:
-    """Carrega o template e preenche cabeçalhos, checkboxes, participantes e procedimentos."""
+    """Carrega o template e preenche cabeçalhos, checkboxes, participantes e procedimentos em todas as abas."""
     from procedures.models import TemplateDocumentoTreinamento
 
     wb = None
@@ -188,8 +189,6 @@ def gerar_lista_presenca_xlsx(planejamento: PlanejamentoTreinamento, overrides: 
     if wb is None:
         raise FileNotFoundError("Nenhum template ativo foi encontrado. Faça o upload do arquivo na sessão de 'Templates de Documentos'.")
 
-    ws_frente = wb.worksheets[0]
-
     # 1. Montar substituição de texto e dados básicos
     data_hora_str = (
         planejamento.horario_previsto.strftime("%d/%m/%Y %H:%M")
@@ -210,121 +209,127 @@ def gerar_lista_presenca_xlsx(planejamento: PlanejamentoTreinamento, overrides: 
     checkbox_mapping = _obter_mapeamento_checkboxes(planejamento, overrides=overrides)
     substituicoes.update(checkbox_mapping)
 
-    # Executa a substituição na primeira aba
-    _search_and_replace_sheet(ws_frente, substituicoes)
+    colaboradores = list(planejamento.colaboradores.select_related("setor").all())
+    procedimentos = list(planejamento.procedimentos.all())
 
-    # 3. Preenchimento dos Participantes (Detecção Flexível de Tags ou Cabeçalhos)
-    anchor_row = None
-    col_nome = None
-    col_cpf_mat = None
-    col_cargo = None
-    col_setor = None
+    # 3. Processar TODAS as planilhas do arquivo Excel
+    for ws in wb.worksheets:
+        # A. Substituição de tags gerais de cabeçalhos e checkboxes
+        _search_and_replace_sheet(ws, substituicoes)
 
-    # Varredura primária: procurar tags explícitas
-    for row in ws_frente.iter_rows():
-        for cell in row:
-            if cell.value and isinstance(cell.value, str):
-                val_upper = cell.value.upper()
-                if "{{NOME_PARTICIPANTE}}" in val_upper or "{{NOME_COLABORADOR}}" in val_upper:
-                    anchor_row = cell.row
-                    col_nome = cell.column
-                if "{{MATRICULA_PARTICIPANTE}}" in val_upper or "{{CPF_PARTICIPANTE}}" in val_upper or "{{CPF}}" in val_upper:
-                    col_cpf_mat = cell.column
-                if "{{CARGO_PARTICIPANTE}}" in val_upper or "{{CARGO}}" in val_upper:
-                    col_cargo = cell.column
-                if "{{SETOR_PARTICIPANTE}}" in val_upper or "{{DEPARTAMENTO_PARTICIPANTE}}" in val_upper or "{{DEPARTAMENTO}}" in val_upper:
-                    col_setor = cell.column
+        # B. Preenchimento de Participantes
+        anchor_row = None
+        col_nome = None
+        col_cpf_mat = None
+        col_cargo = None
+        col_setor = None
 
-    # Varredura secundária: se não houver tags na linha da tabela, buscar pelos cabeçalhos da tabela
-    if not anchor_row:
-        for row in ws_frente.iter_rows(max_row=25):
+        for row in ws.iter_rows():
             for cell in row:
                 if cell.value and isinstance(cell.value, str):
-                    val = cell.value.strip().lower()
-                    if "nome do colaborador" in val or "nome colaborador" in val:
-                        anchor_row = cell.row + 1
+                    val_upper = cell.value.upper()
+                    if "{{NOME_PARTICIPANTE}}" in val_upper or "{{NOME_COLABORADOR}}" in val_upper:
+                        anchor_row = cell.row
                         col_nome = cell.column
-                    elif "cpf" in val or "matrícula" in val or "matricula" in val:
+                    if "{{MATRICULA_PARTICIPANTE}}" in val_upper or "{{CPF_PARTICIPANTE}}" in val_upper or "{{CPF}}" in val_upper:
                         col_cpf_mat = cell.column
-                    elif "cargo" in val or "função" in val or "funcao" in val:
+                    if "{{CARGO_PARTICIPANTE}}" in val_upper or "{{CARGO}}" in val_upper:
                         col_cargo = cell.column
-                    elif "departamento" in val or "setor" in val or "área" in val:
+                    if "{{SETOR_PARTICIPANTE}}" in val_upper or "{{DEPARTAMENTO_PARTICIPANTE}}" in val_upper or "{{DEPARTAMENTO}}" in val_upper:
                         col_setor = cell.column
 
-    colaboradores = list(planejamento.colaboradores.select_related("setor").all())
+        # Se não encontrou tags na linha da tabela, buscar por cabeçalhos típicos
+        if not anchor_row:
+            for row in ws.iter_rows(max_row=30):
+                for cell in row:
+                    if cell.value and isinstance(cell.value, str):
+                        val = cell.value.strip().lower()
+                        if "nome do colaborador" in val or "nome colaborador" in val:
+                            anchor_row = cell.row + 1
+                            col_nome = cell.column
+                        elif "cpf" in val or "matrícula" in val or "matricula" in val:
+                            col_cpf_mat = cell.column
+                        elif "cargo" in val or "função" in val or "funcao" in val:
+                            col_cargo = cell.column
+                        elif "departamento" in val or "setor" in val or "área" in val:
+                            col_setor = cell.column
 
-    if anchor_row and col_nome:
-        if colaboradores:
-            c1 = colaboradores[0]
-            ws_frente.cell(row=anchor_row, column=col_nome, value=c1.nome_completo or "")
-            if col_cpf_mat:
-                ws_frente.cell(row=anchor_row, column=col_cpf_mat, value=c1.cpf or c1.matricula or "")
-            if col_cargo:
-                ws_frente.cell(row=anchor_row, column=col_cargo, value=c1.cargo or c1.posto_trabalho or "")
-            if col_setor:
-                ws_frente.cell(row=anchor_row, column=col_setor, value=c1.setor.nome if c1.setor else "")
-
-            for idx, c in enumerate(colaboradores[1:], start=1):
-                t_row = anchor_row + idx
-                
-                # Nome
-                cell_n = ws_frente.cell(row=t_row, column=col_nome, value=c.nome_completo or "")
-                _copiar_estilo_celula(ws_frente.cell(row=anchor_row, column=col_nome), cell_n)
-
-                # CPF / Matrícula
+        if anchor_row and col_nome:
+            if colaboradores:
+                c1 = colaboradores[0]
+                ws.cell(row=anchor_row, column=col_nome, value=c1.nome_completo or "")
                 if col_cpf_mat:
-                    cell_m = ws_frente.cell(row=t_row, column=col_cpf_mat, value=c.cpf or c.matricula or "")
-                    _copiar_estilo_celula(ws_frente.cell(row=anchor_row, column=col_cpf_mat), cell_m)
-
-                # Cargo
+                    ws.cell(row=anchor_row, column=col_cpf_mat, value=c1.cpf or c1.matricula or "")
                 if col_cargo:
-                    cell_cg = ws_frente.cell(row=t_row, column=col_cargo, value=c.cargo or c.posto_trabalho or "")
-                    _copiar_estilo_celula(ws_frente.cell(row=anchor_row, column=col_cargo), cell_cg)
-
-                # Departamento / Setor
+                    ws.cell(row=anchor_row, column=col_cargo, value=c1.cargo or c1.posto_trabalho or "")
                 if col_setor:
-                    cell_s = ws_frente.cell(row=t_row, column=col_setor, value=c.setor.nome if c.setor else "")
-                    _copiar_estilo_celula(ws_frente.cell(row=anchor_row, column=col_setor), cell_s)
-        else:
-            ws_frente.cell(row=anchor_row, column=col_nome, value="")
-            if col_cpf_mat:
-                ws_frente.cell(row=anchor_row, column=col_cpf_mat, value="")
-            if col_cargo:
-                ws_frente.cell(row=anchor_row, column=col_cargo, value="")
-            if col_setor:
-                ws_frente.cell(row=anchor_row, column=col_setor, value="")
+                    ws.cell(row=anchor_row, column=col_setor, value=c1.setor.nome if c1.setor else "")
 
-    # 4. Preenchimento dos Procedimentos (Verso - worksheets[1])
-    if len(wb.worksheets) > 1:
-        ws_verso = wb.worksheets[1]
-        _search_and_replace_sheet(ws_verso, substituicoes)
+                for idx, c in enumerate(colaboradores[1:], start=1):
+                    t_row = anchor_row + idx
+                    cell_n = ws.cell(row=t_row, column=col_nome, value=c.nome_completo or "")
+                    _copiar_estilo_celula(ws.cell(row=anchor_row, column=col_nome), cell_n)
 
+                    if col_cpf_mat:
+                        cell_m = ws.cell(row=t_row, column=col_cpf_mat, value=c.cpf or c.matricula or "")
+                        _copiar_estilo_celula(ws.cell(row=anchor_row, column=col_cpf_mat), cell_m)
+                    if col_cargo:
+                        cell_cg = ws.cell(row=t_row, column=col_cargo, value=c.cargo or c.posto_trabalho or "")
+                        _copiar_estilo_celula(ws.cell(row=anchor_row, column=col_cargo), cell_cg)
+                    if col_setor:
+                        cell_s = ws.cell(row=t_row, column=col_setor, value=c.setor.nome if c.setor else "")
+                        _copiar_estilo_celula(ws.cell(row=anchor_row, column=col_setor), cell_s)
+            else:
+                ws.cell(row=anchor_row, column=col_nome, value="")
+                if col_cpf_mat:
+                    ws.cell(row=anchor_row, column=col_cpf_mat, value="")
+                if col_cargo:
+                    ws.cell(row=anchor_row, column=col_cargo, value="")
+                if col_setor:
+                    ws.cell(row=anchor_row, column=col_setor, value="")
+
+        # C. Preenchimento de Procedimentos (Conteúdo do Treinamento)
         proc_anchor_row = None
         proc_col = None
 
-        for row in ws_verso.iter_rows():
+        # 1. Procurar tag explícita {{PROCEDIMENTOS}} ou variações
+        for row in ws.iter_rows():
             for cell in row:
                 if cell.value and isinstance(cell.value, str):
-                    if "{{PROCEDIMENTOS}}" in cell.value:
+                    val_upper = cell.value.upper()
+                    if "{{PROCEDIMENTOS}}" in val_upper or "{{PROCEDIMENTO}}" in val_upper or "{{CONTEUDO_PROGRAMATICO}}" in val_upper:
                         proc_anchor_row = cell.row
                         proc_col = cell.column
                         break
             if proc_anchor_row:
                 break
 
-        procedimentos = list(planejamento.procedimentos.all())
+        # 2. Se não achou tag, procurar pela seção "CONTEÚDO DO TREINAMENTO"
+        if not proc_anchor_row:
+            for row in ws.iter_rows():
+                for cell in row:
+                    if cell.value and isinstance(cell.value, str):
+                        val_lower = cell.value.strip().lower()
+                        if "conteúdo do treinamento" in val_lower or "conteudo do treinamento" in val_lower:
+                            # A linha de procedimentos fica tipicamente 2 linhas abaixo (após o título)
+                            proc_anchor_row = cell.row + 2
+                            proc_col = cell.column
+                            break
+                if proc_anchor_row:
+                    break
+
         if proc_anchor_row and proc_col:
             if procedimentos:
                 p1 = procedimentos[0]
-                ws_verso.cell(row=proc_anchor_row, column=proc_col, value=f"{p1.codigo or ''} - {p1.nome or ''}".strip(" -"))
+                ws.cell(row=proc_anchor_row, column=proc_col, value=f"{p1.codigo or ''} - {p1.nome or ''}".strip(" -"))
 
                 for idx, p in enumerate(procedimentos[1:], start=1):
                     t_row = proc_anchor_row + idx
                     texto_proc = f"{p.codigo or ''} - {p.nome or ''}".strip(" -")
-                    cell_p = ws_verso.cell(row=t_row, column=proc_col, value=texto_proc)
-                    _copiar_estilo_celula(ws_verso.cell(row=proc_anchor_row, column=proc_col), cell_p)
+                    cell_p = ws.cell(row=t_row, column=proc_col, value=texto_proc)
+                    _copiar_estilo_celula(ws.cell(row=proc_anchor_row, column=proc_col), cell_p)
             else:
-                ws_verso.cell(row=proc_anchor_row, column=proc_col, value="")
+                ws.cell(row=proc_anchor_row, column=proc_col, value="")
 
     output = BytesIO()
     wb.save(output)
