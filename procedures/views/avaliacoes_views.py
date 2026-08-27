@@ -217,6 +217,28 @@ def matriz_avaliacoes_view(request):
         )
         setores = Setor.objects.filter(id__in=setores_ids).order_by('nome')
     
+    # Busca Global de Colaboradores (Quando não há matriz, mas há termo)
+    colaboradores_globais = None
+    if not matriz_id and termo_colab:
+        colaboradores_globais = Colaborador.objects.filter(
+            Q(nome_completo__icontains=termo_colab) |
+            Q(matricula__icontains=termo_colab),
+            is_active=True
+        ).select_related('setor').order_by('nome_completo')
+        
+        from qms.pagination import OffsetPaginator, PaginationHelper
+        page = PaginationHelper.get_page_from_request(request)
+        paginator = OffsetPaginator(page_size=20)
+        colaboradores_globais, pagination_metadata = paginator.paginate_queryset(
+            colaboradores_globais,
+            page=page
+        )
+        pagination = pagination_metadata.to_dict()
+        
+        query_params = request.GET.copy()
+        if 'page' in query_params:
+            query_params.pop('page')
+
     context = {
         'matrizes': matrizes,
         'matriz_selecionada': matriz_selecionada,
@@ -224,6 +246,7 @@ def matriz_avaliacoes_view(request):
         'disciplinas_exibidas': disciplinas_exibidas,
         'disciplina_filtro': disciplina_filtro,
         'matriz_dados': matriz_dados if matriz_selecionada else [],
+        'colaboradores_globais': colaboradores_globais,
         'setores': setores,
         'turnos_disponiveis': turnos_disponiveis,
         'matriz_id': matriz_id,

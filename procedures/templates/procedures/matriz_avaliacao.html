@@ -11,7 +11,7 @@
        ======================================================= */
     .matriz-cards-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+        grid-template-columns: 1fr;
         gap: 1.5rem;
         width: 100%;
     }
@@ -395,10 +395,22 @@
     <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
         <button type="button" class="btn btn-outline-primary d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#modalFiltrosMatriz">
             <i class="bi bi-funnel"></i> <span>Filtros</span>
-            {% if matriz_id or setor or turno or termo_colab or nivel_filtro or disciplina_filtro %}
+            {% if matriz_id or setor or turno or nivel_filtro or disciplina_filtro %}
             <span class="badge bg-primary rounded-pill ms-1">Ativos</span>
             {% endif %}
         </button>
+        
+        <form method="get" class="d-flex align-items-center ms-md-2 ms-0 mt-2 mt-md-0" style="max-width: 350px; flex-grow: 1;">
+            <input type="hidden" name="matriz" value="{{ matriz_id|default:'' }}">
+            <input type="hidden" name="disciplina" value="{{ disciplina_filtro|default:'' }}">
+            <input type="hidden" name="setor" value="{{ setor|default:'' }}">
+            <input type="hidden" name="turno" value="{{ turno|default:'' }}">
+            <input type="hidden" name="nivel_filtro" value="{{ nivel_filtro|default:'' }}">
+            <div class="input-group">
+                <input type="text" name="colaborador" class="form-control" placeholder="Buscar colaborador..." value="{{ termo_colab }}">
+                <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i> Buscar</button>
+            </div>
+        </form>
 
         {% if matriz_selecionada %}
         <button type="button" class="btn btn-outline-secondary d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#modalLegendaMatriz">
@@ -464,12 +476,6 @@
                                     <option value="{{ t }}" {% if turno == t %}selected{% endif %}>{{ t }}</option>
                                     {% endfor %}
                                 </select>
-                            </div>
-
-                            <div class="col-12 col-md-6">
-                                <label class="form-label fw-semibold">Colaborador</label>
-                                <input type="text" name="colaborador" class="form-control" 
-                                       placeholder="Nome ou matrícula" value="{{ termo_colab }}">
                             </div>
 
                             <div class="col-12 col-md-6">
@@ -743,9 +749,51 @@
         </div>
         {% endif %}
     </div>
-    {% else %}
+    {% elif not termo_colab %}
     <div class="alert alert-info text-center">
-        <i class="bi bi-info-circle"></i> Selecione uma matriz de habilidades para visualizar as avaliações.
+        <i class="bi bi-info-circle"></i> Selecione uma matriz de habilidades ou pesquise um colaborador para visualizar.
+    </div>
+    {% else %}
+    <!-- Resultados da Busca Global por Colaborador (Sem Matriz Selecionada) -->
+    <div class="card">
+        <div class="card-header bg-white">
+            <h6 class="mb-0 fs-6 fw-bold">
+                <i class="bi bi-search text-primary me-1"></i> 
+                Resultados para: "{{ termo_colab }}"
+            </h6>
+        </div>
+        <div class="card-body p-0">
+            {% if colaboradores_globais %}
+            <div class="list-group list-group-flush">
+                {% for colab in colaboradores_globais %}
+                <div class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 py-3">
+                    <div>
+                        <h6 class="mb-1 text-primary fw-bold">{{ colab.nome_completo }}</h6>
+                        <div class="small text-muted">
+                            <i class="bi bi-person-badge"></i> {{ colab.matricula }} &nbsp;
+                            <i class="bi bi-diagram-3"></i> {{ colab.setor|default:"Sem Setor" }} &nbsp;
+                            <i class="bi bi-clock"></i> {{ colab.turno|default:"-" }}
+                        </div>
+                    </div>
+                    <div>
+                        <a href="{% url 'procedures:avaliacoes_colaborador' colab.id %}" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-grid-3x3"></i> Ver Todas as Matrizes
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="p-4 text-center text-muted">
+                <p class="mb-0">Nenhum colaborador encontrado com os filtros aplicados.</p>
+            </div>
+            {% endif %}
+        </div>
+        {% if pagination and pagination.total_pages > 1 %}
+        <div class="card-footer bg-white border-top px-4 py-1">
+            {% render_pagination pagination query_params %}
+        </div>
+        {% endif %}
     </div>
     {% endif %}
 </div>
