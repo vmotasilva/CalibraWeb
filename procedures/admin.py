@@ -12,7 +12,7 @@ from .models import (
     MatrizProcedimento, SubAreaProcedimento, PacoteIntegracao,
     Disciplina, DisciplinaProcedimento, PlanejamentoTreinamento, ListaPresenca,
     TemplateListaPresenca, MapeamentoCampoListaPresenca, TemplateDocumentoTreinamento,
-    Fornecedor, AvaliacaoFornecedor, ProcessoCotacao, Orcamento
+    PerguntaAvaliacao, Fornecedor, AvaliacaoFornecedor, ProcessoCotacao, Orcamento
 )
 from qms.admin import admin_site
 
@@ -285,6 +285,18 @@ class TemplateDocumentoTreinamentoAdmin(admin.ModelAdmin):
     readonly_fields = ('criado_em', 'atualizado_em')
 
 admin_site.register(TemplateDocumentoTreinamento, TemplateDocumentoTreinamentoAdmin)
+
+class PerguntaAvaliacaoAdmin(admin.ModelAdmin):
+    list_display = ('ordem', 'enunciado_resumo', 'procedimento', 'matriz', 'ativo', 'atualizado_em')
+    list_filter = ('ativo', 'matriz', 'ordem')
+    search_fields = ('enunciado', 'resposta_esperada', 'procedimento__codigo', 'procedimento__nome')
+    list_select_related = ('procedimento', 'matriz')
+
+    def enunciado_resumo(self, obj):
+        return (obj.enunciado[:60] + '...') if len(obj.enunciado) > 60 else obj.enunciado
+    enunciado_resumo.short_description = "Pergunta"
+
+admin_site.register(PerguntaAvaliacao, PerguntaAvaliacaoAdmin)
 
 class PacoteIntegracaoAdmin(admin.ModelAdmin):
     list_display = ('perfil', 'ativo', 'criado_em')

@@ -319,7 +319,7 @@
                     <td class="text-center">
                         <span class="badge bg-{{ t.status_class }} px-2 py-1.5">{{ t.status_display }}</span>
                     </td>
-                    <td class="text-center">
+                    <td class="text-center text-nowrap">
                         {% if t.status_display == 'Carência' %}
                             <button class="btn btn-outline-secondary btn-xs py-1 px-2 small" disabled title="Elegível apenas após 30 dias do treinamento (Elegibilidade: {{ t.data_elegibilidade|date:'d/m/Y' }})">
                                 <i class="bi bi-lock-fill"></i> Avaliar
@@ -339,6 +339,9 @@
                                 <i class="bi bi-clipboard-check"></i> Avaliar
                             </button>
                         {% endif %}
+                        <a href="{% url 'procedures:exportar_avaliacao_eficacia_for142' t.id %}" class="btn btn-outline-success btn-xs py-1 px-2 small ms-1" title="Exportar Formulário Oficial de Avaliação de Eficácia (FOR.142.r01)">
+                            <i class="bi bi-file-earmark-excel"></i> FOR.142
+                        </a>
                     </td>
                 </tr>
                 {% empty %}
@@ -424,9 +427,14 @@
                         <textarea name="resultado_avaliacao" id="modal-field-obs" class="form-control field-obs-check" rows="4" placeholder="Descreva os pontos avaliados, comportamentos observados e evidências..." required></textarea>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
-                    <button type="submit" class="btn btn-success btn-sm"><i class="bi bi-save"></i> Salvar Avaliação</button>
+                <div class="modal-footer d-flex justify-content-between">
+                    <a href="#" id="modal-btn-export-for142" class="btn btn-outline-success btn-sm" title="Baixar Formulário Oficial FOR.142 preenchido em Excel">
+                        <i class="bi bi-file-earmark-excel me-1"></i> Exportar FOR.142 (.xlsx)
+                    </a>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
+                        <button type="submit" class="btn btn-success btn-sm"><i class="bi bi-save"></i> Salvar Avaliação</button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -506,6 +514,7 @@
         const fieldStatus = document.getElementById('modal-field-status');
         const fieldData = document.getElementById('modal-field-data-avaliacao');
         const fieldObs = document.getElementById('modal-field-obs');
+        const btnExportFor142 = document.getElementById('modal-btn-export-for142');
 
         document.querySelectorAll('.btn-avaliar').forEach(button => {
             button.addEventListener('click', function() {
@@ -519,6 +528,9 @@
                 const obs = this.getAttribute('data-obs');
 
                 form.action = `/procedures/treinamentos/avaliacao-eficacia/${id}/registrar/`;
+                if (btnExportFor142) {
+                    btnExportFor142.href = `/procedures/treinamentos/avaliacao-eficacia/${id}/exportar-for142/`;
+                }
 
                 modalColaborador.textContent = colab;
                 modalLider.textContent = lider;

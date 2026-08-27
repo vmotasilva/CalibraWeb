@@ -646,3 +646,34 @@ def avaliacao_eficacia_export_excel_view(request):
     response['Content-Disposition'] = f'attachment; filename="avaliacao_eficacia_{today.strftime("%Y%m%d")}.xlsx"'
     wb.save(response)
     return response
+
+
+@login_required
+def exportar_avaliacao_eficacia_for142_view(request, treinamento_id):
+    """
+    Exporta o Formulário Individual de Avaliação de Eficácia do Treinamento (FOR.142.r01) em Excel (.xlsx).
+    Calcula a data devida (+30 dias de carência) na tag {{DATA_EFICACIA_CALCULADA}}.
+    """
+    treinamento = get_object_or_404(
+        RegistroTreinamento.objects.select_related('colaborador', 'procedimento'),
+        id=treinamento_id
+    )
+
+    from procedures.services.treinamento_excel_export_service import gerar_avaliacao_eficacia_for142_xlsx
+
+    try:
+        excel_buffer = gerar_avaliacao_eficacia_for142_xlsx(treinamento.id)
+    except Exception as e:
+        messages.error(request, f"Erro ao gerar formulário de eficácia Excel (FOR.142): {str(e)}")
+        return redirect('procedures:avaliacao_eficacia_list')
+
+    colab_slug = (treinamento.colaborador.nome_completo.split()[0] if treinamento.colaborador else 'colaborador')
+    filename = f"FOR.142.r01_Avaliacao_Eficacia_{colab_slug}_ID{treinamento.id}.xlsx"
+    response = HttpResponse(
+        excel_buffer.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response["Access-Control-Expose-Headers"] = "Content-Disposition"
+    return response
+

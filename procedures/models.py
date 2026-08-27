@@ -1339,8 +1339,10 @@ class TemplateDocumentoTreinamento(models.Model):
     """Template/Modelo de documento configurável para o módulo de treinamentos."""
     
     FUNCAO_CHOICES = [
-        ('LISTA_PRESENCA', 'Lista de Presença (Excel/Word/PDF)'),
-        ('AVALIACAO_EFICACIA', 'Avaliação de Eficácia de Treinamento'),
+        ('LISTA_PRESENCA', 'Lista de Presença (FOR.033 - Excel/PDF)'),
+        ('PLANEJAMENTO_MATRIZ', 'Planejamento de Treinamento / Cronograma (FOR.133 - Excel)'),
+        ('AUTO_AVALIACAO', 'Auto-Avaliação de Treinamento Crítico (FOR.141 - Excel)'),
+        ('AVALIACAO_EFICACIA', 'Avaliação de Eficácia de Treinamento (FOR.142 - Excel)'),
         ('CERTIFICADO', 'Certificado de Conclusão'),
         ('INTEGRACAO', 'Checklist de Integração'),
         ('OUTROS', 'Outros Templates e Formulários'),
@@ -1361,7 +1363,7 @@ class TemplateDocumentoTreinamento(models.Model):
     codigo = models.CharField(
         max_length=50,
         verbose_name="Código do Formulário",
-        help_text="Ex: FOR.033.r07, FOR.143, etc."
+        help_text="Ex: FOR.033.r07, FOR.133, FOR.141, FOR.142, etc."
     )
     nome = models.CharField(
         max_length=200,
@@ -1416,4 +1418,53 @@ class TemplateDocumentoTreinamento(models.Model):
         ordering = ['funcao', '-ativo', '-atualizado_em']
 
     def __str__(self):
-        return f"[{self.get_funcao_display()}] {self.codigo} - {self.nome}"
+        return f"[{self.get_funcao_display()}] {self.codigo} - {self.nome}"
+
+
+class PerguntaAvaliacao(models.Model):
+    """
+    Perguntas de autoavaliação para treinamentos críticos (até 5 perguntas).
+    Podem ser associadas a um Procedimento específico ou a uma Matriz de Habilidades.
+    """
+    procedimento = models.ForeignKey(
+        'Procedimento',
+        on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name='perguntas_avaliacao',
+        verbose_name="Procedimento"
+    )
+    matriz = models.ForeignKey(
+        'MatrizHabilidade',
+        on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name='perguntas_avaliacao',
+        verbose_name="Matriz de Habilidade"
+    )
+    ordem = models.PositiveSmallIntegerField(
+        default=1,
+        verbose_name="Ordem / Número da Pergunta",
+        help_text="Número da pergunta (1 a 5)"
+    )
+    enunciado = models.TextField(
+        verbose_name="Pergunta / Critério de Avaliação"
+    )
+    resposta_esperada = models.TextField(
+        null=True, blank=True,
+        verbose_name="Resposta Esperada / Padrão Técnico"
+    )
+    ativo = models.BooleanField(
+        default=True,
+        verbose_name="Ativo?"
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Pergunta de Avaliação (Treinamento Crítico)"
+        verbose_name_plural = "Perguntas de Avaliação (Treinamentos Críticos)"
+        ordering = ['procedimento', 'matriz', 'ordem']
+
+    def __str__(self):
+        ref = self.procedimento.codigo if self.procedimento else (self.matriz.nome if self.matriz else 'Geral')
+        return f"[{ref}] P{self.ordem}: {self.enunciado[:50]}"
+

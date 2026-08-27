@@ -1364,4 +1364,66 @@ def gerar_lista_presenca_view(request, planejamento_id):
     )
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     response["Access-Control-Expose-Headers"] = "Content-Disposition"
-    return response
+    return response
+
+
+@login_required
+def exportar_planejamento_for133_view(request, planejamento_id):
+    """
+    Exporta a Matriz de Planejamento de Treinamento / Cronograma (FOR.133.r01) em Excel (.xlsx).
+    """
+    planejamento = get_object_or_404(
+        PlanejamentoTreinamento.objects.prefetch_related('colaboradores', 'procedimentos'),
+        id=planejamento_id
+    )
+    from procedures.services.treinamento_excel_export_service import gerar_planejamento_matriz_for133_xlsx
+
+    try:
+        excel_buffer = gerar_planejamento_matriz_for133_xlsx(planejamento)
+    except Exception as e:
+        messages.error(request, f"Erro ao gerar cronograma Excel (FOR.133): {str(e)}")
+        return redirect('procedures:detalhe_planejamento', planejamento_id=planejamento.id)
+
+    ano_str = str((planejamento.data_prevista or timezone.now().date()).year)
+    filename = f"FOR.133.r01_Planejamento_Treinamento_{ano_str}_ID{planejamento.id}.xlsx"
+    response = HttpResponse(
+        excel_buffer.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response["Access-Control-Expose-Headers"] = "Content-Disposition"
+    return response
+
+
+@login_required
+def exportar_auto_avaliacao_for141_view(request, planejamento_id):
+    """
+    Exporta a Auto-Avaliação de Treinamento Crítico (FOR.141.r02) em Excel (.xlsx) com as 5 perguntas.
+    """
+    planejamento = get_object_or_404(
+        PlanejamentoTreinamento.objects.prefetch_related('colaboradores', 'procedimentos'),
+        id=planejamento_id
+    )
+    colaborador_id = request.GET.get('colaborador_id')
+    if colaborador_id and colaborador_id.isdigit():
+        colaborador_id = int(colaborador_id)
+    else:
+        colaborador_id = None
+
+    from procedures.services.treinamento_excel_export_service import gerar_auto_avaliacao_for141_xlsx
+
+    try:
+        excel_buffer = gerar_auto_avaliacao_for141_xlsx(planejamento, colaborador_id=colaborador_id)
+    except Exception as e:
+        messages.error(request, f"Erro ao gerar autoavaliação Excel (FOR.141): {str(e)}")
+        return redirect('procedures:detalhe_planejamento', planejamento_id=planejamento.id)
+
+    filename = f"FOR.141.r02_Auto_Avaliacao_Treinamento_{planejamento.id}.xlsx"
+    response = HttpResponse(
+        excel_buffer.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response["Access-Control-Expose-Headers"] = "Content-Disposition"
+    return response
+

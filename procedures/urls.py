@@ -52,6 +52,7 @@ urlpatterns = [
     path('treinamentos/avaliacao-eficacia/<int:treinamento_id>/registrar/', views.avaliacao_eficacia_registrar_view, name='avaliacao_eficacia_registrar'),
     path('treinamentos/avaliacao-eficacia/registrar-massa/', views.avaliacao_eficacia_registrar_massa_view, name='avaliacao_eficacia_registrar_massa'),
     path('treinamentos/avaliacao-eficacia/exportar-excel/', views.avaliacao_eficacia_export_excel_view, name='avaliacao_eficacia_export_excel'),
+    path('treinamentos/avaliacao-eficacia/<int:treinamento_id>/exportar-for142/', views.exportar_avaliacao_eficacia_for142_view, name='exportar_avaliacao_eficacia_for142'),
     path('treinamentos/<int:treinamento_id>/', views.treinamentos_detalhe_view, name='treinamentos_detalhe'),
     path('treinamentos/novo/', views.novo_treinamento_view, name='novo_treinamento'),
     path('treinamentos/<int:treinamento_id>/editar/', views.editar_treinamento_view, name='editar_treinamento'),
@@ -221,6 +222,8 @@ urlpatterns = [
     # Export para Excel
     path('planejamentos/export/lista-excel/', planejamento_views.exportar_lista_planejamentos_excel_view, name='exportar_lista_planejamentos_excel'),
     path('planejamentos/<int:planejamento_id>/export/excel/', planejamento_views.exportar_detalhe_planejamento_excel_view, name='exportar_detalhe_planejamento_excel'),
+    path('planejamentos/<int:planejamento_id>/exportar-for133/', planejamento_views.exportar_planejamento_for133_view, name='exportar_planejamento_for133'),
+    path('planejamentos/<int:planejamento_id>/exportar-for141/', planejamento_views.exportar_auto_avaliacao_for141_view, name='exportar_auto_avaliacao_for141'),
     path('planejamentos/<int:planejamento_id>/gerar-lista-presenca/', planejamento_views.gerar_lista_presenca_view, name='gerar_lista_presenca'),
     
     # Gerenciar itens do planejamento via AJAX
