@@ -129,7 +129,6 @@ def _obter_mapeamento_checkboxes(planejamento: PlanejamentoTreinamento, override
 def _search_and_replace_sheet(sheet, mapping: dict):
     """
     Substitui todas as tags de texto e checkboxes nas células da planilha.
-    Preserva tags de loop como {{PROCEDIMENTOS}} para tratamento específico posterior se necessário.
     """
     for row in sheet.iter_rows():
         for cell in row:
@@ -153,7 +152,7 @@ def _copiar_estilo_celula(origem, destino):
 
 
 def gerar_lista_presenca_xlsx(planejamento: PlanejamentoTreinamento, overrides: dict = None) -> BytesIO:
-    """Carrega o template e preenche cabeçalhos, checkboxes, participantes e procedimentos em todas as abas."""
+    """Carrega o template e preenche cabeçalhos, checkboxes e procedimentos em todas as abas."""
     from procedures.models import TemplateDocumentoTreinamento
 
     wb = None
@@ -189,12 +188,16 @@ def gerar_lista_presenca_xlsx(planejamento: PlanejamentoTreinamento, overrides: 
     if wb is None:
         raise FileNotFoundError("Nenhum template ativo foi encontrado. Faça o upload do arquivo na sessão de 'Templates de Documentos'.")
 
-    # 1. Montar substituição de texto e dados básicos
-    data_hora_str = (
-        planejamento.horario_previsto.strftime("%d/%m/%Y %H:%M")
-        if planejamento.horario_previsto
-        else (planejamento.data_prevista.strftime("%d/%m/%Y") if planejamento.data_prevista else "")
-    )
+    # 1. Montar substituição de texto com formato "DD/MM/YYYY às HH:MM"
+    if planejamento.horario_previsto:
+        data_hora_str = planejamento.horario_previsto.strftime("%d/%m/%Y às %H:%M")
+    elif planejamento.data_prevista and hasattr(planejamento, 'horario_inicio') and planejamento.horario_inicio:
+        data_hora_str = f"{planejamento.data_prevista.strftime('%d/%m/%Y')} às {planejamento.horario_inicio.strftime('%H:%M')}"
+    elif planejamento.data_prevista:
+        data_hora_str = planejamento.data_prevista.strftime("%d/%m/%Y")
+    else:
+        data_hora_str = ""
+
     carga_horaria_str = f"{planejamento.carga_horaria} Minutos" if planejamento.carga_horaria else ""
     instrutor_nome = planejamento.instrutor.nome_completo if planejamento.instrutor else ""
 
@@ -203,92 +206,31 @@ def gerar_lista_presenca_xlsx(planejamento: PlanejamentoTreinamento, overrides: 
         "{{INSTRUTOR}}": instrutor_nome,
         "{{DATA_HORA}}": data_hora_str,
         "{{CARGA_HORARIA}}": carga_horaria_str,
+        # Limpar quaisquer tags de participantes para deixar a folha limpa para preenchimento/assinatura manual
+        "{{NOME_PARTICIPANTE}}": "",
+        "{{NOME_COLABORADOR}}": "",
+        "{{CPF_PARTICIPANTE}}": "",
+        "{{MATRICULA_PARTICIPANTE}}": "",
+        "{{CARGO_PARTICIPANTE}}": "",
+        "{{SETOR_PARTICIPANTE}}": "",
+        "{{DEPARTAMENTO_PARTICIPANTE}}": "",
+        "{{CPF}}": "",
+        "{{CARGO}}": "",
+        "{{DEPARTAMENTO}}": "",
     }
 
     # 2. Incorporar os Checkboxes calculados com base nas perguntas/respostas
     checkbox_mapping = _obter_mapeamento_checkboxes(planejamento, overrides=overrides)
     substituicoes.update(checkbox_mapping)
 
-    colaboradores = list(planejamento.colaboradores.select_related("setor").all())
     procedimentos = list(planejamento.procedimentos.all())
 
     # 3. Processar TODAS as planilhas do arquivo Excel
     for ws in wb.worksheets:
-        # A. Substituição de tags gerais de cabeçalhos e checkboxes
+        # A. Substituição de tags gerais de cabeçalhos, datas e checkboxes
         _search_and_replace_sheet(ws, substituicoes)
 
-        # B. Preenchimento de Participantes
-        anchor_row = None
-        col_nome = None
-        col_cpf_mat = None
-        col_cargo = None
-        col_setor = None
-
-        for row in ws.iter_rows():
-            for cell in row:
-                if cell.value and isinstance(cell.value, str):
-                    val_upper = cell.value.upper()
-                    if "{{NOME_PARTICIPANTE}}" in val_upper or "{{NOME_COLABORADOR}}" in val_upper:
-                        anchor_row = cell.row
-                        col_nome = cell.column
-                    if "{{MATRICULA_PARTICIPANTE}}" in val_upper or "{{CPF_PARTICIPANTE}}" in val_upper or "{{CPF}}" in val_upper:
-                        col_cpf_mat = cell.column
-                    if "{{CARGO_PARTICIPANTE}}" in val_upper or "{{CARGO}}" in val_upper:
-                        col_cargo = cell.column
-                    if "{{SETOR_PARTICIPANTE}}" in val_upper or "{{DEPARTAMENTO_PARTICIPANTE}}" in val_upper or "{{DEPARTAMENTO}}" in val_upper:
-                        col_setor = cell.column
-
-        # Se não encontrou tags na linha da tabela, buscar por cabeçalhos típicos
-        if not anchor_row:
-            for row in ws.iter_rows(max_row=30):
-                for cell in row:
-                    if cell.value and isinstance(cell.value, str):
-                        val = cell.value.strip().lower()
-                        if "nome do colaborador" in val or "nome colaborador" in val:
-                            anchor_row = cell.row + 1
-                            col_nome = cell.column
-                        elif "cpf" in val or "matrícula" in val or "matricula" in val:
-                            col_cpf_mat = cell.column
-                        elif "cargo" in val or "função" in val or "funcao" in val:
-                            col_cargo = cell.column
-                        elif "departamento" in val or "setor" in val or "área" in val:
-                            col_setor = cell.column
-
-        if anchor_row and col_nome:
-            if colaboradores:
-                c1 = colaboradores[0]
-                ws.cell(row=anchor_row, column=col_nome, value=c1.nome_completo or "")
-                if col_cpf_mat:
-                    ws.cell(row=anchor_row, column=col_cpf_mat, value=c1.cpf or c1.matricula or "")
-                if col_cargo:
-                    ws.cell(row=anchor_row, column=col_cargo, value=c1.cargo or c1.posto_trabalho or "")
-                if col_setor:
-                    ws.cell(row=anchor_row, column=col_setor, value=c1.setor.nome if c1.setor else "")
-
-                for idx, c in enumerate(colaboradores[1:], start=1):
-                    t_row = anchor_row + idx
-                    cell_n = ws.cell(row=t_row, column=col_nome, value=c.nome_completo or "")
-                    _copiar_estilo_celula(ws.cell(row=anchor_row, column=col_nome), cell_n)
-
-                    if col_cpf_mat:
-                        cell_m = ws.cell(row=t_row, column=col_cpf_mat, value=c.cpf or c.matricula or "")
-                        _copiar_estilo_celula(ws.cell(row=anchor_row, column=col_cpf_mat), cell_m)
-                    if col_cargo:
-                        cell_cg = ws.cell(row=t_row, column=col_cargo, value=c.cargo or c.posto_trabalho or "")
-                        _copiar_estilo_celula(ws.cell(row=anchor_row, column=col_cargo), cell_cg)
-                    if col_setor:
-                        cell_s = ws.cell(row=t_row, column=col_setor, value=c.setor.nome if c.setor else "")
-                        _copiar_estilo_celula(ws.cell(row=anchor_row, column=col_setor), cell_s)
-            else:
-                ws.cell(row=anchor_row, column=col_nome, value="")
-                if col_cpf_mat:
-                    ws.cell(row=anchor_row, column=col_cpf_mat, value="")
-                if col_cargo:
-                    ws.cell(row=anchor_row, column=col_cargo, value="")
-                if col_setor:
-                    ws.cell(row=anchor_row, column=col_setor, value="")
-
-        # C. Preenchimento de Procedimentos (Conteúdo do Treinamento)
+        # B. Preenchimento de Procedimentos (Conteúdo do Treinamento)
         proc_anchor_row = None
         proc_col = None
 
