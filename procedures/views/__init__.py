@@ -52,6 +52,7 @@ from . import (
     lista_presenca_views,
     validacao_views,
     template_mapeamento_views,
+    avaliacao_eficacia_views,
 )
 
 __all__ = [
@@ -100,6 +101,7 @@ __all__ = [
     'lista_presenca_views',
     'validacao_views',
     'template_mapeamento_views',
+    'avaliacao_eficacia_views',
 ]
 
 from .avaliacao_eficacia_views import (
@@ -107,6 +109,12 @@ from .avaliacao_eficacia_views import (
     avaliacao_eficacia_registrar_view,
     avaliacao_eficacia_registrar_massa_view,
     avaliacao_eficacia_export_excel_view,
+    exportar_avaliacao_eficacia_for142_view,
+)
+
+from .planejamento_views import (
+    exportar_planejamento_for133_view,
+    exportar_auto_avaliacao_for141_view,
 )
 
 __all__ += [
@@ -114,4 +122,8 @@ __all__ += [
     'avaliacao_eficacia_registrar_view',
     'avaliacao_eficacia_registrar_massa_view',
     'avaliacao_eficacia_export_excel_view',
+    'exportar_avaliacao_eficacia_for142_view',
+    'exportar_planejamento_for133_view',
+    'exportar_auto_avaliacao_for141_view',
 ]
+

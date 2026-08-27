@@ -6,7 +6,19 @@ Consolida training + procurements
 
 from django.urls import path
 from . import views
-from .views import habilidades_views, perfis_views, avaliacoes_views, planejamento_views, gap_analysis_views, lista_presenca_views, validacao_views, template_mapeamento_views, acompanhamento_views, templates_config_views
+from .views import (
+    habilidades_views,
+    perfis_views,
+    avaliacoes_views,
+    planejamento_views,
+    gap_analysis_views,
+    lista_presenca_views,
+    validacao_views,
+    template_mapeamento_views,
+    acompanhamento_views,
+    templates_config_views,
+    avaliacao_eficacia_views,
+)
 from .views.planejamento_api_matriz import api_disciplinas_por_matriz_view, api_procedimentos_por_disciplina_view, api_colaboradores_por_matriz_view, api_procedimentos_buscar_view, api_colaboradores_buscar_view
 from training.views import views as training_views
 
