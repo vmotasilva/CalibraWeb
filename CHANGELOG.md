@@ -13,6 +13,18 @@ Alterações que ainda não foram lançadas em uma versão oficial.
 
 ---
 
+## [1.1.0] - 2026-08-27
+
+### ✨ Adicionado
+- Sistema automático de sincronização do changelog no processo de build
+- Preenchimento de tabela de Principais Itens com NCs/OMs na aba Resultados do checklist
+
+### 🐛 Corrigido
+- Correção de duplicação triplicada de perguntas na avaliação de auditoria
+- Correção na detecção completa de NCs no checklist e preservação de grafia do auditor
+
+---
+
 ## [1.0.0] - 2026-08-19
 
 ### ✨ Adicionado
