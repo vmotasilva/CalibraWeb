@@ -11,23 +11,29 @@
     <style>
         @page {
             size: A4 portrait;
-            margin: 8mm 10mm 8mm 10mm;
+            margin: 6mm 8mm 6mm 8mm;
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            background-color: #f8fafc;
-            color: #0f172a;
+            font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
+            background-color: #f1f5f9;
+            color: #000000;
             margin: 0;
             padding: 0;
-            font-size: 11px;
+            font-size: 10px;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }
 
         .no-print-bar {
             background-color: #1e293b;
             color: #ffffff;
-            padding: 10px 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+            padding: 8px 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
             position: sticky;
             top: 0;
             z-index: 1000;
@@ -36,10 +42,11 @@
         .page-sheet {
             background: #ffffff;
             width: 210mm;
+            max-width: 210mm;
             min-height: 297mm;
-            margin: 15px auto;
-            padding: 10mm 12mm;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            margin: 10px auto;
+            padding: 8mm 10mm;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             box-sizing: border-box;
         }
 
@@ -50,9 +57,11 @@
         }
 
         .table-doc th, .table-doc td {
-            border: 1px solid #334155;
-            padding: 4px 6px;
+            border: 1px solid #000000;
+            padding: 2.5px 5px;
             vertical-align: middle;
+            font-size: 10px;
+            line-height: 1.25;
         }
 
         .bg-head {
@@ -63,41 +72,51 @@
         .table-part {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 8px;
+            margin-top: 5px;
         }
 
         .table-part th {
-            border: 1px solid #334155;
+            border: 1px solid #000000;
             background-color: #e2e8f0 !important;
             text-align: center;
             font-weight: bold;
-            padding: 5px 4px;
-            font-size: 11px;
+            padding: 3px 4px;
+            font-size: 9.5px;
+            text-transform: uppercase;
         }
 
         .table-part td {
-            border: 1px solid #334155;
-            height: 28px;
-            padding: 2px 4px;
+            border: 1px solid #000000;
+            height: 19px;
+            padding: 1px 4px;
+            font-size: 9.5px;
         }
 
         .box-procs {
-            border: 1px solid #334155;
-            margin-top: 10px;
+            border: 1px solid #000000;
+            margin-top: 5px;
         }
 
         .box-procs-header {
-            background-color: #e2e8f0;
+            background-color: #e2e8f0 !important;
             font-weight: bold;
-            padding: 4px 8px;
-            border-bottom: 1px solid #334155;
-            font-size: 11px;
+            padding: 2.5px 6px;
+            border-bottom: 1px solid #000000;
+            font-size: 9.5px;
+            text-transform: uppercase;
         }
 
         .box-procs-body {
-            padding: 6px 10px;
-            font-size: 11px;
-            line-height: 1.5;
+            padding: 4px 8px;
+            font-size: 9.5px;
+            line-height: 1.3;
+            min-height: 42px;
+        }
+
+        .chk-item {
+            display: inline-flex;
+            align-items: center;
+            white-space: nowrap;
         }
 
         @media print {
@@ -105,14 +124,19 @@
                 display: none !important;
             }
             body {
-                background: transparent;
+                background: #ffffff !important;
+                margin: 0 !important;
+                padding: 0 !important;
             }
             .page-sheet {
                 width: 100% !important;
-                min-height: auto !important;
+                max-width: 100% !important;
+                min-height: 100% !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 box-shadow: none !important;
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
             }
         }
     </style>
@@ -143,7 +167,7 @@
         <!-- Cabeçalho Oficial FOR.033 -->
         <table class="table-doc">
             <tr>
-                <td colspan="2" class="text-center bg-head py-2" style="font-size: 14px; font-weight: bold;">
+                <td colspan="2" class="text-center bg-head py-1" style="font-size: 12px; font-weight: bold; text-transform: uppercase;">
                     Lista de Presença de Treinamento
                 </td>
             </tr>
@@ -154,32 +178,32 @@
             <tr>
                 <td class="bg-head">Categoria do Treinamento:</td>
                 <td>
-                    {{ chk_map.CHK_TREIN }} Treinamento &nbsp;&nbsp;&nbsp;&nbsp;
-                    {{ chk_map.CHK_REUN }} Reunião &nbsp;&nbsp;&nbsp;&nbsp;
-                    {{ chk_map.CHK_RECIC }} Reciclagem
+                    <span class="chk-item me-3">{{ chk_map.CHK_TREIN }} Treinamento</span>
+                    <span class="chk-item me-3">{{ chk_map.CHK_REUN }} Reunião</span>
+                    <span class="chk-item">{{ chk_map.CHK_RECIC }} Reciclagem</span>
                     <span class="float-end">
                         <strong>Metodologia:</strong> &nbsp;&nbsp;
-                        {{ chk_map.CHK_TRAD }} Tradicional &nbsp;&nbsp;&nbsp;&nbsp;
-                        {{ chk_map.CHK_LOFT }} LOFT
+                        <span class="chk-item me-2">{{ chk_map.CHK_TRAD }} Tradicional</span>
+                        <span class="chk-item">{{ chk_map.CHK_LOFT }} LOFT</span>
                     </span>
                 </td>
             </tr>
             <tr>
                 <td class="bg-head">Área de Conhecimento:</td>
                 <td>
-                    {{ chk_map.CHK_ADM }} Administrativo &nbsp;&nbsp;
-                    {{ chk_map.CHK_QUALIDADE }} Qualidade &nbsp;&nbsp;
-                    {{ chk_map.CHK_EHS }} EHS &nbsp;&nbsp;
-                    {{ chk_map.CHK_ESTOQUE }} Estoque &nbsp;&nbsp;
-                    {{ chk_map.CHK_PRODUCAO }} Produção &nbsp;&nbsp;
-                    {{ chk_map.CHK_OUTROS }} {% if outros_texto %}Outros: {{ outros_texto }}{% else %}Outros: _____________{% endif %}
+                    <span class="chk-item me-2">{{ chk_map.CHK_ADM }} Administrativo</span>
+                    <span class="chk-item me-2">{{ chk_map.CHK_QUALIDADE }} Qualidade</span>
+                    <span class="chk-item me-2">{{ chk_map.CHK_EHS }} EHS</span>
+                    <span class="chk-item me-2">{{ chk_map.CHK_ESTOQUE }} Estoque</span>
+                    <span class="chk-item me-2">{{ chk_map.CHK_PRODUCAO }} Produção</span>
+                    <span class="chk-item">{{ chk_map.CHK_OUTROS }} {% if outros_texto %}Outros: {{ outros_texto }}{% else %}Outros: _____________{% endif %}</span>
                 </td>
             </tr>
             <tr>
                 <td class="bg-head">Necessita de Avaliação:</td>
                 <td>
-                    {{ chk_map.CHK_AVAL_SIM }} Sim &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                    {{ chk_map.CHK_AVAL_NAO }} Não
+                    <span class="chk-item me-4">{{ chk_map.CHK_AVAL_SIM }} Sim</span>
+                    <span class="chk-item">{{ chk_map.CHK_AVAL_NAO }} Não</span>
                 </td>
             </tr>
             <tr>
