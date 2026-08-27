@@ -407,15 +407,30 @@
             {% endif %}
         </div>
         
-        <form method="get" class="d-flex align-items-center ms-md-2 ms-0 mt-2 mt-md-0" style="max-width: 350px; flex-grow: 1;">
-            <input type="hidden" name="matriz" value="{{ matriz_id|default:'' }}">
+        <form method="get" class="d-flex flex-wrap flex-md-nowrap align-items-center gap-2 ms-md-2 ms-0 my-2 my-md-0" style="flex-grow: 1; max-width: 700px;">
             <input type="hidden" name="disciplina" value="{{ disciplina_filtro|default:'' }}">
             <input type="hidden" name="setor" value="{{ setor|default:'' }}">
             <input type="hidden" name="turno" value="{{ turno|default:'' }}">
             <input type="hidden" name="nivel_filtro" value="{{ nivel_filtro|default:'' }}">
-            <div class="input-group">
+            
+            <!-- Filtro Direto da Matriz -->
+            <div style="min-width: 230px; flex: 1 1 230px;">
+                <select name="matriz" class="form-select shadow-sm" onchange="this.form.submit()" title="Selecione a Matriz de Habilidades">
+                    <option value="">Selecione uma matriz...</option>
+                    {% for m in matrizes %}
+                    <option value="{{ m.id }}" {% if matriz_id == m.id|stringformat:"s" %}selected{% endif %}>
+                        {{ m.codigo }} - {{ m.nome }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Busca de Colaborador -->
+            <div class="input-group shadow-sm" style="min-width: 200px; flex: 1 1 220px;">
                 <input type="text" name="colaborador" class="form-control" placeholder="Buscar colaborador..." value="{{ termo_colab }}">
-                <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i> Buscar</button>
+                <button class="btn btn-primary d-flex align-items-center gap-1" type="submit" title="Buscar">
+                    <i class="bi bi-search"></i> <span>Buscar</span>
+                </button>
             </div>
         </form>
 
