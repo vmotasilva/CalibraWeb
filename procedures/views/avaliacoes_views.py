@@ -442,9 +442,23 @@ def avaliacoes_colaborador_view(request, colaborador_id):
         if matriz_nome not in avaliacoes_por_matriz:
             avaliacoes_por_matriz[matriz_nome] = {
                 'matriz': av.matriz,
-                'avaliacoes': []
+                'avaliacoes': [],
+                'contagem_nivel_0': 0,
+                'contagem_nivel_1': 0,
+                'contagem_nivel_2': 0,
+                'contagem_nivel_3': 0,
             }
         avaliacoes_por_matriz[matriz_nome]['avaliacoes'].append(av)
+        
+        # Contagem
+        if av.nivel == 0:
+            avaliacoes_por_matriz[matriz_nome]['contagem_nivel_0'] += 1
+        elif av.nivel == 1:
+            avaliacoes_por_matriz[matriz_nome]['contagem_nivel_1'] += 1
+        elif av.nivel == 2:
+            avaliacoes_por_matriz[matriz_nome]['contagem_nivel_2'] += 1
+        elif av.nivel == 3:
+            avaliacoes_por_matriz[matriz_nome]['contagem_nivel_3'] += 1
     
     context = {
         'colaborador': colaborador,

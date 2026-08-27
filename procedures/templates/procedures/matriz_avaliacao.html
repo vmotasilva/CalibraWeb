@@ -393,12 +393,19 @@
 <div class="container-fluid py-4">
     <!-- Botões de Acesso Rápido Superior (Filtros, Legendas, Associar) -->
     <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
-        <button type="button" class="btn btn-outline-primary d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#modalFiltrosMatriz">
-            <i class="bi bi-funnel"></i> <span>Filtros</span>
-            {% if matriz_id or setor or turno or nivel_filtro or disciplina_filtro %}
-            <span class="badge bg-primary rounded-pill ms-1">Ativos</span>
+        <div class="btn-group">
+            <button type="button" class="btn btn-outline-primary d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#modalFiltrosMatriz">
+                <i class="bi bi-funnel"></i> <span>Filtros</span>
+                {% if matriz_id or setor or turno or nivel_filtro or disciplina_filtro %}
+                <span class="badge bg-primary rounded-pill ms-1">Ativos</span>
+                {% endif %}
+            </button>
+            {% if matriz_id or setor or turno or nivel_filtro or disciplina_filtro or termo_colab %}
+            <a href="{% url 'procedures:matriz_avaliacoes' %}" class="btn btn-outline-danger d-flex align-items-center px-2" title="Limpar Filtros">
+                <i class="bi bi-x-lg"></i>
+            </a>
             {% endif %}
-        </button>
+        </div>
         
         <form method="get" class="d-flex align-items-center ms-md-2 ms-0 mt-2 mt-md-0" style="max-width: 350px; flex-grow: 1;">
             <input type="hidden" name="matriz" value="{{ matriz_id|default:'' }}">
@@ -416,11 +423,11 @@
         <button type="button" class="btn btn-outline-secondary d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#modalLegendaMatriz">
             <i class="bi bi-info-circle"></i> <span>Legenda</span>
         </button>
+        {% endif %}
         
         <button type="button" class="btn btn-success d-flex align-items-center gap-1 ms-auto" data-bs-toggle="modal" data-bs-target="#modalAssociarColab">
             <i class="bi bi-person-plus"></i> <span class="d-none d-sm-inline">Associar Novo</span> Colaborador
         </button>
-        {% endif %}
     </div>
 
     <!-- Modal de Filtros da Matriz -->
@@ -493,8 +500,8 @@
                         </div>
                     </div>
                     <div class="modal-footer d-flex justify-content-between">
-                        <a href="{% if matriz_id %}?matriz={{ matriz_id }}{% else %}{% url 'procedures:matriz_avaliacoes' %}{% endif %}" class="btn btn-outline-secondary">
-                            <i class="bi bi-x-circle me-1"></i> Limpar Filtros
+                        <a href="{% url 'procedures:matriz_avaliacoes' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle me-1"></i> Limpar Tudo
                         </a>
                         <button type="submit" class="btn btn-primary px-4">
                             <i class="bi bi-search me-1"></i> Aplicar Filtros
@@ -809,7 +816,15 @@
             <div class="modal-body">
                 <form id="formAssociarColab">
                     <div class="mb-3">
-                        <label class="form-label">Pesquise um colaborador:</label>
+                        <label class="form-label fw-semibold">Matriz de Habilidades *</label>
+                        <select id="modalAssociarMatriz" class="form-select mb-3" required>
+                            <option value="">Selecione a matriz...</option>
+                            {% for m in matrizes %}
+                            <option value="{{ m.id }}" {% if matriz_id == m.id|stringformat:"s" %}selected{% endif %}>{{ m.codigo }} - {{ m.nome }}</option>
+                            {% endfor %}
+                        </select>
+
+                        <label class="form-label fw-semibold">Pesquise um colaborador:</label>
                         <input type="text" id="inputPesquisaColab" class="form-control mb-2" placeholder="Digite o nome ou matrícula...">
                         
                         <!-- Filtros Dinâmicos no Modal -->
@@ -1511,7 +1526,8 @@
     }
 
     // ===== Carregar Colaboradores Disponíveis =====
-    document.getElementById('modalAssociarColab').addEventListener('show.bs.modal', function() {
+    function carregarColaboradoresDisponiveis() {
+        const matrizSelectId = document.getElementById('modalAssociarMatriz').value;
         const select = document.getElementById('selectColaborador');
         const alerta = document.getElementById('alerta-nenhum');
         const inputPesquisa = document.getElementById('inputPesquisaColab');
@@ -1519,6 +1535,13 @@
         const selectLider = document.getElementById('modalFilterLider');
         const selectTurno = document.getElementById('modalFilterTurno');
         
+        if (!matrizSelectId) {
+            select.innerHTML = '<option value="">Selecione uma matriz primeiro...</option>';
+            select.disabled = true;
+            inputPesquisa.disabled = true;
+            return;
+        }
+
         select.innerHTML = '<option value="">Carregando...</option>';
         alerta.style.display = 'none';
         inputPesquisa.value = '';
@@ -1526,7 +1549,7 @@
         selectLider.innerHTML = '<option value="">Carregando...</option>';
         selectTurno.innerHTML = '<option value="">Carregando...</option>';
 
-        fetch(`/procedures/matrizes/${matrizId}/colaboradores-disponiveis/`)
+        fetch(`/procedures/matrizes/${matrizSelectId}/colaboradores-disponiveis/`)
             .then(response => response.json())
             .then(data => {
                 if (data.colaboradores.length === 0) {
@@ -1584,12 +1607,22 @@
                     select.disabled = false;
                     inputPesquisa.disabled = false;
                     
+                    // Remover event listeners antigos clonando o input
+                    const novoInputPesquisa = inputPesquisa.cloneNode(true);
+                    inputPesquisa.parentNode.replaceChild(novoInputPesquisa, inputPesquisa);
+                    const novoSelectSetor = selectSetor.cloneNode(true);
+                    selectSetor.parentNode.replaceChild(novoSelectSetor, selectSetor);
+                    const novoSelectLider = selectLider.cloneNode(true);
+                    selectLider.parentNode.replaceChild(novoSelectLider, selectLider);
+                    const novoSelectTurno = selectTurno.cloneNode(true);
+                    selectTurno.parentNode.replaceChild(novoSelectTurno, selectTurno);
+                    
                     // Filtrar colaboradores dinamicamente
                     function filtrarColaboradoresModal() {
-                        const termo = inputPesquisa.value.toLowerCase();
-                        const setorId = selectSetor.value;
-                        const liderId = selectLider.value;
-                        const turnoVal = selectTurno.value;
+                        const termo = novoInputPesquisa.value.toLowerCase();
+                        const setorId = novoSelectSetor.value;
+                        const liderId = novoSelectLider.value;
+                        const turnoVal = novoSelectTurno.value;
                         
                         const filtrados = window.colaboradoresDisponiveis.filter(c => {
                             const matchesTermo = !termo || 
@@ -1606,16 +1639,24 @@
                     }
                     
                     // Adicionar ouvintes para filtro dinâmico
-                    inputPesquisa.addEventListener('input', filtrarColaboradoresModal);
-                    selectSetor.addEventListener('change', filtrarColaboradoresModal);
-                    selectLider.addEventListener('change', filtrarColaboradoresModal);
-                    selectTurno.addEventListener('change', filtrarColaboradoresModal);
+                    novoInputPesquisa.addEventListener('input', filtrarColaboradoresModal);
+                    novoSelectSetor.addEventListener('change', filtrarColaboradoresModal);
+                    novoSelectLider.addEventListener('change', filtrarColaboradoresModal);
+                    novoSelectTurno.addEventListener('change', filtrarColaboradoresModal);
                 }
             })
             .catch(error => {
                 console.error('Erro:', error);
                 select.innerHTML = '<option value="">Erro ao carregar colaboradores</option>';
             });
+    }
+
+    document.getElementById('modalAssociarColab').addEventListener('show.bs.modal', function() {
+        carregarColaboradoresDisponiveis();
+    });
+    
+    document.getElementById('modalAssociarMatriz').addEventListener('change', function() {
+        carregarColaboradoresDisponiveis();
     });
 
     function atualizarSelectColaboradores(colaboradores) {
@@ -1633,13 +1674,19 @@
     // ===== Associar Novo Colaborador =====
     document.getElementById('btnAssociarColab').addEventListener('click', function() {
         const colaboradorId = document.getElementById('selectColaborador').value;
+        const matrizSelectId = document.getElementById('modalAssociarMatriz').value;
         
+        if (!matrizSelectId) {
+            alert('Selecione uma matriz!');
+            return;
+        }
+
         if (!colaboradorId) {
             alert('Selecione um colaborador!');
             return;
         }
 
-        fetch(`/procedures/matrizes/${matrizId}/associar-colaborador/`, {
+        fetch(`/procedures/matrizes/${matrizSelectId}/associar-colaborador/`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
