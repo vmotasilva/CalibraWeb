@@ -63,11 +63,16 @@ def _criar_cabecalho_sgq(num_pagina: int, total_paginas: int = 2, w_total: float
         textColor=colors.HexColor('#000000')
     )
 
-    # Coluna 1: Logo
-    logo_path = os.path.join(settings.BASE_DIR, "shared", "static", "shared", "logo_calibraweb.png")
-    if os.path.exists(logo_path):
+    # Coluna 1: Logo Oficial do Template SGQ
+    caminhos_logo = [
+        os.path.join(settings.BASE_DIR, "shared", "static", "shared", "logo_qms_template.png"),
+        os.path.join(settings.BASE_DIR, "static", "img", "logo_qms_template.png"),
+        os.path.join(settings.BASE_DIR, "shared", "static", "shared", "logo_calibraweb.png"),
+    ]
+    logo_path = next((p for p in caminhos_logo if os.path.exists(p)), None)
+    if logo_path:
         try:
-            col_logo = Image(logo_path, width=3.2 * cm, height=1.1 * cm)
+            col_logo = Image(logo_path, width=3.4 * cm, height=1.1 * cm)
         except Exception:
             col_logo = Paragraph("<strong>CALIBRA</strong>", style_logo_txt)
     else:
@@ -371,7 +376,7 @@ def gerar_lista_presenca_pdf(planejamento: PlanejamentoTreinamento, overrides: d
     if procedimentos:
         for p in procedimentos:
             tag_critico = " <font color='#b91c1c'><strong>[CRÍTICO]</strong></font>" if getattr(p, 'criticidade', '') == 'CRITICO' else ""
-            desc = p.descricao or p.objetivo or "Sem descrição cadastrada."
+            desc = p.descricao or "Sem descrição cadastrada."
             texto = f"• <strong>{p.codigo or ''} - {p.nome or ''}</strong>{tag_critico}<br/>&nbsp;&nbsp;&nbsp;<em>{desc}</em>"
             conteudo_data.append([Paragraph(texto, style_cell)])
     else:
