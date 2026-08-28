@@ -153,6 +153,7 @@ class Procedimento(models.Model):
             ('CRITICO', 'Crítico'),
             ('NAO_CRITICO', 'Não Crítico'),
         ],
+        default='NAO_CRITICO',
         null=True, blank=True,
         verbose_name="Criticidade",
         help_text="Nível de criticidade do procedimento"

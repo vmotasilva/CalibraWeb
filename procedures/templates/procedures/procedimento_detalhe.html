@@ -68,14 +68,10 @@
                     <tr>
                         <th>Criticidade:</th>
                         <td>
-                            {% if proc.criticidade %}
-                                {% if proc.criticidade == 'CRITICO' %}
-                                    <span class="badge bg-danger">Crítico</span>
-                                {% elif proc.criticidade == 'NAO_CRITICO' %}
-                                    <span class="badge bg-success">Não Crítico</span>
-                                {% endif %}
+                            {% if proc.criticidade == 'CRITICO' %}
+                                <span class="badge bg-danger shadow-sm">Crítico</span>
                             {% else %}
-                                <span class="text-muted">-</span>
+                                <span class="badge bg-success bg-opacity-10 text-success border border-success">Não Crítico</span>
                             {% endif %}
                         </td>
                     </tr>
