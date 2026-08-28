@@ -315,9 +315,9 @@
                         <i class="fas fa-list-check"></i>
                         <strong>Lista de Presença!</strong> Gere uma lista de presença para coletar assinaturas dos participantes.
                     </div>
-                    <a href="{% url 'procedures:gerar_lista_presenca_desde_planejamento' planejamento.id %}" class="btn btn-success btn-sm">
-                        <i class="fas fa-file-pdf"></i> Gerar Lista de Presença
-                    </a>
+                    <button type="button" class="btn btn-success btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#modalGerarListaPresenca">
+                        <i class="bi bi-file-earmark-excel me-1"></i> Baixar Lista de Presença (.xlsx)
+                    </button>
                 </div>
             </div>
             {% endif %}
@@ -1238,19 +1238,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     
                     <div class="d-flex flex-wrap gap-2">
-                        <!-- Opção 1: Planilha Excel Lista FOR.033 -->
-                        <button type="submit" name="formato" value="xlsx" class="btn btn-outline-success shadow-sm" title="Baixar planilha Excel da Lista de Presença (.xlsx)">
-                            <i class="bi bi-file-earmark-excel me-1"></i> Baixar Excel (.xlsx)
-                        </button>
-
-                        <!-- Opção 2: Documento PDF Lista FOR.033 -->
-                        <button type="submit" name="formato" value="pdf" class="btn btn-outline-danger shadow-sm" title="Baixar documento PDF pronto (.pdf)">
-                            <i class="bi bi-file-earmark-pdf me-1"></i> Baixar PDF (.pdf)
-                        </button>
-
-                        <!-- Opção 3: Imprimir Diretamente -->
-                        <button type="submit" name="formato" value="print" formtarget="_blank" class="btn btn-primary px-3 shadow-sm" title="Abrir direto na tela de impressão">
-                            <i class="bi bi-printer-fill me-1"></i> Imprimir Diretamente
+                        <!-- Opção Única: Baixar Planilha Excel Oficial FOR.033 -->
+                        <button type="submit" name="formato" value="xlsx" class="btn btn-success px-4 shadow-sm" title="Baixar planilha Excel da Lista de Presença (.xlsx)">
+                            <i class="bi bi-file-earmark-excel me-1"></i> Baixar Lista de Presença em Excel (.xlsx)
                         </button>
                     </div>
                 </div>
@@ -1334,19 +1324,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
 
                 <div class="d-flex flex-wrap gap-2">
-                    <!-- Opção 1: Planilha Excel -->
-                    <button type="button" class="btn btn-outline-success shadow-sm" id="btn-emitir-excel-for141" title="Baixar formulário preenchido em planilha Excel (.xlsx)">
-                        <i class="bi bi-file-earmark-excel me-1"></i> Baixar Excel (.xlsx)
-                    </button>
-
-                    <!-- Opção 2: Documento PDF -->
-                    <button type="button" class="btn btn-danger shadow-sm" id="btn-emitir-pdf-for141" title="Baixar formulário oficial em PDF pronto (.pdf)">
-                        <i class="bi bi-file-earmark-pdf me-1"></i> Baixar PDF Oficial (.pdf)
-                    </button>
-
-                    <!-- Opção 3: Imprimir Diretamente -->
-                    <button type="button" class="btn btn-primary px-3 shadow-sm" id="btn-emitir-print-for141" title="Abrir página diagramada em A4 para visualização e impressão">
-                        <i class="bi bi-printer-fill me-1"></i> Visualizar / Imprimir (A4)
+                    <!-- Opção Única: Baixar Planilha Excel Oficial FOR.141 -->
+                    <button type="button" class="btn btn-success px-4 shadow-sm" id="btn-emitir-excel-for141" title="Baixar formulário de Auto-Avaliação preenchido em planilha Excel (.xlsx)">
+                        <i class="bi bi-file-earmark-excel me-1"></i> Baixar Auto-Avaliação em Excel (.xlsx)
                     </button>
                 </div>
             </div>
