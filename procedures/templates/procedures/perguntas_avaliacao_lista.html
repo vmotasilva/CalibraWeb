@@ -300,14 +300,17 @@
 
 <!-- Modal para Configuração das 5 Perguntas -->
 <div class="modal fade" id="modalConfigPerguntas" tabindex="-1" aria-labelledby="modalConfigPerguntasLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content shadow-lg border-0">
-            <div class="modal-header bg-primary text-white">
-                <div>
-                    <h5 class="modal-title mb-0" id="modalConfigPerguntasLabel">
-                        <i class="bi bi-patch-question-fill me-2"></i> Configurar 5 Perguntas de Auto-Avaliação
-                    </h5>
-                    <small class="text-white-50" id="modal-proc-subtitle">Procedimento</small>
+            <div class="modal-header bg-primary text-white py-2 px-3">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-patch-question-fill fs-5"></i>
+                    <div>
+                        <h6 class="modal-title fw-bold mb-0" id="modalConfigPerguntasLabel">
+                            Configurar 5 Perguntas de Auto-Avaliação
+                        </h6>
+                        <small class="text-white-50" id="modal-proc-subtitle">Procedimento</small>
+                    </div>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
@@ -315,49 +318,38 @@
                 {% csrf_token %}
                 <input type="hidden" id="modal-proc-id" name="procedimento_id">
                 
-                <div class="modal-body bg-light py-3">
-                    <div class="d-flex justify-content-between align-items-center mb-3 bg-white p-3 rounded border">
+                <div class="modal-body bg-light py-2 px-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2 bg-white px-3 py-2 rounded border">
                         <div>
-                            <div class="fw-bold text-dark" id="modal-proc-info-title">-</div>
+                            <div class="fw-bold text-dark fs-6" id="modal-proc-info-title">-</div>
                             <small class="text-muted" id="modal-proc-info-meta">-</small>
                         </div>
                         <div>
-                            <button type="button" class="btn btn-outline-primary btn-sm shadow-sm" id="btn-preencher-sugestao-sgq">
-                                <i class="bi bi-magic me-1"></i> Preencher Sugestão Padrão SGQ
+                            <button type="button" class="btn btn-outline-primary btn-sm shadow-sm py-1 px-2" id="btn-preencher-sugestao-sgq" title="Preencher automaticamente com as sugestões padrão da Qualidade">
+                                <i class="bi bi-magic me-1"></i> Preencher Sugestão SGQ
                             </button>
                         </div>
                     </div>
 
-                    <!-- 5 Blocos de Perguntas (Ordem 1 a 5) -->
-                    {% for i in "12345" %}
-                    <div class="question-box shadow-sm">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="question-num-badge">{{ i }}</span>
-                                <span class="fw-bold text-dark">Pergunta {{ i }}</span>
-                                <span class="tag-bubble ms-1">&#123;&#123;PER_{{ i }}&#125;&#125;</span>
-                            </div>
-                            <small class="text-muted">Vértice {{ i }} do Gráfico Radar</small>
+                    <!-- 5 Linhas de Perguntas Compactas (Ordem 1 a 5) -->
+                    <div class="d-flex flex-column gap-2">
+                        {% for i in "12345" %}
+                        <div class="d-flex align-items-center gap-2 bg-white p-2 rounded border shadow-xs">
+                            <span class="badge bg-primary rounded-circle flex-shrink-0" style="width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: bold;" title="Pergunta {{ i }} - Vértice {{ i }} do Radar">{{ i }}</span>
+                            <span class="badge bg-light text-secondary border font-monospace small px-2 py-1 flex-shrink-0 d-none d-sm-inline">&#123;&#123;PER_{{ i }}&#125;&#125;</span>
+                            <input type="text" name="pergunta_{{ i }}" id="field-pergunta-{{ i }}" class="form-control form-control-sm flex-grow-1" placeholder="Pergunta {{ i }} (Vértice {{ i }} do Gráfico Radar)..." required>
                         </div>
-                        <div class="mb-2">
-                            <label class="form-label small fw-semibold text-secondary mb-1">Enunciado / Critério Técnico de Avaliação <span class="text-danger">*</span></label>
-                            <textarea name="pergunta_{{ i }}" id="field-pergunta-{{ i }}" class="form-control form-control-sm field-pergunta" rows="2" placeholder="Digite a pergunta {{ i }} sobre este procedimento..." required></textarea>
-                        </div>
-                        <div>
-                            <label class="form-label small text-muted mb-1">Resposta Esperada / Padrão de Execução (Opcional):</label>
-                            <input type="text" name="resposta_{{ i }}" id="field-resposta-{{ i }}" class="form-control form-control-sm" placeholder="Critério técnico esperado pelo líder / facilitador...">
-                        </div>
+                        {% endfor %}
                     </div>
-                    {% endfor %}
                 </div>
-                <div class="modal-footer bg-white d-flex justify-content-between">
+                <div class="modal-footer bg-white py-2 px-3 d-flex justify-content-between">
                     <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
                     <div class="d-flex gap-2">
                         <button type="button" class="btn btn-outline-danger btn-sm" id="btn-limpar-perguntas">
                             <i class="bi bi-eraser me-1"></i> Limpar Tudo
                         </button>
-                        <button type="submit" class="btn btn-success btn-sm px-4 shadow-sm" id="btn-salvar-perguntas">
-                            <i class="bi bi-save me-1"></i> Salvar as 5 Perguntas
+                        <button type="submit" class="btn btn-success btn-sm px-4 shadow-sm fw-bold" id="btn-salvar-perguntas">
+                            <i class="bi bi-check2-circle me-1"></i> Salvar as 5 Perguntas
                         </button>
                     </div>
                 </div>
@@ -395,8 +387,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Limpar formulário antes de carregar
             for (let i = 1; i <= 5; i++) {
-                document.getElementById(`field-pergunta-${i}`).value = '';
-                document.getElementById(`field-resposta-${i}`).value = '';
+                const fP = document.getElementById(`field-pergunta-${i}`);
+                if (fP) fP.value = '';
             }
 
             modal.show();
@@ -411,9 +403,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                         data.perguntas.forEach(p => {
                             const fieldP = document.getElementById(`field-pergunta-${p.ordem}`);
-                            const fieldR = document.getElementById(`field-resposta-${p.ordem}`);
                             if (fieldP) fieldP.value = p.enunciado || '';
-                            if (fieldR) fieldR.value = p.resposta_esperada || '';
                         });
                     }
                 })
@@ -439,8 +429,8 @@ document.addEventListener('DOMContentLoaded', function() {
     btnLimpar.addEventListener('click', function() {
         if (confirm('Deseja limpar todos os campos de perguntas deste procedimento?')) {
             for (let i = 1; i <= 5; i++) {
-                document.getElementById(`field-pergunta-${i}`).value = '';
-                document.getElementById(`field-resposta-${i}`).value = '';
+                const fieldP = document.getElementById(`field-pergunta-${i}`);
+                if (fieldP) fieldP.value = '';
             }
         }
     });
@@ -466,7 +456,7 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(r => r.json())
         .then(data => {
             btnSalvar.disabled = false;
-            btnSalvar.innerHTML = '<i class="bi bi-save me-1"></i> Salvar as 5 Perguntas';
+            btnSalvar.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Salvar as 5 Perguntas';
 
             if (data.success) {
                 modal.hide();
@@ -478,7 +468,7 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(err => {
             btnSalvar.disabled = false;
-            btnSalvar.innerHTML = '<i class="bi bi-save me-1"></i> Salvar as 5 Perguntas';
+            btnSalvar.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Salvar as 5 Perguntas';
             alert('Falha na comunicação com o servidor.');
         });
     });

@@ -1538,11 +1538,7 @@ function renderizarProcedimentosEPerguntas(data) {
                     </h6>
                     <div class="mb-2">
                         <label class="form-label small fw-semibold text-dark mb-1">Enunciado da Pergunta / Critério Técnico:*</label>
-                        <textarea class="form-control form-control-sm" id="input-enunciado-${proc.id}" rows="2" placeholder="Ex: Quais os pontos críticos de controle e parâmetros operacionais desta etapa?"></textarea>
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label small text-muted mb-1">Resposta / Critério Esperado (Opcional):</label>
-                        <input type="text" class="form-control form-control-sm" id="input-resposta-${proc.id}" placeholder="Ex: Tolerância de ±0.5mm e uso de micrômetro calibrado.">
+                        <input type="text" class="form-control form-control-sm" id="input-enunciado-${proc.id}" placeholder="Ex: Quais os pontos críticos de controle e parâmetros operacionais desta etapa?">
                     </div>
                     <div class="d-flex justify-content-end gap-2">
                         <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleFormNovaPergunta(${proc.id})">Cancelar</button>
@@ -1579,8 +1575,8 @@ function toggleFormNovaPergunta(procId) {
     if (form) {
         if (form.style.display === 'none') {
             form.style.display = 'block';
-            const textarea = document.getElementById(`input-enunciado-${procId}`);
-            if (textarea) textarea.focus();
+            const input = document.getElementById(`input-enunciado-${procId}`);
+            if (input) input.focus();
         } else {
             form.style.display = 'none';
         }
@@ -1588,21 +1584,18 @@ function toggleFormNovaPergunta(procId) {
 }
 
 function salvarNovaPergunta(procId) {
-    const textarea = document.getElementById(`input-enunciado-${procId}`);
-    const inputResp = document.getElementById(`input-resposta-${procId}`);
-    const enunciado = textarea ? textarea.value.trim() : '';
-    const resposta = inputResp ? inputResp.value.trim() : '';
+    const input = document.getElementById(`input-enunciado-${procId}`);
+    const enunciado = input ? input.value.trim() : '';
 
     if (!enunciado) {
         alert('Por favor, digite o enunciado da pergunta.');
-        if (textarea) textarea.focus();
+        if (input) input.focus();
         return;
     }
 
     const formData = new FormData();
     formData.append('procedimento_id', procId);
     formData.append('enunciado', enunciado);
-    formData.append('resposta_esperada', resposta);
 
     const url = "{% url 'procedures:api_cadastrar_pergunta_rapida' planejamento.id %}";
 
@@ -1637,15 +1630,13 @@ function salvarNovaPergunta(procId) {
             <input class="form-check-input mt-1 chk-pergunta-item" type="checkbox" value="${novaP.id}" id="chk-p-${novaP.id}" ${isChecked ? 'checked' : ''} onchange="onTogglePergunta(this, ${novaP.id})">
             <label class="form-check-label flex-grow-1 cursor-pointer" for="chk-p-${novaP.id}">
                 <div class="fw-semibold text-dark">${novaP.enunciado} <span class="badge bg-success small ms-1">Nova</span></div>
-                ${novaP.resposta_esperada ? `<small class="text-muted d-block mt-1"><i class="bi bi-check2-circle text-success me-1"></i>Critério esperado: ${novaP.resposta_esperada}</small>` : ''}
             </label>
             <span class="badge bg-light text-muted border small">#${novaP.ordem || '-'}</span>
         `;
         listaPerguntas.appendChild(novoItem);
 
         // Limpar form e esconder
-        if (textarea) textarea.value = '';
-        if (inputResp) inputResp.value = '';
+        if (input) input.value = '';
         toggleFormNovaPergunta(procId);
 
         // Atualizar contador de perguntas no header do card
