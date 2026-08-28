@@ -116,12 +116,15 @@ def _obter_mapeamento_checkboxes(planejamento: PlanejamentoTreinamento, override
             is_qualidade = True
 
     # -------------------------------------------------------------
-    # 5. Tags Unificadas de Bloco Único (Recomendado - 1 tag por célula)
+    # 5. Tags Unificadas de Bloco Único (Espaçamento calibrado de ponta a ponta)
     # -------------------------------------------------------------
-    cat_str = f"{mapping['{{CHK_TREIN}}']}Treinamento   {mapping['{{CHK_REUN}}']}Reunião   {mapping['{{CHK_RECIC}}']}Reciclagem"
-    met_str = f"{mapping['{{CHK_LOFT}}']}LOFT   {mapping['{{CHK_TRAD}}']}Tradicional"
-    area_str = f"{mapping['{{CHK_ADM}}']}Administrativo   {mapping['{{CHK_QUALIDADE}}']}Qualidade   {mapping['{{CHK_EHS}}']}EHS   {mapping['{{CHK_ESTOQUE}}']}Estoque   {mapping['{{CHK_PRODUCAO}}']}Produção   {mapping['{{CHK_OUTROS}}']}Outros: _______"
-    aval_str = f"{mapping['{{CHK_AVAL_SIM}}']}Sim   {mapping['{{CHK_AVAL_NAO}}']}Não"
+    outros_txt = overrides.get('outros_texto', '') if overrides else ''
+    outros_label = f"Outros: {outros_txt}" if outros_txt else "Outros: _________________"
+
+    cat_str = f"{mapping['{{CHK_TREIN}}']} Treinamento        {mapping['{{CHK_REUN}}']} Reunião        {mapping['{{CHK_RECIC}}']} Reciclagem"
+    met_str = f"{mapping['{{CHK_LOFT}}']} LOFT           {mapping['{{CHK_TRAD}}']} Tradicional"
+    area_str = f"{mapping['{{CHK_ADM}}']} Administrativo       {mapping['{{CHK_QUALIDADE}}']} Qualidade       {mapping['{{CHK_EHS}}']} EHS       {mapping['{{CHK_ESTOQUE}}']} Estoque       {mapping['{{CHK_PRODUCAO}}']} Produção       {mapping['{{CHK_OUTROS}}']} {outros_label}"
+    aval_str = f"{mapping['{{CHK_AVAL_SIM}}']} Sim                      {mapping['{{CHK_AVAL_NAO}}']} Não"
 
     mapping["{{CATEGORIA_TREINAMENTO}}"] = cat_str
     mapping["{{CATEGORIA_OPCOES}}"] = cat_str
