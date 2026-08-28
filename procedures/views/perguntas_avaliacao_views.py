@@ -233,3 +233,78 @@ def exportar_preview_for141_procedimento_view(request, procedimento_id):
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     response["Access-Control-Expose-Headers"] = "Content-Disposition"
     return response
+
+
+@login_required
+def exportar_preview_for141_pdf_procedimento_view(request, procedimento_id):
+    """
+    Gera o PDF oficial (FOR.141.r02) preenchido diretamente com as 5 perguntas deste procedimento.
+    """
+    proc = get_object_or_404(Procedimento, id=procedimento_id)
+
+    from procedures.models import PlanejamentoTreinamento
+    from procedures.services.auto_avaliacao_pdf_service import gerar_auto_avaliacao_pdf
+
+    plan_mock = PlanejamentoTreinamento(
+        titulo=f"Autoavaliação Técnica - {proc.codigo}",
+        data_prevista=date.today(),
+        status="PLANEJADO",
+        carga_horaria=60,
+    )
+    setattr(plan_mock, '_mock_procs', [proc])
+
+    try:
+        pdf_buffer = gerar_auto_avaliacao_pdf(plan_mock)
+    except Exception as e:
+        messages.error(request, f"Erro ao gerar PDF do FOR.141: {str(e)}")
+        return redirect('procedures:perguntas_avaliacao_list')
+
+    filename = f"FOR.141.r02_Preview_{proc.codigo.replace('/', '_')}.pdf"
+    response = HttpResponse(pdf_buffer.getvalue(), content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response["Access-Control-Expose-Headers"] = "Content-Disposition"
+    return response
+
+
+@login_required
+def preview_for141_print_procedimento_view(request, procedimento_id):
+    """
+    Renderiza a tela de visualização e impressão direta (FOR.141.r02) para este procedimento.
+    """
+    proc = get_object_or_404(Procedimento, id=procedimento_id)
+
+    from procedures.models import PlanejamentoTreinamento
+    from procedures.services.treinamento_excel_export_service import _obter_perguntas_treinamento
+
+    plan_mock = PlanejamentoTreinamento(
+        titulo=f"Autoavaliação Técnica - {proc.codigo}",
+        data_prevista=date.today(),
+        status="PLANEJADO",
+        carga_horaria=60,
+    )
+    setattr(plan_mock, '_mock_procs', [proc])
+
+    perguntas_raw = _obter_perguntas_treinamento(plan_mock)
+    perguntas_lista = []
+    for i in range(5):
+        txt = perguntas_raw[i] if i < len(perguntas_raw) and perguntas_raw[i] else f"Critério operacional e controle técnico {i+1} do procedimento."
+        perguntas_lista.append({'numero': i+1, 'texto': txt})
+
+    d_colab = {
+        'nome': 'COLABORADOR EXEMPLO / EM AVALIAÇÃO',
+        'matricula': 'MAT-0000',
+        'setor': proc.sub_area or proc.matriz or 'OPERAÇÃO / QUALIDADE',
+        'cargo': 'OPERADOR / TÉCNICO',
+        'gestor': 'RESPONSÁVEL TÉCNICO',
+    }
+
+    return render(request, 'procedures/auto_avaliacao_print.html', {
+        'planejamento': plan_mock,
+        'colaborador_selecionado': None,
+        'd_colab': d_colab,
+        'perguntas_lista': perguntas_lista,
+        'proc_str': f"{proc.codigo} - {proc.nome}",
+        'instrutor_nome': "INSTRUTOR QUALIFICADO",
+        'data_str': date.today().strftime("%d/%m/%Y"),
+    })
+

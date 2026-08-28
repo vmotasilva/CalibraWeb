@@ -122,6 +122,28 @@
                 <a href="{% url 'procedures:exportar_detalhe_planejamento_excel' planejamento.id %}" class="btn btn-success btn-sm" title="Exportar para Excel">
                     <i class="bi bi-file-earmark-spreadsheet"></i> Exportar Excel
                 </a>
+                <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-warning dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Opções de Auto-Avaliação de Treinamento Crítico (FOR.141.r02)">
+                        <i class="bi bi-patch-question-fill me-1"></i> Auto-Avaliação (FOR.141)
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow">
+                        <li>
+                            <a class="dropdown-item py-2" href="{% url 'procedures:auto_avaliacao_print' planejamento.id %}" target="_blank">
+                                <i class="bi bi-printer text-primary me-2"></i> <strong>Visualizar / Imprimir (A4)</strong>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item py-2" href="{% url 'procedures:exportar_auto_avaliacao_for141_pdf' planejamento.id %}">
+                                <i class="bi bi-file-earmark-pdf text-danger me-2"></i> <strong>Baixar PDF Oficial (.pdf)</strong>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item py-2" href="{% url 'procedures:exportar_auto_avaliacao_for141' planejamento.id %}">
+                                <i class="bi bi-file-earmark-excel text-success me-2"></i> Baixar Planilha Excel (.xlsx)
+                            </a>
+                        </li>
+                    </ul>
+                </div>
                 <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalGerarListaPresenca" title="Configurar e Gerar Lista de Presença Oficial (FOR.033)">
                     <i class="bi bi-file-earmark-check"></i> Gerar Lista de Presença
                 </button>
@@ -351,7 +373,8 @@
                                 <th width="110">Matrícula</th>
                                 <th width="180">Setor</th>
                                 <th width="130" class="text-center">Progresso</th>
-                                <th width="320">Status por Procedimento</th>
+                                <th width="300">Status por Procedimento</th>
+                                <th width="120" class="text-center">Auto-Avaliação</th>
                                 {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
                                 <th width="60" class="text-center">Ação</th>
                                 {% endif %}
@@ -396,6 +419,19 @@
                                         {% empty %}
                                             <span class="text-muted small">Nenhum procedimento associado</span>
                                         {% endfor %}
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{% url 'procedures:auto_avaliacao_print' planejamento.id %}?colaborador_id={{ info.colaborador.id }}" target="_blank" class="btn btn-outline-secondary btn-sm" title="Visualizar / Imprimir FOR.141 de {{ info.colaborador.nome_completo|default:'participante' }}">
+                                            <i class="bi bi-printer"></i>
+                                        </a>
+                                        <a href="{% url 'procedures:exportar_auto_avaliacao_for141_pdf' planejamento.id %}?colaborador_id={{ info.colaborador.id }}" class="btn btn-outline-danger btn-sm" title="Baixar PDF Oficial do FOR.141">
+                                            <i class="bi bi-file-earmark-pdf"></i>
+                                        </a>
+                                        <a href="{% url 'procedures:exportar_auto_avaliacao_for141' planejamento.id %}?colaborador_id={{ info.colaborador.id }}" class="btn btn-outline-success btn-sm" title="Baixar Planilha Excel do FOR.141">
+                                            <i class="bi bi-file-earmark-excel"></i>
+                                        </a>
                                     </div>
                                 </td>
                                 {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
@@ -1228,10 +1264,29 @@ document.addEventListener('DOMContentLoaded', function() {
                             Cancelar
                         </button>
 
-                        <!-- Botão Condicional FOR.141 - Auto-Avaliação (Exibido quando Necessita de Avaliação = Sim) -->
-                        <a href="{% url 'procedures:exportar_auto_avaliacao_for141' planejamento.id %}" id="btnDownloadFor141" class="btn btn-outline-warning text-dark font-weight-bold shadow-sm" style="display: none;" title="Exportar Formulário de Auto-Avaliação (FOR.141.r02)">
-                            <i class="bi bi-patch-question-fill text-warning me-1"></i> Auto-Avaliação (FOR.141)
-                        </a>
+                        <!-- Menu Condicional FOR.141 - Auto-Avaliação (Exibido quando Necessita de Avaliação = Sim) -->
+                        <div class="btn-group" id="groupAutoAvaliacaoModal" style="display: none;">
+                            <button type="button" class="btn btn-outline-warning text-dark font-weight-bold dropdown-toggle shadow-sm" data-bs-toggle="dropdown" aria-expanded="false" title="Opções de Auto-Avaliação de Treinamento Crítico (FOR.141.r02)">
+                                <i class="bi bi-patch-question-fill text-warning me-1"></i> Auto-Avaliação (FOR.141)
+                            </button>
+                            <ul class="dropdown-menu shadow">
+                                <li>
+                                    <a class="dropdown-item py-2" href="{% url 'procedures:auto_avaliacao_print' planejamento.id %}" target="_blank">
+                                        <i class="bi bi-printer text-primary me-2"></i> <strong>Visualizar / Imprimir (A4)</strong>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item py-2" href="{% url 'procedures:exportar_auto_avaliacao_for141_pdf' planejamento.id %}">
+                                        <i class="bi bi-file-earmark-pdf text-danger me-2"></i> <strong>Baixar PDF Oficial (.pdf)</strong>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item py-2" href="{% url 'procedures:exportar_auto_avaliacao_for141' planejamento.id %}">
+                                        <i class="bi bi-file-earmark-excel text-success me-2"></i> Baixar Planilha Excel (.xlsx)
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
                     
                     <div class="d-flex flex-wrap gap-2">
@@ -1271,12 +1326,12 @@ function toggleOutrosTexto(show) {
 
 function updateBtnFor141Visibility() {
     const avalSim = document.getElementById('avalSim');
-    const btnFor141 = document.getElementById('btnDownloadFor141');
-    if (avalSim && btnFor141) {
+    const groupFor141 = document.getElementById('groupAutoAvaliacaoModal');
+    if (avalSim && groupFor141) {
         if (avalSim.checked) {
-            btnFor141.style.display = 'inline-flex';
+            groupFor141.style.display = 'inline-flex';
         } else {
-            btnFor141.style.display = 'none';
+            groupFor141.style.display = 'none';
         }
     }
 }

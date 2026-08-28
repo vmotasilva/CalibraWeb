@@ -1478,4 +1478,80 @@ def exportar_auto_avaliacao_for141_view(request, planejamento_id):
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     response["Access-Control-Expose-Headers"] = "Content-Disposition"
     return response
+
+
+@login_required
+def exportar_auto_avaliacao_for141_pdf_view(request, planejamento_id):
+    """
+    Exporta a Auto-Avaliação de Treinamento Crítico (FOR.141.r02) em PDF oficial de 1 página A4 com Gráfico Radar.
+    """
+    planejamento = get_object_or_404(
+        PlanejamentoTreinamento.objects.prefetch_related('colaboradores', 'procedimentos'),
+        id=planejamento_id
+    )
+    colaborador_id = request.GET.get('colaborador_id')
+    if colaborador_id and colaborador_id.isdigit():
+        colaborador_id = int(colaborador_id)
+    else:
+        colaborador_id = None
+
+    from procedures.services.auto_avaliacao_pdf_service import gerar_auto_avaliacao_pdf
+
+    try:
+        pdf_buffer = gerar_auto_avaliacao_pdf(planejamento, colaborador_id=colaborador_id)
+    except Exception as e:
+        messages.error(request, f"Erro ao gerar autoavaliação em PDF (FOR.141): {str(e)}")
+        return redirect('procedures:detalhe_planejamento', planejamento_id=planejamento.id)
+
+    filename = f"FOR.141.r02_Auto_Avaliacao_Treinamento_{planejamento.id}.pdf"
+    response = HttpResponse(pdf_buffer.getvalue(), content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response["Access-Control-Expose-Headers"] = "Content-Disposition"
+    return response
+
+
+@login_required
+def auto_avaliacao_print_view(request, planejamento_id):
+    """
+    Renderiza a página otimizada de visualização e impressão da Auto-Avaliação de Treinamento Crítico (FOR.141.r02).
+    """
+    planejamento = get_object_or_404(
+        PlanejamentoTreinamento.objects.select_related('instrutor').prefetch_related('colaboradores', 'procedimentos'),
+        id=planejamento_id
+    )
+    colaborador_id = request.GET.get('colaborador_id')
+    colaborador = None
+    if colaborador_id and colaborador_id.isdigit():
+        colaborador = planejamento.colaboradores.filter(id=int(colaborador_id)).first()
+    if not colaborador and planejamento.colaboradores.exists():
+        colaborador = planejamento.colaboradores.first()
+
+    from procedures.services.treinamento_excel_export_service import (
+        _extrair_dados_colaborador_avaliado,
+        _obter_perguntas_treinamento
+    )
+
+    d_colab = _extrair_dados_colaborador_avaliado(colaborador)
+    perguntas_raw = _obter_perguntas_treinamento(planejamento)
+    
+    # Garantir exatamente 5 perguntas
+    perguntas_lista = []
+    for i in range(5):
+        txt = perguntas_raw[i] if i < len(perguntas_raw) and perguntas_raw[i] else f"Critério operacional e controle técnico {i+1} do procedimento."
+        perguntas_lista.append({'numero': i+1, 'texto': txt})
+
+    procs = list(planejamento.procedimentos.all())
+    proc_str = ", ".join([f"{p.codigo} - {p.nome}" for p in procs]) if procs else (planejamento.titulo or "-")
+    instrutor_nome = (planejamento.instrutor.nome_completo if getattr(planejamento, 'instrutor', None) else "-")
+    data_str = planejamento.data_prevista.strftime("%d/%m/%Y") if getattr(planejamento, 'data_prevista', None) else timezone.now().strftime("%d/%m/%Y")
+
+    return render(request, 'procedures/auto_avaliacao_print.html', {
+        'planejamento': planejamento,
+        'colaborador_selecionado': colaborador,
+        'd_colab': d_colab,
+        'perguntas_lista': perguntas_lista,
+        'proc_str': proc_str,
+        'instrutor_nome': instrutor_nome,
+        'data_str': data_str,
+    })
 

@@ -18,6 +18,7 @@ from .views import (
     acompanhamento_views,
     templates_config_views,
     avaliacao_eficacia_views,
+    perguntas_avaliacao_views,
 )
 from .views.planejamento_api_matriz import api_disciplinas_por_matriz_view, api_procedimentos_por_disciplina_view, api_colaboradores_por_matriz_view, api_procedimentos_buscar_view, api_colaboradores_buscar_view
 from training.views import views as training_views
@@ -241,6 +242,8 @@ urlpatterns = [
     path('planejamentos/<int:planejamento_id>/export/excel/', planejamento_views.exportar_detalhe_planejamento_excel_view, name='exportar_detalhe_planejamento_excel'),
     path('planejamentos/<int:planejamento_id>/exportar-for133/', planejamento_views.exportar_planejamento_for133_view, name='exportar_planejamento_for133_single'),
     path('planejamentos/<int:planejamento_id>/exportar-for141/', planejamento_views.exportar_auto_avaliacao_for141_view, name='exportar_auto_avaliacao_for141'),
+    path('planejamentos/<int:planejamento_id>/auto-avaliacao/pdf/', planejamento_views.exportar_auto_avaliacao_for141_pdf_view, name='exportar_auto_avaliacao_for141_pdf'),
+    path('planejamentos/<int:planejamento_id>/auto-avaliacao/imprimir/', planejamento_views.auto_avaliacao_print_view, name='auto_avaliacao_print'),
     path('planejamentos/<int:planejamento_id>/gerar-lista-presenca/', planejamento_views.gerar_lista_presenca_view, name='gerar_lista_presenca'),
     
     # Gerenciar itens do planejamento via AJAX
@@ -323,4 +326,16 @@ urlpatterns = [
     path('configuracoes/templates/<int:template_id>/substituir-arquivo/', templates_config_views.template_config_replace_file_view, name='template_config_replace_file'),
     path('configuracoes/templates/<int:template_id>/ativar/', templates_config_views.template_config_toggle_active_view, name='template_config_toggle_active'),
     path('configuracoes/templates/<int:template_id>/deletar/', templates_config_views.template_config_delete_view, name='template_config_delete'),
+
+    # ==========================
+    # BANCO DE PERGUNTAS DE AUTO-AVALIAÇÃO (FOR.141)
+    # ==========================
+    path('perguntas-avaliacao/', perguntas_avaliacao_views.perguntas_avaliacao_list_view, name='perguntas_avaliacao_list'),
+    path('perguntas-avaliacao/<int:procedimento_id>/api/', perguntas_avaliacao_views.obter_perguntas_procedimento_api, name='obter_perguntas_procedimento_api'),
+    path('perguntas-avaliacao/<int:procedimento_id>/salvar/', perguntas_avaliacao_views.salvar_perguntas_procedimento_api, name='salvar_perguntas_procedimento_api'),
+    path('api/procedimentos/<int:procedimento_id>/perguntas-avaliacao/', perguntas_avaliacao_views.obter_perguntas_procedimento_api, name='api_obter_perguntas_procedimento'),
+    path('api/procedimentos/<int:procedimento_id>/salvar-perguntas-avaliacao/', perguntas_avaliacao_views.salvar_perguntas_procedimento_api, name='api_salvar_perguntas_procedimento'),
+    path('perguntas-avaliacao/<int:procedimento_id>/preview-excel/', perguntas_avaliacao_views.exportar_preview_for141_procedimento_view, name='exportar_preview_for141_procedimento'),
+    path('perguntas-avaliacao/<int:procedimento_id>/preview-pdf/', perguntas_avaliacao_views.exportar_preview_for141_pdf_procedimento_view, name='exportar_preview_for141_pdf_procedimento'),
+    path('perguntas-avaliacao/<int:procedimento_id>/imprimir/', perguntas_avaliacao_views.preview_for141_print_procedimento_view, name='preview_for141_print_procedimento'),
 ]
