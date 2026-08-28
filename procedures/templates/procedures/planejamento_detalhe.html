@@ -70,47 +70,18 @@
         font-size: 0.9rem;
     }
 
-    /* Estilos para seções recolhíveis / expansíveis */
-    .card-header-collapsible {
-        cursor: pointer;
-        user-select: none;
-        transition: background-color 0.2s ease;
-    }
-    .card-header-collapsible:hover {
-        filter: brightness(0.95);
-    }
-    .collapse-chevron {
-        transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        display: inline-block;
-    }
-    .card-header-collapsible.collapsed .collapse-chevron,
-    [aria-expanded="false"] .collapse-chevron {
-        transform: rotate(-90deg);
-    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
-    <!-- Barra de Atalho para Expandir/Recolher Todas as Seções -->
-    <div class="d-flex justify-content-end mb-2">
-        <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-toggle-all-sections" title="Expandir ou Recolher todas as seções simultaneamente">
-            <i class="bi bi-arrows-expand me-1"></i> <span id="lbl-toggle-all">Recolher Todas</span>
-        </button>
-    </div>
-
     <!-- Informações Principais -->
     <div class="card mb-3 shadow-sm">
-        <div class="card-header card-header-collapsible d-flex justify-content-between align-items-center" 
-             data-bs-toggle="collapse" 
-             data-bs-target="#collapseInfoPlanejamento" 
-             aria-expanded="true" 
-             aria-controls="collapseInfoPlanejamento">
-            <h5 class="mb-0 d-flex align-items-center">
-                <i class="bi bi-chevron-down me-2 collapse-chevron"></i>
-                <span>Informações do Planejamento</span>
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-info-circle me-1"></i> Informações do Planejamento
             </h5>
-            <div onclick="event.stopPropagation();">
+            <div>
                 {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
                 <a href="{% url 'procedures:editar_planejamento' planejamento.id %}" class="btn btn-warning btn-sm">
                     <i class="bi bi-pencil"></i> Editar
@@ -152,8 +123,7 @@
                 </a>
             </div>
         </div>
-        <div class="collapse show" id="collapseInfoPlanejamento">
-            <div class="card-body">
+        <div class="card-body">
             <div class="row g-3">
                 <div class="col-md-6">
                     <div class="mb-3">
@@ -241,21 +211,15 @@
                 </div>
             </div>
         </div>
-        </div>
     </div>
 
     <!-- Procedimentos -->
     <div class="card mb-3 shadow-sm">
-        <div class="card-header card-header-collapsible d-flex justify-content-between align-items-center"
-             data-bs-toggle="collapse"
-             data-bs-target="#collapseProcedimentos"
-             aria-expanded="true"
-             aria-controls="collapseProcedimentos">
-            <h6 class="mb-0 d-flex align-items-center">
-                <i class="bi bi-chevron-down me-2 collapse-chevron"></i>
-                <span><i class="bi bi-file-text me-1"></i> Procedimentos ({{ planejamento.procedimentos.count }})</span>
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">
+                <i class="bi bi-file-text me-1"></i> Procedimentos ({{ planejamento.procedimentos.count }})
             </h6>
-            <div onclick="event.stopPropagation();">
+            <div>
                 {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
                 <button type="button" class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#procedimentosModal">
                     <i class="bi bi-plus-circle"></i> Adicionar
@@ -263,8 +227,7 @@
                 {% endif %}
             </div>
         </div>
-        <div class="collapse show" id="collapseProcedimentos">
-            <div class="card-body p-0">
+        <div class="card-body p-0">
                 {% if planejamento.procedimentos.exists %}
                 <div class="table-responsive">
                     <table class="table table-clean table-hover" id="procedimentos-list">
@@ -345,16 +308,11 @@
 
     <!-- Lista de Participantes -->
     <div class="card mb-3 shadow-sm">
-        <div class="card-header card-header-collapsible d-flex justify-content-between align-items-center"
-             data-bs-toggle="collapse"
-             data-bs-target="#collapseParticipantes"
-             aria-expanded="true"
-             aria-controls="collapseParticipantes">
-            <h6 class="mb-0 d-flex align-items-center">
-                <i class="bi bi-chevron-down me-2 collapse-chevron"></i>
-                <span><i class="bi bi-people me-1"></i> Participantes ({{ colaboradores_info|length }})</span>
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">
+                <i class="bi bi-people me-1"></i> Participantes ({{ colaboradores_info|length }})
             </h6>
-            <div onclick="event.stopPropagation();">
+            <div>
                 {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
                 <button type="button" class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#colaboradoresModal">
                     <i class="bi bi-plus-circle"></i> Adicionar
@@ -362,8 +320,7 @@
                 {% endif %}
             </div>
         </div>
-        <div class="collapse show" id="collapseParticipantes">
-            <div class="card-body p-0">
+        <div class="card-body p-0">
                 {% if colaboradores_info %}
                 <div class="table-responsive">
                     <table class="table table-clean table-hover" id="colaboradores-list">
@@ -1347,51 +1304,6 @@ document.addEventListener('DOMContentLoaded', function() {
         modalLista.addEventListener('show.bs.modal', updateBtnFor141Visibility);
     }
     updateBtnFor141Visibility();
-
-    // Controle do Botão "Expandir Todas / Recolher Todas"
-    const btnToggleAll = document.getElementById('btn-toggle-all-sections');
-    const lblToggleAll = document.getElementById('lbl-toggle-all');
-    const collapsibleIds = ['collapseInfoPlanejamento', 'collapseProcedimentos', 'collapseParticipantes'];
-
-    if (btnToggleAll) {
-        btnToggleAll.addEventListener('click', function() {
-            const anyOpen = collapsibleIds.some(id => {
-                const el = document.getElementById(id);
-                return el && el.classList.contains('show');
-            });
-
-            collapsibleIds.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) {
-                    const bsCollapse = bootstrap.Collapse.getOrCreateInstance(el, { toggle: false });
-                    if (anyOpen) {
-                        bsCollapse.hide();
-                    } else {
-                        bsCollapse.show();
-                    }
-                }
-            });
-        });
-
-        // Atualizar texto do botão master conforme o estado das seções
-        function syncMasterToggleButton() {
-            const anyOpen = collapsibleIds.some(id => {
-                const el = document.getElementById(id);
-                return el && el.classList.contains('show');
-            });
-            if (lblToggleAll) {
-                lblToggleAll.textContent = anyOpen ? 'Recolher Todas' : 'Expandir Todas';
-            }
-        }
-
-        collapsibleIds.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) {
-                el.addEventListener('shown.bs.collapse', syncMasterToggleButton);
-                el.addEventListener('hidden.bs.collapse', syncMasterToggleButton);
-            }
-        });
-    }
 });
 </script>
 {% endblock %}
