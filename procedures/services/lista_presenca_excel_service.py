@@ -115,12 +115,28 @@ def _obter_mapeamento_checkboxes(planejamento: PlanejamentoTreinamento, override
         if not (is_qualidade or is_ehs or is_estoque or is_producao or is_adm):
             is_qualidade = True
 
-        mapping["{{CHK_ADM}}"] = CHECK_ON if is_adm else CHECK_OFF
-        mapping["{{CHK_QUALIDADE}}"] = CHECK_ON if is_qualidade else CHECK_OFF
-        mapping["{{CHK_EHS}}"] = CHECK_ON if is_ehs else CHECK_OFF
-        mapping["{{CHK_ESTOQUE}}"] = CHECK_ON if is_estoque else CHECK_OFF
-        mapping["{{CHK_PRODUCAO}}"] = CHECK_ON if is_producao else CHECK_OFF
-        mapping["{{CHK_OUTROS}}"] = CHECK_OFF
+    # -------------------------------------------------------------
+    # 5. Tags Unificadas de Bloco Único (Recomendado - 1 tag por célula)
+    # -------------------------------------------------------------
+    cat_str = f"{mapping['{{CHK_TREIN}}']}Treinamento   {mapping['{{CHK_REUN}}']}Reunião   {mapping['{{CHK_RECIC}}']}Reciclagem"
+    met_str = f"{mapping['{{CHK_LOFT}}']}LOFT   {mapping['{{CHK_TRAD}}']}Tradicional"
+    area_str = f"{mapping['{{CHK_ADM}}']}Administrativo   {mapping['{{CHK_QUALIDADE}}']}Qualidade   {mapping['{{CHK_EHS}}']}EHS   {mapping['{{CHK_ESTOQUE}}']}Estoque   {mapping['{{CHK_PRODUCAO}}']}Produção   {mapping['{{CHK_OUTROS}}']}Outros: _______"
+    aval_str = f"{mapping['{{CHK_AVAL_SIM}}']}Sim   {mapping['{{CHK_AVAL_NAO}}']}Não"
+
+    mapping["{{CATEGORIA_TREINAMENTO}}"] = cat_str
+    mapping["{{CATEGORIA_OPCOES}}"] = cat_str
+    mapping["{{CATEGORIA}}"] = cat_str
+
+    mapping["{{METODOLOGIA}}"] = met_str
+    mapping["{{METODOLOGIA_OPCOES}}"] = met_str
+
+    mapping["{{AREA_CONHECIMENTO}}"] = area_str
+    mapping["{{AREA_OPCOES}}"] = area_str
+    mapping["{{AREA}}"] = area_str
+
+    mapping["{{NECESSITA_AVALIACAO}}"] = aval_str
+    mapping["{{AVALIACAO_OPCOES}}"] = aval_str
+    mapping["{{NECESSITA_AVAL}}"] = aval_str
 
     return mapping
 
@@ -128,14 +144,32 @@ def _obter_mapeamento_checkboxes(planejamento: PlanejamentoTreinamento, override
 def _search_and_replace_sheet(sheet, mapping: dict):
     """
     Substitui todas as tags de texto e checkboxes nas células da planilha.
+    Suporta tags individuais, tags de bloco único e detecção inteligente de opções estáticas.
     """
     for row in sheet.iter_rows():
         for cell in row:
             if cell.value and isinstance(cell.value, str):
-                valor = str(cell.value)
+                valor = str(cell.value).strip()
+
+                # 1. Substituição direta por tags explícitas
                 for tag, novo_valor in mapping.items():
                     if tag in valor:
                         valor = valor.replace(tag, str(novo_valor if novo_valor is not None else ''))
+
+                # 2. Detecção inteligente se a célula tiver texto padrão estático com bolinhas (○ / ●)
+                # Categoria
+                if ('Treinamento' in valor or 'Trein' in valor) and ('Reunião' in valor or 'Reuniao' in valor) and any(b in valor for b in ['○', '●', '()', '[]']):
+                    valor = mapping.get("{{CATEGORIA_TREINAMENTO}}", valor)
+                # Metodologia
+                elif 'LOFT' in valor and ('Tradicional' in valor or 'Trad' in valor) and any(b in valor for b in ['○', '●', '()', '[]']):
+                    valor = mapping.get("{{METODOLOGIA}}", valor)
+                # Área de Conhecimento
+                elif ('Administrativo' in valor or 'Adm' in valor) and 'Qualidade' in valor and 'Produção' in valor and any(b in valor for b in ['○', '●', '()', '[]']):
+                    valor = mapping.get("{{AREA_CONHECIMENTO}}", valor)
+                # Necessita Avaliação
+                elif ('Sim' in valor or 'SIM' in valor) and ('Não' in valor or 'Nao' in valor or 'NÃO' in valor) and any(b in valor for b in ['○', '●', '()', '[]']):
+                    valor = mapping.get("{{NECESSITA_AVALIACAO}}", valor)
+
                 cell.value = valor
 
 
