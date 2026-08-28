@@ -267,7 +267,9 @@
             <table class="table-sgq-header">
                 <tr>
                     <td class="sgq-col-logo">
-                        <img src="{% static 'shared/logo_calibraweb.png' %}" alt="Calibra" onerror="this.outerHTML='<strong>CALIBRA</strong>'">
+                        <div class="d-flex align-items-center justify-content-center gap-2 py-1">
+                            <span class="fw-bold" style="font-size: 15px; letter-spacing: 1px; color: #0f172a;">CALIBRA</span>
+                        </div>
                     </td>
                     <td class="sgq-col-title">
                         <div class="sgq-title-small">Formulário</div>
@@ -333,7 +335,7 @@
                 </tr>
             </table>
 
-            <!-- Tabela de Participantes (15 Linhas) -->
+            <!-- Tabela de Participantes (15 Linhas em Branco para Preenchimento Manual) -->
             <table class="table-part">
                 <thead>
                     <tr>
@@ -345,24 +347,14 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for item in participantes_display %}
-                    <tr>
-                        <td>{{ item.nome }}</td>
-                        <td>{{ item.cpf }}</td>
-                        <td>{{ item.cargo }}</td>
-                        <td>{{ item.departamento }}</td>
-                        <td></td>
-                    </tr>
-                    {% empty %}
                     {% for i in "123456789012345" %}
                     <tr>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
                     </tr>
-                    {% endfor %}
                     {% endfor %}
                 </tbody>
             </table>
@@ -401,7 +393,9 @@
             <table class="table-sgq-header">
                 <tr>
                     <td class="sgq-col-logo">
-                        <img src="{% static 'shared/logo_calibraweb.png' %}" alt="Calibra" onerror="this.outerHTML='<strong>CALIBRA</strong>'">
+                        <div class="d-flex align-items-center justify-content-center gap-2 py-1">
+                            <span class="fw-bold" style="font-size: 15px; letter-spacing: 1px; color: #0f172a;">CALIBRA</span>
+                        </div>
                     </td>
                     <td class="sgq-col-title">
                         <div class="sgq-title-small">Formulário</div>

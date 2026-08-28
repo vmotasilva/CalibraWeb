@@ -295,7 +295,7 @@ def gerar_lista_presenca_pdf(planejamento: PlanejamentoTreinamento, overrides: d
     elements.append(t_meta)
     elements.append(Spacer(1, 0.12 * cm))
 
-    # 3. Tabela de Participantes (15 Linhas)
+    # 3. Tabela de Participantes (15 Linhas em Branco para Preenchimento e Assinatura Manual)
     table_part_data = [
         [
             Paragraph("<strong>Nome do Colaborador</strong>", style_th),
@@ -306,20 +306,8 @@ def gerar_lista_presenca_pdf(planejamento: PlanejamentoTreinamento, overrides: d
         ]
     ]
 
-    # Preencher participantes vinculados ao planejamento se houver
-    colaboradores = list(planejamento.colaboradores.all())
-    for i in range(15):
-        if i < len(colaboradores):
-            c = colaboradores[i]
-            table_part_data.append([
-                Paragraph(c.nome_completo or "", style_cell),
-                Paragraph(getattr(c, 'cpf', '') or getattr(c, 'matricula', '') or "", style_cell),
-                Paragraph(c.cargo or "", style_cell),
-                Paragraph(c.setor or getattr(c, 'posto_trabalho', '') or "", style_cell),
-                ""
-            ])
-        else:
-            table_part_data.append(["", "", "", "", ""])
+    for _ in range(15):
+        table_part_data.append(["", "", "", "", ""])
 
     col_widths_part = [6.0 * cm, 3.2 * cm, 3.4 * cm, 3.4 * cm, 3.6 * cm]
     t_part = Table(table_part_data, colWidths=col_widths_part, rowHeights=[15] + [17.5] * 15)
