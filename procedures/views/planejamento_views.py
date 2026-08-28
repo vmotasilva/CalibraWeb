@@ -1480,6 +1480,55 @@ def exportar_auto_avaliacao_for141_view(request, planejamento_id):
     return response
 
 
+def _extrair_perguntas_ids_requisicao(request) -> list:
+    """Extrai lista de IDs ou textos de perguntas passadas via GET ou POST."""
+    p_ids = request.GET.getlist('perguntas_ids') or request.POST.getlist('perguntas_ids')
+    if not p_ids:
+        p_ids_param = request.GET.get('perguntas_ids', '') or request.POST.get('perguntas_ids', '')
+        if p_ids_param:
+            p_ids = [p.strip() for p in p_ids_param.split(',') if p.strip()]
+    return p_ids
+
+
+@login_required
+def exportar_auto_avaliacao_for141_view(request, planejamento_id):
+    """
+    Exporta a Auto-Avaliação de Treinamento Crítico (FOR.141.r02) em Excel (.xlsx) com até 5 perguntas selecionadas.
+    """
+    planejamento = get_object_or_404(
+        PlanejamentoTreinamento.objects.prefetch_related('colaboradores', 'procedimentos'),
+        id=planejamento_id
+    )
+    colaborador_id = request.GET.get('colaborador_id')
+    if colaborador_id and colaborador_id.isdigit():
+        colaborador_id = int(colaborador_id)
+    else:
+        colaborador_id = None
+
+    perguntas_ids = _extrair_perguntas_ids_requisicao(request)
+
+    from procedures.services.treinamento_excel_export_service import gerar_auto_avaliacao_for141_xlsx
+
+    try:
+        excel_buffer = gerar_auto_avaliacao_for141_xlsx(
+            planejamento,
+            colaborador_id=colaborador_id,
+            perguntas_selecionadas=perguntas_ids
+        )
+    except Exception as e:
+        messages.error(request, f"Erro ao gerar autoavaliação Excel (FOR.141): {str(e)}")
+        return redirect('procedures:detalhe_planejamento', planejamento_id=planejamento.id)
+
+    filename = f"FOR.141.r02_Auto_Avaliacao_Treinamento_{planejamento.id}.xlsx"
+    response = HttpResponse(
+        excel_buffer.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response["Access-Control-Expose-Headers"] = "Content-Disposition"
+    return response
+
+
 @login_required
 def exportar_auto_avaliacao_for141_pdf_view(request, planejamento_id):
     """
@@ -1495,10 +1544,16 @@ def exportar_auto_avaliacao_for141_pdf_view(request, planejamento_id):
     else:
         colaborador_id = None
 
+    perguntas_ids = _extrair_perguntas_ids_requisicao(request)
+
     from procedures.services.auto_avaliacao_pdf_service import gerar_auto_avaliacao_pdf
 
     try:
-        pdf_buffer = gerar_auto_avaliacao_pdf(planejamento, colaborador_id=colaborador_id)
+        pdf_buffer = gerar_auto_avaliacao_pdf(
+            planejamento,
+            colaborador_id=colaborador_id,
+            perguntas_selecionadas=perguntas_ids
+        )
     except Exception as e:
         messages.error(request, f"Erro ao gerar autoavaliação em PDF (FOR.141): {str(e)}")
         return redirect('procedures:detalhe_planejamento', planejamento_id=planejamento.id)
@@ -1526,13 +1581,15 @@ def auto_avaliacao_print_view(request, planejamento_id):
     if not colaborador and planejamento.colaboradores.exists():
         colaborador = planejamento.colaboradores.first()
 
+    perguntas_ids = _extrair_perguntas_ids_requisicao(request)
+
     from procedures.services.treinamento_excel_export_service import (
         _extrair_dados_colaborador_avaliado,
         _obter_perguntas_treinamento
     )
 
     d_colab = _extrair_dados_colaborador_avaliado(colaborador)
-    perguntas_raw = _obter_perguntas_treinamento(planejamento)
+    perguntas_raw = _obter_perguntas_treinamento(planejamento, perguntas_selecionadas=perguntas_ids)
     
     # Garantir exatamente 5 perguntas
     perguntas_lista = []
@@ -1553,5 +1610,106 @@ def auto_avaliacao_print_view(request, planejamento_id):
         'proc_str': proc_str,
         'instrutor_nome': instrutor_nome,
         'data_str': data_str,
+        'perguntas_ids_str': ",".join([str(x) for x in perguntas_ids]) if perguntas_ids else "",
+    })
+
+
+@login_required
+@require_GET
+def api_planejamento_perguntas_auto_avaliacao_view(request, planejamento_id):
+    """
+    Retorna a lista de procedimentos do planejamento com suas respectivas perguntas de autoavaliação,
+    identificando criticidade, total de perguntas e sugestões padrão SGQ.
+    """
+    planejamento = get_object_or_404(
+        PlanejamentoTreinamento.objects.prefetch_related('procedimentos__perguntas_avaliacao'),
+        id=planejamento_id
+    )
+
+    from procedures.models import PerguntaAvaliacao
+    from procedures.views.perguntas_avaliacao_views import PERGUNTAS_PADRAO_SGQ
+
+    procedimentos_data = []
+    total_perguntas_cadastradas = 0
+
+    for proc in planejamento.procedimentos.all().order_by('-criticidade', 'codigo'):
+        perguntas_qs = proc.perguntas_avaliacao.filter(ativo=True).order_by('ordem')
+        perguntas_list = []
+        for p in perguntas_qs:
+            perguntas_list.append({
+                'id': p.id,
+                'ordem': p.ordem,
+                'enunciado': p.enunciado,
+                'resposta_esperada': p.resposta_esperada or '',
+            })
+            total_perguntas_cadastradas += 1
+
+        procedimentos_data.append({
+            'id': proc.id,
+            'codigo': proc.codigo,
+            'nome': proc.nome,
+            'criticidade': proc.criticidade,
+            'is_critico': (proc.criticidade == 'CRITICO'),
+            'matriz': proc.matriz or '-',
+            'sub_area': proc.sub_area or '-',
+            'total_perguntas': len(perguntas_list),
+            'perguntas': perguntas_list,
+        })
+
+    return JsonResponse({
+        'success': True,
+        'planejamento': {
+            'id': planejamento.id,
+            'titulo': planejamento.titulo,
+            'tem_procedimento_critico': any(p['is_critico'] for p in procedimentos_data),
+            'total_procedimentos': len(procedimentos_data),
+        },
+        'procedimentos': procedimentos_data,
+        'total_perguntas': total_perguntas_cadastradas,
+        'sugestoes_sgq': PERGUNTAS_PADRAO_SGQ,
+    })
+
+
+@login_required
+@require_POST
+def api_cadastrar_pergunta_rapida_view(request, planejamento_id):
+    """
+    Cadastra uma nova pergunta de autoavaliação associada ao procedimento e vinculada permanentemente ao banco.
+    """
+    planejamento = get_object_or_404(PlanejamentoTreinamento, id=planejamento_id)
+    procedimento_id = request.POST.get('procedimento_id')
+    enunciado = request.POST.get('enunciado', '').strip()
+    resposta_esperada = request.POST.get('resposta_esperada', '').strip()
+
+    if not procedimento_id or not enunciado:
+        return JsonResponse({'success': False, 'error': 'Procedimento e enunciado são obrigatórios.'}, status=400)
+
+    from procedures.models import Procedimento, PerguntaAvaliacao
+
+    proc = get_object_or_404(Procedimento, id=procedimento_id)
+
+    # Obter próxima ordem disponível
+    max_ordem = PerguntaAvaliacao.objects.filter(procedimento=proc).count()
+    proxima_ordem = max_ordem + 1
+
+    nova_pergunta = PerguntaAvaliacao.objects.create(
+        procedimento=proc,
+        enunciado=enunciado,
+        resposta_esperada=resposta_esperada or None,
+        ordem=proxima_ordem,
+        ativo=True,
+    )
+
+    return JsonResponse({
+        'success': True,
+        'message': f'Pergunta cadastrada com sucesso para o procedimento {proc.codigo}!',
+        'pergunta': {
+            'id': nova_pergunta.id,
+            'ordem': nova_pergunta.ordem,
+            'enunciado': nova_pergunta.enunciado,
+            'resposta_esperada': nova_pergunta.resposta_esperada or '',
+            'procedimento_id': proc.id,
+            'procedimento_codigo': proc.codigo,
+        }
     })
 

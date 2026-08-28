@@ -244,6 +244,8 @@ urlpatterns = [
     path('planejamentos/<int:planejamento_id>/exportar-for141/', planejamento_views.exportar_auto_avaliacao_for141_view, name='exportar_auto_avaliacao_for141'),
     path('planejamentos/<int:planejamento_id>/auto-avaliacao/pdf/', planejamento_views.exportar_auto_avaliacao_for141_pdf_view, name='exportar_auto_avaliacao_for141_pdf'),
     path('planejamentos/<int:planejamento_id>/auto-avaliacao/imprimir/', planejamento_views.auto_avaliacao_print_view, name='auto_avaliacao_print'),
+    path('api/planejamentos/<int:planejamento_id>/auto-avaliacao/perguntas/', planejamento_views.api_planejamento_perguntas_auto_avaliacao_view, name='api_planejamento_perguntas_auto_avaliacao'),
+    path('api/planejamentos/<int:planejamento_id>/auto-avaliacao/cadastrar-pergunta/', planejamento_views.api_cadastrar_pergunta_rapida_view, name='api_cadastrar_pergunta_rapida'),
     path('planejamentos/<int:planejamento_id>/gerar-lista-presenca/', planejamento_views.gerar_lista_presenca_view, name='gerar_lista_presenca'),
     
     # Gerenciar itens do planejamento via AJAX

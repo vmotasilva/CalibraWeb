@@ -23,7 +23,7 @@ from procedures.services.treinamento_excel_export_service import (
 )
 
 
-def gerar_auto_avaliacao_pdf(planejamento: PlanejamentoTreinamento, colaborador_id: int = None) -> BytesIO:
+def gerar_auto_avaliacao_pdf(planejamento: PlanejamentoTreinamento, colaborador_id: int = None, perguntas_selecionadas: list = None) -> BytesIO:
     """
     Gera o documento PDF oficial da Auto-Avaliação de Treinamento Crítico (FOR.141.r02)
     perfeitamente diagramado para 1 página A4 com Gráfico Radar Pentagonal.
@@ -51,7 +51,7 @@ def gerar_auto_avaliacao_pdf(planejamento: PlanejamentoTreinamento, colaborador_
             colaborador = planejamento.colaboradores.select_related('setor', 'lider', 'supervisor', 'gerente').first()
 
     d_colab = _extrair_dados_colaborador_avaliado(colaborador)
-    perguntas = _obter_perguntas_treinamento(planejamento)
+    perguntas = _obter_perguntas_treinamento(planejamento, perguntas_selecionadas=perguntas_selecionadas)
 
     if hasattr(planejamento, '_mock_procs') and planejamento._mock_procs:
         procs = list(planejamento._mock_procs)

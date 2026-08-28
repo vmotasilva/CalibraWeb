@@ -543,37 +543,55 @@ def _substituir_tags_no_arquivo_zip(raw_bytes: bytes, mapping: dict) -> BytesIO:
     return out_buf
 
 
-def _obter_perguntas_treinamento(planejamento: PlanejamentoTreinamento) -> list:
+def _obter_perguntas_treinamento(planejamento: PlanejamentoTreinamento, perguntas_selecionadas: list = None) -> list:
     """
     Recupera as 5 perguntas de autoavaliação para o treinamento crítico.
-    Prioridade: Procedimento > Matriz > Perguntas Padrão SGQ.
+    Se perguntas_selecionadas for informada (como lista de strings ou lista de IDs), prioriza essas.
+    Prioridade: Perguntas Selecionadas > Procedimento > Matriz > Perguntas Padrão SGQ.
     """
-    if hasattr(planejamento, '_mock_procs') and planejamento._mock_procs:
-        procs = list(planejamento._mock_procs)
-    elif hasattr(planejamento, 'procedimentos'):
-        procs = list(planejamento.procedimentos.all())
-    else:
-        procs = []
+    perguntas_texto = []
 
-    perguntas = []
+    # 0. Se foram passadas perguntas selecionadas explicitamente
+    if perguntas_selecionadas:
+        for item in perguntas_selecionadas:
+            if isinstance(item, int) or (isinstance(item, str) and item.isdigit()):
+                p_obj = PerguntaAvaliacao.objects.filter(id=int(item), ativo=True).first()
+                if p_obj and p_obj.enunciado:
+                    perguntas_texto.append(p_obj.enunciado)
+            elif isinstance(item, str) and item.strip():
+                perguntas_texto.append(item.strip())
 
-    # 1. Buscar por Procedimento
-    if procs:
-        proc_ids = [p.id for p in procs]
-        perguntas = list(
-            PerguntaAvaliacao.objects.filter(procedimento_id__in=proc_ids, ativo=True)
-            .order_by('ordem')[:5]
-        )
+    if len(perguntas_texto) < 5:
+        if hasattr(planejamento, '_mock_procs') and planejamento._mock_procs:
+            procs = list(planejamento._mock_procs)
+        elif hasattr(planejamento, 'procedimentos'):
+            procs = list(planejamento.procedimentos.all())
+        else:
+            procs = []
 
-    # 2. Buscar por Matriz
-    if len(perguntas) < 5 and procs:
-        matrizes_nomes = [p.matriz for p in procs if p.matriz]
-        if matrizes_nomes:
-            perguntas_matriz = list(
-                PerguntaAvaliacao.objects.filter(matriz__nome__in=matrizes_nomes, ativo=True)
-                .order_by('ordem')[:5 - len(perguntas)]
+        perguntas = []
+
+        # 1. Buscar por Procedimento
+        if procs:
+            proc_ids = [p.id for p in procs]
+            perguntas = list(
+                PerguntaAvaliacao.objects.filter(procedimento_id__in=proc_ids, ativo=True)
+                .order_by('ordem')[:5 - len(perguntas_texto)]
             )
-            perguntas.extend(perguntas_matriz)
+
+        # 2. Buscar por Matriz
+        if (len(perguntas_texto) + len(perguntas)) < 5 and procs:
+            matrizes_nomes = [p.matriz for p in procs if p.matriz]
+            if matrizes_nomes:
+                perguntas_matriz = list(
+                    PerguntaAvaliacao.objects.filter(matriz__nome__in=matrizes_nomes, ativo=True)
+                    .order_by('ordem')[:5 - len(perguntas_texto) - len(perguntas)]
+                )
+                perguntas.extend(perguntas_matriz)
+
+        for p in perguntas:
+            if p.enunciado not in perguntas_texto:
+                perguntas_texto.append(p.enunciado)
 
     # 3. Fallback: 5 Perguntas Padrão Técnicas e de Qualidade
     perguntas_padrao = [
@@ -584,7 +602,6 @@ def _obter_perguntas_treinamento(planejamento: PlanejamentoTreinamento) -> list:
         "Em caso de desvio, defeito ou falha identificada durante a operação, qual é o fluxo correto de contenção e comunicação imediata?"
     ]
 
-    perguntas_texto = [p.enunciado for p in perguntas]
     for p_padrao in perguntas_padrao:
         if len(perguntas_texto) >= 5:
             break
@@ -669,7 +686,7 @@ def _extrair_dados_colaborador_avaliado(colaborador):
     }
 
 
-def gerar_auto_avaliacao_for141_xlsx(planejamento: PlanejamentoTreinamento, colaborador_id: int = None) -> BytesIO:
+def gerar_auto_avaliacao_for141_xlsx(planejamento: PlanejamentoTreinamento, colaborador_id: int = None, perguntas_selecionadas: list = None) -> BytesIO:
     """
     Gera o Formulário de Auto-Avaliação de Treinamento Crítico (FOR.141.r02).
     Preserva 100% das formas gráficas, do gráfico radar pentagonal e das caixas de texto oficiais.
@@ -682,7 +699,7 @@ def gerar_auto_avaliacao_for141_xlsx(planejamento: PlanejamentoTreinamento, cola
         nome_padrao='FOR.141.r02_Auto_Avaliacao.xlsx'
     )
 
-    perguntas = _obter_perguntas_treinamento(planejamento)
+    perguntas = _obter_perguntas_treinamento(planejamento, perguntas_selecionadas=perguntas_selecionadas)
     if hasattr(planejamento, '_mock_procs') and planejamento._mock_procs:
         procs = list(planejamento._mock_procs)
     elif hasattr(planejamento, 'procedimentos'):
