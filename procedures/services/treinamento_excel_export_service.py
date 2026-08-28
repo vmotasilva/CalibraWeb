@@ -120,51 +120,56 @@ def _copiar_estilo_celula(origem, destino):
 # 1. FOR.133.r01 - PLANEJAMENTO DE TREINAMENTO (MATRIZ DE CRONOGRAMA)
 # ==============================================================================
 
-def gerar_planejamento_matriz_for133_xlsx(planejamento: PlanejamentoTreinamento) -> BytesIO:
+def gerar_planejamento_matriz_for133_xlsx(planejamentos=None, ano_referencia=None, planejamento_unico: PlanejamentoTreinamento = None) -> BytesIO:
     """
-    Gera a Matriz de Planejamento de Treinamento (FOR.133.r01).
-    Eixos cruzados: Colaborador X Procedimento X Facilitador com Linha do Tempo (Jan-Dez).
+    Gera a Matriz de Planejamento de Treinamentos / Cronograma Anual (FOR.133.r01).
+    Extrai todos os treinamentos cadastrados (respeitando os filtros aplicados).
+    Preenche a matriz de Jan a Dez com 'P' (Planejado) e 'R' (Realizado).
     """
+    # Normalizar lista de planejamentos
+    if planejamento_unico:
+        lista_planejamentos = [planejamento_unico]
+    elif isinstance(planejamentos, PlanejamentoTreinamento):
+        lista_planejamentos = [planejamentos]
+    elif planejamentos is not None:
+        lista_planejamentos = list(planejamentos)
+    else:
+        lista_planejamentos = list(
+            PlanejamentoTreinamento.objects.select_related('instrutor')
+            .prefetch_related('colaboradores', 'procedimentos')
+            .order_by('data_prevista')
+        )
+
     wb, template_obj = _carregar_workbook_template(
         funcao='PLANEJAMENTO_MATRIZ',
         codigo_busca='133',
         nome_padrao='FOR.133.r01_Planejamento_de_Treinamento.xlsx'
     )
 
-    data_ref = planejamento.data_prevista or planejamento.criado_em.date()
-    ano_str = str(data_ref.year)
-    instrutor_nome = planejamento.instrutor.nome_completo if planejamento.instrutor else "-"
-    
-    colaboradores = list(planejamento.colaboradores.select_related('setor').all())
-    procedimentos = list(planejamento.procedimentos.all())
-    setor_nome = colaboradores[0].setor.nome if (colaboradores and colaboradores[0].setor) else "-"
-
-    mes_planejado = planejamento.data_prevista.month if planejamento.data_prevista else None
-    mes_realizado = planejamento.data_realizada.month if planejamento.data_realizada else None
+    if not ano_referencia:
+        if lista_planejamentos and lista_planejamentos[0].data_prevista:
+            ano_referencia = lista_planejamentos[0].data_prevista.year
+        else:
+            ano_referencia = timezone.now().year
+    ano_str = str(ano_referencia)
 
     substituicoes = {
         "{{ANO}}": ano_str,
-        "{{TITULO}}": planejamento.titulo or "-",
-        "{{INSTRUTOR}}": instrutor_nome,
-        "{{FACILITADOR}}": instrutor_nome,
-        "{{SETOR}}": setor_nome,
-        "{{DEPARTAMENTO}}": setor_nome,
+        "{{TOTAL_TREINAMENTOS}}": str(len(lista_planejamentos)),
         "{{DATA_EMISSAO}}": timezone.now().strftime("%d/%m/%Y"),
-        "{{CARGA_HORARIA}}": f"{planejamento.carga_horaria} Minutos" if planejamento.carga_horaria else "-",
-        "{{STATUS}}": planejamento.get_status_display() if hasattr(planejamento, 'get_status_display') else planejamento.status,
     }
 
-    # Se carregou um template existente
+    # Se carregou um template existente (.xlsx)
     if wb is not None:
         ws = wb.active
         for sheet in wb.worksheets:
             _search_and_replace_sheet(sheet, substituicoes)
 
-        # Verificar se é o layout oficial do FOR.133 (Cabeçalho na linha 3)
+        # Verificar se é o layout oficial do FOR.133 (Cabeçalho nas primeiras linhas)
         eh_layout_oficial_133 = False
         for r in range(1, 6):
             for c in range(1, 10):
-                v = str(sheet.cell(r, c).value or '').upper()
+                v = str(ws.cell(r, c).value or '').upper()
                 if "NOME DO FORMANDO" in v or "TITULO DO TREINAMENTO" in v or "TÍTULO DO TREINAMENTO" in v:
                     eh_layout_oficial_133 = True
                     break
@@ -172,18 +177,26 @@ def gerar_planejamento_matriz_for133_xlsx(planejamento: PlanejamentoTreinamento)
         if eh_layout_oficial_133:
             # Preencher a partir da linha 4
             row_idx = 4
-            for colab in (colaboradores or [None]):
-                for proc in (procedimentos or [None]):
+            for plan in lista_planejamentos:
+                procs = list(plan.procedimentos.all())
+                colabs = list(plan.colaboradores.all())
+                instrutor_nome = plan.instrutor.nome_completo if plan.instrutor else "-"
+                proc_str = ", ".join([f"{p.codigo} - {p.nome}" for p in procs]) if procs else (plan.titulo or "-")
+                
+                mes_planejado = plan.data_prevista.month if plan.data_prevista else None
+                mes_realizado = plan.data_realizada.month if plan.data_realizada else (plan.data_prevista.month if plan.status == 'REALIZADO' and plan.data_prevista else None)
+                ch_min = plan.carga_horaria or 60
+
+                colabs_iter = colabs if colabs else [None]
+                for colab in colabs_iter:
                     colab_nome = colab.nome_completo if colab else "A Definir"
-                    proc_nome = f"{proc.codigo} - {proc.nome}" if proc else (planejamento.titulo or "-")
                     
-                    ws.cell(row=row_idx, column=2, value=proc_nome) # Col B: Título
+                    ws.cell(row=row_idx, column=2, value=proc_str) # Col B: Título
                     ws.cell(row=row_idx, column=3, value=instrutor_nome) # Col C: Formador
                     ws.cell(row=row_idx, column=4, value=colab_nome) # Col D: Formando
                     ws.cell(row=row_idx, column=5, value="Treinamento Técnico / Operacional") # Col E: Metodologia
                     
                     # Carga horária
-                    ch_min = planejamento.carga_horaria or 60
                     ws.cell(row=row_idx, column=6, value=f"{ch_min//60:02d}:{ch_min%60:02d}") # Col F: hh:mm
                     ws.cell(row=row_idx, column=7, value=round(ch_min/60, 2)) # Col G: h
                     
@@ -194,6 +207,10 @@ def gerar_planejamento_matriz_for133_xlsx(planejamento: PlanejamentoTreinamento)
                             ws.cell(row=row_idx, column=col_mes, value="R")
                         elif mes_planejado == m:
                             ws.cell(row=row_idx, column=col_mes, value="P")
+                        else:
+                            ws.cell(row=row_idx, column=col_mes, value="")
+
+                    ws.cell(row=row_idx, column=20, value=f"Status: {plan.status}") # Col T: Observação
                     row_idx += 1
         else:
             # Localizar âncora da tabela de colaboradores/procedimentos
@@ -210,12 +227,21 @@ def gerar_planejamento_matriz_for133_xlsx(planejamento: PlanejamentoTreinamento)
 
             if anchor_row:
                 linha_atual = anchor_row + 1 if "NOME DO COLABORADOR" in str(ws.cell(anchor_row, 1).value or '').upper() else anchor_row
-                for colab in colaboradores:
-                    for proc in (procedimentos or [None]):
-                        ws.cell(row=linha_atual, column=1, value=colab.nome_completo)
+                for plan in lista_planejamentos:
+                    procs = list(plan.procedimentos.all())
+                    colabs = list(plan.colaboradores.all())
+                    instrutor_nome = plan.instrutor.nome_completo if plan.instrutor else "-"
+                    proc_str = ", ".join([f"{p.codigo} - {p.nome}" for p in procs]) if procs else (plan.titulo or "-")
+                    
+                    mes_planejado = plan.data_prevista.month if plan.data_prevista else None
+                    mes_realizado = plan.data_realizada.month if plan.data_realizada else (plan.data_prevista.month if plan.status == 'REALIZADO' and plan.data_prevista else None)
+
+                    colabs_iter = colabs if colabs else [None]
+                    for colab in colabs_iter:
+                        ws.cell(row=linha_atual, column=1, value=colab.nome_completo if colab else "A Definir")
                         ws.cell(row=linha_atual, column=2, value=colab.matricula or "-")
                         ws.cell(row=linha_atual, column=3, value=colab.cargo or "-")
-                        ws.cell(row=linha_atual, column=4, value=f"{proc.codigo} - {proc.nome}" if proc else "-")
+                        ws.cell(row=linha_atual, column=4, value=proc_str)
                         ws.cell(row=linha_atual, column=5, value=instrutor_nome)
                         
                         # Colunas de Meses (assumindo colunas 6 a 17 para Jan-Dez)
@@ -236,7 +262,6 @@ def gerar_planejamento_matriz_for133_xlsx(planejamento: PlanejamentoTreinamento)
 
         # Estilos Oficiais
         font_header_doc = Font(name="Arial", size=11, bold=True, color="FFFFFF")
-        font_sub_doc = Font(name="Arial", size=9, bold=True, color="1E293B")
         font_th = Font(name="Arial", size=8.5, bold=True, color="FFFFFF")
         font_td = Font(name="Arial", size=8.5, color="000000")
         font_meta = Font(name="Arial", size=8.5, bold=True, color="334155")
@@ -261,27 +286,26 @@ def gerar_planejamento_matriz_for133_xlsx(planejamento: PlanejamentoTreinamento)
 
         # Cabeçalho do Formulário
         ws.merge_cells("A1:R1")
-        cell_top = ws.cell(row=1, column=1, value="FOR.133.r01 - PLANEJAMENTO DE TREINAMENTO / CRONOGRAMA")
+        cell_top = ws.cell(row=1, column=1, value=f"FOR.133.r01 - MATRIZ DE PLANEJAMENTO DE TREINAMENTOS / CRONOGRAMA ANUAL ({ano_str})")
         cell_top.font = font_header_doc
         cell_top.fill = fill_header_doc
         cell_top.alignment = align_center
         ws.row_dimensions[1].height = 28
 
-        # Metadados do Planejamento
+        # Metadados Gerais
         meta_rows = [
-            ("Título do Treinamento:", planejamento.titulo or "-", "Ano de Referência:", ano_str),
-            ("Instrutor / Facilitador:", instrutor_nome, "Setor / Departamento:", setor_nome),
-            ("Carga Horária:", f"{planejamento.carga_horaria} Minutos" if planejamento.carga_horaria else "-", "Status do Planejamento:", planejamento.status),
+            ("Ano de Referência:", ano_str, "Total de Treinamentos:", str(len(lista_planejamentos))),
+            ("Data de Emissão:", timezone.now().strftime("%d/%m/%Y"), "Status Geral:", "Filtro Aplicado"),
         ]
 
         for idx, (lbl1, val1, lbl2, val2) in enumerate(meta_rows, start=2):
             ws.merge_cells(start_row=idx, start_column=2, end_row=idx, end_column=10)
             ws.merge_cells(start_row=idx, start_column=12, end_row=idx, end_column=18)
 
-            c_lbl1 = ws.cell(row=idx, column=1, value=lbl1)
-            c_val1 = ws.cell(row=idx, column=2, value=val1)
-            c_lbl2 = ws.cell(row=idx, column=11, value=lbl2)
-            c_val2 = ws.cell(row=idx, column=12, value=val2)
+            ws.cell(row=idx, column=1, value=lbl1)
+            ws.cell(row=idx, column=2, value=val1)
+            ws.cell(row=idx, column=11, value=lbl2)
+            ws.cell(row=idx, column=12, value=val2)
 
             for col in range(1, 19):
                 c = ws.cell(row=idx, column=col)
@@ -296,59 +320,64 @@ def gerar_planejamento_matriz_for133_xlsx(planejamento: PlanejamentoTreinamento)
             ws.row_dimensions[idx].height = 18
 
         # Linha em branco
-        ws.row_dimensions[5].height = 6
+        ws.row_dimensions[4].height = 6
 
         # Cabeçalho da Matriz Relacional
         headers_base = [
-            "Nº", "Colaborador", "Matrícula", "Cargo / Função",
-            "Procedimento (Código / Nome)", "Facilitador"
+            "Nº", "Procedimento / Treinamento", "Colaborador (Formando)", "Matrícula / Cargo",
+            "Facilitador", "Carga Horária"
         ]
         meses_nomes = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
 
         for col_idx, h_text in enumerate(headers_base, start=1):
-            c = ws.cell(row=6, column=col_idx, value=h_text)
+            c = ws.cell(row=5, column=col_idx, value=h_text)
             c.font = font_th
             c.fill = fill_th
             c.alignment = align_center
             c.border = border_thin
 
         for col_idx, m_text in enumerate(meses_nomes, start=7):
-            c = ws.cell(row=6, column=col_idx, value=m_text)
+            c = ws.cell(row=5, column=col_idx, value=m_text)
             c.font = font_th
             c.fill = fill_meses_th
             c.alignment = align_center
             c.border = border_thin
 
-        ws.row_dimensions[6].height = 22
+        ws.row_dimensions[5].height = 22
 
-        # Linhas de Dados (Cruzamento Colaborador X Procedimento)
-        row_num = 7
+        # Linhas de Dados
+        row_num = 6
         item_counter = 1
 
-        lista_colabs = colaboradores if colaboradores else [None]
-        lista_procs = procedimentos if procedimentos else [None]
+        for plan in lista_planejamentos:
+            procs = list(plan.procedimentos.all())
+            colabs = list(plan.colaboradores.all())
+            instrutor_nome = plan.instrutor.nome_completo if plan.instrutor else "-"
+            proc_str = ", ".join([f"{p.codigo} - {p.nome}" for p in procs]) if procs else (plan.titulo or "-")
+            ch_str = f"{plan.carga_horaria} min" if plan.carga_horaria else "-"
+            
+            mes_planejado = plan.data_prevista.month if plan.data_prevista else None
+            mes_realizado = plan.data_realizada.month if plan.data_realizada else (plan.data_prevista.month if plan.status == 'REALIZADO' and plan.data_prevista else None)
 
-        for colab in lista_colabs:
-            for proc in lista_procs:
+            colabs_iter = colabs if colabs else [None]
+            for colab in colabs_iter:
                 colab_nome = colab.nome_completo if colab else "A Definir"
-                colab_mat = colab.matricula if colab else "-"
-                colab_cargo = colab.cargo if colab else "-"
-                proc_str = f"{proc.codigo} - {proc.nome}" if proc else "Instruções Gerais de Treinamento"
+                colab_info = f"{colab.matricula or '-'} / {colab.cargo or '-'}" if colab else "-"
 
                 row_vals = [
                     item_counter,
-                    colab_nome,
-                    colab_mat,
-                    colab_cargo,
                     proc_str,
+                    colab_nome,
+                    colab_info,
                     instrutor_nome,
+                    ch_str,
                 ]
 
                 for col_idx, val in enumerate(row_vals, start=1):
                     c = ws.cell(row=row_num, column=col_idx, value=val)
                     c.font = font_td
                     c.border = border_thin
-                    c.alignment = align_center if col_idx in [1, 3] else align_left
+                    c.alignment = align_center if col_idx in [1, 6] else align_left
 
                 # Preenchimento das 12 colunas de meses
                 for m_idx in range(1, 13):
@@ -394,15 +423,18 @@ def gerar_planejamento_matriz_for133_xlsx(planejamento: PlanejamentoTreinamento)
 
         # Ajuste de larguras das colunas
         larguras = {
-            'A': 5, 'B': 28, 'C': 12, 'D': 20, 'E': 34, 'F': 24,
+            'A': 5, 'B': 32, 'C': 26, 'D': 22, 'E': 24, 'F': 14,
             'G': 6, 'H': 6, 'I': 6, 'J': 6, 'K': 6, 'L': 6,
             'M': 6, 'N': 6, 'O': 6, 'P': 6, 'Q': 6, 'R': 6
         }
         for col_letter, width in larguras.items():
             ws.column_dimensions[col_letter].width = width
 
-    output = BytesIO()
-    wb.save(output)
+    raw_output = BytesIO()
+    wb.save(raw_output)
+    raw_bytes = raw_output.getvalue()
+
+    output = _substituir_tags_no_arquivo_zip(raw_bytes, substituicoes)
     output.seek(0)
     return output
 

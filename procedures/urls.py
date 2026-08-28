@@ -237,8 +237,9 @@ urlpatterns = [
     
     # Export para Excel
     path('planejamentos/export/lista-excel/', planejamento_views.exportar_lista_planejamentos_excel_view, name='exportar_lista_planejamentos_excel'),
+    path('planejamentos/export/cronograma-for133/', planejamento_views.exportar_planejamento_for133_view, name='exportar_planejamento_for133'),
     path('planejamentos/<int:planejamento_id>/export/excel/', planejamento_views.exportar_detalhe_planejamento_excel_view, name='exportar_detalhe_planejamento_excel'),
-    path('planejamentos/<int:planejamento_id>/exportar-for133/', planejamento_views.exportar_planejamento_for133_view, name='exportar_planejamento_for133'),
+    path('planejamentos/<int:planejamento_id>/exportar-for133/', planejamento_views.exportar_planejamento_for133_view, name='exportar_planejamento_for133_single'),
     path('planejamentos/<int:planejamento_id>/exportar-for141/', planejamento_views.exportar_auto_avaliacao_for141_view, name='exportar_auto_avaliacao_for141'),
     path('planejamentos/<int:planejamento_id>/gerar-lista-presenca/', planejamento_views.gerar_lista_presenca_view, name='gerar_lista_presenca'),
     

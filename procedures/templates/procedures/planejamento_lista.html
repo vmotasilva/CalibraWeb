@@ -207,19 +207,30 @@
             </div>
         </form>
 
-        <div class="dropdown ms-auto">
-            <button class="btn btn-outline-secondary dropdown-toggle btn-sm" type="button" id="planejamentoActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="bi bi-three-dots-vertical"></i> Ações
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="planejamentoActionsDropdown">
-                {% if can_exportar_planejamentos and planejamentos %}
-                <li>
-                    <a href="{% url 'procedures:exportar_lista_planejamentos_excel' %}?{{ request.GET.urlencode }}" class="dropdown-item">
-                        <i class="bi bi-file-earmark-spreadsheet me-2 text-success"></i> Exportar Excel
-                    </a>
-                </li>
-                {% endif %}
-            </ul>
+        <div class="d-flex align-items-center gap-2 ms-auto">
+            <a href="{% url 'procedures:exportar_planejamento_for133' %}?{{ request.GET.urlencode }}" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1 shadow-sm" title="Exportar Matriz Anual de Planejamento e Cronograma Geral (FOR.133.r01)">
+                <i class="bi bi-calendar3"></i> <span>Cronograma (FOR.133)</span>
+            </a>
+
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle btn-sm" type="button" id="planejamentoActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-three-dots-vertical"></i> Ações
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="planejamentoActionsDropdown">
+                    <li>
+                        <a href="{% url 'procedures:exportar_planejamento_for133' %}?{{ request.GET.urlencode }}" class="dropdown-item">
+                            <i class="bi bi-calendar-check me-2 text-primary"></i> Cronograma Anual (FOR.133)
+                        </a>
+                    </li>
+                    {% if can_exportar_planejamentos and planejamentos %}
+                    <li>
+                        <a href="{% url 'procedures:exportar_lista_planejamentos_excel' %}?{{ request.GET.urlencode }}" class="dropdown-item">
+                            <i class="bi bi-file-earmark-spreadsheet me-2 text-success"></i> Exportar Lista Excel
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
         </div>
     </div>
     <div class="card">

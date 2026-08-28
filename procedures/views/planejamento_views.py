@@ -1368,24 +1368,76 @@ def gerar_lista_presenca_view(request, planejamento_id):
 
 
 @login_required
-def exportar_planejamento_for133_view(request, planejamento_id):
+def exportar_planejamento_for133_view(request, planejamento_id=None):
     """
-    Exporta a Matriz de Planejamento de Treinamento / Cronograma (FOR.133.r01) em Excel (.xlsx).
+    Exporta a Matriz Geral de Planejamento de Treinamento / Cronograma Anual (FOR.133.r01) em Excel (.xlsx).
+    Se chamado sem planejamento_id, extrai todos os treinamentos considerando os filtros aplicados na tela.
     """
-    planejamento = get_object_or_404(
-        PlanejamentoTreinamento.objects.prefetch_related('colaboradores', 'procedimentos'),
-        id=planejamento_id
-    )
     from procedures.services.treinamento_excel_export_service import gerar_planejamento_matriz_for133_xlsx
 
+    if planejamento_id:
+        planejamentos = PlanejamentoTreinamento.objects.select_related('instrutor').prefetch_related('colaboradores', 'procedimentos').filter(id=planejamento_id)
+        if not planejamentos.exists():
+            messages.error(request, "Planejamento não encontrado.")
+            return redirect('procedures:planejamentos_list')
+        ano_ref = (planejamentos.first().data_prevista or timezone.now().date()).year
+        filename = f"FOR.133.r01_Cronograma_Treinamento_{ano_ref}_ID{planejamento_id}.xlsx"
+    else:
+        planejamentos = PlanejamentoTreinamento.objects.select_related('instrutor').prefetch_related('colaboradores', 'procedimentos').all()
+        
+        # Aplicar os mesmos filtros da listagem
+        termo = request.GET.get('q', '').strip()
+        status = request.GET.get('status', '')
+        procedimento_id = request.GET.get('procedimento', '')
+        mes = request.GET.get('mes', '')
+        instrutor_id = request.GET.get('instrutor', '').strip()
+        colaborador_id = request.GET.get('colaborador', '').strip()
+        ano_param = request.GET.get('ano', '')
+
+        if termo:
+            planejamentos = planejamentos.filter(
+                Q(titulo__icontains=termo) | 
+                Q(procedimentos__codigo__icontains=termo) |
+                Q(procedimentos__nome__icontains=termo)
+            ).distinct()
+        
+        if status:
+            planejamentos = planejamentos.filter(status=status)
+        
+        if procedimento_id:
+            planejamentos = planejamentos.filter(procedimentos__id=procedimento_id)
+        
+        if instrutor_id:
+            planejamentos = planejamentos.filter(instrutor_id=instrutor_id)
+        
+        if colaborador_id:
+            planejamentos = planejamentos.filter(colaboradores__id=colaborador_id).distinct()
+        
+        if mes:
+            try:
+                ano_val, mes_num = mes.split('-')
+                planejamentos = planejamentos.filter(
+                    data_prevista__year=ano_val,
+                    data_prevista__month=mes_num
+                )
+                ano_ref = int(ano_val)
+            except Exception:
+                ano_ref = timezone.now().year
+        elif ano_param and ano_param.isdigit():
+            ano_ref = int(ano_param)
+            planejamentos = planejamentos.filter(data_prevista__year=ano_ref)
+        else:
+            ano_ref = timezone.now().year
+
+        planejamentos = planejamentos.order_by('data_prevista', 'id')
+        filename = f"FOR.133.r01_Cronograma_Geral_Treinamentos_{ano_ref}.xlsx"
+
     try:
-        excel_buffer = gerar_planejamento_matriz_for133_xlsx(planejamento)
+        excel_buffer = gerar_planejamento_matriz_for133_xlsx(planejamentos=planejamentos, ano_referencia=ano_ref)
     except Exception as e:
         messages.error(request, f"Erro ao gerar cronograma Excel (FOR.133): {str(e)}")
-        return redirect('procedures:detalhe_planejamento', planejamento_id=planejamento.id)
+        return redirect('procedures:planejamentos_list')
 
-    ano_str = str((planejamento.data_prevista or timezone.now().date()).year)
-    filename = f"FOR.133.r01_Planejamento_Treinamento_{ano_str}_ID{planejamento.id}.xlsx"
     response = HttpResponse(
         excel_buffer.getvalue(),
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
