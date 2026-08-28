@@ -349,7 +349,12 @@ def gerar_lista_presenca_xlsx(planejamento: PlanejamentoTreinamento, overrides: 
             else:
                 ws.cell(row=proc_anchor_row, column=proc_col, value="")
 
-    output = BytesIO()
-    wb.save(output)
+    raw_output = BytesIO()
+    wb.save(raw_output)
+    raw_bytes = raw_output.getvalue()
+
+    # Aplica a substituição também em Caixas de Texto (DrawingML / VML / Shapes)
+    from procedures.services.treinamento_excel_export_service import _substituir_tags_no_arquivo_zip
+    output = _substituir_tags_no_arquivo_zip(raw_bytes, substituicoes)
     output.seek(0)
     return output

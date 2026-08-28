@@ -104,6 +104,107 @@ def _obter_raw_bytes_template(funcao: str, codigo_busca: str, nome_padrao: str):
     return raw_bytes, template_config
 
 
+def _processar_e_substituir_tags_xml(text: str, mapping: dict) -> str:
+    """
+    Substitui tags no conteúdo XML do arquivo Excel (.xlsx), suportando:
+    1. Substituição direta em células, strings compartilhadas e propriedades;
+    2. Caixas de texto e formas gráficas do DrawingML (<a:p>...<a:t>), mesmo quando
+       o Excel fragmenta a tag em múltiplos elementos <a:r>;
+    3. Caixas de texto VML (<v:textbox>) e comentários;
+    4. Strings compartilhadas com formatação rica (<si>...<t>).
+    """
+    if not text or not mapping:
+        return text
+
+    # 1. Substituição direta (caso a tag esteja intacta em um único nó de texto)
+    for k, v in mapping.items():
+        v_str = str(v if v is not None else '')
+        v_clean = v_str.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+        if k in text:
+            text = text.replace(k, v_clean)
+
+    # 2. Processamento de parágrafos de Caixas de Texto / Formas (DrawingML: <a:p>...</a:p>)
+    def repl_drawing_p(m):
+        p_xml = m.group(0)
+        t_matches = list(re.finditer(r'(<a:t[^>]*>)(.*?)(</a:t>)', p_xml, re.DOTALL))
+        if not t_matches:
+            return p_xml
+
+        combined_text = ''.join(tm.group(2) for tm in t_matches)
+        changed = False
+        new_combined = combined_text
+
+        for k, v in mapping.items():
+            if k in new_combined:
+                changed = True
+                v_str = str(v if v is not None else '')
+                v_clean = v_str.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                new_combined = new_combined.replace(k, v_clean)
+
+        if not changed:
+            return p_xml
+
+        # Reinsere o texto completo no primeiro nó <a:t> e limpa os nós <a:t> subsequentes
+        first_tm = t_matches[0]
+        res = [p_xml[:first_tm.start()], f'{first_tm.group(1)}{new_combined}{first_tm.group(3)}']
+        last_end = first_tm.end()
+        for tm in t_matches[1:]:
+            res.append(p_xml[last_end:tm.start()])
+            res.append(f'{tm.group(1)}{tm.group(3)}')
+            last_end = tm.end()
+        res.append(p_xml[last_end:])
+        return ''.join(res)
+
+    text = re.sub(r'<a:p\b[^>]*>.*?</a:p>', repl_drawing_p, text, flags=re.DOTALL)
+
+    # 3. Processamento de Strings Compartilhadas com Rich Text (<si>...</si>)
+    def repl_si(m):
+        si_xml = m.group(0)
+        t_matches = list(re.finditer(r'(<t[^>]*>)(.*?)(</t>)', si_xml, re.DOTALL))
+        if not t_matches:
+            return si_xml
+
+        combined_text = ''.join(tm.group(2) for tm in t_matches)
+        changed = False
+        new_combined = combined_text
+
+        for k, v in mapping.items():
+            if k in new_combined:
+                changed = True
+                v_str = str(v if v is not None else '')
+                v_clean = v_str.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                new_combined = new_combined.replace(k, v_clean)
+
+        if not changed:
+            return si_xml
+
+        first_tm = t_matches[0]
+        res = [si_xml[:first_tm.start()], f'{first_tm.group(1)}{new_combined}{first_tm.group(3)}']
+        last_end = first_tm.end()
+        for tm in t_matches[1:]:
+            res.append(si_xml[last_end:tm.start()])
+            res.append(f'{tm.group(1)}{tm.group(3)}')
+            last_end = tm.end()
+        res.append(si_xml[last_end:])
+        return ''.join(res)
+
+    text = re.sub(r'<si\b[^>]*>.*?</si>', repl_si, text, flags=re.DOTALL)
+
+    # 4. Processamento de Caixas de Texto VML (<v:textbox>...</v:textbox>)
+    def repl_vml(m):
+        vml = m.group(0)
+        for k, v in mapping.items():
+            if k in vml:
+                v_str = str(v if v is not None else '')
+                v_clean = v_str.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                vml = vml.replace(k, v_clean)
+        return vml
+
+    text = re.sub(r'<v:textbox\b[^>]*>.*?</v:textbox>', repl_vml, text, flags=re.DOTALL)
+
+    return text
+
+
 def _preencher_template_xlsx_preservando_formas(orig_bytes: bytes, substituicoes: dict, cell_updates: dict = None) -> BytesIO:
     """
     Substitui tags e valores de células diretamente na estrutura XML do arquivo .xlsx,
@@ -140,11 +241,8 @@ def _preencher_template_xlsx_preservando_formas(orig_bytes: bytes, substituicoes
                     elif re.search(pattern_full, text):
                         text = re.sub(pattern_full, repl_full, text)
 
-            # Substituição de tags gerais {{TAG}} em todo o XML (células, textboxes, shapes)
-            for k, v in substituicoes.items():
-                v_str = str(v if v is not None else '')
-                v_clean = v_str.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-                text = text.replace(k, v_clean)
+            # Substituição de tags gerais {{TAG}} em todo o XML (células, textboxes, shapes, caixas de texto)
+            text = _processar_e_substituir_tags_xml(text, substituicoes)
 
             data = text.encode('utf-8')
         out_zip.writestr(item, data)
@@ -538,17 +636,13 @@ def _substituir_tags_no_arquivo_zip(raw_bytes: bytes, mapping: dict) -> BytesIO:
         with zipfile.ZipFile(out_buf, 'w', compression=zipfile.ZIP_DEFLATED) as zout:
             for item in zin.infolist():
                 content = zin.read(item.filename)
-                # Aplicar substituição em todos os arquivos xml, vml e rels
+                # Aplicar substituição avançada em todos os arquivos xml, vml e rels
                 if item.filename.endswith('.xml') or item.filename.endswith('.vml') or item.filename.endswith('.rels'):
                     try:
-                        text = content.decode('utf-8')
-                        modificado = False
-                        for k, v in mapping.items():
-                            if k in text:
-                                text = text.replace(k, str(v if v is not None else ''))
-                                modificado = True
-                        if modificado:
-                            content = text.encode('utf-8')
+                        text = content.decode('utf-8', errors='ignore')
+                        new_text = _processar_e_substituir_tags_xml(text, mapping)
+                        if new_text != text:
+                            content = new_text.encode('utf-8')
                     except Exception:
                         pass
                 zout.writestr(item, content)
