@@ -84,7 +84,22 @@
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card">
+        <div class="card mb-3 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h6 class="mb-0"><i class="bi bi-patch-question-fill me-1"></i> Auto-Avaliação (FOR.141)</h6>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted mb-3">Critérios e 5 perguntas técnicas avaliadas no gráfico radar de autoavaliação (FOR.141.r02).</p>
+                <a href="{% url 'procedures:perguntas_avaliacao_list' %}?busca={{ proc.codigo }}" class="btn btn-primary w-100 mb-2">
+                    <i class="bi bi-sliders me-1"></i> Configurar 5 Perguntas
+                </a>
+                <a href="{% url 'procedures:exportar_preview_for141_procedimento' proc.id %}" class="btn btn-outline-success w-100">
+                    <i class="bi bi-file-earmark-excel me-1"></i> Testar Excel FOR.141
+                </a>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
             <div class="card-header">
                 <h6 class="mb-0">Ações</h6>
             </div>
@@ -96,3 +111,4 @@
     </div>
 </div>
 {% endblock %}
+

@@ -53,6 +53,7 @@ from . import (
     validacao_views,
     template_mapeamento_views,
     avaliacao_eficacia_views,
+    perguntas_avaliacao_views,
 )
 
 __all__ = [
@@ -102,6 +103,7 @@ __all__ = [
     'validacao_views',
     'template_mapeamento_views',
     'avaliacao_eficacia_views',
+    'perguntas_avaliacao_views',
 ]
 
 from .avaliacao_eficacia_views import (
@@ -117,6 +119,13 @@ from .planejamento_views import (
     exportar_auto_avaliacao_for141_view,
 )
 
+from .perguntas_avaliacao_views import (
+    perguntas_avaliacao_list_view,
+    obter_perguntas_procedimento_api,
+    salvar_perguntas_procedimento_api,
+    exportar_preview_for141_procedimento_view,
+)
+
 __all__ += [
     'avaliacao_eficacia_list_view',
     'avaliacao_eficacia_registrar_view',
@@ -125,5 +134,10 @@ __all__ += [
     'exportar_avaliacao_eficacia_for142_view',
     'exportar_planejamento_for133_view',
     'exportar_auto_avaliacao_for141_view',
+    'perguntas_avaliacao_list_view',
+    'obter_perguntas_procedimento_api',
+    'salvar_perguntas_procedimento_api',
+    'exportar_preview_for141_procedimento_view',
 ]
+
 

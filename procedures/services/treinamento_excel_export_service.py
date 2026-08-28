@@ -411,12 +411,51 @@ def gerar_planejamento_matriz_for133_xlsx(planejamento: PlanejamentoTreinamento)
 # 2. FOR.141.r02 - AUTO-AVALIAÇÃO DE TREINAMENTO CRÍTICO (5 PERGUNTAS)
 # ==============================================================================
 
+def _substituir_tags_no_arquivo_zip(raw_bytes: bytes, mapping: dict) -> BytesIO:
+    """
+    Descompacta o arquivo Excel em memória e substitui quaisquer tags dinâmicas
+    (ex: {{PER_1}}, {{PER_2}}, {{COLABORADOR}}) em todos os arquivos XML internos,
+    incluindo desenhos, gráficos radar (drawing1.xml), caixas de texto e relacionamentos.
+    """
+    import zipfile
+    in_buf = BytesIO(raw_bytes)
+    out_buf = BytesIO()
+
+    with zipfile.ZipFile(in_buf, 'r') as zin:
+        with zipfile.ZipFile(out_buf, 'w', compression=zipfile.ZIP_DEFLATED) as zout:
+            for item in zin.infolist():
+                content = zin.read(item.filename)
+                # Aplicar substituição em todos os arquivos xml, vml e rels
+                if item.filename.endswith('.xml') or item.filename.endswith('.vml') or item.filename.endswith('.rels'):
+                    try:
+                        text = content.decode('utf-8')
+                        modificado = False
+                        for k, v in mapping.items():
+                            if k in text:
+                                text = text.replace(k, str(v if v is not None else ''))
+                                modificado = True
+                        if modificado:
+                            content = text.encode('utf-8')
+                    except Exception:
+                        pass
+                zout.writestr(item, content)
+
+    out_buf.seek(0)
+    return out_buf
+
+
 def _obter_perguntas_treinamento(planejamento: PlanejamentoTreinamento) -> list:
     """
     Recupera as 5 perguntas de autoavaliação para o treinamento crítico.
     Prioridade: Procedimento > Matriz > Perguntas Padrão SGQ.
     """
-    procs = list(planejamento.procedimentos.all())
+    if hasattr(planejamento, '_mock_procs') and planejamento._mock_procs:
+        procs = list(planejamento._mock_procs)
+    elif hasattr(planejamento, 'procedimentos'):
+        procs = list(planejamento.procedimentos.all())
+    else:
+        procs = []
+
     perguntas = []
 
     # 1. Buscar por Procedimento
@@ -459,7 +498,7 @@ def _obter_perguntas_treinamento(planejamento: PlanejamentoTreinamento) -> list:
 def gerar_auto_avaliacao_for141_xlsx(planejamento: PlanejamentoTreinamento, colaborador_id: int = None) -> BytesIO:
     """
     Gera o Formulário de Auto-Avaliação de Treinamento Crítico (FOR.141.r02).
-    Injeta as 5 perguntas técnicas e dados do treinamento.
+    Injeta as 5 perguntas técnicas (ordem 1 a 5) nos vértices do gráfico radar e dados do treinamento.
     """
     wb, template_obj = _carregar_workbook_template(
         funcao='AUTO_AVALIACAO',
@@ -468,17 +507,24 @@ def gerar_auto_avaliacao_for141_xlsx(planejamento: PlanejamentoTreinamento, cola
     )
 
     perguntas = _obter_perguntas_treinamento(planejamento)
-    procs = list(planejamento.procedimentos.all())
+    if hasattr(planejamento, '_mock_procs') and planejamento._mock_procs:
+        procs = list(planejamento._mock_procs)
+    elif hasattr(planejamento, 'procedimentos'):
+        procs = list(planejamento.procedimentos.all())
+    else:
+        procs = []
+
     proc_str = ", ".join([f"{p.codigo} - {p.nome}" for p in procs]) if procs else (planejamento.titulo or "-")
-    instrutor_nome = planejamento.instrutor.nome_completo if planejamento.instrutor else "-"
-    data_str = planejamento.data_prevista.strftime("%d/%m/%Y") if planejamento.data_prevista else timezone.now().strftime("%d/%m/%Y")
+    instrutor_nome = (planejamento.instrutor.nome_completo if getattr(planejamento, 'instrutor', None) else "-")
+    data_str = planejamento.data_prevista.strftime("%d/%m/%Y") if getattr(planejamento, 'data_prevista', None) else timezone.now().strftime("%d/%m/%Y")
 
     # Colaborador específico ou lista
     colaborador = None
-    if colaborador_id:
-        colaborador = planejamento.colaboradores.filter(id=colaborador_id).first()
-    if not colaborador and planejamento.colaboradores.exists():
-        colaborador = planejamento.colaboradores.first()
+    if hasattr(planejamento, 'colaboradores'):
+        if colaborador_id:
+            colaborador = planejamento.colaboradores.filter(id=colaborador_id).first()
+        if not colaborador and planejamento.colaboradores.exists():
+            colaborador = planejamento.colaboradores.first()
 
     colab_nome = colaborador.nome_completo if colaborador else "________________________________________"
     colab_mat = colaborador.matricula if colaborador else "_________"
@@ -500,7 +546,7 @@ def gerar_auto_avaliacao_for141_xlsx(planejamento: PlanejamentoTreinamento, cola
         "{{FACILITADOR}}": instrutor_nome,
         "{{DATA}}": data_str,
         "{{DATA_HORA}}": data_str,
-        "{{CARGA_HORARIA}}": f"{planejamento.carga_horaria} Minutos" if planejamento.carga_horaria else "-",
+        "{{CARGA_HORARIA}}": f"{planejamento.carga_horaria} Minutos" if getattr(planejamento, 'carga_horaria', None) else "-",
         "{{PER_1}}": perguntas[0] if len(perguntas) > 0 else "",
         "{{PER_2}}": perguntas[1] if len(perguntas) > 1 else "",
         "{{PER_3}}": perguntas[2] if len(perguntas) > 2 else "",
@@ -588,7 +634,7 @@ def gerar_auto_avaliacao_for141_xlsx(planejamento: PlanejamentoTreinamento, cola
             ("Colaborador:", colab_nome, "Matrícula:", colab_mat),
             ("Cargo / Função:", colab_cargo, "Setor:", colab_setor),
             ("Procedimento / Treinamento:", proc_str, "Data:", data_str),
-            ("Instrutor / Facilitador:", instrutor_nome, "Carga Horária:", f"{planejamento.carga_horaria} Minutos" if planejamento.carga_horaria else "-"),
+            ("Instrutor / Facilitador:", instrutor_nome, "Carga Horária:", f"{planejamento.carga_horaria} Minutos" if getattr(planejamento, 'carga_horaria', None) else "-"),
         ]
 
         for idx, (l1, v1, l2, v2) in enumerate(dados_header, start=2):
@@ -666,9 +712,12 @@ def gerar_auto_avaliacao_for141_xlsx(planejamento: PlanejamentoTreinamento, cola
         for col_letter, width in larguras_141.items():
             ws.column_dimensions[col_letter].width = width
 
-    output = BytesIO()
-    wb.save(output)
-    output.seek(0)
+    raw_output = BytesIO()
+    wb.save(raw_output)
+    raw_bytes = raw_output.getvalue()
+
+    # Processamento pós-save para garantir substituição de tags em drawings (gráfico radar / shapes)
+    output = _substituir_tags_no_arquivo_zip(raw_bytes, substituicoes)
     return output
 
 

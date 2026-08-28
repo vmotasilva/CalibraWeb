@@ -581,6 +581,7 @@
                                     <ul class="list-unstyled collapse show" id="collapsePROCEDIMENTOS">
                                 {% if nav_tr_proc %}<li><a class="dropdown-item" href="{% url 'procedures:procedimentos_list' %}"><i class="bi bi-journal-bookmark"></i> Procedimentos</a></li>{% endif %}
                                 {% if nav_tr_proc_mat %}<li><a class="dropdown-item" href="{% url 'procedures:procedimento_matrizes_list' %}"><i class="bi bi-diagram-3"></i> Matrizes e Sub-áreas</a></li>{% endif %}
+                                {% if nav_tr_proc %}<li><a class="dropdown-item" href="{% url 'procedures:perguntas_avaliacao_list' %}"><i class="bi bi-patch-question"></i> Perguntas Auto-Avaliação (FOR.141)</a></li>{% endif %}
                                     </ul>
                                 </li>
                             {% endif %}

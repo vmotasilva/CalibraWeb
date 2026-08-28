@@ -42,6 +42,10 @@ urlpatterns = [
     # PROCEDIMENTOS
     # ==========================
     path('procedimentos/', views.procedimentos_list_view, name='procedimentos_list'),
+    path('procedimentos/perguntas-avaliacao/', views.perguntas_avaliacao_list_view, name='perguntas_avaliacao_list'),
+    path('api/procedimentos/<int:procedimento_id>/perguntas-avaliacao/', views.obter_perguntas_procedimento_api, name='obter_perguntas_procedimento_api'),
+    path('api/procedimentos/<int:procedimento_id>/salvar-perguntas-avaliacao/', views.salvar_perguntas_procedimento_api, name='salvar_perguntas_procedimento_api'),
+    path('procedimentos/<int:procedimento_id>/exportar-preview-for141/', views.exportar_preview_for141_procedimento_view, name='exportar_preview_for141_procedimento'),
     path('procedimentos/export/excel/', views.export_procedimentos_excel_view, name='export_procedimentos_excel'),
     path('procedimentos/template/download/', views.download_template_procedimentos_view, name='dl_template_procedimentos'),
     path('procedimentos/importar/', views.importar_procedimentos_view, name='importar_procedimentos'),
