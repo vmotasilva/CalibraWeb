@@ -276,6 +276,13 @@
                             {% endif %}
                             <td>
                                 <strong>{{ p.titulo }}</strong>
+                                {% for proc in p.procedimentos.all %}
+                                    {% if proc.criticidade == 'CRITICO' and forloop.first %}
+                                        <span class="badge bg-danger ms-1" style="font-size: 0.68rem;" title="Treinamento com Procedimento Crítico">
+                                            <i class="bi bi-shield-exclamation me-1"></i>Crítico
+                                        </span>
+                                    {% endif %}
+                                {% endfor %}
                                 {% if p.descricao %}
                                 <br><small class="text-muted">{{ p.descricao|truncatewords:10 }}</small>
                                 {% endif %}

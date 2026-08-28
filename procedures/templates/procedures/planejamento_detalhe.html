@@ -162,6 +162,20 @@
                             {% endif %}
                         </div>
                     </div>
+                    <div class="mb-3">
+                        <span class="info-label">Criticidade do Treinamento:</span>
+                        <div class="info-value">
+                            {% if tem_procedimento_critico %}
+                                <span class="badge bg-danger px-2 py-1 shadow-sm">
+                                    <i class="bi bi-shield-exclamation me-1"></i> Treinamento Crítico (Requer Auto-Avaliação e Eficácia)
+                                </span>
+                            {% else %}
+                                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1">
+                                    <i class="bi bi-check2-circle me-1"></i> Treinamento Padrão (Não Crítico)
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
                     {% if planejamento.descricao %}
                     <div class="mb-3">
                         <span class="info-label">Descrição:</span>
@@ -216,9 +230,20 @@
     <!-- Procedimentos -->
     <div class="card mb-3 shadow-sm">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-            <h6 class="mb-0">
-                <i class="bi bi-file-text me-1"></i> Procedimentos ({{ planejamento.procedimentos.count }})
-            </h6>
+            <div class="d-flex align-items-center gap-2">
+                <h6 class="mb-0">
+                    <i class="bi bi-file-text me-1"></i> Procedimentos ({{ planejamento.procedimentos.count }})
+                </h6>
+                {% if tem_procedimento_critico %}
+                <span class="badge bg-danger border border-white text-white px-2 py-1 shadow-sm">
+                    <i class="bi bi-shield-exclamation me-1"></i> Treinamento Crítico
+                </span>
+                {% else %}
+                <span class="badge bg-success bg-opacity-25 text-white border border-white border-opacity-25 px-2 py-1">
+                    <i class="bi bi-check-circle me-1"></i> Não Crítico
+                </span>
+                {% endif %}
+            </div>
             <div>
                 {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
                 <button type="button" class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#procedimentosModal">
@@ -235,6 +260,7 @@
                             <tr>
                                 <th width="100">Código</th>
                                 <th>Nome</th>
+                                <th width="120" class="text-center">Criticidade</th>
                                 <th width="140">Matriz</th>
                                 <th width="150">Sub-área</th>
                                 {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
@@ -249,6 +275,17 @@
                                     <span class="badge bg-primary badge-code">{{ proc.codigo }}</span>
                                 </td>
                                 <td>{{ proc.nome }}</td>
+                                <td class="text-center">
+                                    {% if proc.criticidade == 'CRITICO' %}
+                                        <span class="badge bg-danger px-2 py-1 text-white shadow-sm" title="Procedimento Crítico">
+                                            <i class="bi bi-shield-exclamation me-1"></i> Crítico
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1">
+                                            Não Crítico
+                                        </span>
+                                    {% endif %}
+                                </td>
                                 <td><span class="text-muted">{{ proc.matriz|default:"-" }}</span></td>
                                 <td><span class="text-muted">{{ proc.sub_area|default:"-" }}</span></td>
                                 {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
