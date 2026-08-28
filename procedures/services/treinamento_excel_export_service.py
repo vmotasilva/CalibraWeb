@@ -8,7 +8,10 @@ Preenche automaticamente os templates:
 """
 
 import os
+import re
+import glob
 import base64
+import zipfile
 from io import BytesIO
 from datetime import date, timedelta
 from copy import copy
@@ -30,13 +33,10 @@ from procedures.models import (
 # FUNÇÕES AUXILIARES DE MANIPULAÇÃO DE WORKBOOK E TAGS
 # ==============================================================================
 
-def _carregar_workbook_template(funcao: str, codigo_busca: str, nome_padrao: str):
+def _obter_raw_bytes_template(funcao: str, codigo_busca: str, nome_padrao: str):
     """
-    Busca e carrega o arquivo openpyxl.Workbook a partir de:
-    1. Template ativo no banco (Base64)
-    2. Template ativo no banco (FileField)
-    3. Sistema de arquivos local
-    Retorna (wb, template_obj) ou (None, None).
+    Recupera os bytes brutos do arquivo .xlsx original (do banco Neon ou do disco local),
+    preservando 100% dos arquivos internos (drawings, vml, media, shapes, charts, rels).
     """
     template_config = TemplateDocumentoTreinamento.objects.filter(
         funcao=funcao,
@@ -49,42 +49,109 @@ def _carregar_workbook_template(funcao: str, codigo_busca: str, nome_padrao: str
             ativo=True
         ).first()
 
-    wb = None
+    raw_bytes = None
 
     if template_config:
-        # A. Base64 gravado no banco de dados
         if getattr(template_config, 'arquivo_base64', None):
             try:
-                arquivo_bytes = base64.b64decode(template_config.arquivo_base64)
-                wb = openpyxl.load_workbook(BytesIO(arquivo_bytes))
+                raw_bytes = base64.b64decode(template_config.arquivo_base64)
             except Exception:
-                wb = None
+                raw_bytes = None
 
-        # B. FileField
-        if wb is None and template_config.arquivo:
+        if raw_bytes is None and template_config.arquivo:
             try:
                 template_config.arquivo.seek(0)
-                arquivo_bytes = BytesIO(template_config.arquivo.read())
-                wb = openpyxl.load_workbook(arquivo_bytes)
+                raw_bytes = template_config.arquivo.read()
             except Exception:
-                wb = None
+                raw_bytes = None
 
-    # C. Fallback: Arquivos locais no projeto
-    if wb is None and nome_padrao:
-        caminhos = [
+    if raw_bytes is None and nome_padrao:
+        candidatos = [
+            os.path.join(settings.BASE_DIR, nome_padrao),
             os.path.join(settings.BASE_DIR, "templates", nome_padrao),
             os.path.join(settings.BASE_DIR, "procedures", "templates", nome_padrao),
             os.path.join(settings.BASE_DIR, "static", "templates", nome_padrao),
-            os.path.join(settings.BASE_DIR, nome_padrao),
             os.path.join(settings.MEDIA_ROOT, "templates_treinamento_docs", nome_padrao),
         ]
-        template_path = next((p for p in caminhos if os.path.exists(p)), None)
-        if template_path:
-            try:
-                wb = openpyxl.load_workbook(template_path)
-            except Exception:
-                wb = None
+        if codigo_busca:
+            candidatos.extend(glob.glob(os.path.join(settings.BASE_DIR, f"*{codigo_busca}*.xlsx")))
+            candidatos.extend(glob.glob(os.path.join(settings.BASE_DIR, "**", f"*{codigo_busca}*.xlsx"), recursive=True))
 
+        for path in candidatos:
+            if os.path.exists(path) and os.path.isfile(path):
+                try:
+                    with open(path, 'rb') as f_orig:
+                        raw_bytes = f_orig.read()
+                    if raw_bytes:
+                        break
+                except Exception:
+                    pass
+
+    return raw_bytes, template_config
+
+
+def _preencher_template_xlsx_preservando_formas(orig_bytes: bytes, substituicoes: dict, cell_updates: dict = None) -> BytesIO:
+    """
+    Substitui tags e valores de células diretamente na estrutura XML do arquivo .xlsx,
+    mantendo intactas todas as formas gráficas, caixas de texto, imagens, gráficos radar e formatações.
+    """
+    in_zip = zipfile.ZipFile(BytesIO(orig_bytes), 'r')
+    out_buf = BytesIO()
+    out_zip = zipfile.ZipFile(out_buf, 'w', compression=zipfile.ZIP_DEFLATED)
+
+    for item in in_zip.infolist():
+        data = in_zip.read(item.filename)
+        if item.filename.endswith('.xml') or item.filename.endswith('.vml') or item.filename.endswith('.rels'):
+            text = data.decode('utf-8', errors='ignore')
+
+            # Atualização pontual de células em planilhas (ex: D3, D4, D5, etc.)
+            if item.filename.startswith('xl/worksheets/') and cell_updates:
+                for cell_ref, val in cell_updates.items():
+                    val_str = str(val if val is not None else '')
+                    val_clean = val_str.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+
+                    pattern_self = rf'(<x:c\s+r="{cell_ref}"(?:\s+s="(\d+)")?[^/]*/>)'
+                    pattern_full = rf'(<x:c\s+r="{cell_ref}"(?:\s+s="(\d+)")?[^>]*>)(.*?)(</x:c>)'
+
+                    def repl_self(m):
+                        s_attr = f' s="{m.group(2)}"' if m.group(2) else ''
+                        return f'<x:c r="{cell_ref}"{s_attr} t="inlineStr"><x:is><x:t>{val_clean}</x:t></x:is></x:c>'
+
+                    def repl_full(m):
+                        s_attr = f' s="{m.group(2)}"' if m.group(2) else ''
+                        return f'<x:c r="{cell_ref}"{s_attr} t="inlineStr"><x:is><x:t>{val_clean}</x:t></x:is></x:c>'
+
+                    if re.search(pattern_self, text):
+                        text = re.sub(pattern_self, repl_self, text)
+                    elif re.search(pattern_full, text):
+                        text = re.sub(pattern_full, repl_full, text)
+
+            # Substituição de tags gerais {{TAG}} em todo o XML (células, textboxes, shapes)
+            for k, v in substituicoes.items():
+                v_str = str(v if v is not None else '')
+                v_clean = v_str.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                text = text.replace(k, v_clean)
+
+            data = text.encode('utf-8')
+        out_zip.writestr(item, data)
+
+    in_zip.close()
+    out_zip.close()
+    out_buf.seek(0)
+    return out_buf
+
+
+def _carregar_workbook_template(funcao: str, codigo_busca: str, nome_padrao: str):
+    """
+    Busca e carrega o arquivo openpyxl.Workbook como fallback.
+    """
+    raw_bytes, template_config = _obter_raw_bytes_template(funcao, codigo_busca, nome_padrao)
+    wb = None
+    if raw_bytes:
+        try:
+            wb = openpyxl.load_workbook(BytesIO(raw_bytes))
+        except Exception:
+            wb = None
     return wb, template_config
 
 
@@ -605,10 +672,11 @@ def _extrair_dados_colaborador_avaliado(colaborador):
 def gerar_auto_avaliacao_for141_xlsx(planejamento: PlanejamentoTreinamento, colaborador_id: int = None) -> BytesIO:
     """
     Gera o Formulário de Auto-Avaliação de Treinamento Crítico (FOR.141.r02).
-    Injeta as 5 perguntas técnicas (ordem 1 a 5) nos vértices do gráfico radar, dados do treinamento,
-    e as tags GESTOR e SETOR associadas ao colaborador avaliado.
+    Preserva 100% das formas gráficas, do gráfico radar pentagonal e das caixas de texto oficiais.
+    Injeta as 5 perguntas delimitadas nas caixas dos 5 vértices ({{PER_1}} a {{PER_5}})
+    e preenche os campos do cabeçalho nas células delimitadas.
     """
-    wb, template_obj = _carregar_workbook_template(
+    raw_bytes, template_obj = _obter_raw_bytes_template(
         funcao='AUTO_AVALIACAO',
         codigo_busca='141',
         nome_padrao='FOR.141.r02_Auto_Avaliacao.xlsx'
@@ -635,6 +703,11 @@ def gerar_auto_avaliacao_for141_xlsx(planejamento: PlanejamentoTreinamento, cola
             colaborador = planejamento.colaboradores.select_related('setor', 'lider', 'supervisor', 'gerente').first()
 
     d_colab = _extrair_dados_colaborador_avaliado(colaborador)
+
+    # Garantir que a lista de perguntas tenha 5 posições
+    p_padded = list(perguntas)
+    while len(p_padded) < 5:
+        p_padded.append("")
 
     substituicoes = {
         "{{TITULO}}": planejamento.titulo or "-",
@@ -675,179 +748,148 @@ def gerar_auto_avaliacao_for141_xlsx(planejamento: PlanejamentoTreinamento, cola
         "{{DATA_HORA}}": data_str,
         "{{CARGA_HORARIA}}": f"{planejamento.carga_horaria} Minutos" if getattr(planejamento, 'carga_horaria', None) else "-",
 
-        # Perguntas 1 a 5
-        "{{PER_1}}": perguntas[0] if len(perguntas) > 0 else "",
-        "{{PER_2}}": perguntas[1] if len(perguntas) > 1 else "",
-        "{{PER_3}}": perguntas[2] if len(perguntas) > 2 else "",
-        "{{PER_4}}": perguntas[3] if len(perguntas) > 3 else "",
-        "{{PER_5}}": perguntas[4] if len(perguntas) > 4 else "",
-        "{{PERGUNTA_1}}": perguntas[0] if len(perguntas) > 0 else "",
-        "{{PERGUNTA_2}}": perguntas[1] if len(perguntas) > 1 else "",
-        "{{PERGUNTA_3}}": perguntas[2] if len(perguntas) > 2 else "",
-        "{{PERGUNTA_4}}": perguntas[3] if len(perguntas) > 3 else "",
-        "{{PERGUNTA_5}}": perguntas[4] if len(perguntas) > 4 else "",
+        # Perguntas 1 a 5 delimitadas nos vértices do radar
+        "{{PER_1}}": p_padded[0],
+        "{{PER_2}}": p_padded[1],
+        "{{PER_3}}": p_padded[2],
+        "{{PER_4}}": p_padded[3],
+        "{{PER_5}}": p_padded[4],
+        "{{PERGUNTA_1}}": p_padded[0],
+        "{{PERGUNTA_2}}": p_padded[1],
+        "{{PERGUNTA_3}}": p_padded[2],
+        "{{PERGUNTA_4}}": p_padded[3],
+        "{{PERGUNTA_5}}": p_padded[4],
     }
 
-    if wb is not None:
-        ws = wb.active
-        for sheet in wb.worksheets:
-            _search_and_replace_sheet(sheet, substituicoes)
+    # 1. Se possuímos o arquivo template original, preenchemos de forma 100% LOSSLESS preservando formas e radar
+    if raw_bytes is not None:
+        cell_updates = {
+            'D3': d_colab['nome'],
+            'D4': d_colab['setor'],
+            'D5': proc_str,
+            'D6': data_str,
+            'D7': instrutor_nome,
+        }
+        return _preencher_template_xlsx_preservando_formas(raw_bytes, substituicoes, cell_updates)
 
-        # Injeção no layout oficial FOR.141 se detectado (C2 / C10)
-        eh_layout_141 = False
-        for r in range(1, 5):
-            for c in range(1, 6):
-                v = str(ws.cell(r, c).value or '').upper()
-                if "AUTO-AVALIA" in v or "AUTOAVALIA" in v:
-                    eh_layout_141 = True
-                    break
+    # 2. Fallback nativo openpyxl caso o template não exista
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Auto-Avaliação FOR.141"
 
-        if eh_layout_141:
-            for r in range(2, 9):
-                v_label = str(ws.cell(r, 3).value or '').strip().upper()
-                if "NOME:" in v_label:
-                    ws.cell(row=r, column=4, value=colab_nome)
-                elif "LABORAT" in v_label or "SETOR" in v_label:
-                    ws.cell(row=r, column=4, value=colab_setor)
-                elif "TREINAMENTO:" in v_label:
-                    ws.cell(row=r, column=4, value=proc_str)
-                elif "DATA:" in v_label:
-                    ws.cell(row=r, column=4, value=data_str)
-                elif "INSTRUTOR:" in v_label:
-                    ws.cell(row=r, column=4, value=instrutor_nome)
+    font_header_doc = Font(name="Arial", size=11, bold=True, color="FFFFFF")
+    font_section = Font(name="Arial", size=9.5, bold=True, color="FFFFFF")
+    font_label = Font(name="Arial", size=8.5, bold=True, color="334155")
+    font_val = Font(name="Arial", size=8.5, color="0F172A")
+    font_pergunta = Font(name="Arial", size=9, bold=True, color="1E3A8A")
 
-            # Injetar as 5 perguntas no questionário
-            linhas_perguntas = [13, 16, 19, 22, 25]
-            for p_idx, p_txt in enumerate(perguntas):
-                if p_idx < len(linhas_perguntas):
-                    r_p = linhas_perguntas[p_idx]
-                    ws.cell(row=r_p, column=3, value=f"{p_idx+1}. {p_txt}")
-    else:
-        # Gerador nativo de alta fidelidade para FOR.141.r02
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "Auto-Avaliação FOR.141"
+    fill_header_doc = PatternFill(start_color="1E3A8A", end_color="1E3A8A", fill_type="solid")
+    fill_section = PatternFill(start_color="334155", end_color="334155", fill_type="solid")
+    fill_meta = PatternFill(start_color="F1F5F9", end_color="F1F5F9", fill_type="solid")
+    fill_pergunta = PatternFill(start_color="EFF6FF", end_color="EFF6FF", fill_type="solid")
 
-        font_header_doc = Font(name="Arial", size=11, bold=True, color="FFFFFF")
-        font_section = Font(name="Arial", size=9.5, bold=True, color="FFFFFF")
-        font_label = Font(name="Arial", size=8.5, bold=True, color="334155")
-        font_val = Font(name="Arial", size=8.5, color="0F172A")
-        font_pergunta = Font(name="Arial", size=9, bold=True, color="1E3A8A")
+    border_box = Border(
+        left=Side(style='thin', color='000000'),
+        right=Side(style='thin', color='000000'),
+        top=Side(style='thin', color='000000'),
+        bottom=Side(style='thin', color='000000')
+    )
 
-        fill_header_doc = PatternFill(start_color="1E3A8A", end_color="1E3A8A", fill_type="solid")
-        fill_section = PatternFill(start_color="334155", end_color="334155", fill_type="solid")
-        fill_meta = PatternFill(start_color="F1F5F9", end_color="F1F5F9", fill_type="solid")
-        fill_pergunta = PatternFill(start_color="EFF6FF", end_color="EFF6FF", fill_type="solid")
+    align_center = Alignment(horizontal='center', vertical='center')
+    align_left = Alignment(horizontal='left', vertical='center')
+    align_top_left = Alignment(horizontal='left', vertical='top', wrap_text=True)
 
-        border_box = Border(
-            left=Side(style='thin', color='000000'),
-            right=Side(style='thin', color='000000'),
-            top=Side(style='thin', color='000000'),
-            bottom=Side(style='thin', color='000000')
-        )
+    # Cabeçalho Principal
+    ws.merge_cells("A1:G1")
+    c_top = ws.cell(row=1, column=1, value="FOR.141.r02 - AUTO-AVALIAÇÃO DE TREINAMENTO CRÍTICO")
+    c_top.font = font_header_doc
+    c_top.fill = fill_header_doc
+    c_top.alignment = align_center
+    ws.row_dimensions[1].height = 28
 
-        align_center = Alignment(horizontal='center', vertical='center')
-        align_left = Alignment(horizontal='left', vertical='center')
-        align_top_left = Alignment(horizontal='left', vertical='top', wrap_text=True)
+    dados_header = [
+        ("Colaborador:", d_colab['nome'], "Matrícula:", d_colab['matricula']),
+        ("Cargo / Função:", d_colab['cargo'], "Setor:", d_colab['setor']),
+        ("Procedimento / Treinamento:", proc_str, "Data:", data_str),
+        ("Instrutor / Facilitador:", instrutor_nome, "Carga Horária:", f"{planejamento.carga_horaria} Minutos" if getattr(planejamento, 'carga_horaria', None) else "-"),
+    ]
 
-        # 1. Cabeçalho Principal
-        ws.merge_cells("A1:G1")
-        c_top = ws.cell(row=1, column=1, value="FOR.141.r02 - AUTO-AVALIAÇÃO DE TREINAMENTO CRÍTICO")
-        c_top.font = font_header_doc
-        c_top.fill = fill_header_doc
-        c_top.alignment = align_center
-        ws.row_dimensions[1].height = 28
+    for idx, (l1, v1, l2, v2) in enumerate(dados_header, start=2):
+        ws.merge_cells(start_row=idx, start_column=2, end_row=idx, end_column=4)
+        ws.merge_cells(start_row=idx, start_column=6, end_row=idx, end_column=7)
 
-        # 2. Dados do Colaborador e Treinamento
-        dados_header = [
-            ("Colaborador:", colab_nome, "Matrícula:", colab_mat),
-            ("Cargo / Função:", colab_cargo, "Setor:", colab_setor),
-            ("Procedimento / Treinamento:", proc_str, "Data:", data_str),
-            ("Instrutor / Facilitador:", instrutor_nome, "Carga Horária:", f"{planejamento.carga_horaria} Minutos" if getattr(planejamento, 'carga_horaria', None) else "-"),
-        ]
+        ws.cell(row=idx, column=1, value=l1)
+        ws.cell(row=idx, column=2, value=v1)
+        ws.cell(row=idx, column=5, value=l2)
+        ws.cell(row=idx, column=6, value=v2)
 
-        for idx, (l1, v1, l2, v2) in enumerate(dados_header, start=2):
-            ws.merge_cells(start_row=idx, start_column=2, end_row=idx, end_column=4)
-            ws.merge_cells(start_row=idx, start_column=6, end_row=idx, end_column=7)
+        for col in range(1, 8):
+            c = ws.cell(row=idx, column=col)
+            c.border = border_box
+            if col in [1, 5]:
+                c.font = font_label
+                c.fill = fill_meta
+                c.alignment = align_left
+            else:
+                c.font = font_val
+                c.alignment = align_left
+        ws.row_dimensions[idx].height = 18
 
-            ws.cell(row=idx, column=1, value=l1)
-            ws.cell(row=idx, column=2, value=v1)
-            ws.cell(row=idx, column=5, value=l2)
-            ws.cell(row=idx, column=6, value=v2)
+    ws.row_dimensions[6].height = 6
 
-            for col in range(1, 8):
-                c = ws.cell(row=idx, column=col)
-                c.border = border_box
-                if col in [1, 5]:
-                    c.font = font_label
-                    c.fill = fill_meta
-                    c.alignment = align_left
-                else:
-                    c.font = font_val
-                    c.alignment = align_left
-            ws.row_dimensions[idx].height = 18
+    # Seção de Perguntas
+    ws.merge_cells("A7:G7")
+    c_sec = ws.cell(row=7, column=1, value="QUESTIONÁRIO DE AUTOAVALIAÇÃO TÉCNICA (5 PERGUNTAS OBRIGATÓRIAS)")
+    c_sec.font = font_section
+    c_sec.fill = fill_section
+    c_sec.alignment = align_center
+    ws.row_dimensions[7].height = 20
 
-        ws.row_dimensions[6].height = 6
-
-        # 3. Seção de Perguntas
-        ws.merge_cells("A7:G7")
-        c_sec = ws.cell(row=7, column=1, value="QUESTIONÁRIO DE AUTOAVALIAÇÃO TÉCNICA (5 PERGUNTAS OBRIGATÓRIAS)")
-        c_sec.font = font_section
-        c_sec.fill = fill_section
-        c_sec.alignment = align_center
-        ws.row_dimensions[7].height = 20
-
-        current_row = 8
-        for num_p, p_texto in enumerate(perguntas, start=1):
-            # Linha da Pergunta
-            ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=7)
-            c_p = ws.cell(row=current_row, column=1, value=f"Questão {num_p}: {p_texto}")
-            c_p.font = font_pergunta
-            c_p.fill = fill_pergunta
-            c_p.alignment = align_left
-            for col in range(1, 8):
-                ws.cell(row=current_row, column=col).border = border_box
-            ws.row_dimensions[current_row].height = 24
-            current_row += 1
-
-            # Espaço para resposta do colaborador (3 linhas mescladas)
-            ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row + 2, end_column=7)
-            c_resp = ws.cell(row=current_row, column=1, value="Resposta do Colaborador:\n\n")
-            c_resp.font = Font(name="Arial", size=8, italic=True, color="64748B")
-            c_resp.alignment = align_top_left
-            for r_sub in range(current_row, current_row + 3):
-                for col in range(1, 8):
-                    ws.cell(row=r_sub, column=col).border = border_box
-                ws.row_dimensions[r_sub].height = 16
-            current_row += 3
-
-        # 4. Bloco de Assinaturas
-        ws.row_dimensions[current_row].height = 8
+    current_row = 8
+    for num_p, p_texto in enumerate(perguntas, start=1):
+        ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=7)
+        c_p = ws.cell(row=current_row, column=1, value=f"Questão {num_p}: {p_texto}")
+        c_p.font = font_pergunta
+        c_p.fill = fill_pergunta
+        c_p.alignment = align_left
+        for col in range(1, 8):
+            ws.cell(row=current_row, column=col).border = border_box
+        ws.row_dimensions[current_row].height = 24
         current_row += 1
 
-        ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=3)
-        ws.merge_cells(start_row=current_row, start_column=5, end_row=current_row, end_column=7)
+        ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row + 2, end_column=7)
+        c_resp = ws.cell(row=current_row, column=1, value="Resposta do Colaborador:\n\n")
+        c_resp.font = Font(name="Arial", size=8, italic=True, color="64748B")
+        c_resp.alignment = align_top_left
+        for r_sub in range(current_row, current_row + 3):
+            for col in range(1, 8):
+                ws.cell(row=r_sub, column=col).border = border_box
+            ws.row_dimensions[r_sub].height = 16
+        current_row += 3
 
-        c_ass_colab = ws.cell(row=current_row, column=1, value="Assinatura do Colaborador")
-        c_ass_colab.font = font_label
-        c_ass_colab.alignment = align_center
+    # Bloco de Assinaturas
+    ws.row_dimensions[current_row].height = 8
+    current_row += 1
 
-        c_ass_inst = ws.cell(row=current_row, column=5, value="Assinatura do Instrutor / Avaliador")
-        c_ass_inst.font = font_label
-        c_ass_inst.alignment = align_center
+    ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=3)
+    ws.merge_cells(start_row=current_row, start_column=5, end_row=current_row, end_column=7)
 
-        # Ajuste de larguras das colunas
-        larguras_141 = {'A': 16, 'B': 24, 'C': 16, 'D': 16, 'E': 14, 'F': 22, 'G': 18}
-        for col_letter, width in larguras_141.items():
-            ws.column_dimensions[col_letter].width = width
+    c_ass_colab = ws.cell(row=current_row, column=1, value="Assinatura do Colaborador")
+    c_ass_colab.font = font_label
+    c_ass_colab.alignment = align_center
+
+    c_ass_inst = ws.cell(row=current_row, column=5, value="Assinatura do Instrutor / Avaliador")
+    c_ass_inst.font = font_label
+    c_ass_inst.alignment = align_center
+
+    larguras_141 = {'A': 16, 'B': 24, 'C': 16, 'D': 16, 'E': 14, 'F': 22, 'G': 18}
+    for col_letter, width in larguras_141.items():
+        ws.column_dimensions[col_letter].width = width
 
     raw_output = BytesIO()
     wb.save(raw_output)
-    raw_bytes = raw_output.getvalue()
-
-    # Processamento pós-save para garantir substituição de tags em drawings (gráfico radar / shapes)
-    output = _substituir_tags_no_arquivo_zip(raw_bytes, substituicoes)
-    return output
+    raw_bytes_fb = raw_output.getvalue()
+    return _substituir_tags_no_arquivo_zip(raw_bytes_fb, substituicoes)
 
 
 # ==============================================================================
@@ -857,6 +899,7 @@ def gerar_auto_avaliacao_for141_xlsx(planejamento: PlanejamentoTreinamento, cola
 def gerar_avaliacao_eficacia_for142_xlsx(treinamento_id: int) -> BytesIO:
     """
     Gera o Formulário de Avaliação de Eficácia do Treinamento (FOR.142.r01).
+    Preserva 100% das formas, checkboxes e estrutura oficial do template.
     Calcula a Data Devida da Eficácia (Data do Treinamento + 30 dias).
     """
     treinamento = RegistroTreinamento.objects.select_related(
@@ -864,7 +907,7 @@ def gerar_avaliacao_eficacia_for142_xlsx(treinamento_id: int) -> BytesIO:
         'colaborador__supervisor', 'colaborador__gerente'
     ).get(id=treinamento_id)
 
-    wb, template_obj = _carregar_workbook_template(
+    raw_bytes, template_obj = _obter_raw_bytes_template(
         funcao='AVALIACAO_EFICACIA',
         codigo_busca='142',
         nome_padrao='FOR.142.r01_Avaliacao_de_Eficacia_do_Treinamento.xlsx'
@@ -934,47 +977,26 @@ def gerar_avaliacao_eficacia_for142_xlsx(treinamento_id: int) -> BytesIO:
         "{{CHK_NAO_APLICA}}": "●" if status_str == 'NAO_APLICA' else "○",
     }
 
-    if wb is not None:
-        ws = wb.active
-        for sheet in wb.worksheets:
-            _search_and_replace_sheet(sheet, substituicoes)
+    # 1. Se possuímos o arquivo template original, preenchemos de forma 100% LOSSLESS preservando formas e layout
+    if raw_bytes is not None:
+        cell_updates = {
+            'C4': f"APLICAR APÓS {data_eficacia_str} (CARÊNCIA DE 30 DIAS CALCULADA)",
+            'C5': f"{proc.codigo} - {proc.nome}" if proc else "-",
+            'W5': data_treinamento_str,
+            'C6': d_colab['nome'],
+            'W6': d_colab['setor'],
+            'C7': d_colab['gestor'],
+            'B30': treinamento.resultado_avaliacao or "",
+            'P38': "[ X ]" if status_str == 'EFICAZ' else "[   ]",
+            'V38': "[ X ]" if status_str == 'INEFICAZ' else "[   ]",
+            'B42': f"Colaborador: {d_colab['nome']}",
+            'Z42': f"Data: {data_treinamento_str}",
+            'B43': f"Gestor: {d_colab['gestor']}",
+            'Z43': f"Data: {data_avaliacao_str}",
+        }
+        return _preencher_template_xlsx_preservando_formas(raw_bytes, substituicoes, cell_updates)
 
-        # Injeção no layout oficial FOR.142 se detectado (B1 == AVALIAÇÃO DE EFICÁCIA DO TREINAMENTO)
-        eh_layout_142 = False
-        for r in range(1, 4):
-            for c in range(1, 6):
-                v = str(ws.cell(r, c).value or '').upper()
-                if "AVALIA" in v and "EFIC" in v:
-                    eh_layout_142 = True
-                    break
-
-        if eh_layout_142:
-            # Linha 4: Carência / Data devida
-            ws.cell(row=4, column=3, value=f"APLICAR APÓS {data_eficacia_str} (CARÊNCIA DE 30 DIAS CALCULADA)")
-            # Linha 5: Treinamento e Data
-            ws.cell(row=5, column=3, value=f"{proc.codigo} - {proc.nome}" if proc else "-")
-            ws.cell(row=5, column=23, value=data_treinamento_str)
-            # Linha 6: Participante e Área
-            ws.cell(row=6, column=3, value=d_colab['nome'])
-            ws.cell(row=6, column=23, value=d_colab['setor'])
-            # Linha 7: Gestor
-            ws.cell(row=7, column=3, value=d_colab['gestor'])
-            # Linha 30: Justificativa / Parecer Gestor
-            if treinamento.resultado_avaliacao:
-                ws.cell(row=30, column=2, value=treinamento.resultado_avaliacao)
-            # Linha 38: Checkboxes de Eficaz / Ineficaz
-            if status_str == 'EFICAZ':
-                ws.cell(row=38, column=16, value="[ X ]")
-            elif status_str == 'INEFICAZ':
-                ws.cell(row=38, column=22, value="[ X ]")
-            # Linhas 42-44: Assinaturas e Datas
-            ws.cell(row=42, column=2, value=f"Colaborador: {d_colab['nome']}")
-            ws.cell(row=42, column=26, value=f"Data: {data_treinamento_str}")
-            ws.cell(row=43, column=2, value=f"Gestor: {d_colab['gestor']}")
-            ws.cell(row=43, column=26, value=f"Data: {data_avaliacao_str}")
-
-    else:
-        # Gerador nativo de alta fidelidade para FOR.142.r01
+    # 2. Fallback nativo openpyxl caso o template não exista
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "Eficácia FOR.142"
