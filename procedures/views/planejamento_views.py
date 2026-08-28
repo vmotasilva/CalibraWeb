@@ -1653,7 +1653,9 @@ def api_planejamento_perguntas_auto_avaliacao_view(request, planejamento_id):
     procedimentos_data = []
     total_perguntas_cadastradas = 0
 
-    for proc in planejamento.procedimentos.all().order_by('-criticidade', 'codigo'):
+    procedimentos_criticos = planejamento.procedimentos.filter(criticidade='CRITICO').order_by('codigo')
+
+    for proc in procedimentos_criticos:
         perguntas_qs = proc.perguntas_avaliacao.filter(ativo=True).order_by('ordem')
         perguntas_list = []
         for p in perguntas_qs:

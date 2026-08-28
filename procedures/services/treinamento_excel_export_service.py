@@ -671,15 +671,15 @@ def _obter_perguntas_treinamento(planejamento: PlanejamentoTreinamento, pergunta
 
     if len(perguntas_texto) < 5:
         if hasattr(planejamento, '_mock_procs') and planejamento._mock_procs:
-            procs = list(planejamento._mock_procs)
+            procs = [p for p in list(planejamento._mock_procs) if getattr(p, 'criticidade', None) == 'CRITICO']
         elif hasattr(planejamento, 'procedimentos'):
-            procs = list(planejamento.procedimentos.all())
+            procs = list(planejamento.procedimentos.filter(criticidade='CRITICO'))
         else:
             procs = []
 
         perguntas = []
 
-        # 1. Buscar por Procedimento
+        # 1. Buscar por Procedimento Crítico
         if procs:
             proc_ids = [p.id for p in procs]
             perguntas = list(
