@@ -315,15 +315,16 @@ def gerar_lista_presenca_pdf(planejamento: PlanejamentoTreinamento, overrides: d
         table_part_data.append(["", "", "", "", ""])
 
     col_widths_part = [6.0 * cm, 3.2 * cm, 3.4 * cm, 3.4 * cm, 3.6 * cm]
-    t_part = Table(table_part_data, colWidths=col_widths_part, rowHeights=[15] + [17.5] * 15)
+    row_heights_part = [18] + [37] * 15  # 18pt cabeçalho + 37pt (~1.30cm) por linha para assinatura
+    t_part = Table(table_part_data, colWidths=col_widths_part, rowHeights=row_heights_part)
     t_part.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e2e8f0')),
         ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('BOX', (0, 0), (-1, -1), 1.0, colors.HexColor('#000000')),
         ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#000000')),
-        ('TOPPADDING', (0, 0), (-1, -1), 1.2),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 1.2),
+        ('TOPPADDING', (0, 0), (-1, -1), 1),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 1),
         ('LEFTPADDING', (0, 0), (-1, -1), 4),
         ('RIGHTPADDING', (0, 0), (-1, -1), 4),
     ]))
@@ -382,19 +383,19 @@ def gerar_lista_presenca_pdf(planejamento: PlanejamentoTreinamento, overrides: d
     else:
         conteudo_data.append([Paragraph("• Conteúdo programático e orientações técnicas do treinamento.", style_cell)])
 
-    # Preencher altura mínima para ocupar o espaço do verso harmonicamente
-    t_conteudo = Table(conteudo_data, colWidths=[w_total])
+    # Preencher altura proporcional para ocupar o espaço do verso harmonicamente (21.5cm de altura)
+    t_conteudo = Table(conteudo_data, colWidths=[w_total], rowHeights=[21.5 * cm] if len(conteudo_data) == 1 else None)
     t_conteudo.setStyle(TableStyle([
         ('BOX', (0, 0), (-1, -1), 1.0, colors.HexColor('#000000')),
         ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('TOPPADDING', (0, 0), (-1, -1), 5),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-        ('LEFTPADDING', (0, 0), (-1, -1), 8),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 10),
     ]))
     elements.append(t_conteudo)
-    elements.append(Spacer(1, 1.2 * cm))
+    elements.append(Spacer(1, 0.25 * cm))
 
     # 4. Rodapé SGQ (Aprovação) na Página 2
     elements.append(_criar_rodape_sgq(w_total=w_total))

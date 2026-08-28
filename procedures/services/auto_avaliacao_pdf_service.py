@@ -63,16 +63,16 @@ def _obter_perguntas_avaliacao(planejamento: PlanejamentoTreinamento, perguntas_
     return perguntas[:5]
 
 
-def _criar_grafico_radar_pdf(perguntas, w_box=19.4 * cm, h_box=13.6 * cm):
+def _criar_grafico_radar_pdf(perguntas, w_box=19.4 * cm, h_box=16.2 * cm):
     """
-    Desenha o radar pentagonal com tamanho fixo imutável (radius=4.0cm), linhas azuis (#4472c4),
+    Desenha o radar pentagonal com tamanho fixo imutável (radius=4.5cm), linhas azuis (#4472c4),
     escala central de 0 a 5 e as 5 perguntas nos vértices em posições fixas.
     """
     d = Drawing(w_box, h_box)
     
     cx = w_box / 2.0
     cy = h_box / 2.0 - 0.2 * cm
-    radius = 3.9 * cm  # Raio fixo do pentágono nível 5 (imutável)
+    radius = 4.5 * cm  # Raio do pentágono nível 5 (proporcional à folha A4)
 
     angulos = [-90, -18, 54, 126, 198]
     cor_azul_excel = colors.HexColor('#4472c4')
@@ -91,7 +91,7 @@ def _criar_grafico_radar_pdf(perguntas, w_box=19.4 * cm, h_box=13.6 * cm):
         d.add(Polygon(
             pontos,
             strokeColor=cor_azul_excel,
-            strokeWidth=1.0 if nivel == 5 else 0.8,
+            strokeWidth=1.1 if nivel == 5 else 0.8,
             fillColor=None
         ))
 
@@ -110,7 +110,7 @@ def _criar_grafico_radar_pdf(perguntas, w_box=19.4 * cm, h_box=13.6 * cm):
             cx + 3, ny,
             str(nivel),
             fontName='Helvetica-Bold',
-            fontSize=7.5,
+            fontSize=8.0,
             fillColor=cor_azul_excel
         ))
 
@@ -131,38 +131,38 @@ def _criar_grafico_radar_pdf(perguntas, w_box=19.4 * cm, h_box=13.6 * cm):
         return linhas
 
     # P1 (Topo - Vértice 0)
-    p1_lines = wrap_text(perguntas[0], max_chars=50)
-    base_y1 = cy + radius + 8 + (len(p1_lines) * 9.0)
+    p1_lines = wrap_text(perguntas[0], max_chars=55)
+    base_y1 = cy + radius + 10 + (len(p1_lines) * 9.5)
     for idx, l in enumerate(p1_lines):
-        d.add(String(cx, base_y1 - (idx * 9.0), l, fontName='Helvetica', fontSize=7.0, fillColor=cor_texto_excel, textAnchor='middle'))
+        d.add(String(cx, base_y1 - (idx * 9.5), l, fontName='Helvetica', fontSize=7.5, fillColor=cor_texto_excel, textAnchor='middle'))
 
     # P2 (Superior Direito - Vértice 1)
-    p2_lines = wrap_text(perguntas[1], max_chars=34)
-    px2 = cx + radius * math.cos(math.radians(-18)) + 10
-    py2 = cy - radius * math.sin(math.radians(-18)) + 8
+    p2_lines = wrap_text(perguntas[1], max_chars=36)
+    px2 = cx + radius * math.cos(math.radians(-18)) + 12
+    py2 = cy - radius * math.sin(math.radians(-18)) + 10
     for idx, l in enumerate(p2_lines):
-        d.add(String(px2, py2 - (idx * 9.0), l, fontName='Helvetica', fontSize=7.0, fillColor=cor_texto_excel, textAnchor='start'))
+        d.add(String(px2, py2 - (idx * 9.5), l, fontName='Helvetica', fontSize=7.5, fillColor=cor_texto_excel, textAnchor='start'))
 
     # P3 (Inferior Direito - Vértice 2)
-    p3_lines = wrap_text(perguntas[2], max_chars=34)
-    px3 = cx + radius * math.cos(math.radians(54)) + 8
-    py3 = cy - radius * math.sin(math.radians(54)) - 8
+    p3_lines = wrap_text(perguntas[2], max_chars=36)
+    px3 = cx + radius * math.cos(math.radians(54)) + 10
+    py3 = cy - radius * math.sin(math.radians(54)) - 10
     for idx, l in enumerate(p3_lines):
-        d.add(String(px3, py3 - (idx * 9.0), l, fontName='Helvetica', fontSize=7.0, fillColor=cor_texto_excel, textAnchor='start'))
+        d.add(String(px3, py3 - (idx * 9.5), l, fontName='Helvetica', fontSize=7.5, fillColor=cor_texto_excel, textAnchor='start'))
 
     # P4 (Inferior Esquerdo - Vértice 3)
-    p4_lines = wrap_text(perguntas[3], max_chars=34)
-    px4 = cx + radius * math.cos(math.radians(126)) - 8
-    py4 = cy - radius * math.sin(math.radians(126)) - 8
+    p4_lines = wrap_text(perguntas[3], max_chars=36)
+    px4 = cx + radius * math.cos(math.radians(126)) - 10
+    py4 = cy - radius * math.sin(math.radians(126)) - 10
     for idx, l in enumerate(p4_lines):
-        d.add(String(px4, py4 - (idx * 9.0), l, fontName='Helvetica', fontSize=7.0, fillColor=cor_texto_excel, textAnchor='end'))
+        d.add(String(px4, py4 - (idx * 9.5), l, fontName='Helvetica', fontSize=7.5, fillColor=cor_texto_excel, textAnchor='end'))
 
     # P5 (Superior Esquerdo - Vértice 4)
-    p5_lines = wrap_text(perguntas[4], max_chars=34)
-    px5 = cx + radius * math.cos(math.radians(198)) - 10
-    py5 = cy - radius * math.sin(math.radians(198)) + 8
+    p5_lines = wrap_text(perguntas[4], max_chars=36)
+    px5 = cx + radius * math.cos(math.radians(198)) - 12
+    py5 = cy - radius * math.sin(math.radians(198)) + 10
     for idx, l in enumerate(p5_lines):
-        d.add(String(px5, py5 - (idx * 9.0), l, fontName='Helvetica', fontSize=7.0, fillColor=cor_texto_excel, textAnchor='end'))
+        d.add(String(px5, py5 - (idx * 9.5), l, fontName='Helvetica', fontSize=7.5, fillColor=cor_texto_excel, textAnchor='end'))
 
     return d
 
@@ -331,8 +331,8 @@ def gerar_auto_avaliacao_pdf(planejamento: PlanejamentoTreinamento, colaborador_
     elements.append(Paragraph(sub_txt, style_banner_sub))
     elements.append(Spacer(1, 0.1 * cm))
 
-    # 4. Gráfico Radar Pentagonal (Tamanho Fixo e Imutável)
-    elements.append(_criar_grafico_radar_pdf(perguntas, w_box=w_total, h_box=13.6 * cm))
+    # 4. Gráfico Radar Pentagonal (Tamanho Proporcional à folha A4)
+    elements.append(_criar_grafico_radar_pdf(perguntas, w_box=w_total, h_box=16.2 * cm))
     elements.append(Spacer(1, 0.15 * cm))
 
     # 5. Seção Inferior: Legenda à Esquerda e Tabela Escala à Direita
