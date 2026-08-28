@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FOR.141.r02 - Auto-Avaliação de Treinamento Crítico | {{ planejamento.titulo|default:"Treinamento" }}</title>
+    <title>FOR.141.r02 - Formulário de Auto-Avaliação | {{ planejamento.titulo|default:"Treinamento" }}</title>
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
@@ -12,13 +12,13 @@
     <style>
         @page {
             size: A4 portrait;
-            margin: 8mm;
+            margin: 10mm;
         }
 
         body {
             background-color: #f1f5f9;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-            color: #0f172a;
+            font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+            color: #000000;
             margin: 0;
             padding: 0;
             -webkit-print-color-adjust: exact !important;
@@ -36,14 +36,14 @@
         }
 
         .page-container {
-            max-width: 210mm;
+            width: 210mm;
             min-height: 297mm;
             margin: 20px auto;
             background: #ffffff;
-            padding: 12mm;
+            padding: 12mm 14mm;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            border-radius: 4px;
             box-sizing: border-box;
+            border-radius: 2px;
         }
 
         @media print {
@@ -57,115 +57,115 @@
                 margin: 0 !important;
                 padding: 0 !important;
                 box-shadow: none !important;
-                max-width: 100% !important;
+                width: 100% !important;
                 min-height: auto !important;
             }
         }
 
-        .header-box {
-            background: #1e3a8a !important;
-            color: #ffffff !important;
-            padding: 8px 12px;
-            text-align: center;
-            font-weight: bold;
-            font-size: 0.95rem;
-            border: 1px solid #0f172a;
-        }
-
-        .table-meta {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.8rem;
-            margin-bottom: 8px;
-        }
-
-        .table-meta td {
-            border: 1px solid #cbd5e1;
-            padding: 4px 8px;
+        .header-title-box {
+            border: 1.5px solid #000000;
             background-color: #f8fafc;
-        }
-
-        .table-meta strong {
-            color: #0f172a;
-        }
-
-        .banner-instrucao {
-            background: #475569 !important;
-            color: #ffffff !important;
-            font-size: 0.8rem;
+            text-align: center;
             font-weight: bold;
-            text-align: center;
-            padding: 4px;
-            margin-bottom: 2px;
-        }
-
-        .sub-instrucao {
-            background: #f1f5f9;
-            border: 1px solid #cbd5e1;
-            font-size: 0.72rem;
-            color: #475569;
-            text-align: center;
-            padding: 3px;
+            font-size: 1.15rem;
+            padding: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
             margin-bottom: 8px;
         }
 
-        .radar-svg-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin: 4px 0 8px 0;
-        }
-
-        .table-perguntas {
+        .meta-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.75rem;
-            margin-top: 6px;
+            border: 1.2px solid #000000;
+            margin-bottom: 10px;
+            font-size: 0.85rem;
         }
 
-        .table-perguntas th {
-            background: #e2e8f0 !important;
-            color: #0f172a;
-            border: 1px solid #94a3b8;
-            padding: 5px 6px;
-            font-weight: bold;
-            text-align: center;
-        }
-
-        .table-perguntas td {
+        .meta-table td {
             border: 1px solid #cbd5e1;
-            padding: 4px 6px;
+            padding: 5px 8px;
             vertical-align: middle;
         }
 
-        .circle-scale {
-            display: inline-block;
-            width: 15px;
-            height: 15px;
-            border-radius: 50%;
-            border: 1px solid #64748b;
-            text-align: center;
-            line-height: 13px;
-            font-size: 0.65rem;
-            margin: 0 1px;
+        .meta-label {
             font-weight: bold;
-            color: #334155;
+            color: #000000;
+            width: 15%;
+            background-color: #fafafa;
         }
 
-        .signatures-container {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 25px;
-            padding: 0 20px;
+        .meta-value {
+            color: #000000;
         }
 
-        .signature-line {
-            width: 45%;
+        .banner-instrucoes {
+            border: 1.2px solid #000000;
+            background-color: #f1f5f9;
             text-align: center;
-            border-top: 1px solid #0f172a;
-            padding-top: 4px;
-            font-size: 0.75rem;
-            font-weight: 500;
+            padding: 6px 12px;
+            margin-bottom: 12px;
+        }
+
+        .banner-titulo {
+            font-weight: bold;
+            font-size: 0.88rem;
+            color: #000000;
+            margin-bottom: 2px;
+        }
+
+        .banner-sub {
+            font-size: 0.76rem;
+            color: #334155;
+            line-height: 1.3;
+        }
+
+        .radar-stage {
+            position: relative;
+            width: 100%;
+            height: 480px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .legenda-box {
+            border: 1.2px solid #000000;
+            background-color: #f8fafc;
+            padding: 6px 12px;
+            font-size: 0.82rem;
+            margin-top: 10px;
+        }
+
+        .legenda-title {
+            font-weight: bold;
+            color: #000000;
+            margin-bottom: 4px;
+        }
+
+        .legenda-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 2px;
+            font-size: 0.8rem;
+        }
+
+        .legenda-sq-red {
+            width: 12px;
+            height: 12px;
+            background-color: #dc2626;
+            display: inline-block;
+            border-radius: 2px;
+        }
+
+        .legenda-sq-blue {
+            width: 12px;
+            height: 12px;
+            background-color: #2563eb;
+            display: inline-block;
+            border-radius: 2px;
         }
     </style>
 </head>
@@ -174,11 +174,11 @@
     <!-- Barra Superior de Ações (Oculta na Impressão) -->
     <div class="no-print-bar d-flex justify-content-between align-items-center">
         <div class="d-flex align-items-center gap-3">
-            <span class="badge bg-primary px-3 py-2 fs-6">
-                <i class="bi bi-file-earmark-check me-1"></i> FOR.141.r02 - Auto-Avaliação
+            <span class="badge bg-dark px-3 py-2 fs-6">
+                <i class="bi bi-file-earmark-check me-1"></i> FOR.141.r02 - Formulário de Auto-Avaliação
             </span>
             <span class="text-muted small">
-                {{ planejamento.titulo|default:"Treinamento Operacional" }}
+                {{ proc_str|default:planejamento.titulo }}
             </span>
         </div>
 
@@ -186,10 +186,10 @@
             <button onclick="window.print()" class="btn btn-primary btn-sm px-3 shadow-sm">
                 <i class="bi bi-printer me-1"></i> Imprimir Formulário
             </button>
-            <a href="{% url 'procedures:exportar_auto_avaliacao_for141_pdf' planejamento.id %}{% if colaborador_selecionado %}?colaborador_id={{ colaborador_selecionado.id }}{% endif %}" class="btn btn-danger btn-sm px-3 shadow-sm">
+            <a href="{% url 'procedures:exportar_auto_avaliacao_for141_pdf' planejamento.id %}{% if colaborador_selecionado %}?colaborador_id={{ colaborador_selecionado.id }}{% endif %}{% if perguntas_ids_str %}&perguntas_ids={{ perguntas_ids_str }}{% endif %}" class="btn btn-danger btn-sm px-3 shadow-sm">
                 <i class="bi bi-file-earmark-pdf me-1"></i> Baixar PDF Oficial
             </a>
-            <a href="{% url 'procedures:exportar_auto_avaliacao_for141' planejamento.id %}{% if colaborador_selecionado %}?colaborador_id={{ colaborador_selecionado.id }}{% endif %}" class="btn btn-success btn-sm px-3 shadow-sm">
+            <a href="{% url 'procedures:exportar_auto_avaliacao_for141' planejamento.id %}{% if colaborador_selecionado %}?colaborador_id={{ colaborador_selecionado.id }}{% endif %}{% if perguntas_ids_str %}&perguntas_ids={{ perguntas_ids_str }}{% endif %}" class="btn btn-success btn-sm px-3 shadow-sm">
                 <i class="bi bi-file-earmark-excel me-1"></i> Baixar Excel (.xlsx)
             </a>
             <a href="{% url 'procedures:detalhe_planejamento' planejamento.id %}" class="btn btn-outline-secondary btn-sm px-3">
@@ -201,146 +201,148 @@
     <!-- Folha A4 do Formulário -->
     <div class="page-container">
         
-        <!-- 1. Cabeçalho Oficial -->
-        <div class="header-box mb-2">
-            FOR.141.r02 - FORMULÁRIO DE AUTO-AVALIAÇÃO DE TREINAMENTO CRÍTICO
+        <!-- 1. Cabeçalho Oficial do Template -->
+        <div class="header-title-box">
+            FORMULÁRIO DE AUTO-AVALIAÇÃO
         </div>
 
-        <!-- 2. Metadados do Colaborador, Gestor e Treinamento -->
-        <table class="table-meta">
+        <!-- 2. Metadados do Treinamento e Colaborador -->
+        <table class="meta-table">
             <tr>
-                <td style="width: 45%;"><strong>Colaborador:</strong> {{ d_colab.nome }}</td>
-                <td style="width: 25%;"><strong>Matrícula:</strong> {{ d_colab.matricula }}</td>
-                <td style="width: 30%;"><strong>Setor:</strong> {{ d_colab.setor }}</td>
+                <td class="meta-label">Nome:</td>
+                <td class="meta-value" style="width: 48%;">{{ d_colab.nome }}</td>
+                <td class="meta-label">Data:</td>
+                <td class="meta-value" style="width: 25%;">{{ data_str }}</td>
             </tr>
             <tr>
-                <td><strong>Cargo / Função:</strong> {{ d_colab.cargo }}</td>
-                <td><strong>Gestor / Chefia:</strong> {{ d_colab.gestor }}</td>
-                <td><strong>Data da Sessão:</strong> {{ data_str }}</td>
+                <td class="meta-label">Laboratório:</td>
+                <td class="meta-value">{{ d_colab.setor|default:d_colab.posto_trabalho }}</td>
+                <td class="meta-label">Instrutor:</td>
+                <td class="meta-value">{{ instrutor_nome }}</td>
             </tr>
             <tr>
-                <td colspan="2"><strong>Procedimento:</strong> {{ proc_str }}</td>
-                <td><strong>Instrutor:</strong> {{ instrutor_nome }}</td>
+                <td class="meta-label">Treinamento:</td>
+                <td class="meta-value" colspan="3">{{ proc_str }}</td>
             </tr>
         </table>
 
-        <!-- 3. Banner de Instrução -->
-        <div class="banner-instrucao">
-            AUTO-AVALIAÇÃO (Como me avalio antes e depois desta sessão de treinamento?)
-        </div>
-        <div class="sub-instrucao">
-            Para cada critério, marque ou faça um círculo em torno da opção que expresse a sua opinião (0 = nenhum; 3 = parcialmente; 5 = totalmente).
+        <!-- 3. Faixa de Instrução -->
+        <div class="banner-instrucoes">
+            <div class="banner-titulo">
+                AUTO-AVALIAÇÃO (Como me avalio antes e depois desta sessão de treinamento?)
+            </div>
+            <div class="banner-sub">
+                Para cada critério, marque ou faça um círculo em torno da opção que expresse a sua opinião<br/>
+                (0 = nenhum; 3 = parcialmente; 5 = totalmente)
+            </div>
         </div>
 
-        <!-- 4. Gráfico Radar Pentagonal Vetorial SVG -->
-        <div class="radar-svg-container">
-            <svg width="600" height="210" viewBox="0 0 600 210" xmlns="http://www.w3.org/2000/svg">
-                <!-- Eixos e Polígonos de Fundo -->
-                <g transform="translate(300, 100)">
-                    <!-- Escala Nível 5 (Maior) -->
-                    <polygon points="0,-70 66.57,-21.63 41.14,56.63 -41.14,56.63 -66.57,-21.63" fill="#f8fafc" stroke="#0f172a" stroke-width="1.2"/>
-                    <!-- Escala Nível 4 -->
-                    <polygon points="0,-56 53.26,-17.30 32.91,45.30 -32.91,45.30 -53.26,-17.30" fill="none" stroke="#94a3b8" stroke-width="0.8"/>
-                    <!-- Escala Nível 3 -->
-                    <polygon points="0,-42 39.94,-12.98 24.69,33.98 -24.69,33.98 -39.94,-12.98" fill="none" stroke="#cbd5e1" stroke-width="0.8"/>
-                    <!-- Escala Nível 2 -->
-                    <polygon points="0,-28 26.63,-8.65 16.46,22.65 -16.46,22.65 -26.63,-8.65" fill="none" stroke="#cbd5e1" stroke-width="0.8"/>
-                    <!-- Escala Nível 1 -->
-                    <polygon points="0,-14 13.31,-4.33 8.23,11.33 -8.23,11.33 -13.31,-4.33" fill="none" stroke="#cbd5e1" stroke-width="0.8"/>
+        <!-- 4. Grande Gráfico Radar Pentagonal com as 5 Caixas nos Vértices -->
+        <div class="radar-stage">
+            <svg width="680" height="460" viewBox="0 0 680 460" xmlns="http://www.w3.org/2000/svg" style="overflow: visible;">
+                <!-- Centro do radar: X=340, Y=230, Raio=110 -->
+                <g transform="translate(340, 230)">
+                    <!-- 5 Níveis Concêntricos do Pentágono Regular -->
+                    <!-- Nível 5 (Externo) -->
+                    <polygon points="0,-110 104.61,-33.99 64.65,88.99 -64.65,88.99 -104.61,-33.99" fill="#fafafa" stroke="#000000" stroke-width="1.4"/>
+                    <!-- Nível 4 -->
+                    <polygon points="0,-88 83.69,-27.19 51.72,71.19 -51.72,71.19 -83.69,-27.19" fill="none" stroke="#94a3b8" stroke-width="0.9"/>
+                    <!-- Nível 3 -->
+                    <polygon points="0,-66 62.77,-20.39 38.79,53.39 -38.79,53.39 -62.77,-20.39" fill="none" stroke="#cbd5e1" stroke-width="0.9"/>
+                    <!-- Nível 2 -->
+                    <polygon points="0,-44 41.84,-13.60 25.86,35.60 -25.86,35.60 -41.84,-13.60" fill="none" stroke="#cbd5e1" stroke-width="0.9"/>
+                    <!-- Nível 1 -->
+                    <polygon points="0,-22 20.92,-6.80 12.93,17.80 -12.93,17.80 -20.92,-6.80" fill="none" stroke="#cbd5e1" stroke-width="0.9"/>
 
-                    <!-- Linhas Radiais -->
-                    <line x1="0" y1="0" x2="0" y2="-70" stroke="#475569" stroke-width="1"/>
-                    <line x1="0" y1="0" x2="66.57" y2="-21.63" stroke="#475569" stroke-width="1"/>
-                    <line x1="0" y1="0" x2="41.14" y2="56.63" stroke="#475569" stroke-width="1"/>
-                    <line x1="0" y1="0" x2="-41.14" y2="56.63" stroke="#475569" stroke-width="1"/>
-                    <line x1="0" y1="0" x2="-66.57" y2="-21.63" stroke="#475569" stroke-width="1"/>
+                    <!-- 5 Linhas Radiais -->
+                    <line x1="0" y1="0" x2="0" y2="-110" stroke="#475569" stroke-width="1"/>
+                    <line x1="0" y1="0" x2="104.61" y2="-33.99" stroke="#475569" stroke-width="1"/>
+                    <line x1="0" y1="0" x2="64.65" y2="88.99" stroke="#475569" stroke-width="1"/>
+                    <line x1="0" y1="0" x2="-64.65" y2="88.99" stroke="#475569" stroke-width="1"/>
+                    <line x1="0" y1="0" x2="-104.61" y2="-33.99" stroke="#475569" stroke-width="1"/>
 
                     <!-- Vértices -->
-                    <circle cx="0" cy="-70" r="3.5" fill="#1e3a8a"/>
-                    <circle cx="66.57" cy="-21.63" r="3.5" fill="#1e3a8a"/>
-                    <circle cx="41.14" cy="56.63" r="3.5" fill="#1e3a8a"/>
-                    <circle cx="-41.14" cy="56.63" r="3.5" fill="#1e3a8a"/>
-                    <circle cx="-66.57" cy="-21.63" r="3.5" fill="#1e3a8a"/>
+                    <circle cx="0" cy="-110" r="3.5" fill="#000000"/>
+                    <circle cx="104.61" cy="-33.99" r="3.5" fill="#000000"/>
+                    <circle cx="64.65" cy="88.99" r="3.5" fill="#000000"/>
+                    <circle cx="-64.65" cy="88.99" r="3.5" fill="#000000"/>
+                    <circle cx="-104.61" cy="-33.99" r="3.5" fill="#000000"/>
 
-                    <!-- Números da Escala -->
-                    <text x="4" y="-3" font-size="7.5" font-weight="bold" fill="#475569">0</text>
-                    <text x="4" y="-13" font-size="7.5" font-weight="bold" fill="#1e3a8a">1</text>
-                    <text x="4" y="-27" font-size="7.5" font-weight="bold" fill="#1e3a8a">2</text>
-                    <text x="4" y="-41" font-size="7.5" font-weight="bold" fill="#1e3a8a">3</text>
-                    <text x="4" y="-55" font-size="7.5" font-weight="bold" fill="#1e3a8a">4</text>
-                    <text x="4" y="-69" font-size="7.5" font-weight="bold" fill="#1e3a8a">5</text>
+                    <!-- Números da Escala Central (0 a 5) -->
+                    <text x="5" y="-3" font-size="9" font-weight="bold" fill="#334155">0</text>
+                    <text x="5" y="-21" font-size="9" font-weight="bold" fill="#000000">1</text>
+                    <text x="5" y="-43" font-size="9" font-weight="bold" fill="#000000">2</text>
+                    <text x="5" y="-65" font-size="9" font-weight="bold" fill="#000000">3</text>
+                    <text x="5" y="-87" font-size="9" font-weight="bold" fill="#000000">4</text>
+                    <text x="5" y="-109" font-size="9" font-weight="bold" fill="#000000">5</text>
+                </g>
 
-                    <!-- Rótulos dos Vértices -->
-                    <text x="0" y="-77" font-size="7.5" font-weight="bold" fill="#1e3a8a" text-anchor="middle">Questão 1: Objetivo / Impactos</text>
-                    <text x="76" y="-18" font-size="7.5" font-weight="bold" fill="#1e3a8a" text-anchor="start">Questão 2: EPIs / Segurança</text>
-                    <text x="48" y="70" font-size="7.5" font-weight="bold" fill="#1e3a8a" text-anchor="start">Questão 3: Execução / Parâmetros</text>
-                    <text x="-48" y="70" font-size="7.5" font-weight="bold" fill="#1e3a8a" text-anchor="end">Questão 4: Desvios / Ações Imediatas</text>
-                    <text x="-76" y="-18" font-size="7.5" font-weight="bold" fill="#1e3a8a" text-anchor="end">Questão 5: Registros / Rastreabilidade</text>
+                <!-- ============================================================= -->
+                <!-- AS 5 CAIXAS DE PERGUNTAS AO REDOR DO RADAR PENTAGONAL        -->
+                <!-- ============================================================= -->
 
-                    <!-- Legendas de Cores -->
-                    <g transform="translate(-160, 92)">
-                        <rect x="0" y="0" width="12" height="6" fill="#dc2626"/>
-                        <text x="16" y="6" font-size="7.5" font-weight="bold" fill="#1e293b">Vermelho: Autoavaliação ANTES do Treinamento</text>
-                    </g>
-                    <g transform="translate(40, 92)">
-                        <rect x="0" y="0" width="12" height="6" fill="#2563eb"/>
-                        <text x="16" y="6" font-size="7.5" font-weight="bold" fill="#1e293b">Azul: Autoavaliação APÓS o Treinamento</text>
-                    </g>
+                <!-- Caixa 1: Topo (Acima do Vértice 0) -->
+                <g transform="translate(225, 25)">
+                    <rect width="230" height="70" fill="#ffffff" stroke="#000000" stroke-width="1.2" rx="2"/>
+                    <foreignObject width="220" height="62" x="5" y="4">
+                        <div xmlns="http://www.w3.org/1999/xhtml" style="font-size: 0.72rem; text-align: center; color: #000000; line-height: 1.25; display: flex; align-items: center; justify-content: center; height: 100%; font-family: Arial, sans-serif;">
+                            {{ perguntas_lista.0.texto|default:"Critério e objetivo principal do procedimento." }}
+                        </div>
+                    </foreignObject>
+                </g>
+
+                <!-- Caixa 2: Superior Direita (À direita do Vértice 1) -->
+                <g transform="translate(465, 155)">
+                    <rect width="200" height="74" fill="#ffffff" stroke="#000000" stroke-width="1.2" rx="2"/>
+                    <foreignObject width="190" height="66" x="5" y="4">
+                        <div xmlns="http://www.w3.org/1999/xhtml" style="font-size: 0.72rem; text-align: left; color: #000000; line-height: 1.25; display: flex; align-items: center; height: 100%; font-family: Arial, sans-serif;">
+                            {{ perguntas_lista.1.texto|default:"EPIs e requisitos de segurança obrigatórios." }}
+                        </div>
+                    </foreignObject>
+                </g>
+
+                <!-- Caixa 3: Inferior Direita (Abaixo/Direita do Vértice 2) -->
+                <g transform="translate(415, 335)">
+                    <rect width="210" height="74" fill="#ffffff" stroke="#000000" stroke-width="1.2" rx="2"/>
+                    <foreignObject width="200" height="66" x="5" y="4">
+                        <div xmlns="http://www.w3.org/1999/xhtml" style="font-size: 0.72rem; text-align: left; color: #000000; line-height: 1.25; display: flex; align-items: center; height: 100%; font-family: Arial, sans-serif;">
+                            {{ perguntas_lista.2.texto|default:"Sequência de execução e parâmetros operacionais." }}
+                        </div>
+                    </foreignObject>
+                </g>
+
+                <!-- Caixa 4: Inferior Esquerda (Abaixo/Esquerda do Vértice 3) -->
+                <g transform="translate(55, 335)">
+                    <rect width="210" height="74" fill="#ffffff" stroke="#000000" stroke-width="1.2" rx="2"/>
+                    <foreignObject width="200" height="66" x="5" y="4">
+                        <div xmlns="http://www.w3.org/1999/xhtml" style="font-size: 0.72rem; text-align: right; color: #000000; line-height: 1.25; display: flex; align-items: center; justify-content: flex-end; height: 100%; font-family: Arial, sans-serif;">
+                            {{ perguntas_lista.3.texto|default:"Pontos críticos de controle e critérios de aceitação." }}
+                        </div>
+                    </foreignObject>
+                </g>
+
+                <!-- Caixa 5: Superior Esquerda (À esquerda do Vértice 4) -->
+                <g transform="translate(15, 155)">
+                    <rect width="200" height="74" fill="#ffffff" stroke="#000000" stroke-width="1.2" rx="2"/>
+                    <foreignObject width="190" height="66" x="5" y="4">
+                        <div xmlns="http://www.w3.org/1999/xhtml" style="font-size: 0.72rem; text-align: right; color: #000000; line-height: 1.25; display: flex; align-items: center; justify-content: flex-end; height: 100%; font-family: Arial, sans-serif;">
+                            {{ perguntas_lista.4.texto|default:"Fluxo de contenção e comunicação imediata de desvios." }}
+                        </div>
+                    </foreignObject>
                 </g>
             </svg>
         </div>
 
-        <!-- 5. Tabela Detalhada das 5 Perguntas com Escala de Resposta -->
-        <table class="table-perguntas">
-            <thead>
-                <tr>
-                    <th style="width: 6%;">Nº</th>
-                    <th style="width: 46%; text-align: left;">Questão Técnica / Critério Avaliado</th>
-                    <th style="width: 18%;">Nota ANTES<br/><span style="font-weight: normal; font-size: 0.68rem;">(0 a 5)</span></th>
-                    <th style="width: 18%;">Nota DEPOIS<br/><span style="font-weight: normal; font-size: 0.68rem;">(0 a 5)</span></th>
-                    <th style="width: 12%;">Visto</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for p in perguntas_lista %}
-                <tr>
-                    <td class="text-center fw-bold text-primary">Q{{ forloop.counter }}</td>
-                    <td>
-                        <strong>{{ p.texto }}</strong>
-                    </td>
-                    <td class="text-center">
-                        <span class="circle-scale">0</span>
-                        <span class="circle-scale">1</span>
-                        <span class="circle-scale">2</span>
-                        <span class="circle-scale">3</span>
-                        <span class="circle-scale">4</span>
-                        <span class="circle-scale">5</span>
-                    </td>
-                    <td class="text-center">
-                        <span class="circle-scale">0</span>
-                        <span class="circle-scale">1</span>
-                        <span class="circle-scale">2</span>
-                        <span class="circle-scale">3</span>
-                        <span class="circle-scale">4</span>
-                        <span class="circle-scale">5</span>
-                    </td>
-                    <td class="text-center text-muted" style="font-size: 0.68rem;">
-                        [ &nbsp; &nbsp; ]
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-
-        <!-- 6. Bloco de Assinaturas -->
-        <div class="signatures-container">
-            <div class="signature-line">
-                <strong>Assinatura do Colaborador Avaliado</strong><br/>
-                <span class="text-muted" style="font-size: 0.7rem;">{{ d_colab.nome }}</span>
+        <!-- 5. Legenda Oficial (Linhas 31 a 33 do template Excel) -->
+        <div class="legenda-box">
+            <div class="legenda-title">Legenda:</div>
+            <div class="legenda-item">
+                <span class="legenda-sq-red"></span>
+                <span>Marque de <strong>vermelho</strong> para sua auto avaliação <strong>Antes</strong> do Treinamento</span>
             </div>
-            <div class="signature-line">
-                <strong>Assinatura do Instrutor / Facilitador</strong><br/>
-                <span class="text-muted" style="font-size: 0.7rem;">{{ instrutor_nome }}</span>
+            <div class="legenda-item">
+                <span class="legenda-sq-blue"></span>
+                <span>Marque de <strong>Azul</strong> para sua auto avaliação <strong>Após</strong> do Treinamento</span>
             </div>
         </div>
 
