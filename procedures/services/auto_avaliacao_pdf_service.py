@@ -1,12 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Serviço de Geração de PDF para Auto-Avaliação de Treinamento Crítico (FOR.141.r02)
-Reproduz 100% a fidelidade visual, proporções e disposição do template oficial FOR.141.r02:
-1. Cabeçalho oficial "FORMULÁRIO DE AUTO-AVALIAÇÃO"
-2. Metadados: Nome, Laboratório, Treinamento, Data, Instrutor
-3. Faixa: "AUTO-AVALIAÇÃO (Como me avalio antes e depois desta sessão de treinamento?)"
-4. Grande Gráfico Radar Pentagonal com 5 eixos (0 a 5) e as 5 Caixas de Perguntas nos 5 vértices
-5. Legenda oficial (Vermelho = Antes / Azul = Após)
+Serviço de Geração de Auto-Avaliação em PDF Oficial (FOR.141.r02)
+Gera o PDF de 1 página A4 reproduzindo com 100% de fidelidade o layout do Excel oficial.
 """
 
 import math
@@ -14,166 +9,338 @@ from io import BytesIO
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.units import cm
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-from reportlab.lib.enums import TA_CENTER
-from reportlab.graphics.shapes import Drawing, Polygon, Line, Circle, String, Rect
-
-from django.utils import timezone
-from procedures.models import PlanejamentoTreinamento
-from procedures.services.treinamento_excel_export_service import (
-    _extrair_dados_colaborador_avaliado,
-    _obter_perguntas_treinamento
+from reportlab.platypus import (
+    SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 )
+from reportlab.graphics.shapes import Drawing, Polygon, Line, String, Rect
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from procedures.models import PlanejamentoTreinamento, Colaborador
 
 
-def gerar_auto_avaliacao_pdf(planejamento: PlanejamentoTreinamento, colaborador_id: int = None, perguntas_selecionadas: list = None) -> BytesIO:
+def _obter_perguntas_avaliacao(planejamento: PlanejamentoTreinamento, perguntas_selecionadas=None):
+    """Obtém até 5 perguntas para o formulário."""
+    if perguntas_selecionadas:
+        from procedures.models import PerguntaAvaliacao
+        ids_validos = []
+        textos_diretos = []
+        for item in perguntas_selecionadas:
+            if isinstance(item, int) or (isinstance(item, str) and item.isdigit()):
+                ids_validos.append(int(item))
+            elif isinstance(item, str) and item.strip():
+                textos_diretos.append(item.strip())
+        
+        if ids_validos:
+            qs = PerguntaAvaliacao.objects.filter(id__in=ids_validos)
+            mapa = {p.id: p.texto for p in qs}
+            res = [mapa[pid] for pid in ids_validos if pid in mapa]
+            if res:
+                return res[:5]
+        if textos_diretos:
+            return textos_diretos[:5]
+
+    perguntas = []
+    for proc in planejamento.procedimentos.all():
+        for p in proc.perguntas.filter(ativo=True):
+            if p.texto not in perguntas:
+                perguntas.append(p.texto)
+            if len(perguntas) == 5:
+                break
+        if len(perguntas) == 5:
+            break
+
+    perguntas_padrao = [
+        "Qual o objetivo principal deste procedimento operacional e quais os impactos de eventuais não conformidades?",
+        "Quais os equipamentos de proteção individual (EPIs), ferramentas e requisitos de segurança obrigatórios para esta atividade?",
+        "Descreva a sequência padrão de execução das etapas e os principais parâmetros operacionais a serem rigorosamente controlados.",
+        "Quais são os pontos críticos de controle (PCC), tolerâncias permitidas e critérios de aceitação do produto/ensaio?",
+        "Em caso de desvio, defeito ou falha identificada durante a operação, qual é o fluxo correto de contenção e comunicação imediata?"
+    ]
+
+    while len(perguntas) < 5:
+        perguntas.append(perguntas_padrao[len(perguntas)])
+
+    return perguntas[:5]
+
+
+def _criar_grafico_radar_pdf(perguntas, w_box=19.4 * cm, h_box=13.2 * cm):
     """
-    Gera o documento PDF oficial da Auto-Avaliação de Treinamento Crítico (FOR.141.r02)
-    reproduzindo exatamente o layout e as formas do template Excel original em 1 página A4.
+    Desenha o radar pentagonal com linhas azuis (#4472c4), escala central de 0 a 5
+    e as 5 perguntas limpas ao redor dos vértices (sem bordas/caixas).
     """
+    d = Drawing(w_box, h_box)
+    
+    cx = w_box / 2.0
+    cy = h_box / 2.0 - 0.2 * cm
+    radius = 3.6 * cm  # Raio do pentágono nível 5
+
+    angulos = [-90, -18, 54, 126, 198]
+    cor_azul_excel = colors.HexColor('#4472c4')
+    cor_texto_excel = colors.HexColor('#595959')
+
+    # 1. Desenhar os 5 pentágonos concêntricos (escala 1 a 5)
+    for nivel in range(1, 6):
+        r_nivel = radius * (nivel / 5.0)
+        pontos = []
+        for ang in angulos:
+            rad = math.radians(ang)
+            px = cx + r_nivel * math.cos(rad)
+            py = cy - r_nivel * math.sin(rad)
+            pontos.extend([px, py])
+
+        d.add(Polygon(
+            pontos,
+            strokeColor=cor_azul_excel,
+            strokeWidth=1.0 if nivel == 5 else 0.8,
+            fillColor=None
+        ))
+
+    # 2. Linhas radiais do centro aos 5 vértices
+    for ang in angulos:
+        rad = math.radians(ang)
+        px = cx + radius * math.cos(rad)
+        py = cy - radius * math.sin(rad)
+        d.add(Line(cx, cy, px, py, strokeColor=cor_azul_excel, strokeWidth=0.8))
+
+    # 3. Números da escala central (0 a 5)
+    for nivel in range(0, 6):
+        r_nivel = radius * (nivel / 5.0)
+        ny = cy + r_nivel - 2.5
+        d.add(String(
+            cx + 3, ny,
+            str(nivel),
+            fontName='Helvetica-Bold',
+            fontSize=7.5,
+            fillColor=cor_azul_excel
+        ))
+
+    # 4. Textos das 5 perguntas nos 5 vértices (Wrap em linhas de texto)
+    def wrap_text(texto, max_chars=40):
+        palavras = texto.split()
+        linhas = []
+        linha_atual = []
+        for p in palavras:
+            if sum(len(x) for x in linha_atual) + len(linha_atual) + len(p) <= max_chars:
+                linha_atual.append(p)
+            else:
+                if linha_atual:
+                    linhas.append(" ".join(linha_atual))
+                linha_atual = [p]
+        if linha_atual:
+            linhas.append(" ".join(linha_atual))
+        return linhas
+
+    # P1 (Topo - Vértice 0)
+    p1_lines = wrap_text(perguntas[0], max_chars=48)
+    base_y1 = cy + radius + 10 + (len(p1_lines) * 9.5)
+    for idx, l in enumerate(p1_lines):
+        d.add(String(cx, base_y1 - (idx * 9.5), l, fontName='Helvetica', fontSize=7.5, fillColor=cor_texto_excel, textAnchor='middle'))
+
+    # P2 (Superior Direito - Vértice 1)
+    p2_lines = wrap_text(perguntas[1], max_chars=34)
+    px2 = cx + radius * math.cos(math.radians(-18)) + 12
+    py2 = cy - radius * math.sin(math.radians(-18)) + 10
+    for idx, l in enumerate(p2_lines):
+        d.add(String(px2, py2 - (idx * 9.5), l, fontName='Helvetica', fontSize=7.5, fillColor=cor_texto_excel, textAnchor='start'))
+
+    # P3 (Inferior Direito - Vértice 2)
+    p3_lines = wrap_text(perguntas[2], max_chars=34)
+    px3 = cx + radius * math.cos(math.radians(54)) + 10
+    py3 = cy - radius * math.sin(math.radians(54)) - 8
+    for idx, l in enumerate(p3_lines):
+        d.add(String(px3, py3 - (idx * 9.5), l, fontName='Helvetica', fontSize=7.5, fillColor=cor_texto_excel, textAnchor='start'))
+
+    # P4 (Inferior Esquerdo - Vértice 3)
+    p4_lines = wrap_text(perguntas[3], max_chars=34)
+    px4 = cx + radius * math.cos(math.radians(126)) - 10
+    py4 = cy - radius * math.sin(math.radians(126)) - 8
+    for idx, l in enumerate(p4_lines):
+        d.add(String(px4, py4 - (idx * 9.5), l, fontName='Helvetica', fontSize=7.5, fillColor=cor_texto_excel, textAnchor='end'))
+
+    # P5 (Superior Esquerdo - Vértice 4)
+    p5_lines = wrap_text(perguntas[4], max_chars=34)
+    px5 = cx + radius * math.cos(math.radians(198)) - 12
+    py5 = cy - radius * math.sin(math.radians(198)) + 10
+    for idx, l in enumerate(p5_lines):
+        d.add(String(px5, py5 - (idx * 9.5), l, fontName='Helvetica', fontSize=7.5, fillColor=cor_texto_excel, textAnchor='end'))
+
+    return d
+
+
+def gerar_auto_avaliacao_pdf(planejamento: PlanejamentoTreinamento, colaborador_id=None, perguntas_selecionadas=None) -> BytesIO:
+    """Gera o documento PDF oficial da Auto-Avaliação (FOR.141.r02) idêntico ao Excel."""
     buffer = BytesIO()
+    
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
-        leftMargin=1.2 * cm,
-        rightMargin=1.2 * cm,
-        topMargin=1.0 * cm,
-        bottomMargin=1.0 * cm
+        leftMargin=0.8 * cm,
+        rightMargin=0.8 * cm,
+        topMargin=0.8 * cm,
+        bottomMargin=0.8 * cm
     )
 
     elements = []
     styles = getSampleStyleSheet()
-    w_total = 18.6 * cm
+    w_total = 19.4 * cm
 
-    # 1. Resolução dos Dados
-    colaborador = None
-    if hasattr(planejamento, 'colaboradores'):
-        if colaborador_id:
-            colaborador = planejamento.colaboradores.select_related('setor', 'lider', 'supervisor', 'gerente').filter(id=colaborador_id).first()
-        if not colaborador and planejamento.colaboradores.exists():
-            colaborador = planejamento.colaboradores.select_related('setor', 'lider', 'supervisor', 'gerente').first()
+    # Estilos
+    style_title = ParagraphStyle(
+        'DocTitleExcel',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=12,
+        leading=14,
+        alignment=TA_CENTER,
+        textColor=colors.HexColor('#595959')
+    )
 
-    d_colab = _extrair_dados_colaborador_avaliado(colaborador)
-    perguntas = _obter_perguntas_treinamento(planejamento, perguntas_selecionadas=perguntas_selecionadas)
+    style_meta_label = ParagraphStyle(
+        'MetaLabelExcel',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=8,
+        leading=10,
+        textColor=colors.HexColor('#595959')
+    )
 
-    if hasattr(planejamento, '_mock_procs') and planejamento._mock_procs:
-        procs = list(planejamento._mock_procs)
-    elif hasattr(planejamento, 'procedimentos'):
-        procs = list(planejamento.procedimentos.all())
-    else:
-        procs = []
+    style_meta_val = ParagraphStyle(
+        'MetaValExcel',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=8,
+        leading=10,
+        textColor=colors.HexColor('#000000')
+    )
 
-    proc_str = ", ".join([f"{p.codigo} - {p.nome}" for p in procs]) if procs else (planejamento.titulo or "")
-    instrutor_nome = (planejamento.instrutor.nome_completo if getattr(planejamento, 'instrutor', None) else "")
-    data_str = planejamento.data_prevista.strftime("%d/%m/%Y") if getattr(planejamento, 'data_prevista', None) else timezone.now().strftime("%d/%m/%Y")
-    laboratorio_str = d_colab.get('setor', '') or d_colab.get('posto_trabalho', '')
+    style_banner_title = ParagraphStyle(
+        'BannerTitleExcel',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=8,
+        leading=10,
+        alignment=TA_CENTER,
+        textColor=colors.HexColor('#ffffff')
+    )
 
-    # 2. Estilos Tipográficos
-    style_header_title = ParagraphStyle('HeaderTitle', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=13, leading=16, alignment=TA_CENTER, textColor=colors.HexColor('#000000'))
-    style_meta_label = ParagraphStyle('MetaLabel', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=9, leading=12, textColor=colors.HexColor('#000000'))
-    style_meta_val = ParagraphStyle('MetaVal', parent=styles['Normal'], fontName='Helvetica', fontSize=9, leading=12, textColor=colors.HexColor('#000000'))
-    style_section_title = ParagraphStyle('SecTitle', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=9.5, leading=12, alignment=TA_CENTER, textColor=colors.HexColor('#000000'))
-    style_section_sub = ParagraphStyle('SecSub', parent=styles['Normal'], fontName='Helvetica', fontSize=7.5, leading=10, alignment=TA_CENTER, textColor=colors.HexColor('#1E293B'))
+    style_banner_sub = ParagraphStyle(
+        'BannerSubExcel',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=7,
+        leading=9,
+        alignment=TA_CENTER,
+        textColor=colors.HexColor('#595959')
+    )
 
-    # 3. TÍTULO DO FORMULÁRIO
-    title_data = [[Paragraph("FORMULÁRIO DE AUTO-AVALIAÇÃO", style_header_title)]]
-    t_title = Table(title_data, colWidths=[w_total])
-    t_title.setStyle(TableStyle([('ALIGN', (0, 0), (-1, -1), 'CENTER'), ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), ('TOPPADDING', (0, 0), (-1, -1), 4), ('BOTTOMPADDING', (0, 0), (-1, -1), 4), ('BOX', (0, 0), (-1, -1), 1.2, colors.HexColor('#000000')), ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#F8FAFC'))]))
-    elements.append(t_title)
-    elements.append(Spacer(1, 4))
+    style_leg_title = ParagraphStyle(
+        'LegTitleExcel',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=8,
+        leading=10,
+        textColor=colors.HexColor('#595959')
+    )
 
-    # 4. METADADOS
-    meta_rows = [
-        [Paragraph("Nome:", style_meta_label), Paragraph(d_colab.get('nome', ''), style_meta_val), Paragraph("Data:", style_meta_label), Paragraph(data_str, style_meta_val)],
-        [Paragraph("Laboratório:", style_meta_label), Paragraph(laboratorio_str, style_meta_val), Paragraph("Instrutor:", style_meta_label), Paragraph(instrutor_nome, style_meta_val)],
-        [Paragraph("Treinamento:", style_meta_label), Paragraph(proc_str, style_meta_val), Paragraph("", style_meta_label), Paragraph("", style_meta_val)],
+    style_leg_text = ParagraphStyle(
+        'LegTextExcel',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=7.5,
+        leading=9.5,
+        textColor=colors.HexColor('#000000')
+    )
+
+    # Dados
+    colab = None
+    if colaborador_id:
+        try:
+            colab = Colaborador.objects.get(id=colaborador_id)
+        except Exception:
+            colab = None
+
+    if not colab:
+        colab = planejamento.colaboradores.first()
+
+    colab_nome = colab.nome_completo if colab else ""
+    colab_setor = colab.setor if colab and colab.setor else (getattr(colab, 'posto_trabalho', '') if colab else "")
+    instrutor_nome = planejamento.instrutor.nome_completo if planejamento.instrutor else ""
+    data_str = planejamento.data_prevista.strftime("%d/%m/%Y") if planejamento.data_prevista else ""
+
+    procedimentos = list(planejamento.procedimentos.all())
+    proc_str = " / ".join([f"{p.codigo} - {p.nome}" for p in procedimentos]) if procedimentos else (planejamento.titulo or "")
+
+    perguntas = _obter_perguntas_avaliacao(planejamento, perguntas_selecionadas)
+
+    # 1. Título Limpo Centralizado
+    elements.append(Paragraph("<strong>FORMULÁRIO DE AUTO-AVALIAÇÃO</strong>", style_title))
+    elements.append(Spacer(1, 0.25 * cm))
+
+    # 2. Caixa de Metadados Unificada (Linhas 3 a 7 do Excel)
+    meta_data = [
+        [Paragraph("<strong>Nome:</strong>", style_meta_label), Paragraph(colab_nome, style_meta_val)],
+        [Paragraph("<strong>Laboratório:</strong>", style_meta_label), Paragraph(colab_setor, style_meta_val)],
+        [Paragraph("<strong>Treinamento:</strong>", style_meta_label), Paragraph(proc_str, style_meta_val)],
+        [Paragraph("<strong>Data:</strong>", style_meta_label), Paragraph(data_str, style_meta_val)],
+        [Paragraph("<strong>Instrutor:</strong>", style_meta_label), Paragraph(instrutor_nome, style_meta_val)],
     ]
-    t_meta = Table(meta_rows, colWidths=[2.6 * cm, 8.8 * cm, 2.2 * cm, 5.0 * cm])
-    t_meta.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), ('TOPPADDING', (0, 0), (-1, -1), 2.5), ('BOTTOMPADDING', (0, 0), (-1, -1), 2.5), ('LEFTPADDING', (0, 0), (-1, -1), 4), ('RIGHTPADDING', (0, 0), (-1, -1), 4), ('BOX', (0, 0), (-1, -1), 0.8, colors.HexColor('#000000')), ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CBD5E1')), ('SPAN', (1, 2), (3, 2))]))
+
+    t_meta = Table(meta_data, colWidths=[2.8 * cm, 16.6 * cm])
+    t_meta.setStyle(TableStyle([
+        ('BOX', (0, 0), (-1, -1), 0.8, colors.HexColor('#bfbfbf')),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING', (0, 0), (-1, -1), 2.2),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2.2),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+    ]))
     elements.append(t_meta)
-    elements.append(Spacer(1, 8))
+    elements.append(Spacer(1, 0.25 * cm))
 
-    # 5. FAIXA
-    banner_rows = [
-        [Paragraph("AUTO-AVALIAÇÃO (Como me avalio antes e depois desta sessão de treinamento?)", style_section_title)],
-        [Paragraph("Para cada critério, marque ou faça um círculo em torno da opção que expresse a sua opinião<br/>(0 = nenhum; 3 = parcialmente; 5 = totalmente)", style_section_sub)],
-    ]
-    t_banner = Table(banner_rows, colWidths=[w_total])
-    t_banner.setStyle(TableStyle([('ALIGN', (0, 0), (-1, -1), 'CENTER'), ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), ('TOPPADDING', (0, 0), (-1, -1), 3), ('BOTTOMPADDING', (0, 0), (-1, -1), 3), ('BOX', (0, 0), (-1, -1), 0.8, colors.HexColor('#000000')), ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#F1F5F9'))]))
+    # 3. Faixa de Instrução
+    t_banner = Table([[Paragraph("<strong>AUTO-AVALIAÇÃO (Como me avalio antes e depois desta sessão de treinamento?)</strong>", style_banner_title)]], colWidths=[w_total])
+    t_banner.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#707070')),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+    ]))
     elements.append(t_banner)
-    elements.append(Spacer(1, 10))
+    elements.append(Spacer(1, 0.1 * cm))
 
-    # 6. RADAR
-    drawing_h = 360
-    d_radar = Drawing(w_total, drawing_h)
-    cx = w_total / 2.0
-    cy = 180.0
-    raio_max = 90.0
-    angulos = [math.pi / 2.0, math.pi / 2.0 - 1 * (2 * math.pi / 5.0), math.pi / 2.0 - 2 * (2 * math.pi / 5.0), math.pi / 2.0 - 3 * (2 * math.pi / 5.0), math.pi / 2.0 - 4 * (2 * math.pi / 5.0)]
+    sub_txt = "Para cada critério, marque ou faça um círculo em torno da opção que expresse a sua opinião<br/>(0 = nenhum; 3 = parcialmente; 5 = totalmente)"
+    elements.append(Paragraph(sub_txt, style_banner_sub))
+    elements.append(Spacer(1, 0.15 * cm))
 
-    for nivel in range(1, 6):
-        r_nivel = raio_max * (nivel / 5.0)
-        pontos = []
-        for ang in angulos:
-            px = cx + r_nivel * math.cos(ang)
-            py = cy + r_nivel * math.sin(ang)
-            pontos.extend([px, py])
-        d_radar.add(Polygon(pontos, strokeColor=colors.HexColor('#000000') if nivel == 5 else colors.HexColor('#94A3B8'), fillColor=colors.HexColor('#FAFAFA') if nivel == 5 else colors.transparent, strokeWidth=1.0 if nivel == 5 else 0.6))
+    # 4. Gráfico Radar Pentagonal
+    elements.append(_criar_grafico_radar_pdf(perguntas, w_box=w_total, h_box=13.0 * cm))
+    elements.append(Spacer(1, 0.25 * cm))
 
-    for ang in angulos:
-        px = cx + raio_max * math.cos(ang)
-        py = cy + raio_max * math.sin(ang)
-        d_radar.add(Line(cx, cy, px, py, strokeColor=colors.HexColor('#475569'), strokeWidth=0.8))
-        d_radar.add(Circle(px, py, 2.5, fillColor=colors.HexColor('#000000'), strokeColor=colors.HexColor('#000000'), strokeWidth=0.5))
+    # 5. Legenda Oficial (Linhas 31 a 33 do Excel)
+    leg_d1 = Drawing(12, 10)
+    leg_d1.add(Rect(0, 0, 10, 10, fillColor=colors.HexColor('#c00000'), strokeColor=None))
 
-    d_radar.add(String(cx + 3, cy - 3, "0", fontName="Helvetica-Bold", fontSize=7.5, fillColor=colors.HexColor('#334155')))
-    for nivel in range(1, 6):
-        r_nivel = raio_max * (nivel / 5.0)
-        py_num = cy + r_nivel * math.sin(angulos[0])
-        d_radar.add(String(cx + 3, py_num - 3, str(nivel), fontName="Helvetica-Bold", fontSize=7.5, fillColor=colors.HexColor('#000000')))
+    leg_d2 = Drawing(12, 10)
+    leg_d2.add(Rect(0, 0, 10, 10, fillColor=colors.HexColor('#4472c4'), strokeColor=None))
 
-    # 7. CAIXAS PERGUNTAS
-    def quebrar_texto_linhas(txt, max_chars=42):
-        palavras = txt.split(); linhas = []; linha_atual = []; len_atual = 0
-        for p in palavras:
-            if len_atual + len(p) + 1 > max_chars:
-                linhas.append(" ".join(linha_atual)); linha_atual = [p]; len_atual = len(p)
-            else: linha_atual.append(p); len_atual += len(p) + 1
-        if linha_atual: linhas.append(" ".join(linha_atual))
-        return linhas[:4]
-
-    caixas_configs = [
-        {'idx': 0, 'box_w': 180, 'box_h': 42, 'bx': cx - 90, 'by': cy + raio_max + 8, 'align': 'center'},
-        {'idx': 1, 'box_w': 145, 'box_h': 44, 'bx': cx + raio_max * math.cos(angulos[1]) + 8, 'by': cy + raio_max * math.sin(angulos[1]) - 14, 'align': 'left'},
-        {'idx': 2, 'box_w': 145, 'box_h': 44, 'bx': cx + raio_max * math.cos(angulos[2]) + 4, 'by': cy + raio_max * math.sin(angulos[2]) - 32, 'align': 'left'},
-        {'idx': 3, 'box_w': 145, 'box_h': 44, 'bx': cx + raio_max * math.cos(angulos[3]) - 149, 'by': cy + raio_max * math.sin(angulos[3]) - 32, 'align': 'right'},
-        {'idx': 4, 'box_w': 145, 'box_h': 44, 'bx': cx + raio_max * math.cos(angulos[4]) - 153, 'by': cy + raio_max * math.sin(angulos[4]) - 14, 'align': 'right'},
+    leg_table_data = [
+        [Paragraph("<strong>Legenda:</strong>", style_leg_title), leg_d1, Paragraph("Marque de <strong>vermelho</strong> para sua auto avaliação <strong>Antes</strong> do Treinamento", style_leg_text)],
+        ["", leg_d2, Paragraph("Marque de <strong>Azul</strong> para sua auto avaliação <strong>Após</strong> do Treinamento", style_leg_text)],
     ]
 
-    for cfg in caixas_configs:
-        q_idx = cfg['idx']; txt_q = perguntas[q_idx] if q_idx < len(perguntas) and perguntas[q_idx] else f"Critério operacional e controle técnico {q_idx+1}."
-        linhas = quebrar_texto_linhas(txt_q, max_chars=34 if cfg['box_w'] < 160 else 46)
-        bx, by, bw, bh = cfg['bx'], cfg['by'], cfg['box_w'], max(36, len(linhas) * 9 + 12)
-        d_radar.add(Rect(bx, by, bw, bh, fillColor=colors.HexColor('#FFFFFF'), strokeColor=colors.HexColor('#000000'), strokeWidth=0.8))
-        y_start = by + bh - 10
-        for i_lin, lin in enumerate(linhas):
-            lin_y = y_start - (i_lin * 8.5)
-            tx = bx + (bw / 2.0) if cfg['align'] == 'center' else bx + 5
-            d_radar.add(String(tx, lin_y, lin, fontName="Helvetica", fontSize=6.5, fillColor=colors.HexColor('#000000'), textAnchor='middle' if cfg['align'] == 'center' else 'start'))
+    t_leg = Table(leg_table_data, colWidths=[2.2 * cm, 0.6 * cm, 16.6 * cm])
+    t_leg.setStyle(TableStyle([
+        ('SPAN', (0, 0), (0, 1)),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING', (0, 0), (-1, -1), 1.5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 1.5),
+        ('LEFTPADDING', (0, 0), (-1, -1), 2),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 2),
+    ]))
+    elements.append(t_leg)
 
-    elements.append(d_radar)
-    elements.append(Spacer(1, 10))
-
-    # 8. LEGENDA
-    legenda_rows = [
-        [Paragraph("<b>Legenda:</b>", style_meta_label), Paragraph("<font color='#DC2626'>■</font> Marque de <b>vermelho</b> para sua auto avaliação <b>Antes</b> do Treinamento", style_meta_val)],
-        [Paragraph("", style_meta_label), Paragraph("<font color='#2563EB'>■</font> Marque de <b>Azul</b> para sua auto avaliação <b>Após</b> do Treinamento", style_meta_val)],
-    ]
-    t_legenda = Table(legenda_rows, colWidths=[2.2 * cm, 16.4 * cm])
-    t_legenda.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), ('TOPPADDING', (0, 0), (-1, -1), 2), ('BOTTOMPADDING', (0, 0), (-1, -1), 2), ('LEFTPADDING', (0, 0), (-1, -1), 4), ('RIGHTPADDING', (0, 0), (-1, -1), 4), ('BOX', (0, 0), (-1, -1), 0.8, colors.HexColor('#000000')), ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#F8FAFC'))]))
-    elements.append(t_legenda)
-
+    # Construir PDF
     doc.build(elements)
     buffer.seek(0)
     return buffer

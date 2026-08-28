@@ -12,7 +12,11 @@
     <style>
         @page {
             size: A4 portrait;
-            margin: 10mm;
+            margin: 8mm;
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         body {
@@ -28,7 +32,7 @@
         .no-print-bar {
             background: #ffffff;
             border-bottom: 1px solid #e2e8f0;
-            padding: 12px 24px;
+            padding: 10px 24px;
             position: sticky;
             top: 0;
             z-index: 1000;
@@ -40,10 +44,14 @@
             min-height: 297mm;
             margin: 20px auto;
             background: #ffffff;
-            padding: 12mm 14mm;
+            padding: 10mm 12mm;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border: 1px solid #bfbfbf;
             box-sizing: border-box;
             border-radius: 2px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
 
         @media print {
@@ -55,117 +63,136 @@
             }
             .page-container {
                 margin: 0 !important;
-                padding: 0 !important;
+                padding: 6mm 8mm !important;
                 box-shadow: none !important;
                 width: 100% !important;
-                min-height: auto !important;
+                min-height: 100vh !important;
+                border: 1px solid #bfbfbf !important;
             }
         }
 
-        .header-title-box {
-            border: 1.5px solid #000000;
-            background-color: #f8fafc;
+        /* 1. Título do Formulário (Exatamente igual ao Excel) */
+        .doc-title-main {
             text-align: center;
+            font-size: 14px;
             font-weight: bold;
-            font-size: 1.15rem;
-            padding: 8px;
+            color: #595959;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin-bottom: 8px;
+            margin-top: 4px;
+            margin-bottom: 14px;
         }
 
-        .meta-table {
-            width: 100%;
-            border-collapse: collapse;
-            border: 1.2px solid #000000;
-            margin-bottom: 10px;
-            font-size: 0.85rem;
+        /* 2. Caixa de Metadados (Linhas 3 a 7 do Excel) */
+        .meta-box-excel {
+            border: 1px solid #bfbfbf;
+            padding: 8px 12px;
+            margin-bottom: 12px;
+            background: #ffffff;
         }
 
-        .meta-table td {
-            border: 1px solid #cbd5e1;
-            padding: 5px 8px;
-            vertical-align: middle;
+        .meta-row {
+            display: flex;
+            align-items: baseline;
+            margin-bottom: 5px;
+            font-size: 11px;
+            line-height: 1.35;
+        }
+
+        .meta-row:last-child {
+            margin-bottom: 0;
         }
 
         .meta-label {
+            width: 115px;
             font-weight: bold;
-            color: #000000;
-            width: 15%;
-            background-color: #fafafa;
+            color: #595959;
+            flex-shrink: 0;
         }
 
-        .meta-value {
+        .meta-val {
+            flex-grow: 1;
             color: #000000;
         }
 
-        .banner-instrucoes {
-            border: 1.2px solid #000000;
-            background-color: #f1f5f9;
+        .meta-dotted {
+            border-bottom: 1px dotted #e11d48;
+            padding-bottom: 1px;
+            display: inline-block;
+            width: 100%;
+        }
+
+        /* 3. Faixa de Instrução */
+        .banner-excel {
+            background-color: #707070;
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 10.5px;
             text-align: center;
-            padding: 6px 12px;
-            margin-bottom: 12px;
+            padding: 4px 8px;
+            margin-bottom: 4px;
         }
 
-        .banner-titulo {
-            font-weight: bold;
-            font-size: 0.88rem;
-            color: #000000;
-            margin-bottom: 2px;
+        .sub-banner-excel {
+            text-align: center;
+            font-size: 9px;
+            color: #595959;
+            line-height: 1.35;
+            margin-bottom: 16px;
         }
 
-        .banner-sub {
-            font-size: 0.76rem;
-            color: #334155;
-            line-height: 1.3;
-        }
-
-        .radar-stage {
+        /* 4. Palco do Radar Pentagonal */
+        .radar-stage-excel {
             position: relative;
             width: 100%;
-            height: 480px;
+            height: 510px;
             margin: 0 auto;
             display: flex;
             justify-content: center;
             align-items: center;
         }
 
-        .legenda-box {
-            border: 1.2px solid #000000;
-            background-color: #f8fafc;
-            padding: 6px 12px;
-            font-size: 0.82rem;
+        /* 5. Legenda */
+        .legenda-excel-container {
+            display: flex;
+            align-items: flex-start;
+            gap: 20px;
+            font-size: 10px;
             margin-top: 10px;
+            padding-top: 8px;
         }
 
-        .legenda-title {
+        .legenda-excel-title {
             font-weight: bold;
-            color: #000000;
-            margin-bottom: 4px;
+            color: #595959;
+            width: 80px;
         }
 
-        .legenda-item {
+        .legenda-excel-items {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .legenda-excel-row {
             display: flex;
             align-items: center;
             gap: 8px;
-            margin-bottom: 2px;
-            font-size: 0.8rem;
+            color: #000000;
         }
 
-        .legenda-sq-red {
-            width: 12px;
-            height: 12px;
-            background-color: #dc2626;
+        .leg-sq-red {
+            width: 13px;
+            height: 13px;
+            background-color: #c00000;
             display: inline-block;
-            border-radius: 2px;
         }
 
-        .legenda-sq-blue {
-            width: 12px;
-            height: 12px;
-            background-color: #2563eb;
+        .leg-sq-blue {
+            width: 13px;
+            height: 13px;
+            background-color: #4472c4;
             display: inline-block;
-            border-radius: 2px;
         }
     </style>
 </head>
@@ -201,148 +228,132 @@
     <!-- Folha A4 do Formulário -->
     <div class="page-container">
         
-        <!-- 1. Cabeçalho Oficial do Template -->
-        <div class="header-title-box">
-            FORMULÁRIO DE AUTO-AVALIAÇÃO
-        </div>
+        <div>
+            <!-- 1. Título do Formulário (Exatamente igual ao Excel) -->
+            <div class="doc-title-main">
+                FORMULÁRIO DE AUTO-AVALIAÇÃO
+            </div>
 
-        <!-- 2. Metadados do Treinamento e Colaborador -->
-        <table class="meta-table">
-            <tr>
-                <td class="meta-label">Nome:</td>
-                <td class="meta-value" style="width: 48%;">{{ d_colab.nome }}</td>
-                <td class="meta-label">Data:</td>
-                <td class="meta-value" style="width: 25%;">{{ data_str }}</td>
-            </tr>
-            <tr>
-                <td class="meta-label">Laboratório:</td>
-                <td class="meta-value">{{ d_colab.setor|default:d_colab.posto_trabalho }}</td>
-                <td class="meta-label">Instrutor:</td>
-                <td class="meta-value">{{ instrutor_nome }}</td>
-            </tr>
-            <tr>
-                <td class="meta-label">Treinamento:</td>
-                <td class="meta-value" colspan="3">{{ proc_str }}</td>
-            </tr>
-        </table>
+            <!-- 2. Caixa de Metadados (Linhas 3 a 7 do Excel) -->
+            <div class="meta-box-excel">
+                <div class="meta-row">
+                    <span class="meta-label">Nome:</span>
+                    <span class="meta-val meta-dotted">{{ d_colab.nome }}</span>
+                </div>
+                <div class="meta-row">
+                    <span class="meta-label">Laboratório:</span>
+                    <span class="meta-val">{{ d_colab.setor|default:d_colab.posto_trabalho }}</span>
+                </div>
+                <div class="meta-row">
+                    <span class="meta-label">Treinamento:</span>
+                    <span class="meta-val">{{ proc_str }}</span>
+                </div>
+                <div class="meta-row">
+                    <span class="meta-label">Data:</span>
+                    <span class="meta-val meta-dotted">{{ data_str }}</span>
+                </div>
+                <div class="meta-row">
+                    <span class="meta-label">Instrutor:</span>
+                    <span class="meta-val meta-dotted">{{ instrutor_nome }}</span>
+                </div>
+            </div>
 
-        <!-- 3. Faixa de Instrução -->
-        <div class="banner-instrucoes">
-            <div class="banner-titulo">
+            <!-- 3. Faixa de Instrução -->
+            <div class="banner-excel">
                 AUTO-AVALIAÇÃO (Como me avalio antes e depois desta sessão de treinamento?)
             </div>
-            <div class="banner-sub">
+            <div class="sub-banner-excel">
                 Para cada critério, marque ou faça um círculo em torno da opção que expresse a sua opinião<br/>
                 (0 = nenhum; 3 = parcialmente; 5 = totalmente)
             </div>
-        </div>
 
-        <!-- 4. Grande Gráfico Radar Pentagonal com as 5 Caixas nos Vértices -->
-        <div class="radar-stage">
-            <svg width="680" height="460" viewBox="0 0 680 460" xmlns="http://www.w3.org/2000/svg" style="overflow: visible;">
-                <!-- Centro do radar: X=340, Y=230, Raio=110 -->
-                <g transform="translate(340, 230)">
-                    <!-- 5 Níveis Concêntricos do Pentágono Regular -->
-                    <!-- Nível 5 (Externo) -->
-                    <polygon points="0,-110 104.61,-33.99 64.65,88.99 -64.65,88.99 -104.61,-33.99" fill="#fafafa" stroke="#000000" stroke-width="1.4"/>
-                    <!-- Nível 4 -->
-                    <polygon points="0,-88 83.69,-27.19 51.72,71.19 -51.72,71.19 -83.69,-27.19" fill="none" stroke="#94a3b8" stroke-width="0.9"/>
-                    <!-- Nível 3 -->
-                    <polygon points="0,-66 62.77,-20.39 38.79,53.39 -38.79,53.39 -62.77,-20.39" fill="none" stroke="#cbd5e1" stroke-width="0.9"/>
-                    <!-- Nível 2 -->
-                    <polygon points="0,-44 41.84,-13.60 25.86,35.60 -25.86,35.60 -41.84,-13.60" fill="none" stroke="#cbd5e1" stroke-width="0.9"/>
-                    <!-- Nível 1 -->
-                    <polygon points="0,-22 20.92,-6.80 12.93,17.80 -12.93,17.80 -20.92,-6.80" fill="none" stroke="#cbd5e1" stroke-width="0.9"/>
+            <!-- 4. Grande Gráfico Radar Pentagonal com Textos Limpos nos Vértices -->
+            <div class="radar-stage-excel">
+                <svg width="680" height="490" viewBox="0 0 680 490" xmlns="http://www.w3.org/2000/svg" style="overflow: visible;">
+                    <!-- Centro do radar: X=340, Y=255, Raio=120 -->
+                    <g transform="translate(340, 255)">
+                        <!-- 5 Níveis Concêntricos do Pentágono Regular com Linhas Azuis do Excel (#4472c4) -->
+                        <!-- Nível 5 (Externo) -->
+                        <polygon points="0,-120 114.13,-37.08 70.53,97.08 -70.53,97.08 -114.13,-37.08" fill="none" stroke="#4472c4" stroke-width="1.3"/>
+                        <!-- Nível 4 -->
+                        <polygon points="0,-96 91.30,-29.67 56.43,77.67 -56.43,77.67 -91.30,-29.67" fill="none" stroke="#4472c4" stroke-width="1.1"/>
+                        <!-- Nível 3 -->
+                        <polygon points="0,-72 68.48,-22.25 42.32,58.25 -42.32,58.25 -68.48,-22.25" fill="none" stroke="#4472c4" stroke-width="1.1"/>
+                        <!-- Nível 2 -->
+                        <polygon points="0,-48 45.65,-14.83 28.21,38.83 -28.21,38.83 -45.65,-14.83" fill="none" stroke="#4472c4" stroke-width="1.1"/>
+                        <!-- Nível 1 -->
+                        <polygon points="0,-24 22.83,-7.42 14.11,19.42 -14.11,19.42 -22.83,-7.42" fill="none" stroke="#4472c4" stroke-width="1.1"/>
 
-                    <!-- 5 Linhas Radiais -->
-                    <line x1="0" y1="0" x2="0" y2="-110" stroke="#475569" stroke-width="1"/>
-                    <line x1="0" y1="0" x2="104.61" y2="-33.99" stroke="#475569" stroke-width="1"/>
-                    <line x1="0" y1="0" x2="64.65" y2="88.99" stroke="#475569" stroke-width="1"/>
-                    <line x1="0" y1="0" x2="-64.65" y2="88.99" stroke="#475569" stroke-width="1"/>
-                    <line x1="0" y1="0" x2="-104.61" y2="-33.99" stroke="#475569" stroke-width="1"/>
+                        <!-- 5 Linhas Radiais -->
+                        <line x1="0" y1="0" x2="0" y2="-120" stroke="#4472c4" stroke-width="1.1"/>
+                        <line x1="0" y1="0" x2="114.13" y2="-37.08" stroke="#4472c4" stroke-width="1.1"/>
+                        <line x1="0" y1="0" x2="70.53" y2="97.08" stroke="#4472c4" stroke-width="1.1"/>
+                        <line x1="0" y1="0" x2="-70.53" y2="97.08" stroke="#4472c4" stroke-width="1.1"/>
+                        <line x1="0" y1="0" x2="-114.13" y2="-37.08" stroke="#4472c4" stroke-width="1.1"/>
 
-                    <!-- Vértices -->
-                    <circle cx="0" cy="-110" r="3.5" fill="#000000"/>
-                    <circle cx="104.61" cy="-33.99" r="3.5" fill="#000000"/>
-                    <circle cx="64.65" cy="88.99" r="3.5" fill="#000000"/>
-                    <circle cx="-64.65" cy="88.99" r="3.5" fill="#000000"/>
-                    <circle cx="-104.61" cy="-33.99" r="3.5" fill="#000000"/>
+                        <!-- Números da Escala Central (0 a 5) em Azul -->
+                        <text x="4" y="-2" font-size="9" font-weight="bold" fill="#4472c4">0</text>
+                        <text x="4" y="-23" font-size="9" font-weight="bold" fill="#4472c4">1</text>
+                        <text x="4" y="-47" font-size="9" font-weight="bold" fill="#4472c4">2</text>
+                        <text x="4" y="-71" font-size="9" font-weight="bold" fill="#4472c4">3</text>
+                        <text x="4" y="-95" font-size="9" font-weight="bold" fill="#4472c4">4</text>
+                        <text x="4" y="-119" font-size="9" font-weight="bold" fill="#4472c4">5</text>
+                    </g>
 
-                    <!-- Números da Escala Central (0 a 5) -->
-                    <text x="5" y="-3" font-size="9" font-weight="bold" fill="#334155">0</text>
-                    <text x="5" y="-21" font-size="9" font-weight="bold" fill="#000000">1</text>
-                    <text x="5" y="-43" font-size="9" font-weight="bold" fill="#000000">2</text>
-                    <text x="5" y="-65" font-size="9" font-weight="bold" fill="#000000">3</text>
-                    <text x="5" y="-87" font-size="9" font-weight="bold" fill="#000000">4</text>
-                    <text x="5" y="-109" font-size="9" font-weight="bold" fill="#000000">5</text>
-                </g>
+                    <!-- ============================================================= -->
+                    <!-- AS 5 PERGUNTAS LIMPAS AO REDOR DO RADAR PENTAGONAL (SEM BORDAS) -->
+                    <!-- ============================================================= -->
 
-                <!-- ============================================================= -->
-                <!-- AS 5 CAIXAS DE PERGUNTAS AO REDOR DO RADAR PENTAGONAL        -->
-                <!-- ============================================================= -->
-
-                <!-- Caixa 1: Topo (Acima do Vértice 0) -->
-                <g transform="translate(225, 25)">
-                    <rect width="230" height="70" fill="#ffffff" stroke="#000000" stroke-width="1.2" rx="2"/>
-                    <foreignObject width="220" height="62" x="5" y="4">
-                        <div xmlns="http://www.w3.org/1999/xhtml" style="font-size: 0.72rem; text-align: center; color: #000000; line-height: 1.25; display: flex; align-items: center; justify-content: center; height: 100%; font-family: Arial, sans-serif;">
-                            {{ perguntas_lista.0.texto|default:"Critério e objetivo principal do procedimento." }}
+                    <!-- Pergunta 1: Topo (Acima do Vértice 0) -->
+                    <foreignObject width="260" height="75" x="210" y="45">
+                        <div xmlns="http://www.w3.org/1999/xhtml" style="font-size: 9.5px; text-align: center; color: #595959; line-height: 1.3; font-family: Arial, sans-serif;">
+                            {{ perguntas_lista.0.texto|default:"Digite aqui as perguntas para Avaliação do Treinamento" }}
                         </div>
                     </foreignObject>
-                </g>
 
-                <!-- Caixa 2: Superior Direita (À direita do Vértice 1) -->
-                <g transform="translate(465, 155)">
-                    <rect width="200" height="74" fill="#ffffff" stroke="#000000" stroke-width="1.2" rx="2"/>
-                    <foreignObject width="190" height="66" x="5" y="4">
-                        <div xmlns="http://www.w3.org/1999/xhtml" style="font-size: 0.72rem; text-align: left; color: #000000; line-height: 1.25; display: flex; align-items: center; height: 100%; font-family: Arial, sans-serif;">
-                            {{ perguntas_lista.1.texto|default:"EPIs e requisitos de segurança obrigatórios." }}
+                    <!-- Pergunta 2: Superior Direita (À direita do Vértice 1) -->
+                    <foreignObject width="210" height="85" x="465" y="175">
+                        <div xmlns="http://www.w3.org/1999/xhtml" style="font-size: 9.5px; text-align: left; color: #595959; line-height: 1.3; font-family: Arial, sans-serif;">
+                            {{ perguntas_lista.1.texto|default:"Digite aqui as perguntas para Avaliação do Treinamento" }}
                         </div>
                     </foreignObject>
-                </g>
 
-                <!-- Caixa 3: Inferior Direita (Abaixo/Direita do Vértice 2) -->
-                <g transform="translate(415, 335)">
-                    <rect width="210" height="74" fill="#ffffff" stroke="#000000" stroke-width="1.2" rx="2"/>
-                    <foreignObject width="200" height="66" x="5" y="4">
-                        <div xmlns="http://www.w3.org/1999/xhtml" style="font-size: 0.72rem; text-align: left; color: #000000; line-height: 1.25; display: flex; align-items: center; height: 100%; font-family: Arial, sans-serif;">
-                            {{ perguntas_lista.2.texto|default:"Sequência de execução e parâmetros operacionais." }}
+                    <!-- Pergunta 3: Inferior Direita (Abaixo/Direita do Vértice 2) -->
+                    <foreignObject width="220" height="85" x="420" y="365">
+                        <div xmlns="http://www.w3.org/1999/xhtml" style="font-size: 9.5px; text-align: left; color: #595959; line-height: 1.3; font-family: Arial, sans-serif;">
+                            {{ perguntas_lista.2.texto|default:"Digite aqui as perguntas para Avaliação do Treinamento" }}
                         </div>
                     </foreignObject>
-                </g>
 
-                <!-- Caixa 4: Inferior Esquerda (Abaixo/Esquerda do Vértice 3) -->
-                <g transform="translate(55, 335)">
-                    <rect width="210" height="74" fill="#ffffff" stroke="#000000" stroke-width="1.2" rx="2"/>
-                    <foreignObject width="200" height="66" x="5" y="4">
-                        <div xmlns="http://www.w3.org/1999/xhtml" style="font-size: 0.72rem; text-align: right; color: #000000; line-height: 1.25; display: flex; align-items: center; justify-content: flex-end; height: 100%; font-family: Arial, sans-serif;">
-                            {{ perguntas_lista.3.texto|default:"Pontos críticos de controle e critérios de aceitação." }}
+                    <!-- Pergunta 4: Inferior Esquerda (Abaixo/Esquerda do Vértice 3) -->
+                    <foreignObject width="220" height="85" x="40" y="365">
+                        <div xmlns="http://www.w3.org/1999/xhtml" style="font-size: 9.5px; text-align: right; color: #595959; line-height: 1.3; font-family: Arial, sans-serif;">
+                            {{ perguntas_lista.3.texto|default:"Digite aqui as perguntas para Avaliação do Treinamento" }}
                         </div>
                     </foreignObject>
-                </g>
 
-                <!-- Caixa 5: Superior Esquerda (À esquerda do Vértice 4) -->
-                <g transform="translate(15, 155)">
-                    <rect width="200" height="74" fill="#ffffff" stroke="#000000" stroke-width="1.2" rx="2"/>
-                    <foreignObject width="190" height="66" x="5" y="4">
-                        <div xmlns="http://www.w3.org/1999/xhtml" style="font-size: 0.72rem; text-align: right; color: #000000; line-height: 1.25; display: flex; align-items: center; justify-content: flex-end; height: 100%; font-family: Arial, sans-serif;">
-                            {{ perguntas_lista.4.texto|default:"Fluxo de contenção e comunicação imediata de desvios." }}
+                    <!-- Pergunta 5: Superior Esquerda (À esquerda do Vértice 4) -->
+                    <foreignObject width="210" height="85" x="5" y="175">
+                        <div xmlns="http://www.w3.org/1999/xhtml" style="font-size: 9.5px; text-align: right; color: #595959; line-height: 1.3; font-family: Arial, sans-serif;">
+                            {{ perguntas_lista.4.texto|default:"Digite aqui as perguntas para Avaliação do Treinamento" }}
                         </div>
                     </foreignObject>
-                </g>
-            </svg>
-        </div>
-
-        <!-- 5. Legenda Oficial (Linhas 31 a 33 do template Excel) -->
-        <div class="legenda-box">
-            <div class="legenda-title">Legenda:</div>
-            <div class="legenda-item">
-                <span class="legenda-sq-red"></span>
-                <span>Marque de <strong>vermelho</strong> para sua auto avaliação <strong>Antes</strong> do Treinamento</span>
+                </svg>
             </div>
-            <div class="legenda-item">
-                <span class="legenda-sq-blue"></span>
-                <span>Marque de <strong>Azul</strong> para sua auto avaliação <strong>Após</strong> do Treinamento</span>
+        </div>
+
+        <!-- 5. Legenda Oficial (Linhas 31 a 33 do Excel) -->
+        <div class="legenda-excel-container">
+            <div class="legenda-excel-title">Legenda:</div>
+            <div class="legenda-excel-items">
+                <div class="legenda-excel-row">
+                    <span class="leg-sq-red"></span>
+                    <span>Marque de <strong>vermelho</strong> para sua auto avaliação <strong>Antes</strong> do Treinamento</span>
+                </div>
+                <div class="legenda-excel-row">
+                    <span class="leg-sq-blue"></span>
+                    <span>Marque de <strong>Azul</strong> para sua auto avaliação <strong>Após</strong> do Treinamento</span>
+                </div>
             </div>
         </div>
 
