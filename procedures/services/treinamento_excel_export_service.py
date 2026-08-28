@@ -40,13 +40,27 @@ def _obter_raw_bytes_template(funcao: str, codigo_busca: str, nome_padrao: str):
     """
     template_config = TemplateDocumentoTreinamento.objects.filter(
         funcao=funcao,
+        tipo_arquivo='xlsx',
         ativo=True
     ).first()
 
     if not template_config and codigo_busca:
         template_config = TemplateDocumentoTreinamento.objects.filter(
             codigo__icontains=codigo_busca,
+            tipo_arquivo='xlsx',
             ativo=True
+        ).first()
+
+    if not template_config:
+        template_config = TemplateDocumentoTreinamento.objects.filter(
+            funcao=funcao,
+            tipo_arquivo='xlsx'
+        ).first()
+
+    if not template_config and codigo_busca:
+        template_config = TemplateDocumentoTreinamento.objects.filter(
+            codigo__icontains=codigo_busca,
+            tipo_arquivo='xlsx'
         ).first()
 
     raw_bytes = None

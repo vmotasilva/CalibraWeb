@@ -194,11 +194,31 @@ def gerar_lista_presenca_xlsx(planejamento: PlanejamentoTreinamento, overrides: 
     # 1. Prioridade: Buscar template ativo configurado na sessão de Templates de Treinamento
     template_config = TemplateDocumentoTreinamento.objects.filter(
         funcao='LISTA_PRESENCA',
+        tipo_arquivo='xlsx',
         ativo=True
     ).first()
 
+    if not template_config:
+        template_config = TemplateDocumentoTreinamento.objects.filter(
+            codigo__icontains='FOR.033',
+            tipo_arquivo='xlsx',
+            ativo=True
+        ).first()
+
+    if not template_config:
+        template_config = TemplateDocumentoTreinamento.objects.filter(
+            funcao='LISTA_PRESENCA',
+            tipo_arquivo='xlsx'
+        ).first()
+
+    if not template_config:
+        template_config = TemplateDocumentoTreinamento.objects.filter(
+            codigo__icontains='FOR.033',
+            tipo_arquivo='xlsx'
+        ).first()
+
     if template_config:
-        # A. Tentar ler do Base64 gravado no banco de dados (100% persistente em ambientes em nuvem)
+        # A. Tentar ler do Base64 gravado no banco de dados (100% persistente em nuvem)
         if getattr(template_config, 'arquivo_base64', None):
             try:
                 arquivo_bytes = base64.b64decode(template_config.arquivo_base64)
@@ -217,17 +237,26 @@ def gerar_lista_presenca_xlsx(planejamento: PlanejamentoTreinamento, overrides: 
 
     # 2. Fallback: Diretórios padrão do sistema de arquivos
     if wb is None:
-        nome_arquivo_template = "FOR.033.r07_Lista_de_Presenca_de_Treinamento.xlsx"
-        caminhos = [
-            os.path.join(settings.BASE_DIR, "templates", nome_arquivo_template),
-            os.path.join(settings.BASE_DIR, "procedures", "templates", nome_arquivo_template),
-            os.path.join(settings.BASE_DIR, "static", "templates", nome_arquivo_template),
-            os.path.join(settings.BASE_DIR, nome_arquivo_template),
-            os.path.join(settings.MEDIA_ROOT, "templates_treinamento_docs", nome_arquivo_template),
+        import glob
+        candidatos = [
+            os.path.join(settings.BASE_DIR, "FOR.033.r07_Lista_de_Presenca_de_Treinamento.xlsx"),
+            os.path.join(settings.BASE_DIR, "templates", "FOR.033.r07_Lista_de_Presenca_de_Treinamento.xlsx"),
+            os.path.join(settings.BASE_DIR, "procedures", "templates", "FOR.033.r07_Lista_de_Presenca_de_Treinamento.xlsx"),
+            os.path.join(settings.BASE_DIR, "static", "templates", "FOR.033.r07_Lista_de_Presenca_de_Treinamento.xlsx"),
+            os.path.join(settings.MEDIA_ROOT, "templates_treinamento_docs", "FOR.033.r07_Lista_de_Presenca_de_Treinamento.xlsx"),
         ]
-        template_path = next((p for p in caminhos if os.path.exists(p)), None)
-        if template_path:
-            wb = openpyxl.load_workbook(template_path)
+        candidatos.extend(glob.glob(os.path.join(settings.BASE_DIR, "*FOR.033*.xlsx")))
+        candidatos.extend(glob.glob(os.path.join(settings.BASE_DIR, "*Lista*Presen*.xlsx")))
+        candidatos.extend(glob.glob(os.path.join(settings.BASE_DIR, "**", "*FOR.033*.xlsx"), recursive=True))
+
+        for path in candidatos:
+            if os.path.exists(path) and os.path.isfile(path):
+                try:
+                    wb = openpyxl.load_workbook(path)
+                    if wb:
+                        break
+                except Exception:
+                    pass
 
     if wb is None:
         raise FileNotFoundError("O arquivo do template ativo precisa ser recadastrado. Acesse 'Templates de Documentos' e faça o upload do arquivo para salvar na nuvem.")
