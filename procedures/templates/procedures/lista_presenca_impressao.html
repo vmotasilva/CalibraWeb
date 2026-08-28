@@ -1,9 +1,10 @@
+{% load static %}
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lista de Presença - {{ planejamento.id }}</title>
+    <title>FOR.033.r07 - Lista de Presença de Treinamento | {{ planejamento.titulo|default:"Treinamento" }}</title>
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
@@ -11,7 +12,7 @@
     <style>
         @page {
             size: A4 portrait;
-            margin: 6mm 8mm 6mm 8mm;
+            margin: 8mm 10mm;
         }
 
         * {
@@ -19,247 +20,447 @@
         }
 
         body {
-            font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
+            font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
             background-color: #f1f5f9;
             color: #000000;
             margin: 0;
             padding: 0;
-            font-size: 10px;
+            font-size: 11px;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
         }
 
         .no-print-bar {
-            background-color: #1e293b;
-            color: #ffffff;
-            padding: 8px 16px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 10px 24px;
             position: sticky;
             top: 0;
             z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
         }
 
         .page-sheet {
-            background: #ffffff;
             width: 210mm;
-            max-width: 210mm;
             min-height: 297mm;
-            margin: 10px auto;
-            padding: 8mm 10mm;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin: 20px auto;
+            background: #ffffff;
+            padding: 10mm 12mm;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
             box-sizing: border-box;
+            border-radius: 2px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
 
-        .table-doc {
+        .page-break {
+            page-break-after: always;
+            break-after: page;
+        }
+
+        @media print {
+            body {
+                background: transparent;
+            }
+            .no-print-bar {
+                display: none !important;
+            }
+            .page-sheet {
+                margin: 0 !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+                width: 100% !important;
+                min-height: 100vh !important;
+            }
+        }
+
+        /* 1. Cabeçalho SGQ Oficial */
+        .table-sgq-header {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 0;
+            border: 1.2px solid #000000;
+            margin-bottom: 6px;
         }
 
-        .table-doc th, .table-doc td {
+        .table-sgq-header td {
             border: 1px solid #000000;
-            padding: 2.5px 5px;
+            padding: 4px 6px;
             vertical-align: middle;
-            font-size: 10px;
-            line-height: 1.25;
         }
 
-        .bg-head {
-            background-color: #f1f5f9 !important;
-            font-weight: 600;
+        .sgq-col-logo {
+            width: 20%;
+            text-align: center;
         }
 
+        .sgq-col-logo img {
+            max-height: 38px;
+            max-width: 130px;
+        }
+
+        .sgq-col-title {
+            width: 50%;
+            text-align: center;
+        }
+
+        .sgq-title-small {
+            font-size: 9px;
+            color: #334155;
+            margin-bottom: 2px;
+        }
+
+        .sgq-title-main {
+            font-size: 13px;
+            font-weight: bold;
+            color: #000000;
+        }
+
+        .sgq-col-meta {
+            width: 30%;
+            font-size: 8.5px;
+            line-height: 1.35;
+        }
+
+        /* 2. Metadados do Treinamento */
+        .table-meta {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1.2px solid #000000;
+            margin-bottom: 6px;
+            font-size: 9.5px;
+        }
+
+        .table-meta td {
+            border: 1px solid #000000;
+            padding: 3.5px 6px;
+            vertical-align: middle;
+        }
+
+        .meta-label {
+            font-weight: bold;
+            width: 24%;
+            background-color: #ffffff;
+        }
+
+        .meta-val {
+            width: 76%;
+        }
+
+        /* 3. Tabela de Participantes */
         .table-part {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 5px;
+            border: 1.2px solid #000000;
+            margin-bottom: 2px;
+            font-size: 9.5px;
         }
 
         .table-part th {
             border: 1px solid #000000;
-            background-color: #e2e8f0 !important;
+            background-color: #e2e8f0;
             text-align: center;
             font-weight: bold;
-            padding: 3px 4px;
-            font-size: 9.5px;
+            padding: 3.5px 4px;
+            font-size: 9px;
             text-transform: uppercase;
         }
 
         .table-part td {
             border: 1px solid #000000;
-            height: 19px;
+            height: 22px;
             padding: 1px 4px;
-            font-size: 9.5px;
+            vertical-align: middle;
+            font-size: 9px;
         }
 
-        .box-procs {
+        .nota-verso {
+            font-size: 8.5px;
+            color: #475569;
+            font-style: italic;
+            margin-bottom: 6px;
+        }
+
+        /* 4. Rodapé SGQ de Aprovação */
+        .table-sgq-footer {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1.2px solid #000000;
+            font-size: 8.5px;
+        }
+
+        .table-sgq-footer td {
             border: 1px solid #000000;
-            margin-top: 5px;
+            padding: 3.5px 6px;
+            width: 33.33%;
+            vertical-align: middle;
+            line-height: 1.35;
         }
 
-        .box-procs-header {
-            background-color: #e2e8f0 !important;
+        /* 5. Verso / Conteúdo do Treinamento */
+        .box-conteudo-titulo {
+            border: 1.2px solid #000000;
+            background-color: #e2e8f0;
+            text-align: center;
             font-weight: bold;
-            padding: 2.5px 6px;
-            border-bottom: 1px solid #000000;
-            font-size: 9.5px;
+            font-size: 12px;
+            padding: 6px;
+            margin-bottom: 8px;
             text-transform: uppercase;
         }
 
-        .box-procs-body {
-            padding: 4px 8px;
-            font-size: 9.5px;
-            line-height: 1.3;
-            min-height: 42px;
+        .box-conteudo-corpo {
+            border: 1.2px solid #000000;
+            padding: 12px 16px;
+            min-height: 520px;
+            font-size: 10px;
+            line-height: 1.5;
+            margin-bottom: 12px;
         }
 
-        .chk-item {
-            display: inline-flex;
-            align-items: center;
-            white-space: nowrap;
+        .proc-item {
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px dashed #cbd5e1;
         }
 
-        @media print {
-            .no-print-bar {
-                display: none !important;
-            }
-            body {
-                background: #ffffff !important;
-                margin: 0 !important;
-                padding: 0 !important;
-            }
-            .page-sheet {
-                width: 100% !important;
-                max-width: 100% !important;
-                min-height: 100% !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                box-shadow: none !important;
-                page-break-after: avoid !important;
-                page-break-inside: avoid !important;
-            }
+        .proc-item:last-child {
+            border-bottom: none;
         }
     </style>
 </head>
 <body>
 
-    <!-- Barra Superior de Controle (Oculta na Impressão) -->
+    <!-- Barra Superior de Ações (Oculta na Impressão) -->
     <div class="no-print-bar d-flex justify-content-between align-items-center">
-        <div class="d-flex align-items-center gap-2">
-            <i class="bi bi-printer text-primary fs-5"></i>
-            <span class="fw-bold">Visualização de Impressão - Lista de Presença Oficial (FOR.033)</span>
+        <div class="d-flex align-items-center gap-3">
+            <span class="badge bg-dark px-3 py-2 fs-6">
+                <i class="bi bi-file-earmark-check me-1"></i> FOR.033.r07 - Lista de Presença de Treinamento
+            </span>
+            <span class="text-muted small">
+                {{ planejamento.titulo|default:"Treinamento Operacional" }}
+            </span>
         </div>
-        <div class="d-flex gap-2">
+
+        <div class="d-flex align-items-center gap-2">
             <button onclick="window.print()" class="btn btn-primary btn-sm px-3 shadow-sm">
-                <i class="bi bi-printer-fill me-1"></i> Imprimir Agora
+                <i class="bi bi-printer me-1"></i> Imprimir Agora
             </button>
-            <a href="?formato=pdf&categoria={{ categoria_sel }}&metodologia={{ metodologia_sel }}&necessita_avaliacao={{ avaliacao_sel }}&area_conhecimento={{ area_sel }}&outros_texto={{ outros_texto }}" class="btn btn-outline-light btn-sm px-3">
-                <i class="bi bi-file-earmark-pdf me-1"></i> Baixar em PDF
+            <a href="?formato=pdf&categoria={{ categoria_sel }}&metodologia={{ metodologia_sel }}&necessita_avaliacao={{ avaliacao_sel }}&area_conhecimento={{ area_sel }}&outros_texto={{ outros_texto }}" class="btn btn-danger btn-sm px-3 shadow-sm">
+                <i class="bi bi-file-earmark-pdf me-1"></i> Baixar PDF Oficial
             </a>
-            <button onclick="window.close()" class="btn btn-secondary btn-sm px-3">
-                <i class="bi bi-x-lg me-1"></i> Fechar
-            </button>
+            <a href="?formato=excel&categoria={{ categoria_sel }}&metodologia={{ metodologia_sel }}&necessita_avaliacao={{ avaliacao_sel }}&area_conhecimento={{ area_sel }}&outros_texto={{ outros_texto }}" class="btn btn-success btn-sm px-3 shadow-sm">
+                <i class="bi bi-file-earmark-excel me-1"></i> Baixar Excel (.xlsx)
+            </a>
+            <a href="{% url 'procedures:detalhe_planejamento' planejamento.id %}" class="btn btn-outline-secondary btn-sm px-3">
+                <i class="bi bi-arrow-left me-1"></i> Voltar
+            </a>
         </div>
     </div>
 
-    <!-- Folha A4 Oficial -->
-    <div class="page-sheet">
-        <!-- Cabeçalho Oficial FOR.033 -->
-        <table class="table-doc">
-            <tr>
-                <td colspan="2" class="text-center bg-head py-1" style="font-size: 12px; font-weight: bold; text-transform: uppercase;">
-                    Lista de Presença de Treinamento
-                </td>
-            </tr>
-            <tr>
-                <td class="bg-head" style="width: 22%;">Título do treinamento:</td>
-                <td><strong>{{ planejamento.titulo|default:"-" }}</strong></td>
-            </tr>
-            <tr>
-                <td class="bg-head">Categoria do Treinamento:</td>
-                <td>
-                    <span class="chk-item me-3">{{ chk_map.CHK_TREIN }} Treinamento</span>
-                    <span class="chk-item me-3">{{ chk_map.CHK_REUN }} Reunião</span>
-                    <span class="chk-item">{{ chk_map.CHK_RECIC }} Reciclagem</span>
-                    <span class="float-end">
-                        <strong>Metodologia:</strong> &nbsp;&nbsp;
-                        <span class="chk-item me-2">{{ chk_map.CHK_TRAD }} Tradicional</span>
-                        <span class="chk-item">{{ chk_map.CHK_LOFT }} LOFT</span>
-                    </span>
-                </td>
-            </tr>
-            <tr>
-                <td class="bg-head">Área de Conhecimento:</td>
-                <td>
-                    <span class="chk-item me-2">{{ chk_map.CHK_ADM }} Administrativo</span>
-                    <span class="chk-item me-2">{{ chk_map.CHK_QUALIDADE }} Qualidade</span>
-                    <span class="chk-item me-2">{{ chk_map.CHK_EHS }} EHS</span>
-                    <span class="chk-item me-2">{{ chk_map.CHK_ESTOQUE }} Estoque</span>
-                    <span class="chk-item me-2">{{ chk_map.CHK_PRODUCAO }} Produção</span>
-                    <span class="chk-item">{{ chk_map.CHK_OUTROS }} {% if outros_texto %}Outros: {{ outros_texto }}{% else %}Outros: _____________{% endif %}</span>
-                </td>
-            </tr>
-            <tr>
-                <td class="bg-head">Necessita de Avaliação:</td>
-                <td>
-                    <span class="chk-item me-4">{{ chk_map.CHK_AVAL_SIM }} Sim</span>
-                    <span class="chk-item">{{ chk_map.CHK_AVAL_NAO }} Não</span>
-                </td>
-            </tr>
-            <tr>
-                <td class="bg-head">Nome do Facilitador ou Fornecedor:</td>
-                <td>{{ planejamento.instrutor.nome_completo|default:"-" }}</td>
-            </tr>
-            <tr>
-                <td class="bg-head">Data e hora:</td>
-                <td>
-                    {{ data_hora_str }}
-                    <span class="float-end">
-                        <strong>Carga horária:</strong> {% if planejamento.carga_horaria %}{{ planejamento.carga_horaria }} Minutos{% else %}-{% endif %}
-                    </span>
-                </td>
-            </tr>
-        </table>
-
-        <!-- Tabela de Participantes -->
-        <table class="table-part">
-            <thead>
+    <!-- ================================================================= -->
+    <!-- PÁGINA 1 - FRENTE                                                 -->
+    <!-- ================================================================= -->
+    <div class="page-sheet page-break">
+        <div>
+            <!-- Cabeçalho SGQ -->
+            <table class="table-sgq-header">
                 <tr>
-                    <th style="width: 32%;">Nome do Colaborador</th>
-                    <th style="width: 17%;">CPF / Matrícula</th>
-                    <th style="width: 16%;">Cargo</th>
-                    <th style="width: 16%;">Departamento</th>
-                    <th style="width: 19%;">Assinatura</th>
+                    <td class="sgq-col-logo">
+                        <img src="{% static 'shared/logo_calibraweb.png' %}" alt="Calibra" onerror="this.outerHTML='<strong>CALIBRA</strong>'">
+                    </td>
+                    <td class="sgq-col-title">
+                        <div class="sgq-title-small">Formulário</div>
+                        <div class="sgq-title-main">Lista de Presença de Treinamento</div>
+                    </td>
+                    <td class="sgq-col-meta">
+                        <div><strong>Código:</strong> FOR.033 &nbsp;&nbsp;<strong>Revisão:</strong> 7</div>
+                        <div><strong>Elaboração:</strong> 05/12/2023 &nbsp;<strong>Aprovação:</strong> 05/12/2023</div>
+                        <div><strong>Página:</strong> 1 de 2</div>
+                    </td>
                 </tr>
-            </thead>
-            <tbody>
-                {% for i in "123456789012345" %}
-                <tr>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+            </table>
 
-        <!-- Conteúdo do Treinamento (Procedimentos) -->
-        <div class="box-procs">
-            <div class="box-procs-header">
-                CONTEÚDO DO TREINAMENTO / PROCEDIMENTOS ABORDADOS
+            <!-- Metadados do Treinamento -->
+            <table class="table-meta">
+                <tr>
+                    <td class="meta-label">Título do treinamento:</td>
+                    <td class="meta-val"><strong>{{ planejamento.titulo|default:"-" }}</strong></td>
+                </tr>
+                <tr>
+                    <td class="meta-label">Categoria do Treinamento:</td>
+                    <td class="meta-val">
+                        <span class="me-3">{{ chk_map.CHK_TREIN }} Treinamento</span>
+                        <span class="me-3">{{ chk_map.CHK_REUN }} Reunião</span>
+                        <span class="me-4">{{ chk_map.CHK_RECIC }} Reciclagem</span>
+                        <span class="float-end">
+                            <strong>Metodologia:</strong> &nbsp;&nbsp;
+                            <span class="me-2">{{ chk_map.CHK_LOFT }} LOFT</span>
+                            <span>{{ chk_map.CHK_TRAD }} Tradicional</span>
+                        </span>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="meta-label">Área de Conhecimento:</td>
+                    <td class="meta-val">
+                        <span class="me-2">{{ chk_map.CHK_ADM }} Administrativo</span>
+                        <span class="me-2">{{ chk_map.CHK_QUALIDADE }} Qualidade</span>
+                        <span class="me-2">{{ chk_map.CHK_EHS }} EHS</span>
+                        <span class="me-2">{{ chk_map.CHK_ESTOQUE }} Estoque</span>
+                        <span class="me-2">{{ chk_map.CHK_PRODUCAO }} Produção</span>
+                        <span>{{ chk_map.CHK_OUTROS }} {% if outros_texto %}Outros: {{ outros_texto }}{% else %}Outros: _________________{% endif %}</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="meta-label">Necessita de Avaliação:</td>
+                    <td class="meta-val">
+                        <span class="me-4">{{ chk_map.CHK_AVAL_SIM }} Sim</span>
+                        <span>{{ chk_map.CHK_AVAL_NAO }} Não</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="meta-label">Nome do Facilitador ou Fornecedor:</td>
+                    <td class="meta-val">{{ planejamento.instrutor.nome_completo|default:"-" }}</td>
+                </tr>
+                <tr>
+                    <td class="meta-label">Data e hora:</td>
+                    <td class="meta-val">
+                        {{ data_hora_str }}
+                        <span class="float-end">
+                            <strong>Carga horária:</strong> {% if planejamento.carga_horaria %}{{ planejamento.carga_horaria }} Minutos{% else %}-{% endif %}
+                        </span>
+                    </td>
+                </tr>
+            </table>
+
+            <!-- Tabela de Participantes (15 Linhas) -->
+            <table class="table-part">
+                <thead>
+                    <tr>
+                        <th style="width: 32%;">Nome do Colaborador</th>
+                        <th style="width: 17%;">CPF</th>
+                        <th style="width: 17%;">Cargo</th>
+                        <th style="width: 17%;">Departamento</th>
+                        <th style="width: 17%;">Assinatura</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in participantes_display %}
+                    <tr>
+                        <td>{{ item.nome }}</td>
+                        <td>{{ item.cpf }}</td>
+                        <td>{{ item.cargo }}</td>
+                        <td>{{ item.departamento }}</td>
+                        <td></td>
+                    </tr>
+                    {% empty %}
+                    {% for i in "123456789012345" %}
+                    <tr>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    {% endfor %}
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <!-- Nota de rodapé da tabela -->
+            <div class="nota-verso">
+                *Descrição do conteúdo programático no verso da folha
             </div>
-            <div class="box-procs-body">
+        </div>
+
+        <!-- Rodapé SGQ Oficial (Aprovação) -->
+        <table class="table-sgq-footer">
+            <tr>
+                <td>
+                    <strong>Elaborado por:</strong> Taís Flores<br/>
+                    <strong>Setor:</strong> Qualidade
+                </td>
+                <td>
+                    <strong>Verificado por:</strong> Ana Guimarães<br/>
+                    <strong>Setor:</strong> Gerente Qualidade Brasil
+                </td>
+                <td>
+                    <strong>Aprovado por:</strong> Ana Oliveira<br/>
+                    <strong>Setor:</strong> Gerente RH
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- PÁGINA 2 - VERSO (CONTEÚDO DO TREINAMENTO)                         -->
+    <!-- ================================================================= -->
+    <div class="page-sheet">
+        <div>
+            <!-- Cabeçalho SGQ (Página 2 de 2) -->
+            <table class="table-sgq-header">
+                <tr>
+                    <td class="sgq-col-logo">
+                        <img src="{% static 'shared/logo_calibraweb.png' %}" alt="Calibra" onerror="this.outerHTML='<strong>CALIBRA</strong>'">
+                    </td>
+                    <td class="sgq-col-title">
+                        <div class="sgq-title-small">Formulário</div>
+                        <div class="sgq-title-main">Lista de Presença de Treinamento</div>
+                    </td>
+                    <td class="sgq-col-meta">
+                        <div><strong>Código:</strong> FOR.033 &nbsp;&nbsp;<strong>Revisão:</strong> 7</div>
+                        <div><strong>Elaboração:</strong> 05/12/2023 &nbsp;<strong>Aprovação:</strong> 05/12/2023</div>
+                        <div><strong>Página:</strong> 2 de 2</div>
+                    </td>
+                </tr>
+            </table>
+
+            <!-- Título da Seção do Verso -->
+            <div class="box-conteudo-titulo">
+                CONTEÚDO DO TREINAMENTO
+            </div>
+
+            <!-- Corpo com os Procedimentos Abordados -->
+            <div class="box-conteudo-corpo">
                 {% if planejamento.procedimentos.all %}
                     {% for proc in planejamento.procedimentos.all %}
-                        <div>• <strong>{{ proc.codigo }}</strong> - {{ proc.nome }}</div>
+                    <div class="proc-item">
+                        <div class="fw-bold fs-6">
+                            • {{ proc.codigo }} - {{ proc.nome }}
+                            {% if proc.criticidade == 'CRITICO' %}
+                                <span class="badge bg-danger ms-2">CRÍTICO</span>
+                            {% endif %}
+                        </div>
+                        <div class="text-muted small mt-1 ps-3">
+                            {{ proc.descricao|default:proc.objetivo|default:"Conteúdo programático e instruções técnicas operacionais conforme procedimento documentado." }}
+                        </div>
+                    </div>
                     {% endfor %}
                 {% else %}
-                    <div>• Conteúdo programático e instruções gerais de treinamento.</div>
+                    <div class="text-muted">
+                        • Conteúdo programático, orientações técnicas e parâmetros operacionais do treinamento.
+                    </div>
                 {% endif %}
             </div>
         </div>
+
+        <!-- Rodapé SGQ Oficial (Página 2) -->
+        <table class="table-sgq-footer">
+            <tr>
+                <td>
+                    <strong>Elaborado por:</strong> Taís Flores<br/>
+                    <strong>Setor:</strong> Qualidade
+                </td>
+                <td>
+                    <strong>Verificado por:</strong> Ana Guimarães<br/>
+                    <strong>Setor:</strong> Gerente Qualidade Brasil
+                </td>
+                <td>
+                    <strong>Aprovado por:</strong> Ana Oliveira<br/>
+                    <strong>Setor:</strong> Gerente RH
+                </td>
+            </tr>
+        </table>
     </div>
 
     {% if auto_print %}
@@ -267,7 +468,7 @@
         window.onload = function() {
             setTimeout(function() {
                 window.print();
-            }, 350);
+            }, 400);
         };
     </script>
     {% endif %}

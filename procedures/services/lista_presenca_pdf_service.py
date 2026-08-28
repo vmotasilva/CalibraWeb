@@ -1,15 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-Serviço de Geração de Lista de Presença em PDF Oficial (FOR.033)
-Gera um documento PDF em padrão A4 de alta fidelidade com ReportLab.
+Serviço de Geração de Lista de Presença em PDF Oficial (FOR.033 - Revisão 7)
+Gera um documento PDF oficial de alta fidelidade em padrão A4 (Frente e Verso) com ReportLab.
 """
 
+import os
 from io import BytesIO
+from django.conf import settings
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.units import cm
 from reportlab.platypus import (
-    SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, Image
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
@@ -17,8 +19,136 @@ from procedures.models import PlanejamentoTreinamento
 from procedures.services.lista_presenca_excel_service import _obter_mapeamento_checkboxes
 
 
+def _criar_cabecalho_sgq(num_pagina: int, total_paginas: int = 2, w_total: float = 19.6 * cm):
+    """Cria a tabela de cabeçalho padrão SGQ (FOR.033.r07)."""
+    styles = getSampleStyleSheet()
+
+    style_logo_txt = ParagraphStyle(
+        f'LogoTxt_{num_pagina}',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=12,
+        leading=14,
+        alignment=TA_CENTER,
+        textColor=colors.HexColor('#0f172a')
+    )
+
+    style_title_top = ParagraphStyle(
+        f'TitleTop_{num_pagina}',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=8,
+        leading=10,
+        alignment=TA_CENTER,
+        textColor=colors.HexColor('#334155')
+    )
+
+    style_title_main = ParagraphStyle(
+        f'TitleMain_{num_pagina}',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=10,
+        leading=12,
+        alignment=TA_CENTER,
+        textColor=colors.HexColor('#000000')
+    )
+
+    style_sgq_meta = ParagraphStyle(
+        f'SGQMeta_{num_pagina}',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=7,
+        leading=9,
+        alignment=TA_LEFT,
+        textColor=colors.HexColor('#000000')
+    )
+
+    # Coluna 1: Logo
+    logo_path = os.path.join(settings.BASE_DIR, "shared", "static", "shared", "logo_calibraweb.png")
+    if os.path.exists(logo_path):
+        try:
+            col_logo = Image(logo_path, width=3.2 * cm, height=1.1 * cm)
+        except Exception:
+            col_logo = Paragraph("<strong>CALIBRA</strong>", style_logo_txt)
+    else:
+        col_logo = Paragraph("<strong>CALIBRA</strong>", style_logo_txt)
+
+    # Coluna 2: Título
+    col_centro = [
+        Paragraph("Formulário", style_title_top),
+        Spacer(1, 1),
+        Paragraph("<strong>Lista de Presença de Treinamento</strong>", style_title_main)
+    ]
+
+    # Coluna 3: Metadados do SGQ
+    col_direita = [
+        Paragraph("<strong>Código:</strong> FOR.033 &nbsp;&nbsp;<strong>Revisão:</strong> 7", style_sgq_meta),
+        Paragraph("<strong>Elaboração:</strong> 05/12/2023 &nbsp;<strong>Aprovação:</strong> 05/12/2023", style_sgq_meta),
+        Paragraph(f"<strong>Página:</strong> {num_pagina} de {total_paginas}", style_sgq_meta)
+    ]
+
+    t_header = Table(
+        [[col_logo, col_centro, col_direita]],
+        colWidths=[3.6 * cm, 9.8 * cm, 6.2 * cm]
+    )
+    t_header.setStyle(TableStyle([
+        ('BOX', (0, 0), (-1, -1), 1.0, colors.HexColor('#000000')),
+        ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#000000')),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ALIGN', (0, 0), (0, 0), 'CENTER'),
+        ('ALIGN', (1, 0), (1, 0), 'CENTER'),
+        ('TOPPADDING', (0, 0), (-1, -1), 2),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+    ]))
+    return t_header
+
+
+def _criar_rodape_sgq(w_total: float = 19.6 * cm):
+    """Cria a grade de aprovação oficial do SGQ no rodapé (3 colunas)."""
+    styles = getSampleStyleSheet()
+    style_rodape = ParagraphStyle(
+        'RodapeSGQ',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=6.5,
+        leading=8.5,
+        alignment=TA_LEFT,
+        textColor=colors.HexColor('#000000')
+    )
+
+    col1 = [
+        Paragraph("<strong>Elaborado por:</strong> Taís Flores", style_rodape),
+        Paragraph("<strong>Setor:</strong> Qualidade", style_rodape)
+    ]
+    col2 = [
+        Paragraph("<strong>Verificado por:</strong> Ana Guimarães", style_rodape),
+        Paragraph("<strong>Setor:</strong> Gerente Qualidade Brasil", style_rodape)
+    ]
+    col3 = [
+        Paragraph("<strong>Aprovado por:</strong> Ana Oliveira", style_rodape),
+        Paragraph("<strong>Setor:</strong> Gerente RH", style_rodape)
+    ]
+
+    t_rod = Table(
+        [[col1, col2, col3]],
+        colWidths=[w_total / 3.0, w_total / 3.0, w_total / 3.0]
+    )
+    t_rod.setStyle(TableStyle([
+        ('BOX', (0, 0), (-1, -1), 1.0, colors.HexColor('#000000')),
+        ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#000000')),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING', (0, 0), (-1, -1), 2),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+    ]))
+    return t_rod
+
+
 def gerar_lista_presenca_pdf(planejamento: PlanejamentoTreinamento, overrides: dict = None) -> BytesIO:
-    """Gera o documento PDF oficial da Lista de Presença (FOR.033) ajustado para 1 página A4."""
+    """Gera o documento PDF oficial da Lista de Presença (FOR.033 - Revisão 7) em 2 páginas (Frente e Verso)."""
     buffer = BytesIO()
     
     # Configuração do documento A4 com margens ajustadas de 0.7cm
@@ -27,8 +157,8 @@ def gerar_lista_presenca_pdf(planejamento: PlanejamentoTreinamento, overrides: d
         pagesize=A4,
         leftMargin=0.7 * cm,
         rightMargin=0.7 * cm,
-        topMargin=0.7 * cm,
-        bottomMargin=0.7 * cm
+        topMargin=0.6 * cm,
+        bottomMargin=0.6 * cm
     )
 
     elements = []
@@ -37,23 +167,12 @@ def gerar_lista_presenca_pdf(planejamento: PlanejamentoTreinamento, overrides: d
     # Largura útil da página A4 (21.0cm - 1.4cm = 19.6cm)
     w_total = 19.6 * cm
 
-    # Estilos de Texto
-    style_title = ParagraphStyle(
-        'DocTitle',
-        parent=styles['Normal'],
-        fontName='Helvetica-Bold',
-        fontSize=11,
-        leading=13,
-        alignment=TA_CENTER,
-        textColor=colors.HexColor('#000000')
-    )
-
     style_header_label = ParagraphStyle(
         'HeaderLabel',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=7.5,
-        leading=9.5,
+        fontSize=7.2,
+        leading=9.0,
         textColor=colors.HexColor('#000000')
     )
 
@@ -61,8 +180,8 @@ def gerar_lista_presenca_pdf(planejamento: PlanejamentoTreinamento, overrides: d
         'HeaderVal',
         parent=styles['Normal'],
         fontName='Helvetica',
-        fontSize=7.5,
-        leading=9.5,
+        fontSize=7.2,
+        leading=9.0,
         textColor=colors.HexColor('#000000')
     )
 
@@ -70,8 +189,8 @@ def gerar_lista_presenca_pdf(planejamento: PlanejamentoTreinamento, overrides: d
         'TableTh',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=7.5,
-        leading=9.5,
+        fontSize=7.2,
+        leading=9.0,
         alignment=TA_CENTER,
         textColor=colors.HexColor('#000000')
     )
@@ -80,9 +199,19 @@ def gerar_lista_presenca_pdf(planejamento: PlanejamentoTreinamento, overrides: d
         'TableCell',
         parent=styles['Normal'],
         fontName='Helvetica',
-        fontSize=7.5,
-        leading=9.5,
+        fontSize=7.0,
+        leading=8.8,
         textColor=colors.HexColor('#000000')
+    )
+
+    style_nota_verso = ParagraphStyle(
+        'NotaVerso',
+        parent=styles['Normal'],
+        fontName='Helvetica-Oblique',
+        fontSize=6.5,
+        leading=8.0,
+        textColor=colors.HexColor('#334155'),
+        alignment=TA_LEFT
     )
 
     # 1. Obter marcações de checkboxes
@@ -101,12 +230,11 @@ def gerar_lista_presenca_pdf(planejamento: PlanejamentoTreinamento, overrides: d
     carga_horaria_str = f"{planejamento.carga_horaria} Minutos" if planejamento.carga_horaria else "-"
     instrutor_nome = planejamento.instrutor.nome_completo if planejamento.instrutor else "-"
 
-    # Textos formatados de checkboxes
     cat_str = f"{checkbox_map.get('{{CHK_TREIN}}', '○')} Treinamento &nbsp;&nbsp;&nbsp;&nbsp; {checkbox_map.get('{{CHK_REUN}}', '○')} Reunião &nbsp;&nbsp;&nbsp;&nbsp; {checkbox_map.get('{{CHK_RECIC}}', '○')} Reciclagem"
-    met_str = f"{checkbox_map.get('{{CHK_TRAD}}', '○')} Tradicional &nbsp;&nbsp;&nbsp;&nbsp; {checkbox_map.get('{{CHK_LOFT}}', '○')} LOFT"
+    met_str = f"{checkbox_map.get('{{CHK_LOFT}}', '○')} LOFT &nbsp;&nbsp;&nbsp;&nbsp; {checkbox_map.get('{{CHK_TRAD}}', '○')} Tradicional"
     
     outros_txt = overrides.get('outros_texto', '') if overrides else ''
-    outros_label = f"Outros: {outros_txt}" if outros_txt else "Outros: ____________"
+    outros_label = f"Outros: {outros_txt}" if outros_txt else "Outros: _________________"
     area_str = (
         f"{checkbox_map.get('{{CHK_ADM}}', '○')} Administrativo &nbsp;&nbsp; "
         f"{checkbox_map.get('{{CHK_QUALIDADE}}', '○')} Qualidade &nbsp;&nbsp; "
@@ -118,96 +246,167 @@ def gerar_lista_presenca_pdf(planejamento: PlanejamentoTreinamento, overrides: d
 
     aval_str = f"{checkbox_map.get('{{CHK_AVAL_SIM}}', '○')} Sim &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {checkbox_map.get('{{CHK_AVAL_NAO}}', '○')} Não"
 
-    # Tabela de Cabeçalho / Metadados do Treinamento
-    header_data = [
-        # Linha 1: Título Principal
-        [Paragraph("<strong>LISTA DE PRESENÇA DE TREINAMENTO</strong>", style_title), ""],
-        # Linha 2: Título do Treinamento
-        [Paragraph("<strong>Título do treinamento:</strong>", style_header_label), Paragraph(f"<strong>{planejamento.titulo or '-'}</strong>", style_header_val)],
-        # Linha 3: Categoria e Metodologia
-        [Paragraph("<strong>Categoria do Treinamento:</strong>", style_header_label), Paragraph(f"{cat_str} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <strong>Metodologia:</strong> &nbsp;&nbsp; {met_str}", style_header_val)],
-        # Linha 4: Área de Conhecimento
-        [Paragraph("<strong>Área de Conhecimento:</strong>", style_header_label), Paragraph(area_str, style_header_val)],
-        # Linha 5: Necessita de Avaliação
-        [Paragraph("<strong>Necessita de Avaliação:</strong>", style_header_label), Paragraph(aval_str, style_header_val)],
-        # Linha 6: Facilitador
-        [Paragraph("<strong>Nome do Facilitador:</strong>", style_header_label), Paragraph(instrutor_nome, style_header_val)],
-        # Linha 7: Data e Carga Horária
-        [Paragraph("<strong>Data e hora:</strong>", style_header_label), Paragraph(f"{data_hora_str} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <strong>Carga horária:</strong> {carga_horaria_str}", style_header_val)],
+    # =========================================================================
+    # PÁGINA 1 - FRENTE
+    # =========================================================================
+
+    # 1. Cabeçalho Oficial SGQ
+    elements.append(_criar_cabecalho_sgq(num_pagina=1, total_paginas=2, w_total=w_total))
+    elements.append(Spacer(1, 0.12 * cm))
+
+    # 2. Tabela de Metadados do Treinamento
+    meta_rows = [
+        [
+            Paragraph("<strong>Título do treinamento:</strong>", style_header_label),
+            Paragraph(f"<strong>{planejamento.titulo or '-'}</strong>", style_header_val)
+        ],
+        [
+            Paragraph("<strong>Categoria do Treinamento:</strong>", style_header_label),
+            Paragraph(f"{cat_str} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <strong>Metodologia:</strong> &nbsp;&nbsp; {met_str}", style_header_val)
+        ],
+        [
+            Paragraph("<strong>Área de Conhecimento:</strong>", style_header_label),
+            Paragraph(area_str, style_header_val)
+        ],
+        [
+            Paragraph("<strong>Necessita de Avaliação:</strong>", style_header_label),
+            Paragraph(aval_str, style_header_val)
+        ],
+        [
+            Paragraph("<strong>Nome do Facilitador ou Fornecedor:</strong>", style_header_label),
+            Paragraph(instrutor_nome, style_header_val)
+        ],
+        [
+            Paragraph("<strong>Data e hora:</strong>", style_header_label),
+            Paragraph(f"{data_hora_str} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <strong>Carga horária:</strong> {carga_horaria_str}", style_header_val)
+        ],
     ]
 
-    t_header = Table(header_data, colWidths=[4.2 * cm, 15.4 * cm])
-    t_header.setStyle(TableStyle([
-        ('SPAN', (0, 0), (1, 0)),
-        ('BACKGROUND', (0, 0), (1, 0), colors.HexColor('#f1f5f9')),
-        ('ALIGN', (0, 0), (1, 0), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+    t_meta = Table(meta_rows, colWidths=[4.6 * cm, 15.0 * cm])
+    t_meta.setStyle(TableStyle([
         ('BOX', (0, 0), (-1, -1), 1.0, colors.HexColor('#000000')),
         ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#000000')),
-        ('TOPPADDING', (0, 0), (-1, -1), 2.5),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 2.5),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING', (0, 0), (-1, -1), 2.2),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2.2),
         ('LEFTPADDING', (0, 0), (-1, -1), 5),
         ('RIGHTPADDING', (0, 0), (-1, -1), 5),
     ]))
-    elements.append(t_header)
-    elements.append(Spacer(1, 0.15 * cm))
+    elements.append(t_meta)
+    elements.append(Spacer(1, 0.12 * cm))
 
-    # 3. Tabela de Participantes (Linhas em branco prontas para assinatura)
+    # 3. Tabela de Participantes (15 Linhas)
     table_part_data = [
         [
-            Paragraph("<strong>NOME DO COLABORADOR</strong>", style_th),
-            Paragraph("<strong>CPF / MATRÍCULA</strong>", style_th),
-            Paragraph("<strong>CARGO</strong>", style_th),
-            Paragraph("<strong>DEPARTAMENTO</strong>", style_th),
-            Paragraph("<strong>ASSINATURA</strong>", style_th),
+            Paragraph("<strong>Nome do Colaborador</strong>", style_th),
+            Paragraph("<strong>CPF</strong>", style_th),
+            Paragraph("<strong>Cargo</strong>", style_th),
+            Paragraph("<strong>Departamento</strong>", style_th),
+            Paragraph("<strong>Assinatura</strong>", style_th),
         ]
     ]
 
-    # Gerar 15 linhas limpas com altura compacta e ideal para preenchimento
-    for _ in range(15):
-        table_part_data.append(["", "", "", "", ""])
+    # Preencher participantes vinculados ao planejamento se houver
+    colaboradores = list(planejamento.colaboradores.all())
+    for i in range(15):
+        if i < len(colaboradores):
+            c = colaboradores[i]
+            table_part_data.append([
+                Paragraph(c.nome_completo or "", style_cell),
+                Paragraph(getattr(c, 'cpf', '') or getattr(c, 'matricula', '') or "", style_cell),
+                Paragraph(c.cargo or "", style_cell),
+                Paragraph(c.setor or getattr(c, 'posto_trabalho', '') or "", style_cell),
+                ""
+            ])
+        else:
+            table_part_data.append(["", "", "", "", ""])
 
-    col_widths_part = [6.0 * cm, 3.4 * cm, 3.4 * cm, 3.4 * cm, 3.4 * cm]
-    t_part = Table(table_part_data, colWidths=col_widths_part, rowHeights=[16] + [18] * 15)
+    col_widths_part = [6.0 * cm, 3.2 * cm, 3.4 * cm, 3.4 * cm, 3.6 * cm]
+    t_part = Table(table_part_data, colWidths=col_widths_part, rowHeights=[15] + [17.5] * 15)
     t_part.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e2e8f0')),
         ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('BOX', (0, 0), (-1, -1), 1.0, colors.HexColor('#000000')),
         ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#000000')),
-        ('TOPPADDING', (0, 0), (-1, -1), 1.5),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 1.5),
+        ('TOPPADDING', (0, 0), (-1, -1), 1.2),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 1.2),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
     ]))
     elements.append(t_part)
+
+    # Nota do verso
+    elements.append(Spacer(1, 0.08 * cm))
+    elements.append(Paragraph("*Descrição do conteúdo programático no verso da folha", style_nota_verso))
+    elements.append(Spacer(1, 0.12 * cm))
+
+    # 4. Rodapé SGQ (Aprovação)
+    elements.append(_criar_rodape_sgq(w_total=w_total))
+
+    # =========================================================================
+    # PÁGINA 2 - VERSO (CONTEÚDO DO TREINAMENTO)
+    # =========================================================================
+    elements.append(PageBreak())
+
+    # 1. Cabeçalho Oficial SGQ (Página 2 de 2)
+    elements.append(_criar_cabecalho_sgq(num_pagina=2, total_paginas=2, w_total=w_total))
+    elements.append(Spacer(1, 0.25 * cm))
+
+    # 2. Título Central "CONTEÚDO DO TREINAMENTO"
+    style_titulo_verso = ParagraphStyle(
+        'TituloVerso',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=10,
+        leading=12,
+        alignment=TA_CENTER,
+        textColor=colors.HexColor('#000000')
+    )
+
+    t_titulo_verso = Table([[Paragraph("<strong>CONTEÚDO DO TREINAMENTO</strong>", style_titulo_verso)]], colWidths=[w_total])
+    t_titulo_verso.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#e2e8f0')),
+        ('BOX', (0, 0), (-1, -1), 1.0, colors.HexColor('#000000')),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+    ]))
+    elements.append(t_titulo_verso)
     elements.append(Spacer(1, 0.15 * cm))
 
-    # 4. Bloco Conteúdo do Treinamento (Procedimentos)
+    # 3. Bloco do Conteúdo Programático e Procedimentos Abordados
     procedimentos = list(planejamento.procedimentos.all())
-    procs_data = [
-        [Paragraph("<strong>CONTEÚDO DO TREINAMENTO / PROCEDIMENTOS ABORDADOS</strong>", style_th)]
-    ]
+    conteudo_data = []
 
     if procedimentos:
         for p in procedimentos:
-            texto = f"• <strong>{p.codigo or ''}</strong> - {p.nome or ''}"
-            procs_data.append([Paragraph(texto, style_cell)])
+            tag_critico = " <font color='#b91c1c'><strong>[CRÍTICO]</strong></font>" if getattr(p, 'criticidade', '') == 'CRITICO' else ""
+            desc = p.descricao or p.objetivo or "Sem descrição cadastrada."
+            texto = f"• <strong>{p.codigo or ''} - {p.nome or ''}</strong>{tag_critico}<br/>&nbsp;&nbsp;&nbsp;<em>{desc}</em>"
+            conteudo_data.append([Paragraph(texto, style_cell)])
     else:
-        procs_data.append([Paragraph("• Conteúdo programático e instruções gerais de treinamento.", style_cell)])
+        conteudo_data.append([Paragraph("• Conteúdo programático e orientações técnicas do treinamento.", style_cell)])
 
-    t_procs = Table(procs_data, colWidths=[w_total])
-    t_procs.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e2e8f0')),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+    # Preencher altura mínima para ocupar o espaço do verso harmonicamente
+    t_conteudo = Table(conteudo_data, colWidths=[w_total])
+    t_conteudo.setStyle(TableStyle([
         ('BOX', (0, 0), (-1, -1), 1.0, colors.HexColor('#000000')),
-        ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#000000')),
-        ('TOPPADDING', (0, 0), (-1, -1), 2),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('LEFTPADDING', (0, 0), (-1, -1), 8),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
     ]))
-    elements.append(t_procs)
+    elements.append(t_conteudo)
+    elements.append(Spacer(1, 1.2 * cm))
+
+    # 4. Rodapé SGQ (Aprovação) na Página 2
+    elements.append(_criar_rodape_sgq(w_total=w_total))
 
     # Construir PDF
     doc.build(elements)
     buffer.seek(0)
     return buffer
-

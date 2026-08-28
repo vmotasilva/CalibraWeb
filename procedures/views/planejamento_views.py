@@ -1323,10 +1323,30 @@ def gerar_lista_presenca_view(request, planejamento_id):
         # Limpar chaves {{ }} para facilitar acesso no template
         chk_clean = {k.replace('{{', '').replace('}}', ''): v for k, v in raw_map.items()}
 
+        participantes_display = []
+        colaboradores = list(planejamento.colaboradores.all())
+        for i in range(15):
+            if i < len(colaboradores):
+                c = colaboradores[i]
+                participantes_display.append({
+                    'nome': c.nome_completo or '',
+                    'cpf': getattr(c, 'cpf', '') or getattr(c, 'matricula', '') or '',
+                    'cargo': c.cargo or '',
+                    'departamento': c.setor or getattr(c, 'posto_trabalho', '') or '',
+                })
+            else:
+                participantes_display.append({
+                    'nome': '',
+                    'cpf': '',
+                    'cargo': '',
+                    'departamento': '',
+                })
+
         context = {
             'planejamento': planejamento,
             'data_hora_str': data_hora_str,
             'chk_map': chk_clean,
+            'participantes_display': participantes_display,
             'auto_print': True,
             'categoria_sel': overrides.get('categoria', ''),
             'metodologia_sel': overrides.get('metodologia', ''),
