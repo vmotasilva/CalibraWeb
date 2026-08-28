@@ -677,3 +677,49 @@ def exportar_avaliacao_eficacia_for142_view(request, treinamento_id):
     response["Access-Control-Expose-Headers"] = "Content-Disposition"
     return response
 
+
+@login_required
+def exportar_avaliacao_eficacia_for142_massa_view(request):
+    """
+    Exporta formulários de Avaliação de Eficácia (FOR.142.r01) em lote com Múltiplas Abas.
+    Cada linha selecionada pelo usuário gera uma aba independente na mesma pasta de trabalho Excel.
+    Aceita IDs via GET (ex: ?ids=1,2,3 ou ?treinamento_ids=1&treinamento_ids=2) ou via POST.
+    """
+    ids_raw = request.POST.getlist('treinamento_ids') or request.GET.getlist('treinamento_ids')
+    if not ids_raw:
+        ids_str = request.GET.get('ids', '')
+        if ids_str:
+            ids_raw = [x.strip() for x in ids_str.split(',') if x.strip().isdigit()]
+
+    treinamento_ids = []
+    for item in ids_raw:
+        try:
+            treinamento_ids.append(int(item))
+        except (ValueError, TypeError):
+            continue
+
+    if not treinamento_ids:
+        messages.warning(request, "Nenhum treinamento selecionado para exportação do FOR.142.")
+        return redirect('procedures:avaliacao_eficacia_list')
+
+    from procedures.services.treinamento_excel_export_service import gerar_avaliacao_eficacia_multiplas_abas_for142_xlsx
+
+    try:
+        excel_buffer = gerar_avaliacao_eficacia_multiplas_abas_for142_xlsx(treinamento_ids)
+    except Exception as e:
+        messages.error(request, f"Erro ao gerar formulários de eficácia com múltiplas abas: {str(e)}")
+        return redirect('procedures:avaliacao_eficacia_list')
+
+    total = len(treinamento_ids)
+    data_hoje = timezone.now().strftime("%Y%m%d")
+    filename = f"FOR.142.r01_Avaliacao_Eficacia_{total}_Abas_{data_hoje}.xlsx"
+
+    response = HttpResponse(
+        excel_buffer.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response["Access-Control-Expose-Headers"] = "Content-Disposition"
+    return response
+
+

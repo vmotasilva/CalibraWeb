@@ -15,8 +15,14 @@
         </button>
         <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="avaliacaoActionsDropdown">
             <li>
+                <a href="javascript:void(0);" class="dropdown-item" id="btn-exportar-for142-dropdown">
+                    <i class="bi bi-file-earmark-spreadsheet me-2 text-success"></i> Gerar FOR.142 Selecionados (Múltiplas Abas)
+                </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
                 <a href="{% url 'procedures:avaliacao_eficacia_export_excel' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}" class="dropdown-item">
-                    <i class="bi bi-file-earmark-excel me-2 text-success"></i> Exportar Excel
+                    <i class="bi bi-file-earmark-excel me-2 text-primary"></i> Exportar Tabela Completa (Excel)
                 </a>
             </li>
         </ul>
@@ -119,128 +125,145 @@
     </div>
 </div>
 
-<!-- Filtros de Busca -->
-<div class="d-flex align-items-center gap-2 mb-4">
-    <form method="GET" class="d-flex flex-grow-1 gap-2 m-0">
-        <!-- Search -->
-        <div class="input-group input-group-sm" style="max-width: 300px;">
-            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-            <input type="text" name="q" class="form-control border-start-0" placeholder="Nome, código ou título" value="{{ busca }}">
-            <button class="btn btn-outline-secondary border-start-0" type="submit"><i class="bi bi-search"></i></button>
-        </div>
-
-        <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#filtrosModal">
-            <i class="bi bi-funnel"></i> Filtros
-        </button>
-        
-        <a href="{% url 'procedures:avaliacao_eficacia_list' %}" class="btn btn-outline-secondary btn-sm" title="Limpar Filtros">
-            <i class="bi bi-x-circle"></i> Limpar
-        </a>
-
-        <!-- Modal Filtros -->
-        <div class="modal fade" id="filtrosModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered modal-lg">
-                <div class="modal-content shadow-lg" style="border-radius: 14px;">
-                    <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
-                        <h5 class="modal-title fw-bold"><i class="bi bi-funnel me-2"></i>Filtros de Acompanhamento</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body p-4">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label text-muted small fw-bold">Líder</label>
-                                <select name="lider" class="form-select form-select-sm">
-                                    <option value="">-- Todos --</option>
-                                    {% for l in lideres %}
-                                        <option value="{{ l.id }}" {% if lider_id == l.id|stringformat:"s" %}selected{% endif %}>{{ l.nome_completo }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label text-muted small fw-bold">Setor</label>
-                                <select name="setor" class="form-select form-select-sm">
-                                    <option value="">-- Todos --</option>
-                                    {% for s in setores %}
-                                        <option value="{{ s.id }}" {% if setor_id == s.id|stringformat:"s" %}selected{% endif %}>{{ s.nome }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label text-muted small fw-bold">Status Eficácia</label>
-                                <select name="status" class="form-select form-select-sm">
-                                    <option value="">-- Todos --</option>
-                                    <option value="PENDENTE" {% if status_filtro == 'PENDENTE' %}selected{% endif %}>Pendente (>= 30 dias)</option>
-                                    <option value="CARENCIA" {% if status_filtro == 'CARENCIA' %}selected{% endif %}>Carência (< 30 dias)</option>
-                                    <option value="EFICAZ" {% if status_filtro == 'EFICAZ' %}selected{% endif %}>Eficaz</option>
-                                    <option value="INEFICAZ" {% if status_filtro == 'INEFICAZ' %}selected{% endif %}>Ineficaz</option>
-                                    <option value="NAO_APLICA" {% if status_filtro == 'NAO_APLICA' %}selected{% endif %}>Não se Aplica</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label text-muted small fw-bold">Matriz de Procedimento</label>
-                                <select name="matriz" class="form-select form-select-sm">
-                                    <option value="">-- Todas --</option>
-                                    {% for m in matrizes_opcoes %}
-                                        <option value="{{ m.nome }}" {% if matriz_filtro == m.nome %}selected{% endif %}>{{ m.nome }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label text-muted small fw-bold">Dias Decorridos</label>
-                                <select name="dias_decorridos" class="form-select form-select-sm">
-                                    <option value="">-- Todos --</option>
-                                    <option value="menos_30" {% if dias_decorridos_filtro == 'menos_30' %}selected{% endif %}>Carência (< 30 dias)</option>
-                                    <option value="30_60" {% if dias_decorridos_filtro == '30_60' %}selected{% endif %}>30 a 60 dias</option>
-                                    <option value="60_90" {% if dias_decorridos_filtro == '60_90' %}selected{% endif %}>60 a 90 dias</option>
-                                    <option value="90_mais" {% if dias_decorridos_filtro == '90_mais' %}selected{% endif %}>Mais de 90 dias</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label text-muted small fw-bold">Vínculo ao Perfil</label>
-                                <select name="vinculo" class="form-select form-select-sm">
-                                    <option value="">-- Todos --</option>
-                                    <option value="COM_VINCULO" {% if vinculo_filtro == 'COM_VINCULO' %}selected{% endif %}>Com Vínculo ao Perfil</option>
-                                    <option value="SEM_VINCULO" {% if vinculo_filtro == 'SEM_VINCULO' %}selected{% endif %}>Sem Vínculo ao Perfil</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label text-muted small fw-bold">Treinamento Posterior</label>
-                                <select name="posterior" class="form-select form-select-sm">
-                                    <option value="">-- Todos --</option>
-                                    <option value="COM_POSTERIOR" {% if posterior_filtro == 'COM_POSTERIOR' %}selected{% endif %}>Com novo treinamento em aberto</option>
-                                    <option value="SEM_POSTERIOR" {% if posterior_filtro == 'SEM_POSTERIOR' %}selected{% endif %}>Sem novo treinamento em aberto</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label text-muted small fw-bold">Exibir Registros</label>
-                                <select name="exibir" class="form-select form-select-sm">
-                                    <option value="30" {% if exibir == '30' %}selected{% endif %}>30 por página</option>
-                                    <option value="100" {% if exibir == '100' %}selected{% endif %}>100 por página</option>
-                                    <option value="todos" {% if exibir == 'todos' %}selected{% endif %}>Exibir Todos</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; justify-content: flex-end;">
-                        <button type="submit" class="btn btn-primary btn-sm">
-                            <i class="bi bi-search me-1"></i>Aplicar Filtros
-                        </button>
-                    </div>
+<!-- Filtros e Busca -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body p-3">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-lg-5 col-md-12">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" name="q" class="form-control border-start-0" placeholder="Nome, código ou título" value="{{ query|default:'' }}">
                 </div>
             </div>
+            
+            <div class="col-auto">
+                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#filtrosModal">
+                    <i class="bi bi-funnel me-1"></i>Filtros
+                    {% if setor_filtro or gestor_filtro or procedimento_filtro or dias_decorridos_filtro or status_filtro or vinculo_filtro or posterior_filtro %}
+                        <span class="badge bg-primary text-white rounded-pill ms-1">•</span>
+                    {% endif %}
+                </button>
+            </div>
+
+            <div class="col-auto">
+                <a href="{% url 'procedures:avaliacao_eficacia_list' %}" class="btn btn-outline-secondary btn-sm" title="Limpar todos os filtros">
+                    <i class="bi bi-x-circle me-1"></i>Limpar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal de Filtros Avançados -->
+<div class="modal fade" id="filtrosModal" tabindex="-1" aria-labelledby="filtrosModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow" style="border-radius: 12px;">
+            <div class="modal-header bg-light border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold" id="filtrosModalLabel">
+                    <i class="bi bi-sliders me-2 text-primary"></i>Filtros Avançados
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <form method="get" action="{% url 'procedures:avaliacao_eficacia_list' %}">
+                <input type="hidden" name="q" value="{{ query|default:'' }}">
+                <div class="modal-body py-3">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold">Setor</label>
+                            <select name="setor" class="form-select form-select-sm">
+                                <option value="">-- Todos os Setores --</option>
+                                {% for s in setores_list %}
+                                    <option value="{{ s.id }}" {% if setor_filtro == s.id|stringformat:"s" %}selected{% endif %}>{{ s.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold">Gestor / Responsável</label>
+                            <select name="gestor" class="form-select form-select-sm">
+                                <option value="">-- Todos os Gestores --</option>
+                                {% for g in gestores_list %}
+                                    <option value="{{ g.id }}" {% if gestor_filtro == g.id|stringformat:"s" %}selected{% endif %}>{{ g.nome_completo }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold">Procedimento Crítico</label>
+                            <select name="procedimento" class="form-select form-select-sm">
+                                <option value="">-- Todos os Procedimentos --</option>
+                                {% for p in procedimentos_list %}
+                                    <option value="{{ p.id }}" {% if procedimento_filtro == p.id|stringformat:"s" %}selected{% endif %}>{{ p.codigo }} - {{ p.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold">Dias Decorridos</label>
+                            <select name="dias" class="form-select form-select-sm">
+                                <option value="">-- Todos --</option>
+                                <option value="menos_30" {% if dias_decorridos_filtro == 'menos_30' %}selected{% endif %}>Menos de 30 dias (Carência)</option>
+                                <option value="30_60" {% if dias_decorridos_filtro == '30_60' %}selected{% endif %}>30 a 60 dias</option>
+                                <option value="60_90" {% if dias_decorridos_filtro == '60_90' %}selected{% endif %}>60 a 90 dias</option>
+                                <option value="90_mais" {% if dias_decorridos_filtro == '90_mais' %}selected{% endif %}>Mais de 90 dias</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold">Status da Avaliação</label>
+                            <select name="status" class="form-select form-select-sm">
+                                <option value="">-- Todos --</option>
+                                <option value="CARENCIA" {% if status_filtro == 'CARENCIA' %}selected{% endif %}>Carência (< 30 dias)</option>
+                                <option value="PENDENTE" {% if status_filtro == 'PENDENTE' %}selected{% endif %}>Pendente (>= 30 dias)</option>
+                                <option value="EFICAZ" {% if status_filtro == 'EFICAZ' %}selected{% endif %}>Eficaz</option>
+                                <option value="INEFICAZ" {% if status_filtro == 'INEFICAZ' %}selected{% endif %}>Ineficaz</option>
+                                <option value="NAO_APLICA" {% if status_filtro == 'NAO_APLICA' %}selected{% endif %}>Não se Aplica</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold">Vínculo ao Perfil</label>
+                            <select name="vinculo" class="form-select form-select-sm">
+                                <option value="">-- Todos --</option>
+                                <option value="COM_VINCULO" {% if vinculo_filtro == 'COM_VINCULO' %}selected{% endif %}>Com Vínculo ao Perfil</option>
+                                <option value="SEM_VINCULO" {% if vinculo_filtro == 'SEM_VINCULO' %}selected{% endif %}>Sem Vínculo ao Perfil</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold">Treinamento Posterior</label>
+                            <select name="posterior" class="form-select form-select-sm">
+                                <option value="">-- Todos --</option>
+                                <option value="COM_POSTERIOR" {% if posterior_filtro == 'COM_POSTERIOR' %}selected{% endif %}>Com novo treinamento em aberto</option>
+                                <option value="SEM_POSTERIOR" {% if posterior_filtro == 'SEM_POSTERIOR' %}selected{% endif %}>Sem novo treinamento em aberto</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold">Exibir Registros</label>
+                            <select name="exibir" class="form-select form-select-sm">
+                                <option value="30" {% if exibir == '30' %}selected{% endif %}>30 por página</option>
+                                <option value="100" {% if exibir == '100' %}selected{% endif %}>100 por página</option>
+                                <option value="todos" {% if exibir == 'todos' %}selected{% endif %}>Exibir Todos</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; justify-content: flex-end;">
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="bi bi-search me-1"></i>Aplicar Filtros
+                    </button>
+                </div>
+            </form>
         </div>
-    </form>
+    </div>
 </div>
 
 <!-- Painel de Ações em Massa -->
 <div id="bulk-action-bar" class="alert alert-primary py-2 px-3 mb-3 d-none align-items-center justify-content-between shadow-sm animate__animated animate__fadeIn">
     <div class="small">
-        <i class="bi bi-info-circle-fill me-2"></i>
-        <span id="bulk-selected-count" class="fw-bold text-primary">0</span> colaborador(es) selecionado(es) para avaliação de eficácia em massa.
+        <i class="bi bi-check2-square text-primary me-2 fs-5 align-middle"></i>
+        <span id="bulk-selected-count" class="fw-bold text-primary">0</span> registro(s) selecionado(s).
     </div>
-    <div>
-        <button type="button" class="btn btn-primary btn-sm px-3" id="btn-avaliar-massa" data-bs-toggle="modal" data-bs-target="#avaliacaoMassaModal">
-            <i class="bi bi-clipboard-check"></i> Avaliar Selecionados
+    <div class="d-flex align-items-center gap-2">
+        <button type="button" class="btn btn-success btn-sm px-3 shadow-xs" id="btn-exportar-for142-massa" title="Gerar planilha Excel com uma aba por registro selecionado">
+            <i class="bi bi-file-earmark-spreadsheet me-1"></i> Gerar FOR.142 Selecionados (Múltiplas Abas)
+        </button>
+        <button type="button" class="btn btn-primary btn-sm px-3 shadow-xs" id="btn-avaliar-massa" data-bs-toggle="modal" data-bs-target="#avaliacaoMassaModal">
+            <i class="bi bi-clipboard-check me-1"></i> Avaliar Selecionados
         </button>
     </div>
 </div>
@@ -256,7 +279,7 @@
             <thead class="table-light text-secondary small text-uppercase">
                 <tr>
                     <th style="width: 40px;" class="text-center">
-                        <input type="checkbox" id="check-all-massa" class="form-check-input">
+                        <input type="checkbox" id="check-all-massa" class="form-check-input" title="Selecionar todos os registros visíveis">
                     </th>
                     <th style="min-width: 180px;">Colaborador</th>
                     <th style="min-width: 130px;">Responsável</th>
@@ -273,11 +296,7 @@
                 {% for t in page_obj.object_list %}
                 <tr>
                     <td class="text-center">
-                        {% if t.status_display != 'Carência' %}
-                            <input type="checkbox" name="treinamento_ids" value="{{ t.id }}" class="form-check-input check-treinamento-massa" data-colab="{{ t.colaborador.nome_completo }}" data-proc="{{ t.procedimento.codigo }}">
-                        {% else %}
-                            <input type="checkbox" class="form-check-input" disabled title="Elegível apenas após período de carência (30 dias)">
-                        {% endif %}
+                        <input type="checkbox" name="treinamento_ids" value="{{ t.id }}" class="form-check-input check-treinamento-massa" data-colab="{{ t.colaborador.nome_completo }}" data-proc="{{ t.procedimento.codigo }}" data-status="{{ t.status_display }}">
                     </td>
                     <td>
                         <div class="fw-semibold text-dark">
@@ -639,6 +658,34 @@
                     document.getElementById('massa-field-obs'),
                     'massa-label-obs'
                 );
+            });
+        }
+
+        // Função de Exportação FOR.142 em Múltiplas Abas
+        function executarExportacaoFor142MultiplasAbas() {
+            const checked = document.querySelectorAll('.check-treinamento-massa:checked');
+            if (checked.length === 0) {
+                alert('Selecione ao menos um treinamento na listagem (marcando as caixas de seleção à esquerda) para gerar o formulário FOR.142.');
+                return;
+            }
+            const ids = Array.from(checked).map(cb => cb.value);
+            const url = "{% url 'procedures:exportar_avaliacao_eficacia_for142_massa' %}?ids=" + ids.join(',');
+            window.location.href = url;
+        }
+
+        const btnExportarDropdown = document.getElementById('btn-exportar-for142-dropdown');
+        if (btnExportarDropdown) {
+            btnExportarDropdown.addEventListener('click', function(e) {
+                e.preventDefault();
+                executarExportacaoFor142MultiplasAbas();
+            });
+        }
+
+        const btnExportarMassa = document.getElementById('btn-exportar-for142-massa');
+        if (btnExportarMassa) {
+            btnExportarMassa.addEventListener('click', function(e) {
+                e.preventDefault();
+                executarExportacaoFor142MultiplasAbas();
             });
         }
     });

@@ -1269,3 +1269,323 @@ def gerar_avaliacao_eficacia_for142_xlsx(treinamento_id: int) -> BytesIO:
     wb.save(output)
     output.seek(0)
     return output
+
+
+def gerar_avaliacao_eficacia_multiplas_abas_for142_xlsx(treinamento_ids: list) -> BytesIO:
+    """
+    Gera um único arquivo Excel contendo múltiplas abas (worksheets), onde cada aba
+    corresponde ao formulário FOR.142.r01 (Avaliação de Eficácia) individual de um
+    dos treinamentos selecionados.
+    Preserva fielmente o layout, cabeçalhos e formatação oficial do template FOR.142.
+    """
+    if not treinamento_ids:
+        raise ValueError("Nenhum treinamento selecionado para exportação.")
+
+    # Carregar treinamentos com relacionamentos
+    treinamentos = list(RegistroTreinamento.objects.filter(
+        id__in=treinamento_ids
+    ).select_related(
+        'colaborador', 'procedimento', 'colaborador__setor',
+        'colaborador__lider', 'colaborador__supervisor', 'colaborador__gerente'
+    ).order_by('colaborador__nome_completo', 'procedimento__codigo'))
+
+    if not treinamentos:
+        raise ValueError("Nenhum treinamento válido encontrado para os IDs fornecidos.")
+
+    raw_bytes, template_obj = _obter_raw_bytes_template(
+        funcao='AVALIACAO_EFICACIA',
+        codigo_busca='142',
+        nome_padrao='FOR.142.r01_Avaliacao_de_Eficacia_do_Treinamento.xlsx'
+    )
+
+    status_map = {
+        'EFICAZ': 'Eficaz',
+        'INEFICAZ': 'Ineficaz',
+        'NAO_APLICA': 'Não se Aplica',
+        'PENDENTE': 'Pendente'
+    }
+
+    # 1. Se possuímos o arquivo template original oficial
+    if raw_bytes is not None:
+        wb = openpyxl.load_workbook(BytesIO(raw_bytes))
+        ws_template = wb.active
+
+        for t in treinamentos:
+            colab = t.colaborador
+            proc = t.procedimento
+            d_colab = _extrair_dados_colaborador_avaliado(colab)
+
+            data_treinamento = t.data_treinamento or timezone.now().date()
+            data_eficacia_calculada = data_treinamento + timedelta(days=30)
+            data_treinamento_str = data_treinamento.strftime("%d/%m/%Y")
+            data_eficacia_str = data_eficacia_calculada.strftime("%d/%m/%Y")
+            data_avaliacao_str = t.avaliacao_eficacia_data.strftime("%d/%m/%Y") if t.avaliacao_eficacia_data else "-"
+
+            status_str = t.avaliacao_eficacia_status or "PENDENTE"
+            status_display = status_map.get(status_str, status_str)
+
+            substituicoes = {
+                "{{COLABORADOR}}": d_colab['nome'],
+                "{{NOME_COLABORADOR}}": d_colab['nome'],
+                "{{MATRICULA}}": d_colab['matricula'],
+                "{{CARGO}}": d_colab['cargo'],
+                "{{POSTO_TRABALHO}}": d_colab['posto_trabalho'],
+                "{{CENTRO_CUSTO}}": d_colab['centro_custo'],
+                "{{SETOR}}": d_colab['setor'],
+                "{{SETOR_COLABORADOR}}": d_colab['setor'],
+                "{{NOME_SETOR}}": d_colab['setor'],
+                "{{DEPARTAMENTO}}": d_colab['setor'],
+                "{{AREA}}": d_colab['setor'],
+                "{{LABORATORIO}}": d_colab['setor'],
+                "{{GESTOR}}": d_colab['gestor'],
+                "{{GESTOR_COLABORADOR}}": d_colab['gestor'],
+                "{{NOME_GESTOR}}": d_colab['gestor'],
+                "{{LIDER}}": d_colab['lider'],
+                "{{SUPERVISOR}}": d_colab['supervisor'],
+                "{{GERENTE}}": d_colab['gerente'],
+                "{{CHEFIA}}": d_colab['gestor'],
+                "{{RESPONSAVEL}}": d_colab['gestor'],
+                "{{AVALIADOR}}": d_colab['gestor'],
+                "{{PROCEDIMENTO}}": f"{proc.codigo} - {proc.nome}" if proc else "-",
+                "{{CODIGO_PROCEDIMENTO}}": proc.codigo if proc else "-",
+                "{{NOME_PROCEDIMENTO}}": proc.nome if proc else "-",
+                "{{DATA_TREINAMENTO}}": data_treinamento_str,
+                "{{DATA_EFICACIA_CALCULADA}}": data_eficacia_str,
+                "{{DATA_ELEGIBILIDADE}}": data_eficacia_str,
+                "{{DATA_AVALIACAO}}": data_avaliacao_str,
+                "{{STATUS_EFICACIA}}": status_display,
+                "{{OBSERVACOES}}": t.resultado_avaliacao or "",
+                "{{JUSTIFICATIVA}}": t.resultado_avaliacao or "",
+                "{{EVIDENCIAS}}": t.resultado_avaliacao or "",
+                "{{CHK_EFICAZ}}": "●" if status_str == 'EFICAZ' else "○",
+                "{{CHK_INEFICAZ}}": "●" if status_str == 'INEFICAZ' else "○",
+                "{{CHK_NAO_APLICA}}": "●" if status_str == 'NAO_APLICA' else "○",
+            }
+
+            cell_updates = {
+                'C4': f"APLICAR APÓS {data_eficacia_str} (CARÊNCIA DE 30 DIAS CALCULADA)",
+                'C5': f"{proc.codigo} - {proc.nome}" if proc else "-",
+                'W5': data_treinamento_str,
+                'C6': d_colab['nome'],
+                'W6': d_colab['setor'],
+                'C7': d_colab['gestor'],
+                'B30': t.resultado_avaliacao or "",
+                'P38': "[ X ]" if status_str == 'EFICAZ' else "[   ]",
+                'V38': "[ X ]" if status_str == 'INEFICAZ' else "[   ]",
+                'B42': f"Colaborador: {d_colab['nome']}",
+                'Z42': f"Data: {data_treinamento_str}",
+                'B43': f"Gestor: {d_colab['gestor']}",
+                'Z43': f"Data: {data_avaliacao_str}",
+            }
+
+            # Criar cópia da aba template
+            ws = wb.copy_worksheet(ws_template)
+
+            # Nome da Aba (max 31 chars, sem caracteres proibidos \ / ? * : [ ])
+            colab_primeiro = d_colab['nome'].split()[0] if d_colab['nome'] else 'Colab'
+            proc_cod = proc.codigo if proc else f"ID{t.id}"
+            base_title = f"{colab_primeiro} - {proc_cod}"
+            clean_title = re.sub(r'[\\/*?:\[\]]', '', base_title)[:27]
+            title = clean_title
+            suffix = 2
+            while title in wb.sheetnames:
+                title = f"{clean_title[:25]} ({suffix})"
+                suffix += 1
+            ws.title = title
+
+            # Atualizações posicionais
+            for cell_ref, val in cell_updates.items():
+                try:
+                    ws[cell_ref] = val
+                except Exception:
+                    pass
+
+            # Substituição de tags nas células da aba
+            for row in ws.iter_rows():
+                for cell in row:
+                    if cell.value and isinstance(cell.value, str):
+                        cell_val = cell.value
+                        for k, v in substituicoes.items():
+                            if k in cell_val:
+                                cell_val = cell_val.replace(k, str(v) if v is not None else "")
+                        cell.value = cell_val
+
+        # Remover template inicial após gerar todas as abas
+        wb.remove(ws_template)
+
+        raw_output = BytesIO()
+        wb.save(raw_output)
+        raw_output.seek(0)
+        return raw_output
+
+    # 2. Fallback nativo
+    wb = openpyxl.Workbook()
+    if wb.active:
+        wb.remove(wb.active)
+
+    font_header_doc = Font(name="Arial", size=11, bold=True, color="FFFFFF")
+    font_section = Font(name="Arial", size=9.5, bold=True, color="FFFFFF")
+    font_label = Font(name="Arial", size=8.5, bold=True, color="334155")
+    font_val = Font(name="Arial", size=8.5, color="0F172A")
+    font_destaque = Font(name="Arial", size=9, bold=True, color="1E3A8A")
+
+    fill_header_doc = PatternFill(start_color="1E3A8A", end_color="1E3A8A", fill_type="solid")
+    fill_section = PatternFill(start_color="334155", end_color="334155", fill_type="solid")
+    fill_meta = PatternFill(start_color="F1F5F9", end_color="F1F5F9", fill_type="solid")
+    fill_calculada = PatternFill(start_color="FEF3C7", end_color="FEF3C7", fill_type="solid")
+
+    border_box = Border(
+        left=Side(style='thin', color='000000'),
+        right=Side(style='thin', color='000000'),
+        top=Side(style='thin', color='000000'),
+        bottom=Side(style='thin', color='000000')
+    )
+
+    align_center = Alignment(horizontal='center', vertical='center')
+    align_left = Alignment(horizontal='left', vertical='center')
+    align_top_left = Alignment(horizontal='left', vertical='top', wrap_text=True)
+
+    for t in treinamentos:
+        colab = t.colaborador
+        proc = t.procedimento
+        d_colab = _extrair_dados_colaborador_avaliado(colab)
+
+        data_treinamento = t.data_treinamento or timezone.now().date()
+        data_eficacia_calculada = data_treinamento + timedelta(days=30)
+        data_treinamento_str = data_treinamento.strftime("%d/%m/%Y")
+        data_eficacia_str = data_eficacia_calculada.strftime("%d/%m/%Y")
+        data_avaliacao_str = t.avaliacao_eficacia_data.strftime("%d/%m/%Y") if t.avaliacao_eficacia_data else "-"
+
+        status_str = t.avaliacao_eficacia_status or "PENDENTE"
+        status_display = status_map.get(status_str, status_str)
+
+        colab_primeiro = d_colab['nome'].split()[0] if d_colab['nome'] else 'Colab'
+        proc_cod = proc.codigo if proc else f"ID{t.id}"
+        base_title = f"{colab_primeiro} - {proc_cod}"
+        clean_title = re.sub(r'[\\/*?:\[\]]', '', base_title)[:27]
+        title = clean_title
+        suffix = 2
+        while title in wb.sheetnames:
+            title = f"{clean_title[:25]} ({suffix})"
+            suffix += 1
+
+        ws = wb.create_sheet(title=title)
+
+        # Cabeçalho Principal
+        ws.merge_cells("A1:G1")
+        c_top = ws.cell(row=1, column=1, value="FOR.142.r01 - AVALIAÇÃO DE EFICÁCIA DO TREINAMENTO")
+        c_top.font = font_header_doc
+        c_top.fill = fill_header_doc
+        c_top.alignment = align_center
+        ws.row_dimensions[1].height = 28
+
+        # Dados do Colaborador e Treinamento
+        dados_header = [
+            ("Colaborador:", d_colab['nome'], "Matrícula:", d_colab['matricula']),
+            ("Cargo / Função:", d_colab['cargo'], "Setor:", d_colab['setor']),
+            ("Responsável / Gestor:", d_colab['gestor'], "Procedimento:", f"{proc.codigo} - {proc.nome}" if proc else "-"),
+            ("Data do Treinamento:", data_treinamento_str, "Data Devida Eficácia (+30d):", data_eficacia_str),
+        ]
+
+        for idx, (l1, v1, l2, v2) in enumerate(dados_header, start=2):
+            ws.merge_cells(start_row=idx, start_column=2, end_row=idx, end_column=4)
+            ws.merge_cells(start_row=idx, start_column=6, end_row=idx, end_column=7)
+
+            ws.cell(row=idx, column=1, value=l1)
+            ws.cell(row=idx, column=2, value=v1)
+            ws.cell(row=idx, column=5, value=l2)
+            c_v2 = ws.cell(row=idx, column=6, value=v2)
+
+            for col in range(1, 8):
+                c = ws.cell(row=idx, column=col)
+                c.border = border_box
+                if col in [1, 5]:
+                    c.font = font_label
+                    c.fill = fill_meta
+                    c.alignment = align_left
+                else:
+                    c.font = font_val
+                    c.alignment = align_left
+            if idx == 5:
+                c_v2.font = font_destaque
+                c_v2.fill = fill_calculada
+            ws.row_dimensions[idx].height = 18
+
+        ws.row_dimensions[6].height = 6
+
+        # Seção de Avaliação
+        ws.merge_cells("A7:G7")
+        c_sec = ws.cell(row=7, column=1, value="PARECER DA AVALIAÇÃO DE EFICÁCIA (APÓS 30 DIAS DE PRÁTICA OPERACIONAL)")
+        c_sec.font = font_section
+        c_sec.fill = fill_section
+        c_sec.alignment = align_center
+        ws.row_dimensions[7].height = 20
+
+        # Status e Data da Avaliação
+        ws.merge_cells("B8:D8")
+        ws.cell(row=8, column=1, value="Resultado:")
+        ws.cell(row=8, column=1).font = font_label
+        ws.cell(row=8, column=1).fill = fill_meta
+        ws.cell(row=8, column=1).border = border_box
+
+        c_status = ws.cell(row=8, column=2, value=status_display)
+        c_status.font = font_destaque
+        c_status.alignment = align_left
+        for col in range(2, 5):
+            ws.cell(row=8, column=col).border = border_box
+
+        ws.cell(row=8, column=5, value="Data da Avaliação:")
+        ws.cell(row=8, column=5).font = font_label
+        ws.cell(row=8, column=5).fill = fill_meta
+        ws.cell(row=8, column=5).border = border_box
+
+        ws.merge_cells("F8:G8")
+        c_dt_av = ws.cell(row=8, column=6, value=data_avaliacao_str)
+        c_dt_av.font = font_val
+        c_dt_av.alignment = align_left
+        for col in range(6, 8):
+            ws.cell(row=8, column=col).border = border_box
+        ws.row_dimensions[8].height = 20
+
+        # Evidências / Justificativas
+        ws.merge_cells("A9:G9")
+        c_ev_title = ws.cell(row=9, column=1, value="Evidências Objetivas Observadas / Justificativa:")
+        c_ev_title.font = font_label
+        c_ev_title.fill = fill_meta
+        c_ev_title.alignment = align_left
+        for col in range(1, 8):
+            ws.cell(row=9, column=col).border = border_box
+        ws.row_dimensions[9].height = 18
+
+        ws.merge_cells("A10:G15")
+        c_ev_body = ws.cell(row=10, column=1, value=t.resultado_avaliacao or "Nenhuma observação ou evidência registrada.")
+        c_ev_body.font = font_val
+        c_ev_body.alignment = align_top_left
+        for r_ev in range(10, 16):
+            for col in range(1, 8):
+                ws.cell(row=r_ev, column=col).border = border_box
+            ws.row_dimensions[r_ev].height = 16
+
+        # Bloco de Assinaturas
+        ws.row_dimensions[16].height = 12
+
+        ws.merge_cells("A17:C17")
+        ws.merge_cells("E17:G17")
+
+        c_ass_col = ws.cell(row=17, column=1, value="Assinatura do Colaborador Avaliado")
+        c_ass_col.font = font_label
+        c_ass_col.alignment = align_center
+
+        c_ass_lid = ws.cell(row=17, column=5, value="Assinatura do Líder / Avaliador Responsável")
+        c_ass_lid.font = font_label
+        c_ass_lid.alignment = align_center
+
+        larguras_142 = {'A': 18, 'B': 22, 'C': 16, 'D': 16, 'E': 20, 'F': 20, 'G': 16}
+        for col_letter, width in larguras_142.items():
+            ws.column_dimensions[col_letter].width = width
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    return output
+
