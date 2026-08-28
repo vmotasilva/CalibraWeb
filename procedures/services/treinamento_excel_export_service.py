@@ -527,10 +527,86 @@ def _obter_perguntas_treinamento(planejamento: PlanejamentoTreinamento) -> list:
     return perguntas_texto[:5]
 
 
+def _extrair_dados_colaborador_avaliado(colaborador):
+    """
+    Extrai todos os dados do colaborador que será avaliado, incluindo:
+    - Nome Completo, Matrícula, Cargo/Função
+    - Setor / Departamento / Área / Laboratório
+    - Gestor / Líder / Supervisor / Gerente direto
+    """
+    if not colaborador:
+        return {
+            'nome': "________________________________________",
+            'matricula': "_________",
+            'cargo': "____________________",
+            'setor': "____________________",
+            'gestor': "____________________",
+            'lider': "____________________",
+            'supervisor': "____________________",
+            'gerente': "____________________",
+            'posto_trabalho': "____________________",
+            'centro_custo': "____________________",
+        }
+
+    colab_nome = colaborador.nome_completo or ""
+    colab_mat = colaborador.matricula or "-"
+    colab_cargo = colaborador.cargo or "-"
+
+    # 1. Setor do Colaborador Avaliado
+    colab_setor = ""
+    if getattr(colaborador, 'setor', None):
+        colab_setor = getattr(colaborador.setor, 'nome', '') or getattr(colaborador.setor, 'codigo', '')
+    if not colab_setor and getattr(colaborador, 'grupo', None):
+        colab_setor = colaborador.grupo
+    if not colab_setor and getattr(colaborador, 'posto_trabalho', None):
+        colab_setor = colaborador.posto_trabalho
+    colab_setor = colab_setor or "-"
+
+    # 2. Gestor do Colaborador Avaliado (Hierarquia / Liderança Direta)
+    gestor_obj = None
+    posto_lideranca = getattr(colaborador, 'posto_lideranca', None)
+    if posto_lideranca == 'SUPERVISOR':
+        gestor_obj = getattr(colaborador, 'gerente', None) or getattr(colaborador, 'supervisor', None) or getattr(colaborador, 'lider', None)
+    elif posto_lideranca == 'LIDER':
+        gestor_obj = getattr(colaborador, 'supervisor', None) or getattr(colaborador, 'gerente', None) or getattr(colaborador, 'lider', None)
+    else:
+        gestor_obj = getattr(colaborador, 'lider', None) or getattr(colaborador, 'supervisor', None) or getattr(colaborador, 'gerente', None)
+
+    if not gestor_obj and hasattr(colaborador, 'get_chefia'):
+        try:
+            gestor_obj = colaborador.get_chefia()
+        except Exception:
+            pass
+
+    if not gestor_obj and getattr(colaborador, 'setor', None) and hasattr(colaborador.setor, 'responsavel') and colaborador.setor.responsavel:
+        gestor_obj = colaborador.setor.responsavel
+
+    gestor_nome = gestor_obj.nome_completo if hasattr(gestor_obj, 'nome_completo') else (str(gestor_obj) if gestor_obj else "-")
+    lider_nome = colaborador.lider.nome_completo if getattr(colaborador, 'lider', None) else gestor_nome
+    supervisor_nome = colaborador.supervisor.nome_completo if getattr(colaborador, 'supervisor', None) else gestor_nome
+    gerente_nome = colaborador.gerente.nome_completo if getattr(colaborador, 'gerente', None) else gestor_nome
+    posto_trabalho = getattr(colaborador, 'posto_trabalho', None) or colab_setor
+    centro_custo = str(colaborador.centro_custo) if getattr(colaborador, 'centro_custo', None) else "-"
+
+    return {
+        'nome': colab_nome,
+        'matricula': colab_mat,
+        'cargo': colab_cargo,
+        'setor': colab_setor,
+        'gestor': gestor_nome,
+        'lider': lider_nome,
+        'supervisor': supervisor_nome,
+        'gerente': gerente_nome,
+        'posto_trabalho': posto_trabalho,
+        'centro_custo': centro_custo,
+    }
+
+
 def gerar_auto_avaliacao_for141_xlsx(planejamento: PlanejamentoTreinamento, colaborador_id: int = None) -> BytesIO:
     """
     Gera o Formulário de Auto-Avaliação de Treinamento Crítico (FOR.141.r02).
-    Injeta as 5 perguntas técnicas (ordem 1 a 5) nos vértices do gráfico radar e dados do treinamento.
+    Injeta as 5 perguntas técnicas (ordem 1 a 5) nos vértices do gráfico radar, dados do treinamento,
+    e as tags GESTOR e SETOR associadas ao colaborador avaliado.
     """
     wb, template_obj = _carregar_workbook_template(
         funcao='AUTO_AVALIACAO',
@@ -554,31 +630,52 @@ def gerar_auto_avaliacao_for141_xlsx(planejamento: PlanejamentoTreinamento, cola
     colaborador = None
     if hasattr(planejamento, 'colaboradores'):
         if colaborador_id:
-            colaborador = planejamento.colaboradores.filter(id=colaborador_id).first()
+            colaborador = planejamento.colaboradores.select_related('setor', 'lider', 'supervisor', 'gerente').filter(id=colaborador_id).first()
         if not colaborador and planejamento.colaboradores.exists():
-            colaborador = planejamento.colaboradores.first()
+            colaborador = planejamento.colaboradores.select_related('setor', 'lider', 'supervisor', 'gerente').first()
 
-    colab_nome = colaborador.nome_completo if colaborador else "________________________________________"
-    colab_mat = colaborador.matricula if colaborador else "_________"
-    colab_cargo = colaborador.cargo if colaborador else "____________________"
-    colab_setor = colaborador.setor.nome if (colaborador and colaborador.setor) else "____________________"
+    d_colab = _extrair_dados_colaborador_avaliado(colaborador)
 
     substituicoes = {
         "{{TITULO}}": planejamento.titulo or "-",
         "{{PROCEDIMENTO}}": proc_str,
         "{{CODIGO_PROCEDIMENTO}}": procs[0].codigo if procs else "-",
         "{{NOME_PROCEDIMENTO}}": procs[0].nome if procs else (planejamento.titulo or "-"),
-        "{{COLABORADOR}}": colab_nome,
-        "{{NOME_COLABORADOR}}": colab_nome,
-        "{{MATRICULA}}": colab_mat,
-        "{{CARGO}}": colab_cargo,
-        "{{SETOR}}": colab_setor,
-        "{{DEPARTAMENTO}}": colab_setor,
+
+        # Tags do Colaborador Avaliado
+        "{{COLABORADOR}}": d_colab['nome'],
+        "{{NOME_COLABORADOR}}": d_colab['nome'],
+        "{{MATRICULA}}": d_colab['matricula'],
+        "{{CARGO}}": d_colab['cargo'],
+        "{{POSTO_TRABALHO}}": d_colab['posto_trabalho'],
+        "{{CENTRO_CUSTO}}": d_colab['centro_custo'],
+
+        # Tags de Setor do Colaborador Avaliado
+        "{{SETOR}}": d_colab['setor'],
+        "{{SETOR_COLABORADOR}}": d_colab['setor'],
+        "{{NOME_SETOR}}": d_colab['setor'],
+        "{{DEPARTAMENTO}}": d_colab['setor'],
+        "{{AREA}}": d_colab['setor'],
+        "{{LABORATORIO}}": d_colab['setor'],
+
+        # Tags de Gestor do Colaborador Avaliado
+        "{{GESTOR}}": d_colab['gestor'],
+        "{{GESTOR_COLABORADOR}}": d_colab['gestor'],
+        "{{NOME_GESTOR}}": d_colab['gestor'],
+        "{{LIDER}}": d_colab['lider'],
+        "{{SUPERVISOR}}": d_colab['supervisor'],
+        "{{GERENTE}}": d_colab['gerente'],
+        "{{CHEFIA}}": d_colab['gestor'],
+        "{{RESPONSAVEL}}": d_colab['gestor'],
+
+        # Facilitador / Instrutor
         "{{INSTRUTOR}}": instrutor_nome,
         "{{FACILITADOR}}": instrutor_nome,
         "{{DATA}}": data_str,
         "{{DATA_HORA}}": data_str,
         "{{CARGA_HORARIA}}": f"{planejamento.carga_horaria} Minutos" if getattr(planejamento, 'carga_horaria', None) else "-",
+
+        # Perguntas 1 a 5
         "{{PER_1}}": perguntas[0] if len(perguntas) > 0 else "",
         "{{PER_2}}": perguntas[1] if len(perguntas) > 1 else "",
         "{{PER_3}}": perguntas[2] if len(perguntas) > 2 else "",
@@ -775,15 +872,7 @@ def gerar_avaliacao_eficacia_for142_xlsx(treinamento_id: int) -> BytesIO:
 
     colab = treinamento.colaborador
     proc = treinamento.procedimento
-
-    responsavel_nome = "-"
-    if colab:
-        if colab.posto_lideranca == 'SUPERVISOR':
-            responsavel_nome = colab.gerente.nome_completo if colab.gerente else "-"
-        elif colab.posto_lideranca == 'LIDER':
-            responsavel_nome = colab.supervisor.nome_completo if colab.supervisor else "-"
-        else:
-            responsavel_nome = colab.lider.nome_completo if colab.lider else "-"
+    d_colab = _extrair_dados_colaborador_avaliado(colab)
 
     data_treinamento = treinamento.data_treinamento or timezone.now().date()
     data_eficacia_calculada = data_treinamento + timedelta(days=30)
@@ -801,15 +890,34 @@ def gerar_avaliacao_eficacia_for142_xlsx(treinamento_id: int) -> BytesIO:
     status_display = status_map.get(status_str, status_str)
 
     substituicoes = {
-        "{{COLABORADOR}}": colab.nome_completo if colab else "-",
-        "{{NOME_COLABORADOR}}": colab.nome_completo if colab else "-",
-        "{{MATRICULA}}": colab.matricula if colab else "-",
-        "{{CARGO}}": colab.cargo or "-" if colab else "-",
-        "{{SETOR}}": colab.setor.nome if (colab and colab.setor) else "-",
-        "{{DEPARTAMENTO}}": colab.setor.nome if (colab and colab.setor) else "-",
-        "{{RESPONSAVEL}}": responsavel_nome,
-        "{{LIDER}}": responsavel_nome,
-        "{{AVALIADOR}}": responsavel_nome,
+        # Tags do Colaborador Avaliado
+        "{{COLABORADOR}}": d_colab['nome'],
+        "{{NOME_COLABORADOR}}": d_colab['nome'],
+        "{{MATRICULA}}": d_colab['matricula'],
+        "{{CARGO}}": d_colab['cargo'],
+        "{{POSTO_TRABALHO}}": d_colab['posto_trabalho'],
+        "{{CENTRO_CUSTO}}": d_colab['centro_custo'],
+
+        # Tags de Setor do Colaborador Avaliado
+        "{{SETOR}}": d_colab['setor'],
+        "{{SETOR_COLABORADOR}}": d_colab['setor'],
+        "{{NOME_SETOR}}": d_colab['setor'],
+        "{{DEPARTAMENTO}}": d_colab['setor'],
+        "{{AREA}}": d_colab['setor'],
+        "{{LABORATORIO}}": d_colab['setor'],
+
+        # Tags de Gestor do Colaborador Avaliado
+        "{{GESTOR}}": d_colab['gestor'],
+        "{{GESTOR_COLABORADOR}}": d_colab['gestor'],
+        "{{NOME_GESTOR}}": d_colab['gestor'],
+        "{{LIDER}}": d_colab['lider'],
+        "{{SUPERVISOR}}": d_colab['supervisor'],
+        "{{GERENTE}}": d_colab['gerente'],
+        "{{CHEFIA}}": d_colab['gestor'],
+        "{{RESPONSAVEL}}": d_colab['gestor'],
+        "{{AVALIADOR}}": d_colab['gestor'],
+
+        # Procedimento e Dados do Treinamento
         "{{PROCEDIMENTO}}": f"{proc.codigo} - {proc.nome}" if proc else "-",
         "{{CODIGO_PROCEDIMENTO}}": proc.codigo if proc else "-",
         "{{NOME_PROCEDIMENTO}}": proc.nome if proc else "-",
