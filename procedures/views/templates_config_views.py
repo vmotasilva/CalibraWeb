@@ -163,9 +163,9 @@ def template_config_upload_view(request):
         file_b64 = ""
 
     with transaction.atomic():
-        # Se este template for definido como ativo, desativa os outros da mesma função
+        # Se este template for definido como ativo, desativa os outros da mesma função e mesmo tipo de arquivo
         if definir_ativo:
-            TemplateDocumentoTreinamento.objects.filter(funcao=funcao).update(ativo=False)
+            TemplateDocumentoTreinamento.objects.filter(funcao=funcao, tipo_arquivo=tipo_arquivo).update(ativo=False)
 
         template = TemplateDocumentoTreinamento.objects.create(
             codigo=codigo,
@@ -191,15 +191,18 @@ def template_config_toggle_active_view(request, template_id):
     
     with transaction.atomic():
         if not template.ativo:
-            # Desativa outros da mesma função e ativa este
-            TemplateDocumentoTreinamento.objects.filter(funcao=template.funcao).update(ativo=False)
+            # Desativa outros da mesma função e mesmo tipo de arquivo, e ativa este
+            TemplateDocumentoTreinamento.objects.filter(
+                funcao=template.funcao,
+                tipo_arquivo=template.tipo_arquivo
+            ).update(ativo=False)
             template.ativo = True
             template.save(update_fields=['ativo', 'atualizado_em'])
-            messages.success(request, f'🌟 Template "{template.codigo}" agora é o padrão ativo para {template.get_funcao_display()}.')
+            messages.success(request, f'🌟 Template "{template.codigo}" ({template.get_tipo_arquivo_display()}) agora é o padrão ativo para {template.get_funcao_display()}.')
         else:
             template.ativo = False
             template.save(update_fields=['ativo', 'atualizado_em'])
-            messages.info(request, f'Template "{template.codigo}" desativado.')
+            messages.info(request, f'Template "{template.codigo}" ({template.get_tipo_arquivo_display()}) desativado.')
 
     return redirect('procedures:templates_config')
 
