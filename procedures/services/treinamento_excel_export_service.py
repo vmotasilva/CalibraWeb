@@ -955,10 +955,10 @@ def gerar_avaliacao_eficacia_for142_xlsx(treinamento_id: int) -> BytesIO:
             ws.cell(row=5, column=3, value=f"{proc.codigo} - {proc.nome}" if proc else "-")
             ws.cell(row=5, column=23, value=data_treinamento_str)
             # Linha 6: Participante e Área
-            ws.cell(row=6, column=3, value=colab.nome_completo if colab else "-")
-            ws.cell(row=6, column=23, value=colab.setor.nome if (colab and colab.setor) else "-")
+            ws.cell(row=6, column=3, value=d_colab['nome'])
+            ws.cell(row=6, column=23, value=d_colab['setor'])
             # Linha 7: Gestor
-            ws.cell(row=7, column=3, value=responsavel_nome)
+            ws.cell(row=7, column=3, value=d_colab['gestor'])
             # Linha 30: Justificativa / Parecer Gestor
             if treinamento.resultado_avaliacao:
                 ws.cell(row=30, column=2, value=treinamento.resultado_avaliacao)
@@ -968,9 +968,9 @@ def gerar_avaliacao_eficacia_for142_xlsx(treinamento_id: int) -> BytesIO:
             elif status_str == 'INEFICAZ':
                 ws.cell(row=38, column=22, value="[ X ]")
             # Linhas 42-44: Assinaturas e Datas
-            ws.cell(row=42, column=2, value=f"Colaborador: {colab.nome_completo if colab else '-'}")
+            ws.cell(row=42, column=2, value=f"Colaborador: {d_colab['nome']}")
             ws.cell(row=42, column=26, value=f"Data: {data_treinamento_str}")
-            ws.cell(row=43, column=2, value=f"Gestor: {responsavel_nome}")
+            ws.cell(row=43, column=2, value=f"Gestor: {d_colab['gestor']}")
             ws.cell(row=43, column=26, value=f"Data: {data_avaliacao_str}")
 
     else:
@@ -1011,9 +1011,9 @@ def gerar_avaliacao_eficacia_for142_xlsx(treinamento_id: int) -> BytesIO:
 
         # 2. Dados do Colaborador e Treinamento
         dados_header = [
-            ("Colaborador:", colab.nome_completo if colab else "-", "Matrícula:", colab.matricula if colab else "-"),
-            ("Cargo / Função:", colab.cargo or "-" if colab else "-", "Setor:", colab.setor.nome if (colab and colab.setor) else "-"),
-            ("Responsável / Avaliador:", responsavel_nome, "Procedimento:", f"{proc.codigo} - {proc.nome}" if proc else "-"),
+            ("Colaborador:", d_colab['nome'], "Matrícula:", d_colab['matricula']),
+            ("Cargo / Função:", d_colab['cargo'], "Setor:", d_colab['setor']),
+            ("Responsável / Gestor:", d_colab['gestor'], "Procedimento:", f"{proc.codigo} - {proc.nome}" if proc else "-"),
             ("Data do Treinamento:", data_treinamento_str, "Data Devida Eficácia (+30d):", data_eficacia_str),
         ]
 
