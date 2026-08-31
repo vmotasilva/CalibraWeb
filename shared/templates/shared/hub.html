@@ -258,17 +258,37 @@
 
 <div class="hub-shell">
     <section class="hub-hero">
-        <div class="row g-4 align-items-end">
+        <div class="row g-4 align-items-center">
             <div class="col-12 col-lg-7 position-relative">
-                <span class="hub-eyebrow">
-                    <i class="bi bi-grid-1x2-fill"></i>
-                    Central de operação
-                </span>
-                <h1 class="display-6 fw-bold mt-3 mb-3">Calibra HUB</h1>
-                <p class="lead mb-4">Uma entrada única para navegar pelos módulos, atacar pendências, abrir ações rápidas e fixar os atalhos mais usados no seu dia.</p>
+                <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+                    <span class="hub-eyebrow">
+                        <i class="bi bi-grid-1x2-fill"></i>
+                        Central de Operações
+                    </span>
+                    <a href="{% url 'changelog' %}" class="badge bg-white bg-opacity-20 text-white border-0 text-decoration-none py-1.5 px-2.5 rounded-pill" style="font-size: 0.78rem;">
+                        <i class="bi bi-info-circle me-1"></i> v{{ system_version|default:'1.0' }}
+                    </a>
+                </div>
+                <h1 class="display-6 fw-bold mt-2 mb-2">Calibra HUB</h1>
+                <p class="lead mb-3" style="font-size: 1.05rem; opacity: 0.9;">Acesse todos os módulos de gestão, controle suas pendências e execute ações rápidas em um só lugar.</p>
+                
+                <!-- BUSCA INTERATIVA DE MÓDULOS E TELAS -->
+                <div class="position-relative mb-3" style="max-width: 520px;">
+                    <div class="input-group shadow rounded-pill overflow-hidden border-0 bg-white">
+                        <span class="input-group-text bg-white border-0 text-muted ps-3">
+                            <i class="bi bi-search text-primary"></i>
+                        </span>
+                        <input type="text" id="hubSearchInput" class="form-control border-0 shadow-none py-2 text-dark" placeholder="Buscar telas, módulos e ações rápidas..." autocomplete="off" style="font-size: 0.95rem;">
+                    </div>
+                </div>
+
                 <div class="d-flex flex-wrap gap-2">
-                    <a class="btn btn-light btn-lg hub-primary-btn" href="#modulos">Explorar módulos</a>
-                    <a class="btn btn-outline-light btn-lg hub-primary-btn" href="#pendencias">Ver pendências</a>
+                    <a class="btn btn-light btn-md hub-primary-btn fw-semibold" href="#modulos">
+                        <i class="bi bi-grid-3x3-gap me-1"></i> Módulos
+                    </a>
+                    <a class="btn btn-warning btn-md hub-primary-btn text-dark fw-bold shadow-sm" href="{% url 'inbox' %}">
+                        <i class="bi bi-bell-fill me-1"></i> Notificações ({{ hub_stats.1.value }})
+                    </a>
                 </div>
             </div>
             <div class="col-12 col-lg-5 position-relative">
@@ -276,9 +296,9 @@
                     {% for stat in hub_stats %}
                     <div class="col-6">
                         <div class="hub-stat">
-                            <div class="small text-uppercase opacity-75 mb-2">{{ stat.label }}</div>
-                            <div class="display-6 fw-bold mb-1"{% if stat.dynamic_id %} id="{{ stat.dynamic_id }}"{% endif %}>{{ stat.value }}</div>
-                            <div class="small opacity-75">{{ stat.detail }}</div>
+                            <div class="small text-uppercase opacity-75 mb-1" style="font-size: 0.75rem; letter-spacing: 0.05em;">{{ stat.label }}</div>
+                            <div class="display-6 fw-bold mb-0"{% if stat.dynamic_id %} id="{{ stat.dynamic_id }}"{% endif %}>{{ stat.value }}</div>
+                            <div class="small opacity-75" style="font-size: 0.78rem;">{{ stat.detail }}</div>
                         </div>
                     </div>
                     {% endfor %}
@@ -298,17 +318,100 @@
         <div id="hub-favorites-list" class="row g-3 d-none"></div>
     </section>
 
+    <section id="modulos" class="hub-section">
+        <div class="hub-section-header">
+            <div>
+                <h2 class="h4 mb-1">Módulos do Sistema</h2>
+                <p>Navegue pelo HUB de cada módulo ou acerte pendências diretamente.</p>
+            </div>
+            <span class="module-chip">{{ modules|length }} módulos ativos</span>
+        </div>
+        <div class="row g-3" id="modulesGrid">
+            {% for module in modules %}
+            <div class="col-12 col-md-6 col-xl-4 module-item" data-module-title="{{ module.title|lower }}" data-module-desc="{{ module.description|lower }}">
+                <div class="card module-card" style="--module-color: {{ module.color }};">
+                    <div class="card-body d-flex flex-column gap-3">
+                        <div class="d-flex align-items-start justify-content-between gap-3">
+                            <div class="module-icon" style="background: color-mix(in srgb, {{ module.color }} 14%, white); color: {{ module.color }};">
+                                <i class="bi {{ module.icon }}"></i>
+                            </div>
+                            <div class="d-flex align-items-center gap-1">
+                                {% if module.pending_count %}
+                                <a href="{{ module.inbox_url|default:'/inbox/' }}" class="badge rounded-pill text-white text-decoration-none shadow-sm px-2.5 py-1.5" style="background: #dc3545; font-size: 0.8rem;" title="Ver pendências no Inbox">
+                                    <i class="bi bi-bell-fill me-1"></i> {{ module.pending_count }}
+                                </a>
+                                {% endif %}
+                                <button
+                                    type="button"
+                                    class="hub-favorite-toggle"
+                                    aria-label="Favoritar {{ module.title }}"
+                                    aria-pressed="false"
+                                    data-hub-favorite-id="module:{{ module.id }}"
+                                    data-hub-favorite-label="{{ module.title }}"
+                                    data-hub-favorite-url="{{ module.url }}"
+                                    data-hub-favorite-kind="Módulo"
+                                    data-hub-favorite-icon="{{ module.icon }}"
+                                    data-hub-favorite-module="Hub principal"
+                                >
+                                    <i class="bi bi-star"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                                <h3 class="h5 mb-0 fw-bold">{{ module.title }}</h3>
+                            </div>
+                            <p class="text-muted small mb-0" style="min-height: 38px;">{{ module.description }}</p>
+                        </div>
+
+                        <div class="module-status d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="small text-uppercase text-muted mb-0" style="font-size: 0.7rem;">Status do Módulo</div>
+                                <div class="small fw-semibold {% if module.pending_count %}text-danger{% else %}text-muted{% endif %}">{{ module.status_text }}</div>
+                            </div>
+                            {% if module.inbox_url %}
+                            <a href="{{ module.inbox_url }}" class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size: 0.75rem;">
+                                Ver <i class="bi bi-arrow-right"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+
+                        {% if module.actions %}
+                        <div class="d-flex flex-wrap gap-1.5">
+                            {% for action in module.actions %}
+                            <a href="{{ action.url }}" class="btn btn-outline-secondary btn-sm hub-secondary-btn py-1 px-2 text-nowrap" style="font-size: 0.8rem;">
+                                <i class="bi {{ action.icon }} me-1"></i> {{ action.label }}
+                            </a>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        <a href="{{ module.url }}" class="btn btn-dark hub-primary-btn mt-auto fw-semibold">
+                            <i class="bi bi-box-arrow-in-right me-1"></i> Acessar Módulo
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12">
+                <div class="hub-empty-state">Nenhum módulo foi liberado para o seu perfil. Consulte a administração do sistema.</div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
     <section id="acoes-rapidas" class="hub-section">
         <div class="hub-section-header">
             <div>
-                <h2 class="h4 mb-1">Ações rápidas</h2>
+                <h2 class="h4 mb-1">Ações Rápidas Globais</h2>
                 <p>Atalhos prontos para acelerar as rotinas mais frequentes.</p>
             </div>
             <span class="module-chip">{{ quick_actions|length }} atalhos</span>
         </div>
-        <div class="row g-3">
+        <div class="row g-3" id="quickActionsGrid">
             {% for action in quick_actions %}
-            <div class="col-12 col-md-6 col-xl-4">
+            <div class="col-12 col-md-6 col-xl-4 action-item" data-action-title="{{ action.label|lower }}" data-action-desc="{{ action.description|lower }}">
                 <div class="card quick-card" style="--module-color: {{ action.color|default:'#16353b' }};">
                     <div class="card-body d-flex flex-column gap-3">
                         <div class="d-flex align-items-start justify-content-between gap-3">
@@ -332,117 +435,18 @@
                         </div>
                         <div class="flex-grow-1">
                             <div class="pending-chip mb-2">{{ action.module_title }}</div>
-                            <h3 class="h5 mb-2">{{ action.label }}</h3>
-                            <p class="text-muted mb-0">{{ action.description }}</p>
+                            <h3 class="h5 mb-2 fw-semibold">{{ action.label }}</h3>
+                            <p class="text-muted small mb-0">{{ action.description }}</p>
                         </div>
-                        <a href="{{ action.url }}" class="btn btn-dark hub-secondary-btn">Abrir ação</a>
+                        <a href="{{ action.url }}" class="btn btn-outline-dark hub-secondary-btn fw-semibold">
+                            <i class="bi bi-box-arrow-up-right me-1"></i> Abrir Ação
+                        </a>
                     </div>
                 </div>
             </div>
             {% empty %}
             <div class="col-12">
                 <div class="hub-empty-state">Nenhuma ação rápida está disponível para o seu perfil neste momento.</div>
-            </div>
-            {% endfor %}
-        </div>
-    </section>
-
-    <section id="pendencias" class="hub-section">
-        <div class="hub-section-header">
-            <div>
-                <h2 class="h4 mb-1">Pendências prioritárias</h2>
-                <p>O que já está exigindo atenção agora, por módulo.</p>
-            </div>
-            <span class="module-chip">Radar do dia</span>
-        </div>
-        <div class="row g-3">
-            {% for item in pending_items %}
-            <div class="col-12 col-md-6 col-xl-4">
-                <a href="{{ item.url }}" class="card pending-card">
-                    <div class="card-body d-flex flex-column gap-3">
-                        <div class="d-flex align-items-center justify-content-between gap-3">
-                            <span class="pending-chip">{{ item.section }}</span>
-                            <span class="display-6 fw-bold text-danger mb-0">{{ item.count }}</span>
-                        </div>
-                        <div>
-                            <h3 class="h5 mb-2">{{ item.label }}</h3>
-                            <p class="text-muted mb-0">Abrir a visão filtrada dessa pendência.</p>
-                        </div>
-                        <div class="small fw-semibold text-primary">Abrir agora</div>
-                    </div>
-                </a>
-            </div>
-            {% empty %}
-            <div class="col-12">
-                <div class="hub-empty-state">Nenhuma pendência prioritária foi identificada para o seu perfil.</div>
-            </div>
-            {% endfor %}
-        </div>
-    </section>
-
-    <section id="modulos" class="hub-section">
-        <div class="hub-section-header">
-            <div>
-                <h2 class="h4 mb-1">Hubs dos módulos</h2>
-                <p>Cada card abre a área principal do módulo e já oferece atalhos locais.</p>
-            </div>
-            <span class="module-chip">{{ modules|length }} módulos</span>
-        </div>
-        <div class="row g-3">
-            {% for module in modules %}
-            <div class="col-12 col-md-6 col-xl-4">
-                <div class="card module-card" style="--module-color: {{ module.color }};">
-                    <div class="card-body d-flex flex-column gap-3">
-                        <div class="d-flex align-items-start justify-content-between gap-3">
-                            <div class="module-icon" style="background: color-mix(in srgb, {{ module.color }} 14%, white); color: {{ module.color }};">
-                                <i class="bi {{ module.icon }}"></i>
-                            </div>
-                            <button
-                                type="button"
-                                class="hub-favorite-toggle"
-                                aria-label="Favoritar {{ module.title }}"
-                                aria-pressed="false"
-                                data-hub-favorite-id="module:{{ module.id }}"
-                                data-hub-favorite-label="{{ module.title }}"
-                                data-hub-favorite-url="{{ module.url }}"
-                                data-hub-favorite-kind="Módulo"
-                                data-hub-favorite-icon="{{ module.icon }}"
-                                data-hub-favorite-module="Hub principal"
-                            >
-                                <i class="bi bi-star"></i>
-                            </button>
-                        </div>
-
-                        <div class="flex-grow-1">
-                            <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
-                                <h3 class="h5 mb-0">{{ module.title }}</h3>
-                                {% if module.pending_count %}
-                                <span class="badge rounded-pill" style="background: {{ module.color }};">{{ module.pending_count }}</span>
-                                {% endif %}
-                            </div>
-                            <p class="text-muted mb-0">{{ module.description }}</p>
-                        </div>
-
-                        <div class="module-status">
-                            <div class="small text-uppercase text-muted mb-1">Radar do módulo</div>
-                            <div class="fw-semibold">{{ module.status_text }}</div>
-                        </div>
-
-                        {% if module.actions %}
-                        <div class="d-flex flex-wrap gap-2">
-                            {% for action in module.actions %}
-                            <a href="{{ action.url }}" class="btn btn-outline-secondary btn-sm hub-secondary-btn">{{ action.label }}</a>
-                            {% endfor %}
-                        </div>
-                        {% endif %}
-
-                        <a href="{{ module.url }}" class="btn btn-dark hub-primary-btn">Abrir hub do módulo</a>
-                    </div>
-                </div>
-            </div>
-            {% empty %}
-            <div class="col-12">
-                <div class="hub-empty-state">Nenhum módulo foi liberado para o seu perfil. Consulte a administração do sistema.</div>
             </div>
             {% endfor %}
         </div>
@@ -566,6 +570,38 @@
 
         syncToggleState();
         renderFavorites();
+
+        // Real-time search filter for modules and quick actions
+        const searchInput = document.getElementById('hubSearchInput');
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                const q = this.value.trim().toLowerCase();
+                
+                // Filter modules
+                document.querySelectorAll('.module-item').forEach(el => {
+                    const title = el.getAttribute('data-module-title') || '';
+                    const desc = el.getAttribute('data-module-desc') || '';
+                    const text = el.innerText.toLowerCase();
+                    if (!q || title.includes(q) || desc.includes(q) || text.includes(q)) {
+                        el.style.display = '';
+                    } else {
+                        el.style.display = 'none';
+                    }
+                });
+
+                // Filter quick actions
+                document.querySelectorAll('.action-item').forEach(el => {
+                    const title = el.getAttribute('data-action-title') || '';
+                    const desc = el.getAttribute('data-action-desc') || '';
+                    const text = el.innerText.toLowerCase();
+                    if (!q || title.includes(q) || desc.includes(q) || text.includes(q)) {
+                        el.style.display = '';
+                    } else {
+                        el.style.display = 'none';
+                    }
+                });
+            });
+        }
     });
 </script>
 {% endblock %}

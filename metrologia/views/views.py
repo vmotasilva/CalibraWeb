@@ -1247,6 +1247,12 @@ def registrar_historico_massa(request):
             historico = form.save(commit=False)
             historico.instrumento = instrumento
             historico.save()
+            
+            # Garantir atualização imediata da data e status na tabela de Instrumentos
+            Instrumento.objects.filter(id=instrumento.id).update(
+                data_ultima_calibracao=historico.data_calibracao,
+                data_proxima_calibracao=historico.proxima_calibracao
+            )
             sucesso += 1
         else:
             erros += 1

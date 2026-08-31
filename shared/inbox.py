@@ -1,8 +1,9 @@
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Any, Optional
 from django.urls import reverse
 from django.core.cache import cache
+from django.utils import timezone
 from shared.notifications import _is_global_viewer, _get_colaborador_for_user
 
 @dataclass
@@ -10,7 +11,7 @@ class InboxItem:
     id: str                 # Unique ID for UI tracking (module_id)
     title: str              # Title of the task
     description: str        # Details
-    module: str             # "Auditoria", "Metrologia", "Quadros", "Treinamentos"
+    module: str             # "Auditoria", "Metrologia", "Quadros", "Treinamentos", "Laboratório", etc.
     icon: str               # Bootstrap icon class
     url: str                # Where to click to resolve
     action_text: str        # Text for the button
@@ -22,7 +23,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
     if not getattr(user, "is_authenticated", False):
         return []
         
-    cache_key = f"inbox_items:v2:user:{getattr(user, 'pk', 'anon')}:global:{is_global}"
+    cache_key = f"inbox_items:v3:user:{getattr(user, 'pk', 'anon')}:global:{is_global}"
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
@@ -37,16 +38,17 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
     # 1. Auditoria
     try:
         if has_module_access(user, "auditoria"):
-            from auditoria.models import ModeloAuditoria
+            from auditoria.models import ModeloAuditoria, RelatorioCompartilhadoAuditoria
             from django.db.models import Q
             from auditoria.utils_periodos import calcular_periodos_pendentes
+            from urllib.parse import urlencode
             
+            # 1.1 Ciclos / Modelos com períodos atrasados
             modelos = ModeloAuditoria.objects.filter(ativo=True)
             if not is_global_viewer and not (user.is_superuser or user.is_staff):
                 modelos = modelos.filter(Q(responsavel=user) | Q(responsaveis=user)).distinct()
                 
             for modelo in modelos:
-                # Retorna no máximo 3 períodos por modelo
                 periodos = calcular_periodos_pendentes(modelo, limit=3)
                 for p in periodos:
                     fim_date = p.get('fim_date')
@@ -64,7 +66,29 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                                 is_urgent=(hoje - fim_date).days > 30
                             )
                         )
-    except Exception as e:
+            
+            # 1.2 Relatórios Compartilhados Pendentes de Leitura
+            now = timezone.now()
+            shares_qs = RelatorioCompartilhadoAuditoria.objects.filter(
+                destinatario=user, ativo=True, recebido_em__isnull=True
+            ).filter(Q(expira_em__isnull=True) | Q(expira_em__gt=now)).select_related("remetente", "modelo")
+            for s in shares_qs:
+                target = reverse("auditoria:registros_por_modelo_compartilhado", args=[s.modelo_id])
+                url = f"{target}?{urlencode({'share_token': s.token})}"
+                items.append(
+                    InboxItem(
+                        id=f"auditoria_share_{s.id}",
+                        title=f"Relatório Compartilhado: {s.modelo.nome}",
+                        description=f"Enviado por {s.remetente.username if s.remetente else 'Auditor'}",
+                        module="Auditoria",
+                        icon="bi-file-earmark-bar-graph",
+                        url=url,
+                        action_text="Visualizar",
+                        date=s.criado_em.date(),
+                        is_urgent=False
+                    )
+                )
+    except Exception:
         pass
 
     # 2. Metrologia - Calibrações Vencidas
@@ -109,7 +133,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                         is_urgent=dias_atraso > 15
                     )
                 )
-    except Exception as e:
+    except Exception:
         pass
 
     # 3. Metrologia - Cotações em Atraso
@@ -146,7 +170,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                         is_urgent=(hoje - sol.data_solicitacao_orcamento).days > 7
                     )
                 )
-    except Exception as e:
+    except Exception:
         pass
 
     # 4. Quadros (Kanban)
@@ -223,15 +247,15 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                             is_urgent=False
                         )
                     )
-    except Exception as e:
+    except Exception:
         pass
 
-    # 5. Treinamentos (Procedimentos, Avaliações de Eficácia e Matrizes)
+    # 5. Treinamentos (Procedimentos, Avaliações de Eficácia, Demandas e Planejamentos)
     try:
         if has_module_access(user, "procedures") or has_module_access(user, "treinamentos") or user.is_superuser or user.is_staff:
-            from procedures.models import RegistroTreinamento, SolicitacaoValidacaoMatriz
+            from procedures.models import RegistroTreinamento, SolicitacaoValidacaoMatriz, PlanejamentoTreinamento
             from datetime import timedelta
-            from django.db.models import Q
+            from django.db.models import Q, F
 
             # 5.1 Avaliação de Eficácia pendente (após 30 dias de elegibilidade)
             data_limite_30d = hoje - timedelta(days=30)
@@ -277,7 +301,54 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                     )
                 )
 
-            # 5.2 Validações de Matriz de Habilidade
+            # 5.2 Demandas de Treinamento Pendentes
+            pendencias_demanda = (
+                Q(data_treinamento__isnull=True)
+                | (
+                    Q(lista_presenca__isnull=True)
+                    & (
+                        (
+                            Q(procedimento__numero_revisao__isnull=False)
+                            & ~Q(revisao_treinada=F("procedimento__numero_revisao"))
+                        )
+                        | (
+                            Q(procedimento__data_aprovacao__isnull=False)
+                            & Q(data_treinamento__lt=F("procedimento__data_aprovacao"))
+                        )
+                    )
+                )
+            )
+            qs_demandas = RegistroTreinamento.objects.filter(
+                ativo=True,
+                tipo="PROCEDIMENTO",
+                procedimento__isnull=False,
+                colaborador__is_active=True,
+            ).filter(pendencias_demanda).select_related("colaborador", "procedimento")
+
+            if not is_global_viewer and colaborador and not (user.is_superuser or user.is_staff):
+                scoped_demandas = qs_demandas.filter(
+                    Q(colaborador=colaborador) | Q(colaborador__lider=colaborador) | Q(colaborador__supervisor=colaborador) | Q(colaborador__gerente=colaborador)
+                )
+                target_demandas = scoped_demandas if scoped_demandas.exists() else qs_demandas
+            else:
+                target_demandas = qs_demandas
+
+            for d in target_demandas[:20]:
+                items.append(
+                    InboxItem(
+                        id=f"demanda_{d.id}",
+                        title=f"Demanda: {d.colaborador.nome_completo}",
+                        description=f"Procedimento {d.procedimento.codigo} pendente de treinamento/atualização",
+                        module="Treinamentos",
+                        icon="bi-book",
+                        url=reverse("procedures:treinamentos_list"),
+                        action_text="Treinar",
+                        date=d.criado_em.date() if hasattr(d, "criado_em") and d.criado_em else hoje,
+                        is_urgent=False,
+                    )
+                )
+
+            # 5.3 Validações de Matriz de Habilidade
             try:
                 qs_matriz = SolicitacaoValidacaoMatriz.objects.filter(
                     status="pendente",
@@ -304,7 +375,60 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                     )
             except Exception:
                 pass
-    except Exception as e:
+
+            # 5.4 Planejamentos de Treinamento Atrasados / Próximos
+            try:
+                qs_plan = PlanejamentoTreinamento.objects.filter(
+                    status__in=['PLANEJADO', 'EM_ANDAMENTO'],
+                    data_planejada__lte=hoje + timedelta(days=7)
+                ).select_related('procedimento', 'responsavel')
+
+                if not is_global_viewer and colaborador and not (user.is_superuser or user.is_staff):
+                    scoped_plan = qs_plan.filter(responsavel=colaborador)
+                    target_plan = scoped_plan if scoped_plan.exists() else qs_plan
+                else:
+                    target_plan = qs_plan
+
+                for pl in target_plan[:10]:
+                    atrasado = bool(pl.data_planejada and pl.data_planejada < hoje)
+                    items.append(
+                        InboxItem(
+                            id=f"planejamento_{pl.id}",
+                            title=f"Planejamento: {pl.procedimento.codigo if pl.procedimento else 'Treinamento'}",
+                            description=f"{'Atrasado desde ' if atrasado else 'Previsto para '}{pl.data_planejada.strftime('%d/%m/%Y') if pl.data_planejada else '-'}",
+                            module="Treinamentos",
+                            icon="bi-calendar-event",
+                            url=reverse("procedures:treinamentos_list"),
+                            action_text="Ver Treinamento",
+                            date=pl.data_planejada if pl.data_planejada else hoje,
+                            is_urgent=atrasado,
+                        )
+                    )
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    # 6. Laboratório (Ocorrências abertas)
+    try:
+        if has_module_access(user, "laboratorio"):
+            from laboratorio.models import OcorrenciaLaboratorio
+            qs_lab = OcorrenciaLaboratorio.objects.filter(data_encerramento__isnull=True)[:15]
+            for oc in qs_lab:
+                items.append(
+                    InboxItem(
+                        id=f"laboratorio_{oc.id}",
+                        title=f"Ocorrência Aberta: {oc.titulo or 'Laboratório'}",
+                        description=f"Registrada em {oc.data_ocorrencia.strftime('%d/%m/%Y') if oc.data_ocorrencia else '-'}",
+                        module="Laboratório",
+                        icon="bi-flask",
+                        url=reverse("laboratorio:modulo"),
+                        action_text="Ver Ocorrência",
+                        date=oc.data_ocorrencia if oc.data_ocorrencia else hoje,
+                        is_urgent=False
+                    )
+                )
+    except Exception:
         pass
 
     # Sort items: oldest date first (most urgent)

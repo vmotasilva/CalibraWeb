@@ -508,7 +508,7 @@
                             data-periodo="{% if i.data_proxima_calibracao %}{{ i.data_proxima_calibracao|date:'Y-m' }}{% endif %}"
                             data-ocorrencia="{% if i.ocorrencias.all %}{% for oc in i.ocorrencias.all %}{% if oc.status == 'ABERTA' %}COM_ABERTA{% endif %}{% endfor %}{% endif %}"
                             data-situacao="{% if i.data_proxima_calibracao %}{% if i.data_proxima_calibracao < hoje %}VENCIDO{% elif i.data_proxima_calibracao <= alerta_30d %}AVENCER_30{% elif i.data_proxima_calibracao <= alerta_60d %}AVENCER_60{% elif i.data_proxima_calibracao <= alerta_90d %}AVENCER_90{% elif i.data_proxima_calibracao <= alerta_120d %}AVENCER_120{% else %}EM_DIA{% endif %}{% else %}EM_DIA{% endif %}">
-                            <td class="ps-3"><input type="checkbox" class="row-select" value="{{ i.id }}" data-tag="{{ i.tag }}" data-frequencia="{% if i.frequencia_meses %}{{ i.frequencia_meses }}{% elif i.categoria and i.categoria.frequencia_calibracao_meses %}{{ i.categoria.frequencia_calibracao_meses }}{% else %}12{% endif %}" /></td>
+                            <td class="ps-3"><input type="checkbox" class="row-select" value="{{ i.id }}" data-tag="{{ i.tag }}" data-frequencia="{% if i.frequencia_meses %}{{ i.frequencia_meses }}{% elif i.categoria and i.categoria.frequencia_calibracao_meses %}{{ i.categoria.frequencia_calibracao_meses }}{% else %}12{% endif %}" data-tratativa="{% if i.tratativa_calibracao %}{{ i.tratativa_calibracao }}{% elif i.categoria and i.categoria.tratativa_calibracao %}{{ i.categoria.tratativa_calibracao }}{% else %}INTERNA{% endif %}" /></td>
                             
                             <td class="ps-4 py-2 fw-bold text-primary font-monospace">
                                 {{ i.tag }}
@@ -637,7 +637,7 @@
                     <!-- Topo do Card: Checkbox, TAG e Botões de Ação -->
                     <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
                         <div class="d-flex align-items-center gap-2">
-                            <input type="checkbox" class="row-select form-check-input mt-0" value="{{ i.id }}" data-tag="{{ i.tag }}" data-frequencia="{% if i.frequencia_meses %}{{ i.frequencia_meses }}{% elif i.categoria and i.categoria.frequencia_calibracao_meses %}{{ i.categoria.frequencia_calibracao_meses }}{% else %}12{% endif %}" />
+                            <input type="checkbox" class="row-select form-check-input mt-0" value="{{ i.id }}" data-tag="{{ i.tag }}" data-frequencia="{% if i.frequencia_meses %}{{ i.frequencia_meses }}{% elif i.categoria and i.categoria.frequencia_calibracao_meses %}{{ i.categoria.frequencia_calibracao_meses }}{% else %}12{% endif %}" data-tratativa="{% if i.tratativa_calibracao %}{{ i.tratativa_calibracao }}{% elif i.categoria and i.categoria.tratativa_calibracao %}{{ i.categoria.tratativa_calibracao }}{% else %}INTERNA{% endif %}" />
                             <span class="fw-bold text-primary font-monospace fs-6">{{ i.tag }}</span>
                             {% if i.categoria %}
                                 <span class="badge bg-light text-muted border" style="font-size: 0.65rem;">{{ i.categoria.nome }}</span>
@@ -1375,6 +1375,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     id: id,
                     tag: cb.getAttribute('data-tag') || ('ID ' + id),
                     frequencia: cb.getAttribute('data-frequencia') || '12',
+                    tratativa: (cb.getAttribute('data-tratativa') || 'INTERNA').toUpperCase()
                 });
             }
         });
@@ -1453,18 +1454,27 @@ document.addEventListener('DOMContentLoaded', function() {
             if (qtdSpan) qtdSpan.textContent = uniqueInstruments.length;
             if (inputIds) inputIds.value = uniqueInstruments.map(i => i.id).join(',');
             
-            // Logica Interno/Externo ocultar Fornecedor
+            // Logica Interno/Externo preenchimento automatico de acordo com o instrumento
             const tipoSelect = modalHistoricoMassa.querySelector('select[name="tipo_calibracao"]');
             const containerFornecedor = document.getElementById('container-fornecedor');
             const fornecedorSelect = modalHistoricoMassa.querySelector('select[name="fornecedor"]');
             
+            if (tipoSelect && uniqueInstruments.length > 0) {
+                const trat = uniqueInstruments[0].tratativa;
+                for (let opt of tipoSelect.options) {
+                    if (opt.value.toUpperCase() === trat || opt.text.toUpperCase().includes(trat)) {
+                        tipoSelect.value = opt.value;
+                        break;
+                    }
+                }
+            }
+
             function toggleFornecedor() {
                 if (!tipoSelect || !containerFornecedor) return;
-                // Ajuste se o value for diferente no backend. "INTERNA" geralmente é o valor.
-                const selectedText = tipoSelect.options[tipoSelect.selectedIndex].text.toLowerCase();
-                const selectedValue = tipoSelect.value;
+                const selectedText = tipoSelect.options[tipoSelect.selectedIndex] ? tipoSelect.options[tipoSelect.selectedIndex].text.toLowerCase() : '';
+                const selectedValue = (tipoSelect.value || '').toUpperCase();
                 
-                if (selectedText.includes('interna') || selectedValue === 'INTERNA' || selectedValue === 'Interna') {
+                if (selectedText.includes('interna') || selectedValue === 'INTERNA') {
                     containerFornecedor.style.display = 'none';
                     if (fornecedorSelect) fornecedorSelect.value = '';
                 } else {
@@ -1473,7 +1483,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             if (tipoSelect) {
-                tipoSelect.addEventListener('change', toggleFornecedor);
+                tipoSelect.onchange = toggleFornecedor;
                 toggleFornecedor(); // estado inicial
             }
             
@@ -1481,35 +1491,45 @@ document.addEventListener('DOMContentLoaded', function() {
             const dataCalInput = modalHistoricoMassa.querySelector('input[name="data_calibracao"]');
             const dataProxInput = modalHistoricoMassa.querySelector('input[name="proxima_calibracao"]');
             
+            if (dataCalInput && !dataCalInput.value) {
+                const hojeStr = new Date().toISOString().split('T')[0];
+                dataCalInput.value = hojeStr;
+            }
+
             function calcularProximaData() {
                 if (!dataCalInput || !dataCalInput.value || !dataProxInput) return;
                 
-                // Pegar frequencia do primeiro selecionado, ou 12 se nenhum tiver
                 let frequenciaMeses = 12;
-                if (checkboxes.length > 0) {
-                    const freqAttr = checkboxes[0].getAttribute('data-frequencia');
-                    if (freqAttr && !isNaN(parseInt(freqAttr))) {
-                        frequenciaMeses = parseInt(freqAttr);
+                if (uniqueInstruments.length > 0) {
+                    const freq = parseInt(uniqueInstruments[0].frequencia, 10);
+                    if (!isNaN(freq) && freq > 0) {
+                        frequenciaMeses = freq;
                     }
                 }
                 
-                const dataSelecionada = new Date(dataCalInput.value + 'T12:00:00'); // T12 para evitar erro de timezone
-                if (!isNaN(dataSelecionada.getTime())) {
-                    // Adicionar meses
-                    dataSelecionada.setMonth(dataSelecionada.getMonth() + frequenciaMeses);
+                const parts = dataCalInput.value.split('-');
+                if (parts.length === 3) {
+                    const ano = parseInt(parts[0], 10);
+                    const mes = parseInt(parts[1], 10) - 1;
+                    const dia = parseInt(parts[2], 10);
                     
-                    // Formatar para YYYY-MM-DD
-                    const yyyy = dataSelecionada.getFullYear();
-                    const mm = String(dataSelecionada.getMonth() + 1).padStart(2, '0');
-                    const dd = String(dataSelecionada.getDate()).padStart(2, '0');
+                    const dataCal = new Date(ano, mes, dia);
+                    dataCal.setMonth(dataCal.getMonth() + frequenciaMeses);
                     
+                    const yyyy = dataCal.getFullYear();
+                    const mm = String(dataCal.getMonth() + 1).padStart(2, '0');
+                    const dd = String(dataCal.getDate()).padStart(2, '0');
                     dataProxInput.value = `${yyyy}-${mm}-${dd}`;
                 }
             }
             
             if (dataCalInput) {
-                dataCalInput.addEventListener('change', calcularProximaData);
+                dataCalInput.oninput = calcularProximaData;
+                dataCalInput.onchange = calcularProximaData;
             }
+
+            // Executa cálculo inicial imediatamente ao abrir o modal
+            calcularProximaData();
         });
     }
 
