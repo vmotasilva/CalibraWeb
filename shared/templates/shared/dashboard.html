@@ -220,7 +220,7 @@
 
     <!-- BUSCA RÁPIDA NA TABELA -->
     <div class="position-relative" style="min-width: 280px;">
-        <input type="text" id="dashboardSearchInput" class="form-control form-control-sm rounded-pill ps-4 py-2" placeholder="Buscar TAG, descrição, setor..." autocomplete="off">
+        <input type="search" id="dashboardSearchInput" name="filter_query_instant_metro" class="form-control form-control-sm rounded-pill ps-4 py-2" placeholder="Buscar TAG, descrição, setor..." autocomplete="new-password" data-lpignore="true" value="">
         <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-2.5 text-muted small"></i>
     </div>
 </div>
@@ -632,9 +632,10 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        // Inicializar busca em tempo real
+        // Inicializar busca em tempo real e limpar qualquer autofill indevido do navegador
         const searchInput = document.getElementById('dashboardSearchInput');
         if (searchInput) {
+            searchInput.value = '';
             searchInput.addEventListener('input', filterInstrumentsTable);
         }
 
@@ -643,6 +644,9 @@
         tooltipTriggerList.map(function (tooltipTriggerEl) {
             return new bootstrap.Tooltip(tooltipTriggerEl);
         });
+
+        // Executar filtro inicial
+        filterInstrumentsTable();
     });
 </script>
 

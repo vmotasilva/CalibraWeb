@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Caixa de Entrada (Inbox){% endblock %}
+{% block title %}Caixa de Entrada (Notificações por Origem) &mdash; CalibraWEB{% endblock %}
 
 {% block content %}
 <style>
@@ -16,6 +16,7 @@
         color: #475569;
         margin-right: 4px;
         transition: all 0.2s ease;
+        font-weight: 500;
     }
     .nav-tabs .nav-link:hover {
         background-color: #f1f5f9;
@@ -27,15 +28,63 @@
         color: #0d6efd !important;
         font-weight: 700 !important;
     }
+
+    /* Sub-tabs / Sub-abas pills */
+    .subtab-pill {
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        color: #475569;
+        padding: 6px 14px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        border-radius: 20px;
+        transition: all 0.2s;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        text-decoration: none;
+    }
+    .subtab-pill:hover {
+        background: #f1f5f9;
+        color: #0f172a;
+        border-color: #cbd5e1;
+    }
+    .subtab-pill.active {
+        background: #0f766e;
+        color: #ffffff;
+        border-color: #0f766e;
+        box-shadow: 0 2px 6px rgba(15, 118, 110, 0.25);
+    }
+    .subtab-pill.active .badge {
+        background: rgba(255, 255, 255, 0.25) !important;
+        color: #ffffff !important;
+    }
+
+    .badge-subtype {
+        background-color: #e0f2fe;
+        color: #0369a1;
+        border: 1px solid #bae6fd;
+        font-size: 0.72rem;
+        font-weight: 600;
+        padding: 3px 8px;
+    }
 </style>
-<div class="container py-4" style="max-width: 950px;">
+
+<div class="container py-4" style="max-width: 1000px;">
+    <!-- HEADER -->
     <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
         <div>
-            <h2 class="h3 mb-1"><i class="bi bi-inboxes text-primary me-1"></i> Caixa de Entrada</h2>
-            <p class="text-muted mb-0">Pendências e notificações organizadas por módulo que exigem sua ação.</p>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-2.5 py-1">
+                    <i class="bi bi-bell-fill me-1"></i> Central de Notificações
+                </span>
+            </div>
+            <h2 class="h3 mb-1 fw-bold text-dark"><i class="bi bi-inboxes text-primary me-1"></i> Caixa de Entrada</h2>
+            <p class="text-muted mb-0 small">Pendências e cobranças separadas por módulo e organizadas em sub-abas por origem específica.</p>
         </div>
         <div class="d-flex flex-column align-items-end">
-            <span class="badge bg-primary fs-6 rounded-pill px-3 py-2 mb-1">{{ inbox_items|length }} itens pendentes</span>
+            <span class="badge bg-primary fs-6 rounded-pill px-3 py-2 mb-1 shadow-sm">{{ inbox_items|length }} itens pendentes</span>
             {% if can_toggle_global %}
             <div class="form-check form-switch mt-1">
                 <input class="form-check-input" type="checkbox" role="switch" id="globalSwitch" {% if inbox_is_global %}checked{% endif %} onchange="window.location.href='?global=' + (this.checked ? '1' : '0')">
@@ -50,7 +99,7 @@
         <div class="list-group-item p-5 text-center text-muted border-0" style="background: var(--hub-surface);">
             <div class="mb-3"><i class="bi bi-check-circle-fill display-2 text-success opacity-75"></i></div>
             <h4 class="mb-2 text-dark">Caixa de entrada limpa!</h4>
-            <p class="mb-0 fs-5">Você não tem pendências atrasadas no momento. Bom trabalho!</p>
+            <p class="mb-0 fs-5">Você não tem pendências no momento. Bom trabalho!</p>
             <div class="mt-4">
                 <a href="{% url 'hub' %}" class="btn btn-primary px-4"><i class="bi bi-arrow-left"></i> Voltar ao Hub</a>
             </div>
@@ -58,7 +107,7 @@
     </div>
     {% else %}
     
-    <!-- Nav tabs organizadas por Origem -->
+    <!-- NAV TABS PRINCIPAIS POR MÓDULO -->
     <ul class="nav nav-tabs mb-0 border-bottom" id="inboxTabs" role="tablist">
         <!-- Aba "Todas" -->
         <li class="nav-item" role="presentation">
@@ -75,9 +124,10 @@
         {% endfor %}
     </ul>
 
-    <!-- Tab panes -->
+    <!-- CONTEÚDO DAS ABAS -->
     <div class="tab-content border-start border-end border-bottom bg-white rounded-bottom-4 shadow-sm mb-5" id="inboxTabsContent">
-        <!-- Aba "Todas" Content -->
+        
+        <!-- ABA "TODAS" CONTENT -->
         <div class="tab-pane fade {% if active_tab == 'todas' or not active_tab %}show active{% endif %}" id="tab-pane-todas" role="tabpanel" aria-labelledby="tab-btn-todas">
             <div class="list-group list-group-flush rounded-bottom-4 overflow-hidden">
                 {% for item in inbox_items %}
@@ -86,8 +136,11 @@
                         <i class="bi {{ item.icon }} fs-5"></i>
                     </div>
                     <div class="flex-grow-1 min-w-0">
-                        <div class="d-flex align-items-center gap-2 mb-1">
+                        <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
                             <span class="badge bg-light text-dark border">{{ item.module }}</span>
+                            {% if item.sub_type %}
+                            <span class="badge rounded-pill badge-subtype">{{ item.sub_type }}</span>
+                            {% endif %}
                             <h6 class="mb-0 fw-bold fs-6 text-dark text-truncate">{{ item.title }}</h6>
                         </div>
                         <p class="mb-0 text-muted small">{{ item.description }}</p>
@@ -101,18 +154,38 @@
             </div>
         </div>
 
+        <!-- ABAS DE CADA MÓDULO COM SUB-ABAS POR ORIGEM -->
         {% for group in grouped_items.values %}
-        <!-- Aba Módulo Content -->
         <div class="tab-pane fade {% if active_tab == group.slug %}show active{% endif %}" id="tab-pane-{{ group.slug }}" role="tabpanel" aria-labelledby="tab-btn-{{ group.slug }}">
-            <div class="list-group list-group-flush rounded-bottom-4 overflow-hidden">
+            
+            <!-- BARRA DE SUB-ABAS (SUB-TABS) POR ORIGEM ESPECÍFICA -->
+            {% if group.sub_groups|length > 0 %}
+            <div class="p-3 bg-light border-bottom d-flex flex-wrap align-items-center gap-2">
+                <span class="small fw-bold text-muted me-1">Origem:</span>
+                <button type="button" class="subtab-pill active" data-parent-slug="{{ group.slug }}" data-sub-slug="todas" onclick="filterSubTab('{{ group.slug }}', 'todas', this)">
+                    <i class="bi bi-collection"></i> Todas <span class="badge bg-secondary rounded-pill ms-1">{{ group.items|length }}</span>
+                </button>
+                {% for sub in group.sub_groups.values %}
+                <button type="button" class="subtab-pill" data-parent-slug="{{ group.slug }}" data-sub-slug="{{ sub.slug }}" onclick="filterSubTab('{{ group.slug }}', '{{ sub.slug }}', this)">
+                    {{ sub.name }} <span class="badge bg-primary bg-opacity-75 rounded-pill ms-1">{{ sub.count }}</span>
+                </button>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- LISTAGEM DOS ITENS DO MÓDULO -->
+            <div class="list-group list-group-flush rounded-bottom-4 overflow-hidden" id="list-group-{{ group.slug }}">
                 {% for item in group.items %}
-                <a href="{{ item.url }}" class="list-group-item list-group-item-action d-flex align-items-center gap-3 p-3 p-md-4 {% if item.is_urgent %}border-start border-danger border-4{% else %}border-start border-warning border-4{% endif %}" style="background: var(--hub-surface);">
+                <a href="{{ item.url }}" class="list-group-item list-group-item-action d-flex align-items-center gap-3 p-3 p-md-4 inbox-item-row {% if item.is_urgent %}border-start border-danger border-4{% else %}border-start border-warning border-4{% endif %}" style="background: var(--hub-surface);" data-parent="{{ group.slug }}" data-subtype="{{ item.sub_type|slugify }}">
                     <div class="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0" style="width: 44px; height: 44px; background-color: var(--hub-ink);">
                         <i class="bi {{ item.icon }} fs-5"></i>
                     </div>
                     <div class="flex-grow-1 min-w-0">
-                        <div class="d-flex align-items-center gap-2 mb-1">
+                        <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
                             <span class="badge bg-light text-dark border">{{ item.module }}</span>
+                            {% if item.sub_type %}
+                            <span class="badge rounded-pill badge-subtype">{{ item.sub_type }}</span>
+                            {% endif %}
                             <h6 class="mb-0 fw-bold fs-6 text-dark text-truncate">{{ item.title }}</h6>
                         </div>
                         <p class="mb-0 text-muted small">{{ item.description }}</p>
@@ -123,6 +196,12 @@
                     </div>
                 </a>
                 {% endfor %}
+
+                <!-- Empty State quando o filtro da sub-aba não encontrar itens -->
+                <div class="p-4 text-center text-muted d-none" id="subtab-empty-{{ group.slug }}">
+                    <i class="bi bi-check2-circle text-success fs-3 d-block mb-1"></i>
+                    <span class="small">Nenhuma notificação encontrada nesta sub-origem.</span>
+                </div>
             </div>
         </div>
         {% endfor %}
@@ -131,15 +210,61 @@
 </div>
 
 <script>
+// Filtragem por Sub-Aba dentro do Módulo
+function filterSubTab(groupSlug, subSlug, buttonEl) {
+    // 1. Atualizar estilo dos botões da sub-aba
+    if (buttonEl) {
+        const container = buttonEl.closest('.tab-pane');
+        if (container) {
+            container.querySelectorAll('.subtab-pill').forEach(btn => btn.classList.remove('active'));
+            buttonEl.classList.add('active');
+        }
+    }
+
+    // 2. Filtrar linhas do módulo
+    const rows = document.querySelectorAll(`.inbox-item-row[data-parent="${groupSlug}"]`);
+    let visibleCount = 0;
+
+    rows.forEach(row => {
+        const itemSub = row.getAttribute('data-subtype') || '';
+        if (subSlug === 'todas' || itemSub === subSlug) {
+            row.style.display = 'flex';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+
+    // 3. Exibir ou ocultar empty state
+    const emptyState = document.getElementById(`subtab-empty-${groupSlug}`);
+    if (emptyState) {
+        if (visibleCount === 0) {
+            emptyState.classList.remove('d-none');
+        } else {
+            emptyState.classList.add('d-none');
+        }
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
-    // Sincronizar aba ativa via parâmetro de busca ?tab= ou hash na URL
+    // Sincronizar aba principal ativa via parâmetro de busca ?tab= ou hash na URL
     const urlParams = new URLSearchParams(window.location.search);
     const tabParam = urlParams.get('tab') || window.location.hash.replace('#', '');
+    const subParam = urlParams.get('sub');
+
     if (tabParam) {
         const targetBtn = document.getElementById('tab-btn-' + tabParam.toLowerCase());
         if (targetBtn) {
             const tabInstance = bootstrap.Tab.getOrCreateInstance(targetBtn);
             tabInstance.show();
+        }
+
+        // Se houver sub-aba na URL (?sub=...), aciona o filtro da sub-aba
+        if (subParam) {
+            const subBtn = document.querySelector(`.subtab-pill[data-parent-slug="${tabParam.toLowerCase()}"][data-sub-slug="${subParam.toLowerCase()}"]`);
+            if (subBtn) {
+                filterSubTab(tabParam.toLowerCase(), subParam.toLowerCase(), subBtn);
+            }
         }
     }
 });

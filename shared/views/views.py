@@ -566,6 +566,7 @@ def inbox_view(request):
     inbox_items = get_user_inbox_items(request.user, is_global=inbox_is_global)
 
     active_tab = (request.GET.get('tab') or 'todas').strip().lower()
+    active_sub = (request.GET.get('sub') or 'todas').strip().lower()
 
     module_icons = {
         "auditoria": "bi-clipboard-check",
@@ -577,7 +578,7 @@ def inbox_view(request):
         "pessoas": "bi-people",
     }
 
-    # Agrupar por módulo preservando a ordem
+    # Agrupar por módulo e por sub-origem/sub-aba
     grouped_items: dict[str, dict[str, Any]] = OrderedDict()
     for item in inbox_items:
         mod_name = (item.module or "Outros").strip().capitalize()
@@ -589,8 +590,21 @@ def inbox_view(request):
                 "slug": slugify(mod_name),
                 "icon": icon,
                 "items": [],
+                "sub_groups": OrderedDict(),
             }
         grouped_items[mod_key]["items"].append(item)
+
+        sub_name = (item.sub_type or "Geral").strip()
+        sub_slug = slugify(sub_name)
+        if sub_slug not in grouped_items[mod_key]["sub_groups"]:
+            grouped_items[mod_key]["sub_groups"][sub_slug] = {
+                "name": sub_name,
+                "slug": sub_slug,
+                "count": 0,
+                "items": [],
+            }
+        grouped_items[mod_key]["sub_groups"][sub_slug]["count"] += 1
+        grouped_items[mod_key]["sub_groups"][sub_slug]["items"].append(item)
 
     return render(
         request,
@@ -599,6 +613,7 @@ def inbox_view(request):
             "inbox_items": inbox_items,
             "grouped_items": grouped_items,
             "active_tab": active_tab,
+            "active_sub": active_sub,
             "can_toggle_global": can_toggle_global,
             "inbox_is_global": inbox_is_global,
         },

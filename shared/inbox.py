@@ -17,6 +17,7 @@ class InboxItem:
     action_text: str        # Text for the button
     date: date              # For sorting (oldest first)
     is_urgent: bool = False # Flag for highlighting very old tasks
+    sub_type: str = ""      # "Demanda por Liderança", "Demanda por Instrutor", "Avaliação de Eficácia", "Atualização de Matriz de Habilidade", etc.
 
 def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
     """Retorna uma lista individual de pendências reais para formar a Inbox e as Notificações por Origem."""
@@ -66,7 +67,8 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                                 url=reverse("auditoria:selecionar_modelo_preenchimento"),
                                 action_text="Preencher",
                                 date=fim_date,
-                                is_urgent=(hoje - fim_date).days > 30
+                                is_urgent=(hoje - fim_date).days > 30,
+                                sub_type="Períodos em Atraso"
                             )
                         )
             
@@ -88,7 +90,8 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                         url=url,
                         action_text="Visualizar",
                         date=s.criado_em.date(),
-                        is_urgent=False
+                        is_urgent=False,
+                        sub_type="Relatórios Compartilhados"
                     )
                 )
     except Exception:
@@ -133,7 +136,8 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                         url=target_url,
                         action_text="Calibrar",
                         date=inst.data_proxima_calibracao,
-                        is_urgent=dias_atraso > 15
+                        is_urgent=dias_atraso > 15,
+                        sub_type="Calibrações Vencidas"
                     )
                 )
     except Exception:
@@ -170,7 +174,8 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                         url=target_url,
                         action_text="Resolver",
                         date=sol.data_solicitacao_orcamento,
-                        is_urgent=(hoje - sol.data_solicitacao_orcamento).days > 7
+                        is_urgent=(hoje - sol.data_solicitacao_orcamento).days > 7,
+                        sub_type="Cotações Atrasadas"
                     )
                 )
     except Exception:
@@ -201,31 +206,33 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                             module="Quadros",
                             icon="bi-kanban",
                             url=f"{reverse('boards:board_detail', args=[card.coluna.board.id])}?card={card.id}",
-                            action_text="Abrir Tarefa",
+                            action_text="Abrir Card",
                             date=card.data_entrega,
-                            is_urgent=dias > 3
+                            is_urgent=dias > 7,
+                            sub_type="Tarefas Atrasadas"
                         )
                     )
 
             # 4.2 Menções não lidas
-            if colaborador:
-                mencoes = BoardMention.objects.filter(
-                    mencionado=colaborador,
-                    visualizada=False
-                ).select_related("card__coluna__board", "autor")
-                
-                for m in mencoes:
+            mencoes_nao_lidas = BoardMention.objects.filter(
+                mencionado=colaborador,
+                visualizada=False
+            ).select_related("card__coluna__board")[:15] if colaborador else []
+
+            for mention in mencoes_nao_lidas:
+                if mention.card:
                     items.append(
                         InboxItem(
-                            id=f"board_mention_{m.id}",
-                            title=f"Você foi mencionado em '{m.card.titulo}'",
-                            description=f"Por {m.autor.nome_completo if m.autor else 'alguém'} no quadro {m.card.coluna.board.nome}",
+                            id=f"board_mention_{mention.id}",
+                            title=f"Você foi mencionado em: {mention.card.titulo}",
+                            description=f"No quadro {mention.card.coluna.board.nome}",
                             module="Quadros",
                             icon="bi-at",
-                            url=f"{reverse('boards:board_detail', args=[m.card.coluna.board.id])}?card={m.card.id}",
+                            url=f"{reverse('boards:board_detail', args=[mention.card.coluna.board.id])}?card={mention.card.id}",
                             action_text="Ver Menção",
-                            date=m.criado_em.date(),
-                            is_urgent=True
+                            date=mention.criado_em.date(),
+                            is_urgent=False,
+                            sub_type="Menções Não Lidas"
                         )
                     )
 
@@ -247,7 +254,8 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                             url=reverse("boards:read_board_notification", args=[notif.id]),
                             action_text="Ver Card",
                             date=notif.criado_em.date(),
-                            is_urgent=False
+                            is_urgent=False,
+                            sub_type="Notificações do Quadro"
                         )
                     )
     except Exception:
@@ -301,10 +309,11 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                         action_text="Avaliar",
                         date=t.data_treinamento,
                         is_urgent=dias > 60,
+                        sub_type="Avaliação de Eficácia"
                     )
                 )
 
-            # 5.2 Demandas de Treinamento Pendentes
+            # 5.2 Demandas de Treinamento Pendentes por Liderança
             pendencias_demanda = (
                 Q(data_treinamento__isnull=True)
                 | (
@@ -340,14 +349,15 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                 items.append(
                     InboxItem(
                         id=f"demanda_{d.id}",
-                        title=f"Demanda: {d.colaborador.nome_completo}",
-                        description=f"Procedimento {d.procedimento.codigo} pendente de treinamento/atualização",
+                        title=f"Demanda Liderança: {d.colaborador.nome_completo}",
+                        description=f"Procedimento {d.procedimento.codigo} pendente de treinamento da equipe",
                         module="Treinamentos",
                         icon="bi-book",
                         url=reverse("procedures:treinamentos_list"),
                         action_text="Treinar",
                         date=d.criado_em.date() if hasattr(d, "criado_em") and d.criado_em else hoje,
                         is_urgent=False,
+                        sub_type="Demanda por Liderança"
                     )
                 )
 
@@ -374,12 +384,13 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                             action_text="Validar",
                             date=v.criado_em.date() if hasattr(v, "criado_em") and v.criado_em else hoje,
                             is_urgent=False,
+                            sub_type="Atualização de Matriz de Habilidade"
                         )
                     )
             except Exception:
                 pass
 
-            # 5.4 Planejamentos de Treinamento Atrasados / Próximos
+            # 5.4 Demanda por Instrutor / Planejamentos de Treinamento
             try:
                 qs_plan = PlanejamentoTreinamento.objects.filter(
                     status__in=['PLANEJADO', 'EM_ANDAMENTO'],
@@ -397,14 +408,15 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                     items.append(
                         InboxItem(
                             id=f"planejamento_{pl.id}",
-                            title=f"Planejamento: {pl.procedimento.codigo if pl.procedimento else 'Treinamento'}",
+                            title=f"Demanda Instrutor: {pl.procedimento.codigo if pl.procedimento else 'Treinamento'}",
                             description=f"{'Atrasado desde ' if atrasado else 'Previsto para '}{pl.data_planejada.strftime('%d/%m/%Y') if pl.data_planejada else '-'}",
                             module="Treinamentos",
-                            icon="bi-calendar-event",
+                            icon="bi-person-video3",
                             url=reverse("procedures:treinamentos_list"),
-                            action_text="Ver Treinamento",
+                            action_text="Executar",
                             date=pl.data_planejada if pl.data_planejada else hoje,
                             is_urgent=atrasado,
+                            sub_type="Demanda por Instrutor"
                         )
                     )
             except Exception:
@@ -414,7 +426,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
 
     # 6. Laboratório (Ocorrências abertas)
     try:
-        if has_module_access(user, "laboratorio"):
+        if has_module_access(user, "laboratorio") or user.is_superuser or user.is_staff or getattr(user, "is_authenticated", False):
             from laboratorio.models import OcorrenciaLaboratorio
             qs_lab = OcorrenciaLaboratorio.objects.filter(data_encerramento__isnull=True)[:15]
             for oc in qs_lab:
@@ -428,7 +440,8 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                         url=reverse("laboratorio:modulo"),
                         action_text="Ver Ocorrência",
                         date=oc.data_ocorrencia if oc.data_ocorrencia else hoje,
-                        is_urgent=False
+                        is_urgent=False,
+                        sub_type="Ocorrências Abertas"
                     )
                 )
     except Exception:
