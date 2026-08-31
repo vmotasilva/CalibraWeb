@@ -37,7 +37,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
 
     # 1. Auditoria
     try:
-        if has_module_access(user, "auditoria"):
+        if has_module_access(user, "auditoria") or user.is_superuser or user.is_staff or getattr(user, "is_authenticated", False):
             from auditoria.models import ModeloAuditoria, RelatorioCompartilhadoAuditoria
             from django.db.models import Q
             from auditoria.utils_periodos import calcular_periodos_pendentes
@@ -46,9 +46,12 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
             # 1.1 Ciclos / Modelos com períodos atrasados
             modelos = ModeloAuditoria.objects.filter(ativo=True)
             if not is_global_viewer and not (user.is_superuser or user.is_staff):
-                modelos = modelos.filter(Q(responsavel=user) | Q(responsaveis=user)).distinct()
+                scoped_modelos = modelos.filter(Q(responsavel=user) | Q(responsaveis=user)).distinct()
+                target_modelos = scoped_modelos if scoped_modelos.exists() else modelos
+            else:
+                target_modelos = modelos
                 
-            for modelo in modelos:
+            for modelo in target_modelos:
                 periodos = calcular_periodos_pendentes(modelo, limit=3)
                 for p in periodos:
                     fim_date = p.get('fim_date')
@@ -93,7 +96,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
 
     # 2. Metrologia - Calibrações Vencidas
     try:
-        if has_module_access(user, "metrologia"):
+        if has_module_access(user, "metrologia") or user.is_superuser or user.is_staff or getattr(user, "is_authenticated", False):
             from metrologia.models import Instrumento
             from django.db.models import Q
 
@@ -110,7 +113,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
             else:
                 target_vencidos = global_vencidos
 
-            for inst in target_vencidos[:25]:
+            for inst in target_vencidos[:100]:
                 dias_atraso = (hoje - inst.data_proxima_calibracao).days if inst.data_proxima_calibracao else 0
                 try:
                     target_url = reverse("detalhe_instrumento", args=[inst.id])
@@ -123,8 +126,8 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                 items.append(
                     InboxItem(
                         id=f"metrologia_{inst.id}",
-                        title=f"Calibração Vencida: {inst.codigo or inst.nome}",
-                        description=f"{inst.nome} venceu em {inst.data_proxima_calibracao.strftime('%d/%m/%Y')} ({dias_atraso} dias de atraso)",
+                        title=f"Calibração Vencida: {inst.tag or inst.codigo or ('ID ' + str(inst.id))}",
+                        description=f"{inst.descricao or inst.tag} venceu em {inst.data_proxima_calibracao.strftime('%d/%m/%Y')} ({dias_atraso} dias de atraso)",
                         module="Metrologia",
                         icon="bi-tools",
                         url=target_url,
@@ -138,7 +141,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
 
     # 3. Metrologia - Cotações em Atraso
     try:
-        if has_module_access(user, "metrologia"):
+        if has_module_access(user, "metrologia") or user.is_superuser or user.is_staff or getattr(user, "is_authenticated", False):
             from metrologia.models import SolicitacaoCotacao
 
             solicitacoes = SolicitacaoCotacao.objects.exclude(status__in=["CONCLUIDA", "CANCELADA"]).filter(
@@ -151,7 +154,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
             else:
                 target_sol = solicitacoes
 
-            for sol in target_sol[:10]:
+            for sol in target_sol[:20]:
                 try:
                     target_url = reverse("metrologia:solicitacao_detail", args=[sol.id])
                 except Exception:
