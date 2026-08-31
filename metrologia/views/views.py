@@ -1546,6 +1546,14 @@ def get_metrologia_dashboard_data():
             elif prox_data <= centovinte_dias:
                 situacao_detalhada = 'AVENCER_120'
 
+        periodos_set = set()
+        meses_pt = {'01':'Jan', '02':'Fev', '03':'Mar', '04':'Abr', '05':'Mai', '06':'Jun', '07':'Jul', '08':'Ago', '09':'Set', '10':'Out', '11':'Nov', '12':'Dez'}
+        if prox_data:
+            periodos_set.add(prox_data.strftime('%Y-%m'))
+            mes_ano_prox = f"{meses_pt.get(prox_data.strftime('%m'), '')}/{prox_data.strftime('%Y')}"
+        else:
+            mes_ano_prox = '-'
+
         instrumentos_list.append({
             'id': inst.id,
             'tag': inst.tag,
@@ -1565,6 +1573,8 @@ def get_metrologia_dashboard_data():
             'resultado_ultima_calibracao': getattr(inst, 'resultado_ultima_calibracao', 'APROVADO') or 'APROVADO',
             'data_proxima_calibracao': prox_data.strftime('%Y-%m-%d') if prox_data else None,
             'data_proxima_calibracao_display': prox_data.strftime('%d/%m/%Y') if prox_data else '-',
+            'mes_ano_proxima_calibracao': mes_ano_prox,
+            'periodo': prox_data.strftime('%Y-%m') if prox_data else '',
             'data_ultima_calibracao_display': inst.data_ultima_calibracao.strftime('%d/%m/%Y') if inst.data_ultima_calibracao else '-',
             'dias_para_vencer': dias_para_vencer,
             'status_situacao': status_situacao,
@@ -1585,6 +1595,19 @@ def get_metrologia_dashboard_data():
             'url_detalhes': url_detalhes,
         })
 
+    # Periodos filtro logic
+    periodos_set = set()
+    meses_pt = {'01':'Jan', '02':'Fev', '03':'Mar', '04':'Abr', '05':'Mai', '06':'Jun', '07':'Jul', '08':'Ago', '09':'Set', '10':'Out', '11':'Nov', '12':'Dez'}
+    for inst_dict in instrumentos_list:
+        if inst_dict.get('periodo'):
+            periodos_set.add(inst_dict['periodo'])
+
+    periodos_filtro = []
+    for p in sorted(list(periodos_set)):
+        ano, mes = p.split('-')
+        label = f"{meses_pt.get(mes, mes)}/{ano}"
+        periodos_filtro.append({'value': p, 'label': label})
+
     # Fornecedores, Categorias e Setores para Modais e Filtros
     try:
         from fornecedores.models import Fornecedor
@@ -1593,14 +1616,22 @@ def get_metrologia_dashboard_data():
         fornecedores_list = []
 
     try:
-        categorias_list = list(CategoriaInstrumento.objects.filter(ativo=True).order_by('nome'))
+        from django.db.models.functions import Lower
+        categorias_list = list(CategoriaInstrumento.objects.filter(ativo=True).order_by(Lower('nome')))
     except Exception:
-        categorias_list = []
+        try:
+            categorias_list = list(CategoriaInstrumento.objects.filter(ativo=True).order_by('nome'))
+        except Exception:
+            categorias_list = []
 
     try:
-        setores_list = list(Setor.objects.filter(ativo=True).order_by('nome'))
+        from django.db.models.functions import Lower
+        setores_list = list(Setor.objects.filter(ativo=True).order_by(Lower('nome')))
     except Exception:
-        setores_list = []
+        try:
+            setores_list = list(Setor.objects.filter(ativo=True).order_by('nome'))
+        except Exception:
+            setores_list = []
 
     # Cotações Abertas e Equipamentos no Fornecedor
     cotacoes_abertas = SolicitacaoCotacao.objects.filter(status='ABERTA').count()
@@ -1655,6 +1686,9 @@ def get_metrologia_dashboard_data():
         'fornecedores': fornecedores_list,
         'categorias': categorias_list,
         'setores': setores_list,
+        'categorias_filtro': categorias_list,
+        'setores_filtro': setores_list,
+        'periodos_filtro': periodos_filtro,
         'hoje': hoje.strftime('%Y-%m-%d'),
         'hoje_display': hoje.strftime('%d/%m/%Y'),
     }

@@ -523,7 +523,7 @@
                         <th class="py-3 d-none d-md-table-cell">Descrição</th>
                         <th class="py-3 d-none d-lg-table-cell">Setor</th>
                         <th class="py-3 text-center d-none d-sm-table-cell">Atividade & Local</th>
-                        <th class="py-3">Vencimento</th>
+                        <th class="py-3">Próx. Calibração</th>
                         <th class="py-3 text-center">Status / RNC</th>
                         <th class="text-end pe-3 py-3">Ações Rápidas</th>
                     </tr>
@@ -543,7 +543,8 @@
                         data-categoria-id="{{ item.categoria_id|default:'' }}"
                         data-acao="{{ item.activity_type }}"
                         data-status="{% if item.ativo %}ATIVO{% else %}INATIVO{% endif %}"
-                        data-resultado="{{ item.resultado_ultima_calibracao }}"
+                        data-periodo="{{ item.periodo|default:'' }}"
+                        data-resultado="{{ item.resultado_ultima_calibracao|default:'' }}"
                         data-ocorrencia="{% if item.has_active_occurrence %}COM_ABERTA{% else %}SEM_ABERTA{% endif %}"
                         data-situacao="{{ item.situacao_detalhada }}">
                         
@@ -599,22 +600,23 @@
                             </div>
                         </td>
 
-                        <!-- VENCIMENTO -->
+                        <!-- PRÓX. CALIBRAÇÃO (MÊS/ANO + DATA) -->
                         <td class="py-2.5">
-                            <div class="small fw-bold {% if item.status_situacao == 'VENCIDO' %}text-danger{% elif item.status_situacao == 'AVENCER_30' %}text-warning text-dark{% else %}text-dark{% endif %}">
-                                {{ item.data_proxima_calibracao_display }}
-                            </div>
-                            {% if item.dias_para_vencer is not None %}
-                                <div class="text-muted" style="font-size: 0.7rem;">
-                                    {% if item.dias_para_vencer < 0 %}
-                                        <span class="text-danger fw-semibold">{{ item.dias_para_vencer|stringformat:"+d"|slice:"1:" }} dias atrás</span>
-                                    {% elif item.dias_para_vencer <= 30 %}
-                                        <span class="text-warning text-dark fw-semibold">Em {{ item.dias_para_vencer }} dias</span>
-                                    {% else %}
-                                        <span>Em {{ item.dias_para_vencer }} dias</span>
+                            <div class="d-flex flex-column gap-0.5">
+                                <span class="badge bg-light text-dark border font-monospace fw-bold" style="width: fit-content; font-size: 0.75rem;">
+                                    <i class="bi bi-calendar-event text-primary me-1"></i>{{ item.mes_ano_proxima_calibracao }}
+                                </span>
+                                <div class="small fw-semibold {% if item.status_situacao == 'VENCIDO' %}text-danger{% elif item.status_situacao == 'AVENCER_30' %}text-warning text-dark{% else %}text-muted{% endif %}" style="font-size: 0.72rem;">
+                                    {{ item.data_proxima_calibracao_display }}
+                                    {% if item.dias_para_vencer is not None %}
+                                        {% if item.dias_para_vencer < 0 %}
+                                            <span class="text-danger fw-bold">({{ item.dias_para_vencer|stringformat:"+d"|slice:"1:" }}d)</span>
+                                        {% elif item.dias_para_vencer <= 30 %}
+                                            <span class="text-warning text-dark fw-bold">({{ item.dias_para_vencer }}d)</span>
+                                        {% endif %}
                                     {% endif %}
                                 </div>
-                            {% endif %}
+                            </div>
                         </td>
 
                         <!-- STATUS / RNC -->
@@ -737,30 +739,35 @@
 <!-- MODAIS COMPLEMENTARES -->
 <!-- ============================================================================== -->
 
-<!-- 1. MODAL FILTROS AVANÇADOS -->
+<!-- 1. MODAL FILTROS AVANÇADOS (ESTRUTURA IGUAL À LISTAGEM DE INSTRUMENTOS) -->
 <div class="modal fade" id="filtrosModal" tabindex="-1" aria-labelledby="filtrosModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-xl">
-        <div class="modal-content shadow-lg" style="border-radius: 14px;">
-            <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
-                <h5 class="modal-title fw-bold" id="filtrosModalLabel"><i class="bi bi-funnel me-2"></i>Filtros Avançados de Metrologia</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0" style="border-radius: 14px;">
+            <div class="modal-header bg-dark text-white px-4 py-3" style="border-top-left-radius: 14px; border-top-right-radius: 14px;">
+                <h5 class="modal-title fw-bold fs-6" id="filtrosModalLabel">
+                    <i class="bi bi-funnel-fill text-primary me-2"></i>Filtros Avançados de Metrologia
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
+            
             <div class="modal-body p-4">
-                <div class="d-flex justify-content-end align-items-center mb-3 flex-shrink-0">
-                    <button class="btn btn-sm btn-outline-secondary" type="button" onclick="limparFiltrosAvancados()">
+                <div class="d-flex justify-content-end mb-3">
+                    <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" type="button" onclick="limparFiltrosAvancados()">
                         <i class="bi bi-x-circle me-1"></i>Limpar todos os filtros
                     </button>
                 </div>
                 
-                <div class="row g-4">
+                <div class="row g-3">
                     <!-- Coluna 1: Situação e Status -->
                     <div class="col-md-3">
+                        <!-- 1. SITUAÇÃO -->
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
-                                <label class="form-label small fw-bold text-muted mb-0">SITUAÇÃO (VENCIMENTO)</label>
+                                <label class="form-label small fw-bold text-muted mb-0">SITUAÇÃO</label>
                                 <i class="bi bi-chevron-down"></i>
                             </div>
                             <div class="filter-content">
+                                <button class="btn btn-xs btn-link p-0 mb-2 small text-decoration-none" type="button" onclick="selectAllInCategory('situacao')">Selecionar Todos</button>
                                 <div class="d-flex flex-column gap-1">
                                     <div class="form-check">
                                         <input class="form-check-input filter-avancado-cb" type="checkbox" value="VENCIDO" data-cat="situacao">
@@ -790,15 +797,17 @@
                             </div>
                         </div>
 
+                        <!-- 2. STATUS -->
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
                                 <label class="form-label small fw-bold text-muted mb-0">STATUS</label>
                                 <i class="bi bi-chevron-down"></i>
                             </div>
                             <div class="filter-content">
+                                <button class="btn btn-xs btn-link p-0 mb-2 small text-decoration-none" type="button" onclick="selectAllInCategory('status')">Selecionar Todos</button>
                                 <div class="d-flex flex-column gap-1">
                                     <div class="form-check">
-                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="ATIVO" data-cat="status" checked>
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="ATIVO" id="st_ativo_dash" data-cat="status" checked>
                                         <label class="form-check-label small">Ativos</label>
                                     </div>
                                     <div class="form-check">
@@ -810,14 +819,37 @@
                         </div>
                     </div>
 
-                    <!-- Coluna 2: Ação e Ocorrências -->
+                    <!-- Coluna 2: Próxima Calibração e Ação -->
                     <div class="col-md-3">
+                        <!-- 3. PRÓXIMA CALIBRAÇÃO (MÊS/ANO) -->
+                        <div class="filter-group open mb-3">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="form-label small fw-bold text-muted mb-0">PRÓX. CALIBRAÇÃO</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <button class="btn btn-xs btn-link p-0 mb-2 small text-decoration-none" type="button" onclick="selectAllInCategory('periodo')">Selecionar Todos</button>
+                                <div class="d-flex flex-column gap-1" style="max-height: 180px; overflow-y: auto;">
+                                    {% for p in periodos_filtro %}
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="{{ p.value }}" data-cat="periodo">
+                                        <label class="form-check-label small">{{ p.label }}</label>
+                                    </div>
+                                    {% empty %}
+                                    <span class="small text-muted">Nenhum período disponível</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 4. AÇÃO -->
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
                                 <label class="form-label small fw-bold text-muted mb-0">AÇÃO</label>
                                 <i class="bi bi-chevron-down"></i>
                             </div>
                             <div class="filter-content">
+                                <button class="btn btn-xs btn-link p-0 mb-2 small text-decoration-none" type="button" onclick="selectAllInCategory('acao')">Selecionar Todos</button>
                                 <div class="d-flex flex-column gap-1">
                                     <div class="form-check">
                                         <input class="form-check-input filter-avancado-cb" type="checkbox" value="CALIBRACAO" data-cat="acao">
@@ -830,10 +862,88 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
 
+                    <!-- Coluna 3: Categoria e Setor -->
+                    <div class="col-md-3">
+                        <!-- 5. CATEGORIA -->
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
-                                <label class="form-label small fw-bold text-muted mb-0">OCORRÊNCIAS (RNC)</label>
+                                <label class="form-label small fw-bold text-muted mb-0">CATEGORIA</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <button class="btn btn-xs btn-link p-0 mb-2 small text-decoration-none" type="button" onclick="selectAllInCategory('categoria')">Selecionar Todos</button>
+                                <div class="d-flex flex-column gap-1" style="max-height: 180px; overflow-y: auto;">
+                                    {% for cat in categorias_filtro|default:categorias %}
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="{{ cat.id }}" data-cat="categoria">
+                                        <label class="form-check-label small">{{ cat.nome }}</label>
+                                    </div>
+                                    {% empty %}
+                                    <span class="small text-muted">Nenhuma categoria encontrada</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 6. SETOR -->
+                        <div class="filter-group open mb-3">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="form-label small fw-bold text-muted mb-0">SETOR</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <button class="btn btn-xs btn-link p-0 mb-2 small text-decoration-none" type="button" onclick="selectAllInCategory('setor')">Selecionar Todos</button>
+                                <div class="d-flex flex-column gap-1" style="max-height: 180px; overflow-y: auto;">
+                                    {% for s in setores_filtro|default:setores %}
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="{{ s.id }}" data-cat="setor">
+                                        <label class="form-check-label small">{{ s.nome }}</label>
+                                    </div>
+                                    {% empty %}
+                                    <span class="small text-muted">Nenhum setor encontrado</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Coluna 4: Resultado e Ocorrência -->
+                    <div class="col-md-3">
+                        <!-- 7. RESULTADO -->
+                        <div class="filter-group open mb-3">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="form-label small fw-bold text-muted mb-0">RESULTADO</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <button class="btn btn-xs btn-link p-0 mb-2 small text-decoration-none" type="button" onclick="selectAllInCategory('resultado')">Selecionar Todos</button>
+                                <div class="d-flex flex-column gap-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="APROVADO_SEM_CORRECAO" data-cat="resultado">
+                                        <label class="form-check-label small">Aprovado</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="APROVADO_COM_CORRECAO" data-cat="resultado">
+                                        <label class="form-check-label small">Aprv. c/ Correção</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="REPROVADO" data-cat="resultado">
+                                        <label class="form-check-label small">Reprovado</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="SEM_CALIBRACAO" data-cat="resultado">
+                                        <label class="form-check-label small">Sem Calibração</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 8. OCORRÊNCIA -->
+                        <div class="filter-group open mb-3">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="form-label small fw-bold text-muted mb-0">OCORRÊNCIA</label>
                                 <i class="bi bi-chevron-down"></i>
                             </div>
                             <div class="filter-content">
@@ -844,56 +954,20 @@
                                     </div>
                                     <div class="form-check">
                                         <input class="form-check-input filter-avancado-cb" type="checkbox" value="SEM_ABERTA" data-cat="ocorrencia">
-                                        <label class="form-check-label small text-muted">Sem Ocorrência Aberta</label>
+                                        <label class="form-check-label small text-success fw-bold">Sem Ocorrência Aberta</label>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Coluna 3: Categorias -->
-                    <div class="col-md-3">
-                        <div class="filter-group open mb-3">
-                            <div class="filter-header" onclick="toggleFilterGroup(this)">
-                                <label class="form-label small fw-bold text-muted mb-0">CATEGORIA</label>
-                                <i class="bi bi-chevron-down"></i>
-                            </div>
-                            <div class="filter-content">
-                                <div class="d-flex flex-column gap-1" style="max-height: 220px; overflow-y: auto;">
-                                    {% for cat in categorias %}
-                                    <div class="form-check">
-                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="{{ cat.id }}" data-cat="categoria">
-                                        <label class="form-check-label small">{{ cat.nome }}</label>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Coluna 4: Setores -->
-                    <div class="col-md-3">
-                        <div class="filter-group open mb-3">
-                            <div class="filter-header" onclick="toggleFilterGroup(this)">
-                                <label class="form-label small fw-bold text-muted mb-0">SETOR</label>
-                                <i class="bi bi-chevron-down"></i>
-                            </div>
-                            <div class="filter-content">
-                                <div class="d-flex flex-column gap-1" style="max-height: 220px; overflow-y: auto;">
-                                    {% for set in setores %}
-                                    <div class="form-check">
-                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="{{ set.id }}" data-cat="setor">
-                                        <label class="form-check-label small">{{ set.nome }}</label>
-                                    </div>
-                                    {% endfor %}
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer bg-light">
-                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Aplicar Filtros</button>
+            
+            <div class="modal-footer bg-light d-flex justify-content-between">
+                <button class="btn btn-sm btn-outline-secondary" type="button" onclick="limparFiltrosAvancados()">Limpar Filtros</button>
+                <button type="button" class="btn btn-primary btn-sm px-4" data-bs-dismiss="modal">
+                    <i class="bi bi-check-circle me-1"></i>Aplicar Filtros
+                </button>
             </div>
         </div>
     </div>
@@ -1139,9 +1213,11 @@
         const activeFilters = {
             situacao: [],
             status: [],
+            periodo: [],
             acao: [],
             categoria: [],
             setor: [],
+            resultado: [],
             ocorrencia: [],
         };
 
@@ -1185,6 +1261,8 @@
             const catId = row.getAttribute('data-categoria-id') || '';
             const acao = row.getAttribute('data-acao') || '';
             const status = row.getAttribute('data-status') || '';
+            const periodo = row.getAttribute('data-periodo') || '';
+            const resultado = row.getAttribute('data-resultado') || '';
             const ocorrencia = row.getAttribute('data-ocorrencia') || '';
             const situacao = row.getAttribute('data-situacao') || '';
 
@@ -1201,9 +1279,11 @@
             // 3. Checar Filtros Avançados
             if (activeFilters.situacao.length && !activeFilters.situacao.includes(situacao)) return false;
             if (activeFilters.status.length && !activeFilters.status.includes(status)) return false;
+            if (activeFilters.periodo.length && !activeFilters.periodo.includes(periodo)) return false;
             if (activeFilters.acao.length && !activeFilters.acao.includes(acao)) return false;
             if (activeFilters.categoria.length && !activeFilters.categoria.includes(catId)) return false;
             if (activeFilters.setor.length && !activeFilters.setor.includes(setorId)) return false;
+            if (activeFilters.resultado.length && !activeFilters.resultado.includes(resultado)) return false;
             if (activeFilters.ocorrencia.length && !activeFilters.ocorrencia.includes(ocorrencia)) return false;
 
             return true;
@@ -1439,6 +1519,14 @@
 
     function toggleFilterGroup(el) {
         el.closest('.filter-group').classList.toggle('open');
+    }
+
+    function selectAllInCategory(category) {
+        const checkboxes = document.querySelectorAll(`.filter-avancado-cb[data-cat="${category}"]`);
+        if (!checkboxes.length) return;
+        const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+        checkboxes.forEach(cb => { cb.checked = !allChecked; });
+        applyAllFilters();
     }
 
     function limparTodosFiltrosEBusca() {
