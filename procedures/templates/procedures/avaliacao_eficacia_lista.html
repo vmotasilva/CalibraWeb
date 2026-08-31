@@ -323,19 +323,36 @@
                         </div>
                     </td>
                     <td class="small">
-                        {% if t.gestor_responsavel %}
-                            <div class="fw-semibold text-primary d-inline-flex align-items-center gap-1">
-                                <i class="bi bi-person-check-fill text-primary" title="Gestor direcionado manualmente"></i>
-                                {{ t.gestor_responsavel.nome_completo }}
-                            </div>
-                            <div class="text-muted" style="font-size: 0.7rem;">(Direcionado)</div>
-                        {% elif t.colaborador.posto_lideranca == 'SUPERVISOR' %}
-                            {{ t.colaborador.gerente.nome_completo|default:"-" }}
-                        {% elif t.colaborador.posto_lideranca == 'LIDER' %}
-                            {{ t.colaborador.supervisor.nome_completo|default:"-" }}
-                        {% else %}
-                            {{ t.colaborador.lider.nome_completo|default:"-" }}
-                        {% endif %}
+                        <a href="javascript:void(0);" 
+                           class="btn-alterar-gestor-individual text-decoration-none d-inline-flex flex-column align-items-start p-1 rounded hover-bg-light"
+                           data-id="{{ t.id }}"
+                           data-colaborador="{{ t.colaborador.nome_completo }}"
+                           data-procedimento="{{ t.procedimento.codigo }} - {{ t.procedimento.nome }}"
+                           data-gestor-atual="{% if t.gestor_responsavel %}{{ t.gestor_responsavel.nome_completo }} (Direcionado){% elif t.colaborador.posto_lideranca == 'SUPERVISOR' %}{{ t.colaborador.gerente.nome_completo|default:'-' }}{% elif t.colaborador.posto_lideranca == 'LIDER' %}{{ t.colaborador.supervisor.nome_completo|default:'-' }}{% else %}{{ t.colaborador.lider.nome_completo|default:'-' }}{% endif %}"
+                           data-gestor-id="{{ t.gestor_responsavel.id|default:'' }}"
+                           title="Clique para alterar ou direcionar este gestor">
+                            {% if t.gestor_responsavel %}
+                                <div class="fw-semibold text-primary d-inline-flex align-items-center gap-1 hover-underline">
+                                    <i class="bi bi-person-gear text-primary fs-6" title="Gestor direcionado manualmente"></i>
+                                    <span>{{ t.gestor_responsavel.nome_completo }}</span>
+                                </div>
+                                <div class="badge bg-primary-light text-primary border border-primary-subtle mt-0.5" style="font-size: 0.65rem;">(Direcionado)</div>
+                            {% else %}
+                                <div class="text-dark d-inline-flex align-items-center gap-1 hover-underline">
+                                    <i class="bi bi-person text-muted me-0.5"></i>
+                                    <span>
+                                        {% if t.colaborador.posto_lideranca == 'SUPERVISOR' %}
+                                            {{ t.colaborador.gerente.nome_completo|default:"-" }}
+                                        {% elif t.colaborador.posto_lideranca == 'LIDER' %}
+                                            {{ t.colaborador.supervisor.nome_completo|default:"-" }}
+                                        {% else %}
+                                            {{ t.colaborador.lider.nome_completo|default:"-" }}
+                                        {% endif %}
+                                    </span>
+                                    <i class="bi bi-pencil-square text-muted ms-1 small opacity-75" title="Clique para alterar gestor"></i>
+                                </div>
+                            {% endif %}
+                        </a>
                     </td>
                     <td class="small">{{ t.colaborador.setor.nome|default:"-" }}</td>
                     <td>
@@ -584,6 +601,57 @@
     </div>
 </div>
 
+<!-- Modal Exclusivo para Alteração Individual de Gestor -->
+<div class="modal fade" id="alterarGestorIndividualModal" tabindex="-1" aria-labelledby="alterarGestorIndividualModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow" style="border-radius: 12px;">
+            <form method="POST" id="form-alterar-gestor-individual" action="{% url 'procedures:avaliacao_eficacia_alterar_gestor_massa' %}">
+                {% csrf_token %}
+                <input type="hidden" name="treinamento_ids" id="modal-indiv-treinamento-id" value="">
+                <input type="hidden" name="return_url" value="{{ request.get_full_path }}">
+                
+                <div class="modal-header bg-primary text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                    <h5 class="modal-title fs-6 fw-bold" id="alterarGestorIndividualModalLabel">
+                        <i class="bi bi-person-gear me-2"></i> Alterar Gestor Responsável
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                
+                <div class="modal-body py-3">
+                    <div class="mb-3 bg-light p-3 rounded small border">
+                        <div class="mb-1.5"><strong class="text-secondary">Colaborador:</strong> <span id="modal-indiv-colaborador" class="fw-semibold text-dark"></span></div>
+                        <div class="mb-1.5"><strong class="text-secondary">Procedimento:</strong> <span id="modal-indiv-procedimento" class="fw-semibold text-dark"></span></div>
+                        <div><strong class="text-secondary">Gestor Atual:</strong> <span id="modal-indiv-gestor-atual" class="fw-semibold text-primary"></span></div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold text-dark mb-1">
+                            <i class="bi bi-person-check me-1 text-primary"></i>Novo Gestor Responsável:
+                        </label>
+                        <select name="novo_gestor_id" id="modal-indiv-select-gestor" class="form-select form-select-sm" required>
+                            <option value="">-- Selecione o Gestor --</option>
+                            <option value="padrao">-- Padrão do Setor / Hierarquia Automática --</option>
+                            {% for g in gestores_list %}
+                                <option value="{{ g.id }}">{{ g.nome_completo }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text small text-muted mt-1">
+                            <i class="bi bi-info-circle me-1"></i>O treinamento será direcionado ao gestor selecionado para a avaliação de eficácia e preenchimento automático das tags no FOR.142.
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer bg-light py-2" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary btn-sm px-3">
+                        <i class="bi bi-check-lg me-1"></i>Salvar Alteração
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Custom CSS -->
 <style>
     .bg-primary-light { background-color: rgba(13, 110, 253, 0.08); }
@@ -592,6 +660,8 @@
     .bg-success-light { background-color: rgba(255, 135, 84, 0.08); }
     .bg-danger-light { background-color: rgba(220, 53, 69, 0.08); }
     .bg-secondary-light { background-color: rgba(108, 117, 125, 0.08); }
+    .hover-underline:hover { text-decoration: underline !important; }
+    .hover-bg-light:hover { background-color: rgba(13, 110, 253, 0.06) !important; }
     .btn-xs {
         padding: .25rem .4rem;
         font-size: .75rem;
@@ -602,6 +672,33 @@
 <!-- Script para gerenciamento e modais -->
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Individual Gestor Redirection Modal click
+        document.querySelectorAll('.btn-alterar-gestor-individual').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const id = this.getAttribute('data-id');
+                const colab = this.getAttribute('data-colaborador');
+                const proc = this.getAttribute('data-procedimento');
+                const gestorAtual = this.getAttribute('data-gestor-atual');
+                const gestorId = this.getAttribute('data-gestor-id');
+
+                document.getElementById('modal-indiv-treinamento-id').value = id;
+                document.getElementById('modal-indiv-colaborador').textContent = colab;
+                document.getElementById('modal-indiv-procedimento').textContent = proc;
+                document.getElementById('modal-indiv-gestor-atual').textContent = gestorAtual;
+
+                const selectEl = document.getElementById('modal-indiv-select-gestor');
+                if (selectEl) {
+                    selectEl.value = gestorId ? gestorId : 'padrao';
+                }
+
+                const modalEl = document.getElementById('alterarGestorIndividualModal');
+                if (modalEl) {
+                    const modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+                    modalInstance.show();
+                }
+            });
+        });
         // Individual modal data mapping
         const modal = document.getElementById('avaliacaoModal');
         const form = document.getElementById('form-avaliacao');

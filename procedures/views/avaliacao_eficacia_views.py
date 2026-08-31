@@ -557,8 +557,12 @@ def avaliacao_eficacia_alterar_gestor_massa_view(request):
                 t.save()
                 count += 1
 
-    messages.success(request, f"Gestor responsável atualizado com sucesso para {count} treinamento(s).")
-    return redirect("procedures:avaliacao_eficacia_list")
+    return_url = request.POST.get('return_url') or request.META.get('HTTP_REFERER') or "procedures:avaliacao_eficacia_list"
+    if count == 1:
+        messages.success(request, "Gestor responsável atualizado com sucesso!")
+    else:
+        messages.success(request, f"Gestor responsável atualizado com sucesso para {count} treinamento(s).")
+    return redirect(return_url)
 
 
 @login_required

@@ -332,6 +332,8 @@ class PerguntaAuditoria(models.Model):
             return "#198754"
         if key in {"nao", "nao conforme"}:
             return "#dc3545"
+        if key in {"n/a", "na", "n.a", "n a", "nao se aplica", "nao aplicavel", "não se aplica", "não aplicável"}:
+            return "#495057"
         return ""
 
     @property

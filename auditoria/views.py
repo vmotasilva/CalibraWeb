@@ -282,8 +282,8 @@ def _fallback_cor_resposta(valor: str) -> str:
     if not token:
         return ""
 
-    if token in {"na", "n/a", "n.a", "nao aplicavel", "nao se aplica", "não se aplica"}:
-        return "#6c757d"
+    if token in {"na", "n/a", "n.a", "n a", "nao aplicavel", "nao se aplica", "não se aplica", "não aplicável"}:
+        return "#495057"
     if any(k in token for k in ["nao conforme", "não conforme", "reprov", "critico", "critico", "nao", "não"]):
         return "#dc3545"
     if any(k in token for k in ["parcial", "atencao", "alerta", "pendente", "em andamento"]):
@@ -311,14 +311,59 @@ def _resolve_cor_resposta(pergunta: PerguntaAuditoria, valor: str) -> str:
 
 def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
     """Monta estrutura consolidada por pergunta para exibição em blocos e exportação."""
+    todas_perguntas = list(
+        registro.modelo.perguntas.filter(ativo=True)
+        .select_related("topico")
+        .order_by("ordem", "id")
+    )
+    todas_perguntas = sorted(
+        todas_perguntas,
+        key=lambda p: (p.topico.get_full_name() if p.topico else "", p.ordem, p.id),
+    )
+
     respostas = list(
         registro.respostas.select_related("pergunta").order_by("pergunta__ordem", "pergunta_id", "id")
     )
     comentarios_por_pergunta = _build_comentarios_por_pergunta(registro)
     dia_labels = dict(ModeloAuditoria.DIA_SEMANA_CHOICES)
     dia_keys = [k for k, _ in ModeloAuditoria.DIA_SEMANA_CHOICES]
+    is_semanal = (registro.modelo.periodicidade == "SEMANAL")
 
     perguntas_consolidadas: "OrderedDict[int, dict]" = OrderedDict()
+
+    # Inicializar todas as perguntas ativas do modelo
+    for pergunta in todas_perguntas:
+        opcoes_disponiveis = []
+        if pergunta.tipo_resposta == "SIM_NAO":
+            cor_sim = pergunta.get_cor_resposta("Sim") or "#198754"
+            cor_nao = pergunta.get_cor_resposta("Não") or "#dc3545"
+            opcoes_disponiveis = [
+                {"label": "Sim", "color": cor_sim},
+                {"label": "Não", "color": cor_nao},
+            ]
+        elif pergunta.tipo_resposta == "LISTA":
+            opcoes_disponiveis = list(getattr(pergunta, "opcoes_resposta_com_cores", []) or [])
+
+        item = {
+            "pergunta_id": pergunta.id,
+            "ordem": pergunta.ordem,
+            "pergunta": pergunta.pergunta,
+            "descricao_detalhada": pergunta.descricao_detalhada,
+            "obrigatoria": pergunta.obrigatoria,
+            "tipo_resposta": pergunta.tipo_resposta,
+            "tipo_resposta_display": pergunta.get_tipo_resposta_display(),
+            "opcoes_resposta_com_cores": list(getattr(pergunta, "opcoes_resposta_com_cores", []) or []),
+            "opcoes_disponiveis": opcoes_disponiveis,
+            "topico": pergunta.topico.get_full_name() if pergunta.topico else "",
+            "resposta_geral": "",
+            "resposta_geral_cor": "",
+            "respostas_por_dia": {},
+            "respostas_por_dia_cores": {},
+            "comentarios": comentarios_por_pergunta.get(str(pergunta.id), []),
+        }
+        perguntas_consolidadas[pergunta.id] = item
+
+    # Preencher respostas existentes
     for resposta in respostas:
         pergunta = resposta.pergunta
         item = perguntas_consolidadas.get(pergunta.id)
@@ -374,7 +419,7 @@ def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
 
         respostas_por_dia = item["respostas_por_dia"]
         has_resposta_dia = any((respostas_por_dia.get(k) or "").strip() for k in dia_keys)
-        usa_colunas_dia = has_resposta_dia
+        usa_colunas_dia = is_semanal or has_resposta_dia
 
         linha = {
             **item,
@@ -394,6 +439,7 @@ def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
                 }
                 for k in dia_keys
             ],
+            "opcoes_json": json.dumps(item["opcoes_disponiveis"]),
             "comentarios_texto": "\n".join(item["comentarios"]),
             "tem_resposta": bool((item["resposta_geral"] or "").strip() or has_resposta_dia),
         }
@@ -423,7 +469,7 @@ def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
             valores_resposta: list[str] = []
             respostas_por_dia = linha.get("respostas_por_dia") or {}
             tem_por_dia = any((respostas_por_dia.get(k) or "").strip() for k in dia_keys)
-            if tem_por_dia:
+            if tem_por_dia or is_semanal:
                 for dia_key in dia_keys:
                     valor = (respostas_por_dia.get(dia_key) or "").strip()
                     if valor:
@@ -449,7 +495,7 @@ def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
             lista_resumo.append(
                 {
                     "label": meta.get("label") or "",
-                    "color": meta.get("color") or "#6c757d",
+                    "color": meta.get("color") or "#495057",
                     "count": count,
                     "percentual": percentual,
                 }
@@ -463,7 +509,7 @@ def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
     total_perguntas = len(perguntas_consolidadas)
     preenchidas = sum(1 for b in blocos for l in b["linhas"] if l["tem_resposta"])
     percentual_preenchimento = round((preenchidas / total_perguntas) * 100, 1) if total_perguntas else 0
-    exibir_dias = any(l["usa_colunas_dia"] for b in blocos for l in b["linhas"])
+    exibir_dias = is_semanal or any(l["usa_colunas_dia"] for b in blocos for l in b["linhas"])
 
     return {
         "blocos": blocos,
@@ -1953,7 +1999,7 @@ def registro_exportar_pdf(request, pk):
         series_color_map = {
             "Conforme": "#198754",
             "Não conforme": "#dc3545",
-            "N/A": "#6c757d",
+            "N/A": "#495057",
             "Sim": "#20c997",
             "Não": "#fd7e14",
             "Outros": "#0d6efd",
@@ -2018,7 +2064,7 @@ def registro_exportar_pdf(request, pk):
             if exibir_dias:
                 for k in dia_keys:
                     valor = (linha["respostas_por_dia"].get(k, "") or "").strip()
-                    cor = (linha.get("respostas_por_dia_cores", {}).get(k, "") or "#6c757d").strip()
+                    cor = (linha.get("respostas_por_dia_cores", {}).get(k, "") or "#495057").strip()
                     if valor:
                         row.append(Paragraph(f"<font color=\"{escape(cor)}\">&#9679;</font>", style_cell_center))
                     else:
