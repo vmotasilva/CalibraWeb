@@ -1430,3 +1430,198 @@ def salvar_edicao_historico_modal_view(request, historico_id):
 
     return redirect('detalhe_instrumento', instrumento_id=inst.id if inst else 1)
 
+
+def get_metrologia_dashboard_data():
+    """Agrega e pré-calcula todos os indicadores e instrumentos do dashboard de metrologia.
+    
+    Otimizado para evitar N+1 queries no Neon.tech.
+    """
+    from datetime import date, timedelta
+    from django.urls import reverse
+    from django.db.models import Prefetch
+    from metrologia.models import Instrumento, SolicitacaoCotacao
+    from qms.models import OcorrenciaInstrumento, SolicitacaoInstrumento
+
+    hoje = date.today()
+    trinta_dias = hoje + timedelta(days=30)
+    
+    ocorrencias_abertas_prefetch = Prefetch(
+        'ocorrencias',
+        queryset=OcorrenciaInstrumento.objects.filter(status='ABERTA').select_related('usuario_responsavel'),
+        to_attr='ocorrencias_abertas'
+    )
+    
+    instrumentos_qs = (
+        Instrumento.objects.filter(ativo=True)
+        .select_related('categoria', 'setor', 'responsavel')
+        .prefetch_related(ocorrencias_abertas_prefetch)
+    )
+    
+    instrumentos_list = []
+    
+    # Contadores TODOS
+    total_instrumentos = 0
+    vencidos_total = 0
+    avencer_total = 0
+    ocorrencias_total = 0
+    em_dia_total = 0
+    
+    # Contadores EXTERNO
+    vencidos_externo = 0
+    avencer_externo = 0
+    
+    # Contadores INTERNO
+    vencidos_interno = 0
+    avencer_interno = 0
+    fila_laboratorio_interno = 0
+    ocorrencias_interno = 0
+    
+    for inst in instrumentos_qs:
+        total_instrumentos += 1
+        
+        # Tratativa e Ação
+        tratativa = (inst.tratativa_calibracao or (inst.categoria.tratativa_calibracao if inst.categoria else '') or 'INTERNA').upper()
+        is_internal = tratativa != 'EXTERNA'
+        
+        acao = (inst.acao or (inst.categoria.acao if inst.categoria else '') or 'CALIBRACAO').upper()
+        
+        # Ocorrências abertas
+        abertas = getattr(inst, 'ocorrencias_abertas', [])
+        has_active_occurrence = len(abertas) > 0
+        if has_active_occurrence:
+            ocorrencias_total += len(abertas)
+            if is_internal:
+                ocorrencias_interno += len(abertas)
+        
+        # Status de Calibração
+        prox_data = inst.data_proxima_calibracao
+        status_situacao = 'EM_DIA'
+        dias_para_vencer = None
+        
+        if prox_data:
+            dias_para_vencer = (prox_data - hoje).days
+            if prox_data < hoje:
+                status_situacao = 'VENCIDO'
+                vencidos_total += 1
+                if is_internal:
+                    vencidos_interno += 1
+                    fila_laboratorio_interno += 1
+                else:
+                    vencidos_externo += 1
+            elif prox_data <= trinta_dias:
+                status_situacao = 'AVENCER_30'
+                avencer_total += 1
+                if is_internal:
+                    avencer_interno += 1
+                    fila_laboratorio_interno += 1
+                else:
+                    avencer_externo += 1
+            else:
+                em_dia_total += 1
+        else:
+            em_dia_total += 1
+            
+        try:
+            url_detalhes = reverse('detalhe_instrumento', args=[inst.id])
+        except Exception:
+            try:
+                url_detalhes = reverse('visualizar_instrumento', args=[inst.id])
+            except Exception:
+                url_detalhes = f'/metrologia/instrumento/{inst.id}/'
+            
+        instrumentos_list.append({
+            'id': inst.id,
+            'tag': inst.tag,
+            'descricao': inst.descricao,
+            'setor_nome': inst.setor.nome if inst.setor else '-',
+            'setor_id': inst.setor_id,
+            'categoria_nome': inst.categoria.nome if inst.categoria else '-',
+            'categoria_id': inst.categoria_id,
+            'tratativa': tratativa,
+            'is_internal': is_internal,
+            'activity_type': acao,
+            'data_proxima_calibracao': prox_data.strftime('%Y-%m-%d') if prox_data else None,
+            'data_proxima_calibracao_display': prox_data.strftime('%d/%m/%Y') if prox_data else '-',
+            'data_ultima_calibracao_display': inst.data_ultima_calibracao.strftime('%d/%m/%Y') if inst.data_ultima_calibracao else '-',
+            'dias_para_vencer': dias_para_vencer,
+            'status_situacao': status_situacao,
+            'has_active_occurrence': has_active_occurrence,
+            'ocorrencias_count': len(abertas),
+            'ocorrencias_tipos': [o.tipo for o in abertas],
+            'url_detalhes': url_detalhes,
+        })
+
+    # Cotações Abertas e Equipamentos no Fornecedor
+    cotacoes_abertas = SolicitacaoCotacao.objects.filter(status='ABERTA').count()
+    solicitacoes_cotacao_recentes = list(
+        SolicitacaoCotacao.objects.filter(status='ABERTA')
+        .select_related('responsavel')
+        .order_by('-data_criacao')[:10]
+    )
+    
+    # Orçamentos Pendentes / Equipamentos em Fornecedor (Itens de cotação em andamento)
+    orcamentos_pendentes = SolicitacaoCotacao.objects.exclude(status__in=['CONCLUIDA', 'CANCELADA']).count()
+    
+    # Solicitações pendentes QMS
+    qtd_solicitacoes_qms = SolicitacaoInstrumento.objects.filter(status='PENDENTE').count()
+    
+    # Ordenar instrumentos: primeiro os críticos (VENCIDOS, depois AVENCER_30, depois com ocorrência)
+    def sort_key(item):
+        peso_status = 0 if item['status_situacao'] == 'VENCIDO' else (1 if item['status_situacao'] == 'AVENCER_30' else 2)
+        dias = item['dias_para_vencer'] if item['dias_para_vencer'] is not None else 9999
+        return (peso_status, dias, 0 if item['has_active_occurrence'] else 1)
+        
+    instrumentos_list.sort(key=sort_key)
+    
+    kpis = {
+        'todos': {
+            'vencidos': vencidos_total,
+            'avencer_30': avencer_total,
+            'ocorrencias_ativas': ocorrencias_total,
+            'total_instrumentos': total_instrumentos,
+            'em_dia': em_dia_total,
+        },
+        'externo': {
+            'vencidos': vencidos_externo,
+            'avencer_30': avencer_externo,
+            'cotacoes_abertas': cotacoes_abertas,
+            'orcamentos_pendentes': orcamentos_pendentes,
+            'necessitam_cotacao': vencidos_externo + avencer_externo,
+        },
+        'interno': {
+            'vencidos': vencidos_interno,
+            'avencer_30': avencer_interno,
+            'fila_laboratorio': fila_laboratorio_interno,
+            'ocorrencias_ativas': ocorrencias_interno,
+        }
+    }
+    
+    return {
+        'kpis': kpis,
+        'instrumentos': instrumentos_list,
+        'solicitacoes_cotacao': solicitacoes_cotacao_recentes,
+        'qtd_solicitacoes_qms': qtd_solicitacoes_qms,
+        'hoje': hoje.strftime('%Y-%m-%d'),
+        'hoje_display': hoje.strftime('%d/%m/%Y'),
+    }
+
+
+@login_required
+def api_dashboard_overview(request):
+    """Endpoint REST JSON para o dashboard interativo de metrologia (React / Next.js / API)."""
+    data = get_metrologia_dashboard_data()
+    # Converte solicitacoes_cotacao objects para dict serializável
+    solicitacoes_json = []
+    for s in data['solicitacoes_cotacao']:
+        solicitacoes_json.append({
+            'id': s.id,
+            'numero_solicitacao': getattr(s, 'numero_solicitacao', f"SOL-{s.id}"),
+            'data_criacao': s.data_criacao.strftime('%d/%m/%Y') if getattr(s, 'data_criacao', None) else '-',
+            'data_solicitacao_orcamento': s.data_solicitacao_orcamento.strftime('%d/%m/%Y') if getattr(s, 'data_solicitacao_orcamento', None) else '-',
+            'status': s.status,
+            'responsavel': s.responsavel.username if getattr(s, 'responsavel', None) else 'Não atribuído',
+        })
+    data['solicitacoes_cotacao'] = solicitacoes_json
+    return JsonResponse(data, safe=False)
+
+

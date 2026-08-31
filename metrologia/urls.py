@@ -93,6 +93,7 @@ urlpatterns = [
     path('deletar-ocorrencia/<int:ocorrencia_id>/', views.deletar_ocorrencia, name='deletar_ocorrencia'),
 
     # API ENDPOINTS
+    path('api/dashboard-overview/', views.api_dashboard_overview, name='api_dashboard_overview'),
     path('api/instrumentos-vencendo/', views.api_instrumentos_vencendo, name='api_instrumentos_vencendo'),
     path('api/atualizar-todas-datas/', qms_views.atualizar_todas_datas_calibracao_view, name='atualizar_todas_datas_calibracao'),
     path('export/etiquetas/', views.export_etiquetas_view, name='export_etiquetas'),

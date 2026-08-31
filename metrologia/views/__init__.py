@@ -38,6 +38,10 @@ from .views import (
     encerrar_ocorrencia,
     editar_ocorrencia,
     deletar_ocorrencia,
+    
+    # Dashboard Overview & API
+    get_metrologia_dashboard_data,
+    api_dashboard_overview,
 )
 
 from .novo_fluxo_cotacao import (

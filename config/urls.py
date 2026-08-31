@@ -73,58 +73,32 @@ def favicon_view(request):
 
 # Root view - show dashboard if authenticated, otherwise redirect to login
 def root_view(request):
-    """Root view that handles authentication and shows dashboard"""
+    """Root view that handles authentication and shows dashboard de metrologia refatorado"""
     if request.user.is_authenticated:
-        # Import here to avoid circular imports
-        from metrologia.models import Instrumento, SolicitacaoCotacao
-        from rh.models import Colaborador
-        from qms.models import SolicitacaoInstrumento
-        from datetime import date, timedelta
-        
         try:
-            nome_display = request.user.username
-            hoje = date.today()
-            trinta_dias = hoje + timedelta(days=30)
-
-            # Metrologia
-            qtd_vencidos = Instrumento.objects.filter(
-                data_proxima_calibracao__lt=hoje, ativo=True
-            ).count()
-            qtd_avencer = Instrumento.objects.filter(
-                data_proxima_calibracao__range=[hoje, trinta_dias], ativo=True
-            ).count()
-            lista_urgentes = Instrumento.objects.filter(
-                data_proxima_calibracao__lte=trinta_dias, ativo=True
-            ).order_by("data_proxima_calibracao")[:5]
-
-            # Cotações em aberto
-            qtd_cotacoes = SolicitacaoCotacao.objects.filter(status="ABERTA").count()
-            solicitacoes_cotacao = SolicitacaoCotacao.objects.filter(status="ABERTA").order_by("-data_criacao")[:10]
-
-            # Solicitações pendentes
-            qtd_pendentes = SolicitacaoInstrumento.objects.filter(status="PENDENTE").count()
-
+            from metrologia.views.views import get_metrologia_dashboard_data
+            data = get_metrologia_dashboard_data()
             context = {
-                "nome_display": nome_display,
-                "qtd_vencidos": qtd_vencidos,
-                "qtd_avencer": qtd_avencer,
-                "lista_urgentes": lista_urgentes,
-                "qtd_cotacoes": qtd_cotacoes,
-                "solicitacoes_cotacao": solicitacoes_cotacao,
-                "qtd_pendentes": qtd_pendentes,
-                "today": hoje,
+                "nome_display": request.user.username,
+                "data": data,
+                "kpis": data["kpis"],
+                "instrumentos": data["instrumentos"],
+                "solicitacoes_cotacao": data["solicitacoes_cotacao"],
+                "qtd_pendentes": data["qtd_solicitacoes_qms"],
+                "today": data["hoje"],
+                "hoje_display": data["hoje_display"],
             }
         except Exception as e:
-            # If there's a database error, show minimal context
             from datetime import date
             context = {
                 "nome_display": request.user.username,
-                "qtd_vencidos": 0,
-                "qtd_avencer": 0,
-                "lista_urgentes": [],
-                "qtd_cotacoes": 0,
+                "data": {"kpis": {"todos": {}, "externo": {}, "interno": {}}, "instrumentos": []},
+                "kpis": {"todos": {}, "externo": {}, "interno": {}},
+                "instrumentos": [],
+                "solicitacoes_cotacao": [],
                 "qtd_pendentes": 0,
-                "today": date.today(),
+                "today": date.today().strftime('%Y-%m-%d'),
+                "hoje_display": date.today().strftime('%d/%m/%Y'),
                 "error": str(e),
             }
         

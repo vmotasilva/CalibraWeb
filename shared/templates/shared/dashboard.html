@@ -1,190 +1,649 @@
 {% extends 'base.html' %}
 
+{% block title %}Dashboard de Metrologia &mdash; CalibraWEB{% endblock %}
+
 {% block content %}
 
 <style>
-    .card-counter { 
-        box-shadow: 2px 2px 10px #DADADA; 
-        margin: 5px; 
-        padding: 20px 10px; 
-        background-color: #fff; 
-        height: 120px; 
-        border-radius: 8px; 
-        transition: .3s linear all; 
-        color: white;
+    .dashboard-header {
+        background: linear-gradient(135deg, #0d2228 0%, #163e46 100%);
+        border-radius: 14px;
+        padding: 24px 28px;
+        color: #ffffff;
+        margin-bottom: 24px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    .dashboard-tabs-container {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 6px;
+        display: inline-flex;
+        gap: 6px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        margin-bottom: 20px;
+    }
+
+    .dashboard-tab-btn {
+        border: none;
+        background: transparent;
+        color: #64748b;
+        font-weight: 600;
+        font-size: 0.9rem;
+        padding: 10px 22px;
+        border-radius: 8px;
+        transition: all 0.2s ease-in-out;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+    }
+
+    .dashboard-tab-btn:hover {
+        color: #0f172a;
+        background: #f1f5f9;
+    }
+
+    .dashboard-tab-btn.active {
+        background: #0f766e;
+        color: #ffffff;
+        box-shadow: 0 2px 8px rgba(15, 118, 110, 0.25);
+    }
+
+    .kpi-card {
+        border: none;
+        border-radius: 14px;
+        padding: 20px 22px;
+        height: 100%;
+        min-height: 128px;
         display: flex;
         flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        text-decoration: none;
+        justify-content: space-between;
+        transition: transform 0.2s, box-shadow 0.2s;
+        text-decoration: none !important;
+        position: relative;
+        overflow: hidden;
+        color: #ffffff;
     }
-    .card-counter:hover { box-shadow: 4px 4px 20px #DADADA; transform: scale(1.02); cursor: pointer; }
-    .card-counter.danger { background-color: #ef5350; }
-    .card-counter.warning { background-color: #ffca28; color: #333; }
-    .card-counter.info { background-color: #26c6da; }
-    .card-counter.primary { background-color: #0d6efd; }
-    
-    .count-numbers { font-size: 36px; font-weight: bold; display: block; }
-    .count-name { font-size: 14px; text-transform: uppercase; opacity: 0.9; letter-spacing: 1px; }
-    .btn-action { width: 100%; margin-bottom: 12px; font-weight: bold; padding: 12px; text-align: left; display: flex; align-items: center; justify-content: space-between; }
-    .btn-action::after { content: '→'; opacity: 0.5; }
+
+    .kpi-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+        color: #ffffff;
+    }
+
+    .kpi-card.danger { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
+    .kpi-card.warning { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+    .kpi-card.info { background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); }
+    .kpi-card.success { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+    .kpi-card.purple { background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); }
+    .kpi-card.dark { background: linear-gradient(135deg, #334155 0%, #1e293b 100%); }
+
+    .kpi-number {
+        font-size: 2.2rem;
+        font-weight: 800;
+        line-height: 1;
+        letter-spacing: -0.02em;
+    }
+
+    .kpi-label {
+        font-size: 0.82rem;
+        text-transform: uppercase;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        opacity: 0.95;
+    }
+
+    .kpi-desc {
+        font-size: 0.76rem;
+        opacity: 0.85;
+        margin-top: 4px;
+    }
+
+    .table-custom-card {
+        background: #ffffff;
+        border-radius: 14px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04);
+        overflow: hidden;
+    }
+
+    .badge-activity-calib {
+        background-color: #e0e7ff;
+        color: #3730a3;
+        border: 1px solid #c7d2fe;
+        font-weight: 600;
+        font-size: 0.72rem;
+        padding: 4px 8px;
+    }
+
+    .badge-activity-verif {
+        background-color: #f3e8ff;
+        color: #6b21a8;
+        border: 1px solid #e9d5ff;
+        font-weight: 600;
+        font-size: 0.72rem;
+        padding: 4px 8px;
+    }
+
+    .badge-local-interno {
+        background-color: #ecfdf5;
+        color: #065f46;
+        border: 1px solid #a7f3d0;
+        font-weight: 600;
+        font-size: 0.72rem;
+        padding: 4px 8px;
+    }
+
+    .badge-local-externo {
+        background-color: #eff6ff;
+        color: #1e40af;
+        border: 1px solid #bfdbfe;
+        font-weight: 600;
+        font-size: 0.72rem;
+        padding: 4px 8px;
+    }
+
+    .occurrence-alert-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        background-color: #fef2f2;
+        color: #dc2626;
+        border: 1px solid #fecaca;
+        border-radius: 50%;
+        animation: pulseWarning 2s infinite;
+        cursor: pointer;
+    }
+
+    @keyframes pulseWarning {
+        0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+        50% { transform: scale(1.08); box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
+    }
+
+    .action-btn-quick {
+        padding: 5px 10px;
+        font-size: 0.76rem;
+        font-weight: 600;
+        border-radius: 6px;
+        transition: all 0.15s;
+    }
 </style>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h5 class="m-0 text-muted">Visão Geral</h5>
-    <a href="{% url 'modulo_metrologia' %}" class="btn btn-primary shadow-sm">
-        <i class="bi bi-list-ul"></i> Listagem de Instrumentos
-    </a>
-</div>
-
-<div class="row mb-4">
-    <div class="col-md-3">
-        <a href="{% url 'modulo_metrologia' %}?status=vencidos" class="card-counter danger">
-            <span class="count-numbers">{{ qtd_vencidos }}</span>
-            <span class="count-name">Instrumentos Vencidos</span>
-        </a>
+<!-- HEADER DO DASHBOARD -->
+<div class="dashboard-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <span class="badge bg-white bg-opacity-20 text-white rounded-pill px-2.5 py-1" style="font-size: 0.75rem;">
+                <i class="bi bi-shield-check me-1"></i> Gestão da Qualidade & Metrologia
+            </span>
+            <small class="text-white-50">Base Atualizada: {{ hoje_display }}</small>
+        </div>
+        <h2 class="h3 fw-bold mb-1 text-white">Dashboard de Metrologia</h2>
+        <p class="mb-0 text-white-50 small">Visão integrada do parque de instrumentos por local de execução, atividade e ocorrências ativas.</p>
     </div>
-    <div class="col-md-3">
-        <a href="{% url 'modulo_metrologia' %}?status=avencer" class="card-counter warning">
-            <span class="count-numbers">{{ qtd_avencer }}</span>
-            <span class="count-name">Vencem em 30 Dias</span>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{% url 'modulo_metrologia' %}" class="btn btn-light btn-sm fw-semibold shadow-sm">
+            <i class="bi bi-table me-1"></i> Listagem Completa
         </a>
-    </div>
-    <div class="col-md-3">
-        <a href="{% url 'metrologia:solicitacao_list' %}" class="card-counter info">
-            <span class="count-numbers">{{ qtd_cotacoes }}</span>
-            <span class="count-name">Cotações Abertas</span>
+        <a href="{% url 'metrologia:solicitacao_list' %}" class="btn btn-outline-light btn-sm fw-semibold">
+            <i class="bi bi-receipt-cutoff me-1"></i> Painel de Cotações
         </a>
-    </div>
-    <div class="col-md-3">
-        <a href="{% url 'qms:solicitacao_list' %}" class="card-counter primary">
-            <span class="count-numbers">{{ qtd_pendentes|default:"0" }}</span>
-            <span class="count-name">Solicitações Pendentes</span>
+        <a href="{% url 'hub' %}" class="btn btn-outline-light btn-sm fw-semibold">
+            <i class="bi bi-grid-fill me-1"></i> HUB
         </a>
     </div>
 </div>
 
-{% if qtd_cotacoes > 0 %}
-<div class="row mt-4">
-    <div class="col-md-12">
-        <div class="card shadow-sm border-left border-warning">
-            <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
-                <span>📋 Solicitações de Cotação em Aberto</span>
-                <span class="badge bg-warning text-dark">{{ qtd_cotacoes }}</span>
+<!-- ABAS DE NAVEGAÇÃO INTERATIVA (TODOS, EXTERNO, INTERNO) -->
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-3">
+    <div class="dashboard-tabs-container">
+        <button type="button" class="dashboard-tab-btn active" data-tab="todos" onclick="setDashboardTab('todos')">
+            <i class="bi bi-grid-3x3-gap-fill"></i>
+            <span>TODOS</span>
+            <span class="badge bg-light text-dark rounded-pill ms-1" id="tab-count-todos">{{ kpis.todos.total_instrumentos|default:0 }}</span>
+        </button>
+        <button type="button" class="dashboard-tab-btn" data-tab="externo" onclick="setDashboardTab('externo')">
+            <i class="bi bi-truck"></i>
+            <span>EXTERNO (Fornecedor)</span>
+            <span class="badge bg-light text-dark rounded-pill ms-1" id="tab-count-externo">{{ kpis.externo.necessitam_cotacao|default:0 }}</span>
+        </button>
+        <button type="button" class="dashboard-tab-btn" data-tab="interno" onclick="setDashboardTab('interno')">
+            <i class="bi bi-wrench-adjustable-circle"></i>
+            <span>INTERNO (Laboratório)</span>
+            <span class="badge bg-light text-dark rounded-pill ms-1" id="tab-count-interno">{{ kpis.interno.fila_laboratorio|default:0 }}</span>
+        </button>
+    </div>
+
+    <!-- BUSCA RÁPIDA NA TABELA -->
+    <div class="position-relative" style="min-width: 280px;">
+        <input type="text" id="dashboardSearchInput" class="form-control form-control-sm rounded-pill ps-4 py-2" placeholder="Buscar TAG, descrição, setor..." autocomplete="off">
+        <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-2.5 text-muted small"></i>
+    </div>
+</div>
+
+<!-- CONTAINER DE KPIS DINÂMICOS CONFORME A ABA ATIVA -->
+<div id="kpis-container" class="row g-3 mb-4">
+    <!-- ABA TODOS -->
+    <div class="col-12 col-sm-6 col-xl-3 kpi-group-item kpi-group-todos">
+        <a href="{% url 'modulo_metrologia' %}?st=ATIVO&sit=VENCIDO" class="kpi-card danger">
+            <div class="d-flex justify-content-between align-items-start">
+                <span class="kpi-label">Instrumentos Vencidos</span>
+                <i class="bi bi-calendar-x fs-4 opacity-75"></i>
             </div>
-            
-            <div class="card-body p-0 table-responsive">
-                <table class="table table-striped table-hover mb-0 align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Solicitação</th>
-                            <th>Data de Abertura</th>
-                            <th>Prazo Limite</th>
-                            <th>Instrumentos</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for sol in solicitacoes_cotacao %}
-                        <tr>
-                            <td>
-                                <strong>{{ sol }}</strong>
-                            </td>
-                            <td>
-                                <small>{{ sol.data_criacao|date:"d/m/Y" }}</small>
-                            </td>
-                            <td>
-                                <small>
-                                    <strong class="{% if sol.data_solicitacao_orcamento <= today %}text-danger{% else %}text-success{% endif %}">
-                                        {{ sol.data_solicitacao_orcamento|date:"d/m/Y" }}
-                                    </strong>
-                                </small>
-                            </td>
-                            <td>
-                                <span class="badge bg-info">{{ sol.itens.count }} item(ns)</span>
-                            </td>
-                            <td>
-                                <a href="{% url 'metrologia:solicitacao_detail' sol.id %}" class="btn btn-sm btn-outline-primary">
-                                    <i class="bi bi-eye"></i> Ver
-                                </a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div>
+                <div class="kpi-number">{{ kpis.todos.vencidos|default:0 }}</div>
+                <div class="kpi-desc">Necessitam calibração imediata</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3 kpi-group-item kpi-group-todos">
+        <a href="{% url 'modulo_metrologia' %}?st=ATIVO&sit=AVENCER_30" class="kpi-card warning">
+            <div class="d-flex justify-content-between align-items-start">
+                <span class="kpi-label">Vencem em 30 Dias</span>
+                <i class="bi bi-clock-history fs-4 opacity-75"></i>
+            </div>
+            <div>
+                <div class="kpi-number">{{ kpis.todos.avencer_30|default:0 }}</div>
+                <div class="kpi-desc">Entrando na janela de planejamento</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3 kpi-group-item kpi-group-todos">
+        <div class="kpi-card purple">
+            <div class="d-flex justify-content-between align-items-start">
+                <span class="kpi-label">Ocorrências / Manutenção</span>
+                <i class="bi bi-exclamation-octagon fs-4 opacity-75"></i>
+            </div>
+            <div>
+                <div class="kpi-number">{{ kpis.todos.ocorrencias_ativas|default:0 }}</div>
+                <div class="kpi-desc">RNCs ou avarias em aberto</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3 kpi-group-item kpi-group-todos">
+        <div class="kpi-card info">
+            <div class="d-flex justify-content-between align-items-start">
+                <span class="kpi-label">Parque Ativo Total</span>
+                <i class="bi bi-tools fs-4 opacity-75"></i>
+            </div>
+            <div>
+                <div class="kpi-number">{{ kpis.todos.total_instrumentos|default:0 }}</div>
+                <div class="kpi-desc">{{ kpis.todos.em_dia|default:0 }} com calibração em dia</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ABA EXTERNO -->
+    <div class="col-12 col-sm-6 col-xl-4 kpi-group-item kpi-group-externo d-none">
+        <a href="{% url 'metrologia:solicitacao_list' %}" class="kpi-card info">
+            <div class="d-flex justify-content-between align-items-start">
+                <span class="kpi-label">Cotações Abertas</span>
+                <i class="bi bi-cash-coin fs-4 opacity-75"></i>
+            </div>
+            <div>
+                <div class="kpi-number">{{ kpis.externo.cotacoes_abertas|default:0 }}</div>
+                <div class="kpi-desc">Processos de cotação em andamento</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-4 kpi-group-item kpi-group-externo d-none">
+        <div class="kpi-card warning">
+            <div class="d-flex justify-content-between align-items-start">
+                <span class="kpi-label">Orçamentos / No Fornecedor</span>
+                <i class="bi bi-truck fs-4 opacity-75"></i>
+            </div>
+            <div>
+                <div class="kpi-number">{{ kpis.externo.orcamentos_pendentes|default:0 }}</div>
+                <div class="kpi-desc">Equipamentos em tratativa externa</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-4 kpi-group-item kpi-group-externo d-none">
+        <div class="kpi-card danger">
+            <div class="d-flex justify-content-between align-items-start">
+                <span class="kpi-label">Externos Vencidos / A Vencer</span>
+                <i class="bi bi-calendar-x fs-4 opacity-75"></i>
+            </div>
+            <div>
+                <div class="kpi-number">{{ kpis.externo.necessitam_cotacao|default:0 }}</div>
+                <div class="kpi-desc">{{ kpis.externo.vencidos|default:0 }} vencidos + {{ kpis.externo.avencer_30|default:0 }} a vencer</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ABA INTERNO -->
+    <div class="col-12 col-sm-6 col-xl-4 kpi-group-item kpi-group-interno d-none">
+        <div class="kpi-card success">
+            <div class="d-flex justify-content-between align-items-start">
+                <span class="kpi-label">Fila Laboratório Interno</span>
+                <i class="bi bi-droplet-half fs-4 opacity-75"></i>
+            </div>
+            <div>
+                <div class="kpi-number">{{ kpis.interno.fila_laboratorio|default:0 }}</div>
+                <div class="kpi-desc">Itens para calibração interna urgente</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-4 kpi-group-item kpi-group-interno d-none">
+        <div class="kpi-card danger">
+            <div class="d-flex justify-content-between align-items-start">
+                <span class="kpi-label">Internos Vencidos</span>
+                <i class="bi bi-exclamation-triangle fs-4 opacity-75"></i>
+            </div>
+            <div>
+                <div class="kpi-number">{{ kpis.interno.vencidos|default:0 }}</div>
+                <div class="kpi-desc">Aguardando execução da equipe</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-4 kpi-group-item kpi-group-interno d-none">
+        <div class="kpi-card purple">
+            <div class="d-flex justify-content-between align-items-start">
+                <span class="kpi-label">Ocorrências Internas Ativas</span>
+                <i class="bi bi-tools fs-4 opacity-75"></i>
+            </div>
+            <div>
+                <div class="kpi-number">{{ kpis.interno.ocorrencias_ativas|default:0 }}</div>
+                <div class="kpi-desc">Manutenções ou ajustes em aberto</div>
             </div>
         </div>
     </div>
 </div>
-{% endif %}
 
-<div class="row mt-4">
-    
-    <div class="col-md-12">
-        <div class="card shadow-sm h-100">
-            <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
-                <span>🚨 Atenção: Instrumentos Críticos (Top 5)</span>
-                <small>Próximos Vencimentos</small>
-            </div>
-            
-            <div class="card-body p-0 table-responsive">
-                <table class="table table-striped table-hover mb-0 align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th>TAG</th>
-                            <th>Descrição</th>
-                            <th>Setor</th>
-                            <th>Vencimento</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in lista_urgentes %}
-                        <tr>
-                            <td>
-                                <a href="{% url 'modulo_metrologia' %}" class="text-decoration-none fw-bold text-dark">
-                                    {{ item.tag }}
+<!-- TABELA DE INSTRUMENTOS REFATORADA -->
+<div class="table-custom-card">
+    <div class="p-3 border-bottom d-flex justify-content-between align-items-center bg-light">
+        <div class="d-flex align-items-center gap-2">
+            <h5 class="mb-0 fw-bold text-dark">
+                <i class="bi bi-speedometer2 text-primary me-1"></i> Parque de Instrumentos
+            </h5>
+            <span class="badge bg-secondary rounded-pill" id="tableFilteredCount">{{ instrumentos|length }} itens</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span class="small text-muted d-none d-md-inline">Filtrado por: <strong id="activeTabLabel" class="text-primary">TODOS</strong></span>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" id="dashboardInstrumentsTable">
+            <thead class="table-light small text-uppercase text-muted font-monospace">
+                <tr>
+                    <th class="ps-3 py-3">TAG / Código</th>
+                    <th class="py-3">Descrição</th>
+                    <th class="py-3">Setor</th>
+                    <th class="py-3 text-center">Atividade & Local</th>
+                    <th class="py-3">Vencimento</th>
+                    <th class="py-3 text-center">Status / RNC</th>
+                    <th class="text-end pe-3 py-3">Ações Rápidas</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in instrumentos %}
+                <tr class="instrument-row" 
+                    data-tratativa="{{ item.tratativa|lower }}"
+                    data-is-internal="{% if item.is_internal %}true{% else %}false{% endif %}"
+                    data-tag="{{ item.tag|lower }}"
+                    data-desc="{{ item.descricao|lower }}"
+                    data-setor="{{ item.setor_nome|lower }}"
+                    data-status="{{ item.status_situacao }}">
+                    
+                    <!-- TAG -->
+                    <td class="ps-3 py-2.5 font-monospace fw-bold">
+                        <a href="{{ item.url_detalhes }}" class="text-primary text-decoration-none hover-underline">
+                            {{ item.tag }}
+                        </a>
+                    </td>
+
+                    <!-- DESCRIÇÃO -->
+                    <td class="py-2.5">
+                        <div class="text-dark small fw-semibold">{{ item.descricao|truncatechars:45 }}</div>
+                        <div class="text-muted" style="font-size: 0.72rem;">{{ item.categoria_nome }}</div>
+                    </td>
+
+                    <!-- SETOR -->
+                    <td class="py-2.5 small text-muted">
+                        {{ item.setor_nome }}
+                    </td>
+
+                    <!-- ATIVIDADE & LOCAL -->
+                    <td class="py-2.5 text-center">
+                        <div class="d-flex flex-column align-items-center gap-1">
+                            <!-- Atividade -->
+                            {% if item.activity_type == 'VERIFICACAO' %}
+                                <span class="badge rounded-pill badge-activity-verif">Verificação</span>
+                            {% else %}
+                                <span class="badge rounded-pill badge-activity-calib">Calibração</span>
+                            {% endif %}
+                            <!-- Local -->
+                            {% if item.is_internal %}
+                                <span class="badge rounded-pill badge-local-interno">
+                                    <i class="bi bi-building me-0.5"></i> Interno
+                                </span>
+                            {% else %}
+                                <span class="badge rounded-pill badge-local-externo">
+                                    <i class="bi bi-truck me-0.5"></i> Externo
+                                </span>
+                            {% endif %}
+                        </div>
+                    </td>
+
+                    <!-- VENCIMENTO -->
+                    <td class="py-2.5 small">
+                        <div class="fw-bold {% if item.status_situacao == 'VENCIDO' %}text-danger{% elif item.status_situacao == 'AVENCER_30' %}text-warning text-dark{% else %}text-secondary{% endif %}">
+                            {{ item.data_proxima_calibracao_display }}
+                        </div>
+                        {% if item.dias_para_vencer is not None %}
+                            {% if item.status_situacao == 'VENCIDO' %}
+                                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25" style="font-size: 0.68rem;">
+                                    {{ item.dias_para_vencer|stringformat:"d"|slice:"1:" }} dias atrás
+                                </span>
+                            {% elif item.status_situacao == 'AVENCER_30' %}
+                                <span class="badge bg-warning bg-opacity-10 text-dark border border-warning border-opacity-50" style="font-size: 0.68rem;">
+                                    Em {{ item.dias_para_vencer }} dias
+                                </span>
+                            {% endif %}
+                        {% endif %}
+                    </td>
+
+                    <!-- STATUS / RNC -->
+                    <td class="py-2.5 text-center">
+                        <div class="d-flex justify-content-center align-items-center gap-1.5">
+                            {% if item.status_situacao == 'VENCIDO' %}
+                                <span class="badge bg-danger rounded-pill px-2 py-1" style="font-size: 0.75rem;">VENCIDO</span>
+                            {% elif item.status_situacao == 'AVENCER_30' %}
+                                <span class="badge bg-warning text-dark rounded-pill px-2 py-1" style="font-size: 0.75rem;">A VENCER</span>
+                            {% else %}
+                                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-2 py-1" style="font-size: 0.75rem;">EM DIA</span>
+                            {% endif %}
+
+                            <!-- ALERTA DE OCORRÊNCIA / CAPA EM ABERTO -->
+                            {% if item.has_active_occurrence %}
+                                <span class="occurrence-alert-icon" title="Ocorrência Ativa / Em Manutenção ({{ item.ocorrencias_count }})" data-bs-toggle="tooltip" onclick="openOcorrenciaModal('{{ item.id }}', '{{ item.tag }}')">
+                                    <i class="bi bi-exclamation-triangle-fill" style="font-size: 0.75rem;"></i>
+                                </span>
+                            {% endif %}
+                        </div>
+                    </td>
+
+                    <!-- AÇÕES RÁPIDAS -->
+                    <td class="text-end pe-3 py-2.5">
+                        <div class="d-flex justify-content-end align-items-center gap-1">
+                            <!-- Se EXTERNO: Nova Cotação -->
+                            {% if not item.is_internal %}
+                                <a href="{% url 'metrologia:solicitacao_create' %}?instrumento_id={{ item.id }}" class="btn btn-sm btn-outline-primary action-btn-quick" title="Abrir Solicitação de Cotação">
+                                    <i class="bi bi-cash-coin me-1"></i> Cotar
                                 </a>
-                            </td>
-                            <td>{{ item.descricao|truncatechars:30 }}</td> 
-                            <td><small>{{ item.setor.nome|default:"-" }}</small></td>
-                            
-                            <td>
-                                <strong>
-                                    {% if item.data_proxima_calibracao %}
-                                        {{ item.data_proxima_calibracao|date:"d/m/Y" }}
-                                    {% else %}
-                                        -
-                                    {% endif %}
-                                </strong>
-                            </td>
-                            
-                            <td>
-                                {% if item.data_proxima_calibracao and item.data_proxima_calibracao < today %}
-                                    <span class="badge bg-danger">VENCIDO</span>
-                                {% elif item.data_proxima_calibracao %}
-                                    <span class="badge bg-warning text-dark">A VENCER</span>
-                                {% else %}
-                                    <span class="badge bg-secondary">-</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="5" class="text-center p-5">
-                                <div class="text-muted">
-                                    <h3 class="text-success">🎉</h3>
-                                    <h5>Tudo certo por aqui!</h5>
-                                    <p class="small">Nenhum instrumento crítico para os próximos 30 dias.</p>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                            {% else %}
+                                <!-- Se INTERNO: Agendar Execução / Calibrar -->
+                                <a href="{% url 'modulo_metrologia' %}?search={{ item.tag }}" class="btn btn-sm btn-outline-success action-btn-quick" title="Agendar ou Registrar Calibração Interna">
+                                    <i class="bi bi-calendar-check me-1"></i> Agendar
+                                </a>
+                            {% endif %}
+
+                            <!-- PARA TODOS: Reportar Ocorrência -->
+                            <button type="button" class="btn btn-sm btn-outline-warning action-btn-quick text-dark" title="Reportar Ocorrência / RNC" onclick="openOcorrenciaModal('{{ item.id }}', '{{ item.tag }}')">
+                                <i class="bi bi-exclamation-circle"></i>
+                            </button>
+
+                            <!-- VER DETALHES -->
+                            <a href="{{ item.url_detalhes }}" class="btn btn-sm btn-light border action-btn-quick text-muted" title="Ver Histórico Completo">
+                                <i class="bi bi-arrow-right"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr id="emptyRowState">
+                    <td colspan="7" class="text-center p-5">
+                        <div class="text-muted">
+                            <h3 class="text-success mb-2"><i class="bi bi-check2-circle"></i></h3>
+                            <h5 class="fw-bold">Nenhum instrumento cadastrado</h5>
+                            <p class="small text-muted">Cadastre instrumentos no módulo de Metrologia para gerenciar o parque.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- MODAL RÁPIDO DE NOVA OCORRÊNCIA -->
+<div class="modal fade" id="modalNovaOcorrenciaDashboard" tabindex="-1" aria-labelledby="modalNovaOcorrenciaDashboardLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{% url 'metrologia:registrar_ocorrencia' %}">
+                {% csrf_token %}
+                <input type="hidden" name="instrumento_id" id="modal_ocorrencia_instrumento_id" value="">
+                
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title fw-bold" id="modalNovaOcorrenciaDashboardLabel">
+                        <i class="bi bi-exclamation-triangle me-2"></i> Reportar Ocorrência / RNC
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning py-2 small mb-3">
+                        Instrumento: <strong id="modal_ocorrencia_instrumento_tag" class="font-monospace"></strong>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold mb-1 small">Tipo da Ocorrência</label>
+                        <select name="tipo" class="form-select form-select-sm" required>
+                            <option value="">Selecione...</option>
+                            <option value="CALIBRACAO">Calibração</option>
+                            <option value="VERIFICACAO">Verificação</option>
+                            <option value="MANUTENCAO">Manutenção / Reparo</option>
+                            <option value="AVARIA">Avaria / Dano</option>
+                            <option value="AJUSTE">Ajuste de Processo</option>
+                            <option value="EXTRAVIO">Extravio / Perda</option>
+                            <option value="OUTRO">Outro</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold mb-1 small">Descrição do Problema / Ação</label>
+                        <textarea name="descricao" class="form-control form-control-sm" rows="3" required placeholder="Descreva a não conformidade ou necessidade..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold mb-1 small">Data do Registro</label>
+                        <input type="date" name="data_ocorrencia" class="form-control form-control-sm" required value="{{ today }}">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning btn-sm fw-bold">Salvar Ocorrência</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
+
+<script>
+    // Gerenciamento de Abas e Filtro Instantâneo
+    let currentTab = 'todos';
+
+    function setDashboardTab(tab) {
+        currentTab = tab;
+
+        // 1. Atualizar botões das abas
+        document.querySelectorAll('.dashboard-tab-btn').forEach(btn => {
+            if (btn.getAttribute('data-tab') === tab) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+
+        // 2. Atualizar grupos de KPI cards
+        document.querySelectorAll('.kpi-group-item').forEach(el => el.classList.add('d-none'));
+        document.querySelectorAll(`.kpi-group-${tab}`).forEach(el => el.classList.remove('d-none'));
+
+        // 3. Atualizar rótulo
+        const labels = { 'todos': 'TODOS', 'externo': 'EXTERNO (Fornecedores)', 'interno': 'INTERNO (Laboratório)' };
+        const labelEl = document.getElementById('activeTabLabel');
+        if (labelEl) labelEl.textContent = labels[tab] || tab.toUpperCase();
+
+        // 4. Filtrar linhas da tabela
+        filterInstrumentsTable();
+    }
+
+    function filterInstrumentsTable() {
+        const query = (document.getElementById('dashboardSearchInput')?.value || '').trim().toLowerCase();
+        const rows = document.querySelectorAll('.instrument-row');
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            const isInternal = row.getAttribute('data-is-internal') === 'true';
+            const tag = row.getAttribute('data-tag') || '';
+            const desc = row.getAttribute('data-desc') || '';
+            const setor = row.getAttribute('data-setor') || '';
+
+            // Checar aba
+            let tabMatch = true;
+            if (currentTab === 'externo' && isInternal) tabMatch = false;
+            if (currentTab === 'interno' && !isInternal) tabMatch = false;
+
+            // Checar busca textual
+            let searchMatch = true;
+            if (query && !tag.includes(query) && !desc.includes(query) && !setor.includes(query)) {
+                searchMatch = false;
+            }
+
+            if (tabMatch && searchMatch) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        const countBadge = document.getElementById('tableFilteredCount');
+        if (countBadge) countBadge.textContent = `${visibleCount} itens`;
+    }
+
+    function openOcorrenciaModal(id, tag) {
+        document.getElementById('modal_ocorrencia_instrumento_id').value = id;
+        document.getElementById('modal_ocorrencia_instrumento_tag').textContent = tag;
+        const modal = new bootstrap.Modal(document.getElementById('modalNovaOcorrenciaDashboard'));
+        modal.show();
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Inicializar busca em tempo real
+        const searchInput = document.getElementById('dashboardSearchInput');
+        if (searchInput) {
+            searchInput.addEventListener('input', filterInstrumentsTable);
+        }
+
+        // Inicializar tooltips do Bootstrap
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>
 
 {% endblock %}

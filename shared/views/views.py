@@ -611,34 +611,33 @@ def changelog_view(request):
 
 
 def dashboard_view(request):
-    """Dashboard principal agregando dados de todos os módulos."""
-    nome_display = request.user.username
-    hoje = date.today()
-    trinta_dias = hoje + timedelta(days=30)
-
-    # Metrologia
-    qtd_vencidos = Instrumento.objects.filter(
-        data_proxima_calibracao__lt=hoje, ativo=True
-    ).count()
-    qtd_avencer = Instrumento.objects.filter(
-        data_proxima_calibracao__range=[hoje, trinta_dias], ativo=True
-    ).count()
-    lista_urgentes = Instrumento.objects.filter(
-        data_proxima_calibracao__lte=trinta_dias, ativo=True
-    ).order_by("data_proxima_calibracao")[:5]
-
-    # Procurements
-    qtd_pendentes = SolicitacaoInstrumento.objects.filter(status="PENDENTE").count()
-
-    ctx = {
-        "nome_display": nome_display,
-        "qtd_vencidos": qtd_vencidos,
-        "qtd_avencer": qtd_avencer,
-        "lista_urgentes": lista_urgentes,
-        "qtd_cotacoes": ProcessoCotacao.objects.filter(status="ABERTO").count(),
-        "qtd_pendentes": qtd_pendentes,
-        "today": hoje,
-    }
+    """Dashboard principal de metrologia agregando dados otimizados."""
+    try:
+        from metrologia.views.views import get_metrologia_dashboard_data
+        data = get_metrologia_dashboard_data()
+        ctx = {
+            "nome_display": request.user.username if request.user.is_authenticated else "Visitante",
+            "data": data,
+            "kpis": data["kpis"],
+            "instrumentos": data["instrumentos"],
+            "solicitacoes_cotacao": data["solicitacoes_cotacao"],
+            "qtd_pendentes": data["qtd_solicitacoes_qms"],
+            "today": data["hoje"],
+            "hoje_display": data["hoje_display"],
+        }
+    except Exception as e:
+        from datetime import date
+        ctx = {
+            "nome_display": request.user.username if request.user.is_authenticated else "Visitante",
+            "data": {"kpis": {"todos": {}, "externo": {}, "interno": {}}, "instrumentos": []},
+            "kpis": {"todos": {}, "externo": {}, "interno": {}},
+            "instrumentos": [],
+            "solicitacoes_cotacao": [],
+            "qtd_pendentes": 0,
+            "today": date.today().strftime('%Y-%m-%d'),
+            "hoje_display": date.today().strftime('%d/%m/%Y'),
+            "error": str(e),
+        }
     return render(request, "shared/dashboard.html", ctx)
 
 
