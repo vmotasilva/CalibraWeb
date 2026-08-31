@@ -283,7 +283,7 @@ def imp_historico_view(request):
 @login_required
 def modulo_metrologia_view(request):
     """Dashboard principal do módulo de Metrologia."""
-    instrumentos = Instrumento.objects.all().select_related('categoria','setor').order_by("tag")
+    instrumentos = Instrumento.objects.all().select_related('categoria','setor').prefetch_related('historicos', 'ocorrencias').order_by("tag")
 
     # Filtro de status
     st_param = (request.GET.get('st') or '').upper()
@@ -1572,6 +1572,16 @@ def get_metrologia_dashboard_data():
             'has_active_occurrence': has_active_occurrence,
             'ocorrencias_count': len(abertas),
             'ocorrencias_tipos': [o.tipo for o in abertas],
+            'ocorrencias_detalhes': [
+                {
+                    'id': o.id,
+                    'tipo': o.tipo,
+                    'tipo_display': o.get_tipo_display() if hasattr(o, 'get_tipo_display') else o.tipo,
+                    'data_ocorrencia': o.data_ocorrencia.strftime('%d/%m/%Y') if o.data_ocorrencia else '-',
+                    'descricao': o.descricao,
+                }
+                for o in abertas
+            ],
             'url_detalhes': url_detalhes,
         })
 

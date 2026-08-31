@@ -602,12 +602,23 @@
                             </td>
 
                             <td class="text-end pe-4 py-2">
-                                <button type="button" class="btn btn-sm btn-outline-warning py-0 px-2 rounded-pill me-1" 
-                                        title="Registrar Ocorrência" 
-                                        data-bs-toggle="modal" data-bs-target="#modalNovaOcorrencia" 
-                                        data-id="{{ i.id }}" data-tag="{{ i.tag }}">
-                                    <i class="bi bi-exclamation-triangle"></i>
-                                </button>
+                                {% with abertas=i.ocorrencias.all %}
+                                    {% if abertas %}
+                                        <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 rounded-pill me-1 shadow-sm d-inline-flex align-items-center gap-1" 
+                                                title="Ver {{ abertas|length }} Ocorrência(s) em Aberto" 
+                                                onclick="abrirModalOcorrencias('{{ i.id }}', '{{ i.tag }}')">
+                                            <i class="bi bi-exclamation-octagon-fill text-danger animate-pulse"></i>
+                                            <span class="small fw-bold">{{ abertas|length }} RNC</span>
+                                        </button>
+                                    {% else %}
+                                        <button type="button" class="btn btn-sm btn-outline-warning py-0 px-2 rounded-pill me-1" 
+                                                title="Registrar Ocorrência" 
+                                                data-bs-toggle="modal" data-bs-target="#modalNovaOcorrencia" 
+                                                data-id="{{ i.id }}" data-tag="{{ i.tag }}">
+                                            <i class="bi bi-exclamation-triangle"></i>
+                                        </button>
+                                    {% endif %}
+                                {% endwith %}
                                 <a href="{% url 'visualizar_instrumento' i.id %}" class="btn btn-sm btn-outline-primary py-0 px-3 rounded-pill detail-link" style="font-size: 0.75rem;">
                                     Detalhes
                                 </a>
@@ -1312,23 +1323,23 @@ function selectAllInCategory(category) {
 <!-- Modal Nova Ocorrência -->
 <div class="modal fade" id="modalNovaOcorrencia" tabindex="-1" aria-labelledby="modalNovaOcorrenciaLabel" aria-hidden="true">
     <div class="modal-dialog">
-        <div class="modal-content">
+        <div class="modal-content shadow-lg" style="border-radius: 14px;">
             <form method="post" action="{% url 'metrologia:registrar_ocorrencia' %}">
                 {% csrf_token %}
                 <input type="hidden" name="instrumento_id" id="ocorrencia_instrumento_id" value="">
                 
-                <div class="modal-header bg-warning text-dark">
-                    <h5 class="modal-title" id="modalNovaOcorrenciaLabel">
+                <div class="modal-header bg-warning text-dark" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                    <h5 class="modal-title fw-bold" id="modalNovaOcorrenciaLabel">
                         <i class="bi bi-exclamation-triangle me-2"></i> Registrar Ocorrência
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body p-4">
                     <div class="alert alert-warning py-2 small mb-3">
-                        <strong>Instrumento:</strong> <span id="ocorrencia_instrumento_tag" class="fw-bold"></span>
+                        <strong>Instrumento:</strong> <span id="ocorrencia_instrumento_tag" class="fw-bold font-monospace"></span>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-bold mb-1">Tipo da Ocorrência</label>
+                        <label class="form-label fw-bold mb-1 small">Tipo da Ocorrência</label>
                         <select name="tipo" class="form-select form-select-sm" required>
                             <option value="">Selecione...</option>
                             <option value="CALIBRACAO">Calibração</option>
@@ -1342,19 +1353,42 @@ function selectAllInCategory(category) {
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-bold mb-1">Descrição Detalhada</label>
+                        <label class="form-label fw-bold mb-1 small">Descrição Detalhada</label>
                         <textarea name="descricao" class="form-control form-control-sm" rows="3" required></textarea>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-bold mb-1">Data da Ocorrência</label>
+                        <label class="form-label fw-bold mb-1 small">Data da Ocorrência</label>
                         <input type="date" name="data_ocorrencia" class="form-control form-control-sm" required value="{{ hoje|date:'Y-m-d' }}">
                     </div>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer bg-light">
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-warning btn-sm">Salvar Ocorrência</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Visualizar Ocorrências Abertas -->
+<div class="modal fade" id="modalVisualizarOcorrencias" tabindex="-1" aria-labelledby="modalVisualizarOcorrenciasLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content shadow-lg" style="border-radius: 14px;">
+            <div class="modal-header bg-danger text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                <h5 class="modal-title fw-bold" id="modalVisualizarOcorrenciasLabel">
+                    <i class="bi bi-exclamation-octagon-fill me-2"></i> Ocorrências em Aberto &mdash; <span id="view_ocorrencia_instrumento_tag" class="font-monospace"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4" id="view_ocorrencias_modal_body">
+                <!-- Injetado dinamicamente via JS -->
+            </div>
+            <div class="modal-footer bg-light d-flex justify-content-between">
+                <button type="button" class="btn btn-sm btn-outline-warning" onclick="abrirModalNovaOcorrenciaDoVisualizar()">
+                    <i class="bi bi-plus-lg me-1"></i> Nova Ocorrência
+                </button>
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
         </div>
     </div>
 </div>
@@ -1572,17 +1606,49 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <script>
 function abrirModalOcorrencias(instrumentoId, tag) {
-    document.getElementById('modalOcTag').innerText = tag;
-    var dataDiv = document.getElementById('ocorrencias-data-' + instrumentoId);
-    var content = dataDiv ? dataDiv.innerHTML : '';
-    var body = document.getElementById('modalOcBody');
-    if (!content || content.trim() === '' || !content.includes('ABERTA')) {
-        body.innerHTML = '<div class="alert alert-success mb-0"><i class="bi bi-check-circle me-2"></i>Nenhuma ocorrência aberta para este instrumento.</div>';
-    } else {
-        body.innerHTML = content;
+    window._currentInstrumentoIdOcorrencia = instrumentoId;
+    window._currentInstrumentoTagOcorrencia = tag;
+
+    const modalTag = document.getElementById('view_ocorrencia_instrumento_tag') || document.getElementById('modalOcTag');
+    if (modalTag) modalTag.innerText = tag;
+
+    const dataDiv = document.getElementById('ocorrencias-data-' + instrumentoId);
+    const content = dataDiv ? dataDiv.innerHTML : '';
+    const body = document.getElementById('view_ocorrencias_modal_body') || document.getElementById('modalOcBody');
+    if (body) {
+        if (!content || content.trim() === '' || !content.includes('ABERTA')) {
+            body.innerHTML = '<div class="alert alert-success mb-0"><i class="bi bi-check-circle me-2"></i>Nenhuma ocorrência aberta para este instrumento.</div>';
+        } else {
+            body.innerHTML = content;
+        }
     }
-    var modal = new bootstrap.Modal(document.getElementById('modalDashboardOcorrencias'));
-    modal.show();
+    const targetModal = document.getElementById('modalVisualizarOcorrencias') || document.getElementById('modalDashboardOcorrencias');
+    if (targetModal) {
+        const modal = new bootstrap.Modal(targetModal);
+        modal.show();
+    }
+}
+
+function abrirModalNovaOcorrenciaDoVisualizar() {
+    const viewModalEl = document.getElementById('modalVisualizarOcorrencias');
+    if (viewModalEl) {
+        const viewModal = bootstrap.Modal.getInstance(viewModalEl);
+        if (viewModal) viewModal.hide();
+    }
+    
+    const id = window._currentInstrumentoIdOcorrencia;
+    const tag = window._currentInstrumentoTagOcorrencia;
+    
+    setTimeout(() => {
+        const inputId = document.getElementById('ocorrencia_instrumento_id') || document.getElementById('modal_ocorrencia_instrumento_id');
+        const spanTag = document.getElementById('ocorrencia_instrumento_tag') || document.getElementById('modal_ocorrencia_instrumento_tag');
+        if (inputId) inputId.value = id;
+        if (spanTag) spanTag.textContent = tag;
+        
+        const targetModalId = document.getElementById('modalNovaOcorrenciaDashboard') ? 'modalNovaOcorrenciaDashboard' : 'modalNovaOcorrencia';
+        const novaModal = new bootstrap.Modal(document.getElementById(targetModalId));
+        novaModal.show();
+    }, 300);
 }
 
 function atualizarFiltrosDisponiveis() {

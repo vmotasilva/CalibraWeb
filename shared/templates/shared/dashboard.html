@@ -566,15 +566,42 @@
                                     <span class="badge bg-success bg-opacity-75 text-white rounded-pill px-2 py-1">EM DIA</span>
                                 {% endif %}
 
-                                <!-- Ícone Pulsante de Ocorrência Aberta -->
+                                <!-- Ícone Pulsante de Ocorrência Aberta que abre Pop-up -->
                                 {% if item.has_active_occurrence %}
                                     <button type="button" 
-                                            class="btn btn-sm btn-link p-0 text-danger" 
-                                            data-bs-toggle="tooltip" 
-                                            data-bs-placement="top" 
-                                            title="Ocorrência Ativa / RNC em aberto ({{ item.ocorrencias_count }})">
-                                        <i class="bi bi-exclamation-circle-fill text-danger fs-6 animate-pulse"></i>
+                                            class="btn btn-sm btn-outline-danger py-0 px-2 rounded-pill shadow-sm d-inline-flex align-items-center gap-1" 
+                                            title="Ver {{ item.ocorrencias_count }} Ocorrência(s) em Aberto"
+                                            onclick="abrirModalOcorrenciasDashboard('{{ item.id }}', '{{ item.tag }}')">
+                                        <i class="bi bi-exclamation-octagon-fill text-danger animate-pulse"></i>
+                                        <span class="small fw-bold">{{ item.ocorrencias_count }} RNC</span>
                                     </button>
+                                    
+                                    <!-- Container oculto com os detalhes das ocorrências -->
+                                    <div id="ocorrencias-dashboard-data-{{ item.id }}" style="display: none;">
+                                        {% for oc in item.ocorrencias_detalhes %}
+                                            <div class="card mb-3 border-danger shadow-sm">
+                                                <div class="card-header bg-danger bg-opacity-10 text-danger fw-bold d-flex justify-content-between align-items-center py-2">
+                                                    <span><i class="bi bi-exclamation-octagon me-1"></i> {{ oc.tipo_display }}</span>
+                                                    <span class="small badge bg-danger text-white"><i class="bi bi-calendar-event me-1"></i> {{ oc.data_ocorrencia }}</span>
+                                                </div>
+                                                <div class="card-body p-3">
+                                                    <p class="mb-2 text-dark small">{{ oc.descricao }}</p>
+                                                    <div class="d-flex justify-content-end align-items-center gap-2 mt-2 pt-2 border-top">
+                                                        <form method="post" action="{% url 'metrologia:encerrar_ocorrencia' oc.id %}" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja encerrar esta ocorrência?');">
+                                                            {% csrf_token %}
+                                                            <button type="submit" class="btn btn-sm btn-success rounded-pill px-3 py-1 fw-semibold"><i class="bi bi-check-circle me-1"></i> Encerrar Ocorrência</button>
+                                                        </form>
+                                                        <form method="post" action="{% url 'metrologia:deletar_ocorrencia' oc.id %}" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja EXCLUIR permanentemente esta ocorrência?');">
+                                                            {% csrf_token %}
+                                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-2.5 py-1" title="Excluir"><i class="bi bi-trash"></i></button>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        {% empty %}
+                                            <div class="text-center py-3 text-muted">Nenhuma ocorrência em aberto.</div>
+                                        {% endfor %}
+                                    </div>
                                 {% endif %}
                             </div>
                         </td>
@@ -971,6 +998,29 @@
     </div>
 </div>
 
+<!-- 5. MODAL VISUALIZAR OCORRÊNCIAS EM ABERTO -->
+<div class="modal fade" id="modalVisualizarOcorrenciasDashboard" tabindex="-1" aria-labelledby="modalVisualizarOcorrenciasDashboardLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content shadow-lg" style="border-radius: 14px;">
+            <div class="modal-header bg-danger text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                <h5 class="modal-title fw-bold" id="modalVisualizarOcorrenciasDashboardLabel">
+                    <i class="bi bi-exclamation-octagon-fill me-2"></i> Ocorrências em Aberto &mdash; <span id="view_ocorrencia_dashboard_tag" class="font-monospace"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4" id="view_ocorrencias_dashboard_modal_body">
+                <!-- Injetado dinamicamente via JS -->
+            </div>
+            <div class="modal-footer bg-light d-flex justify-content-between">
+                <button type="button" class="btn btn-sm btn-outline-warning" onclick="abrirModalNovaOcorrenciaDoVisualizarDashboard()">
+                    <i class="bi bi-plus-lg me-1"></i> Nova Ocorrência
+                </button>
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     let currentTab = 'todos'; // 'todos' | 'externo' | 'interno'
     let currentPage = 1;
@@ -1277,6 +1327,42 @@
         document.getElementById('modal_ocorrencia_instrumento_tag').textContent = tag;
         const modal = new bootstrap.Modal(document.getElementById('modalNovaOcorrenciaDashboard'));
         modal.show();
+    }
+
+    function abrirModalOcorrenciasDashboard(id, tag) {
+        window._currentInstrumentoIdOcorrencia = id;
+        window._currentInstrumentoTagOcorrencia = tag;
+
+        const modalTag = document.getElementById('view_ocorrencia_dashboard_tag');
+        if (modalTag) modalTag.innerText = tag;
+
+        const dataDiv = document.getElementById('ocorrencias-dashboard-data-' + id);
+        const content = dataDiv ? dataDiv.innerHTML : '';
+        const body = document.getElementById('view_ocorrencias_dashboard_modal_body');
+        if (body) {
+            if (!content || content.trim() === '') {
+                body.innerHTML = '<div class="alert alert-success mb-0"><i class="bi bi-check-circle me-2"></i>Nenhuma ocorrência aberta para este instrumento.</div>';
+            } else {
+                body.innerHTML = content;
+            }
+        }
+        const modal = new bootstrap.Modal(document.getElementById('modalVisualizarOcorrenciasDashboard'));
+        modal.show();
+    }
+
+    function abrirModalNovaOcorrenciaDoVisualizarDashboard() {
+        const viewModalEl = document.getElementById('modalVisualizarOcorrenciasDashboard');
+        if (viewModalEl) {
+            const viewModal = bootstrap.Modal.getInstance(viewModalEl);
+            if (viewModal) viewModal.hide();
+        }
+        
+        const id = window._currentInstrumentoIdOcorrencia;
+        const tag = window._currentInstrumentoTagOcorrencia;
+        
+        setTimeout(() => {
+            openOcorrenciaModal(id, tag);
+        }, 300);
     }
 
     function toggleFilterGroup(el) {
