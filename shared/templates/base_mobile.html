@@ -638,7 +638,7 @@
                             </li>
                             {% for origin in nav_inbox_origins %}
                                 <li class="border-bottom border-light">
-                                    <a class="dropdown-item py-2 px-3 d-flex justify-content-between align-items-center bg-light bg-opacity-50" href="{% url 'inbox' %}?tab={{ origin.slug }}">
+                                    <a class="dropdown-item py-2 px-3 d-flex justify-content-between align-items-center bg-light bg-opacity-75" href="{% url 'inbox' %}?tab={{ origin.slug }}" style="color: #0f172a;">
                                         <div class="d-flex align-items-center gap-2">
                                             <i class="bi {{ origin.icon }} text-primary fs-6"></i>
                                             <span class="fw-bold text-dark small">{{ origin.name }}</span>
@@ -647,11 +647,13 @@
                                     </a>
 
                                     {% if origin.sub_origins_list %}
-                                    <div class="bg-white pb-1">
+                                    <div class="bg-white py-1">
                                         {% for sub in origin.sub_origins_list %}
-                                        <a class="dropdown-item py-1.5 ps-4 pe-3 d-flex justify-content-between align-items-center text-muted" href="{% url 'inbox' %}?tab={{ origin.slug }}&sub={{ sub.slug }}" style="font-size: 0.78rem;">
-                                            <span class="text-truncate" style="max-width: 190px;"><i class="bi bi-chevron-right text-primary me-1" style="font-size: 0.65rem;"></i> {{ sub.name }}</span>
-                                            <span class="badge bg-secondary bg-opacity-25 text-dark rounded-pill" style="font-size: 0.7rem;">{{ sub.count }}</span>
+                                        <a class="dropdown-item py-1.5 ps-4 pe-3 d-flex justify-content-between align-items-center" href="{% url 'inbox' %}?tab={{ origin.slug }}&sub={{ sub.slug }}" style="font-size: 0.82rem; color: #1e293b;">
+                                            <span class="text-truncate fw-medium" style="max-width: 190px; color: #1e293b;">
+                                                <i class="bi bi-chevron-right text-primary me-1.5" style="font-size: 0.7rem;"></i>{{ sub.name }}
+                                            </span>
+                                            <span class="badge bg-primary bg-opacity-10 text-primary fw-bold rounded-pill" style="font-size: 0.72rem; border: 1px solid rgba(13, 110, 253, 0.25);">{{ sub.count }}</span>
                                         </a>
                                         {% endfor %}
                                     </div>
