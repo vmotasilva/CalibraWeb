@@ -642,20 +642,31 @@
                             </span>
                         {% endif %}
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" aria-labelledby="inboxDropdown" style="min-width: 270px; padding: 0; border-radius: 10px; overflow: hidden;">
-                        <li class="bg-light border-bottom p-2 px-3 d-flex justify-content-between align-items-center">
+                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" aria-labelledby="inboxDropdown" style="min-width: 300px; max-height: 480px; overflow-y: auto; padding: 0; border-radius: 10px;">
+                        <li class="bg-light border-bottom p-2 px-3 d-flex justify-content-between align-items-center sticky-top">
                             <strong class="mb-0 small text-dark"><i class="bi bi-bell-fill text-primary me-1"></i> Notificações por Origem</strong>
                             <span class="badge bg-secondary rounded-pill">{{ nav_notifications_total }}</span>
                         </li>
                         {% for origin in nav_inbox_origins %}
-                            <li>
-                                <a class="dropdown-item py-2.5 px-3 d-flex justify-content-between align-items-center border-bottom border-light" href="{% url 'inbox' %}?tab={{ origin.slug }}">
+                            <li class="border-bottom border-light">
+                                <a class="dropdown-item py-2 px-3 d-flex justify-content-between align-items-center bg-light bg-opacity-50" href="{% url 'inbox' %}?tab={{ origin.slug }}">
                                     <div class="d-flex align-items-center gap-2">
                                         <i class="bi {{ origin.icon }} text-primary fs-6"></i>
-                                        <span class="fw-semibold text-dark small">{{ origin.name }}</span>
+                                        <span class="fw-bold text-dark small">{{ origin.name }}</span>
                                     </div>
                                     <span class="badge bg-primary rounded-pill px-2 py-1">{{ origin.count }}</span>
                                 </a>
+
+                                {% if origin.sub_origins_list %}
+                                <div class="bg-white pb-1">
+                                    {% for sub in origin.sub_origins_list %}
+                                    <a class="dropdown-item py-1.5 ps-4 pe-3 d-flex justify-content-between align-items-center text-muted" href="{% url 'inbox' %}?tab={{ origin.slug }}&sub={{ sub.slug }}" style="font-size: 0.78rem;">
+                                        <span class="text-truncate" style="max-width: 200px;"><i class="bi bi-chevron-right text-primary me-1" style="font-size: 0.65rem;"></i> {{ sub.name }}</span>
+                                        <span class="badge bg-secondary bg-opacity-25 text-dark rounded-pill" style="font-size: 0.7rem;">{{ sub.count }}</span>
+                                    </a>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
                             </li>
                         {% empty %}
                             <li>

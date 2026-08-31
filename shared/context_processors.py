@@ -92,8 +92,23 @@ def nav_notifications(request: Any) -> dict[str, Any]:
                 "slug": slugify(mod_name),
                 "count": 0,
                 "icon": icon,
+                "sub_origins": OrderedDict(),
             }
         origins_map[mod_key]["count"] += 1
+
+        sub_name = (item.sub_type or "Geral").strip()
+        sub_slug = slugify(sub_name)
+        if sub_slug not in origins_map[mod_key]["sub_origins"]:
+            origins_map[mod_key]["sub_origins"][sub_slug] = {
+                "name": sub_name,
+                "slug": sub_slug,
+                "count": 0,
+            }
+        origins_map[mod_key]["sub_origins"][sub_slug]["count"] += 1
+
+    # Converter sub_origins em lista para iteração nos templates
+    for mod_data in origins_map.values():
+        mod_data["sub_origins_list"] = list(mod_data["sub_origins"].values())
 
     nav_inbox_origins = list(origins_map.values())
 
