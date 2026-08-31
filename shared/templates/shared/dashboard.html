@@ -39,28 +39,38 @@
         pointer-events: none;
     }
 
-    /* Container de Abas Interativas */
+    /* Container de Abas Interativas Responsivas */
     .dashboard-tabs-container {
-        display: inline-flex;
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none; /* Firefox */
         background: #e2e8f0;
         padding: 4px;
         border-radius: 12px;
         gap: 4px;
         box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+        max-width: 100%;
+    }
+    .dashboard-tabs-container::-webkit-scrollbar {
+        display: none; /* Chrome/Safari */
     }
     .dashboard-tab-btn {
         border: none;
         background: transparent;
-        padding: 8px 18px;
-        font-size: 0.86rem;
+        padding: 8px 16px;
+        font-size: 0.84rem;
         font-weight: 600;
         color: #475569;
         border-radius: 8px;
         transition: all 0.2s ease;
         display: inline-flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
         cursor: pointer;
+        white-space: nowrap;
+        flex-shrink: 0;
     }
     .dashboard-tab-btn:hover {
         color: #0f172a;
@@ -76,18 +86,19 @@
         color: #ffffff !important;
     }
 
-    /* KPI Cards */
+    /* KPI Cards Responsivos */
     .kpi-card {
         border-radius: 14px;
-        padding: 1.15rem 1.25rem;
+        padding: 1rem 1.15rem;
         color: #ffffff;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
-        min-height: 110px;
+        min-height: 105px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.06);
         transition: transform 0.2s ease, box-shadow 0.2s ease;
         text-decoration: none;
+        height: 100%;
     }
     .kpi-card:hover {
         transform: translateY(-2px);
@@ -102,22 +113,44 @@
     .kpi-card.dark { background: linear-gradient(135deg, #475569 0%, #334155 100%); }
 
     .kpi-number {
-        font-size: 2rem;
+        font-size: 1.85rem;
         font-weight: 800;
         line-height: 1;
-        margin-top: 0.35rem;
+        margin-top: 0.3rem;
     }
     .kpi-label {
-        font-size: 0.76rem;
+        font-size: 0.74rem;
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.05em;
+        letter-spacing: 0.04em;
         opacity: 0.9;
     }
     .kpi-desc {
-        font-size: 0.76rem;
+        font-size: 0.72rem;
         opacity: 0.85;
-        margin-top: 0.25rem;
+        margin-top: 0.2rem;
+    }
+
+    @media (max-width: 576px) {
+        .kpi-card {
+            padding: 0.75rem 0.85rem;
+            min-height: 90px;
+            border-radius: 10px;
+        }
+        .kpi-number {
+            font-size: 1.45rem;
+        }
+        .kpi-label {
+            font-size: 0.65rem;
+            line-height: 1.15;
+        }
+        .kpi-desc {
+            font-size: 0.65rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
     }
 
     /* Badges de Atividade & Local */
@@ -308,130 +341,130 @@
         </div>
     </div>
 
-    <!-- CONTAINER DE KPIS DINÂMICOS CONFORME A ABA ATIVA -->
-    <div id="kpis-container" class="row g-3 mb-4">
-        <!-- ABA TODOS -->
-        <div class="col-12 col-sm-6 col-xl-3 kpi-group-item kpi-group-todos">
+    <!-- CONTAINER DE KPIS DINÂMICOS CONFORME A ABA ATIVA (GRID 2x2 EM MOBILE, 4 COLS EM DESKTOP) -->
+    <div id="kpis-container" class="row g-2 g-md-3 mb-4">
+        <!-- ABA TODOS (Grid 2x2 no mobile: col-6, 4 cols no desktop: col-md-3) -->
+        <div class="col-6 col-md-3 kpi-group-item kpi-group-todos">
             <a href="{% url 'modulo_metrologia' %}?st=ATIVO&sit=VENCIDO" class="kpi-card danger">
                 <div class="d-flex justify-content-between align-items-start">
-                    <span class="kpi-label">Instrumentos Vencidos</span>
-                    <i class="bi bi-calendar-x fs-4 opacity-75"></i>
+                    <span class="kpi-label">Vencidos</span>
+                    <i class="bi bi-calendar-x fs-5 fs-md-4 opacity-75"></i>
                 </div>
                 <div>
                     <div class="kpi-number">{{ kpis.todos.vencidos|default:0 }}</div>
-                    <div class="kpi-desc">Necessitam calibração imediata</div>
+                    <div class="kpi-desc">Calibração imediata</div>
                 </div>
             </a>
         </div>
-        <div class="col-12 col-sm-6 col-xl-3 kpi-group-item kpi-group-todos">
+        <div class="col-6 col-md-3 kpi-group-item kpi-group-todos">
             <a href="{% url 'modulo_metrologia' %}?st=ATIVO&sit=AVENCER_30" class="kpi-card warning">
                 <div class="d-flex justify-content-between align-items-start">
-                    <span class="kpi-label">Vencem em 30 Dias</span>
-                    <i class="bi bi-clock-history fs-4 opacity-75"></i>
+                    <span class="kpi-label">Vencem 30d</span>
+                    <i class="bi bi-clock-history fs-5 fs-md-4 opacity-75"></i>
                 </div>
                 <div>
                     <div class="kpi-number">{{ kpis.todos.avencer_30|default:0 }}</div>
-                    <div class="kpi-desc">Entrando na janela de planejamento</div>
+                    <div class="kpi-desc">Janela de atenção</div>
                 </div>
             </a>
         </div>
-        <div class="col-12 col-sm-6 col-xl-3 kpi-group-item kpi-group-todos">
+        <div class="col-6 col-md-3 kpi-group-item kpi-group-todos">
             <div class="kpi-card purple">
                 <div class="d-flex justify-content-between align-items-start">
-                    <span class="kpi-label">Ocorrências / Manutenção</span>
-                    <i class="bi bi-exclamation-octagon fs-4 opacity-75"></i>
+                    <span class="kpi-label">Ocorrências</span>
+                    <i class="bi bi-exclamation-octagon fs-5 fs-md-4 opacity-75"></i>
                 </div>
                 <div>
                     <div class="kpi-number">{{ kpis.todos.ocorrencias_ativas|default:0 }}</div>
-                    <div class="kpi-desc">RNCs ou avarias em aberto</div>
+                    <div class="kpi-desc">RNCs em aberto</div>
                 </div>
             </div>
         </div>
-        <div class="col-12 col-sm-6 col-xl-3 kpi-group-item kpi-group-todos">
+        <div class="col-6 col-md-3 kpi-group-item kpi-group-todos">
             <a href="{% url 'modulo_metrologia' %}" class="kpi-card blue">
                 <div class="d-flex justify-content-between align-items-start">
-                    <span class="kpi-label">Parque Ativo Total</span>
-                    <i class="bi bi-tools fs-4 opacity-75"></i>
+                    <span class="kpi-label">Parque Total</span>
+                    <i class="bi bi-tools fs-5 fs-md-4 opacity-75"></i>
                 </div>
                 <div>
                     <div class="kpi-number">{{ kpis.todos.total_instrumentos|default:0 }}</div>
-                    <div class="kpi-desc">{{ kpis.todos.em_dia|default:0 }} com calibração em dia</div>
+                    <div class="kpi-desc">{{ kpis.todos.em_dia|default:0 }} em dia</div>
                 </div>
             </a>
         </div>
 
-        <!-- ABA EXTERNO -->
-        <div class="col-12 col-sm-6 col-xl-4 kpi-group-item kpi-group-externo d-none">
+        <!-- ABA EXTERNO (Grid 2 cols mobile, 3 cols desktop) -->
+        <div class="col-6 col-md-4 kpi-group-item kpi-group-externo d-none">
             <a href="{% url 'metrologia:solicitacao_list' %}" class="kpi-card blue">
                 <div class="d-flex justify-content-between align-items-start">
                     <span class="kpi-label">Cotações Abertas</span>
-                    <i class="bi bi-cash-coin fs-4 opacity-75"></i>
+                    <i class="bi bi-cash-coin fs-5 fs-md-4 opacity-75"></i>
                 </div>
                 <div>
                     <div class="kpi-number">{{ kpis.externo.cotacoes_abertas|default:0 }}</div>
-                    <div class="kpi-desc">Processos de cotação em andamento</div>
+                    <div class="kpi-desc">Em andamento</div>
                 </div>
             </a>
         </div>
-        <div class="col-12 col-sm-6 col-xl-4 kpi-group-item kpi-group-externo d-none">
+        <div class="col-6 col-md-4 kpi-group-item kpi-group-externo d-none">
             <div class="kpi-card warning">
                 <div class="d-flex justify-content-between align-items-start">
-                    <span class="kpi-label">Orçamentos / No Fornecedor</span>
-                    <i class="bi bi-truck fs-4 opacity-75"></i>
+                    <span class="kpi-label">No Fornecedor</span>
+                    <i class="bi bi-truck fs-5 fs-md-4 opacity-75"></i>
                 </div>
                 <div>
                     <div class="kpi-number">{{ kpis.externo.orcamentos_pendentes|default:0 }}</div>
-                    <div class="kpi-desc">Equipamentos em tratativa externa</div>
+                    <div class="kpi-desc">Tratativa externa</div>
                 </div>
             </div>
         </div>
-        <div class="col-12 col-sm-6 col-xl-4 kpi-group-item kpi-group-externo d-none">
+        <div class="col-12 col-md-4 kpi-group-item kpi-group-externo d-none">
             <div class="kpi-card danger">
                 <div class="d-flex justify-content-between align-items-start">
-                    <span class="kpi-label">Externos Vencidos / A Vencer</span>
-                    <i class="bi bi-calendar-x fs-4 opacity-75"></i>
+                    <span class="kpi-label">Vencidos / A Vencer</span>
+                    <i class="bi bi-calendar-x fs-5 fs-md-4 opacity-75"></i>
                 </div>
                 <div>
                     <div class="kpi-number">{{ kpis.externo.necessitam_cotacao|default:0 }}</div>
-                    <div class="kpi-desc">{{ kpis.externo.vencidos|default:0 }} vencidos + {{ kpis.externo.avencer_30|default:0 }} a vencer</div>
+                    <div class="kpi-desc">{{ kpis.externo.vencidos|default:0 }} venc + {{ kpis.externo.avencer_30|default:0 }} 30d</div>
                 </div>
             </div>
         </div>
 
-        <!-- ABA INTERNO -->
-        <div class="col-12 col-sm-6 col-xl-4 kpi-group-item kpi-group-interno d-none">
+        <!-- ABA INTERNO (Grid 2 cols mobile, 3 cols desktop) -->
+        <div class="col-6 col-md-4 kpi-group-item kpi-group-interno d-none">
             <div class="kpi-card teal">
                 <div class="d-flex justify-content-between align-items-start">
-                    <span class="kpi-label">Fila Laboratório Interno</span>
-                    <i class="bi bi-droplet-half fs-4 opacity-75"></i>
+                    <span class="kpi-label">Fila Laboratório</span>
+                    <i class="bi bi-droplet-half fs-5 fs-md-4 opacity-75"></i>
                 </div>
                 <div>
                     <div class="kpi-number">{{ kpis.interno.fila_laboratorio|default:0 }}</div>
-                    <div class="kpi-desc">Itens para calibração interna urgente</div>
+                    <div class="kpi-desc">Calibração urgente</div>
                 </div>
             </div>
         </div>
-        <div class="col-12 col-sm-6 col-xl-4 kpi-group-item kpi-group-interno d-none">
+        <div class="col-6 col-md-4 kpi-group-item kpi-group-interno d-none">
             <div class="kpi-card danger">
                 <div class="d-flex justify-content-between align-items-start">
                     <span class="kpi-label">Internos Vencidos</span>
-                    <i class="bi bi-exclamation-triangle fs-4 opacity-75"></i>
+                    <i class="bi bi-exclamation-triangle fs-5 fs-md-4 opacity-75"></i>
                 </div>
                 <div>
                     <div class="kpi-number">{{ kpis.interno.vencidos|default:0 }}</div>
-                    <div class="kpi-desc">Aguardando execução da equipe</div>
+                    <div class="kpi-desc">Aguardando equipe</div>
                 </div>
             </div>
         </div>
-        <div class="col-12 col-sm-6 col-xl-4 kpi-group-item kpi-group-interno d-none">
+        <div class="col-12 col-md-4 kpi-group-item kpi-group-interno d-none">
             <div class="kpi-card purple">
                 <div class="d-flex justify-content-between align-items-start">
-                    <span class="kpi-label">Ocorrências Internas Ativas</span>
-                    <i class="bi bi-tools fs-4 opacity-75"></i>
+                    <span class="kpi-label">Ocorrências Internas</span>
+                    <i class="bi bi-tools fs-5 fs-md-4 opacity-75"></i>
                 </div>
                 <div>
                     <div class="kpi-number">{{ kpis.interno.ocorrencias_ativas|default:0 }}</div>
-                    <div class="kpi-desc">Manutenções ou ajustes em aberto</div>
+                    <div class="kpi-desc">Manutenções ativas</div>
                 </div>
             </div>
         </div>
@@ -453,17 +486,17 @@
             </div>
         </div>
 
-        <div class="table-responsive">
+        <div class="table-responsive" style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
             <table class="table table-hover align-middle mb-0" id="dashboardInstrumentsTable">
                 <thead class="table-light small text-uppercase text-muted font-monospace">
                     <tr>
-                        <th class="ps-3 py-3" style="width: 40px;">
+                        <th class="ps-3 py-3" style="width: 36px;">
                             <input type="checkbox" id="selectAllCheckbox" class="form-check-input" onchange="toggleSelectAll(this)">
                         </th>
                         <th class="py-3">TAG / Código</th>
-                        <th class="py-3">Descrição</th>
-                        <th class="py-3">Setor</th>
-                        <th class="py-3 text-center">Atividade & Local</th>
+                        <th class="py-3 d-none d-md-table-cell">Descrição</th>
+                        <th class="py-3 d-none d-lg-table-cell">Setor</th>
+                        <th class="py-3 text-center d-none d-sm-table-cell">Atividade & Local</th>
                         <th class="py-3">Vencimento</th>
                         <th class="py-3 text-center">Status / RNC</th>
                         <th class="text-end pe-3 py-3">Ações Rápidas</th>
@@ -491,11 +524,11 @@
                         <!-- CHECKBOX DE SELEÇÃO -->
                         <td class="ps-3 py-2.5">
                             <input type="checkbox" class="form-check-input row-select" 
-                                   value="{{ item.id }}" 
-                                   data-tag="{{ item.tag }}" 
-                                   data-frequencia="{{ item.frequencia|default:12 }}" 
-                                   data-tratativa="{{ item.tratativa }}"
-                                   onchange="updateSelectionState()">
+                                    value="{{ item.id }}" 
+                                    data-tag="{{ item.tag }}" 
+                                    data-frequencia="{{ item.frequencia|default:12 }}" 
+                                    data-tratativa="{{ item.tratativa }}"
+                                    onchange="updateSelectionState()">
                         </td>
 
                         <!-- TAG -->
@@ -503,23 +536,26 @@
                             <a href="{{ item.url_detalhes }}" class="text-primary text-decoration-none hover-underline">
                                 {{ item.tag }}
                             </a>
+                            <div class="d-md-none text-muted small" style="font-size: 0.68rem; font-family: sans-serif; max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                {{ item.descricao }}
+                            </div>
                         </td>
 
-                        <!-- DESCRIÇÃO -->
-                        <td class="py-2.5">
+                        <!-- DESCRIÇÃO (OCULTA EM MOBILE) -->
+                        <td class="py-2.5 d-none d-md-table-cell">
                             <div class="text-dark small fw-semibold">{{ item.descricao|truncatechars:45 }}</div>
                             <div class="text-muted" style="font-size: 0.72rem;">
                                 {{ item.categoria_nome }}{% if item.fabricante %} &bull; {{ item.fabricante }}{% endif %}
                             </div>
                         </td>
 
-                        <!-- SETOR -->
-                        <td class="py-2.5 small text-muted">
+                        <!-- SETOR (OCULTO EM TELAS MENORES) -->
+                        <td class="py-2.5 small text-muted d-none d-lg-table-cell">
                             {{ item.setor_nome }}
                         </td>
 
-                        <!-- ATIVIDADE & LOCAL -->
-                        <td class="py-2.5 text-center">
+                        <!-- ATIVIDADE & LOCAL (OCULTO EM TELAS ULTRA-PEQUENAS) -->
+                        <td class="py-2.5 text-center d-none d-sm-table-cell">
                             <div class="d-flex flex-column align-items-center gap-1">
                                 <!-- Atividade -->
                                 {% if item.activity_type == 'VERIFICACAO' %}
