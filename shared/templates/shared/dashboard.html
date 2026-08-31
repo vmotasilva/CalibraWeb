@@ -249,21 +249,27 @@
     <!-- CONTROLES PRINCIPAIS: FILTROS AVANÇADOS, BUSCA, AÇÕES E NOVO INSTRUMENTO -->
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-3 border-bottom pb-2 flex-shrink-0 w-100">
         
-        <!-- Linha do Título, Filtros e Busca -->
+        <!-- Linha do Título, Filtros, Limpar (X) e Busca -->
         <div class="d-flex flex-wrap align-items-center gap-2 w-100 w-md-auto">
-            <!-- Botão Filtros com Badge -->
-            <button type="button" class="btn btn-outline-primary btn-sm shadow-sm d-flex align-items-center gap-1.5" data-bs-toggle="modal" data-bs-target="#filtrosModal">
-                <i class="bi bi-funnel"></i> <span>Filtros</span>
-                <span class="badge bg-primary text-white rounded-pill ms-1 d-none" id="filtrosCountBadge">0</span>
-            </button>
+            <div class="d-flex align-items-center gap-1">
+                <!-- Botão Filtros com Badge -->
+                <button type="button" class="btn btn-outline-primary btn-sm shadow-sm d-flex align-items-center gap-1.5" data-bs-toggle="modal" data-bs-target="#filtrosModal">
+                    <i class="bi bi-funnel"></i> <span>Filtros</span>
+                    <span class="badge bg-primary text-white rounded-pill ms-1 d-none" id="filtrosCountBadge">0</span>
+                </button>
+                <!-- Botão Limpar Filtros como um X ao lado do filtro -->
+                <button type="button" id="btnLimparFiltrosHeader" class="btn btn-outline-danger btn-sm shadow-sm" onclick="limparTodosFiltrosEBusca()" title="Limpar todos os filtros e busca">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
 
-            <!-- Campo de Busca Instantânea Anti-Autofill -->
+            <!-- Campo de Busca Instantânea com Botão X de Limpeza -->
             <div class="input-group input-group-sm" style="max-width: 290px; min-width: 200px;">
                 <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
                 <input type="search" 
                        id="dashboardSearchInput" 
                        name="metro_fast_filter_input_noncredential" 
-                       class="form-control border-start-0" 
+                       class="form-control border-start-0 border-end-0" 
                        placeholder="TAG, Descrição, Fabricante..." 
                        autocomplete="off" 
                        autocorrect="off" 
@@ -271,9 +277,10 @@
                        spellcheck="false" 
                        data-lpignore="true" 
                        data-form-type="other"
-                       readonly 
-                       onfocus="this.removeAttribute('readonly');" 
                        value="">
+                <button type="button" class="btn btn-outline-secondary bg-white border-start-0 text-muted" onclick="limparBuscaDashboard()" title="Limpar busca">
+                    <i class="bi bi-x-circle"></i>
+                </button>
             </div>
         </div>
 
@@ -1111,8 +1118,7 @@
         applyAllFilters();
     }
 
-    // Flag para rastrear se o usuário realmente focou/digitou na busca
-    let isUserActivelySearching = false;
+    const loggedUsername = ("{{ request.user.username|default:''|escapejs }}").toLowerCase().trim();
 
     // ==========================================
     // 2. FILTRAGEM COMBINADA (ABAS + BUSCA + MODAL AVANÇADO)
@@ -1121,9 +1127,9 @@
         const searchInputEl = document.getElementById('dashboardSearchInput');
         let query = (searchInputEl?.value || '').trim().toLowerCase();
 
-        // Se o valor foi injetado por autofill de senha/usuário do navegador sem o usuário estar no input, limpamos!
-        if (!isUserActivelySearching && searchInputEl && document.activeElement !== searchInputEl && query.length > 0) {
-            searchInputEl.value = '';
+        // Se o valor for o username logado do usuário ou se foi injetado por autofill de senha/usuário do navegador, limpamos!
+        if (loggedUsername && (query === loggedUsername || query === loggedUsername.replace('.', '') || query === loggedUsername.replace('.', ' ') || query.includes(loggedUsername))) {
+            if (searchInputEl) searchInputEl.value = '';
             query = '';
         }
 
@@ -1435,7 +1441,11 @@
         el.closest('.filter-group').classList.toggle('open');
     }
 
-    function limparFiltrosAvancados() {
+    function limparTodosFiltrosEBusca() {
+        const searchInputEl = document.getElementById('dashboardSearchInput');
+        if (searchInputEl) {
+            searchInputEl.value = '';
+        }
         document.querySelectorAll('.filter-avancado-cb').forEach(cb => {
             if (cb.getAttribute('data-cat') === 'status' && cb.value === 'ATIVO') {
                 cb.checked = true;
@@ -1444,6 +1454,19 @@
             }
         });
         applyAllFilters();
+    }
+
+    function limparBuscaDashboard() {
+        const searchInputEl = document.getElementById('dashboardSearchInput');
+        if (searchInputEl) {
+            searchInputEl.value = '';
+            searchInputEl.focus();
+        }
+        applyAllFilters();
+    }
+
+    function limparFiltrosAvancados() {
+        limparTodosFiltrosEBusca();
     }
 
     function copiarLinkFiltros() {
