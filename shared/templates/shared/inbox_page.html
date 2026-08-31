@@ -252,20 +252,25 @@ document.addEventListener('DOMContentLoaded', function() {
     const tabParam = urlParams.get('tab') || window.location.hash.replace('#', '');
     const subParam = urlParams.get('sub');
 
-    if (tabParam) {
-        const targetBtn = document.getElementById('tab-btn-' + tabParam.toLowerCase());
-        if (targetBtn) {
-            const tabInstance = bootstrap.Tab.getOrCreateInstance(targetBtn);
-            tabInstance.show();
-        }
-
-        // Se houver sub-aba na URL (?sub=...), aciona o filtro da sub-aba
-        if (subParam) {
+    function applySubFilter() {
+        if (tabParam && subParam) {
             const subBtn = document.querySelector(`.subtab-pill[data-parent-slug="${tabParam.toLowerCase()}"][data-sub-slug="${subParam.toLowerCase()}"]`);
             if (subBtn) {
                 filterSubTab(tabParam.toLowerCase(), subParam.toLowerCase(), subBtn);
             }
         }
+    }
+
+    if (tabParam) {
+        const targetBtn = document.getElementById('tab-btn-' + tabParam.toLowerCase());
+        if (targetBtn) {
+            targetBtn.addEventListener('shown.bs.tab', function () {
+                applySubFilter();
+            });
+            const tabInstance = bootstrap.Tab.getOrCreateInstance(targetBtn);
+            tabInstance.show();
+        }
+        applySubFilter();
     }
 });
 </script>

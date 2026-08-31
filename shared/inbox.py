@@ -393,6 +393,16 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                 target_demandas = qs_demandas
 
             for d in target_demandas[:20]:
+                lider_id = ""
+                if d.colaborador and d.colaborador.lider_id:
+                    lider_id = str(d.colaborador.lider_id)
+                elif colaborador:
+                    lider_id = str(colaborador.id)
+
+                target_url = f"{reverse('procedures:dashboard_treinamentos')}?colaborador_id={d.colaborador_id}"
+                if lider_id:
+                    target_url += f"&lider={lider_id}"
+
                 items.append(
                     InboxItem(
                         id=f"demanda_{d.id}",
@@ -400,8 +410,8 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                         description=f"Procedimento {d.procedimento.codigo} pendente de treinamento da equipe",
                         module="Treinamentos",
                         icon="bi-book",
-                        url=reverse("procedures:treinamentos_list"),
-                        action_text="Treinar",
+                        url=target_url,
+                        action_text="Abrir Painel",
                         date=d.criado_em.date() if hasattr(d, "criado_em") and d.criado_em else hoje,
                         is_urgent=False,
                         sub_type="Demanda por Liderança"
@@ -437,8 +447,42 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
             except Exception:
                 pass
 
-            # 5.4 Demanda por Instrutor / Planejamentos de Treinamento
+            # 5.4 Demanda por Instrutor (Responsáveis de Matriz e Planejamentos)
             try:
+                from procedures.models import ResponsavelTreinamentoMatriz
+
+                # A. Instrutores Responsáveis por Matriz / Sub-Área
+                qs_resp_matriz = ResponsavelTreinamentoMatriz.objects.select_related(
+                    "matriz", "sub_area", "colaborador"
+                )
+                if not is_global_viewer and colaborador and not (user.is_superuser or user.is_staff):
+                    qs_resp_matriz = qs_resp_matriz.filter(colaborador=colaborador)
+
+                for rm in qs_resp_matriz[:20]:
+                    matriz_nome = rm.matriz.nome if rm.matriz else "Matriz de Procedimentos"
+                    sub_nome = f" ({rm.sub_area.nome})" if rm.sub_area else ""
+                    target_url = f"{reverse('procedures:dashboard_treinamentos')}?instrutor_responsavel={rm.colaborador_id}&matriz={rm.matriz_id}"
+                    if rm.sub_area_id:
+                        target_url += f"&sub_area={rm.sub_area_id}"
+                    if rm.turno:
+                        target_url += f"&turno={rm.turno}"
+
+                    items.append(
+                        InboxItem(
+                            id=f"resp_matriz_{rm.id}",
+                            title=f"Demanda Instrutor: {rm.colaborador.nome_completo}",
+                            description=f"{matriz_nome}{sub_nome} - Turno {rm.turno or 'Geral'}",
+                            module="Treinamentos",
+                            icon="bi-person-video3",
+                            url=target_url,
+                            action_text="Abrir Painel",
+                            date=rm.atualizado_em.date() if rm.atualizado_em else hoje,
+                            is_urgent=False,
+                            sub_type="Demanda por Instrutor"
+                        )
+                    )
+
+                # B. Planejamentos de Treinamento
                 qs_plan = PlanejamentoTreinamento.objects.filter(
                     status__in=['PLANEJADO', 'EM_ANDAMENTO'],
                     data_planejada__lte=hoje + timedelta(days=7)
@@ -450,17 +494,21 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                 else:
                     target_plan = qs_plan
 
-                for pl in target_plan[:10]:
+                for pl in target_plan[:15]:
                     atrasado = bool(pl.data_planejada and pl.data_planejada < hoje)
+                    proc_code = pl.procedimento.codigo if pl.procedimento else "Treinamento"
+                    instrutor_id = pl.responsavel_id or (colaborador.id if colaborador else "")
+                    target_url = f"{reverse('procedures:dashboard_treinamentos')}?instrutor_responsavel={instrutor_id}" if instrutor_id else reverse('procedures:dashboard_treinamentos')
+
                     items.append(
                         InboxItem(
                             id=f"planejamento_{pl.id}",
-                            title=f"Demanda Instrutor: {pl.procedimento.codigo if pl.procedimento else 'Treinamento'}",
+                            title=f"Demanda Instrutor: {proc_code}",
                             description=f"{'Atrasado desde ' if atrasado else 'Previsto para '}{pl.data_planejada.strftime('%d/%m/%Y') if pl.data_planejada else '-'}",
                             module="Treinamentos",
-                            icon="bi-person-video3",
-                            url=reverse("procedures:treinamentos_list"),
-                            action_text="Executar",
+                            icon="bi-calendar-check",
+                            url=target_url,
+                            action_text="Abrir Painel",
                             date=pl.data_planejada if pl.data_planejada else hoje,
                             is_urgent=atrasado,
                             sub_type="Demanda por Instrutor"
