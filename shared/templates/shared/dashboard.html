@@ -1,574 +1,990 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
+
+{% load static %}
+{% load nav_access %}
 
 {% block title %}Dashboard de Metrologia &mdash; CalibraWEB{% endblock %}
 
 {% block content %}
-
 <style>
-    .dashboard-header {
-        background: linear-gradient(135deg, #0d2228 0%, #163e46 100%);
-        border-radius: 14px;
-        padding: 24px 28px;
+    :root {
+        --kpi-teal: #0f766e;
+        --kpi-teal-dark: #134e4a;
+        --kpi-amber: #b45309;
+        --kpi-red: #be123c;
+        --kpi-blue: #0369a1;
+        --kpi-purple: #6b21a8;
+        --kpi-slate: #334155;
+    }
+
+    /* Top Dashboard Header */
+    .metro-header-banner {
+        background: linear-gradient(135deg, #091e22 0%, #11353c 60%, #0d4048 100%);
+        border-radius: 16px;
+        padding: 1.5rem 1.75rem;
         color: #ffffff;
-        margin-bottom: 24px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        margin-bottom: 1.5rem;
+        position: relative;
+        overflow: hidden;
+    }
+    .metro-header-banner::after {
+        content: '';
+        position: absolute;
+        right: -40px;
+        top: -40px;
+        width: 180px;
+        height: 180px;
+        background: radial-gradient(circle, rgba(20, 184, 166, 0.2) 0%, rgba(0,0,0,0) 70%);
+        pointer-events: none;
     }
 
+    /* Container de Abas Interativas */
     .dashboard-tabs-container {
-        background: #ffffff;
-        border-radius: 12px;
-        padding: 6px;
         display: inline-flex;
-        gap: 6px;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-        margin-bottom: 20px;
+        background: #e2e8f0;
+        padding: 4px;
+        border-radius: 12px;
+        gap: 4px;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
     }
-
     .dashboard-tab-btn {
         border: none;
         background: transparent;
-        color: #64748b;
+        padding: 8px 18px;
+        font-size: 0.86rem;
         font-weight: 600;
-        font-size: 0.9rem;
-        padding: 10px 22px;
+        color: #475569;
         border-radius: 8px;
-        transition: all 0.2s ease-in-out;
-        display: flex;
+        transition: all 0.2s ease;
+        display: inline-flex;
         align-items: center;
         gap: 8px;
         cursor: pointer;
     }
-
     .dashboard-tab-btn:hover {
         color: #0f172a;
-        background: #f1f5f9;
+        background: rgba(255, 255, 255, 0.6);
     }
-
     .dashboard-tab-btn.active {
         background: #0f766e;
         color: #ffffff;
-        box-shadow: 0 2px 8px rgba(15, 118, 110, 0.25);
+        box-shadow: 0 2px 6px rgba(15, 118, 110, 0.3);
+    }
+    .dashboard-tab-btn.active .badge {
+        background: rgba(255, 255, 255, 0.25) !important;
+        color: #ffffff !important;
     }
 
+    /* KPI Cards */
     .kpi-card {
-        border: none;
         border-radius: 14px;
-        padding: 20px 22px;
-        height: 100%;
-        min-height: 128px;
+        padding: 1.15rem 1.25rem;
+        color: #ffffff;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
-        transition: transform 0.2s, box-shadow 0.2s;
-        text-decoration: none !important;
-        position: relative;
-        overflow: hidden;
-        color: #ffffff;
+        min-height: 110px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        text-decoration: none;
     }
-
     .kpi-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.12);
         color: #ffffff;
     }
-
-    .kpi-card.danger { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
-    .kpi-card.warning { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
-    .kpi-card.info { background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); }
-    .kpi-card.success { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
-    .kpi-card.purple { background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); }
-    .kpi-card.dark { background: linear-gradient(135deg, #334155 0%, #1e293b 100%); }
+    .kpi-card.danger { background: linear-gradient(135deg, #e11d48 0%, #be123c 100%); }
+    .kpi-card.warning { background: linear-gradient(135deg, #d97706 0%, #b45309 100%); }
+    .kpi-card.purple { background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%); }
+    .kpi-card.teal { background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); }
+    .kpi-card.blue { background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); }
+    .kpi-card.dark { background: linear-gradient(135deg, #475569 0%, #334155 100%); }
 
     .kpi-number {
-        font-size: 2.2rem;
+        font-size: 2rem;
         font-weight: 800;
         line-height: 1;
-        letter-spacing: -0.02em;
+        margin-top: 0.35rem;
     }
-
     .kpi-label {
-        font-size: 0.82rem;
-        text-transform: uppercase;
+        font-size: 0.76rem;
         font-weight: 700;
+        text-transform: uppercase;
         letter-spacing: 0.05em;
-        opacity: 0.95;
+        opacity: 0.9;
     }
-
     .kpi-desc {
         font-size: 0.76rem;
         opacity: 0.85;
-        margin-top: 4px;
+        margin-top: 0.25rem;
     }
 
-    .table-custom-card {
-        background: #ffffff;
-        border-radius: 14px;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04);
-        overflow: hidden;
-    }
-
+    /* Badges de Atividade & Local */
     .badge-activity-calib {
         background-color: #e0e7ff;
         color: #3730a3;
         border: 1px solid #c7d2fe;
-        font-weight: 600;
         font-size: 0.72rem;
-        padding: 4px 8px;
+        font-weight: 600;
+        padding: 2px 8px;
     }
-
     .badge-activity-verif {
         background-color: #f3e8ff;
         color: #6b21a8;
         border: 1px solid #e9d5ff;
-        font-weight: 600;
         font-size: 0.72rem;
-        padding: 4px 8px;
+        font-weight: 600;
+        padding: 2px 8px;
     }
-
     .badge-local-interno {
         background-color: #ecfdf5;
-        color: #065f46;
+        color: #047857;
         border: 1px solid #a7f3d0;
-        font-weight: 600;
         font-size: 0.72rem;
-        padding: 4px 8px;
+        font-weight: 600;
+        padding: 2px 8px;
     }
-
     .badge-local-externo {
-        background-color: #eff6ff;
-        color: #1e40af;
-        border: 1px solid #bfdbfe;
-        font-weight: 600;
+        background-color: #f0f9ff;
+        color: #0369a1;
+        border: 1px solid #bae6fd;
         font-size: 0.72rem;
-        padding: 4px 8px;
-    }
-
-    .occurrence-alert-icon {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 24px;
-        height: 24px;
-        background-color: #fef2f2;
-        color: #dc2626;
-        border: 1px solid #fecaca;
-        border-radius: 50%;
-        animation: pulseWarning 2s infinite;
-        cursor: pointer;
-    }
-
-    @keyframes pulseWarning {
-        0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
-        50% { transform: scale(1.08); box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
-    }
-
-    .action-btn-quick {
-        padding: 5px 10px;
-        font-size: 0.76rem;
         font-weight: 600;
-        border-radius: 6px;
-        transition: all 0.15s;
+        padding: 2px 8px;
     }
+
+    /* Tabela e Cards */
+    .table-custom-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        overflow: hidden;
+    }
+
+    /* Filtros Expansíveis */
+    .filter-header {
+        cursor: pointer;
+        padding: 8px 0;
+        user-select: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    .filter-header:hover { background-color: #f8f9fa; }
+    .filter-header i { transition: transform 0.2s ease; font-size: 0.8rem; color: #6c757d; }
+    .filter-group.open .filter-header i { transform: rotate(180deg); }
+    .filter-content { display: none; padding: 8px 0 8px 5px; }
+    .filter-group.open .filter-content { display: block; }
 </style>
 
-<!-- HEADER DO DASHBOARD -->
-<div class="dashboard-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
-    <div>
-        <div class="d-flex align-items-center gap-2 mb-1">
-            <span class="badge bg-white bg-opacity-20 text-white rounded-pill px-2.5 py-1" style="font-size: 0.75rem;">
-                <i class="bi bi-shield-check me-1"></i> Gestão da Qualidade & Metrologia
-            </span>
-            <small class="text-white-50">Base Atualizada: {{ hoje_display }}</small>
-        </div>
-        <h2 class="h3 fw-bold mb-1 text-white">Dashboard de Metrologia</h2>
-        <p class="mb-0 text-white-50 small">Visão integrada do parque de instrumentos por local de execução, atividade e ocorrências ativas.</p>
-    </div>
-    <div class="d-flex flex-wrap gap-2">
-        <a href="{% url 'modulo_metrologia' %}" class="btn btn-light btn-sm fw-semibold shadow-sm">
-            <i class="bi bi-table me-1"></i> Listagem Completa
-        </a>
-        <a href="{% url 'metrologia:solicitacao_list' %}" class="btn btn-outline-light btn-sm fw-semibold">
-            <i class="bi bi-receipt-cutoff me-1"></i> Painel de Cotações
-        </a>
-        <a href="{% url 'hub' %}" class="btn btn-outline-light btn-sm fw-semibold">
-            <i class="bi bi-grid-fill me-1"></i> HUB
-        </a>
-    </div>
-</div>
+<div class="container-fluid py-3" style="max-width: 1400px;">
 
-<!-- ABAS DE NAVEGAÇÃO INTERATIVA (TODOS, EXTERNO, INTERNO) -->
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-3">
-    <div class="dashboard-tabs-container">
-        <button type="button" class="dashboard-tab-btn active" data-tab="todos" onclick="setDashboardTab('todos')">
-            <i class="bi bi-grid-3x3-gap-fill"></i>
-            <span>TODOS</span>
-            <span class="badge bg-light text-dark rounded-pill ms-1" id="tab-count-todos">{{ kpis.todos.total_instrumentos|default:0 }}</span>
-        </button>
-        <button type="button" class="dashboard-tab-btn" data-tab="externo" onclick="setDashboardTab('externo')">
-            <i class="bi bi-truck"></i>
-            <span>EXTERNO (Fornecedor)</span>
-            <span class="badge bg-light text-dark rounded-pill ms-1" id="tab-count-externo">{{ kpis.externo.necessitam_cotacao|default:0 }}</span>
-        </button>
-        <button type="button" class="dashboard-tab-btn" data-tab="interno" onclick="setDashboardTab('interno')">
-            <i class="bi bi-wrench-adjustable-circle"></i>
-            <span>INTERNO (Laboratório)</span>
-            <span class="badge bg-light text-dark rounded-pill ms-1" id="tab-count-interno">{{ kpis.interno.fila_laboratorio|default:0 }}</span>
-        </button>
-    </div>
-
-    <!-- BUSCA RÁPIDA NA TABELA -->
-    <div class="position-relative" style="min-width: 280px;">
-        <input type="search" id="dashboardSearchInput" name="filter_query_instant_metro" class="form-control form-control-sm rounded-pill ps-4 py-2" placeholder="Buscar TAG, descrição, setor..." autocomplete="new-password" data-lpignore="true" value="">
-        <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-2.5 text-muted small"></i>
-    </div>
-</div>
-
-<!-- CONTAINER DE KPIS DINÂMICOS CONFORME A ABA ATIVA -->
-<div id="kpis-container" class="row g-3 mb-4">
-    <!-- ABA TODOS -->
-    <div class="col-12 col-sm-6 col-xl-3 kpi-group-item kpi-group-todos">
-        <a href="{% url 'modulo_metrologia' %}?st=ATIVO&sit=VENCIDO" class="kpi-card danger">
-            <div class="d-flex justify-content-between align-items-start">
-                <span class="kpi-label">Instrumentos Vencidos</span>
-                <i class="bi bi-calendar-x fs-4 opacity-75"></i>
-            </div>
+    <!-- TOP HEADER BANNER -->
+    <div class="metro-header-banner">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
             <div>
-                <div class="kpi-number">{{ kpis.todos.vencidos|default:0 }}</div>
-                <div class="kpi-desc">Necessitam calibração imediata</div>
+                <span class="badge bg-white bg-opacity-20 text-light rounded-pill px-3 py-1 mb-2 font-monospace small">
+                    <i class="bi bi-shield-check me-1"></i> Gestão de Metrologia & Qualidade
+                </span>
+                <h1 class="h3 fw-bold mb-1 text-white">Dashboard de Metrologia</h1>
+                <p class="mb-0 text-white-50 small">Visão integrada do parque de instrumentos por local de execução, atividade e ocorrências ativas.</p>
             </div>
-        </a>
-    </div>
-    <div class="col-12 col-sm-6 col-xl-3 kpi-group-item kpi-group-todos">
-        <a href="{% url 'modulo_metrologia' %}?st=ATIVO&sit=AVENCER_30" class="kpi-card warning">
-            <div class="d-flex justify-content-between align-items-start">
-                <span class="kpi-label">Vencem em 30 Dias</span>
-                <i class="bi bi-clock-history fs-4 opacity-75"></i>
-            </div>
-            <div>
-                <div class="kpi-number">{{ kpis.todos.avencer_30|default:0 }}</div>
-                <div class="kpi-desc">Entrando na janela de planejamento</div>
-            </div>
-        </a>
-    </div>
-    <div class="col-12 col-sm-6 col-xl-3 kpi-group-item kpi-group-todos">
-        <div class="kpi-card purple">
-            <div class="d-flex justify-content-between align-items-start">
-                <span class="kpi-label">Ocorrências / Manutenção</span>
-                <i class="bi bi-exclamation-octagon fs-4 opacity-75"></i>
-            </div>
-            <div>
-                <div class="kpi-number">{{ kpis.todos.ocorrencias_ativas|default:0 }}</div>
-                <div class="kpi-desc">RNCs ou avarias em aberto</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-12 col-sm-6 col-xl-3 kpi-group-item kpi-group-todos">
-        <div class="kpi-card info">
-            <div class="d-flex justify-content-between align-items-start">
-                <span class="kpi-label">Parque Ativo Total</span>
-                <i class="bi bi-tools fs-4 opacity-75"></i>
-            </div>
-            <div>
-                <div class="kpi-number">{{ kpis.todos.total_instrumentos|default:0 }}</div>
-                <div class="kpi-desc">{{ kpis.todos.em_dia|default:0 }} com calibração em dia</div>
+            
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <a href="{% url 'modulo_metrologia' %}" class="btn btn-light btn-sm shadow-sm fw-semibold">
+                    <i class="bi bi-table me-1"></i> Listagem Completa
+                </a>
+                <a href="{% url 'metrologia:solicitacao_list' %}" class="btn btn-outline-light btn-sm shadow-sm">
+                    <i class="bi bi-journal-text me-1"></i> Painel de Cotações
+                </a>
+                <a href="{% url 'hub' %}" class="btn btn-outline-light btn-sm shadow-sm">
+                    <i class="bi bi-grid-fill me-1"></i> HUB
+                </a>
             </div>
         </div>
     </div>
 
-    <!-- ABA EXTERNO -->
-    <div class="col-12 col-sm-6 col-xl-4 kpi-group-item kpi-group-externo d-none">
-        <a href="{% url 'metrologia:solicitacao_list' %}" class="kpi-card info">
-            <div class="d-flex justify-content-between align-items-start">
-                <span class="kpi-label">Cotações Abertas</span>
-                <i class="bi bi-cash-coin fs-4 opacity-75"></i>
-            </div>
-            <div>
-                <div class="kpi-number">{{ kpis.externo.cotacoes_abertas|default:0 }}</div>
-                <div class="kpi-desc">Processos de cotação em andamento</div>
-            </div>
-        </a>
-    </div>
-    <div class="col-12 col-sm-6 col-xl-4 kpi-group-item kpi-group-externo d-none">
-        <div class="kpi-card warning">
-            <div class="d-flex justify-content-between align-items-start">
-                <span class="kpi-label">Orçamentos / No Fornecedor</span>
-                <i class="bi bi-truck fs-4 opacity-75"></i>
-            </div>
-            <div>
-                <div class="kpi-number">{{ kpis.externo.orcamentos_pendentes|default:0 }}</div>
-                <div class="kpi-desc">Equipamentos em tratativa externa</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-12 col-sm-6 col-xl-4 kpi-group-item kpi-group-externo d-none">
-        <div class="kpi-card danger">
-            <div class="d-flex justify-content-between align-items-start">
-                <span class="kpi-label">Externos Vencidos / A Vencer</span>
-                <i class="bi bi-calendar-x fs-4 opacity-75"></i>
-            </div>
-            <div>
-                <div class="kpi-number">{{ kpis.externo.necessitam_cotacao|default:0 }}</div>
-                <div class="kpi-desc">{{ kpis.externo.vencidos|default:0 }} vencidos + {{ kpis.externo.avencer_30|default:0 }} a vencer</div>
-            </div>
-        </div>
-    </div>
+    <!-- CONTROLES PRINCIPAIS: FILTROS AVANÇADOS, BUSCA, AÇÕES E NOVO INSTRUMENTO -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-3 border-bottom pb-2 flex-shrink-0 w-100">
+        
+        <!-- Linha do Título, Filtros e Busca -->
+        <div class="d-flex flex-wrap align-items-center gap-2 w-100 w-md-auto">
+            <!-- Botão Filtros com Badge -->
+            <button type="button" class="btn btn-outline-primary btn-sm shadow-sm d-flex align-items-center gap-1.5" data-bs-toggle="modal" data-bs-target="#filtrosModal">
+                <i class="bi bi-funnel"></i> <span>Filtros</span>
+                <span class="badge bg-primary text-white rounded-pill ms-1 d-none" id="filtrosCountBadge">0</span>
+            </button>
 
-    <!-- ABA INTERNO -->
-    <div class="col-12 col-sm-6 col-xl-4 kpi-group-item kpi-group-interno d-none">
-        <div class="kpi-card success">
-            <div class="d-flex justify-content-between align-items-start">
-                <span class="kpi-label">Fila Laboratório Interno</span>
-                <i class="bi bi-droplet-half fs-4 opacity-75"></i>
-            </div>
-            <div>
-                <div class="kpi-number">{{ kpis.interno.fila_laboratorio|default:0 }}</div>
-                <div class="kpi-desc">Itens para calibração interna urgente</div>
+            <!-- Campo de Busca Instantânea -->
+            <div class="input-group input-group-sm" style="max-width: 290px; min-width: 200px;">
+                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                <input type="search" id="dashboardSearchInput" name="filter_query_instant_metro" class="form-control border-start-0" placeholder="TAG, Descrição, Fabricante..." autocomplete="new-password" data-lpignore="true" value="">
             </div>
         </div>
-    </div>
-    <div class="col-12 col-sm-6 col-xl-4 kpi-group-item kpi-group-interno d-none">
-        <div class="kpi-card danger">
-            <div class="d-flex justify-content-between align-items-start">
-                <span class="kpi-label">Internos Vencidos</span>
-                <i class="bi bi-exclamation-triangle fs-4 opacity-75"></i>
-            </div>
-            <div>
-                <div class="kpi-number">{{ kpis.interno.vencidos|default:0 }}</div>
-                <div class="kpi-desc">Aguardando execução da equipe</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-12 col-sm-6 col-xl-4 kpi-group-item kpi-group-interno d-none">
-        <div class="kpi-card purple">
-            <div class="d-flex justify-content-between align-items-start">
-                <span class="kpi-label">Ocorrências Internas Ativas</span>
-                <i class="bi bi-tools fs-4 opacity-75"></i>
-            </div>
-            <div>
-                <div class="kpi-number">{{ kpis.interno.ocorrencias_ativas|default:0 }}</div>
-                <div class="kpi-desc">Manutenções ou ajustes em aberto</div>
-            </div>
-        </div>
-    </div>
-</div>
 
-<!-- TABELA DE INSTRUMENTOS REFATORADA -->
-<div class="table-custom-card">
-    <div class="p-3 border-bottom d-flex justify-content-between align-items-center bg-light">
-        <div class="d-flex align-items-center gap-2">
-            <h5 class="mb-0 fw-bold text-dark">
-                <i class="bi bi-speedometer2 text-primary me-1"></i> Parque de Instrumentos
-            </h5>
-            <span class="badge bg-secondary rounded-pill" id="tableFilteredCount">{{ instrumentos|length }} itens</span>
-        </div>
-        <div class="d-flex align-items-center gap-2">
-            <span class="small text-muted d-none d-md-inline">Filtrado por: <strong id="activeTabLabel" class="text-primary">TODOS</strong></span>
-        </div>
-    </div>
-
-    <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0" id="dashboardInstrumentsTable">
-            <thead class="table-light small text-uppercase text-muted font-monospace">
-                <tr>
-                    <th class="ps-3 py-3">TAG / Código</th>
-                    <th class="py-3">Descrição</th>
-                    <th class="py-3">Setor</th>
-                    <th class="py-3 text-center">Atividade & Local</th>
-                    <th class="py-3">Vencimento</th>
-                    <th class="py-3 text-center">Status / RNC</th>
-                    <th class="text-end pe-3 py-3">Ações Rápidas</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in instrumentos %}
-                <tr class="instrument-row" 
-                    data-tratativa="{{ item.tratativa|lower }}"
-                    data-is-internal="{% if item.is_internal %}true{% else %}false{% endif %}"
-                    data-tag="{{ item.tag|lower }}"
-                    data-desc="{{ item.descricao|lower }}"
-                    data-setor="{{ item.setor_nome|lower }}"
-                    data-status="{{ item.status_situacao }}">
-                    
-                    <!-- TAG -->
-                    <td class="ps-3 py-2.5 font-monospace fw-bold">
-                        <a href="{{ item.url_detalhes }}" class="text-primary text-decoration-none hover-underline">
-                            {{ item.tag }}
+        <!-- Grupo de Ações e Novo -->
+        <div class="d-flex align-items-center gap-2 w-100 w-md-auto justify-content-between justify-content-md-end">
+            <!-- Dropdown Ações -->
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary btn-sm shadow-sm dropdown-toggle d-flex align-items-center gap-1" type="button" id="metroActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-three-dots-vertical"></i> <span>Ações</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="metroActionsDropdown">
+                    <li>
+                        <button id="btnCopyFilters" type="button" class="dropdown-item" onclick="copiarLinkFiltros()">
+                            <i class="bi bi-link-45deg me-2 text-secondary"></i>Copiar Link
+                        </button>
+                    </li>
+                    <li>
+                        <button class="dropdown-item" onclick="atualizarTodasDatas()">
+                            <i class="bi bi-arrow-clockwise me-2 text-info"></i>Atualizar Datas
+                        </button>
+                    </li>
+                    <li>
+                        <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#etqModal">
+                            <i class="bi bi-file-pdf me-2 text-danger"></i>Etiquetas PDF
+                        </button>
+                    </li>
+                    <li>
+                        <a href="/admin/qms/categoriainstrumento/" target="_blank" class="dropdown-item">
+                            <i class="bi bi-tags me-2 text-primary"></i>Categorias
                         </a>
-                    </td>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a href="{% url 'export_metrologia' %}" class="dropdown-item">
+                            <i class="bi bi-download me-2 text-success"></i>Exportar Excel
+                        </a>
+                    </li>
+                </ul>
+            </div>
 
-                    <!-- DESCRIÇÃO -->
-                    <td class="py-2.5">
-                        <div class="text-dark small fw-semibold">{{ item.descricao|truncatechars:45 }}</div>
-                        <div class="text-muted" style="font-size: 0.72rem;">{{ item.categoria_nome }}</div>
-                    </td>
+            <!-- Botão Registrar Histórico em Massa -->
+            <button type="button" id="btn-historico-massa" class="btn btn-success btn-sm shadow-sm d-inline-flex align-items-center gap-1 btn-historico-massa-trigger" disabled data-bs-toggle="modal" data-bs-target="#modalNovoHistoricoMassa">
+                <i class="bi bi-calendar-plus"></i> Registrar Histórico
+            </button>
 
-                    <!-- SETOR -->
-                    <td class="py-2.5 small text-muted">
-                        {{ item.setor_nome }}
-                    </td>
+            <!-- Botão Novo Instrumento -->
+            <a href="{% url 'novo_instrumento' %}" class="btn btn-primary btn-sm shadow-sm d-inline-flex align-items-center gap-1">
+                <i class="bi bi-plus-lg"></i> Novo
+            </a>
+        </div>
+    </div>
 
-                    <!-- ATIVIDADE & LOCAL -->
-                    <td class="py-2.5 text-center">
-                        <div class="d-flex flex-column align-items-center gap-1">
-                            <!-- Atividade -->
-                            {% if item.activity_type == 'VERIFICACAO' %}
-                                <span class="badge rounded-pill badge-activity-verif">Verificação</span>
-                            {% else %}
-                                <span class="badge rounded-pill badge-activity-calib">Calibração</span>
-                            {% endif %}
-                            <!-- Local -->
-                            {% if item.is_internal %}
-                                <span class="badge rounded-pill badge-local-interno">
-                                    <i class="bi bi-building me-0.5"></i> Interno
-                                </span>
-                            {% else %}
-                                <span class="badge rounded-pill badge-local-externo">
-                                    <i class="bi bi-truck me-0.5"></i> Externo
-                                </span>
-                            {% endif %}
-                        </div>
-                    </td>
+    <!-- ABAS DE NAVEGAÇÃO INTERATIVA (TODOS, EXTERNO, INTERNO) -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-3">
+        <div class="dashboard-tabs-container">
+            <button type="button" class="dashboard-tab-btn active" data-tab="todos" onclick="setDashboardTab('todos')">
+                <i class="bi bi-grid-3x3-gap-fill"></i>
+                <span>TODOS</span>
+                <span class="badge bg-light text-dark rounded-pill ms-1" id="tab-count-todos">{{ kpis.todos.total_instrumentos|default:0 }}</span>
+            </button>
+            <button type="button" class="dashboard-tab-btn" data-tab="externo" onclick="setDashboardTab('externo')">
+                <i class="bi bi-truck"></i>
+                <span>EXTERNO (Fornecedor)</span>
+                <span class="badge bg-light text-dark rounded-pill ms-1" id="tab-count-externo">{{ kpis.externo.necessitam_cotacao|default:0 }}</span>
+            </button>
+            <button type="button" class="dashboard-tab-btn" data-tab="interno" onclick="setDashboardTab('interno')">
+                <i class="bi bi-wrench-adjustable-circle"></i>
+                <span>INTERNO (Laboratório)</span>
+                <span class="badge bg-light text-dark rounded-pill ms-1" id="tab-count-interno">{{ kpis.interno.fila_laboratorio|default:0 }}</span>
+            </button>
+        </div>
 
-                    <!-- VENCIMENTO -->
-                    <td class="py-2.5 small">
-                        <div class="fw-bold {% if item.status_situacao == 'VENCIDO' %}text-danger{% elif item.status_situacao == 'AVENCER_30' %}text-warning text-dark{% else %}text-secondary{% endif %}">
-                            {{ item.data_proxima_calibracao_display }}
-                        </div>
-                        {% if item.dias_para_vencer is not None %}
-                            {% if item.status_situacao == 'VENCIDO' %}
-                                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25" style="font-size: 0.68rem;">
-                                    {{ item.dias_para_vencer|stringformat:"d"|slice:"1:" }} dias atrás
-                                </span>
-                            {% elif item.status_situacao == 'AVENCER_30' %}
-                                <span class="badge bg-warning bg-opacity-10 text-dark border border-warning border-opacity-50" style="font-size: 0.68rem;">
-                                    Em {{ item.dias_para_vencer }} dias
-                                </span>
-                            {% endif %}
-                        {% endif %}
-                    </td>
+        <!-- Seletor de Quantidade por Página -->
+        <div class="d-flex align-items-center gap-2">
+            <span class="small text-muted">Exibir:</span>
+            <select id="pageSizeSelect" class="form-select form-select-sm" style="width: 90px;" onchange="changePageSize(this.value)">
+                <option value="10">10</option>
+                <option value="15" selected>15</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="all">Todos</option>
+            </select>
+        </div>
+    </div>
 
-                    <!-- STATUS / RNC -->
-                    <td class="py-2.5 text-center">
-                        <div class="d-flex justify-content-center align-items-center gap-1.5">
-                            {% if item.status_situacao == 'VENCIDO' %}
-                                <span class="badge bg-danger rounded-pill px-2 py-1" style="font-size: 0.75rem;">VENCIDO</span>
-                            {% elif item.status_situacao == 'AVENCER_30' %}
-                                <span class="badge bg-warning text-dark rounded-pill px-2 py-1" style="font-size: 0.75rem;">A VENCER</span>
-                            {% else %}
-                                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-2 py-1" style="font-size: 0.75rem;">EM DIA</span>
-                            {% endif %}
+    <!-- CONTAINER DE KPIS DINÂMICOS CONFORME A ABA ATIVA -->
+    <div id="kpis-container" class="row g-3 mb-4">
+        <!-- ABA TODOS -->
+        <div class="col-12 col-sm-6 col-xl-3 kpi-group-item kpi-group-todos">
+            <a href="{% url 'modulo_metrologia' %}?st=ATIVO&sit=VENCIDO" class="kpi-card danger">
+                <div class="d-flex justify-content-between align-items-start">
+                    <span class="kpi-label">Instrumentos Vencidos</span>
+                    <i class="bi bi-calendar-x fs-4 opacity-75"></i>
+                </div>
+                <div>
+                    <div class="kpi-number">{{ kpis.todos.vencidos|default:0 }}</div>
+                    <div class="kpi-desc">Necessitam calibração imediata</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3 kpi-group-item kpi-group-todos">
+            <a href="{% url 'modulo_metrologia' %}?st=ATIVO&sit=AVENCER_30" class="kpi-card warning">
+                <div class="d-flex justify-content-between align-items-start">
+                    <span class="kpi-label">Vencem em 30 Dias</span>
+                    <i class="bi bi-clock-history fs-4 opacity-75"></i>
+                </div>
+                <div>
+                    <div class="kpi-number">{{ kpis.todos.avencer_30|default:0 }}</div>
+                    <div class="kpi-desc">Entrando na janela de planejamento</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3 kpi-group-item kpi-group-todos">
+            <div class="kpi-card purple">
+                <div class="d-flex justify-content-between align-items-start">
+                    <span class="kpi-label">Ocorrências / Manutenção</span>
+                    <i class="bi bi-exclamation-octagon fs-4 opacity-75"></i>
+                </div>
+                <div>
+                    <div class="kpi-number">{{ kpis.todos.ocorrencias_ativas|default:0 }}</div>
+                    <div class="kpi-desc">RNCs ou avarias em aberto</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3 kpi-group-item kpi-group-todos">
+            <a href="{% url 'modulo_metrologia' %}" class="kpi-card blue">
+                <div class="d-flex justify-content-between align-items-start">
+                    <span class="kpi-label">Parque Ativo Total</span>
+                    <i class="bi bi-tools fs-4 opacity-75"></i>
+                </div>
+                <div>
+                    <div class="kpi-number">{{ kpis.todos.total_instrumentos|default:0 }}</div>
+                    <div class="kpi-desc">{{ kpis.todos.em_dia|default:0 }} com calibração em dia</div>
+                </div>
+            </a>
+        </div>
 
-                            <!-- ALERTA DE OCORRÊNCIA / CAPA EM ABERTO -->
-                            {% if item.has_active_occurrence %}
-                                <span class="occurrence-alert-icon" title="Ocorrência Ativa / Em Manutenção ({{ item.ocorrencias_count }})" data-bs-toggle="tooltip" onclick="openOcorrenciaModal('{{ item.id }}', '{{ item.tag }}')">
-                                    <i class="bi bi-exclamation-triangle-fill" style="font-size: 0.75rem;"></i>
-                                </span>
-                            {% endif %}
-                        </div>
-                    </td>
+        <!-- ABA EXTERNO -->
+        <div class="col-12 col-sm-6 col-xl-4 kpi-group-item kpi-group-externo d-none">
+            <a href="{% url 'metrologia:solicitacao_list' %}" class="kpi-card blue">
+                <div class="d-flex justify-content-between align-items-start">
+                    <span class="kpi-label">Cotações Abertas</span>
+                    <i class="bi bi-cash-coin fs-4 opacity-75"></i>
+                </div>
+                <div>
+                    <div class="kpi-number">{{ kpis.externo.cotacoes_abertas|default:0 }}</div>
+                    <div class="kpi-desc">Processos de cotação em andamento</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-4 kpi-group-item kpi-group-externo d-none">
+            <div class="kpi-card warning">
+                <div class="d-flex justify-content-between align-items-start">
+                    <span class="kpi-label">Orçamentos / No Fornecedor</span>
+                    <i class="bi bi-truck fs-4 opacity-75"></i>
+                </div>
+                <div>
+                    <div class="kpi-number">{{ kpis.externo.orcamentos_pendentes|default:0 }}</div>
+                    <div class="kpi-desc">Equipamentos em tratativa externa</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-4 kpi-group-item kpi-group-externo d-none">
+            <div class="kpi-card danger">
+                <div class="d-flex justify-content-between align-items-start">
+                    <span class="kpi-label">Externos Vencidos / A Vencer</span>
+                    <i class="bi bi-calendar-x fs-4 opacity-75"></i>
+                </div>
+                <div>
+                    <div class="kpi-number">{{ kpis.externo.necessitam_cotacao|default:0 }}</div>
+                    <div class="kpi-desc">{{ kpis.externo.vencidos|default:0 }} vencidos + {{ kpis.externo.avencer_30|default:0 }} a vencer</div>
+                </div>
+            </div>
+        </div>
 
-                    <!-- AÇÕES RÁPIDAS -->
-                    <td class="text-end pe-3 py-2.5">
-                        <div class="d-flex justify-content-end align-items-center gap-1">
-                            <!-- Se EXTERNO: Nova Cotação -->
-                            {% if not item.is_internal %}
-                                <a href="{% url 'metrologia:solicitacao_create' %}?instrumento_id={{ item.id }}" class="btn btn-sm btn-outline-primary action-btn-quick" title="Abrir Solicitação de Cotação">
-                                    <i class="bi bi-cash-coin me-1"></i> Cotar
-                                </a>
-                            {% else %}
-                                <!-- Se INTERNO: Agendar Execução / Calibrar -->
-                                <a href="{% url 'modulo_metrologia' %}?search={{ item.tag }}" class="btn btn-sm btn-outline-success action-btn-quick" title="Agendar ou Registrar Calibração Interna">
-                                    <i class="bi bi-calendar-check me-1"></i> Agendar
-                                </a>
-                            {% endif %}
+        <!-- ABA INTERNO -->
+        <div class="col-12 col-sm-6 col-xl-4 kpi-group-item kpi-group-interno d-none">
+            <div class="kpi-card teal">
+                <div class="d-flex justify-content-between align-items-start">
+                    <span class="kpi-label">Fila Laboratório Interno</span>
+                    <i class="bi bi-droplet-half fs-4 opacity-75"></i>
+                </div>
+                <div>
+                    <div class="kpi-number">{{ kpis.interno.fila_laboratorio|default:0 }}</div>
+                    <div class="kpi-desc">Itens para calibração interna urgente</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-4 kpi-group-item kpi-group-interno d-none">
+            <div class="kpi-card danger">
+                <div class="d-flex justify-content-between align-items-start">
+                    <span class="kpi-label">Internos Vencidos</span>
+                    <i class="bi bi-exclamation-triangle fs-4 opacity-75"></i>
+                </div>
+                <div>
+                    <div class="kpi-number">{{ kpis.interno.vencidos|default:0 }}</div>
+                    <div class="kpi-desc">Aguardando execução da equipe</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-4 kpi-group-item kpi-group-interno d-none">
+            <div class="kpi-card purple">
+                <div class="d-flex justify-content-between align-items-start">
+                    <span class="kpi-label">Ocorrências Internas Ativas</span>
+                    <i class="bi bi-tools fs-4 opacity-75"></i>
+                </div>
+                <div>
+                    <div class="kpi-number">{{ kpis.interno.ocorrencias_ativas|default:0 }}</div>
+                    <div class="kpi-desc">Manutenções ou ajustes em aberto</div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                            <!-- PARA TODOS: Reportar Ocorrência -->
-                            <button type="button" class="btn btn-sm btn-outline-warning action-btn-quick text-dark" title="Reportar Ocorrência / RNC" onclick="openOcorrenciaModal('{{ item.id }}', '{{ item.tag }}')">
-                                <i class="bi bi-exclamation-circle"></i>
-                            </button>
+    <!-- TABELA DE INSTRUMENTOS REFATORADA COM CHECKBOXES E PAGINAÇÃO -->
+    <div class="table-custom-card">
+        <div class="p-3 border-bottom d-flex justify-content-between align-items-center bg-light flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <h5 class="mb-0 fw-bold text-dark">
+                    <i class="bi bi-speedometer2 text-primary me-1"></i> Parque de Instrumentos
+                </h5>
+                <span class="badge bg-secondary rounded-pill" id="tableFilteredCount">{{ instrumentos|length }} itens</span>
+            </div>
+            
+            <div class="d-flex align-items-center gap-3">
+                <span class="small text-muted" id="paginationInfo">Mostrando 1 a 15 de {{ instrumentos|length }}</span>
+                <span class="small text-muted d-none d-md-inline">Filtrado por: <strong id="activeTabLabel" class="text-primary">TODOS</strong></span>
+            </div>
+        </div>
 
-                            <!-- VER DETALHES -->
-                            <a href="{{ item.url_detalhes }}" class="btn btn-sm btn-light border action-btn-quick text-muted" title="Ver Histórico Completo">
-                                <i class="bi bi-arrow-right"></i>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="dashboardInstrumentsTable">
+                <thead class="table-light small text-uppercase text-muted font-monospace">
+                    <tr>
+                        <th class="ps-3 py-3" style="width: 40px;">
+                            <input type="checkbox" id="selectAllCheckbox" class="form-check-input" onchange="toggleSelectAll(this)">
+                        </th>
+                        <th class="py-3">TAG / Código</th>
+                        <th class="py-3">Descrição</th>
+                        <th class="py-3">Setor</th>
+                        <th class="py-3 text-center">Atividade & Local</th>
+                        <th class="py-3">Vencimento</th>
+                        <th class="py-3 text-center">Status / RNC</th>
+                        <th class="text-end pe-3 py-3">Ações Rápidas</th>
+                    </tr>
+                </thead>
+                <tbody id="instrumentosTableBody">
+                    {% for item in instrumentos %}
+                    <tr class="instrument-row" 
+                        data-tratativa="{{ item.tratativa|lower }}"
+                        data-is-internal="{% if item.is_internal %}true{% else %}false{% endif %}"
+                        data-tag="{{ item.tag|lower }}"
+                        data-codigo="{{ item.codigo|lower }}"
+                        data-desc="{{ item.descricao|lower }}"
+                        data-fabricante="{{ item.fabricante|lower }}"
+                        data-modelo="{{ item.modelo|lower }}"
+                        data-setor="{{ item.setor_nome|lower }}"
+                        data-setor-id="{{ item.setor_id|default:'' }}"
+                        data-categoria-id="{{ item.categoria_id|default:'' }}"
+                        data-acao="{{ item.activity_type }}"
+                        data-status="{% if item.ativo %}ATIVO{% else %}INATIVO{% endif %}"
+                        data-resultado="{{ item.resultado_ultima_calibracao }}"
+                        data-ocorrencia="{% if item.has_active_occurrence %}COM_ABERTA{% else %}SEM_ABERTA{% endif %}"
+                        data-situacao="{{ item.situacao_detalhada }}">
+                        
+                        <!-- CHECKBOX DE SELEÇÃO -->
+                        <td class="ps-3 py-2.5">
+                            <input type="checkbox" class="form-check-input row-select" 
+                                   value="{{ item.id }}" 
+                                   data-tag="{{ item.tag }}" 
+                                   data-frequencia="{{ item.frequencia|default:12 }}" 
+                                   data-tratativa="{{ item.tratativa }}"
+                                   onchange="updateSelectionState()">
+                        </td>
+
+                        <!-- TAG -->
+                        <td class="py-2.5 font-monospace fw-bold">
+                            <a href="{{ item.url_detalhes }}" class="text-primary text-decoration-none hover-underline">
+                                {{ item.tag }}
                             </a>
-                        </div>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr id="emptyRowState">
-                    <td colspan="7" class="text-center p-5">
-                        <div class="text-muted">
-                            <h3 class="text-success mb-2"><i class="bi bi-check2-circle"></i></h3>
-                            <h5 class="fw-bold">Nenhum instrumento cadastrado</h5>
-                            <p class="small text-muted">Cadastre instrumentos no módulo de Metrologia para gerenciar o parque.</p>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                        </td>
+
+                        <!-- DESCRIÇÃO -->
+                        <td class="py-2.5">
+                            <div class="text-dark small fw-semibold">{{ item.descricao|truncatechars:45 }}</div>
+                            <div class="text-muted" style="font-size: 0.72rem;">
+                                {{ item.categoria_nome }}{% if item.fabricante %} &bull; {{ item.fabricante }}{% endif %}
+                            </div>
+                        </td>
+
+                        <!-- SETOR -->
+                        <td class="py-2.5 small text-muted">
+                            {{ item.setor_nome }}
+                        </td>
+
+                        <!-- ATIVIDADE & LOCAL -->
+                        <td class="py-2.5 text-center">
+                            <div class="d-flex flex-column align-items-center gap-1">
+                                <!-- Atividade -->
+                                {% if item.activity_type == 'VERIFICACAO' %}
+                                    <span class="badge rounded-pill badge-activity-verif">Verificação</span>
+                                {% else %}
+                                    <span class="badge rounded-pill badge-activity-calib">Calibração</span>
+                                {% endif %}
+
+                                <!-- Local -->
+                                {% if item.is_internal %}
+                                    <span class="badge rounded-pill badge-local-interno">Interno</span>
+                                {% else %}
+                                    <span class="badge rounded-pill badge-local-externo">Externo</span>
+                                {% endif %}
+                            </div>
+                        </td>
+
+                        <!-- VENCIMENTO -->
+                        <td class="py-2.5">
+                            <div class="small fw-bold {% if item.status_situacao == 'VENCIDO' %}text-danger{% elif item.status_situacao == 'AVENCER_30' %}text-warning text-dark{% else %}text-dark{% endif %}">
+                                {{ item.data_proxima_calibracao_display }}
+                            </div>
+                            {% if item.dias_para_vencer is not None %}
+                                <div class="text-muted" style="font-size: 0.7rem;">
+                                    {% if item.dias_para_vencer < 0 %}
+                                        <span class="text-danger fw-semibold">{{ item.dias_para_vencer|stringformat:"+d"|slice:"1:" }} dias atrás</span>
+                                    {% elif item.dias_para_vencer <= 30 %}
+                                        <span class="text-warning text-dark fw-semibold">Em {{ item.dias_para_vencer }} dias</span>
+                                    {% else %}
+                                        <span>Em {{ item.dias_para_vencer }} dias</span>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </td>
+
+                        <!-- STATUS / RNC -->
+                        <td class="py-2.5 text-center">
+                            <div class="d-flex align-items-center justify-content-center gap-1.5 flex-wrap">
+                                {% if item.status_situacao == 'VENCIDO' %}
+                                    <span class="badge bg-danger rounded-pill px-2 py-1">VENCIDO</span>
+                                {% elif item.status_situacao == 'AVENCER_30' %}
+                                    <span class="badge bg-warning text-dark rounded-pill px-2 py-1">A VENCER</span>
+                                {% else %}
+                                    <span class="badge bg-success bg-opacity-75 text-white rounded-pill px-2 py-1">EM DIA</span>
+                                {% endif %}
+
+                                <!-- Ícone Pulsante de Ocorrência Aberta -->
+                                {% if item.has_active_occurrence %}
+                                    <button type="button" 
+                                            class="btn btn-sm btn-link p-0 text-danger" 
+                                            data-bs-toggle="tooltip" 
+                                            data-bs-placement="top" 
+                                            title="Ocorrência Ativa / RNC em aberto ({{ item.ocorrencias_count }})">
+                                        <i class="bi bi-exclamation-circle-fill text-danger fs-6 animate-pulse"></i>
+                                    </button>
+                                {% endif %}
+                            </div>
+                        </td>
+
+                        <!-- AÇÕES RÁPIDAS -->
+                        <td class="text-end pe-3 py-2.5">
+                            <div class="d-inline-flex align-items-center gap-1">
+                                {% if not item.is_internal %}
+                                    <a href="{% url 'metrologia:solicitacao_create' %}?instrumento_id={{ item.id }}" 
+                                       class="btn btn-xs btn-outline-primary rounded-pill px-2.5 py-1 fw-semibold" 
+                                       style="font-size: 0.75rem;"
+                                       title="Abrir Solicitação de Cotação Externa">
+                                        <i class="bi bi-cash-coin me-1"></i> Cotar
+                                    </a>
+                                {% else %}
+                                    <a href="{% url 'modulo_metrologia' %}?search={{ item.tag }}" 
+                                       class="btn btn-xs btn-outline-success rounded-pill px-2.5 py-1 fw-semibold" 
+                                       style="font-size: 0.75rem;"
+                                       title="Agendar Execução no Laboratório">
+                                        <i class="bi bi-calendar-check me-1"></i> Agendar
+                                    </a>
+                                {% endif %}
+
+                                <!-- Botão Reportar Ocorrência -->
+                                <button type="button" 
+                                        class="btn btn-xs btn-outline-warning rounded-circle" 
+                                        style="width: 28px; height: 28px; padding: 0;"
+                                        title="Reportar Ocorrência / RNC"
+                                        onclick="openOcorrenciaModal('{{ item.id }}', '{{ item.tag }}')">
+                                    <i class="bi bi-exclamation-triangle"></i>
+                                </button>
+
+                                <!-- Ver Detalhes -->
+                                <a href="{{ item.url_detalhes }}" 
+                                   class="btn btn-xs btn-light border rounded-circle text-muted" 
+                                   style="width: 28px; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"
+                                   title="Ver Detalhes do Instrumento">
+                                    <i class="bi bi-arrow-right"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox fs-2 d-block mb-2 opacity-50"></i>
+                            Nenhum instrumento encontrado.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- BARRA DE PAGINAÇÃO INFERIOR -->
+        <div class="p-3 border-top d-flex justify-content-between align-items-center bg-light flex-wrap gap-2">
+            <div class="small text-muted" id="paginationSummary">
+                Mostrando <span id="pagStart">1</span> a <span id="pagEnd">15</span> de <span id="pagTotal">{{ instrumentos|length }}</span> instrumentos
+            </div>
+
+            <nav aria-label="Navegação da tabela">
+                <ul class="pagination pagination-sm mb-0" id="paginationControls">
+                    <!-- Gerado via JavaScript -->
+                </ul>
+            </nav>
+        </div>
     </div>
 </div>
 
-<!-- MODAL RÁPIDO DE NOVA OCORRÊNCIA -->
-<div class="modal fade" id="modalNovaOcorrenciaDashboard" tabindex="-1" aria-labelledby="modalNovaOcorrenciaDashboardLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form method="post" action="{% url 'metrologia:registrar_ocorrencia' %}">
-                {% csrf_token %}
-                <input type="hidden" name="instrumento_id" id="modal_ocorrencia_instrumento_id" value="">
+<!-- ============================================================================== -->
+<!-- MODAIS COMPLEMENTARES -->
+<!-- ============================================================================== -->
+
+<!-- 1. MODAL FILTROS AVANÇADOS -->
+<div class="modal fade" id="filtrosModal" tabindex="-1" aria-labelledby="filtrosModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content shadow-lg" style="border-radius: 14px;">
+            <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                <h5 class="modal-title fw-bold" id="filtrosModalLabel"><i class="bi bi-funnel me-2"></i>Filtros Avançados de Metrologia</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="d-flex justify-content-end align-items-center mb-3 flex-shrink-0">
+                    <button class="btn btn-sm btn-outline-secondary" type="button" onclick="limparFiltrosAvancados()">
+                        <i class="bi bi-x-circle me-1"></i>Limpar todos os filtros
+                    </button>
+                </div>
                 
-                <div class="modal-header bg-warning text-dark">
-                    <h5 class="modal-title fw-bold" id="modalNovaOcorrenciaDashboardLabel">
-                        <i class="bi bi-exclamation-triangle me-2"></i> Reportar Ocorrência / RNC
+                <div class="row g-4">
+                    <!-- Coluna 1: Situação e Status -->
+                    <div class="col-md-3">
+                        <div class="filter-group open mb-3">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="form-label small fw-bold text-muted mb-0">SITUAÇÃO (VENCIMENTO)</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <div class="d-flex flex-column gap-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="VENCIDO" data-cat="situacao">
+                                        <label class="form-check-label small text-danger fw-bold">Vencidos</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="AVENCER_30" data-cat="situacao">
+                                        <label class="form-check-label small text-warning fw-bold">A Vencer (30 dias)</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="AVENCER_60" data-cat="situacao">
+                                        <label class="form-check-label small text-warning">A Vencer (60 dias)</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="AVENCER_90" data-cat="situacao">
+                                        <label class="form-check-label small text-warning">A Vencer (90 dias)</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="AVENCER_120" data-cat="situacao">
+                                        <label class="form-check-label small text-warning">A Vencer (120 dias)</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="EM_DIA" data-cat="situacao">
+                                        <label class="form-check-label small text-success">Em Dia</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="filter-group open mb-3">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="form-label small fw-bold text-muted mb-0">STATUS</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <div class="d-flex flex-column gap-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="ATIVO" data-cat="status" checked>
+                                        <label class="form-check-label small">Ativos</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="INATIVO" data-cat="status">
+                                        <label class="form-check-label small">Inativos / Descontinuados</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Coluna 2: Ação e Ocorrências -->
+                    <div class="col-md-3">
+                        <div class="filter-group open mb-3">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="form-label small fw-bold text-muted mb-0">AÇÃO</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <div class="d-flex flex-column gap-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="CALIBRACAO" data-cat="acao">
+                                        <label class="form-check-label small">Calibração</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="VERIFICACAO" data-cat="acao">
+                                        <label class="form-check-label small">Verificação</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="filter-group open mb-3">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="form-label small fw-bold text-muted mb-0">OCORRÊNCIAS (RNC)</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <div class="d-flex flex-column gap-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="COM_ABERTA" data-cat="ocorrencia">
+                                        <label class="form-check-label small text-danger fw-bold">Com Ocorrência Aberta</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="SEM_ABERTA" data-cat="ocorrencia">
+                                        <label class="form-check-label small text-muted">Sem Ocorrência Aberta</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Coluna 3: Categorias -->
+                    <div class="col-md-3">
+                        <div class="filter-group open mb-3">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="form-label small fw-bold text-muted mb-0">CATEGORIA</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <div class="d-flex flex-column gap-1" style="max-height: 220px; overflow-y: auto;">
+                                    {% for cat in categorias %}
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="{{ cat.id }}" data-cat="categoria">
+                                        <label class="form-check-label small">{{ cat.nome }}</label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Coluna 4: Setores -->
+                    <div class="col-md-3">
+                        <div class="filter-group open mb-3">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="form-label small fw-bold text-muted mb-0">SETOR</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <div class="d-flex flex-column gap-1" style="max-height: 220px; overflow-y: auto;">
+                                    {% for set in setores %}
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="{{ set.id }}" data-cat="setor">
+                                        <label class="form-check-label small">{{ set.nome }}</label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Aplicar Filtros</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 2. MODAL NOVO HISTÓRICO EM MASSA -->
+<div class="modal fade" id="modalNovoHistoricoMassa" tabindex="-1" aria-labelledby="modalNovoHistoricoMassaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content shadow-lg" style="border-radius: 14px;">
+            <form method="post" action="{% url 'metrologia:registrar_historico_massa' %}">
+                {% csrf_token %}
+                <input type="hidden" name="instrumentos_ids" id="instrumentos_ids_input" value="">
+                
+                <div class="modal-header bg-success text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                    <h5 class="modal-title fw-bold" id="modalNovoHistoricoMassaLabel">
+                        <i class="bi bi-calendar-plus me-2"></i> Registrar Histórico em Massa
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
-                    <div class="alert alert-warning py-2 small mb-3">
-                        Instrumento: <strong id="modal_ocorrencia_instrumento_tag" class="font-monospace"></strong>
+                <div class="modal-body p-4">
+                    <div class="alert alert-info py-2 small mb-3">
+                        <strong>Preenchimento Simplificado:</strong> O histórico será registrado para <strong><span id="qtd-selecionados">0</span></strong> instrumento(s) selecionado(s).
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold mb-1 small">Tipo da Ocorrência</label>
-                        <select name="tipo" class="form-select form-select-sm" required>
-                            <option value="">Selecione...</option>
-                            <option value="CALIBRACAO">Calibração</option>
-                            <option value="VERIFICACAO">Verificação</option>
-                            <option value="MANUTENCAO">Manutenção / Reparo</option>
-                            <option value="AVARIA">Avaria / Dano</option>
-                            <option value="AJUSTE">Ajuste de Processo</option>
-                            <option value="EXTRAVIO">Extravio / Perda</option>
-                            <option value="OUTRO">Outro</option>
-                        </select>
+                    
+                    <div class="mb-3 mt-2">
+                        <h6 class="fw-bold border-bottom pb-2 text-primary">N° do Certificado por Instrumento</h6>
+                        <div id="lista-certificados-dinamicos" class="row g-2" style="max-height: 180px; overflow-y: auto;">
+                            <!-- Injetado dinamicamente via JS -->
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold mb-1 small">Descrição do Problema / Ação</label>
-                        <textarea name="descricao" class="form-control form-control-sm" rows="3" required placeholder="Descreva a não conformidade ou necessidade..."></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold mb-1 small">Data do Registro</label>
-                        <input type="date" name="data_ocorrencia" class="form-control form-control-sm" required value="{{ today }}">
+
+                    <div class="row g-3">
+                        <!-- Tipo Calibração -->
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold mb-1 small">Interno / Externo</label>
+                            <select name="tipo_calibracao" id="id_tipo_calibracao" class="form-select form-select-sm" required>
+                                <option value="INTERNA">Interna (Laboratório Próprio)</option>
+                                <option value="EXTERNA">Externa (Fornecedor Credenciado)</option>
+                            </select>
+                        </div>
+                        <!-- Datas -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold mb-1 small">Data da Calibração</label>
+                            <input type="date" name="data_calibracao" id="id_data_calibracao" class="form-control form-control-sm" required value="{{ hoje }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold mb-1 small">Próxima Calibração (Automático)</label>
+                            <input type="date" name="proxima_calibracao" id="id_proxima_calibracao" class="form-control form-control-sm" required>
+                        </div>
+                        <!-- Fornecedor e Resultado -->
+                        <div class="col-md-6" id="container-fornecedor">
+                            <label class="form-label fw-bold mb-1 small">Fornecedor / Laboratório</label>
+                            <select name="fornecedor" id="id_fornecedor" class="form-select form-select-sm">
+                                <option value="">---------</option>
+                                {% for f in fornecedores %}
+                                <option value="{{ f.id }}">{{ f.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6" id="container-resultado">
+                            <label class="form-label fw-bold mb-1 small">Resultado da Calibração</label>
+                            <select name="resultado" id="id_resultado" class="form-select form-select-sm" required>
+                                <option value="APROVADO_SEM_CORRECAO" selected>Aprovado sem Correção</option>
+                                <option value="APROVADO_COM_CORRECAO">Aprovado com Correção</option>
+                                <option value="REPROVADO">Reprovado</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer bg-light">
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-warning btn-sm fw-bold">Salvar Ocorrência</button>
+                    <button type="submit" class="btn btn-success btn-sm">Salvar Histórico</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<script>
-    // Gerenciamento de Abas e Filtro Instantâneo
-    let currentTab = 'todos';
+<!-- 3. MODAL REGISTRAR NOVA OCORRÊNCIA -->
+<div class="modal fade" id="modalNovaOcorrenciaDashboard" tabindex="-1" aria-labelledby="modalNovaOcorrenciaDashboardLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content shadow-lg" style="border-radius: 14px;">
+            <form method="post" action="{% url 'metrologia:registrar_ocorrencia' %}">
+                {% csrf_token %}
+                <input type="hidden" name="instrumento_id" id="modal_ocorrencia_instrumento_id" value="">
+                
+                <div class="modal-header bg-warning text-dark" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                    <h5 class="modal-title fw-bold" id="modalNovaOcorrenciaDashboardLabel">
+                        <i class="bi bi-exclamation-triangle me-2"></i> Reportar Ocorrência / RNC
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert alert-warning py-2 small mb-3">
+                        Instrumento: <strong id="modal_ocorrencia_instrumento_tag" class="font-monospace"></strong>
+                    </div>
 
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Tipo da Ocorrência</label>
+                        <select name="tipo" class="form-select form-select-sm" required>
+                            <option value="">Selecione...</option>
+                            <option value="CALIBRACAO">Calibração Não Conforme</option>
+                            <option value="VERIFICACAO">Verificação Fora do Tolerado</option>
+                            <option value="MANUTENCAO">Manutenção / Reparo</option>
+                            <option value="AVARIA">Avaria / Dano Físico</option>
+                            <option value="AJUSTE">Ajuste de Escala / Zeramento</option>
+                            <option value="OUTRO">Outro Motivo</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Descrição da Ocorrência</label>
+                        <textarea name="descricao" rows="3" class="form-control form-control-sm" placeholder="Descreva detalhadamente a não conformidade ou necessidade de manutenção..." required></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Data da Ocorrência</label>
+                        <input type="date" name="data_ocorrencia" class="form-control form-control-sm" value="{{ hoje }}" required>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning btn-sm">Salvar Ocorrência</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 4. MODAL ETIQUETAS PDF -->
+<div class="modal fade" id="etqModal" tabindex="-1" aria-labelledby="etqModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content shadow-lg" style="border-radius: 14px;">
+            <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                <h5 class="modal-title fw-bold" id="etqModalLabel"><i class="bi bi-file-pdf me-2"></i>Configurar Etiquetas PDF</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label small fw-bold">Orientação</label>
+                        <select id="etq_orient" class="form-select form-select-sm">
+                            <option value="portrait" selected>Retrato</option>
+                            <option value="landscape">Paisagem</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-bold">Colunas</label>
+                        <input id="etq_cols" type="number" min="1" max="5" value="2" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-bold">Linhas</label>
+                        <input id="etq_rows" type="number" min="1" max="10" value="5" class="form-control form-control-sm">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <a href="{% url 'metrologia:export_etiquetas' %}" id="btnGerarEtiquetasPDF" class="btn btn-danger btn-sm" target="_blank">
+                    <i class="bi bi-file-pdf me-1"></i> Gerar PDF
+                </a>
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentTab = 'todos'; // 'todos' | 'externo' | 'interno'
+    let currentPage = 1;
+    let pageSize = 15;
+    let filteredRows = [];
+
+    // ==========================================
+    // 1. GESTÃO DE ABAS PRINCIPAIS
+    // ==========================================
     function setDashboardTab(tab) {
         currentTab = tab;
+        currentPage = 1;
 
-        // 1. Atualizar botões das abas
+        // Atualizar botões de abas
         document.querySelectorAll('.dashboard-tab-btn').forEach(btn => {
             if (btn.getAttribute('data-tab') === tab) {
                 btn.classList.add('active');
@@ -577,53 +993,285 @@
             }
         });
 
-        // 2. Atualizar grupos de KPI cards
+        // Atualizar grupos de KPI cards
         document.querySelectorAll('.kpi-group-item').forEach(el => el.classList.add('d-none'));
         document.querySelectorAll(`.kpi-group-${tab}`).forEach(el => el.classList.remove('d-none'));
 
-        // 3. Atualizar rótulo
+        // Atualizar rótulo
         const labels = { 'todos': 'TODOS', 'externo': 'EXTERNO (Fornecedores)', 'interno': 'INTERNO (Laboratório)' };
         const labelEl = document.getElementById('activeTabLabel');
         if (labelEl) labelEl.textContent = labels[tab] || tab.toUpperCase();
 
-        // 4. Filtrar linhas da tabela
-        filterInstrumentsTable();
+        // Filtrar e Paginar
+        applyAllFilters();
     }
 
-    function filterInstrumentsTable() {
+    // ==========================================
+    // 2. FILTRAGEM COMBINADA (ABAS + BUSCA + MODAL AVANÇADO)
+    // ==========================================
+    function applyAllFilters() {
         const query = (document.getElementById('dashboardSearchInput')?.value || '').trim().toLowerCase();
-        const rows = document.querySelectorAll('.instrument-row');
-        let visibleCount = 0;
+        const allRows = Array.from(document.querySelectorAll('.instrument-row'));
 
-        rows.forEach(row => {
-            const isInternal = row.getAttribute('data-is-internal') === 'true';
-            const tag = row.getAttribute('data-tag') || '';
-            const desc = row.getAttribute('data-desc') || '';
-            const setor = row.getAttribute('data-setor') || '';
+        // Obter valores marcados no modal de filtros avançados
+        const activeFilters = {
+            situacao: [],
+            status: [],
+            acao: [],
+            categoria: [],
+            setor: [],
+            ocorrencia: [],
+        };
 
-            // Checar aba
-            let tabMatch = true;
-            if (currentTab === 'externo' && isInternal) tabMatch = false;
-            if (currentTab === 'interno' && !isInternal) tabMatch = false;
-
-            // Checar busca textual
-            let searchMatch = true;
-            if (query && !tag.includes(query) && !desc.includes(query) && !setor.includes(query)) {
-                searchMatch = false;
-            }
-
-            if (tabMatch && searchMatch) {
-                row.style.display = '';
-                visibleCount++;
-            } else {
-                row.style.display = 'none';
+        document.querySelectorAll('.filter-avancado-cb:checked').forEach(cb => {
+            const cat = cb.getAttribute('data-cat');
+            if (activeFilters[cat]) {
+                activeFilters[cat].push(cb.value);
             }
         });
 
-        const countBadge = document.getElementById('tableFilteredCount');
-        if (countBadge) countBadge.textContent = `${visibleCount} itens`;
+        // Atualizar badge do botão de filtros
+        let totalActiveFilters = 0;
+        Object.keys(activeFilters).forEach(k => {
+            if (k === 'status' && activeFilters[k].length === 1 && activeFilters[k][0] === 'ATIVO') {
+                // Padrão não conta como extra
+            } else {
+                totalActiveFilters += activeFilters[k].length;
+            }
+        });
+
+        const badge = document.getElementById('filtrosCountBadge');
+        if (badge) {
+            if (totalActiveFilters > 0) {
+                badge.textContent = totalActiveFilters;
+                badge.classList.remove('d-none');
+            } else {
+                badge.classList.add('d-none');
+            }
+        }
+
+        // Filtrar linhas
+        filteredRows = allRows.filter(row => {
+            const isInternal = row.getAttribute('data-is-internal') === 'true';
+            const tag = row.getAttribute('data-tag') || '';
+            const codigo = row.getAttribute('data-codigo') || '';
+            const desc = row.getAttribute('data-desc') || '';
+            const fab = row.getAttribute('data-fabricante') || '';
+            const mod = row.getAttribute('data-modelo') || '';
+            const setor = row.getAttribute('data-setor') || '';
+            const setorId = row.getAttribute('data-setor-id') || '';
+            const catId = row.getAttribute('data-categoria-id') || '';
+            const acao = row.getAttribute('data-acao') || '';
+            const status = row.getAttribute('data-status') || '';
+            const ocorrencia = row.getAttribute('data-ocorrencia') || '';
+            const situacao = row.getAttribute('data-situacao') || '';
+
+            // 1. Checar Aba
+            if (currentTab === 'externo' && isInternal) return false;
+            if (currentTab === 'interno' && !isInternal) return false;
+
+            // 2. Checar Busca Textual
+            if (query) {
+                const textMatch = tag.includes(query) || codigo.includes(query) || desc.includes(query) || fab.includes(query) || mod.includes(query) || setor.includes(query);
+                if (!textMatch) return false;
+            }
+
+            // 3. Checar Filtros Avançados
+            if (activeFilters.situacao.length && !activeFilters.situacao.includes(situacao)) return false;
+            if (activeFilters.status.length && !activeFilters.status.includes(status)) return false;
+            if (activeFilters.acao.length && !activeFilters.acao.includes(acao)) return false;
+            if (activeFilters.categoria.length && !activeFilters.categoria.includes(catId)) return false;
+            if (activeFilters.setor.length && !activeFilters.setor.includes(setorId)) return false;
+            if (activeFilters.ocorrencia.length && !activeFilters.ocorrencia.includes(ocorrencia)) return false;
+
+            return true;
+        });
+
+        // Renderizar Paginação
+        renderPagination();
     }
 
+    // ==========================================
+    // 3. PAGINAÇÃO INSTANTÂNEA
+    // ==========================================
+    function changePageSize(val) {
+        pageSize = val === 'all' ? 999999 : parseInt(val, 10);
+        currentPage = 1;
+        renderPagination();
+    }
+
+    function goToPage(page) {
+        currentPage = page;
+        renderPagination();
+    }
+
+    function renderPagination() {
+        const total = filteredRows.length;
+        const countBadge = document.getElementById('tableFilteredCount');
+        if (countBadge) countBadge.textContent = `${total} itens`;
+
+        // Ocultar todas as linhas
+        document.querySelectorAll('.instrument-row').forEach(row => row.style.display = 'none');
+
+        if (total === 0) {
+            document.getElementById('pagStart').textContent = '0';
+            document.getElementById('pagEnd').textContent = '0';
+            document.getElementById('pagTotal').textContent = '0';
+            document.getElementById('paginationInfo').textContent = '0 instrumentos encontrados';
+            document.getElementById('paginationControls').innerHTML = '';
+            return;
+        }
+
+        const totalPages = Math.ceil(total / pageSize);
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+
+        const startIndex = (currentPage - 1) * pageSize;
+        const endIndex = Math.min(startIndex + pageSize, total);
+
+        // Exibir linhas da página atual
+        for (let i = startIndex; i < endIndex; i++) {
+            filteredRows[i].style.display = '';
+        }
+
+        // Atualizar textos informativos
+        document.getElementById('pagStart').textContent = (startIndex + 1).toString();
+        document.getElementById('pagEnd').textContent = endIndex.toString();
+        document.getElementById('pagTotal').textContent = total.toString();
+        document.getElementById('paginationInfo').textContent = `Mostrando ${startIndex + 1} a ${endIndex} de ${total}`;
+
+        // Construir botões de paginação
+        let paginationHtml = '';
+        if (totalPages > 1) {
+            // Anterior
+            paginationHtml += `
+                <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                    <button class="page-link" onclick="goToPage(${currentPage - 1})">&laquo;</button>
+                </li>
+            `;
+
+            // Páginas
+            for (let p = 1; p <= totalPages; p++) {
+                if (p === 1 || p === totalPages || (p >= currentPage - 2 && p <= currentPage + 2)) {
+                    paginationHtml += `
+                        <li class="page-item ${currentPage === p ? 'active' : ''}">
+                            <button class="page-link" onclick="goToPage(${p})">${p}</button>
+                        </li>
+                    `;
+                } else if (p === currentPage - 3 || p === currentPage + 3) {
+                    paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+                }
+            }
+
+            // Próximo
+            paginationHtml += `
+                <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+                    <button class="page-link" onclick="goToPage(${currentPage + 1})">&raquo;</button>
+                </li>
+            `;
+        }
+        document.getElementById('paginationControls').innerHTML = paginationHtml;
+
+        // Atualizar estado de seleção
+        updateSelectionState();
+    }
+
+    // ==========================================
+    // 4. CHECKBOXES E SELEÇÃO EM MASSA
+    // ==========================================
+    function toggleSelectAll(masterCb) {
+        const visibleCheckboxes = document.querySelectorAll('.instrument-row:not([style*="display: none"]) .row-select');
+        visibleCheckboxes.forEach(cb => {
+            cb.checked = masterCb.checked;
+        });
+        updateSelectionState();
+    }
+
+    function updateSelectionState() {
+        const checkedList = document.querySelectorAll('.row-select:checked');
+        const count = checkedList.length;
+        const btnMassa = document.getElementById('btn-historico-massa');
+
+        if (btnMassa) {
+            btnMassa.disabled = (count === 0);
+            btnMassa.innerHTML = `<i class="bi bi-calendar-plus"></i> Registrar Histórico ${count > 0 ? `(${count})` : ''}`;
+        }
+    }
+
+    // Modal de Histórico em Massa - Preenchimento dinâmico
+    document.addEventListener('DOMContentLoaded', function() {
+        const modalHistorico = document.getElementById('modalNovoHistoricoMassa');
+        if (modalHistorico) {
+            modalHistorico.addEventListener('show.bs.modal', function() {
+                const selected = [];
+                document.querySelectorAll('.row-select:checked').forEach(cb => {
+                    selected.push({
+                        id: cb.value,
+                        tag: cb.getAttribute('data-tag') || ('ID ' + cb.value),
+                        frequencia: parseInt(cb.getAttribute('data-frequencia') || '12', 10),
+                        tratativa: (cb.getAttribute('data-tratativa') || 'INTERNA').toUpperCase()
+                    });
+                });
+
+                document.getElementById('qtd-selecionados').textContent = selected.length;
+                document.getElementById('instrumentos_ids_input').value = selected.map(s => s.id).join(',');
+
+                // Injetar lista dinâmica de certificados por instrumento
+                const containerCert = document.getElementById('lista-certificados-dinamicos');
+                containerCert.innerHTML = '';
+                selected.forEach(s => {
+                    containerCert.innerHTML += `
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold text-muted mb-0 font-monospace">${s.tag}</label>
+                            <input type="text" name="certificado_${s.id}" class="form-control form-control-sm" placeholder="N° Certificado">
+                        </div>
+                    `;
+                });
+
+                // Preencher tratativa padrão
+                if (selected.length > 0) {
+                    const tipoSelect = document.getElementById('id_tipo_calibracao');
+                    if (tipoSelect) {
+                        tipoSelect.value = selected[0].tratativa === 'EXTERNA' ? 'EXTERNA' : 'INTERNA';
+                    }
+
+                    // Calcular próxima data
+                    calcularProximaDataCalibracao(selected[0].frequencia);
+                }
+            });
+        }
+
+        // Mudança na data de calibração recalcula a próxima
+        const dataCalibInput = document.getElementById('id_data_calibracao');
+        if (dataCalibInput) {
+            dataCalibInput.addEventListener('change', function() {
+                const checked = document.querySelector('.row-select:checked');
+                const freq = checked ? parseInt(checked.getAttribute('data-frequencia') || '12', 10) : 12;
+                calcularProximaDataCalibracao(freq);
+            });
+        }
+    });
+
+    function calcularProximaDataCalibracao(frequenciaMeses) {
+        const dataCalibVal = document.getElementById('id_data_calibracao')?.value;
+        if (!dataCalibVal) return;
+
+        const baseDate = new Date(dataCalibVal + 'T00:00:00');
+        baseDate.setMonth(baseDate.getMonth() + (frequenciaMeses || 12));
+
+        const y = baseDate.getFullYear();
+        const m = String(baseDate.getMonth() + 1).padStart(2, '0');
+        const d = String(baseDate.getDate()).padStart(2, '0');
+        
+        const proxInput = document.getElementById('id_proxima_calibracao');
+        if (proxInput) {
+            proxInput.value = `${y}-${m}-${d}`;
+        }
+    }
+
+    // ==========================================
+    // 5. MODAL DE OCORRÊNCIA E FILTROS EXPANSÍVEIS
+    // ==========================================
     function openOcorrenciaModal(id, tag) {
         document.getElementById('modal_ocorrencia_instrumento_id').value = id;
         document.getElementById('modal_ocorrencia_instrumento_tag').textContent = tag;
@@ -631,22 +1279,57 @@
         modal.show();
     }
 
+    function toggleFilterGroup(el) {
+        el.closest('.filter-group').classList.toggle('open');
+    }
+
+    function limparFiltrosAvancados() {
+        document.querySelectorAll('.filter-avancado-cb').forEach(cb => {
+            if (cb.getAttribute('data-cat') === 'status' && cb.value === 'ATIVO') {
+                cb.checked = true;
+            } else {
+                cb.checked = false;
+            }
+        });
+        applyAllFilters();
+    }
+
+    function copiarLinkFiltros() {
+        navigator.clipboard.writeText(window.location.href).then(() => {
+            alert('Link com a visualização copiado para a área de transferência!');
+        });
+    }
+
+    function atualizarTodasDatas() {
+        if (confirm('Deseja recalcular e sincronizar as datas de calibração de todos os instrumentos?')) {
+            window.location.href = '/metrologia/?atualizar_datas=1';
+        }
+    }
+
+    // ==========================================
+    // 6. INICIALIZAÇÃO GERAL
+    // ==========================================
     document.addEventListener('DOMContentLoaded', function() {
-        // Inicializar busca em tempo real e limpar qualquer autofill indevido do navegador
         const searchInput = document.getElementById('dashboardSearchInput');
         if (searchInput) {
             searchInput.value = '';
-            searchInput.addEventListener('input', filterInstrumentsTable);
+            ['input', 'keyup', 'search', 'change'].forEach(evt => {
+                searchInput.addEventListener(evt, applyAllFilters);
+            });
         }
 
-        // Inicializar tooltips do Bootstrap
+        document.querySelectorAll('.filter-avancado-cb').forEach(cb => {
+            cb.addEventListener('change', applyAllFilters);
+        });
+
+        // Tooltips
         const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
         tooltipTriggerList.map(function (tooltipTriggerEl) {
             return new bootstrap.Tooltip(tooltipTriggerEl);
         });
 
-        // Executar filtro inicial
-        filterInstrumentsTable();
+        // Inicializar Filtro e Paginação
+        applyAllFilters();
     });
 </script>
 

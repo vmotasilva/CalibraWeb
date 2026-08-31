@@ -1529,10 +1529,30 @@ def get_metrologia_dashboard_data():
             except Exception:
                 url_detalhes = f'/metrologia/instrumento/{inst.id}/'
             
+        # Situação detalhada
+        sessenta_dias = hoje + timedelta(days=60)
+        noventa_dias = hoje + timedelta(days=90)
+        centovinte_dias = hoje + timedelta(days=120)
+        situacao_detalhada = 'EM_DIA'
+        if prox_data:
+            if prox_data < hoje:
+                situacao_detalhada = 'VENCIDO'
+            elif prox_data <= trinta_dias:
+                situacao_detalhada = 'AVENCER_30'
+            elif prox_data <= sessenta_dias:
+                situacao_detalhada = 'AVENCER_60'
+            elif prox_data <= noventa_dias:
+                situacao_detalhada = 'AVENCER_90'
+            elif prox_data <= centovinte_dias:
+                situacao_detalhada = 'AVENCER_120'
+
         instrumentos_list.append({
             'id': inst.id,
             'tag': inst.tag,
+            'codigo': inst.codigo or '',
             'descricao': inst.descricao,
+            'fabricante': inst.fabricante or '',
+            'modelo': inst.modelo or '',
             'setor_nome': inst.setor.nome if inst.setor else '-',
             'setor_id': inst.setor_id,
             'categoria_nome': inst.categoria.nome if inst.categoria else '-',
@@ -1540,16 +1560,37 @@ def get_metrologia_dashboard_data():
             'tratativa': tratativa,
             'is_internal': is_internal,
             'activity_type': acao,
+            'frequencia': inst.frequencia or 12,
+            'ativo': getattr(inst, 'ativo', True),
+            'resultado_ultima_calibracao': getattr(inst, 'resultado_ultima_calibracao', 'APROVADO') or 'APROVADO',
             'data_proxima_calibracao': prox_data.strftime('%Y-%m-%d') if prox_data else None,
             'data_proxima_calibracao_display': prox_data.strftime('%d/%m/%Y') if prox_data else '-',
             'data_ultima_calibracao_display': inst.data_ultima_calibracao.strftime('%d/%m/%Y') if inst.data_ultima_calibracao else '-',
             'dias_para_vencer': dias_para_vencer,
             'status_situacao': status_situacao,
+            'situacao_detalhada': situacao_detalhada,
             'has_active_occurrence': has_active_occurrence,
             'ocorrencias_count': len(abertas),
             'ocorrencias_tipos': [o.tipo for o in abertas],
             'url_detalhes': url_detalhes,
         })
+
+    # Fornecedores, Categorias e Setores para Modais e Filtros
+    try:
+        from fornecedores.models import Fornecedor
+        fornecedores_list = list(Fornecedor.objects.filter(ativo=True).order_by('nome'))
+    except Exception:
+        fornecedores_list = []
+
+    try:
+        categorias_list = list(CategoriaInstrumento.objects.filter(ativo=True).order_by('nome'))
+    except Exception:
+        categorias_list = []
+
+    try:
+        setores_list = list(Setor.objects.filter(ativo=True).order_by('nome'))
+    except Exception:
+        setores_list = []
 
     # Cotações Abertas e Equipamentos no Fornecedor
     cotacoes_abertas = SolicitacaoCotacao.objects.filter(status='ABERTA').count()
@@ -1601,6 +1642,9 @@ def get_metrologia_dashboard_data():
         'instrumentos': instrumentos_list,
         'solicitacoes_cotacao': solicitacoes_cotacao_recentes,
         'qtd_solicitacoes_qms': qtd_solicitacoes_qms,
+        'fornecedores': fornecedores_list,
+        'categorias': categorias_list,
+        'setores': setores_list,
         'hoje': hoje.strftime('%Y-%m-%d'),
         'hoje_display': hoje.strftime('%d/%m/%Y'),
     }
