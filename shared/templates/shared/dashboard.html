@@ -240,6 +240,12 @@
         </div>
     </div>
 
+    <!-- Honeypot oculto para capturar autofill indevido de navegadores (Chrome/Edge/Safari) -->
+    <div style="position: absolute; left: -9999px; top: -9999px; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none;" aria-hidden="true">
+        <input type="text" name="fake_username_trap" tabindex="-1" autocomplete="username">
+        <input type="password" name="fake_password_trap" tabindex="-1" autocomplete="current-password">
+    </div>
+
     <!-- CONTROLES PRINCIPAIS: FILTROS AVANÇADOS, BUSCA, AÇÕES E NOVO INSTRUMENTO -->
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-3 border-bottom pb-2 flex-shrink-0 w-100">
         
@@ -251,10 +257,23 @@
                 <span class="badge bg-primary text-white rounded-pill ms-1 d-none" id="filtrosCountBadge">0</span>
             </button>
 
-            <!-- Campo de Busca Instantânea -->
+            <!-- Campo de Busca Instantânea Anti-Autofill -->
             <div class="input-group input-group-sm" style="max-width: 290px; min-width: 200px;">
                 <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                <input type="search" id="dashboardSearchInput" name="filter_query_instant_metro" class="form-control border-start-0" placeholder="TAG, Descrição, Fabricante..." autocomplete="new-password" data-lpignore="true" value="">
+                <input type="search" 
+                       id="dashboardSearchInput" 
+                       name="metro_fast_filter_input_noncredential" 
+                       class="form-control border-start-0" 
+                       placeholder="TAG, Descrição, Fabricante..." 
+                       autocomplete="off" 
+                       autocorrect="off" 
+                       autocapitalize="off" 
+                       spellcheck="false" 
+                       data-lpignore="true" 
+                       data-form-type="other"
+                       readonly 
+                       onfocus="this.removeAttribute('readonly');" 
+                       value="">
             </div>
         </div>
 
@@ -1092,11 +1111,22 @@
         applyAllFilters();
     }
 
+    // Flag para rastrear se o usuário realmente focou/digitou na busca
+    let isUserActivelySearching = false;
+
     // ==========================================
     // 2. FILTRAGEM COMBINADA (ABAS + BUSCA + MODAL AVANÇADO)
     // ==========================================
     function applyAllFilters() {
-        const query = (document.getElementById('dashboardSearchInput')?.value || '').trim().toLowerCase();
+        const searchInputEl = document.getElementById('dashboardSearchInput');
+        let query = (searchInputEl?.value || '').trim().toLowerCase();
+
+        // Se o valor foi injetado por autofill de senha/usuário do navegador sem o usuário estar no input, limpamos!
+        if (!isUserActivelySearching && searchInputEl && document.activeElement !== searchInputEl && query.length > 0) {
+            searchInputEl.value = '';
+            query = '';
+        }
+
         const allRows = Array.from(document.querySelectorAll('.instrument-row'));
 
         // Obter valores marcados no modal de filtros avançados
@@ -1429,14 +1459,45 @@
     }
 
     // ==========================================
-    // 6. INICIALIZAÇÃO GERAL
+    // 6. INICIALIZAÇÃO GERAL E PROTEÇÃO CONTRA AUTOFILL
     // ==========================================
     document.addEventListener('DOMContentLoaded', function() {
         const searchInput = document.getElementById('dashboardSearchInput');
         if (searchInput) {
             searchInput.value = '';
+
+            searchInput.addEventListener('focus', function() {
+                isUserActivelySearching = true;
+                this.removeAttribute('readonly');
+            });
+
+            searchInput.addEventListener('blur', function() {
+                if (!this.value) {
+                    isUserActivelySearching = false;
+                    this.setAttribute('readonly', 'readonly');
+                }
+            });
+
             ['input', 'keyup', 'search', 'change'].forEach(evt => {
-                searchInput.addEventListener(evt, applyAllFilters);
+                searchInput.addEventListener(evt, function(e) {
+                    if (document.activeElement === searchInput || isUserActivelySearching) {
+                        applyAllFilters();
+                    } else {
+                        // Autofill fantasma do navegador bloqueado
+                        searchInput.value = '';
+                        applyAllFilters();
+                    }
+                });
+            });
+
+            // Timers para varrer e anular qualquer autofill tardio do Chrome (100ms, 300ms, 600ms, 1200ms)
+            [100, 300, 600, 1200].forEach(delay => {
+                setTimeout(() => {
+                    if (!isUserActivelySearching && searchInput.value && document.activeElement !== searchInput) {
+                        searchInput.value = '';
+                        applyAllFilters();
+                    }
+                }, delay);
             });
         }
 
