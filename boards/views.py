@@ -190,6 +190,7 @@ def dashboard_view(request):
     # Mapear cada quadro
     quadros_list = list(quadros)
     todos_colaboradores = Colaborador.objects.filter(is_active=True).order_by('nome_completo')
+    status_list = sorted(list(set(a['status_exibicao'] for a in todas_acoes if a.get('status_exibicao'))))
     
     unread_mentions = []
     if colab:
@@ -202,6 +203,7 @@ def dashboard_view(request):
         'quadros_arquivados': quadros_arquivados,
         'todas_acoes': todas_acoes,
         'todos_colaboradores': todos_colaboradores,
+        'status_list': status_list,
         'form': form,
         'titulo': 'Quadros de Atividades',
         'hoje': timezone.now().date(),

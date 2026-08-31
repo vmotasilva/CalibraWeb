@@ -254,7 +254,11 @@
                         </thead>
                         <tbody>
                             {% for acao in todas_acoes %}
-                            <tr class="cursor-pointer" onclick="{% if acao.is_virtual %}window.open('{% url 'acoes:plano_acao_detail' acao.plano_acao_id %}', '_blank'){% else %}location.href='{% url 'boards:board_detail' acao.quadro_id %}?card={{ acao.id }}'{% endif %}">
+                            <tr class="cursor-pointer" 
+                                data-status-coluna="{{ acao.status_exibicao }}" 
+                                data-is-concluida="{% if acao.data_conclusao or 'conclu' in acao.status_exibicao|lower or 'finaliz' in acao.status_exibicao|lower %}1{% else %}0{% endif %}" 
+                                data-is-atrasada="{% if acao.data_entrega and acao.data_entrega < hoje and not acao.data_conclusao and 'conclu' not in acao.status_exibicao|lower and 'finaliz' not in acao.status_exibicao|lower %}1{% else %}0{% endif %}"
+                                onclick="{% if acao.is_virtual %}window.open('{% url 'acoes:plano_acao_detail' acao.plano_acao_id %}', '_blank'){% else %}location.href='{% url 'boards:board_detail' acao.quadro_id %}?card={{ acao.id }}'{% endif %}">
                                 <td>
                                     <div class="fw-bold text-dark">{{ acao.titulo }}</div>
                                     {% if acao.descricao %}
@@ -433,13 +437,29 @@
             </div>
             <div class="modal-body p-4">
                 <div class="row g-3">
-                    <div class="col-md-12">
+                    <div class="col-md-6">
                         <label class="form-label text-muted small mb-1 fw-bold">Quadro</label>
                         <select id="actionsFilterBoard" class="form-select form-select-sm" onchange="filterActionsTableView()">
                             <option value="">Quadros: Todos</option>
                             {% for b in quadros_list %}
                             <option value="{{ b.nome }}">{{ b.nome }}</option>
                             {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small mb-1 fw-bold">Status / Situação</label>
+                        <select id="actionsFilterStatus" class="form-select form-select-sm" onchange="filterActionsTableView()">
+                            <option value="">Status: Todos</option>
+                            <option value="EM_ANDAMENTO">Em Andamento / Pendente</option>
+                            <option value="CONCLUIDA">Concluída</option>
+                            <option value="ATRASADA">Atrasada (Vencida)</option>
+                            {% if status_list %}
+                            <optgroup label="Por Coluna do Quadro">
+                                {% for st in status_list %}
+                                <option value="COL_{{ st }}">{{ st }}</option>
+                                {% endfor %}
+                            </optgroup>
+                            {% endif %}
                         </select>
                     </div>
                     <div class="col-md-6">
@@ -465,6 +485,7 @@
             <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; justify-content: space-between;">
                 <button type="button" class="btn btn-outline-secondary btn-sm" onclick="
                     document.getElementById('actionsFilterBoard').value='';
+                    document.getElementById('actionsFilterStatus').value='';
                     document.getElementById('actionsFilterPrior').value='';
                     document.getElementById('actionsFilterResp').value='';
                     filterActionsTableView();
@@ -642,6 +663,7 @@ function filterActionsTableView() {
     const filterText = input ? input.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
     
     const filterBoard = document.getElementById('actionsFilterBoard') ? document.getElementById('actionsFilterBoard').value : "";
+    const filterStatus = document.getElementById('actionsFilterStatus') ? document.getElementById('actionsFilterStatus').value : "";
     const filterPrior = document.getElementById('actionsFilterPrior') ? document.getElementById('actionsFilterPrior').value : "";
     const filterResp = document.getElementById('actionsFilterResp') ? document.getElementById('actionsFilterResp').value.trim() : "";
     
@@ -665,11 +687,30 @@ function filterActionsTableView() {
         const boardText = row.cells[1].textContent.trim();
         const boardMatch = !filterBoard || boardText === filterBoard;
         
-        // 3. Priority Match (index 6)
+        // 3. Status Match
+        let statusMatch = true;
+        if (filterStatus) {
+            const isConcluida = row.getAttribute('data-is-concluida') === '1';
+            const isAtrasada = row.getAttribute('data-is-atrasada') === '1';
+            const statusColuna = (row.getAttribute('data-status-coluna') || '').trim();
+
+            if (filterStatus === 'CONCLUIDA') {
+                statusMatch = isConcluida;
+            } else if (filterStatus === 'EM_ANDAMENTO') {
+                statusMatch = !isConcluida;
+            } else if (filterStatus === 'ATRASADA') {
+                statusMatch = isAtrasada;
+            } else if (filterStatus.startsWith('COL_')) {
+                const targetCol = filterStatus.replace('COL_', '').trim();
+                statusMatch = (statusColuna === targetCol);
+            }
+        }
+
+        // 4. Priority Match (index 6)
         const priorText = row.cells[6].textContent.trim();
         const priorMatch = !filterPrior || priorText === filterPrior;
         
-        // 4. Responsible Match (index 3)
+        // 5. Responsible Match (index 3)
         let respMatch = !filterResp;
         if (filterResp && row.cells[3]) {
             const avatars = row.cells[3].querySelectorAll('.board-avatar, .avatar-circle');
@@ -681,7 +722,7 @@ function filterActionsTableView() {
             });
         }
         
-        if (textMatch && boardMatch && priorMatch && respMatch) {
+        if (textMatch && boardMatch && statusMatch && priorMatch && respMatch) {
             row.style.display = '';
         } else {
             row.style.display = 'none';
