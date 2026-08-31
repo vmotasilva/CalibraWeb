@@ -1061,20 +1061,24 @@ def gerar_avaliacao_eficacia_for142_xlsx(treinamento_id: int) -> BytesIO:
         # Tags do Colaborador Avaliado
         "{{COLABORADOR}}": d_colab['nome'],
         "{{NOME_COLABORADOR}}": d_colab['nome'],
+        "{{PARTICIPANTE}}": d_colab['nome'],
+        "{{NOME_PARTICIPANTE}}": d_colab['nome'],
+        "{{NOME}}": d_colab['nome'],
         "{{MATRICULA}}": d_colab['matricula'],
         "{{CARGO}}": d_colab['cargo'],
         "{{POSTO_TRABALHO}}": d_colab['posto_trabalho'],
         "{{CENTRO_CUSTO}}": d_colab['centro_custo'],
 
-        # Tags de Setor do Colaborador Avaliado
+        # Tags de Setor / Área do Colaborador Avaliado
         "{{SETOR}}": d_colab['setor'],
         "{{SETOR_COLABORADOR}}": d_colab['setor'],
         "{{NOME_SETOR}}": d_colab['setor'],
         "{{DEPARTAMENTO}}": d_colab['setor'],
         "{{AREA}}": d_colab['setor'],
+        "{{ÁREA}}": d_colab['setor'],
         "{{LABORATORIO}}": d_colab['setor'],
 
-        # Tags de Gestor do Colaborador Avaliado
+        # Tags de Gestor / Responsável do Colaborador Avaliado
         "{{GESTOR}}": d_colab['gestor'],
         "{{GESTOR_COLABORADOR}}": d_colab['gestor'],
         "{{NOME_GESTOR}}": d_colab['gestor'],
@@ -1083,43 +1087,39 @@ def gerar_avaliacao_eficacia_for142_xlsx(treinamento_id: int) -> BytesIO:
         "{{GERENTE}}": d_colab['gerente'],
         "{{CHEFIA}}": d_colab['gestor'],
         "{{RESPONSAVEL}}": d_colab['gestor'],
+        "{{RESPONSÁVEL}}": d_colab['gestor'],
         "{{AVALIADOR}}": d_colab['gestor'],
 
         # Procedimento e Dados do Treinamento
         "{{PROCEDIMENTO}}": f"{proc.codigo} - {proc.nome}" if proc else "-",
         "{{CODIGO_PROCEDIMENTO}}": proc.codigo if proc else "-",
         "{{NOME_PROCEDIMENTO}}": proc.nome if proc else "-",
+        "{{TREINAMENTO}}": f"{proc.codigo} - {proc.nome}" if proc else "-",
+        "{{TITULO}}": f"{proc.codigo} - {proc.nome}" if proc else "-",
+        "{{DATA}}": data_treinamento_str,
         "{{DATA_TREINAMENTO}}": data_treinamento_str,
         "{{DATA_EFICACIA_CALCULADA}}": data_eficacia_str,
         "{{DATA_ELEGIBILIDADE}}": data_eficacia_str,
         "{{DATA_AVALIACAO}}": data_avaliacao_str,
+        "{{DATA_AVALIAÇÃO}}": data_avaliacao_str,
         "{{STATUS_EFICACIA}}": status_display,
+        "{{STATUS}}": status_display,
         "{{OBSERVACOES}}": treinamento.resultado_avaliacao or "",
+        "{{OBSERVAÇÕES}}": treinamento.resultado_avaliacao or "",
         "{{JUSTIFICATIVA}}": treinamento.resultado_avaliacao or "",
         "{{EVIDENCIAS}}": treinamento.resultado_avaliacao or "",
+        "{{EVIDÊNCIAS}}": treinamento.resultado_avaliacao or "",
+        "{{RESULTADO}}": treinamento.resultado_avaliacao or "",
         "{{CHK_EFICAZ}}": "●" if status_str == 'EFICAZ' else "○",
         "{{CHK_INEFICAZ}}": "●" if status_str == 'INEFICAZ' else "○",
         "{{CHK_NAO_APLICA}}": "●" if status_str == 'NAO_APLICA' else "○",
+        "{{X_EFICAZ}}": "X" if status_str == 'EFICAZ' else "",
+        "{{X_INEFICAZ}}": "X" if status_str == 'INEFICAZ' else "",
     }
 
     # 1. Se possuímos o arquivo template original, preenchemos de forma 100% LOSSLESS preservando formas e layout
     if raw_bytes is not None:
-        cell_updates = {
-            'C4': f"APLICAR APÓS {data_eficacia_str} (CARÊNCIA DE 30 DIAS CALCULADA)",
-            'C5': f"{proc.codigo} - {proc.nome}" if proc else "-",
-            'W5': data_treinamento_str,
-            'C6': d_colab['nome'],
-            'W6': d_colab['setor'],
-            'C7': d_colab['gestor'],
-            'B30': treinamento.resultado_avaliacao or "",
-            'P38': "[ X ]" if status_str == 'EFICAZ' else "[   ]",
-            'V38': "[ X ]" if status_str == 'INEFICAZ' else "[   ]",
-            'B42': f"Colaborador: {d_colab['nome']}",
-            'Z42': f"Data: {data_treinamento_str}",
-            'B43': f"Gestor: {d_colab['gestor']}",
-            'Z43': f"Data: {data_avaliacao_str}",
-        }
-        return _preencher_template_xlsx_preservando_formas(raw_bytes, substituicoes, cell_updates)
+        return _preencher_template_xlsx_preservando_formas(raw_bytes, substituicoes, cell_updates=None)
 
     # 2. Fallback nativo openpyxl caso o template não exista
         wb = openpyxl.Workbook()
@@ -1325,18 +1325,27 @@ def gerar_avaliacao_eficacia_multiplas_abas_for142_xlsx(treinamento_ids: list) -
             status_display = status_map.get(status_str, status_str)
 
             substituicoes = {
+                # Tags do Colaborador Avaliado
                 "{{COLABORADOR}}": d_colab['nome'],
                 "{{NOME_COLABORADOR}}": d_colab['nome'],
+                "{{PARTICIPANTE}}": d_colab['nome'],
+                "{{NOME_PARTICIPANTE}}": d_colab['nome'],
+                "{{NOME}}": d_colab['nome'],
                 "{{MATRICULA}}": d_colab['matricula'],
                 "{{CARGO}}": d_colab['cargo'],
                 "{{POSTO_TRABALHO}}": d_colab['posto_trabalho'],
                 "{{CENTRO_CUSTO}}": d_colab['centro_custo'],
+
+                # Tags de Setor / Área do Colaborador Avaliado
                 "{{SETOR}}": d_colab['setor'],
                 "{{SETOR_COLABORADOR}}": d_colab['setor'],
                 "{{NOME_SETOR}}": d_colab['setor'],
                 "{{DEPARTAMENTO}}": d_colab['setor'],
                 "{{AREA}}": d_colab['setor'],
+                "{{ÁREA}}": d_colab['setor'],
                 "{{LABORATORIO}}": d_colab['setor'],
+
+                # Tags de Gestor / Responsável do Colaborador Avaliado
                 "{{GESTOR}}": d_colab['gestor'],
                 "{{GESTOR_COLABORADOR}}": d_colab['gestor'],
                 "{{NOME_GESTOR}}": d_colab['gestor'],
@@ -1345,37 +1354,34 @@ def gerar_avaliacao_eficacia_multiplas_abas_for142_xlsx(treinamento_ids: list) -
                 "{{GERENTE}}": d_colab['gerente'],
                 "{{CHEFIA}}": d_colab['gestor'],
                 "{{RESPONSAVEL}}": d_colab['gestor'],
+                "{{RESPONSÁVEL}}": d_colab['gestor'],
                 "{{AVALIADOR}}": d_colab['gestor'],
+
+                # Procedimento e Dados do Treinamento
                 "{{PROCEDIMENTO}}": f"{proc.codigo} - {proc.nome}" if proc else "-",
                 "{{CODIGO_PROCEDIMENTO}}": proc.codigo if proc else "-",
                 "{{NOME_PROCEDIMENTO}}": proc.nome if proc else "-",
+                "{{TREINAMENTO}}": f"{proc.codigo} - {proc.nome}" if proc else "-",
+                "{{TITULO}}": f"{proc.codigo} - {proc.nome}" if proc else "-",
+                "{{DATA}}": data_treinamento_str,
                 "{{DATA_TREINAMENTO}}": data_treinamento_str,
                 "{{DATA_EFICACIA_CALCULADA}}": data_eficacia_str,
                 "{{DATA_ELEGIBILIDADE}}": data_eficacia_str,
                 "{{DATA_AVALIACAO}}": data_avaliacao_str,
+                "{{DATA_AVALIAÇÃO}}": data_avaliacao_str,
                 "{{STATUS_EFICACIA}}": status_display,
+                "{{STATUS}}": status_display,
                 "{{OBSERVACOES}}": t.resultado_avaliacao or "",
+                "{{OBSERVAÇÕES}}": t.resultado_avaliacao or "",
                 "{{JUSTIFICATIVA}}": t.resultado_avaliacao or "",
                 "{{EVIDENCIAS}}": t.resultado_avaliacao or "",
+                "{{EVIDÊNCIAS}}": t.resultado_avaliacao or "",
+                "{{RESULTADO}}": t.resultado_avaliacao or "",
                 "{{CHK_EFICAZ}}": "●" if status_str == 'EFICAZ' else "○",
                 "{{CHK_INEFICAZ}}": "●" if status_str == 'INEFICAZ' else "○",
                 "{{CHK_NAO_APLICA}}": "●" if status_str == 'NAO_APLICA' else "○",
-            }
-
-            cell_updates = {
-                'C4': f"APLICAR APÓS {data_eficacia_str} (CARÊNCIA DE 30 DIAS CALCULADA)",
-                'C5': f"{proc.codigo} - {proc.nome}" if proc else "-",
-                'W5': data_treinamento_str,
-                'C6': d_colab['nome'],
-                'W6': d_colab['setor'],
-                'C7': d_colab['gestor'],
-                'B30': t.resultado_avaliacao or "",
-                'P38': "[ X ]" if status_str == 'EFICAZ' else "[   ]",
-                'V38': "[ X ]" if status_str == 'INEFICAZ' else "[   ]",
-                'B42': f"Colaborador: {d_colab['nome']}",
-                'Z42': f"Data: {data_treinamento_str}",
-                'B43': f"Gestor: {d_colab['gestor']}",
-                'Z43': f"Data: {data_avaliacao_str}",
+                "{{X_EFICAZ}}": "X" if status_str == 'EFICAZ' else "",
+                "{{X_INEFICAZ}}": "X" if status_str == 'INEFICAZ' else "",
             }
 
             # Criar cópia da aba template
@@ -1393,14 +1399,7 @@ def gerar_avaliacao_eficacia_multiplas_abas_for142_xlsx(treinamento_ids: list) -
                 suffix += 1
             ws.title = title
 
-            # Atualizações posicionais
-            for cell_ref, val in cell_updates.items():
-                try:
-                    ws[cell_ref] = val
-                except Exception:
-                    pass
-
-            # Substituição de tags nas células da aba
+            # Substituição exclusiva de tags nas células da aba
             for row in ws.iter_rows():
                 for cell in row:
                     if cell.value and isinstance(cell.value, str):

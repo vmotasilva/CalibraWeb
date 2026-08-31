@@ -9,7 +9,7 @@ from django.contrib import messages
 from django.db.models import Q
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from collections import defaultdict
-from procedures.models import RegistroTreinamento, ColaboradorPerfil, MatrizProcedimento
+from procedures.models import RegistroTreinamento, ColaboradorPerfil, MatrizProcedimento, Procedimento
 from rh.models import Colaborador
 from organization.models import Setor
 
@@ -35,19 +35,23 @@ def avaliacao_eficacia_list_view(request):
     )
 
     # Obter dados para os filtros
-    setores = Setor.objects.order_by('nome')
-    lideres = Colaborador.objects.filter(
-        is_active=True,
-        id__in=Colaborador.objects.values_list('lider_id', flat=True).distinct()
-    ).order_by('nome_completo')
+    setores_list = Setor.objects.order_by('nome')
+    gestores_list = Colaborador.objects.filter(is_active=True).filter(
+        Q(posto_lideranca__in=['LIDER', 'SUPERVISOR', 'GERENTE']) |
+        Q(id__in=Colaborador.objects.values_list('lider_id', flat=True)) |
+        Q(id__in=Colaborador.objects.values_list('supervisor_id', flat=True)) |
+        Q(id__in=Colaborador.objects.values_list('gerente_id', flat=True))
+    ).distinct().order_by('nome_completo')
+    procedimentos_list = Procedimento.objects.filter(criticidade='CRITICO').order_by('codigo', 'nome')
     matrizes_opcoes = MatrizProcedimento.objects.filter(ativo=True).order_by('nome')
 
     # Parâmetros de filtro
-    busca = (request.GET.get('q') or '').strip()
+    busca = (request.GET.get('q') or request.GET.get('busca') or '').strip()
     status_filtro = (request.GET.get('status') or '').strip()
-    lider_id = (request.GET.get('lider') or '').strip()
+    gestor_id = (request.GET.get('gestor') or request.GET.get('lider') or '').strip()
     setor_id = (request.GET.get('setor') or '').strip()
-    dias_decorridos_filtro = (request.GET.get('dias_decorridos') or '').strip()
+    procedimento_id = (request.GET.get('procedimento') or request.GET.get('procedimento_id') or '').strip()
+    dias_decorridos_filtro = (request.GET.get('dias') or request.GET.get('dias_decorridos') or '').strip()
     vinculo_filtro = (request.GET.get('vinculo') or '').strip()
     posterior_filtro = (request.GET.get('posterior') or '').strip()
     matriz_filtro = (request.GET.get('matriz') or '').strip()
@@ -61,13 +65,20 @@ def avaliacao_eficacia_list_view(request):
     if busca:
         qs = qs.filter(
             Q(colaborador__nome_completo__icontains=busca) |
+            Q(colaborador__matricula__icontains=busca) |
             Q(procedimento__codigo__icontains=busca) |
             Q(procedimento__nome__icontains=busca)
         )
-    if lider_id:
-        qs = qs.filter(colaborador__lider_id=lider_id)
+    if gestor_id:
+        qs = qs.filter(
+            Q(colaborador__lider_id=gestor_id) |
+            Q(colaborador__supervisor_id=gestor_id) |
+            Q(colaborador__gerente_id=gestor_id)
+        )
     if setor_id:
         qs = qs.filter(colaborador__setor_id=setor_id)
+    if procedimento_id:
+        qs = qs.filter(procedimento_id=procedimento_id)
     if matriz_filtro:
         qs = qs.filter(procedimento__matriz__iexact=matriz_filtro)
 
@@ -105,7 +116,7 @@ def avaliacao_eficacia_list_view(request):
     qs = qs.order_by('-data_treinamento', 'colaborador__nome_completo')
 
     # Calcular totais para os cards do dashboard
-    # Precisamos da query com filtros de busca, lider, setor e dias (mas sem filtro de status) para os totais locais
+    # Precisamos da query com filtros de busca, lider/gestor, setor, procedimento e dias (mas sem filtro de status) para os totais locais
     totals_qs = RegistroTreinamento.objects.filter(
         colaborador__isnull=False,
         procedimento__isnull=False,
@@ -119,13 +130,20 @@ def avaliacao_eficacia_list_view(request):
     if busca:
         totals_qs = totals_qs.filter(
             Q(colaborador__nome_completo__icontains=busca) |
+            Q(colaborador__matricula__icontains=busca) |
             Q(procedimento__codigo__icontains=busca) |
             Q(procedimento__nome__icontains=busca)
         )
-    if lider_id:
-        totals_qs = totals_qs.filter(colaborador__lider_id=lider_id)
+    if gestor_id:
+        totals_qs = totals_qs.filter(
+            Q(colaborador__lider_id=gestor_id) |
+            Q(colaborador__supervisor_id=gestor_id) |
+            Q(colaborador__gerente_id=gestor_id)
+        )
     if setor_id:
         totals_qs = totals_qs.filter(colaborador__setor_id=setor_id)
+    if procedimento_id:
+        totals_qs = totals_qs.filter(procedimento_id=procedimento_id)
     if matriz_filtro:
         totals_qs = totals_qs.filter(procedimento__matriz__iexact=matriz_filtro)
     if dias_decorridos_filtro:
@@ -267,14 +285,23 @@ def avaliacao_eficacia_list_view(request):
 
     context = {
         'page_obj': page_obj,
-        'setores': setores,
-        'lideres': lideres,
+        'setores': setores_list,
+        'setores_list': setores_list,
+        'lideres': gestores_list,
+        'gestores_list': gestores_list,
+        'procedimentos_list': procedimentos_list,
         'matrizes_opcoes': matrizes_opcoes,
         'busca': busca,
+        'query': busca,
         'status_filtro': status_filtro,
-        'lider_id': lider_id,
+        'lider_id': gestor_id,
+        'gestor_filtro': gestor_id,
         'setor_id': setor_id,
+        'setor_filtro': setor_id,
+        'procedimento_id': procedimento_id,
+        'procedimento_filtro': procedimento_id,
         'dias_decorridos_filtro': dias_decorridos_filtro,
+        'dias_filtro': dias_decorridos_filtro,
         'vinculo_filtro': vinculo_filtro,
         'posterior_filtro': posterior_filtro,
         'matriz_filtro': matriz_filtro,
@@ -422,11 +449,12 @@ def avaliacao_eficacia_export_excel_view(request):
     )
 
     # Parâmetros de filtro
-    busca = (request.GET.get('q') or '').strip()
+    busca = (request.GET.get('q') or request.GET.get('busca') or '').strip()
     status_filtro = (request.GET.get('status') or '').strip()
-    lider_id = (request.GET.get('lider') or '').strip()
+    gestor_id = (request.GET.get('gestor') or request.GET.get('lider') or '').strip()
     setor_id = (request.GET.get('setor') or '').strip()
-    dias_decorridos_filtro = (request.GET.get('dias_decorridos') or '').strip()
+    procedimento_id = (request.GET.get('procedimento') or request.GET.get('procedimento_id') or '').strip()
+    dias_decorridos_filtro = (request.GET.get('dias') or request.GET.get('dias_decorridos') or '').strip()
     vinculo_filtro = (request.GET.get('vinculo') or '').strip()
     posterior_filtro = (request.GET.get('posterior') or '').strip()
     matriz_filtro = (request.GET.get('matriz') or '').strip()
@@ -438,13 +466,20 @@ def avaliacao_eficacia_export_excel_view(request):
     if busca:
         qs = qs.filter(
             Q(colaborador__nome_completo__icontains=busca) |
+            Q(colaborador__matricula__icontains=busca) |
             Q(procedimento__codigo__icontains=busca) |
             Q(procedimento__nome__icontains=busca)
         )
-    if lider_id:
-        qs = qs.filter(colaborador__lider_id=lider_id)
+    if gestor_id:
+        qs = qs.filter(
+            Q(colaborador__lider_id=gestor_id) |
+            Q(colaborador__supervisor_id=gestor_id) |
+            Q(colaborador__gerente_id=gestor_id)
+        )
     if setor_id:
         qs = qs.filter(colaborador__setor_id=setor_id)
+    if procedimento_id:
+        qs = qs.filter(procedimento_id=procedimento_id)
     if matriz_filtro:
         qs = qs.filter(procedimento__matriz__iexact=matriz_filtro)
 

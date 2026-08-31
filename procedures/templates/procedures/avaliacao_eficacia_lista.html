@@ -129,10 +129,18 @@
 <div class="card shadow-sm border-0 mb-4">
     <div class="card-body p-3">
         <form method="get" class="row g-2 align-items-center">
+            {% if setor_filtro %}<input type="hidden" name="setor" value="{{ setor_filtro }}">{% endif %}
+            {% if gestor_filtro %}<input type="hidden" name="gestor" value="{{ gestor_filtro }}">{% endif %}
+            {% if procedimento_filtro %}<input type="hidden" name="procedimento" value="{{ procedimento_filtro }}">{% endif %}
+            {% if dias_decorridos_filtro %}<input type="hidden" name="dias" value="{{ dias_decorridos_filtro }}">{% endif %}
+            {% if status_filtro %}<input type="hidden" name="status" value="{{ status_filtro }}">{% endif %}
+            {% if vinculo_filtro %}<input type="hidden" name="vinculo" value="{{ vinculo_filtro }}">{% endif %}
+            {% if posterior_filtro %}<input type="hidden" name="posterior" value="{{ posterior_filtro }}">{% endif %}
+            {% if exibir and exibir != '30' %}<input type="hidden" name="exibir" value="{{ exibir }}">{% endif %}
             <div class="col-lg-5 col-md-12">
                 <div class="input-group input-group-sm">
                     <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
-                    <input type="text" name="q" class="form-control border-start-0" placeholder="Nome, código ou título" value="{{ query|default:'' }}">
+                    <input type="text" name="q" class="form-control border-start-0" placeholder="Nome, código ou título" value="{{ query|default:busca|default:'' }}">
                 </div>
             </div>
             
@@ -165,7 +173,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <form method="get" action="{% url 'procedures:avaliacao_eficacia_list' %}">
-                <input type="hidden" name="q" value="{{ query|default:'' }}">
+                <input type="hidden" name="q" value="{{ query|default:busca|default:'' }}">
                 <div class="modal-body py-3">
                     <div class="row g-3">
                         <div class="col-md-6">
