@@ -326,13 +326,18 @@ class RegistroAuditoriaForm(forms.ModelForm):
         accepted_formats = ["%d/%m/%Y", "%Y-%m-%d"]
         for field_name in ("periodo_inicio", "periodo_fim"):
             self.fields[field_name].input_formats = accepted_formats
+            self.fields[field_name].required = True
+            self.fields[field_name].widget.attrs["required"] = "required"
+        if "nome" in self.fields:
+            self.fields["nome"].required = True
+            self.fields["nome"].widget.attrs["required"] = "required"
 
     def clean(self):
         cleaned_data = super().clean()
         periodo_inicio = cleaned_data.get("periodo_inicio")
         periodo_fim = cleaned_data.get("periodo_fim")
         if periodo_inicio and periodo_fim and periodo_fim < periodo_inicio:
-            self.add_error("periodo_fim", "O perÃ­odo final deve ser maior ou igual ao perÃ­odo inicial.")
+            self.add_error("periodo_fim", "O período final deve ser maior ou igual ao período inicial.")
         return cleaned_data
 
 

@@ -22,7 +22,7 @@ def avaliacao_eficacia_list_view(request):
     # onde o procedimento é crítico, o treinamento já ocorreu (data_treinamento is not null),
     # o colaborador está ativo e o registro de treinamento está ativo.
     qs = RegistroTreinamento.objects.select_related(
-        'colaborador', 'procedimento', 'colaborador__setor', 'colaborador__lider', 'colaborador__supervisor', 'colaborador__gerente'
+        'colaborador', 'procedimento', 'colaborador__setor', 'colaborador__lider', 'colaborador__supervisor', 'colaborador__gerente', 'gestor_responsavel'
     ).filter(
         colaborador__isnull=False,
         procedimento__isnull=False,
@@ -71,9 +71,80 @@ def avaliacao_eficacia_list_view(request):
         )
     if gestor_id:
         qs = qs.filter(
-            Q(colaborador__lider_id=gestor_id) |
-            Q(colaborador__supervisor_id=gestor_id) |
-            Q(colaborador__gerente_id=gestor_id)
+            Q(gestor_responsavel_id=gestor_id) |
+            (Q(gestor_responsavel__isnull=True) & (
+                Q(colaborador__lider_id=gestor_id) |
+                Q(colaborador__supervisor_id=gestor_id) |
+                Q(colaborador__gerente_id=gestor_id)
+            ))
+        )
+    if setor_id:
+        qs = qs.filter(colaborador__setor_id=setor_id)
+    if procedimento_id:
+        qs = qs.filter(procedimento_id=procedimento_id)
+    if matriz_filtro:
+        qs = qs.filter(procedimento__matriz__iexact=matriz_filtro)
+
+    if dias_decorridos_filtro:
+        if dias_decorridos_filtro == 'menos_30':
+            qs = qs.filter(data_treinamento__gt=carencia_date)
+        elif dias_decorridos_filtro == '30_60':
+            qs = qs.filter(data_treinamento__lte=carencia_date, data_treinamento__gte=today - timedelta(days=60))
+        elif dias_decorridos_filtro == '60_90':
+            qs = qs.filter(data_treinamento__lt=today - timedelta(days=60), data_treinamento__gte=today - timedelta(days=90))
+        elif dias_decorridos_filtro == '90_mais':
+            qs = qs.filter(data_treinamento__lt=today - timedelta(days=90))
+
+    if status_filtro:
+        if status_filtro == 'EFICAZ':
+            qs = qs.filter(avaliacao_eficacia_status='EFICAZ')
+        elif status_filtro == 'INEFICAZ':
+            qs = qs.filter(avaliacao_eficacia_status='INEFICAZ')
+        elif status_filtro == 'NAO_APLICA':
+            qs = qs.filter(avaliacao_eficacia_status='NAO_APLICA')
+        elif status_filtro == 'CARENCIA':
+            # PENDENTE mas com menos de 30 dias desde o treinamento
+            qs = qs.filter(
+                Q(avaliacao_eficacia_status='PENDENTE') | Q(avaliacao_eficacia_status__isnull=True),
+                data_treinamento__gt=carencia_date
+            )
+        elif status_filtro == 'PENDENTE':
+            # PENDENTE e com 30 dias ou mais desde o treinamento
+            qs = qs.filter(
+                Q(avaliacao_eficacia_status='PENDENTE') | Q(avaliacao_eficacia_status__isnull=True),
+                data_treinamento__lte=carencia_date
+            )
+
+    # Ordenação padrão: por data do treinamento decrescente
+    qs = qs.order_by('-data_treinamento', 'colaborador__nome_completo')
+
+    # Calcular totais para os cards do dashboard
+    # Precisamos da query com filtros de busca, lider/gestor, setor, procedimento e dias (mas sem filtro de status) para os totais locais
+    totals_qs = RegistroTreinamento.objects.filter(
+        colaborador__isnull=False,
+        procedimento__isnull=False,
+        procedimento__criticidade='CRITICO',
+        data_treinamento__isnull=False,
+        ativo=True,
+        colaborador__is_active=True,
+        colaborador__afastado=False,
+        colaborador__em_ferias=False,
+    )
+    if busca:
+        totals_qs = totals_qs.filter(
+            Q(colaborador__nome_completo__icontains=busca) |
+            Q(colaborador__matricula__icontains=busca) |
+            Q(procedimento__codigo__icontains=busca) |
+            Q(procedimento__nome__icontains=busca)
+        )
+    if gestor_id:
+        totals_qs = totals_qs.filter(
+            Q(gestor_responsavel_id=gestor_id) |
+            (Q(gestor_responsavel__isnull=True) & (
+                Q(colaborador__lider_id=gestor_id) |
+                Q(colaborador__supervisor_id=gestor_id) |
+                Q(colaborador__gerente_id=gestor_id)
+            ))
         )
     if setor_id:
         qs = qs.filter(colaborador__setor_id=setor_id)
@@ -322,7 +393,7 @@ def avaliacao_eficacia_list_view(request):
 @login_required
 def avaliacao_eficacia_registrar_view(request, treinamento_id):
     """
-    Grava ou atualiza os dados da autoavaliação de eficácia.
+    Grava ou atualiza os dados da autoavaliação de eficácia e permite ajustar o gestor responsável.
     """
     treinamento = get_object_or_404(RegistroTreinamento, id=treinamento_id)
     
@@ -335,6 +406,7 @@ def avaliacao_eficacia_registrar_view(request, treinamento_id):
     status = request.POST.get('status')
     data_avaliacao_str = request.POST.get('data_avaliacao')
     resultado_avaliacao = request.POST.get('resultado_avaliacao', '').strip()
+    gestor_resp_id = request.POST.get('gestor_responsavel')
 
     # Validações básicas
     if status not in ['EFICAZ', 'INEFICAZ', 'NAO_APLICA']:
@@ -360,6 +432,16 @@ def avaliacao_eficacia_registrar_view(request, treinamento_id):
     treinamento.avaliacao_eficacia_status = status
     treinamento.avaliacao_eficacia_data = data_avaliacao
     treinamento.resultado_avaliacao = resultado_avaliacao
+    
+    if gestor_resp_id:
+        if gestor_resp_id == 'padrao' or gestor_resp_id == '':
+            treinamento.gestor_responsavel = None
+        else:
+            try:
+                treinamento.gestor_responsavel_id = int(gestor_resp_id)
+            except (ValueError, TypeError):
+                pass
+
     treinamento.save()
 
     messages.success(request, f"Avaliação de eficácia registrada com sucesso para {treinamento.colaborador.nome_completo}.")
@@ -379,6 +461,7 @@ def avaliacao_eficacia_registrar_massa_view(request):
     status = request.POST.get('status')
     data_avaliacao_str = request.POST.get('data_avaliacao')
     resultado_avaliacao = request.POST.get('resultado_avaliacao', '').strip()
+    gestor_resp_id = request.POST.get('gestor_responsavel')
 
     # Validações básicas
     if status not in ['EFICAZ', 'INEFICAZ', 'NAO_APLICA']:
@@ -422,10 +505,59 @@ def avaliacao_eficacia_registrar_massa_view(request):
                 t.avaliacao_eficacia_status = status
                 t.avaliacao_eficacia_data = data_avaliacao
                 t.resultado_avaliacao = resultado_avaliacao
+                if gestor_resp_id and gestor_resp_id != 'manter':
+                    if gestor_resp_id == 'padrao':
+                        t.gestor_responsavel = None
+                    else:
+                        try:
+                            t.gestor_responsavel_id = int(gestor_resp_id)
+                        except (ValueError, TypeError):
+                            pass
                 t.save()
                 count += 1
 
     messages.success(request, f"Avaliação em massa concluída! {count} treinamento(s) atualizado(s) com sucesso.")
+    return redirect("procedures:avaliacao_eficacia_list")
+
+
+@require_POST
+@login_required
+def avaliacao_eficacia_alterar_gestor_massa_view(request):
+    """
+    Permite alterar/redirecionar forçadamente o gestor responsável para um ou múltiplos treinamentos selecionados.
+    """
+    treinamento_ids = request.POST.getlist('treinamento_ids')
+    if not treinamento_ids:
+        messages.warning(request, "Nenhum treinamento selecionado para direcionamento de gestor.")
+        return redirect("procedures:avaliacao_eficacia_list")
+
+    novo_gestor_id = request.POST.get('novo_gestor_id')
+    if not novo_gestor_id:
+        messages.warning(request, "Nenhum gestor selecionado.")
+        return redirect("procedures:avaliacao_eficacia_list")
+
+    treinamentos = RegistroTreinamento.objects.filter(
+        id__in=treinamento_ids,
+        procedimento__criticidade='CRITICO',
+        ativo=True,
+    )
+
+    count = 0
+    if treinamentos.exists():
+        from django.db import transaction
+        with transaction.atomic():
+            for t in treinamentos:
+                if novo_gestor_id == 'padrao':
+                    t.gestor_responsavel = None
+                else:
+                    try:
+                        t.gestor_responsavel_id = int(novo_gestor_id)
+                    except (ValueError, TypeError):
+                        continue
+                t.save()
+                count += 1
+
+    messages.success(request, f"Gestor responsável atualizado com sucesso para {count} treinamento(s).")
     return redirect("procedures:avaliacao_eficacia_list")
 
 
@@ -436,7 +568,7 @@ def avaliacao_eficacia_export_excel_view(request):
     """
     # Mesma query base
     qs = RegistroTreinamento.objects.select_related(
-        'colaborador', 'procedimento', 'colaborador__setor', 'colaborador__lider', 'colaborador__supervisor', 'colaborador__gerente'
+        'colaborador', 'procedimento', 'colaborador__setor', 'colaborador__lider', 'colaborador__supervisor', 'colaborador__gerente', 'gestor_responsavel'
     ).filter(
         colaborador__isnull=False,
         procedimento__isnull=False,
@@ -472,9 +604,12 @@ def avaliacao_eficacia_export_excel_view(request):
         )
     if gestor_id:
         qs = qs.filter(
-            Q(colaborador__lider_id=gestor_id) |
-            Q(colaborador__supervisor_id=gestor_id) |
-            Q(colaborador__gerente_id=gestor_id)
+            Q(gestor_responsavel_id=gestor_id) |
+            (Q(gestor_responsavel__isnull=True) & (
+                Q(colaborador__lider_id=gestor_id) |
+                Q(colaborador__supervisor_id=gestor_id) |
+                Q(colaborador__gerente_id=gestor_id)
+            ))
         )
     if setor_id:
         qs = qs.filter(colaborador__setor_id=setor_id)
@@ -635,7 +770,9 @@ def avaliacao_eficacia_export_excel_view(request):
 
         colab = t.colaborador
         responsavel_nome = '-'
-        if colab:
+        if t.gestor_responsavel:
+            responsavel_nome = t.gestor_responsavel.nome_completo
+        elif colab:
             if colab.posto_lideranca == 'SUPERVISOR':
                 responsavel_nome = colab.gerente.nome_completo if colab.gerente else '-'
             elif colab.posto_lideranca == 'LIDER':

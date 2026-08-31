@@ -1349,7 +1349,7 @@ def registro_create(request, modelo_id=None):
                         for dia_key, _dia_label in dias_semana_choices:
                             field_name = f"griddia_{pergunta.id}_{idx}_{dia_key}"
                             valor = request.POST.get(field_name, "").strip()
-                            if not valor and pergunta.obrigatoria:
+                            if not valor and pergunta.obrigatoria and not is_draft:
                                 erros.append(
                                     f"A pergunta '{pergunta.pergunta}' é obrigatória para {item} em {dict(dias_semana_choices).get(dia_key, dia_key)}."
                                 )
@@ -1364,7 +1364,7 @@ def registro_create(request, modelo_id=None):
                     for dia_key, _dia_label in dias_semana_choices:
                         field_name = f"resposta_{pergunta.id}_{dia_key}"
                         valor = request.POST.get(field_name, "").strip()
-                        if not valor and pergunta.obrigatoria:
+                        if not valor and pergunta.obrigatoria and not is_draft:
                             erros.append(
                                 f"A pergunta '{pergunta.pergunta}' é obrigatória para {dict(dias_semana_choices).get(dia_key, dia_key)}."
                             )

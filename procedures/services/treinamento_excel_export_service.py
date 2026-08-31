@@ -719,23 +719,24 @@ def _obter_perguntas_treinamento(planejamento: PlanejamentoTreinamento, pergunta
     return perguntas_texto[:5]
 
 
-def _extrair_dados_colaborador_avaliado(colaborador):
+def _extrair_dados_colaborador_avaliado(colaborador, gestor_override=None):
     """
     Extrai todos os dados do colaborador que será avaliado, incluindo:
     - Nome Completo, Matrícula, Cargo/Função
     - Setor / Departamento / Área / Laboratório
-    - Gestor / Líder / Supervisor / Gerente direto
+    - Gestor / Líder / Supervisor / Gerente direto ou Gestor Direcionado Manualmente (Override)
     """
     if not colaborador:
+        gestor_nome = gestor_override.nome_completo if (gestor_override and hasattr(gestor_override, 'nome_completo')) else "____________________"
         return {
             'nome': "________________________________________",
             'matricula': "_________",
             'cargo': "____________________",
             'setor': "____________________",
-            'gestor': "____________________",
-            'lider': "____________________",
-            'supervisor': "____________________",
-            'gerente': "____________________",
+            'gestor': gestor_nome,
+            'lider': gestor_nome,
+            'supervisor': gestor_nome,
+            'gerente': gestor_nome,
             'posto_trabalho': "____________________",
             'centro_custo': "____________________",
         }
@@ -754,29 +755,30 @@ def _extrair_dados_colaborador_avaliado(colaborador):
         colab_setor = colaborador.posto_trabalho
     colab_setor = colab_setor or "-"
 
-    # 2. Gestor do Colaborador Avaliado (Hierarquia / Liderança Direta)
-    gestor_obj = None
-    posto_lideranca = getattr(colaborador, 'posto_lideranca', None)
-    if posto_lideranca == 'SUPERVISOR':
-        gestor_obj = getattr(colaborador, 'gerente', None) or getattr(colaborador, 'supervisor', None) or getattr(colaborador, 'lider', None)
-    elif posto_lideranca == 'LIDER':
-        gestor_obj = getattr(colaborador, 'supervisor', None) or getattr(colaborador, 'gerente', None) or getattr(colaborador, 'lider', None)
-    else:
-        gestor_obj = getattr(colaborador, 'lider', None) or getattr(colaborador, 'supervisor', None) or getattr(colaborador, 'gerente', None)
+    # 2. Gestor do Colaborador Avaliado (Hierarquia Direta ou Gestor Customizado)
+    gestor_obj = gestor_override
+    if not gestor_obj:
+        posto_lideranca = getattr(colaborador, 'posto_lideranca', None)
+        if posto_lideranca == 'SUPERVISOR':
+            gestor_obj = getattr(colaborador, 'gerente', None) or getattr(colaborador, 'supervisor', None) or getattr(colaborador, 'lider', None)
+        elif posto_lideranca == 'LIDER':
+            gestor_obj = getattr(colaborador, 'supervisor', None) or getattr(colaborador, 'gerente', None) or getattr(colaborador, 'lider', None)
+        else:
+            gestor_obj = getattr(colaborador, 'lider', None) or getattr(colaborador, 'supervisor', None) or getattr(colaborador, 'gerente', None)
 
-    if not gestor_obj and hasattr(colaborador, 'get_chefia'):
-        try:
-            gestor_obj = colaborador.get_chefia()
-        except Exception:
-            pass
+        if not gestor_obj and hasattr(colaborador, 'get_chefia'):
+            try:
+                gestor_obj = colaborador.get_chefia()
+            except Exception:
+                pass
 
-    if not gestor_obj and getattr(colaborador, 'setor', None) and hasattr(colaborador.setor, 'responsavel') and colaborador.setor.responsavel:
-        gestor_obj = colaborador.setor.responsavel
+        if not gestor_obj and getattr(colaborador, 'setor', None) and hasattr(colaborador.setor, 'responsavel') and colaborador.setor.responsavel:
+            gestor_obj = colaborador.setor.responsavel
 
     gestor_nome = gestor_obj.nome_completo if hasattr(gestor_obj, 'nome_completo') else (str(gestor_obj) if gestor_obj else "-")
-    lider_nome = colaborador.lider.nome_completo if getattr(colaborador, 'lider', None) else gestor_nome
-    supervisor_nome = colaborador.supervisor.nome_completo if getattr(colaborador, 'supervisor', None) else gestor_nome
-    gerente_nome = colaborador.gerente.nome_completo if getattr(colaborador, 'gerente', None) else gestor_nome
+    lider_nome = gestor_nome if gestor_override else (colaborador.lider.nome_completo if getattr(colaborador, 'lider', None) else gestor_nome)
+    supervisor_nome = gestor_nome if gestor_override else (colaborador.supervisor.nome_completo if getattr(colaborador, 'supervisor', None) else gestor_nome)
+    gerente_nome = gestor_nome if gestor_override else (colaborador.gerente.nome_completo if getattr(colaborador, 'gerente', None) else gestor_nome)
     posto_trabalho = getattr(colaborador, 'posto_trabalho', None) or colab_setor
     centro_custo = str(colaborador.centro_custo) if getattr(colaborador, 'centro_custo', None) else "-"
 
@@ -1029,7 +1031,7 @@ def gerar_avaliacao_eficacia_for142_xlsx(treinamento_id: int) -> BytesIO:
     """
     treinamento = RegistroTreinamento.objects.select_related(
         'colaborador', 'procedimento', 'colaborador__setor', 'colaborador__lider',
-        'colaborador__supervisor', 'colaborador__gerente'
+        'colaborador__supervisor', 'colaborador__gerente', 'gestor_responsavel'
     ).get(id=treinamento_id)
 
     raw_bytes, template_obj = _obter_raw_bytes_template(
@@ -1040,7 +1042,7 @@ def gerar_avaliacao_eficacia_for142_xlsx(treinamento_id: int) -> BytesIO:
 
     colab = treinamento.colaborador
     proc = treinamento.procedimento
-    d_colab = _extrair_dados_colaborador_avaliado(colab)
+    d_colab = _extrair_dados_colaborador_avaliado(colab, gestor_override=treinamento.gestor_responsavel)
 
     data_treinamento = treinamento.data_treinamento or timezone.now().date()
     data_eficacia_calculada = data_treinamento + timedelta(days=30)
@@ -1286,7 +1288,8 @@ def gerar_avaliacao_eficacia_multiplas_abas_for142_xlsx(treinamento_ids: list) -
         id__in=treinamento_ids
     ).select_related(
         'colaborador', 'procedimento', 'colaborador__setor',
-        'colaborador__lider', 'colaborador__supervisor', 'colaborador__gerente'
+        'colaborador__lider', 'colaborador__supervisor', 'colaborador__gerente',
+        'gestor_responsavel'
     ).order_by('colaborador__nome_completo', 'procedimento__codigo'))
 
     if not treinamentos:
@@ -1313,7 +1316,7 @@ def gerar_avaliacao_eficacia_multiplas_abas_for142_xlsx(treinamento_ids: list) -
         for t in treinamentos:
             colab = t.colaborador
             proc = t.procedimento
-            d_colab = _extrair_dados_colaborador_avaliado(colab)
+            d_colab = _extrair_dados_colaborador_avaliado(colab, gestor_override=t.gestor_responsavel)
 
             data_treinamento = t.data_treinamento or timezone.now().date()
             data_eficacia_calculada = data_treinamento + timedelta(days=30)

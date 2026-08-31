@@ -458,6 +458,12 @@ class RegistroTreinamento(models.Model):
         null=True, blank=True,
         verbose_name="Data da Avaliação de Eficácia"
     )
+    gestor_responsavel = models.ForeignKey(
+        'rh.Colaborador', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="treinamentos_avaliados_gestor",
+        verbose_name="Gestor / Avaliador Responsável",
+        help_text="Gestor customizado responsável pela avaliação de eficácia deste treinamento"
+    )
     ativo = models.BooleanField(
         default=True,
         verbose_name="Ativo",
