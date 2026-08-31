@@ -226,12 +226,12 @@ function filterSubTab(groupSlug, subSlug, buttonEl) {
     let visibleCount = 0;
 
     rows.forEach(row => {
-        const itemSub = row.getAttribute('data-subtype') || '';
+        const itemSub = (row.getAttribute('data-subtype') || '').trim();
         if (subSlug === 'todas' || itemSub === subSlug) {
-            row.style.display = 'flex';
+            row.classList.remove('d-none');
             visibleCount++;
         } else {
-            row.style.display = 'none';
+            row.classList.add('d-none');
         }
     });
 
