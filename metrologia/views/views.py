@@ -1219,15 +1219,18 @@ def api_faixa_medicao_view(request, faixa_id):
 @require_http_methods(["POST"])
 def registrar_historico_massa(request):
     """Cria novo histórico de calibração em massa para os instrumentos selecionados."""
+    if request.method != 'POST':
+        return redirect(request.META.get('HTTP_REFERER', 'modulo_metrologia'))
+
     instrumentos_ids_str = request.POST.get("instrumentos_ids", "")
     if not instrumentos_ids_str:
         messages.error(request, "Nenhum instrumento selecionado.")
-        return redirect('dashboard')
+        return redirect(request.META.get('HTTP_REFERER', 'modulo_metrologia'))
         
     ids = [int(i.strip()) for i in instrumentos_ids_str.split(",") if i.strip().isdigit()]
     if not ids:
         messages.error(request, "Nenhum instrumento válido selecionado.")
-        return redirect('dashboard')
+        return redirect(request.META.get('HTTP_REFERER', 'modulo_metrologia'))
         
     instrumentos = Instrumento.objects.filter(id__in=ids)
     
@@ -1236,7 +1239,8 @@ def registrar_historico_massa(request):
     
     for instrumento in instrumentos:
         post_data = request.POST.copy()
-        post_data['numero_certificado'] = request.POST.get(f'certificado_{instrumento.id}', 'S/N')
+        cert_num = request.POST.get(f'certificado_{instrumento.id}', '').strip()
+        post_data['numero_certificado'] = cert_num if cert_num else 'S/N'
         
         form = HistoricoCalibracaoForm(post_data, request.FILES)
         if form.is_valid():
@@ -1251,9 +1255,9 @@ def registrar_historico_massa(request):
                     messages.error(request, f"{instrumento.tag} - {field}: {error}")
                     
     if sucesso > 0:
-        messages.success(request, f"✓ {sucesso} registros criados com sucesso!")
+        messages.success(request, f"✓ {sucesso} registros de calibração criados com sucesso!")
         
-    return redirect('dashboard')
+    return redirect(request.META.get('HTTP_REFERER', 'modulo_metrologia'))
 
 
 @login_required

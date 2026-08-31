@@ -475,10 +475,10 @@
 {% endif %}
 
 <div class="container-fluid py-3">
-    <!-- Topo / TÃ­tulo do Quadro e Abas -->
+    <!-- Topo / Título do Quadro e Abas -->
     <div class="card mb-3 shadow-sm border-0" id="boardTopHeader">
         <div class="card-body py-3">
-            <!-- Linha 1: TÃ­tulo, Abas e AÃ§Ãµes -->
+            <!-- Linha 1: Título, Abas e Ações -->
             <div class="d-flex flex-column flex-xl-row justify-content-between align-items-xl-center gap-3">
                 <div>
                     <nav aria-label="breadcrumb">
@@ -502,18 +502,18 @@
                 
                 <div class="d-flex flex-wrap align-items-center gap-2">
                     {% if focus_column %}
-                    <!-- BotÃ£o de Voltar do Modo Foco -->
+                    <!-- Botão de Voltar do Modo Foco -->
                     <a href="{% url 'boards:board_detail' board.id %}" class="btn btn-primary btn-sm me-2">
                         <i class="bi bi-arrow-left me-1"></i>Voltar ao Quadro
                     </a>
                     {% else %}
-                    <!-- Abas Customizadas (NavegaÃ§Ã£o interna) -->
+                    <!-- Abas Customizadas (Navegação interna) -->
                     <ul class="nav nav-pills" id="boardTab" role="tablist">
                         <li class="nav-item" role="presentation">
                             <button class="nav-link active px-3" id="kanban-tab" data-bs-toggle="tab" data-bs-target="#kanban" type="button" role="tab"><i class="bi bi-kanban me-2"></i>Quadro</button>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link px-3" id="metrics-tab" data-bs-toggle="tab" data-bs-target="#metrics" type="button" role="tab"><i class="bi bi-pie-chart me-2"></i>MÃ©tricas da Equipe</button>
+                            <button class="nav-link px-3" id="metrics-tab" data-bs-toggle="tab" data-bs-target="#metrics" type="button" role="tab"><i class="bi bi-pie-chart me-2"></i>Métricas da Equipe</button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link px-3" id="activities-tab" data-bs-toggle="tab" data-bs-target="#activities" type="button" role="tab"><i class="bi bi-clock-history me-2"></i>Atividades</button>
@@ -522,23 +522,23 @@
                             <button class="nav-link px-3" id="table-view-tab" data-bs-toggle="tab" data-bs-target="#table-view" type="button" role="tab"><i class="bi bi-table me-2"></i>Tabela</button>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link px-3" id="calendar-view-tab" data-bs-toggle="tab" data-bs-target="#calendar-view" type="button" role="tab"><i class="bi bi-calendar3 me-2"></i>CalendÃ¡rio</button>
+                            <button class="nav-link px-3" id="calendar-view-tab" data-bs-toggle="tab" data-bs-target="#calendar-view" type="button" role="tab"><i class="bi bi-calendar3 me-2"></i>Calendário</button>
                         </li>
                     </ul>
                     {% endif %}
                     
                     <div class="vr mx-2"></div>
                     
-                    <!-- BotÃµes de AÃ§Ãµes do Quadro -->
+                    <!-- Botões de Ações do Quadro -->
                     {% if colunas %}
                     <button type="button" class="btn btn-primary btn-sm me-1" onclick="openAddCardModal('{{ colunas.0.id }}', '{{ colunas.0.nome|escapejs }}')" data-bs-toggle="modal" data-bs-target="#addCardModal" title="Adicionar Nova Tarefa">
                         <i class="bi bi-plus-lg me-1"></i>Nova Tarefa
                     </button>
                     {% endif %}
-                    <!-- Menu Dropdown de AÃ§Ãµes -->
+                    <!-- Menu Dropdown de Ações -->
                     <div class="dropdown">
                         <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="boardActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-three-dots-vertical"></i> AÃ§Ãµes
+                            <i class="bi bi-three-dots-vertical"></i> Ações
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="boardActionsDropdown">
                             <li>
@@ -548,7 +548,7 @@
                             </li>
                             <li>
                                 <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#boardLinksModal">
-                                    <i class="bi bi-link-45deg me-2 text-info"></i>Links Ãšteis
+                                    <i class="bi bi-link-45deg me-2 text-info"></i>Links Úteis
                                 </button>
                             </li>
                             <li>
@@ -580,7 +580,7 @@
                                 </li>
                                 {% else %}
                                 <li>
-                                    <form action="{% url 'boards:archive_board' board.id %}" method="POST" class="d-inline w-100" onsubmit="return confirm('Tem certeza que deseja encerrar e arquivar este quadro? Ele nÃ£o aparecerÃ¡ mais na visÃ£o principal do painel.');">
+                                    <form action="{% url 'boards:archive_board' board.id %}" method="POST" class="d-inline w-100" onsubmit="return confirm('Tem certeza que deseja encerrar e arquivar este quadro? Ele não aparecerá mais na visão principal do painel.');">
                                         {% csrf_token %}
                                         <button type="submit" class="dropdown-item text-warning">
                                             <i class="bi bi-archive me-2"></i>Encerrar Quadro
@@ -597,8 +597,8 @@
             <!-- Linha 2: Barra de Filtros Globais (Top) -->
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mt-3 pt-3 border-top">
                 <div class="d-flex flex-wrap gap-2 align-items-center">
-                    <!-- BotÃ£o Filtros -->
-                    <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#advancedFiltersModal" title="Filtros AvanÃ§ados">
+                    <!-- Botão Filtros -->
+                    <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#advancedFiltersModal" title="Filtros Avançados">
                         <i class="bi bi-funnel"></i> Filtros
                     </button>
                 </div>
@@ -612,18 +612,18 @@
         </div>
     </div>
 
-    <!-- ConteÃºdo das Abas -->
+    <!-- Conteúdo das Abas -->
     <div class="tab-content" id="boardTab">
         <!-- ABA 1: KANBAN BOARD -->
         <div class="tab-pane fade show active" id="kanban" role="tabpanel">
-            <!-- SeÃ§Ã£o 1: Atividades em Andamento -->
+            <!-- Seção 1: Atividades em Andamento -->
             <div class="mb-5" id="kanbanAndamentoSection">
                 <h5 class="fw-bold text-dark mb-3"><i class="bi bi-play-circle text-primary me-2"></i>Atividades em Andamento</h5>
                 <div class="kanban-container" id="kanban-andamento-container">
                     {% for col in colunas_andamento %}
                     {% if not focus_column or focus_column.id == col.id %}
                     <div class="kanban-column {% if focus_column %}flex-grow-1 w-100{% endif %}" id="col-{{ col.id }}" data-column-name="{{ col.nome }}">
-                        <!-- CabeÃ§alho da Coluna -->
+                        <!-- Cabeçalho da Coluna -->
                         <div class="column-header" draggable="true" ondragstart="dragColumn(event)" ondragover="allowDropColumn(event)" ondrop="dropColumn(event, {{ col.id }})" style="cursor: move;">
                             <span class="text-truncate fw-bold"><i class="bi bi-grip-vertical text-muted me-1"></i>{{ col.nome }}</span>
                             <div class="dropdown">
@@ -633,7 +633,7 @@
                                 <ul class="dropdown-menu dropdown-menu-end shadow">
                                     <li>
                                         <button class="dropdown-item" type="button" onclick="openCreateSubSectionModal({{ col.id }})">
-                                            <i class="bi bi-folder-plus me-2"></i>Nova Sub-sessÃ£o
+                                            <i class="bi bi-folder-plus me-2"></i>Nova Sub-sessão
                                         </button>
                                     </li>
                                     <li>
@@ -643,7 +643,7 @@
                                     </li>
                                     <li>
                                         <button class="dropdown-item" type="button" onclick="openColumnDescriptionModal({{ col.id }}, '{{ col.nome|escapejs }}')">
-                                            <i class="bi bi-card-text me-2"></i>DescriÃ§Ã£o da Coluna
+                                            <i class="bi bi-card-text me-2"></i>Descrição da Coluna
                                         </button>
                                     </li>
                                     <li>
@@ -657,7 +657,7 @@
                                         </a>
                                     </li>
                                     <li>
-                                        <form action="{% url 'boards:archive_column' col.id %}" method="POST" onsubmit="return confirm('Deseja arquivar esta coluna? Ela nÃ£o aparecerÃ¡ mais no quadro ativo, mas os cartÃµes serÃ£o preservados.');">
+                                        <form action="{% url 'boards:archive_column' col.id %}" method="POST" onsubmit="return confirm('Deseja arquivar esta coluna? Ela não aparecerá mais no quadro ativo, mas os cartões serão preservados.');">
                                             {% csrf_token %}
                                             <button type="submit" class="dropdown-item text-warning"><i class="bi bi-archive me-2"></i>Arquivar Coluna</button>
                                         </form>
@@ -673,23 +673,23 @@
                             </div>
                         </div>
                         
-                        <!-- Container dos CartÃµes -->
+                        <!-- Container dos Cartões -->
                         <div class="card-container" id="cards-col-{{ col.id }}-pending" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }}, null)" data-is-concluida="false">
                             {% if col.subsecoes_list %}
-                                <!-- Sub-sessÃµes -->
+                                <!-- Sub-sessões -->
                                 {% for sub in col.subsecoes_list %}
                                 <div class="subsection-group mb-2 border rounded p-1 bg-white shadow-xs" style="background-color: #fcfcfc !important;">
                                     <div class="subsection-header d-flex justify-content-between align-items-center px-2 py-1 mb-1 border-bottom bg-light rounded-top" style="font-size: 0.75rem; font-weight: 600; color: #495057;">
                                         <span><i class="bi bi-folder2-open text-primary me-1"></i>{{ sub.nome }}</span>
                                         <div class="dropdown">
-                                            <button class="btn btn-sm btn-link text-muted p-0 border-0" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="line-height: 1;" title="OpÃ§Ãµes da sub-sessÃ£o">
+                                            <button class="btn btn-sm btn-link text-muted p-0 border-0" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="line-height: 1;" title="Opções da sub-sessão">
                                                 <i class="bi bi-three-dots"></i>
                                             </button>
                                             <ul class="dropdown-menu dropdown-menu-end shadow" style="min-width: 160px;">
                                                 <li>
-                                                    <form action="{% url 'boards:delete_subsection' sub.id %}" method="POST" onsubmit="return confirm('Deseja excluir esta sub-sessÃ£o? As tarefas nela contidas serÃ£o mantidas na coluna.');">
+                                                    <form action="{% url 'boards:delete_subsection' sub.id %}" method="POST" onsubmit="return confirm('Deseja excluir esta sub-sessão? As tarefas nela contidas serão mantidas na coluna.');">
                                                         {% csrf_token %}
-                                                        <button type="submit" class="dropdown-item text-danger"><i class="bi bi-trash me-2"></i>Excluir Sub-sessÃ£o</button>
+                                                        <button type="submit" class="dropdown-item text-danger"><i class="bi bi-trash me-2"></i>Excluir Sub-sessão</button>
                                                     </form>
                                                 </li>
                                             </ul>
@@ -703,9 +703,9 @@
                                 </div>
                                 {% endfor %}
                                 
-                                <!-- Geral / Sem Sub-sessÃ£o -->
+                                <!-- Geral / Sem Sub-sessão -->
                                 <div class="card-container-subsection mt-2" id="cards-col-{{ col.id }}-unclassified-pending" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }}, null)" data-column-id="{{ col.id }}" data-subsection-id="null" style="min-height: 50px; display: flex; flex-direction: column; gap: 0.5rem; border: 1px dashed rgba(0,0,0,0.1); border-radius: 6px; padding: 6px; background-color: rgba(0,0,0,0.01);">
-                                    <div class="text-muted text-center" style="font-size: 0.65rem; font-weight: 600; pointer-events: none;">Geral / Sem Sub-sessÃ£o</div>
+                                    <div class="text-muted text-center" style="font-size: 0.65rem; font-weight: 600; pointer-events: none;">Geral / Sem Sub-sessão</div>
                                     {% for card in col.cartoes_sem_subsecao_andamento %}
                                         {% include "boards/card_render.html" with card=card %}
                                     {% endfor %}
@@ -718,7 +718,7 @@
                             {% endif %}
                         </div>
                         
-                        <!-- Adicionar CartÃ£o -->
+                        <!-- Adicionar Cartão -->
                         <button class="btn-add-card" onclick="openAddCardModal({{ col.id }}, '{{ col.nome }}')">
                             <i class="bi bi-plus-lg me-1"></i>Adicionar tarefa
                         </button>
@@ -749,21 +749,21 @@
                 </div>
             </div>
 
-            <!-- SeÃ§Ã£o 2: Atividades ConcluÃ­das (apenas quadros normais) -->
+            <!-- Seção 2: Atividades Concluídas (apenas quadros normais) -->
             <div id="kanbanConcluidoSection">
-                <h5 class="fw-bold text-dark mb-3"><i class="bi bi-check-circle text-success me-2"></i>Atividades ConcluÃ­das</h5>
+                <h5 class="fw-bold text-dark mb-3"><i class="bi bi-check-circle text-success me-2"></i>Atividades Concluídas</h5>
                 <div class="kanban-container" id="kanban-concluido-container">
                     {% for col in colunas_concluidas %}
                     {% if not focus_column or focus_column.id == col.id %}
                     <div class="kanban-column opacity-75 {% if focus_column %}flex-grow-1 w-100{% endif %}" id="col-{{ col.id }}-completed" data-column-name="{{ col.nome }}">
-                        <!-- CabeÃ§alho da Coluna -->
+                        <!-- Cabeçalho da Coluna -->
                         <div class="column-header">
                             <span class="text-truncate fw-bold">{{ col.nome }}</span>
                         </div>
-                        <!-- Container dos CartÃµes -->
+                        <!-- Container dos Cartões -->
                         <div class="card-container" id="cards-col-{{ col.id }}-completed" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }}, null)" data-is-concluida="true">
                             {% if col.subsecoes_list %}
-                                <!-- Sub-sessÃµes -->
+                                <!-- Sub-sessões -->
                                 {% for sub in col.subsecoes_list %}
                                 <div class="subsection-group mb-2 border rounded p-1 bg-white shadow-xs" style="background-color: #fcfcfc !important;">
                                     <div class="subsection-header d-flex justify-content-between align-items-center px-2 py-1 mb-1 border-bottom bg-light rounded-top" style="font-size: 0.75rem; font-weight: 600; color: #495057;">
@@ -776,9 +776,9 @@
                                     </div>
                                 </div>
                                 {% endfor %}
-                                <!-- Geral / Sem Sub-sessÃ£o -->
+                                <!-- Geral / Sem Sub-sessão -->
                                 <div class="card-container-subsection mt-2" id="cards-col-{{ col.id }}-unclassified-completed" ondragover="allowDrop(event)" ondrop="drop(event, {{ col.id }}, null)" data-column-id="{{ col.id }}" data-subsection-id="null" style="min-height: 50px; display: flex; flex-direction: column; gap: 0.5rem; border: 1px dashed rgba(0,0,0,0.1); border-radius: 6px; padding: 6px; background-color: rgba(0,0,0,0.01);">
-                                    <div class="text-muted text-center" style="font-size: 0.65rem; font-weight: 600; pointer-events: none;">Geral / Sem Sub-sessÃ£o</div>
+                                    <div class="text-muted text-center" style="font-size: 0.65rem; font-weight: 600; pointer-events: none;">Geral / Sem Sub-sessão</div>
                                     {% for card in col.cartoes_sem_subsecao_concluido %}
                                         {% include "boards/card_render.html" with card=card %}
                                     {% endfor %}
@@ -805,13 +805,13 @@
                     <div class="card border-0 shadow-sm p-3" style="border-radius: 12px; background: linear-gradient(135deg, #198754 0%, #157347 100%); color:white;">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
-                                <h6 class="text-white-50 mb-1 fw-bold">TAXA DE CONCLUSÃƒO</h6>
+                                <h6 class="text-white-50 mb-1 fw-bold">TAXA DE CONCLUSÃO</h6>
                                 <h2 id="kpiCompletionRate" class="fw-bold mb-0">{{ porcentagem_concluida }}%</h2>
                             </div>
                             <i class="bi bi-check2-circle fs-1 text-white-50"></i>
                         </div>
                         <div id="kpiCompletionText" class="mt-3 text-white-50 small">
-                            {{ cartoes_concluidos }} de {{ total_cartoes }} tarefas concluÃ­das.
+                            {{ cartoes_concluidos }} de {{ total_cartoes }} tarefas concluídas.
                         </div>
                     </div>
                 </div>
@@ -826,7 +826,7 @@
                             <i class="bi bi-exclamation-triangle fs-1 text-white-50"></i>
                         </div>
                         <div class="mt-3 text-white-50 small">
-                            Tarefas com prazo vencido e nÃ£o concluÃ­das.
+                            Tarefas com prazo vencido e não concluídas.
                         </div>
                     </div>
                 </div>
@@ -846,7 +846,7 @@
                     </div>
                 </div>
                 
-                <!-- GrÃ¡ficos -->
+                <!-- Gráficos -->
                 <div class="col-md-8">
                     <div class="card border-0 shadow-sm" style="border-radius: 12px;">
                         <div class="card-header bg-white border-0 pt-3 fw-bold"><i class="bi bi-bar-chart-fill text-primary me-2"></i>Carga de Trabalho da Equipe (Atividades Ativas)</div>
@@ -860,7 +860,7 @@
                 
                 <div class="col-md-4">
                     <div class="card border-0 shadow-sm" style="border-radius: 12px;">
-                        <div class="card-header bg-white border-0 pt-3 fw-bold"><i class="bi bi-pie-chart-fill text-info me-2"></i>DistribuiÃ§Ã£o por Colunas</div>
+                        <div class="card-header bg-white border-0 pt-3 fw-bold"><i class="bi bi-pie-chart-fill text-info me-2"></i>Distribuição por Colunas</div>
                         <div class="card-body d-flex justify-content-center">
                             <div style="height: 300px; width: 100%; position: relative;">
                                 <canvas id="distributionChart"></canvas>
@@ -911,14 +911,14 @@
                             <tr>
                                 <th>Tarefa</th>
                                 <th>Coluna</th>
-                                <th>Sub-sessÃ£o</th>
-                                <th>ResponsÃ¡veis</th>
+                                <th>Sub-sessão</th>
+                                <th>Responsáveis</th>
                                 <th>Prazo</th>
-                                <th>ConclusÃ£o</th>
-                                <th>ExecuÃ§Ã£o</th>
+                                <th>Conclusão</th>
+                                <th>Execução</th>
                                 <th>Prioridade</th>
                                 <th>Etiquetas</th>
-                                <th class="text-end">AÃ§Ãµes</th>
+                                <th class="text-end">Ações</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -976,7 +976,7 @@
                                             {% if card.data_inicio or card.hora_inicio or card.data_conclusao or card.hora_fim %}
                                                 <span class="text-dark small">
                                                     <i class="bi bi-clock me-1 text-primary"></i>
-                                                    {% if card.data_inicio %}{{ card.data_inicio|date:"d/m/Y" }} {% endif %}{{ card.hora_inicio|time:"H:i"|default:"--" }} Ã s 
+                                                    {% if card.data_inicio %}{{ card.data_inicio|date:"d/m/Y" }} {% endif %}{{ card.hora_inicio|time:"H:i"|default:"--" }} às 
                                                     {% if card.data_conclusao %}{{ card.data_conclusao|date:"d/m/Y" }} {% endif %}{{ card.hora_fim|time:"H:i"|default:"--" }}
                                                 </span>
                                             {% else %}
@@ -1013,21 +1013,21 @@
             </div>
         </div>
         
-        <!-- ABA 5: CALENDÃRIO VIEW -->
+        <!-- ABA 5: CALENDÁRIO VIEW -->
         <div class="tab-pane fade" id="calendar-view" role="tabpanel">
             <div class="card border-0 shadow-sm p-4" style="border-radius: 12px;">
-                <!-- CabeÃ§alho do CalendÃ¡rio Customizado -->
+                <!-- Cabeçalho do Calendário Customizado -->
                 <div class="custom-calendar-header d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
                     <div class="d-flex align-items-center gap-2">
                         <button class="btn btn-outline-secondary btn-sm px-2" id="customCalPrevBtn" title="Anterior"><i class="bi bi-chevron-left"></i></button>
-                        <h5 class="fw-bold mb-0 text-dark" id="customCalTitle" style="min-width: 155px; text-align: center;">MÃªs Ano</h5>
-                        <button class="btn btn-outline-secondary btn-sm px-2" id="customCalNextBtn" title="PrÃ³ximo"><i class="bi bi-chevron-right"></i></button>
+                        <h5 class="fw-bold mb-0 text-dark" id="customCalTitle" style="min-width: 155px; text-align: center;">Mês Ano</h5>
+                        <button class="btn btn-outline-secondary btn-sm px-2" id="customCalNextBtn" title="Próximo"><i class="bi bi-chevron-right"></i></button>
                         <button class="btn btn-primary btn-sm px-3 ms-2" id="customCalTodayBtn">Hoje</button>
                     </div>
                     
                     <div class="d-flex align-items-center gap-3">
                         {% if not is_public %}
-                        <button class="btn btn-outline-info btn-sm" onclick="prompt('Copie o link abaixo para compartilhar este calendÃ¡rio publicamente:', '{{ public_calendar_url }}');" title="Compartilhar calendÃ¡rio">
+                        <button class="btn btn-outline-info btn-sm" onclick="prompt('Copie o link abaixo para compartilhar este calendário publicamente:', '{{ public_calendar_url }}');" title="Compartilhar calendário">
                             <i class="bi bi-share"></i> Compartilhar
                         </button>
                         <button class="btn btn-outline-success btn-sm" onclick="copyCalendarImage(this)" title="Copiar como imagem para colar">
@@ -1035,13 +1035,13 @@
                         </button>
                         {% endif %}
                         <div class="d-flex align-items-center gap-2 me-2" id="customCalHourRangeControls" style="display: none !important;">
-                            <span class="small text-muted fw-semibold">HorÃ¡rio:</span>
+                            <span class="small text-muted fw-semibold">Horário:</span>
                             <select id="customCalStartHour" class="form-select form-select-sm py-1" style="width: 75px; font-size: 0.75rem;"></select>
-                            <span class="small text-muted">Ã s</span>
+                            <span class="small text-muted">às</span>
                             <select id="customCalEndHour" class="form-select form-select-sm py-1" style="width: 75px; font-size: 0.75rem;"></select>
                         </div>
                         <div class="btn-group btn-group-sm" role="group">
-                            <button class="btn btn-outline-secondary active" id="customCalViewMonthBtn">MÃªs</button>
+                            <button class="btn btn-outline-secondary active" id="customCalViewMonthBtn">Mês</button>
                             <button class="btn btn-outline-secondary" id="customCalViewWeekBtn">Semana</button>
                             <button class="btn btn-outline-secondary" id="customCalViewDayBtn">Dia</button>
                             <button class="btn btn-outline-secondary" id="customCalViewAgendaBtn">Agenda</button>
@@ -1049,13 +1049,13 @@
                     </div>
                 </div>
 
-                <!-- VisÃ£o Grid Mensal -->
+                <!-- Visão Grid Mensal -->
                 <div id="customCalMonthView" class="custom-calendar-month-grid"></div>
 
-                <!-- VisÃ£o Grid Semanal -->
+                <!-- Visão Grid Semanal -->
                 <div id="customCalWeekView" class="custom-calendar-week-grid" style="display: none;"></div>
 
-                <!-- VisÃ£o Dia Detalhe -->
+                <!-- Visão Dia Detalhe -->
                 <div id="customCalDayView" style="display: none;">
                     <div class="custom-calendar-day-container">
                         <div class="custom-calendar-day-header-info">
@@ -1068,7 +1068,7 @@
                     </div>
                 </div>
 
-                <!-- VisÃ£o Agenda Lista -->
+                <!-- Visão Agenda Lista -->
                 <div id="customCalAgendaView" style="display: none;">
                     <div class="list-group shadow-sm" id="customCalAgendaList" style="border-radius: 8px; overflow: hidden;"></div>
                 </div>
@@ -1098,7 +1098,7 @@
     </div>
 </div>
 
-<!-- Modal CriaÃ§Ã£o de CartÃ£o -->
+<!-- Modal Criação de Cartão -->
 <div class="modal fade" id="addCardModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="border-radius: 14px;">
@@ -1118,11 +1118,11 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-bold">TÃ­tulo da Tarefa</label>
+                        <label class="form-label fw-bold">Título da Tarefa</label>
                         {{ card_form.titulo }}
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-bold">DescriÃ§Ã£o</label>
+                        <label class="form-label fw-bold">Descrição</label>
                         {{ card_form.descricao }}
                     </div>
                     <div class="mb-3">
@@ -1132,11 +1132,11 @@
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">ResponsÃ¡veis</label>
+                            <label class="form-label fw-bold">Responsáveis</label>
                             <div class="position-relative mb-2">
                                 <div class="input-group input-group-sm">
                                     <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                                    <input type="search" id="addCardMemberSearchInput" class="form-control" placeholder="Buscar responsÃ¡vel..." readonly onfocus="this.removeAttribute('readonly');" autocomplete="off">
+                                    <input type="search" id="addCardMemberSearchInput" class="form-control" placeholder="Buscar responsável..." readonly onfocus="this.removeAttribute('readonly');" autocomplete="off">
                                 </div>
                                 <div id="addCardSearchSuggestions" class="list-group position-absolute w-100 shadow-lg mt-1 overflow-auto" style="max-height: 150px; z-index: 1050; display: none;"></div>
                             </div>
@@ -1164,7 +1164,7 @@
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" id="addCardCheckRecorrencia" onchange="toggleAddCardRecurrence(this.checked)">
                                 <label class="form-check-label fw-bold text-dark" for="addCardCheckRecorrencia">
-                                    <i class="bi bi-arrow-repeat me-1 text-primary"></i>Ativar modo de recorrÃªncia
+                                    <i class="bi bi-arrow-repeat me-1 text-primary"></i>Ativar modo de recorrência
                                 </label>
                             </div>
                         </div>
@@ -1176,21 +1176,21 @@
                             {{ card_form.periodicidade }}
                         </div>
                     </div>
-                    <!-- Switch para planejar horÃ¡rio -->
+                    <!-- Switch para planejar horário -->
                     <div class="row mt-3">
                         <div class="col-md-12 mb-0">
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" id="addCardCheckPlanejar" onchange="toggleAddCardPlanning(this.checked)">
                                 <label class="form-check-label fw-bold text-dark" for="addCardCheckPlanejar">
-                                    <i class="bi bi-clock-history me-1 text-primary"></i>Planejar atividade com inÃ­cio/fim
+                                    <i class="bi bi-clock-history me-1 text-primary"></i>Planejar atividade com início/fim
                                 </label>
                             </div>
                         </div>
                     </div>
-                    <!-- Campos de Planejamento (InÃ­cio/Fim) -->
+                    <!-- Campos de Planejamento (Início/Fim) -->
                     <div class="row mt-3" id="addCardPlanningFields" style="display: none;">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Data/Hora de InÃ­cio</label>
+                            <label class="form-label fw-bold">Data/Hora de Início</label>
                             {{ card_form.datetime_inicio }}
                         </div>
                         <div class="col-md-6 mb-3">
@@ -1200,7 +1200,7 @@
                     </div>
                     <div class="row mt-3" id="addCardSubsecaoRow" style="display: none;">
                         <div class="col-md-12 mb-0">
-                            <label class="form-label fw-bold">Sub-sessÃ£o</label>
+                            <label class="form-label fw-bold">Sub-sessão</label>
                             {{ card_form.subsecao }}
                         </div>
                     </div>
@@ -1244,21 +1244,21 @@
     }
 </script>
 
-<!-- Modal Detalhado do CartÃ£o -->
+<!-- Modal Detalhado do Cartão -->
 <div class="modal fade" id="cardDetailModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content" style="border-radius: 14px;">
             <div class="modal-header border-bottom-0 pb-0">
-                <h5 class="modal-title fw-bold flex-grow-1 me-3" id="cardDetailTitle" contenteditable="true" style="outline: none; border: 1px dashed transparent; border-radius: 4px; padding: 2px 6px; cursor: text; transition: all 0.2s;" onfocus="this.style.borderColor='#ccc'; this.style.backgroundColor='#f8f9fa';" onblur="this.style.borderColor='transparent'; this.style.backgroundColor='transparent'; if(typeof saveCardResponsiblesSilently === 'function') saveCardResponsiblesSilently();" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" title="Clique para editar o tÃ­tulo">TÃ­tulo da Tarefa</h5>
+                <h5 class="modal-title fw-bold flex-grow-1 me-3" id="cardDetailTitle" contenteditable="true" style="outline: none; border: 1px dashed transparent; border-radius: 4px; padding: 2px 6px; cursor: text; transition: all 0.2s;" onfocus="this.style.borderColor='#ccc'; this.style.backgroundColor='#f8f9fa';" onblur="this.style.borderColor='transparent'; this.style.backgroundColor='transparent'; if(typeof saveCardResponsiblesSilently === 'function') saveCardResponsiblesSilently();" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" title="Clique para editar o título">Título da Tarefa</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body pt-2 px-4">
                 <div class="row g-4">
-                    <!-- Detalhes do CartÃ£o (Lado Esquerdo) -->
+                    <!-- Detalhes do Cartão (Lado Esquerdo) -->
                     <div class="col-md-8">
                         <div class="mb-3">
-                            <label class="form-label fw-bold text-muted small text-uppercase">DescriÃ§Ã£o</label>
-                            <textarea id="cardDetailDesc" class="form-control" rows="3" placeholder="Insira uma descriÃ§Ã£o..."></textarea>
+                            <label class="form-label fw-bold text-muted small text-uppercase">Descrição</label>
+                            <textarea id="cardDetailDesc" class="form-control" rows="3" placeholder="Insira uma descrição..."></textarea>
                         </div>
                         
                         <div class="mb-3">
@@ -1285,12 +1285,12 @@
                             </div>
                         </div>
                         
-                        <!-- ComentÃ¡rios -->
+                        <!-- Comentários -->
                         <div>
-                            <label class="form-label fw-bold text-muted small">ComentÃ¡rios</label>
+                            <label class="form-label fw-bold text-muted small">Comentários</label>
                             <div class="position-relative w-100 mb-3">
                                 <div class="input-group">
-                                    <textarea id="newCommentInput" class="form-control" placeholder="Escreva um comentÃ¡rio... (Ctrl+Enter para enviar)" rows="2" style="resize: vertical; font-size: 0.875rem;"></textarea>
+                                    <textarea id="newCommentInput" class="form-control" placeholder="Escreva um comentário... (Ctrl+Enter para enviar)" rows="2" style="resize: vertical; font-size: 0.875rem;"></textarea>
                                     <button class="btn btn-success d-flex align-items-center justify-content-center px-3" type="button" id="btnPostComment"><i class="bi bi-chat-left-text me-1"></i> Enviar</button>
                                 </div>
                                 <div id="newCommentMentionsDropdown" class="list-group position-absolute w-100 shadow-lg mt-1 overflow-auto" style="max-height: 150px; z-index: 1060; display: none; bottom: 100%; margin-bottom: 5px;"></div>
@@ -1298,9 +1298,9 @@
                             <div id="commentsContainer" class="d-flex flex-column gap-2" style="max-height: 250px; overflow-y: auto;"></div>
                         </div>
                         
-                        <!-- HistÃ³rico de RepetiÃ§Ãµes -->
+                        <!-- Histórico de Repetições -->
                         <div class="mt-4 pt-3 border-top" id="detailCardHistoryContainer" style="display: none;">
-                            <label class="form-label fw-bold text-muted small mb-2"><i class="bi bi-clock-history me-1 text-primary"></i>HistÃ³rico de RepetiÃ§Ãµes</label>
+                            <label class="form-label fw-bold text-muted small mb-2"><i class="bi bi-clock-history me-1 text-primary"></i>Histórico de Repetições</label>
                             <div class="position-relative ps-1 mt-2" id="detailCardHistoryList" style="font-size: 0.85rem;">
                                 <!-- Linha do tempo inserida via JS -->
                             </div>
@@ -1312,13 +1312,13 @@
                         <div class="card bg-light border-0 p-3" style="border-radius: 8px;">
                             <div class="mb-3">
                                 <div class="d-flex align-items-center justify-content-between mb-1">
-                                    <label class="form-label fw-bold text-muted small mb-0">ResponsÃ¡veis</label>
+                                    <label class="form-label fw-bold text-muted small mb-0">Responsáveis</label>
                                     <span id="responsiblesSaveStatus" class="text-success small fw-semibold" style="font-size: 0.72rem; display: none;"><i class="bi bi-check2-circle me-1"></i>Salvo automaticamente</span>
                                 </div>
                                 <div class="position-relative mb-2">
                                     <div class="input-group input-group-sm">
                                         <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                                        <input type="search" id="detailCardMemberSearchInput" class="form-control form-control-sm" placeholder="Buscar responsÃ¡vel..." readonly onfocus="this.removeAttribute('readonly');" autocomplete="off">
+                                        <input type="search" id="detailCardMemberSearchInput" class="form-control form-control-sm" placeholder="Buscar responsável..." readonly onfocus="this.removeAttribute('readonly');" autocomplete="off">
                                     </div>
                                     <div id="detailCardSearchSuggestions" class="list-group position-absolute w-100 shadow-lg mt-1 overflow-auto" style="max-height: 150px; z-index: 1050; display: none;"></div>
                                 </div>
@@ -1366,7 +1366,7 @@
                                 </select>
                             </div>
                             <div class="mb-3" id="detailCardSubsecaoContainer" style="display: none;">
-                                <label class="form-label fw-bold text-muted small d-block">Sub-sessÃ£o</label>
+                                <label class="form-label fw-bold text-muted small d-block">Sub-sessão</label>
                                 <select id="cardDetailSubsecao" class="form-select form-select-sm">
                                     <option value="">Nenhuma (Geral)</option>
                                 </select>
@@ -1382,11 +1382,11 @@
                                 <label class="form-label fw-bold text-muted small d-block">Prazo de Entrega</label>
                                 <input type="text" id="cardDetailDueDate" class="form-control form-control-sm js-week-datepicker" placeholder="aaaa-mm-dd" autocomplete="off">
                             </div>
-                            <!-- Switch para planejar horÃ¡rio -->
+                            <!-- Switch para planejar horário -->
                             <div class="form-check form-switch mb-3">
                                 <input class="form-check-input" type="checkbox" id="cardDetailCheckPlanejar" onchange="toggleDetailCardPlanning(this.checked)">
                                 <label class="form-check-label fw-bold text-muted small" for="cardDetailCheckPlanejar">
-                                    <i class="bi bi-clock me-1 text-primary"></i>Planejar horÃ¡rio (inÃ­cio/fim)
+                                    <i class="bi bi-clock me-1 text-primary"></i>Planejar horário (início/fim)
                                 </label>
                             </div>
 
@@ -1394,7 +1394,7 @@
                             <div id="cardDetailPlanningFields" style="display: none;">
                                  <label class="form-label fw-bold text-muted small mb-2">Planejamento de Datas/Horas</label>
                                  <div id="cardDetailPlanningList" class="mb-2">
-                                     <!-- Linhas dinÃ¢micas de data e hora serÃ£o inseridas aqui -->
+                                     <!-- Linhas dinâmicas de data e hora serão inseridas aqui -->
                                  </div>
                                  <button type="button" class="btn btn-sm btn-outline-primary w-100 mb-3" id="btnAddPlanningRow">
                                      <i class="bi bi-plus-circle me-1"></i>Adicionar Data/Hora
@@ -1404,11 +1404,11 @@
                                  <input type="hidden" id="cardDetailHoraFim">
                              </div>
 
-                            <!-- SeÃ§Ã£o de ConclusÃ£o -->
+                            <!-- Seção de Conclusão -->
                             <div id="cardDetailConclusaoFields" style="display: none;">
                                 <div class="row g-2 mb-3">
                                     <div class="col-12">
-                                        <label class="form-label fw-bold text-muted small d-block">Data de ConclusÃ£o</label>
+                                        <label class="form-label fw-bold text-muted small d-block">Data de Conclusão</label>
                                         <input type="text" id="cardDetailConcludedDate" class="form-control form-control-sm js-week-datepicker" placeholder="aaaa-mm-dd" autocomplete="off">
                                     </div>
                                 </div>
@@ -1417,7 +1417,7 @@
                                 <label class="form-label fw-bold text-muted small d-block">Periodicidade</label>
                                 <select id="cardDetailPeriodicidade" class="form-select form-select-sm">
                                     <option value="AVULSA">Nenhuma (Avulsa)</option>
-                                    <option value="DIARIA">DiÃ¡ria</option>
+                                    <option value="DIARIA">Diária</option>
                                     <option value="SEMANAL">Semanal</option>
                                     <option value="QUINZENAL">Quinzenal</option>
                                     <option value="MENSAL">Mensal</option>
@@ -1433,7 +1433,7 @@
                             <div class="d-flex flex-column gap-2 mt-3">
                                 <button type="button" id="btnCompleteCard" class="btn btn-success btn-sm"><i class="bi bi-check2-circle me-1"></i>Concluir Atividade</button>
                                 <button type="button" id="btnReopenCard" class="btn btn-warning btn-sm"><i class="bi bi-arrow-counterclockwise me-1"></i>Reabrir Atividade</button>
-                                <button type="button" id="btnSaveCardDetails" class="btn btn-primary btn-sm"><i class="bi bi-save me-1"></i>Salvar AlteraÃ§Ãµes</button>
+                                <button type="button" id="btnSaveCardDetails" class="btn btn-primary btn-sm"><i class="bi bi-save me-1"></i>Salvar Alterações</button>
                                 <form id="deleteCardForm" method="POST" action="" onsubmit="return confirm('Deseja excluir esta tarefa definitivamente?');">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-outline-danger btn-sm w-100"><i class="bi bi-trash me-1"></i>Excluir Tarefa</button>
@@ -1447,12 +1447,12 @@
     </div>
 </div>
 
-<!-- Modal ConfiguraÃ§Ãµes do Quadro -->
+<!-- Modal Configurações do Quadro -->
 <div class="modal fade" id="boardConfigModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content shadow-lg" style="border-radius: 14px;">
             <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
-                <h5 class="modal-title fw-bold"><i class="bi bi-gear me-2"></i>ConfiguraÃ§Ãµes do Quadro</h5>
+                <h5 class="modal-title fw-bold"><i class="bi bi-gear me-2"></i>Configurações do Quadro</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST" action="{% url 'boards:edit_board' board.id %}">
@@ -1463,7 +1463,7 @@
                         <input type="text" name="nome" value="{{ board.nome }}" class="form-control" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-bold">DescriÃ§Ã£o</label>
+                        <label class="form-label fw-bold">Descrição</label>
                         <textarea name="descricao" class="form-control" rows="3">{{ board.descricao|default:'' }}</textarea>
                     </div>
                     
@@ -1472,7 +1472,7 @@
                         <label class="form-check-label fw-bold text-dark" for="flexSwitchTodosColab" style="cursor: pointer; padding-top: 3px;">
                             Permitir acesso a todos os colaboradores da empresa
                             <small class="d-block text-muted fw-normal mt-1" style="font-size: 0.8rem;">
-                                Ao ativar, todos os funcionÃ¡rios poderÃ£o ver este quadro, nÃ£o sendo necessÃ¡rio adicionÃ¡-los individualmente abaixo.
+                                Ao ativar, todos os funcionários poderão ver este quadro, não sendo necessário adicioná-los individualmente abaixo.
                             </small>
                         </label>
                     </div>
@@ -1483,7 +1483,7 @@
                             <input type="search" id="configMemberSearchInput" class="form-control border-start-0" placeholder="Digite o nome para buscar..." readonly onfocus="this.removeAttribute('readonly');" autocomplete="off">
                         </div>
                         <div id="configSearchSuggestions" class="list-group position-absolute w-100 shadow-lg mt-1 overflow-auto" style="max-height: 200px; z-index: 1050; display: none;">
-                            <!-- SugestÃµes carregadas via JS -->
+                            <!-- Sugestões carregadas via JS -->
                         </div>
                     </div>
                     
@@ -1505,32 +1505,32 @@
                 </div>
                 <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                    <button type="submit" class="btn btn-primary px-4">Salvar ConfiguraÃ§Ãµes</button>
+                    <button type="submit" class="btn btn-primary px-4">Salvar Configurações</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<!-- Modal Filtros AvanÃ§ados -->
+<!-- Modal Filtros Avançados -->
 <div class="modal fade" id="advancedFiltersModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content shadow-lg" style="border-radius: 14px;">
             <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
-                <h5 class="modal-title fw-bold"><i class="bi bi-funnel me-2"></i>Filtros AvanÃ§ados</h5>
+                <h5 class="modal-title fw-bold"><i class="bi bi-funnel me-2"></i>Filtros Avançados</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
                 <div class="row g-3">
                     <div class="col-md-6">
-                        <label class="form-label text-muted small mb-1 fw-bold">PerÃ­odo</label>
+                        <label class="form-label text-muted small mb-1 fw-bold">Período</label>
                         <select class="form-select form-select-sm" id="periodFilter" onchange="filterByPeriod(this.value)">
                             <option value="tudo" {% if periodo == 'tudo' or not periodo %}selected{% endif %}>Tudo</option>
                             <option value="hoje" {% if periodo == 'hoje' %}selected{% endif %}>Hoje</option>
                             <option value="semana" {% if periodo == 'semana' %}selected{% endif %}>Esta Semana</option>
-                            <option value="prox_semana" {% if periodo == 'prox_semana' %}selected{% endif %}>PrÃ³xima Semana</option>
-                            <option value="mes" {% if periodo == 'mes' %}selected{% endif %}>Este MÃªs</option>
-                            <option value="prox_mes" {% if periodo == 'prox_mes' %}selected{% endif %}>PrÃ³ximo MÃªs</option>
+                            <option value="prox_semana" {% if periodo == 'prox_semana' %}selected{% endif %}>Próxima Semana</option>
+                            <option value="mes" {% if periodo == 'mes' %}selected{% endif %}>Este Mês</option>
+                            <option value="prox_mes" {% if periodo == 'prox_mes' %}selected{% endif %}>Próximo Mês</option>
                             <option value="ano" {% if periodo == 'ano' %}selected{% endif %}>Este Ano</option>
                         </select>
                     </div>
@@ -1548,15 +1548,15 @@
                         <select id="globalFilterPrior" class="form-select form-select-sm" onchange="applyGlobalFilters()">
                             <option value="">Prioridade: Todas</option>
                             <option value="Alta">Alta</option>
-                            <option value="MÃ©dia">MÃ©dia</option>
+                            <option value="Média">Média</option>
                             <option value="Baixa">Baixa</option>
                         </select>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label text-muted small mb-1 fw-bold">ResponsÃ¡vel</label>
+                        <label class="form-label text-muted small mb-1 fw-bold">Responsável</label>
                         <select id="globalFilterResp" class="form-select form-select-sm" onchange="applyGlobalFilters()">
-                            <option value="">ResponsÃ¡vel: Todos</option>
-                            <option value="__sem_responsavel__">Sem ResponsÃ¡vel</option>
+                            <option value="">Responsável: Todos</option>
+                            <option value="__sem_responsavel__">Sem Responsável</option>
                             {% for c in colaboradores_com_tarefas %}
                             <option value="{{ c.nome_completo }}">{{ c.nome_completo }}</option>
                             {% endfor %}
@@ -1572,10 +1572,10 @@
                         </select>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label text-muted small mb-1 fw-bold">Sub-sessÃ£o</label>
+                        <label class="form-label text-muted small mb-1 fw-bold">Sub-sessão</label>
                         <select id="globalFilterSub" class="form-select form-select-sm" onchange="applyGlobalFilters()">
-                            <option value="">Sub-sessÃ£o: Todas</option>
-                            <option value="__sem_subsecao__">Sem Sub-sessÃ£o</option>
+                            <option value="">Sub-sessão: Todas</option>
+                            <option value="__sem_subsecao__">Sem Sub-sessão</option>
                             {% for nome in subsecoes_unicas %}
                             <option value="{{ nome }}">{{ nome }}</option>
                             {% endfor %}
@@ -1586,11 +1586,11 @@
                         <select id="globalFilterStatus" class="form-select form-select-sm" onchange="applyGlobalFilters()">
                             <option value="">Status: Todos</option>
                             <option value="andamento">Status: Em Andamento</option>
-                            <option value="concluido">Status: ConcluÃ­das</option>
+                            <option value="concluido">Status: Concluídas</option>
                         </select>
                     </div>
                     <div class="col-12 mt-4 d-flex flex-column flex-sm-row gap-3">
-                        <div class="form-check form-switch bg-light p-2 rounded border" title="Ocultar colunas que ficarem sem cartÃµes visÃ­veis">
+                        <div class="form-check form-switch bg-light p-2 rounded border" title="Ocultar colunas que ficarem sem cartões visíveis">
                             <input class="form-check-input ms-0 me-3" type="checkbox" id="hideEmptyColumnsFlag" onchange="applyGlobalFilters()">
                             <label class="form-check-label text-muted small fw-bold" style="user-select: none; cursor: pointer; padding-top: 2px;" for="hideEmptyColumnsFlag">Ocultar colunas vazias</label>
                         </div>
@@ -1610,7 +1610,7 @@
                         <i class="bi bi-arrow-clockwise me-1"></i>Atualizar
                     </button>
                     <button type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal">
-                        ConcluÃ­do
+                        Concluído
                     </button>
                 </div>
             </div>
@@ -1618,25 +1618,25 @@
     </div>
 </div>
 
-<!-- Modal CriaÃ§Ã£o de Sub-sessÃ£o -->
+<!-- Modal Criação de Sub-sessão -->
 <div class="modal fade" id="addSubSectionModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content shadow-lg" style="border-radius: 14px;">
             <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
-                <h5 class="modal-title fw-bold"><i class="bi bi-folder-plus me-2"></i>Nova Sub-sessÃ£o</h5>
+                <h5 class="modal-title fw-bold"><i class="bi bi-folder-plus me-2"></i>Nova Sub-sessão</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form id="addSubSectionForm" method="POST" action="">
                 {% csrf_token %}
                 <div class="modal-body p-4">
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Nome da Sub-sessÃ£o</label>
+                        <label class="form-label fw-bold">Nome da Sub-sessão</label>
                         <input type="text" name="nome" class="form-control" placeholder="Digite o nome..." required autocomplete="off">
                     </div>
                 </div>
                 <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary px-4">Criar Sub-sessÃ£o</button>
+                    <button type="submit" class="btn btn-primary px-4">Criar Sub-sessão</button>
                 </div>
             </form>
         </div>
@@ -1654,57 +1654,57 @@
             <form id="copyColumnForm" method="POST" action="">
                 {% csrf_token %}
                 <div class="modal-body p-4">
-                    <p class="text-muted small mb-3">Criando cÃ³pia de: <strong id="copyColumnSourceName"></strong></p>
+                    <p class="text-muted small mb-3">Criando cópia de: <strong id="copyColumnSourceName"></strong></p>
                     <div class="mb-3">
                         <label class="form-label fw-bold">Nome da Nova Coluna</label>
-                        <input type="text" name="nome" id="copyColumnNameInput" class="form-control" placeholder="Digite o nome da cÃ³pia..." required autocomplete="off">
+                        <input type="text" name="nome" id="copyColumnNameInput" class="form-control" placeholder="Digite o nome da cópia..." required autocomplete="off">
                     </div>
                 </div>
                 <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary px-4"><i class="bi bi-copy me-1"></i>Criar CÃ³pia</button>
+                    <button type="submit" class="btn btn-primary px-4"><i class="bi bi-copy me-1"></i>Criar Cópia</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<!-- Modal DescriÃ§Ã£o da Coluna -->
+<!-- Modal Descrição da Coluna -->
 <div class="modal fade" id="columnDescriptionModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content shadow-lg" style="border-radius: 14px;">
             <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
                 <div>
-                    <h5 class="modal-title fw-bold"><i class="bi bi-card-text me-2"></i>DescriÃ§Ã£o da Coluna</h5>
+                    <h5 class="modal-title fw-bold"><i class="bi bi-card-text me-2"></i>Descrição da Coluna</h5>
                     <small class="text-white-50" id="columnDescriptionModalSubtitle"></small>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
                 <div class="mb-3">
-                    <label class="form-label fw-bold">DescriÃ§Ã£o</label>
-                    <textarea id="columnDescriptionInput" class="form-control" rows="5" placeholder="Adicione uma descriÃ§Ã£o para esta coluna (opcional)..."></textarea>
-                    <div class="form-text">A descriÃ§Ã£o Ã© visÃ­vel apenas atravÃ©s das opÃ§Ãµes <strong>(â‹¯)</strong> da coluna.</div>
+                    <label class="form-label fw-bold">Descrição</label>
+                    <textarea id="columnDescriptionInput" class="form-control" rows="5" placeholder="Adicione uma descrição para esta coluna (opcional)..."></textarea>
+                    <div class="form-text">A descrição é visível apenas através das opções <strong>(â‹¯)</strong> da coluna.</div>
                 </div>
-                <div id="columnDescriptionSaveStatus" class="text-success small fw-semibold d-none"><i class="bi bi-check2-circle me-1"></i>DescriÃ§Ã£o salva!</div>
+                <div id="columnDescriptionSaveStatus" class="text-success small fw-semibold d-none"><i class="bi bi-check2-circle me-1"></i>Descrição salva!</div>
             </div>
             <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                <button type="button" class="btn btn-primary px-4" id="btnSaveColumnDescription"><i class="bi bi-save me-1"></i>Salvar DescriÃ§Ã£o</button>
+                <button type="button" class="btn btn-primary px-4" id="btnSaveColumnDescription"><i class="bi bi-save me-1"></i>Salvar Descrição</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal Detalhes da Linha de AÃ§Ã£o (Quadro de Planos de AÃ§Ã£o) -->
+<!-- Modal Detalhes da Linha de Ação (Quadro de Planos de Ação) -->
 <div class="modal fade" id="linhaAcaoDetailModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content shadow-lg" style="border-radius: 14px;">
-            <!-- CabeÃ§alho -->
+            <!-- Cabeçalho -->
             <div class="modal-header text-white" id="linhaAcaoModalHeader" style="border-top-left-radius: 12px; border-top-right-radius: 12px; background: #1e3a5f;">
                 <div>
                     <h5 class="modal-title fw-bold mb-0" id="linhaAcaoModalTitle">
-                        <i class="bi bi-check2-square me-2"></i>AÃ§Ã£o #<span id="linhaAcaoNumero">â€”</span>
+                        <i class="bi bi-check2-square me-2"></i>Ação #<span id="linhaAcaoNumero">â€”</span>
                     </h5>
                     <small class="text-white-50" id="linhaAcaoPlanoRef"></small>
                 </div>
@@ -1719,33 +1719,33 @@
                     <div class="placeholder-glow"><span class="placeholder col-10 rounded" style="height:12px;"></span></div>
                 </div>
 
-                <!-- ConteÃºdo carregado -->
+                <!-- Conteúdo carregado -->
                 <div id="linhaAcaoContent" style="display:none;">
                     <!-- Status badge -->
                     <div class="mb-3">
                         <span class="badge rounded-pill fs-6 px-3 py-2" id="linhaAcaoStatusBadge" style="font-size:0.85rem!important;">â€”</span>
                     </div>
 
-                    <!-- DescriÃ§Ã£o -->
+                    <!-- Descrição -->
                     <div class="mb-4">
                         <label class="form-label fw-bold text-muted small text-uppercase letter-spacing-1">
-                            <i class="bi bi-card-text me-1"></i>DescriÃ§Ã£o / AÃ§Ã£o
+                            <i class="bi bi-card-text me-1"></i>Descrição / Ação
                         </label>
                         <p class="text-dark" id="linhaAcaoDesc" style="white-space: pre-wrap; line-height: 1.6;"></p>
                     </div>
 
                     <div class="row g-3 mb-3">
-                        <!-- ResponsÃ¡veis -->
+                        <!-- Responsáveis -->
                         <div class="col-md-6">
                             <label class="form-label fw-bold text-muted small text-uppercase">
-                                <i class="bi bi-people me-1"></i>ResponsÃ¡veis
+                                <i class="bi bi-people me-1"></i>Responsáveis
                             </label>
                             <div id="linhaAcaoResps" class="d-flex flex-wrap gap-2"></div>
                         </div>
-                        <!-- ClassificaÃ§Ã£o + Prioridade -->
+                        <!-- Classificação + Prioridade -->
                         <div class="col-md-3">
                             <label class="form-label fw-bold text-muted small text-uppercase">
-                                <i class="bi bi-tag me-1"></i>ClassificaÃ§Ã£o
+                                <i class="bi bi-tag me-1"></i>Classificação
                             </label>
                             <div id="linhaAcaoClassif" class="text-dark fw-semibold"></div>
                         </div>
@@ -1772,10 +1772,10 @@
                             </label>
                             <div id="linhaAcaoDeadline" class="text-dark"></div>
                         </div>
-                        <!-- Data ConclusÃ£o -->
+                        <!-- Data Conclusão -->
                         <div class="col-md-4" id="linhaAcaoConclusaoBlock">
                             <label class="form-label fw-bold text-muted small text-uppercase">
-                                <i class="bi bi-check2-circle me-1"></i>ConclusÃ£o
+                                <i class="bi bi-check2-circle me-1"></i>Conclusão
                             </label>
                             <div id="linhaAcaoConclusao" class="text-success fw-semibold"></div>
                         </div>
@@ -1789,20 +1789,20 @@
                         <p class="text-dark" id="linhaAcaoProblema" style="white-space: pre-wrap;"></p>
                     </div>
 
-                    <!-- ComentÃ¡rios -->
+                    <!-- Comentários -->
                     <div class="mb-3" id="linhaAcaoComentariosBlock">
                         <label class="form-label fw-bold text-muted small text-uppercase">
-                            <i class="bi bi-chat-left-text me-1"></i>ComentÃ¡rios / ObservaÃ§Ãµes
+                            <i class="bi bi-chat-left-text me-1"></i>Comentários / Observações
                         </label>
                         <p class="text-dark" id="linhaAcaoComentarios" style="white-space: pre-wrap;"></p>
                     </div>
                 </div>
             </div>
 
-            <!-- RodapÃ© -->
+            <!-- Rodapé -->
             <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
                 <a id="linhaAcaoPlanoLink" href="#" target="_blank" class="btn btn-outline-primary">
-                    <i class="bi bi-box-arrow-up-right me-1"></i>Abrir Plano de AÃ§Ã£o
+                    <i class="bi bi-box-arrow-up-right me-1"></i>Abrir Plano de Ação
                 </a>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
             </div>
@@ -1829,7 +1829,7 @@
                                     {{ label.nome }}
                                 </span>
                             </div>
-                            <form action="{% url 'boards:delete_label' label.id %}" method="POST" class="d-inline" onsubmit="return confirm('Deseja excluir esta etiqueta? Ela serÃ¡ removida de todos os cartÃµes.');">
+                            <form action="{% url 'boards:delete_label' label.id %}" method="POST" class="d-inline" onsubmit="return confirm('Deseja excluir esta etiqueta? Ela será removida de todos os cartões.');">
                                 {% csrf_token %}
                                 <button type="submit" class="btn btn-sm btn-outline-danger border-0"><i class="bi bi-trash"></i></button>
                             </form>
@@ -1847,12 +1847,12 @@
                     <label class="form-label fw-bold mb-2">Nova Etiqueta</label>
                     <div class="mb-3">
                         <label class="form-label small text-muted">Nome da Etiqueta</label>
-                        <input type="text" name="nome" class="form-control form-control-sm" placeholder="Ex: Urgente, RevisÃ£o, Financeiro..." required autocomplete="off">
+                        <input type="text" name="nome" class="form-control form-control-sm" placeholder="Ex: Urgente, Revisão, Financeiro..." required autocomplete="off">
                     </div>
                     <div class="mb-3">
                         <label class="form-label small text-muted">Cor da Etiqueta</label>
                         <div class="d-flex align-items-center gap-2">
-                            <!-- Paleta rÃ¡pida de cores HSL modernas -->
+                            <!-- Paleta rápida de cores HSL modernas -->
                             <div class="d-flex flex-wrap gap-1" id="quickColorPalette">
                                 <button type="button" class="btn p-0 rounded-circle border border-2 border-white shadow-sm" style="width: 26px; height: 26px; background-color: #dc3545;" onclick="selectQuickColor('#dc3545')" title="Vermelho"></button>
                                 <button type="button" class="btn p-0 rounded-circle border border-2 border-white shadow-sm" style="width: 26px; height: 26px; background-color: #fd7e14;" onclick="selectQuickColor('#fd7e14')" title="Laranja"></button>
@@ -1878,7 +1878,7 @@
     </div>
 </div>
 
-<!-- Modal de ConfirmaÃ§Ã£o de Data de ConclusÃ£o -->
+<!-- Modal de Confirmação de Data de Conclusão -->
 <div class="modal fade" id="confirmConclusionDateModal" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content">
@@ -1887,7 +1887,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p class="mb-2 text-muted small">Confirme a data de conclusÃ£o desta atividade:</p>
+                <p class="mb-2 text-muted small">Confirme a data de conclusão desta atividade:</p>
                 <input type="date" id="confirmConclusionDateInput" class="form-control">
             </div>
             <div class="modal-footer py-1">
@@ -1929,7 +1929,7 @@
                 {% else %}
                 <div class="text-center py-4 text-muted">
                     <i class="bi bi-archive d-block fs-1 mb-3 opacity-50"></i>
-                    <p class="mb-0">NÃ£o hÃ¡ colunas arquivadas neste quadro.</p>
+                    <p class="mb-0">Não há colunas arquivadas neste quadro.</p>
                 </div>
                 {% endif %}
             </div>
@@ -1937,23 +1937,23 @@
     </div>
 </div>
 
-<!-- Modal Links Ãšteis -->
+<!-- Modal Links Úteis -->
 <div class="modal fade" id="boardLinksModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow">
             <div class="modal-header bg-info text-white border-0">
-                <h5 class="modal-title fw-bold"><i class="bi bi-link-45deg me-2"></i>Links Ãšteis do Quadro</h5>
+                <h5 class="modal-title fw-bold"><i class="bi bi-link-45deg me-2"></i>Links Úteis do Quadro</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body bg-light p-4">
-                <!-- FormulÃ¡rio para adicionar novo link -->
+                <!-- Formulário para adicionar novo link -->
                 <div class="card border-0 shadow-sm mb-4">
                     <div class="card-body bg-white rounded">
                         <h6 class="fw-bold mb-3 text-dark"><i class="bi bi-plus-circle text-primary me-2"></i>Registrar Novo Link</h6>
                         <form id="addBoardLinkForm" onsubmit="event.preventDefault(); addBoardLink();">
                             <div class="row g-2 align-items-end">
                                 <div class="col-md-4">
-                                    <label class="form-label small text-muted fw-bold">TÃ­tulo / DescriÃ§Ã£o</label>
+                                    <label class="form-label small text-muted fw-bold">Título / Descrição</label>
                                     <input type="text" id="newLinkTitle" class="form-control form-control-sm" placeholder="Ex: Planilha de Custos" required>
                                 </div>
                                 <div class="col-md-6">
@@ -2023,7 +2023,7 @@
     });
 </script>
 {% endif %}
-<!-- Chart.js para grÃ¡ficos -->
+<!-- Chart.js para gráficos -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
 
 
@@ -2235,17 +2235,17 @@
         const form = document.getElementById('copyColumnForm');
         form.action = `/boards/colunas/${columnId}/copiar/`;
         document.getElementById('copyColumnSourceName').textContent = columnName;
-        document.getElementById('copyColumnNameInput').value = columnName + ' (CÃ³pia)';
+        document.getElementById('copyColumnNameInput').value = columnName + ' (Cópia)';
         const modal = new bootstrap.Modal(document.getElementById('copyColumnModal'));
         modal.show();
-        // Selecionar texto para facilitar ediÃ§Ã£o
+        // Selecionar texto para facilitar edição
         setTimeout(() => {
             const input = document.getElementById('copyColumnNameInput');
             input.select();
         }, 350);
     }
 
-    // â”€â”€ DescriÃ§Ã£o da Coluna â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â”€â”€ Descrição da Coluna â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     let _columnDescriptionActiveId = null;
 
     function openColumnDescriptionModal(columnId, columnName) {
@@ -2254,7 +2254,7 @@
         document.getElementById('columnDescriptionInput').value = '';
         document.getElementById('columnDescriptionSaveStatus').classList.add('d-none');
 
-        // Buscar descriÃ§Ã£o atual via API
+        // Buscar descrição atual via API
         fetch(`/boards/colunas/${columnId}/descricao/`, {
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
@@ -2418,12 +2418,12 @@
             .then(data => {
                 if (!data.success) {
                     console.error("Erro ao mover coluna:", data.error);
-                    alert("NÃ£o foi possÃ­vel salvar a ordenaÃ§Ã£o das colunas.");
+                    alert("Não foi possível salvar a ordenação das colunas.");
                     location.reload();
                 }
             })
             .catch(err => {
-                console.error("Erro de conexÃ£o ao reordenar colunas:", err);
+                console.error("Erro de conexão ao reordenar colunas:", err);
                 location.reload();
             });
         }
@@ -2488,7 +2488,7 @@
     let detailCardCollaborators = [];
     let detailCardSearchInitialized = false;
     
-    // FunÃ§Ã£o reutilizÃ¡vel para inicializar a busca de responsÃ¡veis no modal de detalhes.
+    // Função reutilizável para inicializar a busca de responsáveis no modal de detalhes.
     // Pode ser chamada tanto do DOMContentLoaded quanto do openCardModal (lazy-init).
     function initDetailCardSearch() {
         if (detailCardSearchInitialized) return;
@@ -2636,20 +2636,20 @@
             let recreate = false;
             const wasCompleted = cardEl.closest('.card-container') ? cardEl.closest('.card-container').getAttribute('data-is-concluida') === 'true' : false;
             if (isConcluida && !wasCompleted && periodicidade && periodicidade !== 'AVULSA') {
-                recreate = confirm(`Esta atividade possui periodicidade (${periodicidadeLabel}). Gostaria de reaplicar a atividade de acordo com o perÃ­odo e recriÃ¡-la?`);
+                recreate = confirm(`Esta atividade possui periodicidade (${periodicidadeLabel}). Gostaria de reaplicar a atividade de acordo com o período e recriá-la?`);
             }
 
-            // Adiciona o cartÃ£o ao container da coluna/subsection destino
+            // Adiciona o cartão ao container da coluna/subsection destino
             targetContainer.appendChild(cardEl);
             
-            // Pega a lista ordenada de cartÃµes no container destino
+            // Pega a lista ordenada de cartões no container destino
             const cardOrderIds = Array.from(targetContainer.querySelectorAll('.kanban-card')).map(card => {
                 return parseInt(card.id.replace('card-', ''));
             });
             
             const cardId = parseInt(cardIdStr.replace('card-', ''));
             
-            // FunÃ§Ã£o para enviar a requisiÃ§Ã£o de mover
+            // Função para enviar a requisição de mover
             function sendMoveRequest(dataConclusao) {
                 const payload = {
                     card_id: cardId,
@@ -2674,25 +2674,25 @@
                 .then(res => res.json())
                 .then(data => {
                     if (!data.success) {
-                        console.error("Erro ao mover cartÃ£o:", data.error);
-                        alert("NÃ£o foi possÃ­vel salvar a movimentaÃ§Ã£o da tarefa.");
+                        console.error("Erro ao mover cartão:", data.error);
+                        alert("Não foi possível salvar a movimentação da tarefa.");
                     }
                     location.reload();
                 })
                 .catch(err => {
-                    console.error("Erro de conexÃ£o AJAX:", err);
+                    console.error("Erro de conexão AJAX:", err);
                     location.reload();
                 });
             }
             
-            // Se estÃ¡ concluindo (movendo para coluna concluÃ­da pela primeira vez), pedir data
+            // Se está concluindo (movendo para coluna concluída pela primeira vez), pedir data
             if (isConcluida && !wasCompleted) {
                 const today = new Date().toISOString().split('T')[0];
                 document.getElementById('confirmConclusionDateInput').value = today;
                 const modal = new bootstrap.Modal(document.getElementById('confirmConclusionDateModal'));
                 modal.show();
                 
-                // Configurar o botÃ£o confirmar
+                // Configurar o botão confirmar
                 const confirmBtn = document.getElementById('confirmConclusionDateBtn');
                 const newConfirmBtn = confirmBtn.cloneNode(true);
                 confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
@@ -2705,7 +2705,7 @@
                 // Se fechar o modal sem confirmar, desfazer o drag
                 document.getElementById('confirmConclusionDateModal').addEventListener('hidden.bs.modal', function handler() {
                     document.getElementById('confirmConclusionDateModal').removeEventListener('hidden.bs.modal', handler);
-                    // Se nÃ£o clicou em confirmar, recarrega para desfazer
+                    // Se não clicou em confirmar, recarrega para desfazer
                 }, { once: true });
             } else {
                 sendMoveRequest(null);
@@ -2875,7 +2875,7 @@
     }
 
     // ============================================================
-    // Modal de detalhes da Linha de AÃ§Ã£o (Quadro de Planos de AÃ§Ã£o)
+    // Modal de detalhes da Linha de Ação (Quadro de Planos de Ação)
     // ============================================================
     function openLinhaAcaoModal(linhaId) {
         const modal = new bootstrap.Modal(document.getElementById('linhaAcaoDetailModal'));
@@ -2892,7 +2892,7 @@
         fetch(`/boards/linhas-acao/${linhaId}/detalhes/`)
         .then(res => res.json())
         .then(data => {
-            // CabeÃ§alho
+            // Cabeçalho
             document.getElementById('linhaAcaoNumero').textContent = data.numero_acao;
             document.getElementById('linhaAcaoPlanoRef').textContent = 'Plano: ' + data.plano_ref;
 
@@ -2902,10 +2902,10 @@
             badge.style.backgroundColor = data.status_color;
             badge.style.color = '#fff';
 
-            // DescriÃ§Ã£o
+            // Descrição
             document.getElementById('linhaAcaoDesc').textContent = data.descricao || 'â€”';
 
-            // ResponsÃ¡veis
+            // Responsáveis
             const respsEl = document.getElementById('linhaAcaoResps');
             respsEl.innerHTML = '';
             if (data.responsaveis && data.responsaveis.length > 0) {
@@ -2918,10 +2918,10 @@
                         </div>`;
                 });
             } else {
-                respsEl.innerHTML = '<span class="text-muted small">Sem responsÃ¡vel atribuÃ­do</span>';
+                respsEl.innerHTML = '<span class="text-muted small">Sem responsável atribuído</span>';
             }
 
-            // ClassificaÃ§Ã£o e prioridade
+            // Classificação e prioridade
             document.getElementById('linhaAcaoClassif').textContent = data.classificacao || 'â€”';
             const priorEl = document.getElementById('linhaAcaoPrioridade');
             priorEl.innerHTML = data.prioridade === 'Alta'
@@ -2944,7 +2944,7 @@
                 problemaBlock.style.display = 'none';
             }
 
-            // ComentÃ¡rios
+            // Comentários
             const comentariosBlock = document.getElementById('linhaAcaoComentariosBlock');
             const comentariosEl = document.getElementById('linhaAcaoComentarios');
             if (data.comentarios_texto) {
@@ -2957,13 +2957,13 @@
             // Link do plano
             document.getElementById('linhaAcaoPlanoLink').href = data.plano_url;
 
-            // Mostrar conteÃºdo
+            // Mostrar conteúdo
             document.getElementById('linhaAcaoSkeleton').style.display = 'none';
             document.getElementById('linhaAcaoContent').style.display = '';
         })
         .catch(err => {
             document.getElementById('linhaAcaoSkeleton').innerHTML =
-                '<div class="alert alert-danger"><i class="bi bi-exclamation-circle me-2"></i>Erro ao carregar os detalhes da aÃ§Ã£o.</div>';
+                '<div class="alert alert-danger"><i class="bi bi-exclamation-circle me-2"></i>Erro ao carregar os detalhes da ação.</div>';
             console.error('Erro ao buscar LinhaAcao:', err);
         });
     }
@@ -2972,7 +2972,7 @@
 
         activeCardId = cardId;
         
-        // Define a rota de exclusÃ£o no form do modal
+        // Define a rota de exclusão no form do modal
         document.getElementById('deleteCardForm').action = `/boards/cartoes/${cardId}/excluir/`;
         
         // Carrega os dados via API JSON
@@ -2988,8 +2988,8 @@
             
             const respSelect = document.getElementById('cardDetailResp');
             
-            // Lazy-init: se detailCardCollaborators nÃ£o foi populado (ex: erro no DOMContentLoaded),
-            // inicializa agora a partir das opÃ§Ãµes do select oculto
+            // Lazy-init: se detailCardCollaborators não foi populado (ex: erro no DOMContentLoaded),
+            // inicializa agora a partir das opções do select oculto
             if (!detailCardSelect) {
                 detailCardSelect = respSelect;
             }
@@ -3003,7 +3003,7 @@
                 });
             }
             
-            // Se ainda vazio e a API retornou responsÃ¡veis, popula a partir dos dados da API
+            // Se ainda vazio e a API retornou responsáveis, popula a partir dos dados da API
             if (detailCardCollaborators.length === 0 && card.responsaveis && card.responsaveis.length > 0) {
                 card.responsaveis.forEach(r => {
                     detailCardCollaborators.push({
@@ -3052,7 +3052,7 @@
                 }
             }
             
-            // Garante que o listener de busca de responsÃ¡veis estÃ¡ ativo
+            // Garante que o listener de busca de responsáveis está ativo
             initDetailCardSearch();
             
             // Populate and select sub-section dropdown
@@ -3126,10 +3126,10 @@
             // Renderiza checklist
             renderChecklist(card.checklist);
             
-            // Renderiza comentÃ¡rios
+            // Renderiza comentários
             renderComments(card.comentarios);
             
-            // Controle de exibiÃ§Ã£o dos botÃµes Concluir e Reabrir
+            // Controle de exibição dos botões Concluir e Reabrir
             const cardEl = document.getElementById(`card-${cardId}`);
             if (cardEl) {
                 const isCompleted = cardEl.closest('.card-container').getAttribute('data-is-concluida') === 'true';
@@ -3219,7 +3219,7 @@
             const modal = new bootstrap.Modal(document.getElementById('cardDetailModal'));
             modal.show();
         })
-        .catch(err => console.error("Erro ao carregar detalhes do cartÃ£o:", err));
+        .catch(err => console.error("Erro ao carregar detalhes do cartão:", err));
     }
     
     let openedLabelsFromDetail = false;
@@ -3387,7 +3387,7 @@
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                // Atualizar detalhes recarregando dados do cartÃ£o
+                // Atualizar detalhes recarregando dados do cartão
                 fetch(`/boards/cartoes/${activeCardId}/detalhes/`)
                 .then(res => res.json())
                 .then(card => renderChecklist(card.checklist));
@@ -3584,7 +3584,7 @@
     
     // Delete Comment
     function deleteComment(commentId) {
-        if (!confirm('Deseja excluir este comentÃ¡rio?')) return;
+        if (!confirm('Deseja excluir este comentário?')) return;
         
         fetch(`/boards/comentarios/${commentId}/excluir/`, {
             method: 'POST',
@@ -3597,7 +3597,7 @@
                 .then(res => res.json())
                 .then(card => renderComments(card.comentarios));
             } else {
-                alert("VocÃª nÃ£o tem permissÃ£o para excluir este comentÃ¡rio.");
+                alert("Você não tem permissão para excluir este comentário.");
             }
         });
     }
@@ -3627,14 +3627,14 @@
         let recreate = false;
         const destOpt = colSelect.options[colSelect.selectedIndex];
         const destName = destOpt ? destOpt.text.toLowerCase() : '';
-        const isCompletedDest = destName.includes("concluido") || destName.includes("concluÃ­do") || destName.includes("done") || destName.includes("terminado") || destName.includes("pronto");
+        const isCompletedDest = destName.includes("concluido") || destName.includes("concluído") || destName.includes("done") || destName.includes("terminado") || destName.includes("pronto");
         
         const cardEl = document.getElementById(`card-${activeCardId}`);
         const wasCompleted = cardEl ? cardEl.closest('.card-container').getAttribute('data-is-concluida') === 'true' : false;
         const periodicidadeLabel = document.getElementById('cardDetailPeriodicidade').options[document.getElementById('cardDetailPeriodicidade').selectedIndex].text;
         
         if (isCompletedDest && !wasCompleted && periodicidade && periodicidade !== 'AVULSA') {
-            recreate = confirm(`Esta atividade possui periodicidade (${periodicidadeLabel}). Gostaria de reaplicar a atividade de acordo com o perÃ­odo e recriÃ¡-la?`);
+            recreate = confirm(`Esta atividade possui periodicidade (${periodicidadeLabel}). Gostaria de reaplicar a atividade de acordo com o período e recriá-la?`);
         }
         
         fetch(`/boards/cartoes/${activeCardId}/detalhes/`, {
@@ -3674,11 +3674,11 @@
             if (data && data.success) {
                 location.reload();
             } else {
-                alert("Erro ao salvar: " + (data ? data.error : "Resposta invÃ¡lida"));
+                alert("Erro ao salvar: " + (data ? data.error : "Resposta inválida"));
             }
         })
         .catch(err => {
-            console.error("Erro na requisiÃ§Ã£o:", err);
+            console.error("Erro na requisição:", err);
             alert("Erro ao salvar: " + err.message);
         });
         });
@@ -3698,14 +3698,14 @@
         
         let recreate = false;
         if (periodicidade && periodicidade !== 'AVULSA') {
-            recreate = confirm(`Esta atividade possui periodicidade (${periodicidadeLabel}). Gostaria de reaplicar a atividade de acordo com o perÃ­odo e recriÃ¡-la?`);
+            recreate = confirm(`Esta atividade possui periodicidade (${periodicidadeLabel}). Gostaria de reaplicar a atividade de acordo com o período e recriá-la?`);
         }
         
         // Fechar o modal de detalhes primeiro
         const detailModal = bootstrap.Modal.getInstance(document.getElementById('cardDetailModal'));
         if (detailModal) detailModal.hide();
         
-        // Mostrar popup de confirmaÃ§Ã£o de data de conclusÃ£o
+        // Mostrar popup de confirmação de data de conclusão
         setTimeout(() => {
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('confirmConclusionDateInput').value = today;
@@ -3743,7 +3743,7 @@
                 })
                 .catch(err => {
                     console.error("Erro ao concluir atividade:", err);
-                    alert("Erro de conexÃ£o.");
+                    alert("Erro de conexão.");
                 });
             });
         }, 300);
@@ -3819,7 +3819,7 @@
             });
         }
         
-        // Grafico de distribuiÃ§Ã£o por colunas
+        // Grafico de distribuição por colunas
         const ctxDistribution = document.getElementById('distributionChart');
         if (ctxDistribution) {
             const rawData = {{ distribuicao_colunas|safe }};
@@ -3851,10 +3851,10 @@
             });
         }
         } catch (chartError) {
-            console.warn('Erro ao inicializar grÃ¡ficos (nÃ£o impede o funcionamento):', chartError);
+            console.warn('Erro ao inicializar gráficos (não impede o funcionamento):', chartError);
         }
         
-        // ForÃ§ar redimensionamento dos grÃ¡ficos quando a aba "MÃ©tricas da Equipe" for exibida
+        // Forçar redimensionamento dos gráficos quando a aba "Métricas da Equipe" for exibida
         const metricsTabTrigger = document.getElementById('metrics-tab');
         if (metricsTabTrigger) {
             metricsTabTrigger.addEventListener('shown.bs.tab', function () {
@@ -3944,7 +3944,7 @@
             updateAddCardDisplay();
         }
         } catch (addCardError) {
-            console.warn('Erro ao inicializar seleÃ§Ã£o de membros (adicionar cartÃ£o):', addCardError);
+            console.warn('Erro ao inicializar seleção de membros (adicionar cartão):', addCardError);
         }
 
         // ============================================
@@ -3967,7 +3967,7 @@
             updateDetailCardDisplay();
         }
         } catch (detailCardError) {
-            console.warn('Erro ao inicializar seleÃ§Ã£o de membros (detalhes cartÃ£o):', detailCardError);
+            console.warn('Erro ao inicializar seleção de membros (detalhes cartão):', detailCardError);
         }
 
         // Event listener for detail modal column select to sync sub-sections
@@ -4149,7 +4149,7 @@
         if (kpiCompletionRate) kpiCompletionRate.textContent = pct + '%';
 
         const kpiCompletionText = document.getElementById('kpiCompletionText');
-        if (kpiCompletionText) kpiCompletionText.textContent = `${completed} de ${total} tarefas concluÃ­das.`;
+        if (kpiCompletionText) kpiCompletionText.textContent = `${completed} de ${total} tarefas concluídas.`;
 
         const kpiOverdueCount = document.getElementById('kpiOverdueCount');
         if (kpiOverdueCount) kpiOverdueCount.textContent = overdue;
@@ -4291,14 +4291,14 @@
                                 const initials = getConfigInitials(c.name);
                                 const avatarDiv = document.createElement('div');
                                 avatarDiv.className = 'avatar-circle';
-                                avatarDiv.title = `ResponsÃ¡vel: ${c.name}`;
+                                avatarDiv.title = `Responsável: ${c.name}`;
                                 avatarDiv.textContent = initials;
                                 avatarContainer.appendChild(avatarDiv);
                             });
                         } else {
                             const emptyAvatar = document.createElement('div');
                             emptyAvatar.className = 'avatar-circle bg-light text-muted';
-                            emptyAvatar.title = 'Sem responsÃ¡vel';
+                            emptyAvatar.title = 'Sem responsável';
                             emptyAvatar.innerHTML = '<i class="bi bi-person"></i>';
                             avatarContainer.appendChild(emptyAvatar);
                         }
@@ -4352,7 +4352,7 @@
                         });
                     }
                 } catch (calErr) {
-                    console.warn("Erro ao atualizar evento no calendÃ¡rio:", calErr);
+                    console.warn("Erro ao atualizar evento no calendário:", calErr);
                 }
 
                 // 4. Update filters and metrics
@@ -4373,11 +4373,11 @@
                     }, 1500);
                 }
             } else {
-                alert("Erro ao salvar: " + (data ? data.error : "Resposta invÃ¡lida"));
+                alert("Erro ao salvar: " + (data ? data.error : "Resposta inválida"));
             }
         })
         .catch(err => {
-            console.error("Erro na requisiÃ§Ã£o:", err);
+            console.error("Erro na requisição:", err);
             alert("Erro ao salvar: " + err.message);
         });
     }
@@ -4490,7 +4490,7 @@
         sessionStorage.setItem('boardHideEmpty_' + '{{ board.id }}', hideEmpty ? 'true' : 'false');
         
         columns.forEach(col => {
-            // Se jÃ¡ foi ocultada pelo filtro de coluna especÃ­fica, mantÃ©m
+            // Se já foi ocultada pelo filtro de coluna específica, mantém
             if (col.style.display === 'none') return;
             
             if (hideEmpty) {
@@ -4605,7 +4605,7 @@
             customCalendar.render();
         }
 
-        // Atualizar as mÃ©tricas e grÃ¡ficos da aba "MÃ©tricas da Equipe"
+        // Atualizar as métricas e gráficos da aba "Métricas da Equipe"
         updateMetricsAndCharts();
     }
 
@@ -4632,10 +4632,10 @@
         const row = document.createElement('div');
         row.className = 'planning-row row g-2 align-items-end mb-2';
         
-        // Formatar para exibiÃ§Ã£o no input datetime-local (YYYY-MM-DDThh:mm)
+        // Formatar para exibição no input datetime-local (YYYY-MM-DDThh:mm)
         const formatForInput = (val) => {
             if (!val) return '';
-            // Se jÃ¡ tiver T e for no formato ISO curto, retorna direto
+            // Se já tiver T e for no formato ISO curto, retorna direto
             if (val.includes('T') && val.length === 16) return val;
             // Se vier do banco de dados DRF com Z
             if (val.includes('Z')) return val.substring(0, 16);
@@ -4644,7 +4644,7 @@
 
         row.innerHTML = `
             <div class="col-12 mb-2">
-                <label class="form-label text-muted small mb-1">InÃ­cio</label>
+                <label class="form-label text-muted small mb-1">Início</label>
                 <div class="d-flex">
                     <input type="datetime-local" class="form-control form-control-sm planning-datetime-inicio me-2" value="${formatForInput(datetimeInicioVal)}" autocomplete="off">
                 </div>
@@ -4852,7 +4852,7 @@
             this.currentDate = new Date();
             this.currentView = 'month'; // 'month', 'week', 'day', 'agenda'
             this.monthNames = [
-                "Janeiro", "Fevereiro", "MarÃ§o", "Abril", "Maio", "Junho",
+                "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
                 "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
             ];
             
@@ -5015,7 +5015,7 @@
                         this.titleEl.textContent = `Semana de ${startDay} de ${startMonth} a ${endDay} de ${endMonth} de ${year}`;
                     }
                 } else if (this.currentView === 'day') {
-                    const dayNames = ["Domingo", "Segunda-feira", "TerÃ§a-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "SÃ¡bado"];
+                    const dayNames = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
                     const dayOfWeek = dayNames[this.currentDate.getDay()];
                     this.titleEl.textContent = `${dayOfWeek}, ${this.currentDate.getDate()} de ${this.monthNames[month]} de ${year}`;
                 }
@@ -5036,7 +5036,7 @@
             if (!this.monthViewEl) return;
             this.monthViewEl.innerHTML = '';
             
-            const weekDayNames = ["Seg", "Ter", "Qua", "Qui", "Sex", "SÃ¡b", "Dom"];
+            const weekDayNames = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
             weekDayNames.forEach(name => {
                 const headerCell = document.createElement('div');
                 headerCell.className = 'custom-calendar-header-cell';
@@ -5153,7 +5153,7 @@
                         if (responsaveisArr.length > 0) {
                             const respContainer = document.createElement('div');
                             respContainer.className = 'd-flex align-items-center flex-shrink-0';
-                            respContainer.title = "ResponsÃ¡veis: " + responsaveisArr.join(', ');
+                            respContainer.title = "Responsáveis: " + responsaveisArr.join(', ');
                             
                             if (responsaveisArr.length === 1) {
                                 const nomeParts = responsaveisArr[0].trim().split(' ');
@@ -5309,7 +5309,7 @@
             hourHeader.textContent = 'Hora';
             this.weekViewEl.appendChild(hourHeader);
             
-            const weekDayNames = ["Seg", "Ter", "Qua", "Qui", "Sex", "SÃ¡b", "Dom"];
+            const weekDayNames = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
             const today = new Date();
             for (let i = 0; i < 7; i++) {
                 const dayDate = new Date(Monday);
@@ -5507,7 +5507,7 @@
             if (monthEvents.length === 0) {
                 this.agendaListEl.innerHTML = `<div class="list-group-item text-center py-4 text-muted border-0">
                                                     <i class="bi bi-calendar-x d-block fs-3 mb-2"></i>
-                                                    Nenhuma atividade programada para este mÃªs.
+                                                    Nenhuma atividade programada para este mês.
                                                </div>`;
                 return;
             }
@@ -5524,7 +5524,7 @@
                 
                 agendaItem.innerHTML = `
                     <div>
-                        <span class="badge bg-light text-dark border me-2">${dateStr}${timeStr ? ' Ã s ' + timeStr : ''}</span>
+                        <span class="badge bg-light text-dark border me-2">${dateStr}${timeStr ? ' às ' + timeStr : ''}</span>
                         <strong class="text-dark">${evt.title}</strong>
                         <div class="text-muted small mt-1">
                             <i class="bi bi-columns-gap me-1"></i>Coluna: ${evt.extendedProps?.coluna || ''} 
@@ -5628,7 +5628,7 @@
                     alert('Erro ao renomear: ' + data.error);
                 }
             }).catch(error => {
-                alert('Erro de conexÃ£o ao renomear a coluna.');
+                alert('Erro de conexão ao renomear a coluna.');
             });
         }
     }
@@ -5654,7 +5654,7 @@
                 alert('Erro ao registrar link: ' + data.error);
             }
         }).catch(error => {
-            alert('Erro de conexÃ£o.');
+            alert('Erro de conexão.');
         });
     }
 
@@ -5674,14 +5674,14 @@
                 alert('Erro ao remover link: ' + data.error);
             }
         }).catch(error => {
-            alert('Erro de conexÃ£o.');
+            alert('Erro de conexão.');
         });
     }
 
     function exportFilteredTasksPDF() {
         const visibleCards = document.querySelectorAll('.kanban-card:not(.d-none)');
         if (visibleCards.length === 0) {
-            alert('Nenhuma tarefa visÃ­vel para exportar.');
+            alert('Nenhuma tarefa visível para exportar.');
             return;
         }
         const cardIds = Array.from(visibleCards).map(card => card.id.replace('card-', ''));
@@ -5713,16 +5713,16 @@
                 },
                 pageLength: 20,
                 lengthMenu: [10, 20, 50, 100],
-                order: [], // MantÃ©m a ordem inicial
+                order: [], // Mantém a ordem inicial
                 columnDefs: [
-                    { orderable: false, targets: -1 } // Desativa ordenaÃ§Ã£o na coluna de aÃ§Ãµes
+                    { orderable: false, targets: -1 } // Desativa ordenação na coluna de ações
                 ]
             });
         }
     });
 </script>
 
-<!-- html2canvas para copiar calendÃ¡rio como imagem -->
+<!-- html2canvas para copiar calendário como imagem -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlQA/bWs901m1Uu+a21qg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script>
     function copyCalendarImage(btn) {
@@ -5733,14 +5733,14 @@
         const calendarElement = document.getElementById('calendar-view');
         
         if (!calendarElement) {
-            alert('CalendÃ¡rio nÃ£o encontrado!');
+            alert('Calendário não encontrado!');
             btn.innerHTML = originalHtml;
             btn.disabled = false;
             return;
         }
 
         html2canvas(calendarElement, {
-            scale: 2, // Melhor resoluÃ§Ã£o
+            scale: 2, // Melhor resolução
             useCORS: true,
             backgroundColor: '#ffffff'
         }).then(canvas => {
@@ -5759,21 +5759,21 @@
                             btn.disabled = false;
                         }, 2000);
                     }).catch(err => {
-                        console.error('Erro ao copiar para a Ã¡rea de transferÃªncia:', err);
-                        alert('Seu navegador bloqueou a cÃ³pia para a Ã¡rea de transferÃªncia.');
+                        console.error('Erro ao copiar para a área de transferência:', err);
+                        alert('Seu navegador bloqueou a cópia para a área de transferência.');
                         btn.innerHTML = originalHtml;
                         btn.disabled = false;
                     });
                 } catch (e) {
                     console.error('Erro ClipboardItem:', e);
-                    alert('Seu navegador nÃ£o suporta a cÃ³pia direta de imagens.');
+                    alert('Seu navegador não suporta a cópia direta de imagens.');
                     btn.innerHTML = originalHtml;
                     btn.disabled = false;
                 }
             }, 'image/png');
         }).catch(err => {
             console.error('Erro ao gerar imagem:', err);
-            alert('Erro ao gerar a imagem do calendÃ¡rio.');
+            alert('Erro ao gerar a imagem do calendário.');
             btn.innerHTML = originalHtml;
             btn.disabled = false;
         });

@@ -549,20 +549,34 @@ class HistoricoCalibracao(models.Model):
             else:
                 self.resultado = "REPROVADO"
         
-        # Auto-calculate próxima_calibracao based on category frequency
-        if self.instrumento and self.instrumento.categoria and self.instrumento.categoria.frequencia_calibracao_meses:
+        # Auto-calculate próxima_calibracao if not provided or based on frequency
+        if not self.proxima_calibracao and self.data_calibracao:
             from dateutil.relativedelta import relativedelta
-            from datetime import date as _date
-            meses = self.instrumento.categoria.frequencia_calibracao_meses
-            # Garantir que data_calibracao é um objeto date (pode chegar como string do POST)
+            from django.utils.dateparse import parse_date
             data_cal = self.data_calibracao
             if isinstance(data_cal, str):
-                from django.utils.dateparse import parse_date
                 data_cal = parse_date(data_cal)
+            
+            frequencia = 12
+            if self.instrumento and self.instrumento.frequencia_meses:
+                frequencia = self.instrumento.frequencia_meses
+            elif self.instrumento and self.instrumento.categoria and self.instrumento.categoria.frequencia_calibracao_meses:
+                frequencia = self.instrumento.categoria.frequencia_calibracao_meses
+                
             if data_cal:
-                self.proxima_calibracao = data_cal + relativedelta(months=meses)
+                self.proxima_calibracao = data_cal + relativedelta(months=frequencia)
         
         super().save(*args, **kwargs)
+
+        # Atualizar automaticamente data_ultima_calibracao e data_proxima_calibracao no Instrumento
+        if self.instrumento_id:
+            try:
+                Instrumento.objects.filter(id=self.instrumento_id).update(
+                    data_ultima_calibracao=self.data_calibracao,
+                    data_proxima_calibracao=self.proxima_calibracao
+                )
+            except Exception:
+                pass
 
     def __str__(self):
         return f"{self.instrumento} - {self.data_calibracao}"

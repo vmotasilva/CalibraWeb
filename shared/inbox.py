@@ -10,7 +10,7 @@ class InboxItem:
     id: str                 # Unique ID for UI tracking (module_id)
     title: str              # Title of the task
     description: str        # Details
-    module: str             # "auditoria", "metrologia", "cotacoes", "quadros", "treinamentos"
+    module: str             # "Auditoria", "Metrologia", "Quadros", "Treinamentos"
     icon: str               # Bootstrap icon class
     url: str                # Where to click to resolve
     action_text: str        # Text for the button
@@ -18,11 +18,11 @@ class InboxItem:
     is_urgent: bool = False # Flag for highlighting very old tasks
 
 def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
-    """Retorna uma lista individual de pendências reais para formar a Inbox."""
+    """Retorna uma lista individual de pendências reais para formar a Inbox e as Notificações por Origem."""
     if not getattr(user, "is_authenticated", False):
         return []
         
-    cache_key = f"inbox_items:v1:user:{getattr(user, 'pk', 'anon')}:global:{is_global}"
+    cache_key = f"inbox_items:v2:user:{getattr(user, 'pk', 'anon')}:global:{is_global}"
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
@@ -36,17 +36,17 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
 
     # 1. Auditoria
     try:
-        if has_module_access(user, "auditoria") and has_view_access(user, "auditoria:modulo"):
+        if has_module_access(user, "auditoria"):
             from auditoria.models import ModeloAuditoria
             from django.db.models import Q
             from auditoria.utils_periodos import calcular_periodos_pendentes
             
             modelos = ModeloAuditoria.objects.filter(ativo=True)
-            if not is_global_viewer:
+            if not is_global_viewer and not (user.is_superuser or user.is_staff):
                 modelos = modelos.filter(Q(responsavel=user) | Q(responsaveis=user)).distinct()
                 
             for modelo in modelos:
-                # Retorna no máximo 3 por modelo para não explodir a inbox se estiver muito atrasado
+                # Retorna no máximo 3 períodos por modelo
                 periodos = calcular_periodos_pendentes(modelo, limit=3)
                 for p in periodos:
                     fim_date = p.get('fim_date')
@@ -67,24 +67,35 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
     except Exception as e:
         pass
 
-    # 2. Metrologia
+    # 2. Metrologia - Calibrações Vencidas
     try:
-        if has_module_access(user, "metrologia") and has_view_access(user, "metrologia:modulo_metrologia"):
+        if has_module_access(user, "metrologia"):
             from metrologia.models import Instrumento
             from django.db.models import Q
 
             global_vencidos = Instrumento.objects.filter(
                 ativo=True,
                 data_proxima_calibracao__lt=hoje,
-            )
+            ).select_related('responsavel')
             
-            if not is_global_viewer and colaborador:
-                global_vencidos = global_vencidos.filter(
+            if not is_global_viewer and colaborador and not (user.is_superuser or user.is_staff):
+                scoped_vencidos = global_vencidos.filter(
                     Q(responsavel=colaborador) | Q(responsavel__isnull=True)
                 )
+                target_vencidos = scoped_vencidos if scoped_vencidos.exists() else global_vencidos
+            else:
+                target_vencidos = global_vencidos
 
-            for inst in global_vencidos:
+            for inst in target_vencidos[:25]:
                 dias_atraso = (hoje - inst.data_proxima_calibracao).days if inst.data_proxima_calibracao else 0
+                try:
+                    target_url = reverse("detalhe_instrumento", args=[inst.id])
+                except Exception:
+                    try:
+                        target_url = reverse("visualizar_instrumento", args=[inst.id])
+                    except Exception:
+                        target_url = "/metrologia/"
+
                 items.append(
                     InboxItem(
                         id=f"metrologia_{inst.id}",
@@ -92,28 +103,36 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                         description=f"{inst.nome} venceu em {inst.data_proxima_calibracao.strftime('%d/%m/%Y')} ({dias_atraso} dias de atraso)",
                         module="Metrologia",
                         icon="bi-tools",
-                        url=reverse("metrologia:instrumento_detail", args=[inst.id]),
+                        url=target_url,
                         action_text="Calibrar",
                         date=inst.data_proxima_calibracao,
                         is_urgent=dias_atraso > 15
                     )
                 )
-    except Exception:
+    except Exception as e:
         pass
 
-    # 3. Cotações (Metrologia novo fluxo)
+    # 3. Metrologia - Cotações em Atraso
     try:
-        if has_module_access(user, "metrologia") and has_view_access(user, "metrologia:solicitacao_list"):
+        if has_module_access(user, "metrologia"):
             from metrologia.models import SolicitacaoCotacao
 
             solicitacoes = SolicitacaoCotacao.objects.exclude(status__in=["CONCLUIDA", "CANCELADA"]).filter(
                 data_solicitacao_orcamento__isnull=False,
                 data_solicitacao_orcamento__lte=hoje,
             )
-            if not is_global_viewer:
-                solicitacoes = solicitacoes.filter(responsavel=user)
+            if not is_global_viewer and not (user.is_superuser or user.is_staff):
+                scoped_sol = solicitacoes.filter(responsavel=user)
+                target_sol = scoped_sol if scoped_sol.exists() else solicitacoes
+            else:
+                target_sol = solicitacoes
 
-            for sol in solicitacoes:
+            for sol in target_sol[:10]:
+                try:
+                    target_url = reverse("metrologia:solicitacao_detail", args=[sol.id])
+                except Exception:
+                    target_url = "/metrologia/solicitacoes/"
+
                 items.append(
                     InboxItem(
                         id=f"cotacao_{sol.id}",
@@ -121,77 +140,83 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                         description=f"Prazo venceu em {sol.data_solicitacao_orcamento.strftime('%d/%m/%Y')}",
                         module="Metrologia",
                         icon="bi-cash-coin",
-                        url=reverse("metrologia:solicitacao_detail", args=[sol.id]),
+                        url=target_url,
                         action_text="Resolver",
                         date=sol.data_solicitacao_orcamento,
                         is_urgent=(hoje - sol.data_solicitacao_orcamento).days > 7
                     )
                 )
-    except Exception:
+    except Exception as e:
         pass
 
     # 4. Quadros (Kanban)
     try:
-        if has_module_access(user, "boards") and has_view_access(user, "boards:dashboard"):
-            from boards.models import Card, BoardMention, BoardNotification
+        if has_module_access(user, "boards"):
+            from boards.models import Card, BoardNotification, BoardMention
             from django.db.models import Q
-            
-            # 4.1 Cartões Atrasados
-            cards_vencidos = Card.objects.filter(
-                coluna__quadro__arquivado=False,
-                data_conclusao__isnull=True,
-                data_entrega__lt=hoje
-            )
-            
-            if not is_global_viewer:
-                cards_vencidos = cards_vencidos.filter(responsaveis=colaborador).distinct()
-                
-            for card in cards_vencidos:
-                if not card.data_entrega:
-                    continue
-                dias = (hoje - card.data_entrega).days
-                items.append(
-                    InboxItem(
-                        id=f"card_{card.id}",
-                        title=f"A tarefa '{card.titulo}' do quadro '{card.coluna.quadro.nome}' está atrasada há {dias} dias",
-                        description=f"Vencida em {card.data_entrega.strftime('%d/%m/%Y')}",
-                        module="Quadros",
-                        icon="bi-kanban",
-                        url=f"{reverse('boards:board_detail', args=[card.coluna.quadro.id])}?card_id={card.id}",
-                        action_text="Ver Card",
-                        date=card.data_entrega,
-                        is_urgent=dias > 5
-                    )
-                )
-                
-            # 4.2 Marcações não lidas
+
+            # 4.1 Tarefas Atrasadas Atribuídas ao Usuário
             if colaborador:
-                mencoes = BoardMention.objects.filter(mencionado=colaborador, visualizada=False)
-                for mencao in mencoes:
+                meus_cartoes_atrasados = Card.objects.filter(
+                    coluna__board__arquivado=False,
+                    responsaveis=colaborador,
+                    data_entrega__lt=hoje,
+                    data_conclusao__isnull=True
+                ).select_related("coluna__board")
+
+                for card in meus_cartoes_atrasados:
+                    dias = (hoje - card.data_entrega).days
                     items.append(
                         InboxItem(
-                            id=f"mention_{mencao.id}",
-                            title=f"Você foi mencionado em um comentário na tarefa '{mencao.comentario.cartao.titulo}' do quadro '{mencao.comentario.cartao.coluna.quadro.nome}'",
-                            description=f"Por {mencao.criado_por.nome_completo if mencao.criado_por else 'Sistema'}",
+                            id=f"board_card_{card.id}",
+                            title=f"Tarefa Atrasada: {card.titulo}",
+                            description=f"Quadro: {card.coluna.board.nome} (Venceu há {dias} dias)",
                             module="Quadros",
-                            icon="bi-at",
-                            url=reverse("boards:read_mention", args=[mencao.id]),
-                            action_text="Ler",
-                            date=mencao.criado_em.date(),
-                            is_urgent=False
+                            icon="bi-kanban",
+                            url=f"{reverse('boards:board_detail', args=[card.coluna.board.id])}?card={card.id}",
+                            action_text="Abrir Tarefa",
+                            date=card.data_entrega,
+                            is_urgent=dias > 3
                         )
                     )
-            # 4.3 Notificações passivas (alterações no cartão)
+
+            # 4.2 Menções não lidas
             if colaborador:
-                notificacoes = BoardNotification.objects.filter(colaborador=colaborador, lida=False)
-                for notif in notificacoes:
+                mencoes = BoardMention.objects.filter(
+                    mencionado=colaborador,
+                    visualizada=False
+                ).select_related("card__coluna__board", "autor")
+                
+                for m in mencoes:
                     items.append(
                         InboxItem(
-                            id=f"notif_{notif.id}",
-                            title=f"A tarefa '{notif.cartao.titulo}' do quadro '{notif.cartao.coluna.quadro.nome}' {notif.mensagem} por {notif.criado_por.nome_completo if notif.criado_por else 'Sistema'}",
-                            description=f"Alteração passiva",
+                            id=f"board_mention_{m.id}",
+                            title=f"Você foi mencionado em '{m.card.titulo}'",
+                            description=f"Por {m.autor.nome_completo if m.autor else 'alguém'} no quadro {m.card.coluna.board.nome}",
                             module="Quadros",
-                            icon="bi-bell",
+                            icon="bi-at",
+                            url=f"{reverse('boards:board_detail', args=[m.card.coluna.board.id])}?card={m.card.id}",
+                            action_text="Ver Menção",
+                            date=m.criado_em.date(),
+                            is_urgent=True
+                        )
+                    )
+
+            # 4.3 Notificações de cartões
+            notificacoes_boards = BoardNotification.objects.filter(
+                usuario=user,
+                lida=False
+            ).select_related("card__coluna__board")[:15]
+
+            for notif in notificacoes_boards:
+                if notif.card:
+                    items.append(
+                        InboxItem(
+                            id=f"board_notif_{notif.id}",
+                            title=notif.mensagem,
+                            description=f"Quadro: {notif.card.coluna.board.nome}",
+                            module="Quadros",
+                            icon="bi-bell-fill",
                             url=reverse("boards:read_board_notification", args=[notif.id]),
                             action_text="Ver Card",
                             date=notif.criado_em.date(),
@@ -199,38 +224,16 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                         )
                     )
     except Exception as e:
-        print(f"Erro no inbox quadros: {e}")
         pass
 
-    # 5. Treinamentos
+    # 5. Treinamentos (Procedimentos, Avaliações de Eficácia e Matrizes)
     try:
-        if has_module_access(user, "procedures") or has_module_access(user, "treinamentos"):
+        if has_module_access(user, "procedures") or has_module_access(user, "treinamentos") or user.is_superuser or user.is_staff:
             from procedures.models import RegistroTreinamento, SolicitacaoValidacaoMatriz
             from datetime import timedelta
             from django.db.models import Q
 
-            # 5.1 Validações de Matriz
-            if colaborador:
-                validacoes = SolicitacaoValidacaoMatriz.objects.filter(
-                    status="pendente",
-                    validador=colaborador,
-                ).select_related("colaborador")[:10]
-                for v in validacoes:
-                    items.append(
-                        InboxItem(
-                            id=f"matriz_{v.id}",
-                            title=f"Validação de Matriz: {v.colaborador.nome_completo}",
-                            description="Pendente de validação de competências pelo líder",
-                            module="Treinamentos",
-                            icon="bi-award",
-                            url=reverse("procedures:matriz_validacao_list"),
-                            action_text="Validar",
-                            date=v.criado_em.date() if hasattr(v, "criado_em") and v.criado_em else hoje,
-                            is_urgent=False,
-                        )
-                    )
-
-            # 5.2 Avaliação de Eficácia pendente (após 30 dias de elegibilidade)
+            # 5.1 Avaliação de Eficácia pendente (após 30 dias de elegibilidade)
             data_limite_30d = hoje - timedelta(days=30)
             qs_eficacia = RegistroTreinamento.objects.filter(
                 ativo=True,
@@ -242,8 +245,8 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                 colaborador__em_ferias=False,
             ).select_related("colaborador", "procedimento", "gestor_responsavel", "colaborador__lider", "colaborador__supervisor", "colaborador__gerente")
 
-            if not is_global_viewer and colaborador:
-                qs_eficacia = qs_eficacia.filter(
+            if not is_global_viewer and colaborador and not (user.is_superuser or user.is_staff):
+                scoped_eficacia = qs_eficacia.filter(
                     Q(gestor_responsavel=colaborador)
                     | (
                         Q(gestor_responsavel__isnull=True)
@@ -254,8 +257,11 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                         )
                     )
                 )
+                target_eficacia = scoped_eficacia if scoped_eficacia.exists() else qs_eficacia
+            else:
+                target_eficacia = qs_eficacia
 
-            for t in qs_eficacia[:15]:
+            for t in target_eficacia[:20]:
                 dias = (hoje - t.data_treinamento).days
                 items.append(
                     InboxItem(
@@ -270,7 +276,35 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                         is_urgent=dias > 60,
                     )
                 )
-    except Exception:
+
+            # 5.2 Validações de Matriz de Habilidade
+            try:
+                qs_matriz = SolicitacaoValidacaoMatriz.objects.filter(
+                    status="pendente",
+                ).select_related("colaborador")
+                if not is_global_viewer and colaborador and not (user.is_superuser or user.is_staff):
+                    scoped_matriz = qs_matriz.filter(validador=colaborador)
+                    target_matriz = scoped_matriz if scoped_matriz.exists() else qs_matriz
+                else:
+                    target_matriz = qs_matriz
+
+                for v in target_matriz[:10]:
+                    items.append(
+                        InboxItem(
+                            id=f"matriz_{v.id}",
+                            title=f"Validação de Matriz: {v.colaborador.nome_completo}",
+                            description="Pendente de validação de competências pelo líder",
+                            module="Treinamentos",
+                            icon="bi-award",
+                            url=reverse("procedures:matriz_avaliacoes"),
+                            action_text="Validar",
+                            date=v.criado_em.date() if hasattr(v, "criado_em") and v.criado_em else hoje,
+                            is_urgent=False,
+                        )
+                    )
+            except Exception:
+                pass
+    except Exception as e:
         pass
 
     # Sort items: oldest date first (most urgent)

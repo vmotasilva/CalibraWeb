@@ -452,10 +452,23 @@
         <!-- TABELA PRINCIPAL / CARDS MOBILE -->
         <div class="col-12 transition-all h-100 d-flex flex-column" id="content-col">
             
-            <div class="d-flex justify-content-between align-items-center mb-2 flex-shrink-0">
-                <span class="badge bg-secondary bg-opacity-10 text-secondary border">
-                    <i class="bi bi-list-ul"></i> <span id="countDisplay">{{ instrumentos.count }}</span> instrumentos
-                </span>
+            <div class="d-flex justify-content-between align-items-center mb-2 flex-shrink-0 flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-secondary bg-opacity-10 text-secondary border">
+                        <i class="bi bi-list-ul"></i> <span id="countDisplay">{{ instrumentos.count }}</span> instrumentos
+                    </span>
+                    <div class="d-inline-flex align-items-center gap-1.5 ms-2">
+                        <label for="pageSizeSelect" class="small text-muted mb-0 fw-semibold" style="font-size: 0.8rem;">Exibir:</label>
+                        <select id="pageSizeSelect" class="form-select form-select-sm py-0 ps-2 pe-4" style="width: auto; font-size: 0.8rem; height: 28px;" onchange="changePageSize(this.value)">
+                            <option value="10">10</option>
+                            <option value="15" selected>15</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                            <option value="all">Todos</option>
+                        </select>
+                    </div>
+                </div>
                 
                 <!-- PAGINATION CONTROLS -->
                 <div class="d-flex align-items-center gap-2 gap-md-3">
@@ -916,17 +929,31 @@ function filtrar() {
 }
 
 let currentPage = 1;
-const itemsPerPage = 15;
+let itemsPerPage = 15;
+
+function changePageSize(val) {
+    if (val === 'all') {
+        itemsPerPage = 999999;
+    } else {
+        itemsPerPage = parseInt(val, 10) || 15;
+    }
+    try {
+        localStorage.setItem('calibra_metro_page_size', val);
+    } catch(e) {}
+    currentPage = 1;
+    filtrar();
+}
 
 function renderPagination(tableRows, mobileCards) {
     const totalItems = tableRows.length;
-    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    const effectivePageSize = (itemsPerPage === 999999) ? (totalItems || 1) : itemsPerPage;
+    const totalPages = Math.ceil(totalItems / effectivePageSize) || 1;
     
     if (currentPage > totalPages) currentPage = totalPages || 1;
     if (currentPage < 1) currentPage = 1;
     
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+    const startIndex = (currentPage - 1) * effectivePageSize;
+    const endIndex = Math.min(startIndex + effectivePageSize, totalItems);
     
     // Esconde todos os filtrados e exibe apenas os da pagina atual na tabela desktop
     tableRows.forEach((row, index) => {
@@ -953,6 +980,8 @@ function renderPagination(tableRows, mobileCards) {
     if (info) {
         if (totalItems === 0) {
             info.innerText = `Nenhum instrumento encontrado.`;
+        } else if (itemsPerPage === 999999 || totalItems <= effectivePageSize) {
+            info.innerText = `Mostrando todos os ${totalItems} instrumentos`;
         } else {
             info.innerText = `Mostrando ${startIndex + 1} a ${endIndex} de ${totalItems} instrumentos`;
         }
@@ -1001,8 +1030,21 @@ function renderPagination(tableRows, mobileCards) {
     }
 }
 
-// Reset page on filter changes (placed properly now)
+// Reset page on filter changes and load saved page size
 document.addEventListener('DOMContentLoaded', function() {
+    try {
+        const savedPageSize = localStorage.getItem('calibra_metro_page_size');
+        const pageSizeSelect = document.getElementById('pageSizeSelect');
+        if (savedPageSize && pageSizeSelect) {
+            pageSizeSelect.value = savedPageSize;
+            if (savedPageSize === 'all') {
+                itemsPerPage = 999999;
+            } else {
+                itemsPerPage = parseInt(savedPageSize, 10) || 15;
+            }
+        }
+    } catch(e) {}
+
     const sInput = document.getElementById('searchInput');
     if (sInput) {
         sInput.addEventListener('keyup', () => { currentPage = 1; });
@@ -1323,23 +1365,38 @@ document.addEventListener('DOMContentLoaded', function() {
     const inputIds = document.getElementById('instrumentos_ids_input');
     const qtdSpan = document.getElementById('qtd-selecionados');
     
+    // Função auxiliar para obter instrumentos únicos selecionados (evitando duplicar desktop + mobile)
+    function getSelectedUniqueInstruments() {
+        const selectedMap = new Map();
+        document.querySelectorAll('.row-select:checked').forEach(cb => {
+            const id = cb.value;
+            if (id && !selectedMap.has(id)) {
+                selectedMap.set(id, {
+                    id: id,
+                    tag: cb.getAttribute('data-tag') || ('ID ' + id),
+                    frequencia: cb.getAttribute('data-frequencia') || '12',
+                });
+            }
+        });
+        return Array.from(selectedMap.values());
+    }
+
     function atualizarBotaoMassa() {
-        const checkboxes = document.querySelectorAll('.row-select:checked');
-        const count = checkboxes.length;
+        const uniqueInstruments = getSelectedUniqueInstruments();
+        const count = uniqueInstruments.length;
         
         botoesMassa.forEach(btn => {
             btn.disabled = (count === 0);
         });
         
-        const ids = Array.from(checkboxes).map(cb => cb.value);
+        const ids = uniqueInstruments.map(inst => inst.id);
         if (inputIds) inputIds.value = ids.join(',');
         if (qtdSpan) qtdSpan.textContent = count;
     }
     
-    // Adiciona listener nos checkboxes individuais
+    // Adiciona listener nos checkboxes individuais e sincroniza desktop e mobile
     document.querySelectorAll('.row-select').forEach(cb => {
         cb.addEventListener('change', function() {
-            // Sincroniza estado de checkboxes de mesmo ID (se existirem na tabela e card mobile)
             const idVal = this.value;
             const checkedVal = this.checked;
             document.querySelectorAll(`.row-select[value="${idVal}"]`).forEach(otherCb => {
@@ -1353,41 +1410,38 @@ document.addEventListener('DOMContentLoaded', function() {
     const selectAllCheckbox = document.getElementById('selectAll');
     if (selectAllCheckbox) {
         selectAllCheckbox.addEventListener('change', function() {
+            const isChecked = selectAllCheckbox.checked;
             document.querySelectorAll('.instrumento-row').forEach(row => {
                 if (row.style.display !== 'none') {
                     const cb = row.querySelector('.row-select');
-                    if (cb) cb.checked = selectAllCheckbox.checked;
+                    if (cb) cb.checked = isChecked;
                 }
             });
             atualizarBotaoMassa();
         });
     }
     
-    // Auto calcular proxima calibracao (Apenas estimativa baseada em meses padrao se for viavel, 
-    // mas em massa a frequencia pode variar. Vamos apenas auto preencher o campo tipo baseado no primeiro)
+    // Modal de Histórico em Massa
     const modalHistoricoMassa = document.getElementById('modalNovoHistoricoMassa');
     if (modalHistoricoMassa) {
         modalHistoricoMassa.addEventListener('show.bs.modal', function () {
             const container = document.getElementById('lista-certificados-dinamicos');
-            const checkboxes = document.querySelectorAll('.row-select:checked');
+            const uniqueInstruments = getSelectedUniqueInstruments();
             
             container.innerHTML = '';
             
-            checkboxes.forEach(cb => {
-                const tag = cb.getAttribute('data-tag');
-                const id = cb.value;
-                
+            uniqueInstruments.forEach(inst => {
                 const col = document.createElement('div');
                 col.className = 'col-md-6 mb-2';
                 
                 const label = document.createElement('label');
                 label.className = 'form-label fw-bold mb-1 small';
-                label.textContent = tag;
+                label.textContent = inst.tag;
                 
                 const input = document.createElement('input');
                 input.type = 'text';
                 input.className = 'form-control form-control-sm';
-                input.name = `certificado_${id}`;
+                input.name = `certificado_${inst.id}`;
                 input.required = true;
                 input.placeholder = 'S/N';
                 
@@ -1395,6 +1449,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 col.appendChild(input);
                 container.appendChild(col);
             });
+            
+            if (qtdSpan) qtdSpan.textContent = uniqueInstruments.length;
+            if (inputIds) inputIds.value = uniqueInstruments.map(i => i.id).join(',');
             
             // Logica Interno/Externo ocultar Fornecedor
             const tipoSelect = modalHistoricoMassa.querySelector('select[name="tipo_calibracao"]');

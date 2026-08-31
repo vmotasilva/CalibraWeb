@@ -126,6 +126,8 @@ def modulo_metrologia_view(request):
         periodos_filtro.append({'value': val, 'label': label})
 
     
+    from metrologia.forms import HistoricoCalibracaoForm
+    
     context = {
         'instrumentos': instrumentos,
         'total_instrumentos': Instrumento.objects.count(),
@@ -145,6 +147,7 @@ def modulo_metrologia_view(request):
         'alerta_60d': alerta_60d,
         'alerta_90d': alerta_90d,
         'alerta_120d': alerta_120d,
+        'historico_form': HistoricoCalibracaoForm(),
     }
     return render(request, 'metrologia/dashboard.html', context)
 
