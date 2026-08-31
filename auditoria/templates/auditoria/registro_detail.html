@@ -546,7 +546,7 @@
     </script>
 
     {% for bloco in blocos_respostas %}
-    <div class="card shadow-sm mb-3">
+    <div class="card shadow-sm mb-3 {% if bloco.is_completo %}border-start border-success border-4{% elif bloco.is_iniciado %}border-start border-warning border-4{% else %}border-start border-danger border-4{% endif %}" id="card-bloco-{{ forloop.counter }}">
         <div class="card-header bg-light border-bottom d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 py-2" 
              style="cursor: pointer; user-select: none;"
              data-bs-toggle="collapse" 
@@ -582,6 +582,23 @@
             </div>
 
             <div class="d-flex align-items-center gap-2 ms-auto ms-sm-0">
+                <!-- Sinalizador de Progresso da Sessão / Bloco -->
+                <div id="badge-progresso-bloco-{{ forloop.counter }}" class="d-inline-flex align-items-center">
+                    {% if bloco.is_completo %}
+                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 small fw-semibold" title="Todas as perguntas desta sessão foram respondidas">
+                            <i class="bi bi-check-circle-fill me-1"></i> 100% Completo
+                        </span>
+                    {% elif bloco.is_iniciado %}
+                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2 py-1 small fw-semibold" title="{{ bloco.total_respondido }} de {{ bloco.total_esperado }} respostas preenchidas (Faltam {{ bloco.total_faltando }})">
+                            <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i> {{ bloco.percentual_progresso }}% • <span class="fw-normal">Faltam {{ bloco.total_faltando }}</span>
+                        </span>
+                    {% else %}
+                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 small fw-semibold" title="Nenhuma pergunta desta sessão foi respondida ainda (Faltam {{ bloco.total_faltando }})">
+                            <i class="bi bi-x-circle-fill me-1"></i> 0% • <span class="fw-normal">Faltam {{ bloco.total_faltando }}</span>
+                        </span>
+                    {% endif %}
+                </div>
+
                 <span class="badge bg-secondary rounded-pill">{{ bloco.linhas|length }} itens</span>
                 <i class="bi bi-chevron-down text-muted transition-icon" style="transition: transform 0.2s ease;"></i>
             </div>
@@ -1177,6 +1194,48 @@ document.addEventListener('DOMContentLoaded', function() {
                 const progressSubtext = document.querySelector('.progress + small');
                 if (progressSubtext && data.preenchidas !== undefined && data.total_perguntas !== undefined) {
                     progressSubtext.textContent = `${data.preenchidas} de ${data.total_perguntas} perguntas respondidas`;
+                }
+
+                // Atualizar dinamicamente os sinalizadores de progresso por sessão/bloco
+                if (data.blocos_resumo && data.blocos_resumo.length) {
+                    data.blocos_resumo.forEach(function(b, idx) {
+                        const blocoIndex = idx + 1;
+                        const badgeContainer = document.getElementById(`badge-progresso-bloco-${blocoIndex}`);
+                        const cardContainer = document.getElementById(`card-bloco-${blocoIndex}`);
+
+                        if (badgeContainer) {
+                            if (b.is_completo) {
+                                badgeContainer.innerHTML = `
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 small fw-semibold" title="Todas as perguntas desta sessão foram respondidas">
+                                        <i class="bi bi-check-circle-fill me-1"></i> 100% Completo
+                                    </span>
+                                `;
+                            } else if (b.is_iniciado) {
+                                badgeContainer.innerHTML = `
+                                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2 py-1 small fw-semibold" title="${b.total_respondido} de ${b.total_esperado} respostas preenchidas (Faltam ${b.total_faltando})">
+                                        <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i> ${b.percentual_progresso}% • <span class="fw-normal">Faltam ${b.total_faltando}</span>
+                                    </span>
+                                `;
+                            } else {
+                                badgeContainer.innerHTML = `
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 small fw-semibold" title="Nenhuma pergunta desta sessão foi respondida ainda (Faltam ${b.total_faltando})">
+                                        <i class="bi bi-x-circle-fill me-1"></i> 0% • <span class="fw-normal">Faltam ${b.total_faltando}</span>
+                                    </span>
+                                `;
+                            }
+                        }
+
+                        if (cardContainer) {
+                            cardContainer.classList.remove('border-start', 'border-success', 'border-warning', 'border-danger', 'border-4');
+                            if (b.is_completo) {
+                                cardContainer.classList.add('border-start', 'border-success', 'border-4');
+                            } else if (b.is_iniciado) {
+                                cardContainer.classList.add('border-start', 'border-warning', 'border-4');
+                            } else {
+                                cardContainer.classList.add('border-start', 'border-danger', 'border-4');
+                            }
+                        }
+                    });
                 }
             } else {
                 triggerEl.innerHTML = originalHtml;

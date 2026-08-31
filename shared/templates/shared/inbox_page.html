@@ -10,15 +10,32 @@
         --hub-border: #d7e2de;
         --hub-muted: #607176;
     }
+    .nav-tabs .nav-link {
+        background-color: #f8fafc;
+        border: 1px solid #e2e8f0;
+        color: #475569;
+        margin-right: 4px;
+        transition: all 0.2s ease;
+    }
+    .nav-tabs .nav-link:hover {
+        background-color: #f1f5f9;
+        color: #0f172a;
+    }
+    .nav-tabs .nav-link.active {
+        background-color: #ffffff !important;
+        border-color: #cbd5e1 #cbd5e1 #ffffff !important;
+        color: #0d6efd !important;
+        font-weight: 700 !important;
+    }
 </style>
-<div class="container py-4" style="max-width: 900px;">
-    <div class="d-flex align-items-center justify-content-between mb-4">
+<div class="container py-4" style="max-width: 950px;">
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
         <div>
-            <h2 class="h3 mb-1"><i class="bi bi-inboxes text-primary"></i> Caixa de Entrada</h2>
-            <p class="text-muted mb-0">Pendências individuais que exigem sua ação imediata.</p>
+            <h2 class="h3 mb-1"><i class="bi bi-inboxes text-primary me-1"></i> Caixa de Entrada</h2>
+            <p class="text-muted mb-0">Pendências e notificações organizadas por módulo que exigem sua ação.</p>
         </div>
         <div class="d-flex flex-column align-items-end">
-            <span class="badge bg-primary fs-6 rounded-pill px-3 py-2 mb-2">{{ inbox_items|length }} itens pendentes</span>
+            <span class="badge bg-primary fs-6 rounded-pill px-3 py-2 mb-1">{{ inbox_items|length }} itens pendentes</span>
             {% if can_toggle_global %}
             <div class="form-check form-switch mt-1">
                 <input class="form-check-input" type="checkbox" role="switch" id="globalSwitch" {% if inbox_is_global %}checked{% endif %} onchange="window.location.href='?global=' + (this.checked ? '1' : '0')">
@@ -41,42 +58,42 @@
     </div>
     {% else %}
     
-    <!-- Nav tabs -->
-    <ul class="nav nav-tabs nav-fill mb-4 border-bottom-0" id="inboxTabs" role="tablist">
+    <!-- Nav tabs organizadas por Origem -->
+    <ul class="nav nav-tabs mb-0 border-bottom" id="inboxTabs" role="tablist">
         <!-- Aba "Todas" -->
         <li class="nav-item" role="presentation">
-            <button class="nav-link active fw-bold text-dark rounded-top-3 border-bottom-0" id="all-tab" data-bs-toggle="tab" data-bs-target="#tab-all" type="button" role="tab" aria-selected="true">
-                Todas <span class="badge bg-secondary ms-1">{{ inbox_items|length }}</span>
+            <button class="nav-link rounded-top-3 {% if active_tab == 'todas' or not active_tab %}active{% endif %}" id="tab-btn-todas" data-bs-toggle="tab" data-bs-target="#tab-pane-todas" type="button" role="tab" aria-selected="{% if active_tab == 'todas' or not active_tab %}true{% else %}false{% endif %}">
+                <i class="bi bi-inboxes me-1"></i> Todas <span class="badge bg-secondary ms-1 rounded-pill">{{ inbox_items|length }}</span>
             </button>
         </li>
-        {% for module_name, items in grouped_items.items %}
+        {% for group in grouped_items.values %}
         <li class="nav-item" role="presentation">
-            <button class="nav-link fw-bold text-muted rounded-top-3 border-bottom-0" id="{{ module_name|slugify }}-tab" data-bs-toggle="tab" data-bs-target="#tab-{{ module_name|slugify }}" type="button" role="tab" aria-selected="false">
-                {{ module_name }} <span class="badge bg-secondary ms-1">{{ items|length }}</span>
+            <button class="nav-link rounded-top-3 {% if active_tab == group.slug %}active{% endif %}" id="tab-btn-{{ group.slug }}" data-bs-toggle="tab" data-bs-target="#tab-pane-{{ group.slug }}" type="button" role="tab" aria-selected="{% if active_tab == group.slug %}true{% else %}false{% endif %}">
+                <i class="bi {{ group.icon }} me-1 text-primary"></i> {{ group.name }} <span class="badge bg-primary ms-1 rounded-pill">{{ group.items|length }}</span>
             </button>
         </li>
         {% endfor %}
     </ul>
 
     <!-- Tab panes -->
-    <div class="tab-content" id="inboxTabsContent">
+    <div class="tab-content border-start border-end border-bottom bg-white rounded-bottom-4 shadow-sm mb-5" id="inboxTabsContent">
         <!-- Aba "Todas" Content -->
-        <div class="tab-pane fade show active" id="tab-all" role="tabpanel" aria-labelledby="all-tab">
-            <div class="list-group shadow-sm border-0 rounded-4 overflow-hidden mb-5 rounded-top-0">
+        <div class="tab-pane fade {% if active_tab == 'todas' or not active_tab %}show active{% endif %}" id="tab-pane-todas" role="tabpanel" aria-labelledby="tab-btn-todas">
+            <div class="list-group list-group-flush rounded-bottom-4 overflow-hidden">
                 {% for item in inbox_items %}
-                <a href="{{ item.url }}" class="list-group-item list-group-item-action d-flex align-items-center gap-3 p-4 {% if item.is_urgent %}border-start border-danger border-4{% else %}border-start border-warning border-4{% endif %}" style="background: var(--hub-surface);">
-                    <div class="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0" style="width: 48px; height: 48px; background-color: var(--hub-ink);">
+                <a href="{{ item.url }}" class="list-group-item list-group-item-action d-flex align-items-center gap-3 p-3 p-md-4 {% if item.is_urgent %}border-start border-danger border-4{% else %}border-start border-warning border-4{% endif %}" style="background: var(--hub-surface);">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0" style="width: 44px; height: 44px; background-color: var(--hub-ink);">
                         <i class="bi {{ item.icon }} fs-5"></i>
                     </div>
                     <div class="flex-grow-1 min-w-0">
                         <div class="d-flex align-items-center gap-2 mb-1">
-                            <span class="badge bg-light text-dark border">{{ item.module|capfirst }}</span>
-                            <h6 class="mb-0 fw-bold fs-5 text-dark text-truncate">{{ item.title }}</h6>
+                            <span class="badge bg-light text-dark border">{{ item.module }}</span>
+                            <h6 class="mb-0 fw-bold fs-6 text-dark text-truncate">{{ item.title }}</h6>
                         </div>
-                        <p class="mb-0 text-muted">{{ item.description }}</p>
+                        <p class="mb-0 text-muted small">{{ item.description }}</p>
                     </div>
                     <div class="text-end flex-shrink-0">
-                        <small class="text-muted d-block mb-2 fw-semibold"><i class="bi bi-clock-history"></i> {{ item.date|date:"d/m/Y" }}</small>
+                        <small class="text-muted d-block mb-1.5 fw-semibold" style="font-size: 0.75rem;"><i class="bi bi-clock-history"></i> {{ item.date|date:"d/m/Y" }}</small>
                         <span class="btn btn-sm btn-outline-primary px-3 rounded-pill fw-bold">{{ item.action_text }}</span>
                     </div>
                 </a>
@@ -84,21 +101,24 @@
             </div>
         </div>
 
-        {% for module_name, items in grouped_items.items %}
+        {% for group in grouped_items.values %}
         <!-- Aba Módulo Content -->
-        <div class="tab-pane fade" id="tab-{{ module_name|slugify }}" role="tabpanel" aria-labelledby="{{ module_name|slugify }}-tab">
-            <div class="list-group shadow-sm border-0 rounded-4 overflow-hidden mb-5 rounded-top-0">
-                {% for item in items %}
-                <a href="{{ item.url }}" class="list-group-item list-group-item-action d-flex align-items-center gap-3 p-4 {% if item.is_urgent %}border-start border-danger border-4{% else %}border-start border-warning border-4{% endif %}" style="background: var(--hub-surface);">
-                    <div class="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0" style="width: 48px; height: 48px; background-color: var(--hub-ink);">
+        <div class="tab-pane fade {% if active_tab == group.slug %}show active{% endif %}" id="tab-pane-{{ group.slug }}" role="tabpanel" aria-labelledby="tab-btn-{{ group.slug }}">
+            <div class="list-group list-group-flush rounded-bottom-4 overflow-hidden">
+                {% for item in group.items %}
+                <a href="{{ item.url }}" class="list-group-item list-group-item-action d-flex align-items-center gap-3 p-3 p-md-4 {% if item.is_urgent %}border-start border-danger border-4{% else %}border-start border-warning border-4{% endif %}" style="background: var(--hub-surface);">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0" style="width: 44px; height: 44px; background-color: var(--hub-ink);">
                         <i class="bi {{ item.icon }} fs-5"></i>
                     </div>
                     <div class="flex-grow-1 min-w-0">
-                        <h6 class="mb-1 fw-bold fs-5 text-dark text-truncate">{{ item.title }}</h6>
-                        <p class="mb-0 text-muted">{{ item.description }}</p>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <span class="badge bg-light text-dark border">{{ item.module }}</span>
+                            <h6 class="mb-0 fw-bold fs-6 text-dark text-truncate">{{ item.title }}</h6>
+                        </div>
+                        <p class="mb-0 text-muted small">{{ item.description }}</p>
                     </div>
                     <div class="text-end flex-shrink-0">
-                        <small class="text-muted d-block mb-2 fw-semibold"><i class="bi bi-clock-history"></i> {{ item.date|date:"d/m/Y" }}</small>
+                        <small class="text-muted d-block mb-1.5 fw-semibold" style="font-size: 0.75rem;"><i class="bi bi-clock-history"></i> {{ item.date|date:"d/m/Y" }}</small>
                         <span class="btn btn-sm btn-outline-primary px-3 rounded-pill fw-bold">{{ item.action_text }}</span>
                     </div>
                 </a>
@@ -109,4 +129,19 @@
     </div>
     {% endif %}
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Sincronizar aba ativa via parâmetro de busca ?tab= ou hash na URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab') || window.location.hash.replace('#', '');
+    if (tabParam) {
+        const targetBtn = document.getElementById('tab-btn-' + tabParam.toLowerCase());
+        if (targetBtn) {
+            const tabInstance = bootstrap.Tab.getOrCreateInstance(targetBtn);
+            tabInstance.show();
+        }
+    }
+});
+</script>
 {% endblock %}

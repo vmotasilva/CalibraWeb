@@ -530,33 +530,57 @@ def hub_view(request):
 
 @login_required
 def inbox_view(request):
-    """View dedicada à Caixa de Entrada de tarefas pendentes individuais"""
+    """View dedicada à Caixa de Entrada de tarefas pendentes individuais, organizada em abas por módulo."""
     from shared.inbox import get_user_inbox_items
-    from collections import defaultdict
-    
+    from collections import OrderedDict
+    from django.utils.text import slugify
+
     can_toggle_global = request.user.is_superuser or request.user.is_staff
-    
+
     if can_toggle_global and 'global' in request.GET:
         if request.GET.get('global') == '1':
             request.session['inbox_global'] = True
         else:
             request.session['inbox_global'] = False
-            
+
     inbox_is_global = request.session.get('inbox_global', False)
-    
+
     inbox_items = get_user_inbox_items(request.user, is_global=inbox_is_global)
-    
-    # Agrupar por módulo
-    grouped_items = defaultdict(list)
+
+    active_tab = (request.GET.get('tab') or 'todas').strip().lower()
+
+    module_icons = {
+        "auditoria": "bi-clipboard-check",
+        "quadros": "bi-kanban",
+        "metrologia": "bi-tools",
+        "treinamentos": "bi-mortarboard",
+        "fornecedores": "bi-truck",
+        "laboratorio": "bi-droplet-half",
+        "pessoas": "bi-people",
+    }
+
+    # Agrupar por módulo preservando a ordem
+    grouped_items: dict[str, dict[str, Any]] = OrderedDict()
     for item in inbox_items:
-        grouped_items[item.module.capitalize()].append(item)
-        
+        mod_name = (item.module or "Outros").strip().capitalize()
+        mod_key = mod_name.lower()
+        if mod_key not in grouped_items:
+            icon = module_icons.get(mod_key, item.icon or "bi-bell")
+            grouped_items[mod_key] = {
+                "name": mod_name,
+                "slug": slugify(mod_name),
+                "icon": icon,
+                "items": [],
+            }
+        grouped_items[mod_key]["items"].append(item)
+
     return render(
         request,
         "shared/inbox_page.html",
         {
             "inbox_items": inbox_items,
-            "grouped_items": dict(grouped_items),
+            "grouped_items": grouped_items,
+            "active_tab": active_tab,
             "can_toggle_global": can_toggle_global,
             "inbox_is_global": inbox_is_global,
         },

@@ -59,20 +59,44 @@ def template_variants(request: Any) -> dict[str, Any]:
 def nav_notifications(request: Any) -> dict[str, Any]:
     """Context processor para navbar.
 
-    Exponibiliza um total de notificações de cobranças (itens que pedem mudança de status/atenção).
+    Exponibiliza contagem total e agrupamento por origem/módulo para o dropdown do sino.
     """
-
     user = getattr(request, "user", None)
     
-    # We use the new Inbox items instead of just raw counts
     from shared.inbox import get_user_inbox_items
-    inbox_items = get_user_inbox_items(user)
+    from django.utils.text import slugify
+    from collections import OrderedDict
     
+    inbox_items = get_user_inbox_items(user)
     total = len(inbox_items)
     
-    # Optional: fetch old counts just in case it's used elsewhere, but total comes from inbox now.
-    counts = get_user_cobrancas_counts(user)
-    
+    # Agrupar itens por origem / módulo para o dropdown do sino
+    module_icons = {
+        "auditoria": "bi-clipboard-check",
+        "quadros": "bi-kanban",
+        "metrologia": "bi-tools",
+        "treinamentos": "bi-mortarboard",
+        "fornecedores": "bi-truck",
+        "laboratorio": "bi-droplet-half",
+        "pessoas": "bi-people",
+    }
+
+    origins_map: dict[str, dict[str, Any]] = OrderedDict()
+    for item in inbox_items:
+        mod_name = (item.module or "Outros").strip().capitalize()
+        mod_key = mod_name.lower()
+        if mod_key not in origins_map:
+            icon = module_icons.get(mod_key, item.icon or "bi-bell")
+            origins_map[mod_key] = {
+                "name": mod_name,
+                "slug": slugify(mod_name),
+                "count": 0,
+                "icon": icon,
+            }
+        origins_map[mod_key]["count"] += 1
+
+    nav_inbox_origins = list(origins_map.values())
+
     unread_board_mentions_count = 0
     if user and user.is_authenticated:
         try:
@@ -86,7 +110,8 @@ def nav_notifications(request: Any) -> dict[str, Any]:
             
     return {
         "nav_notifications_total": total,
-        "nav_inbox_items": inbox_items[:5], # Take top 5 most urgent
+        "nav_inbox_origins": nav_inbox_origins,
+        "nav_inbox_items": inbox_items[:5],
         "unread_board_mentions_count": unread_board_mentions_count,
     }
 

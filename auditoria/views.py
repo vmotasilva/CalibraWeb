@@ -505,6 +505,29 @@ def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
         bloco["lista_total_respostas"] = total_respostas_lista
         bloco["tem_lista_resumo"] = bool(lista_resumo)
 
+        # Cálculo do progresso e pendências específicas desta sessão/bloco
+        total_esperado = 0
+        total_respondido = 0
+        for linha in bloco["linhas"]:
+            if is_semanal or linha.get("usa_colunas_dia"):
+                total_esperado += len(dia_keys)
+                respostas_por_dia = linha.get("respostas_por_dia") or {}
+                total_respondido += sum(1 for k in dia_keys if (respostas_por_dia.get(k) or "").strip())
+            else:
+                total_esperado += 1
+                if (linha.get("resposta_geral") or "").strip():
+                    total_respondido += 1
+
+        percentual_bloco = round((total_respondido / total_esperado) * 100, 1) if total_esperado else 0
+        total_faltando = max(0, total_esperado - total_respondido)
+
+        bloco["total_esperado"] = total_esperado
+        bloco["total_respondido"] = total_respondido
+        bloco["total_faltando"] = total_faltando
+        bloco["percentual_progresso"] = percentual_bloco
+        bloco["is_completo"] = (total_faltando == 0 and total_esperado > 0)
+        bloco["is_iniciado"] = (total_respondido > 0)
+
     blocos = list(blocos_map.values())
     total_perguntas = len(perguntas_consolidadas)
     preenchidas = sum(1 for b in blocos for l in b["linhas"] if l["tem_resposta"])
@@ -1451,10 +1474,32 @@ def registro_create(request, modelo_id=None):
                 fim=periodo_fim_lookup,
             )
     else:
-        initial = {"data_auditoria": dt_date.today()}
+        hoje = dt_date.today()
+        initial = {"data_auditoria": hoje}
         if is_diaria_ou_unica:
-            initial["periodo_inicio"] = initial["data_auditoria"]
-            initial["periodo_fim"] = initial["data_auditoria"]
+            initial["periodo_inicio"] = hoje
+            initial["periodo_fim"] = hoje
+        elif modelo.periodicidade == "SEMANAL":
+            dias_para_segunda = hoje.weekday()  # 0 = Segunda-feira
+            segunda = hoje - timedelta(days=dias_para_segunda)
+            domingo = segunda + timedelta(days=6)
+            initial["periodo_inicio"] = segunda
+            initial["periodo_fim"] = domingo
+        elif modelo.periodicidade == "MENSAL":
+            import calendar
+            primeiro_dia = hoje.replace(day=1)
+            ultimo_dia_mes = calendar.monthrange(hoje.year, hoje.month)[1]
+            ultimo_dia = hoje.replace(day=ultimo_dia_mes)
+            initial["periodo_inicio"] = primeiro_dia
+            initial["periodo_fim"] = ultimo_dia
+
+        p_ini = initial.get("periodo_inicio")
+        p_fim = initial.get("periodo_fim")
+        if p_ini and p_fim:
+            initial["nome"] = f"{modelo.nome} ({p_ini.strftime('%d/%m')} a {p_fim.strftime('%d/%m')})"
+        else:
+            initial["nome"] = f"{modelo.nome}"
+
         form = RegistroAuditoriaForm(initial=initial)
         periodo_inicio_lookup, periodo_fim_lookup = _resolve_periodo_para_comentarios(
             initial.get("data_auditoria"),
@@ -1849,6 +1894,12 @@ def api_atualizar_resposta_inline(request, pk):
                 "tem_lista_resumo": b.get("tem_lista_resumo", False),
                 "lista_resumo": b.get("lista_resumo", []),
                 "lista_total_respostas": b.get("lista_total_respostas", 0),
+                "total_esperado": b.get("total_esperado", 0),
+                "total_respondido": b.get("total_respondido", 0),
+                "total_faltando": b.get("total_faltando", 0),
+                "percentual_progresso": b.get("percentual_progresso", 0),
+                "is_completo": b.get("is_completo", False),
+                "is_iniciado": b.get("is_iniciado", False),
             }
             for b in resumo["blocos"]
         ],

@@ -56,7 +56,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                                 id=f"auditoria_{modelo.id}_{fim_date.isoformat()}",
                                 title=f"Preencher Auditoria: {modelo.nome}",
                                 description=f"Período atrasado: {p['label']}",
-                                module="auditoria",
+                                module="Auditoria",
                                 icon="bi-clipboard-check",
                                 url=reverse("auditoria:selecionar_modelo_preenchimento"),
                                 action_text="Preencher",
@@ -90,7 +90,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                         id=f"metrologia_{inst.id}",
                         title=f"Calibração Vencida: {inst.codigo or inst.nome}",
                         description=f"{inst.nome} venceu em {inst.data_proxima_calibracao.strftime('%d/%m/%Y')} ({dias_atraso} dias de atraso)",
-                        module="metrologia",
+                        module="Metrologia",
                         icon="bi-tools",
                         url=reverse("metrologia:instrumento_detail", args=[inst.id]),
                         action_text="Calibrar",
@@ -119,7 +119,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                         id=f"cotacao_{sol.id}",
                         title=f"Cotação Atrasada: Solicitação #{sol.id}",
                         description=f"Prazo venceu em {sol.data_solicitacao_orcamento.strftime('%d/%m/%Y')}",
-                        module="cotacoes",
+                        module="Metrologia",
                         icon="bi-cash-coin",
                         url=reverse("metrologia:solicitacao_detail", args=[sol.id]),
                         action_text="Resolver",
@@ -155,7 +155,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                         id=f"card_{card.id}",
                         title=f"A tarefa '{card.titulo}' do quadro '{card.coluna.quadro.nome}' está atrasada há {dias} dias",
                         description=f"Vencida em {card.data_entrega.strftime('%d/%m/%Y')}",
-                        module="quadros",
+                        module="Quadros",
                         icon="bi-kanban",
                         url=f"{reverse('boards:board_detail', args=[card.coluna.quadro.id])}?card_id={card.id}",
                         action_text="Ver Card",
@@ -173,7 +173,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                             id=f"mention_{mencao.id}",
                             title=f"Você foi mencionado em um comentário na tarefa '{mencao.comentario.cartao.titulo}' do quadro '{mencao.comentario.cartao.coluna.quadro.nome}'",
                             description=f"Por {mencao.criado_por.nome_completo if mencao.criado_por else 'Sistema'}",
-                            module="quadros",
+                            module="Quadros",
                             icon="bi-at",
                             url=reverse("boards:read_mention", args=[mencao.id]),
                             action_text="Ler",
@@ -190,7 +190,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                             id=f"notif_{notif.id}",
                             title=f"A tarefa '{notif.cartao.titulo}' do quadro '{notif.cartao.coluna.quadro.nome}' {notif.mensagem} por {notif.criado_por.nome_completo if notif.criado_por else 'Sistema'}",
                             description=f"Alteração passiva",
-                            module="quadros",
+                            module="Quadros",
                             icon="bi-bell",
                             url=reverse("boards:read_board_notification", args=[notif.id]),
                             action_text="Ver Card",
@@ -200,6 +200,77 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                     )
     except Exception as e:
         print(f"Erro no inbox quadros: {e}")
+        pass
+
+    # 5. Treinamentos
+    try:
+        if has_module_access(user, "procedures") or has_module_access(user, "treinamentos"):
+            from procedures.models import RegistroTreinamento, SolicitacaoValidacaoMatriz
+            from datetime import timedelta
+            from django.db.models import Q
+
+            # 5.1 Validações de Matriz
+            if colaborador:
+                validacoes = SolicitacaoValidacaoMatriz.objects.filter(
+                    status="pendente",
+                    validador=colaborador,
+                ).select_related("colaborador")[:10]
+                for v in validacoes:
+                    items.append(
+                        InboxItem(
+                            id=f"matriz_{v.id}",
+                            title=f"Validação de Matriz: {v.colaborador.nome_completo}",
+                            description="Pendente de validação de competências pelo líder",
+                            module="Treinamentos",
+                            icon="bi-award",
+                            url=reverse("procedures:matriz_validacao_list"),
+                            action_text="Validar",
+                            date=v.criado_em.date() if hasattr(v, "criado_em") and v.criado_em else hoje,
+                            is_urgent=False,
+                        )
+                    )
+
+            # 5.2 Avaliação de Eficácia pendente (após 30 dias de elegibilidade)
+            data_limite_30d = hoje - timedelta(days=30)
+            qs_eficacia = RegistroTreinamento.objects.filter(
+                ativo=True,
+                procedimento__criticidade="CRITICO",
+                data_treinamento__lte=data_limite_30d,
+                avaliacao_eficacia_status="PENDENTE",
+                colaborador__is_active=True,
+                colaborador__afastado=False,
+                colaborador__em_ferias=False,
+            ).select_related("colaborador", "procedimento", "gestor_responsavel", "colaborador__lider", "colaborador__supervisor", "colaborador__gerente")
+
+            if not is_global_viewer and colaborador:
+                qs_eficacia = qs_eficacia.filter(
+                    Q(gestor_responsavel=colaborador)
+                    | (
+                        Q(gestor_responsavel__isnull=True)
+                        & (
+                            Q(colaborador__lider=colaborador)
+                            | Q(colaborador__supervisor=colaborador)
+                            | Q(colaborador__gerente=colaborador)
+                        )
+                    )
+                )
+
+            for t in qs_eficacia[:15]:
+                dias = (hoje - t.data_treinamento).days
+                items.append(
+                    InboxItem(
+                        id=f"eficacia_{t.id}",
+                        title=f"Avaliação de Eficácia: {t.colaborador.nome_completo}",
+                        description=f"Treinamento crítico {t.procedimento.codigo} realizado há {dias} dias",
+                        module="Treinamentos",
+                        icon="bi-mortarboard",
+                        url=reverse("procedures:avaliacao_eficacia_list"),
+                        action_text="Avaliar",
+                        date=t.data_treinamento,
+                        is_urgent=dias > 60,
+                    )
+                )
+    except Exception:
         pass
 
     # Sort items: oldest date first (most urgent)

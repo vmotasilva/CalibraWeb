@@ -623,7 +623,7 @@
                     </a>
 
                     <div class="dropdown">
-                        <button class="btn btn-sm btn-outline-light position-relative" type="button" id="inboxDropdownMobile" data-bs-toggle="dropdown" aria-expanded="false" title="Caixa de Entrada">
+                        <button class="btn btn-sm btn-outline-light position-relative" type="button" id="inboxDropdownMobile" data-bs-toggle="dropdown" aria-expanded="false" title="Notificações e Pendências">
                             <i class="bi bi-bell"></i>
                             {% if nav_notifications_total and nav_notifications_total|add:0 > 0 %}
                                 <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
@@ -631,21 +631,19 @@
                                 </span>
                             {% endif %}
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" aria-labelledby="inboxDropdownMobile" style="width: 300px; padding: 0;">
-                            <li class="bg-light border-bottom p-2 d-flex justify-content-between align-items-center">
-                                <strong class="mb-0 px-2"><i class="bi bi-inboxes"></i> Inbox</strong>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" aria-labelledby="inboxDropdownMobile" style="min-width: 260px; padding: 0; border-radius: 10px; overflow: hidden;">
+                            <li class="bg-light border-bottom p-2 px-3 d-flex justify-content-between align-items-center">
+                                <strong class="mb-0 small text-dark"><i class="bi bi-bell-fill text-primary me-1"></i> Notificações por Origem</strong>
                                 <span class="badge bg-secondary rounded-pill">{{ nav_notifications_total }}</span>
                             </li>
-                            {% for item in nav_inbox_items %}
+                            {% for origin in nav_inbox_origins %}
                                 <li>
-                                    <a class="dropdown-item py-2 px-3 {% if item.is_urgent %}border-start border-danger border-4{% endif %}" href="{{ item.url }}" style="white-space: normal;">
+                                    <a class="dropdown-item py-2.5 px-3 d-flex justify-content-between align-items-center border-bottom border-light" href="{% url 'inbox' %}?tab={{ origin.slug }}">
                                         <div class="d-flex align-items-center gap-2">
-                                            <div class="text-secondary"><i class="bi {{ item.icon }}"></i></div>
-                                            <div>
-                                                <div class="fw-bold" style="font-size: 0.85rem;">{{ item.title }}</div>
-                                                <div class="text-muted" style="font-size: 0.75rem;">{{ item.description|truncatechars:40 }}</div>
-                                            </div>
+                                            <i class="bi {{ origin.icon }} text-primary fs-6"></i>
+                                            <span class="fw-semibold text-dark small">{{ origin.name }}</span>
                                         </div>
+                                        <span class="badge bg-primary rounded-pill px-2 py-1">{{ origin.count }}</span>
                                     </a>
                                 </li>
                             {% empty %}
@@ -656,8 +654,10 @@
                                     </div>
                                 </li>
                             {% endfor %}
-                            <li class="bg-light border-top p-2 text-center">
-                                <a href="{% url 'inbox' %}" class="text-decoration-none small fw-bold">Ver Inbox completa</a>
+                            <li class="bg-light p-2 text-center border-top">
+                                <a href="{% url 'inbox' %}" class="text-decoration-none small fw-bold text-primary d-inline-flex align-items-center gap-1">
+                                    <i class="bi bi-inboxes"></i> Abrir Caixa de Entrada
+                                </a>
                             </li>
                         </ul>
                     </div>
