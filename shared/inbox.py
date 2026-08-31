@@ -181,6 +181,53 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
     except Exception:
         pass
 
+    # 4. Metrologia - Ocorrências em Aberto
+    try:
+        if has_module_access(user, "metrologia") or user.is_superuser or user.is_staff or getattr(user, "is_authenticated", False):
+            from qms.models import OcorrenciaInstrumento
+
+            ocorrencias_abertas = OcorrenciaInstrumento.objects.filter(
+                status="ABERTA"
+            ).select_related("instrumento", "usuario_responsavel").order_by("-data_ocorrencia")
+
+            for oc in ocorrencias_abertas[:50]:
+                inst = oc.instrumento
+                inst_tag = (inst.tag or inst.codigo or f"ID {inst.id}") if inst else "Instrumento Não Identificado"
+                inst_desc = f"{inst.descricao} — " if inst and inst.descricao else ""
+                tipo_nome = oc.get_tipo_display() if hasattr(oc, 'get_tipo_display') else oc.tipo
+                
+                try:
+                    if inst:
+                        target_url = reverse("detalhe_instrumento", args=[inst.id])
+                    else:
+                        target_url = "/metrologia/"
+                except Exception:
+                    try:
+                        if inst:
+                            target_url = reverse("visualizar_instrumento", args=[inst.id])
+                        else:
+                            target_url = "/metrologia/"
+                    except Exception:
+                        target_url = "/metrologia/"
+
+                data_oc = oc.data_ocorrencia or hoje
+                items.append(
+                    InboxItem(
+                        id=f"ocorrencia_{oc.id}",
+                        title=f"Ocorrência Aberta ({tipo_nome}): {inst_tag}",
+                        description=f"{inst_desc}{oc.descricao}",
+                        module="Metrologia",
+                        icon="bi-exclamation-octagon",
+                        url=target_url,
+                        action_text="Resolver",
+                        date=data_oc,
+                        is_urgent=True,
+                        sub_type="Ocorrências em Aberto"
+                    )
+                )
+    except Exception:
+        pass
+
     # 4. Quadros (Kanban)
     try:
         if has_module_access(user, "boards"):
