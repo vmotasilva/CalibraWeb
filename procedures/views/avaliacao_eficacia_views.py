@@ -1062,42 +1062,49 @@ def avaliacao_eficacia_search_options_api(request):
     """
     Endpoint AJAX para Select2 dos filtros de Setor, Gestor e Procedimento.
     """
-    tipo = request.GET.get('tipo', '').strip().lower()
-    q = request.GET.get('q', '').strip()
+    try:
+        tipo = request.GET.get('tipo', '').strip().lower()
+        q = request.GET.get('q', '').strip()
 
-    results = []
-    if tipo == 'setor':
-        qs = Setor.objects.all()
-        if q:
-            qs = qs.filter(nome__icontains=q)
-        qs = qs.order_by('nome')[:50]
-        results = [{'id': str(s.id), 'text': s.nome} for s in qs]
+        results = []
+        if tipo == 'setor':
+            qs = Setor.objects.all()
+            if q:
+                qs = qs.filter(nome__icontains=q)
+            qs = qs.order_by('nome')[:50]
+            results = [{'id': str(s.id), 'text': s.nome} for s in qs]
 
-    elif tipo in ['gestor', 'lider', 'responsavel']:
-        qs = Colaborador.objects.filter(is_active=True).filter(
-            Q(posto_lideranca__in=['LIDER', 'SUPERVISOR', 'GERENTE', 'QUALIDADE', 'PROCESSOS', 'MANUTENCAO', 'EHS']) |
-            Q(id__in=Colaborador.objects.values_list('lider_id', flat=True)) |
-            Q(id__in=Colaborador.objects.values_list('supervisor_id', flat=True)) |
-            Q(id__in=Colaborador.objects.values_list('gerente_id', flat=True))
-        ).distinct()
-        if q:
-            qs = qs.filter(
-                Q(nome_completo__icontains=q) |
-                Q(matricula__icontains=q)
-            )
-        qs = qs.order_by('nome_completo')[:50]
-        results = [{'id': str(g.id), 'text': f"{g.nome_completo} ({g.matricula})" if g.matricula else g.nome_completo} for g in qs]
+        elif tipo in ['gestor', 'lider', 'responsavel']:
+            qs = Colaborador.objects.filter(is_active=True).filter(
+                Q(posto_lideranca__in=['LIDER', 'SUPERVISOR', 'GERENTE', 'QUALIDADE', 'PROCESSOS', 'MANUTENCAO', 'EHS']) |
+                Q(id__in=Colaborador.objects.values_list('lider_id', flat=True)) |
+                Q(id__in=Colaborador.objects.values_list('supervisor_id', flat=True)) |
+                Q(id__in=Colaborador.objects.values_list('gerente_id', flat=True))
+            ).distinct()
+            if q:
+                qs = qs.filter(
+                    Q(nome_completo__icontains=q) |
+                    Q(matricula__icontains=q)
+                )
+            qs = qs.order_by('nome_completo')[:50]
+            results = [{'id': str(g.id), 'text': f"{g.nome_completo} ({g.matricula})" if g.matricula else g.nome_completo} for g in qs]
 
-    elif tipo == 'procedimento':
-        qs = Procedimento.objects.filter(criticidade='CRITICO')
-        if q:
-            qs = qs.filter(
-                Q(codigo__icontains=q) |
-                Q(nome__icontains=q)
-            )
-        qs = qs.order_by('codigo', 'nome')[:50]
-        results = [{'id': str(p.id), 'text': f"{p.codigo} - {p.nome}"} for p in qs]
+        elif tipo == 'procedimento':
+            qs = Procedimento.objects.filter(
+                Q(criticidade__iexact='CRITICO') |
+                Q(id__in=RegistroTreinamento.objects.filter(procedimento__criticidade__iexact='CRITICO').values_list('procedimento_id', flat=True))
+            ).distinct()
+            if q:
+                qs = qs.filter(
+                    Q(codigo__icontains=q) |
+                    Q(nome__icontains=q) |
+                    Q(descricao__icontains=q)
+                )
+            qs = qs.order_by('codigo', 'nome')[:50]
+            results = [{'id': str(p.id), 'text': f"{p.codigo} - {p.nome}" if p.codigo and p.nome else (p.nome or p.codigo or f"Procedimento #{p.id}")} for p in qs]
 
-    return JsonResponse({'results': results})
+        return JsonResponse({'results': results})
+    except Exception as e:
+        return JsonResponse({'results': [], 'error': str(e)}, status=200)
 
 
