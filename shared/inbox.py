@@ -24,7 +24,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
     if not getattr(user, "is_authenticated", False):
         return []
         
-    cache_key = f"inbox_items:v3:user:{getattr(user, 'pk', 'anon')}:global:{is_global}"
+    cache_key = f"inbox_items:v4:user:{getattr(user, 'pk', 'anon')}:global:{is_global}"
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
@@ -539,6 +539,134 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                         sub_type="Ocorrências Abertas"
                     )
                 )
+    except Exception:
+        pass
+
+    # 7. Quadros de Atividades (Boards)
+    try:
+        if has_module_access(user, "quadros") or user.is_superuser or user.is_staff or getattr(user, "is_authenticated", False):
+            from boards.models import Card, BoardNotification
+            from django.db.models import Q
+
+            # 7.1 Notificações não lidas do Quadro (menções, alertas)
+            try:
+                if colaborador:
+                    notifs_qs = BoardNotification.objects.filter(
+                        colaborador=colaborador,
+                        lida=False
+                    ).select_related('cartao__coluna__quadro', 'criado_por')
+
+                    for n in notifs_qs[:20]:
+                        card = n.cartao
+                        quadro = card.coluna.quadro if card and card.coluna else None
+                        quadro_id = quadro.id if quadro else 1
+                        target_url = reverse("boards:read_board_notification", args=[n.id]) if hasattr(reverse, '__call__') else f"/boards/{quadro_id}/?card={card.id}"
+                        
+                        items.append(
+                            InboxItem(
+                                id=f"board_notif_{n.id}",
+                                title=f"Alerta: {card.titulo if card else 'Atividade'}",
+                                description=n.mensagem or f"Atualização em {quadro.nome if quadro else 'Quadro'}",
+                                module="Quadros",
+                                icon="bi-chat-left-dots",
+                                url=target_url,
+                                action_text="Visualizar",
+                                date=n.criado_em.date() if n.criado_em else hoje,
+                                is_urgent=False,
+                                sub_type="Menções e Alertas"
+                            )
+                        )
+            except Exception:
+                pass
+
+            # 7.2 Tarefas Pendentes, Atrasadas e Próximas Entregas nos Quadros
+            try:
+                base_cards = Card.objects.filter(
+                    data_conclusao__isnull=True,
+                    coluna__arquivada=False,
+                    coluna__quadro__arquivado=False
+                ).select_related('coluna__quadro').prefetch_related('responsaveis')
+
+                if not is_global_viewer and colaborador and not (user.is_superuser or user.is_staff):
+                    scoped_cards = base_cards.filter(
+                        Q(responsaveis=colaborador) | Q(criado_por=colaborador) | Q(coluna__quadro__membros=colaborador) | Q(coluna__quadro__todos_colaboradores=True)
+                    ).distinct()
+                    target_cards = scoped_cards
+                else:
+                    target_cards = base_cards
+
+                for card in target_cards[:100]:
+                    quadro = card.coluna.quadro
+                    target_url = f"{reverse('boards:board_detail', args=[quadro.id])}?card={card.id}"
+                    
+                    if card.data_entrega:
+                        if card.data_entrega < hoje:
+                            dias_atraso = (hoje - card.data_entrega).days
+                            items.append(
+                                InboxItem(
+                                    id=f"board_card_{card.id}",
+                                    title=f"Ação em Atraso: {card.titulo}",
+                                    description=f"Quadro: {quadro.nome} | Coluna: {card.coluna.nome} | Venceu há {dias_atraso} dias ({card.data_entrega.strftime('%d/%m/%Y')})",
+                                    module="Quadros",
+                                    icon="bi-kanban",
+                                    url=target_url,
+                                    action_text="Resolver",
+                                    date=card.data_entrega,
+                                    is_urgent=dias_atraso > 7 or card.prioridade == 'ALTA',
+                                    sub_type="Tarefas em Atraso"
+                                )
+                            )
+                        elif card.data_entrega <= hoje + timedelta(days=7):
+                            dias_restantes = (card.data_entrega - hoje).days
+                            prazo_txt = "hoje" if dias_restantes == 0 else (f"em {dias_restantes} dia(s)" if dias_restantes > 0 else "")
+                            items.append(
+                                InboxItem(
+                                    id=f"board_card_{card.id}",
+                                    title=f"Entrega Próxima: {card.titulo}",
+                                    description=f"Quadro: {quadro.nome} | Coluna: {card.coluna.nome} | Vence {prazo_txt} ({card.data_entrega.strftime('%d/%m/%Y')})",
+                                    module="Quadros",
+                                    icon="bi-clock-history",
+                                    url=target_url,
+                                    action_text="Resolver",
+                                    date=card.data_entrega,
+                                    is_urgent=card.prioridade == 'ALTA',
+                                    sub_type="Próximas Entregas"
+                                )
+                            )
+                        else:
+                            # Tarefa pendente com prazo futuro
+                            items.append(
+                                InboxItem(
+                                    id=f"board_card_{card.id}",
+                                    title=f"Tarefa: {card.titulo}",
+                                    description=f"Quadro: {quadro.nome} | Coluna: {card.coluna.nome} | Prazo: {card.data_entrega.strftime('%d/%m/%Y')}",
+                                    module="Quadros",
+                                    icon="bi-kanban",
+                                    url=target_url,
+                                    action_text="Acessar",
+                                    date=card.data_entrega,
+                                    is_urgent=False,
+                                    sub_type="Tarefas Pendentes"
+                                )
+                            )
+                    else:
+                        # Tarefa sem prazo de entrega definido
+                        items.append(
+                            InboxItem(
+                                id=f"board_card_{card.id}",
+                                title=f"Tarefa: {card.titulo}",
+                                description=f"Quadro: {quadro.nome} | Coluna: {card.coluna.nome}",
+                                module="Quadros",
+                                icon="bi-check2-square",
+                                url=target_url,
+                                action_text="Acessar",
+                                date=card.criado_em.date() if card.criado_em else hoje,
+                                is_urgent=False,
+                                sub_type="Tarefas Pendentes"
+                            )
+                        )
+            except Exception:
+                pass
     except Exception:
         pass
 
