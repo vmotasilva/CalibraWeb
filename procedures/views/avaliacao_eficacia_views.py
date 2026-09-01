@@ -37,7 +37,7 @@ def avaliacao_eficacia_list_view(request):
     # Obter dados para os filtros
     setores_list = Setor.objects.order_by('nome')
     gestores_list = Colaborador.objects.filter(is_active=True).filter(
-        Q(posto_lideranca__in=['LIDER', 'SUPERVISOR', 'GERENTE']) |
+        Q(posto_lideranca__in=['LIDER', 'SUPERVISOR', 'GERENTE', 'QUALIDADE', 'PROCESSOS', 'MANUTENCAO', 'EHS']) |
         Q(id__in=Colaborador.objects.values_list('lider_id', flat=True)) |
         Q(id__in=Colaborador.objects.values_list('supervisor_id', flat=True)) |
         Q(id__in=Colaborador.objects.values_list('gerente_id', flat=True))
@@ -1075,7 +1075,7 @@ def avaliacao_eficacia_search_options_api(request):
 
     elif tipo in ['gestor', 'lider', 'responsavel']:
         qs = Colaborador.objects.filter(is_active=True).filter(
-            Q(posto_lideranca__in=['LIDER', 'SUPERVISOR', 'GERENTE']) |
+            Q(posto_lideranca__in=['LIDER', 'SUPERVISOR', 'GERENTE', 'QUALIDADE', 'PROCESSOS', 'MANUTENCAO', 'EHS']) |
             Q(id__in=Colaborador.objects.values_list('lider_id', flat=True)) |
             Q(id__in=Colaborador.objects.values_list('supervisor_id', flat=True)) |
             Q(id__in=Colaborador.objects.values_list('gerente_id', flat=True))

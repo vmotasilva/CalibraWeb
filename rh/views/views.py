@@ -3833,7 +3833,7 @@ def atualizar_liderancas_em_massa(request):
     turnos = TURNOS_CHOICES
     
     # Listar colaboradores que podem ser líderes, supervisores ou gerentes
-    lideres = Colaborador.objects.filter(posto_lideranca__in=["LIDER", "SUPERVISOR", "GERENTE"], is_active=True).order_by('nome_completo')
+    lideres = Colaborador.objects.filter(posto_lideranca__in=["LIDER", "SUPERVISOR", "GERENTE", "QUALIDADE", "PROCESSOS", "MANUTENCAO", "EHS"], is_active=True).order_by('nome_completo')
     supervisores = Colaborador.objects.filter(posto_lideranca__in=["SUPERVISOR", "GERENTE"], is_active=True).order_by('nome_completo')
     gerentes = Colaborador.objects.filter(posto_lideranca="GERENTE", is_active=True).order_by('nome_completo')
     

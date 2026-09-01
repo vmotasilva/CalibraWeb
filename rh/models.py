@@ -14,6 +14,10 @@ POSTO_LIDERANCA_CHOICES = [
     ("LIDER", "Líder"),
     ("SUPERVISOR", "Supervisor"),
     ("GERENTE", "Gerente"),
+    ("QUALIDADE", "Qualidade"),
+    ("PROCESSOS", "Processos"),
+    ("MANUTENCAO", "Manutenção"),
+    ("EHS", "EHS"),
 ]
 
 
