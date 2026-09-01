@@ -87,6 +87,12 @@ def root_view(request):
                 "qtd_pendentes": data["qtd_solicitacoes_qms"],
                 "today": data["hoje"],
                 "hoje_display": data["hoje_display"],
+                "categorias": data.get("categorias", []),
+                "setores": data.get("setores", []),
+                "categorias_filtro": data.get("categorias_filtro", []),
+                "setores_filtro": data.get("setores_filtro", []),
+                "periodos_filtro": data.get("periodos_filtro", []),
+                "fornecedores": data.get("fornecedores", []),
             }
         except Exception as e:
             from datetime import date
@@ -99,6 +105,12 @@ def root_view(request):
                 "qtd_pendentes": 0,
                 "today": date.today().strftime('%Y-%m-%d'),
                 "hoje_display": date.today().strftime('%d/%m/%Y'),
+                "categorias": [],
+                "setores": [],
+                "categorias_filtro": [],
+                "setores_filtro": [],
+                "periodos_filtro": [],
+                "fornecedores": [],
                 "error": str(e),
             }
         

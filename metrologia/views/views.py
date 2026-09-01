@@ -1568,7 +1568,7 @@ def get_metrologia_dashboard_data():
             'tratativa': tratativa,
             'is_internal': is_internal,
             'activity_type': acao,
-            'frequencia': inst.frequencia or 12,
+            'frequencia': getattr(inst, 'frequencia_meses', 12) or 12,
             'ativo': getattr(inst, 'ativo', True),
             'resultado_ultima_calibracao': getattr(inst, 'resultado_ultima_calibracao', 'APROVADO') or 'APROVADO',
             'data_proxima_calibracao': prox_data.strftime('%Y-%m-%d') if prox_data else None,
