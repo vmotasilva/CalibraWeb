@@ -1093,11 +1093,10 @@ def avaliacao_eficacia_search_options_api(request):
         if q:
             qs = qs.filter(
                 Q(codigo__icontains=q) |
-                Q(nome__icontains=q) |
-                Q(titulo__icontains=q)
+                Q(nome__icontains=q)
             )
         qs = qs.order_by('codigo', 'nome')[:50]
-        results = [{'id': str(p.id), 'text': f"{p.codigo} - {getattr(p, 'titulo', None) or p.nome}"} for p in qs]
+        results = [{'id': str(p.id), 'text': f"{p.codigo} - {p.nome}"} for p in qs]
 
     return JsonResponse({'results': results})
 

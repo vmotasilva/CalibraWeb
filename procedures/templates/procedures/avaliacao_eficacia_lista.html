@@ -183,7 +183,7 @@
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
-            <form method="get" action="{% url 'procedures:avaliacao_eficacia_list' %}">
+            <form method="get" action="{% url 'procedures:avaliacao_eficacia_list' %}" autocomplete="off">
                 <input type="hidden" name="q" value="{{ query|default:busca|default:'' }}">
                 {% if ordenacao %}<input type="hidden" name="ordenacao" value="{{ ordenacao }}">{% endif %}
                 <div class="modal-body py-3">
@@ -769,11 +769,36 @@
 <!-- Script para gerenciamento e modais -->
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Desativar completamente o auto-preenchimento do navegador nos campos do Select2
+        if (window.jQuery) {
+            $(document).on('select2:open', function() {
+                setTimeout(function() {
+                    const searchFields = document.querySelectorAll('.select2-container--open .select2-search__field');
+                    searchFields.forEach(function(field) {
+                        field.setAttribute('autocomplete', 'new-password');
+                        field.setAttribute('autocorrect', 'off');
+                        field.setAttribute('autocapitalize', 'off');
+                        field.setAttribute('spellcheck', 'false');
+                        field.setAttribute('data-lpignore', 'true');
+                        field.setAttribute('data-1p-ignore', 'true');
+                        field.setAttribute('data-form-type', 'other');
+                        field.setAttribute('name', 'no_autofill_' + Math.random().toString(36).substring(7));
+                    });
+                }, 10);
+            });
+        }
+
         // ============================================
         // Inicialização do Select2 com AJAX nos Filtros
         // ============================================
         function initSelect2Filters() {
             if (!window.jQuery || !$.fn.select2) return;
+
+            const select2Lang = {
+                noResults: function() { return "Nenhum resultado encontrado"; },
+                searching: function() { return "Buscando..."; },
+                errorLoading: function() { return "Não foi possível carregar os resultados"; }
+            };
 
             // 1. Setor com AJAX
             $('#filtro-select-setor').select2({
@@ -782,10 +807,11 @@
                 placeholder: '-- Todos os Setores --',
                 allowClear: true,
                 width: '100%',
+                language: select2Lang,
                 ajax: {
                     url: "{% url 'procedures:avaliacao_eficacia_search_options_api' %}?tipo=setor",
                     dataType: 'json',
-                    delay: 250,
+                    delay: 200,
                     data: function(params) {
                         return { q: params.term || '' };
                     },
@@ -803,10 +829,11 @@
                 placeholder: '-- Todos os Gestores --',
                 allowClear: true,
                 width: '100%',
+                language: select2Lang,
                 ajax: {
                     url: "{% url 'procedures:avaliacao_eficacia_search_options_api' %}?tipo=gestor",
                     dataType: 'json',
-                    delay: 250,
+                    delay: 200,
                     data: function(params) {
                         return { q: params.term || '' };
                     },
@@ -824,10 +851,11 @@
                 placeholder: '-- Todos os Procedimentos --',
                 allowClear: true,
                 width: '100%',
+                language: select2Lang,
                 ajax: {
                     url: "{% url 'procedures:avaliacao_eficacia_search_options_api' %}?tipo=procedimento",
                     dataType: 'json',
-                    delay: 250,
+                    delay: 200,
                     data: function(params) {
                         return { q: params.term || '' };
                     },
@@ -854,7 +882,11 @@
                     $('#modal-field-gestor').select2({
                         theme: 'bootstrap-5',
                         dropdownParent: $('#avaliacaoModal'),
-                        width: '100%'
+                        width: '100%',
+                        language: {
+                            noResults: function() { return "Nenhum resultado encontrado"; },
+                            searching: function() { return "Buscando..."; }
+                        }
                     });
                 }
             });
