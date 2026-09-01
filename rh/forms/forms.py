@@ -86,7 +86,9 @@ class ColaboradorForm(forms.ModelForm):
             "matricula_global": forms.TextInput(attrs={"class": "form-control"}),
             "cpf": forms.TextInput(attrs={
                 "class": "form-control",
-                "placeholder": "000.000.000-00"
+                "placeholder": "000.000.000-00",
+                "maxlength": "14",
+                "autocomplete": "off"
             }),
             "cargo": forms.TextInput(attrs={"class": "form-control"}),
             "posto_trabalho": forms.TextInput(attrs={"class": "form-control"}),
@@ -106,8 +108,25 @@ class ColaboradorForm(forms.ModelForm):
             "em_ferias": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
 
+    def clean_cpf(self):
+        cpf = self.cleaned_data.get('cpf')
+        if not cpf:
+            return None
+        nums = re.sub(r'\D', '', str(cpf))
+        if not nums:
+            return None
+        if len(nums) == 11:
+            return f"{nums[:3]}.{nums[3:6]}.{nums[6:9]}-{nums[9:]}"
+        return cpf
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        
+        # Formatar CPF existente
+        if self.instance and self.instance.cpf:
+            raw_cpf = re.sub(r'\D', '', str(self.instance.cpf))
+            if len(raw_cpf) == 11:
+                self.initial['cpf'] = f"{raw_cpf[:3]}.{raw_cpf[3:6]}.{raw_cpf[6:9]}-{raw_cpf[9:]}"
         
         # 1. Filtrar lider (Líder / Superior Direto) para mostrar Colaboradores com posto_lideranca de gestão
         lider_qs = Colaborador.objects.filter(
