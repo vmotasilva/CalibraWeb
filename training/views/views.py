@@ -507,6 +507,12 @@ def dashboard_treinamentos_view(request):
     filtro_instrutor_responsavel_list = request.GET.getlist('instrutor_responsavel')
     filtro_colaborador_id = (request.GET.get('colaborador_id') or '').strip()
     filtro_colaborador_q = (request.GET.get('colaborador_q') or '').strip()
+    filtro_status = (
+        request.GET.get('status_treinamento')
+        or request.GET.get('filtro_status')
+        or request.GET.get('situacao')
+        or ''
+    ).strip().upper()
 
     # Se veio apenas com texto e ele retorna UM único colaborador, promover para ID
     # (evita ambiguidade e permite cálculo por perfil no dashboard)
@@ -548,6 +554,7 @@ def dashboard_treinamentos_view(request):
         or filtro_instrutor_responsavel_list
         or bool(filtro_colaborador_id)
         or bool(filtro_colaborador_q)
+        or bool(filtro_status)
     )
     
     # Cache key para estatísticas do dashboard (apenas sem filtros)
@@ -567,6 +574,7 @@ def dashboard_treinamentos_view(request):
             cached_data['filtro_instrutor_responsavel_list'] = filtro_instrutor_responsavel_list
             cached_data['filtro_colaborador_id'] = filtro_colaborador_id
             cached_data['filtro_colaborador_q'] = filtro_colaborador_q
+            cached_data['filtro_status'] = filtro_status
             cached_data.setdefault('instrutores_responsaveis', [])
             cached_data.setdefault('pendencias_dashboard', [])
             cached_data.setdefault('total_pendencias_dashboard', 0)
@@ -729,9 +737,6 @@ def dashboard_treinamentos_view(request):
         )
     ).order_by('-has_valid_date', '-data_treinamento', '-id').values('id')[:1]
     
-    # Queryset filtrado apenas com registros únicos
-    registros_unicos = valid_registros.filter(id=Subquery(latest_id_subquery))
-    
     # Definição unificada de status vigente e pendente (referência: data de aprovação do documento)
     vigentes_q = Q(data_treinamento__isnull=False) & (
         Q(procedimento__data_aprovacao__isnull=True) |
@@ -741,6 +746,15 @@ def dashboard_treinamentos_view(request):
         Q(procedimento__data_aprovacao__isnull=False) &
         Q(data_treinamento__lt=F('procedimento__data_aprovacao'))
     )
+
+    # Aplicar filtro de situação (Pendente / Vigente) se selecionado
+    if filtro_status == 'PENDENTE':
+        valid_registros = valid_registros.filter(pendentes_q)
+    elif filtro_status == 'VIGENTE':
+        valid_registros = valid_registros.filter(vigentes_q)
+
+    # Queryset filtrado apenas com registros únicos
+    registros_unicos = valid_registros.filter(id=Subquery(latest_id_subquery))
 
     # Estatísticas gerais - USANDO REGISTROS ÚNICOS (sem duplicatas)
     total_treinamentos = registros_unicos.count()
@@ -1293,6 +1307,7 @@ def dashboard_treinamentos_view(request):
     context['filtro_instrutor_responsavel'] = filtro_instrutor_responsavel
     context['filtro_colaborador_id'] = filtro_colaborador_id
     context['filtro_colaborador_q'] = filtro_colaborador_q
+    context['filtro_status'] = filtro_status
     
     # Cachear contexto por 5 minutos (300 segundos) - apenas sem filtros
     if not has_filters:

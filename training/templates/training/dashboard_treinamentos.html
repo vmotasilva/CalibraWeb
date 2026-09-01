@@ -201,7 +201,15 @@
                                     </ul>
                                 </div>
                             </div>
-                            <div class="col-md-8">
+                            <div class="col-md-4">
+                                <label class="form-label text-muted small fw-bold">Situação</label>
+                                <select id="filterStatusTreinamento" class="form-select form-select-sm">
+                                    <option value="" {% if not filtro_status %}selected{% endif %}>Todos (Geral)</option>
+                                    <option value="PENDENTE" {% if filtro_status == 'PENDENTE' %}selected{% endif %}>Pendentes</option>
+                                    <option value="VIGENTE" {% if filtro_status == 'VIGENTE' %}selected{% endif %}>Vigentes</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
                                 <label class="form-label text-muted small fw-bold">Colaborador</label>
                                 <select id="filterColaboradorId" class="form-select form-select-sm">
                                     <option value="">Todos</option>
@@ -1519,9 +1527,12 @@ document.addEventListener('DOMContentLoaded', function() {
             params.delete(category);
         });
 
-        // Remover filtros de colaborador (controlados pelos inputs)
+        // Remover filtros de colaborador e situação
         params.delete('colaborador_id');
         params.delete('colaborador_q');
+        params.delete('status_treinamento');
+        params.delete('filtro_status');
+        params.delete('situacao');
 
         // Aplicar seleção atual
         Object.keys(selectedFilters).forEach(category => {
@@ -1539,6 +1550,11 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (colaboradorQ) {
             params.set('colaborador_q', colaboradorQ);
         }
+
+        const statusTreinamento = (document.getElementById('filterStatusTreinamento')?.value || '').trim();
+        if (statusTreinamento) {
+            params.set('status_treinamento', statusTreinamento);
+        }
         
         const url = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
         console.log('Navigating to:', url);
@@ -1555,17 +1571,25 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Clear all filters button
+    function handleClearAllFilters(e) {
+        if (e) e.preventDefault();
+        document.querySelectorAll('.filter-checkbox').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        const colabSelect = document.getElementById('filterColaboradorId');
+        if (colabSelect) colabSelect.value = '';
+        const statusSelect = document.getElementById('filterStatusTreinamento');
+        if (statusSelect) statusSelect.value = '';
+        window.location.href = window.location.pathname;
+    }
+
     const clearBtn = document.getElementById('clearFilters');
     if (clearBtn) {
-        clearBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            document.querySelectorAll('.filter-checkbox').forEach(checkbox => {
-                checkbox.checked = false;
-            });
-            const colabSelect = document.getElementById('filterColaboradorId');
-            if (colabSelect) colabSelect.value = '';
-            window.location.href = window.location.pathname;
-        });
+        clearBtn.addEventListener('click', handleClearAllFilters);
+    }
+    const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+    if (clearFiltersBtn) {
+        clearFiltersBtn.addEventListener('click', handleClearAllFilters);
     }
 
     const pendingPageSizeSelect = document.getElementById('pendenciasPageSize');
@@ -2644,6 +2668,11 @@ document.addEventListener('DOMContentLoaded', function() {
             params.set('colaborador_id', colaboradorId);
         } else if (colaboradorQ) {
             params.set('colaborador_q', colaboradorQ);
+        }
+
+        const statusTreinamento = (document.getElementById('filterStatusTreinamento')?.value || '').trim();
+        if (statusTreinamento) {
+            params.set('status_treinamento', statusTreinamento);
         }
 
         const baseUrl = '{% url "training:dashboard_exportar_csv" %}';

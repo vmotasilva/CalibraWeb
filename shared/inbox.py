@@ -25,7 +25,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
     if not getattr(user, "is_authenticated", False):
         return []
         
-    cache_key = f"inbox_items:v7:user:{getattr(user, 'pk', 'anon')}:global:{is_global}"
+    cache_key = f"inbox_items:v8:user:{getattr(user, 'pk', 'anon')}:global:{is_global}"
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
@@ -385,7 +385,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                     procs_str = ", ".join(procs[:3]) + (f" e mais {total_p - 3}" if total_p > 3 else "")
                     desc = f"{total_p} procedimentos pendentes: {procs_str}"
 
-                target_url = f"{reverse('procedures:dashboard_treinamentos')}?colaborador_id={colab.id}"
+                target_url = f"{reverse('procedures:dashboard_treinamentos')}?colaborador_id={colab.id}&status_treinamento=PENDENTE"
                 if data_lid['lider_id']:
                     target_url += f"&lider={data_lid['lider_id']}"
 
@@ -491,7 +491,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                             procs_summary += f" e mais {total_p - 3}"
                         desc = f"{total_p} procedimentos pendentes: {procs_summary} ({scopes_str}) - Turno {pdata['turno']}"
 
-                    target_url = f"{reverse('procedures:dashboard_treinamentos')}?colaborador_id={colab.id}&instrutor_responsavel={pdata['instrutor_id']}"
+                    target_url = f"{reverse('procedures:dashboard_treinamentos')}?colaborador_id={colab.id}&instrutor_responsavel={pdata['instrutor_id']}&status_treinamento=PENDENTE"
 
                     items.append(
                         InboxItem(
@@ -529,7 +529,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                             # Já possui card de demanda para este colaborador, evitar duplicata
                             continue
 
-                        target_url = f"{reverse('procedures:dashboard_treinamentos')}?colaborador_id={part.id}&instrutor_responsavel={instrutor_id}"
+                        target_url = f"{reverse('procedures:dashboard_treinamentos')}?colaborador_id={part.id}&instrutor_responsavel={instrutor_id}&status_treinamento=PENDENTE"
                         items.append(
                             InboxItem(
                                 id=f"planejamento_{pl.id}_part_{part.id}",
