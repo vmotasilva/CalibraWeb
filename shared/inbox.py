@@ -25,7 +25,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
     if not getattr(user, "is_authenticated", False):
         return []
         
-    cache_key = f"inbox_items:v6:user:{getattr(user, 'pk', 'anon')}:global:{is_global}"
+    cache_key = f"inbox_items:v7:user:{getattr(user, 'pk', 'anon')}:global:{is_global}"
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
@@ -239,9 +239,25 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
     # =========================================================================
     try:
         if has_module_access(user, "procedures") or has_module_access(user, "treinamentos") or user.is_superuser or user.is_staff:
-            from procedures.models import RegistroTreinamento, SolicitacaoValidacaoMatriz, PlanejamentoTreinamento, ResponsavelTreinamentoMatriz
+            from procedures.models import (
+                RegistroTreinamento,
+                SolicitacaoValidacaoMatriz,
+                PlanejamentoTreinamento,
+                ResponsavelTreinamentoMatriz,
+                ColaboradorPerfil,
+            )
             from datetime import timedelta
-            from django.db.models import Q, F
+            from django.db.models import (
+                Q,
+                F,
+                Subquery,
+                OuterRef,
+                Case,
+                When,
+                Value,
+                IntegerField,
+                Exists,
+            )
 
             # 5.1 Avaliação de Eficácia pendente (após 30 dias de elegibilidade)
             data_limite_30d = hoje - timedelta(days=30)
@@ -288,37 +304,61 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                     )
                 )
 
-            # 5.2 Demandas de Treinamento Pendentes por Liderança (Agrupadas por Colaborador)
+            # Subquery para pegar apenas o registro mais recente por colaborador + procedimento
+            latest_id_subquery = RegistroTreinamento.objects.filter(
+                colaborador_id=OuterRef('colaborador_id'),
+                procedimento_id=OuterRef('procedimento_id'),
+                ativo=True
+            ).annotate(
+                has_valid_date=Case(
+                    When(data_treinamento__isnull=False, data_treinamento__gt=date(1970, 1, 1), then=Value(1)),
+                    default=Value(0),
+                    output_field=IntegerField()
+                )
+            ).order_by('-has_valid_date', '-data_treinamento', '-id').values('id')[:1]
+
+            # Garantir que o procedimento faz parte de um perfil ativo do colaborador
+            perfil_exists_qs = ColaboradorPerfil.objects.filter(
+                colaborador_id=OuterRef('colaborador_id'),
+                ativo=True,
+                perfil__grupos__subgrupos__procedimentos=OuterRef('procedimento_id'),
+            )
+
+            # Definição unificada de status pendente de treinamento
             pendencias_demanda = (
                 Q(data_treinamento__isnull=True)
+                | Q(data_treinamento__lte=date(1970, 1, 1))
                 | (
-                    Q(lista_presenca__isnull=True)
-                    & (
-                        (
-                            Q(procedimento__numero_revisao__isnull=False)
-                            & ~Q(revisao_treinada=F("procedimento__numero_revisao"))
-                        )
-                        | (
-                            Q(procedimento__data_aprovacao__isnull=False)
-                            & Q(data_treinamento__lt=F("procedimento__data_aprovacao"))
-                        )
-                    )
+                    Q(procedimento__data_aprovacao__isnull=False)
+                    & Q(data_treinamento__lt=F("procedimento__data_aprovacao"))
                 )
             )
-            qs_demandas = RegistroTreinamento.objects.filter(
+
+            # Base de demandas verdadeiramente pendentes
+            qs_base_pendentes = RegistroTreinamento.objects.filter(
                 ativo=True,
                 tipo="PROCEDIMENTO",
                 procedimento__isnull=False,
                 colaborador__is_active=True,
-            ).filter(pendencias_demanda).select_related("colaborador", "procedimento")
+                colaborador__afastado=False,
+                colaborador__em_ferias=False,
+                id=Subquery(latest_id_subquery)
+            ).annotate(
+                _in_perfil=Exists(perfil_exists_qs)
+            ).filter(
+                _in_perfil=True
+            ).filter(
+                pendencias_demanda
+            ).select_related("colaborador", "procedimento")
 
+            # 5.2 Demandas de Treinamento Pendentes por Liderança (Agrupadas por Colaborador)
             if not is_global_viewer and colaborador:
-                scoped_demandas = qs_demandas.filter(
+                scoped_demandas = qs_base_pendentes.filter(
                     Q(colaborador=colaborador) | Q(colaborador__lider=colaborador) | Q(colaborador__supervisor=colaborador) | Q(colaborador__gerente=colaborador)
                 )
                 target_demandas = scoped_demandas
             else:
-                target_demandas = qs_demandas
+                target_demandas = qs_base_pendentes
 
             # Agrupar demandas de liderança por colaborador
             demandas_lider_por_colab = {}
@@ -403,7 +443,6 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                     qs_resp_matriz = qs_resp_matriz.filter(colaborador=colaborador)
 
                 # Dicionário para agrupar todas as pendências por colaborador
-                # {colab_id: {'colaborador': Colaborador, 'procedimentos': list, 'scopes': set, 'turno': str, 'instrutor_id': str, 'data': date}}
                 pendencias_por_colab = {}
 
                 for rm in qs_resp_matriz:
@@ -412,12 +451,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                     instrutor_id = str(rm.colaborador_id)
                     scope_label = matriz_nome + (f" - {sub_nome}" if sub_nome else "")
 
-                    demanda_escopo_qs = RegistroTreinamento.objects.filter(
-                        ativo=True,
-                        tipo="PROCEDIMENTO",
-                        procedimento__isnull=False,
-                        colaborador__is_active=True,
-                    ).filter(pendencias_demanda).select_related("colaborador", "procedimento")
+                    demanda_escopo_qs = qs_base_pendentes
 
                     if matriz_nome:
                         demanda_escopo_qs = demanda_escopo_qs.filter(procedimento__matriz__iexact=matriz_nome)
