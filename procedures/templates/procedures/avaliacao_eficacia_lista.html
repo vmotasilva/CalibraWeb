@@ -170,6 +170,47 @@
                 </a>
             </div>
         </form>
+
+        {% if gestor_filtro or procedimento_filtro or status_filtro or setor_filtro or dias_decorridos_filtro or vinculo_filtro or posterior_filtro %}
+        <div class="mt-2.5 pt-2 border-top d-flex flex-wrap align-items-center gap-1.5 small">
+            <span class="text-muted fw-bold me-1"><i class="bi bi-funnel-fill text-primary"></i> Filtros Ativos:</span>
+            {% if selected_gestor_obj %}
+                <span class="badge bg-primary-light text-primary border border-primary-subtle d-inline-flex align-items-center gap-1 py-1 px-2" style="font-size: 0.75rem;">
+                    <i class="bi bi-person-check"></i> Gestor: {{ selected_gestor_obj.nome_completo }}
+                </span>
+            {% elif gestor_filtro %}
+                <span class="badge bg-primary-light text-primary border border-primary-subtle d-inline-flex align-items-center gap-1 py-1 px-2" style="font-size: 0.75rem;">
+                    <i class="bi bi-person-check"></i> Gestor ID: {{ gestor_filtro }}
+                </span>
+            {% endif %}
+
+            {% if selected_procedimento_obj %}
+                <span class="badge bg-danger-light text-danger border border-danger-subtle d-inline-flex align-items-center gap-1 py-1 px-2" style="font-size: 0.75rem;">
+                    <i class="bi bi-file-earmark-code"></i> Procedimento: {{ selected_procedimento_obj.codigo }} - {{ selected_procedimento_obj.nome }}
+                </span>
+            {% elif procedimento_filtro %}
+                <span class="badge bg-danger-light text-danger border border-danger-subtle d-inline-flex align-items-center gap-1 py-1 px-2" style="font-size: 0.75rem;">
+                    <i class="bi bi-file-earmark-code"></i> Procedimento ID: {{ procedimento_filtro }}
+                </span>
+            {% endif %}
+
+            {% if status_filtro %}
+                <span class="badge bg-warning-light text-warning border border-warning-subtle d-inline-flex align-items-center gap-1 py-1 px-2" style="font-size: 0.75rem;">
+                    <i class="bi bi-hourglass-split"></i> Status: {{ status_filtro }}
+                </span>
+            {% endif %}
+
+            {% if setor_filtro %}
+                <span class="badge bg-secondary-light text-secondary border border-secondary-subtle d-inline-flex align-items-center gap-1 py-1 px-2" style="font-size: 0.75rem;">
+                    <i class="bi bi-diagram-3"></i> Setor Filtrado
+                </span>
+            {% endif %}
+
+            <a href="{% url 'procedures:avaliacao_eficacia_list' %}" class="btn btn-link btn-xs text-danger text-decoration-none ms-1 p-0 fw-semibold" title="Limpar todos os filtros">
+                <i class="bi bi-x-circle-fill"></i> Limpar filtros
+            </a>
+        </div>
+        {% endif %}
     </div>
 </div>
 

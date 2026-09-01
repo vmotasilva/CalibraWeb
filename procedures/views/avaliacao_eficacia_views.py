@@ -406,7 +406,19 @@ def avaliacao_eficacia_list_view(request):
     query_params = request.GET.copy()
     if 'page' in query_params:
         del query_params['page']
-    query_string = query_params.urlencode()
+    selected_gestor_obj = None
+    if gestor_id:
+        try:
+            selected_gestor_obj = Colaborador.objects.filter(id=int(gestor_id)).first()
+        except (ValueError, TypeError):
+            pass
+
+    selected_procedimento_obj = None
+    if procedimento_id:
+        try:
+            selected_procedimento_obj = Procedimento.objects.filter(id=int(procedimento_id)).first()
+        except (ValueError, TypeError):
+            pass
 
     context = {
         'page_obj': page_obj,
@@ -416,6 +428,8 @@ def avaliacao_eficacia_list_view(request):
         'gestores_list': gestores_list,
         'procedimentos_list': procedimentos_list,
         'matrizes_opcoes': matrizes_opcoes,
+        'selected_gestor_obj': selected_gestor_obj,
+        'selected_procedimento_obj': selected_procedimento_obj,
         'busca': busca,
         'query': busca,
         'status_filtro': status_filtro,

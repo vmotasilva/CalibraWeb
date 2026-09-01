@@ -287,8 +287,31 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
             else:
                 target_eficacia = qs_eficacia
 
+            from urllib.parse import urlencode
+
             for t in target_eficacia[:20]:
                 dias = (hoje - t.data_treinamento).days
+                
+                # Montar parâmetros da URL com filtros específicos
+                params = {
+                    "procedimento": str(t.procedimento_id),
+                    "status": "PENDENTE",
+                }
+                
+                # Gestor / Responsável: prioriza o usuário logado (colaborador), ou gestor responsável direcionado
+                if colaborador:
+                    params["gestor"] = str(colaborador.id)
+                elif t.gestor_responsavel_id:
+                    params["gestor"] = str(t.gestor_responsavel_id)
+                elif t.colaborador.lider_id:
+                    params["gestor"] = str(t.colaborador.lider_id)
+                elif t.colaborador.supervisor_id:
+                    params["gestor"] = str(t.colaborador.supervisor_id)
+                elif t.colaborador.gerente_id:
+                    params["gestor"] = str(t.colaborador.gerente_id)
+
+                url_avaliacao = f"{reverse('procedures:avaliacao_eficacia_list')}?{urlencode(params)}"
+
                 items.append(
                     InboxItem(
                         id=f"eficacia_{t.id}",
@@ -296,7 +319,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                         description=f"Treinamento crítico {t.procedimento.codigo} realizado há {dias} dias",
                         module="Treinamentos",
                         icon="bi-mortarboard",
-                        url=reverse("procedures:avaliacao_eficacia_list"),
+                        url=url_avaliacao,
                         action_text="Avaliar",
                         date=t.data_treinamento,
                         is_urgent=dias > 60,
