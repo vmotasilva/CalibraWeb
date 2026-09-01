@@ -451,11 +451,20 @@ def avaliacao_eficacia_registrar_view(request, treinamento_id):
     """
     Grava ou atualiza os dados da autoavaliação de eficácia e permite ajustar o gestor responsável.
     """
+    is_ajax = (
+        request.headers.get('x-requested-with') == 'XMLHttpRequest'
+        or request.POST.get('is_ajax') == '1'
+        or 'application/json' in request.headers.get('Accept', '')
+    )
+
     treinamento = get_object_or_404(RegistroTreinamento, id=treinamento_id)
     
     # Validar se o procedimento associado é crítico
     if not treinamento.procedimento or treinamento.procedimento.criticidade != 'CRITICO':
-        messages.error(request, "Este treinamento não requer Avaliação de Eficácia.")
+        msg = "Este treinamento não requer Avaliação de Eficácia."
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': msg}, status=400)
+        messages.error(request, msg)
         return redirect("procedures:avaliacao_eficacia_list")
 
     # Obter dados do formulário
@@ -466,22 +475,34 @@ def avaliacao_eficacia_registrar_view(request, treinamento_id):
 
     # Validações básicas
     if status not in ['EFICAZ', 'INEFICAZ', 'NAO_APLICA']:
-        messages.error(request, "Status inválido selecionado.")
+        msg = "Status inválido selecionado."
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': msg}, status=400)
+        messages.error(request, msg)
         return redirect("procedures:avaliacao_eficacia_list")
 
     if status == 'NAO_APLICA' and not resultado_avaliacao:
-        messages.error(request, "A justificativa é obrigatória para a opção 'Não se Aplica'.")
+        msg = "A justificativa é obrigatória para a opção 'Não se Aplica'."
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': msg}, status=400)
+        messages.error(request, msg)
         return redirect("procedures:avaliacao_eficacia_list")
 
     if not data_avaliacao_str:
-        messages.error(request, "A data da avaliação é obrigatória.")
+        msg = "A data da avaliação é obrigatória."
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': msg}, status=400)
+        messages.error(request, msg)
         return redirect("procedures:avaliacao_eficacia_list")
 
     from datetime import datetime
     try:
         data_avaliacao = datetime.strptime(data_avaliacao_str, '%Y-%m-%d').date()
     except ValueError:
-        messages.error(request, "Formato de data inválido.")
+        msg = "Formato de data inválido."
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': msg}, status=400)
+        messages.error(request, msg)
         return redirect("procedures:avaliacao_eficacia_list")
 
     # Salvar avaliação no registro do treinamento
@@ -499,6 +520,45 @@ def avaliacao_eficacia_registrar_view(request, treinamento_id):
                 pass
 
     treinamento.save()
+
+    if is_ajax:
+        # Resolver nome do gestor formatado
+        gestor_nome = ''
+        is_direcionado = False
+        if treinamento.gestor_responsavel:
+            gestor_nome = treinamento.gestor_responsavel.nome_completo
+            is_direcionado = True
+        elif treinamento.colaborador.posto_lideranca == 'SUPERVISOR':
+            gestor_nome = treinamento.colaborador.gerente.nome_completo if treinamento.colaborador.gerente else '-'
+        elif treinamento.colaborador.posto_lideranca == 'LIDER':
+            gestor_nome = treinamento.colaborador.supervisor.nome_completo if treinamento.colaborador.supervisor else '-'
+        else:
+            gestor_nome = treinamento.colaborador.lider.nome_completo if treinamento.colaborador.lider else '-'
+
+        status_display_map = {
+            'EFICAZ': ('Eficaz', 'success'),
+            'INEFICAZ': ('Ineficaz', 'danger'),
+            'NAO_APLICA': ('Não se Aplica', 'secondary'),
+            'PENDENTE': ('Pendente', 'warning'),
+            'CARENCIA': ('Carência', 'info'),
+        }
+        status_disp, status_cls = status_display_map.get(treinamento.avaliacao_eficacia_status, ('Pendente', 'warning'))
+
+        return JsonResponse({
+            'success': True,
+            'message': f"Avaliação de eficácia registrada com sucesso para {treinamento.colaborador.nome_completo}.",
+            'id': treinamento.id,
+            'status': treinamento.avaliacao_eficacia_status,
+            'status_display': status_disp,
+            'status_class': status_cls,
+            'data_avaliacao': treinamento.avaliacao_eficacia_data.strftime('%Y-%m-%d') if treinamento.avaliacao_eficacia_data else '',
+            'data_avaliacao_formatada': treinamento.avaliacao_eficacia_data.strftime('%d/%m/%Y') if treinamento.avaliacao_eficacia_data else '',
+            'resultado_avaliacao': treinamento.resultado_avaliacao or '',
+            'gestor_nome': gestor_nome,
+            'gestor_id': str(treinamento.gestor_responsavel_id or ''),
+            'is_direcionado': is_direcionado,
+            'colaborador_nome': treinamento.colaborador.nome_completo,
+        })
 
     messages.success(request, f"Avaliação de eficácia registrada com sucesso para {treinamento.colaborador.nome_completo}.")
     return redirect("procedures:avaliacao_eficacia_list")
@@ -582,14 +642,26 @@ def avaliacao_eficacia_alterar_gestor_massa_view(request):
     """
     Permite alterar/redirecionar forçadamente o gestor responsável para um ou múltiplos treinamentos selecionados.
     """
+    is_ajax = (
+        request.headers.get('x-requested-with') == 'XMLHttpRequest'
+        or request.POST.get('is_ajax') == '1'
+        or 'application/json' in request.headers.get('Accept', '')
+    )
+
     treinamento_ids = request.POST.getlist('treinamento_ids')
     if not treinamento_ids:
-        messages.warning(request, "Nenhum treinamento selecionado para direcionamento de gestor.")
+        msg = "Nenhum treinamento selecionado para direcionamento de gestor."
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': msg}, status=400)
+        messages.warning(request, msg)
         return redirect("procedures:avaliacao_eficacia_list")
 
     novo_gestor_id = request.POST.get('novo_gestor_id')
     if not novo_gestor_id:
-        messages.warning(request, "Nenhum gestor selecionado.")
+        msg = "Nenhum gestor selecionado."
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': msg}, status=400)
+        messages.warning(request, msg)
         return redirect("procedures:avaliacao_eficacia_list")
 
     treinamentos = RegistroTreinamento.objects.filter(
@@ -612,6 +684,35 @@ def avaliacao_eficacia_alterar_gestor_massa_view(request):
                         continue
                 t.save()
                 count += 1
+
+    if is_ajax:
+        if count == 1:
+            t = treinamentos.first()
+            gestor_nome = ''
+            is_direcionado = False
+            if t and t.gestor_responsavel:
+                gestor_nome = t.gestor_responsavel.nome_completo
+                is_direcionado = True
+            elif t and t.colaborador.posto_lideranca == 'SUPERVISOR':
+                gestor_nome = t.colaborador.gerente.nome_completo if t.colaborador.gerente else '-'
+            elif t and t.colaborador.posto_lideranca == 'LIDER':
+                gestor_nome = t.colaborador.supervisor.nome_completo if t.colaborador.supervisor else '-'
+            elif t:
+                gestor_nome = t.colaborador.lider.nome_completo if t.colaborador.lider else '-'
+
+            return JsonResponse({
+                'success': True,
+                'message': "Gestor responsável atualizado com sucesso!",
+                'id': t.id if t else None,
+                'gestor_nome': gestor_nome,
+                'gestor_id': str(t.gestor_responsavel_id or '') if t else '',
+                'is_direcionado': is_direcionado,
+            })
+        return JsonResponse({
+            'success': True,
+            'message': f"Gestor responsável atualizado com sucesso para {count} treinamento(s).",
+            'count': count,
+        })
 
     return_url = request.POST.get('return_url') or request.META.get('HTTP_REFERER') or "procedures:avaliacao_eficacia_list"
     if count == 1:
