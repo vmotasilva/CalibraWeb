@@ -128,7 +128,7 @@
 <!-- Filtros e Busca -->
 <div class="card shadow-sm border-0 mb-4">
     <div class="card-body p-3">
-        <form method="get" class="row g-2 align-items-center">
+        <form method="get" id="form-busca-principal" class="row g-2 align-items-center">
             {% if setor_filtro %}<input type="hidden" name="setor" value="{{ setor_filtro }}">{% endif %}
             {% if gestor_filtro %}<input type="hidden" name="gestor" value="{{ gestor_filtro }}">{% endif %}
             {% if procedimento_filtro %}<input type="hidden" name="procedimento" value="{{ procedimento_filtro }}">{% endif %}
@@ -137,6 +137,7 @@
             {% if vinculo_filtro %}<input type="hidden" name="vinculo" value="{{ vinculo_filtro }}">{% endif %}
             {% if posterior_filtro %}<input type="hidden" name="posterior" value="{{ posterior_filtro }}">{% endif %}
             {% if exibir and exibir != '30' %}<input type="hidden" name="exibir" value="{{ exibir }}">{% endif %}
+            {% if ordenacao %}<input type="hidden" name="ordenacao" value="{{ ordenacao }}">{% endif %}
             <div class="col-lg-5 col-md-12">
                 <div class="input-group input-group-sm">
                     <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
@@ -150,6 +151,16 @@
                     {% if setor_filtro or gestor_filtro or procedimento_filtro or dias_decorridos_filtro or status_filtro or vinculo_filtro or posterior_filtro %}
                         <span class="badge bg-primary text-white rounded-pill ms-1">•</span>
                     {% endif %}
+                </button>
+            </div>
+
+            <div class="col-auto">
+                <button type="button" class="btn btn-outline-dark btn-sm d-flex align-items-center gap-1 shadow-xs" data-bs-toggle="modal" data-bs-target="#classificacaoModal" title="Classificar e ordenar por múltiplos níveis">
+                    <i class="bi bi-sort-down-alt text-primary"></i>
+                    <span>Classificar</span>
+                    <span id="classificacao-badge" class="badge bg-primary text-white rounded-pill ms-1 {% if not ordenacao %}d-none{% endif %}">
+                        {{ ordenacao_niveis|length }}
+                    </span>
                 </button>
             </div>
 
@@ -174,6 +185,7 @@
             </div>
             <form method="get" action="{% url 'procedures:avaliacao_eficacia_list' %}">
                 <input type="hidden" name="q" value="{{ query|default:busca|default:'' }}">
+                {% if ordenacao %}<input type="hidden" name="ordenacao" value="{{ ordenacao }}">{% endif %}
                 <div class="modal-body py-3">
                     <div class="row g-3">
                         <div class="col-md-6">
@@ -256,6 +268,53 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Classificação / Ordenação Multi-Nível -->
+<div class="modal fade" id="classificacaoModal" tabindex="-1" aria-labelledby="classificacaoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 14px; overflow: hidden;">
+            <div class="modal-header bg-dark text-white border-0 py-3">
+                <h5 class="modal-title fw-bold d-flex align-items-center gap-2" id="classificacaoModalLabel">
+                    <i class="bi bi-sort-down-alt text-warning"></i>
+                    <span>Classificação de Registros</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <div class="alert alert-info py-2 px-3 small d-flex align-items-center mb-3 shadow-2xs border-info-subtle">
+                    <i class="bi bi-info-circle-fill me-2 fs-5 text-primary flex-shrink-0"></i>
+                    <div>
+                        Defina a hierarquia de classificação. O <strong>1º nível</strong> é a ordem principal, e os seguintes atuam como <strong>sub-níveis</strong> de ordenação subsequentes.
+                    </div>
+                </div>
+
+                <!-- Container dinâmico dos níveis -->
+                <div id="sort-levels-container" class="d-flex flex-column gap-2 mb-3">
+                    <!-- Linhas geradas dinamicamente via JavaScript -->
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center pt-2">
+                    <button type="button" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1 shadow-xs" id="btn-add-sort-level">
+                        <i class="bi bi-plus-circle"></i>
+                        <span>Adicionar Nível de Classificação</span>
+                    </button>
+                    <small class="text-muted" id="sort-levels-count-text">Nenhum nível configurado</small>
+                </div>
+            </div>
+            <div class="modal-footer bg-white border-top justify-content-between p-3">
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-clear-sort-levels">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i>Limpar / Padrão
+                </button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-light btn-sm px-3" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary btn-sm px-4 shadow-sm" id="btn-apply-sort-levels">
+                        <i class="bi bi-check2-circle me-1"></i>Aplicar Classificação
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -902,6 +961,203 @@
                 executarExportacaoFor142MultiplasAbas();
             });
         }
+
+        // =========================================================================
+        // GERENCIADOR DO MODAL DE CLASSIFICAÇÃO / ORDENAÇÃO MULTI-NÍVEL
+        // =========================================================================
+        const AVAILABLE_SORT_FIELDS = [
+            { id: 'data_treinamento', name: 'Data de Treinamento', type: 'date', defaultDir: 'desc' },
+            { id: 'colaborador', name: 'Colaborador (Nome)', type: 'text', defaultDir: 'asc' },
+            { id: 'responsavel', name: 'Responsável / Gestor', type: 'text', defaultDir: 'asc' },
+            { id: 'setor', name: 'Setor', type: 'text', defaultDir: 'asc' },
+            { id: 'procedimento', name: 'Procedimento Crítico (Código)', type: 'text', defaultDir: 'asc' },
+            { id: 'procedimento_nome', name: 'Procedimento Crítico (Título/Nome)', type: 'text', defaultDir: 'asc' },
+            { id: 'elegibilidade', name: 'Data de Elegibilidade (30 dias)', type: 'date', defaultDir: 'desc' },
+            { id: 'decorridos', name: 'Dias Decorridos', type: 'number', defaultDir: 'desc' },
+            { id: 'status', name: 'Status da Avaliação', type: 'text', defaultDir: 'asc' },
+            { id: 'matricula', name: 'Matrícula do Colaborador', type: 'number', defaultDir: 'asc' }
+        ];
+
+        function getDirectionOptionsHtml(fieldType, selectedDir) {
+            if (fieldType === 'date') {
+                return `
+                    <option value="desc" ${selectedDir === 'desc' ? 'selected' : ''}>Mais recente para mais antigo (Mais Recente → Mais Antigo)</option>
+                    <option value="asc" ${selectedDir === 'asc' ? 'selected' : ''}>Mais antigo para mais recente (Mais Antigo → Mais Recente)</option>
+                `;
+            } else if (fieldType === 'number') {
+                return `
+                    <option value="asc" ${selectedDir === 'asc' ? 'selected' : ''}>Do menor para o maior (Crescente)</option>
+                    <option value="desc" ${selectedDir === 'desc' ? 'selected' : ''}>Do maior para o menor (Decrescente)</option>
+                `;
+            } else {
+                return `
+                    <option value="asc" ${selectedDir === 'asc' ? 'selected' : ''}>Ordem alfabética (A → Z / Crescente)</option>
+                    <option value="desc" ${selectedDir === 'desc' ? 'selected' : ''}>Ordem decrescente (Z → A / Decrescente)</option>
+                `;
+            }
+        }
+
+        const sortContainer = document.getElementById('sort-levels-container');
+        const btnAddSortLevel = document.getElementById('btn-add-sort-level');
+        const btnApplySort = document.getElementById('btn-apply-sort-levels');
+        const btnClearSort = document.getElementById('btn-clear-sort-levels');
+        const sortCountText = document.getElementById('sort-levels-count-text');
+        const sortBadge = document.getElementById('classificacao-badge');
+
+        // Estado dos níveis atuais: [{ campo: 'data_treinamento', direcao: 'desc' }]
+        let currentSortLevels = [];
+
+        // Parse inicial a partir da URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const ordenacaoStr = urlParams.get('ordenacao') || '{{ ordenacao|default:"" }}';
+
+        if (ordenacaoStr.trim()) {
+            ordenacaoStr.split(',').forEach(part => {
+                const [f, d] = part.split(':');
+                if (f && d && AVAILABLE_SORT_FIELDS.some(item => item.id === f.trim().toLowerCase())) {
+                    currentSortLevels.push({
+                        campo: f.trim().toLowerCase(),
+                        direcao: (d.trim().toLowerCase() === 'desc') ? 'desc' : 'asc'
+                    });
+                }
+            });
+        }
+
+        function renderSortLevels() {
+            if (!sortContainer) return;
+            sortContainer.innerHTML = '';
+
+            if (currentSortLevels.length === 0) {
+                sortContainer.innerHTML = `
+                    <div class="text-center py-4 bg-white rounded border border-dashed text-muted">
+                        <i class="bi bi-sort-down fs-2 text-secondary mb-2 d-block"></i>
+                        <p class="mb-1 fw-semibold text-dark">Nenhum nível de classificação configurado</p>
+                        <small class="text-muted">A listagem utilizará a ordenação padrão (Data do Treinamento mais recente primeiro).</small>
+                    </div>
+                `;
+                if (sortCountText) sortCountText.textContent = 'Nenhum nível ativo';
+                return;
+            }
+
+            currentSortLevels.forEach((level, index) => {
+                const isFirst = (index === 0);
+                const fieldDef = AVAILABLE_SORT_FIELDS.find(f => f.id === level.campo) || AVAILABLE_SORT_FIELDS[0];
+                
+                const levelCard = document.createElement('div');
+                levelCard.className = 'card border shadow-xs';
+                levelCard.style.borderRadius = '10px';
+                levelCard.innerHTML = `
+                    <div class="card-body p-3 bg-white">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge ${isFirst ? 'bg-primary' : 'bg-secondary'} px-2.5 py-1 text-white fw-bold">
+                                    <i class="bi bi-${index + 1}-circle me-1"></i>${index + 1}º Nível ${isFirst ? '(Principal)' : '(Sub-nível)'}
+                                </span>
+                                ${index > 0 ? `<small class="text-muted"><i class="bi bi-arrow-return-right me-1"></i>Sub-classificação de desempate</small>` : ''}
+                            </div>
+                            <button type="button" class="btn btn-outline-danger btn-sm py-0 px-2 btn-remove-level" data-index="${index}" title="Remover este nível">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small fw-bold mb-1">Campo / Coluna</label>
+                                <select class="form-select form-select-sm sort-field-select" data-index="${index}">
+                                    ${AVAILABLE_SORT_FIELDS.map(f => `
+                                        <option value="${f.id}" ${f.id === level.campo ? 'selected' : ''}>${f.name}</option>
+                                    `).join('')}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small fw-bold mb-1">Estilo de Ordenação</label>
+                                <select class="form-select form-select-sm sort-dir-select" data-index="${index}">
+                                    ${getDirectionOptionsHtml(fieldDef.type, level.direcao)}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                sortContainer.appendChild(levelCard);
+            });
+
+            // Re-bind listeners para remover nível
+            sortContainer.querySelectorAll('.btn-remove-level').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const idx = parseInt(this.getAttribute('data-index'));
+                    currentSortLevels.splice(idx, 1);
+                    renderSortLevels();
+                });
+            });
+
+            // Re-bind listeners para mudança de campo
+            sortContainer.querySelectorAll('.sort-field-select').forEach(select => {
+                select.addEventListener('change', function() {
+                    const idx = parseInt(this.getAttribute('data-index'));
+                    const selectedFieldId = this.value;
+                    const fieldDef = AVAILABLE_SORT_FIELDS.find(f => f.id === selectedFieldId) || AVAILABLE_SORT_FIELDS[0];
+                    currentSortLevels[idx].campo = selectedFieldId;
+                    currentSortLevels[idx].direcao = fieldDef.defaultDir;
+
+                    // Atualizar o select de direção correspondente
+                    const dirSelect = sortContainer.querySelector(`.sort-dir-select[data-index="${idx}"]`);
+                    if (dirSelect) {
+                        dirSelect.innerHTML = getDirectionOptionsHtml(fieldDef.type, fieldDef.defaultDir);
+                    }
+                });
+            });
+
+            // Re-bind listeners para mudança de direção
+            sortContainer.querySelectorAll('.sort-dir-select').forEach(select => {
+                select.addEventListener('change', function() {
+                    const idx = parseInt(this.getAttribute('data-index'));
+                    currentSortLevels[idx].direcao = this.value;
+                });
+            });
+
+            if (sortCountText) {
+                sortCountText.textContent = `${currentSortLevels.length} nível(is) configurado(s)`;
+            }
+        }
+
+        if (btnAddSortLevel) {
+            btnAddSortLevel.addEventListener('click', function() {
+                // Encontrar o próximo campo ainda não utilizado
+                const usedFields = currentSortLevels.map(l => l.campo);
+                const nextField = AVAILABLE_SORT_FIELDS.find(f => !usedFields.includes(f.id)) || AVAILABLE_SORT_FIELDS[0];
+                currentSortLevels.push({
+                    campo: nextField.id,
+                    direcao: nextField.defaultDir
+                });
+                renderSortLevels();
+            });
+        }
+
+        if (btnClearSort) {
+            btnClearSort.addEventListener('click', function() {
+                currentSortLevels = [];
+                renderSortLevels();
+            });
+        }
+
+        if (btnApplySort) {
+            btnApplySort.addEventListener('click', function() {
+                const params = new URLSearchParams(window.location.search);
+                params.delete('page');
+
+                if (currentSortLevels.length > 0) {
+                    const sortQueryValue = currentSortLevels.map(l => `${l.campo}:${l.direcao}`).join(',');
+                    params.set('ordenacao', sortQueryValue);
+                } else {
+                    params.delete('ordenacao');
+                }
+
+                const url = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+                window.location.href = url;
+            });
+        }
+
+        // Renderizar níveis inicialmente
+        renderSortLevels();
     });
 </script>
 {% endblock %}

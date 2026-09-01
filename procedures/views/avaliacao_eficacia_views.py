@@ -305,28 +305,22 @@ def avaliacao_eficacia_list_view(request):
     total_carencia = sum(1 for t in totals_list if (t.avaliacao_eficacia_status in ['PENDENTE', None, '']) and (today - t.data_treinamento).days < 30)
     total_pendente = sum(1 for t in totals_list if (t.avaliacao_eficacia_status in ['PENDENTE', None, '']) and (today - t.data_treinamento).days >= 30)
 
-    # Paginação
-    if exibir == 'todos':
-        per_page = max(1, len(registros_list))  # Evita zero para Paginator
-    else:
-        try:
-            per_page = int(exibir)
-        except ValueError:
-            per_page = 30
+    ordenacao = (request.GET.get('ordenacao') or '').strip()
+    ordenacao_niveis = []
+    if ordenacao:
+        for part in ordenacao.split(','):
+            part = part.strip()
+            if ':' in part:
+                f_name, f_dir = part.split(':', 1)
+                f_name = f_name.strip()
+                f_dir = f_dir.strip().lower()
+                if f_name and f_dir in ['asc', 'desc']:
+                    ordenacao_niveis.append({'campo': f_name, 'direcao': f_dir})
 
-    paginator = Paginator(registros_list, per_page)
-    page_number = request.GET.get('page')
-    try:
-        page_obj = paginator.page(page_number)
-    except PageNotAnInteger:
-        page_obj = paginator.page(1)
-    except EmptyPage:
-        page_obj = paginator.page(paginator.num_pages)
-
-    # Processar cada objeto na página para adicionar informações calculadas
-    for t in page_obj.object_list:
-        t.data_elegibilidade = t.data_treinamento + timedelta(days=30)
-        dias_dec = (today - t.data_treinamento).days
+    # Processar cada objeto para adicionar informações calculadas antes da ordenação
+    for t in registros_list:
+        t.data_elegibilidade = t.data_treinamento + timedelta(days=30) if t.data_treinamento else date.min
+        dias_dec = (today - t.data_treinamento).days if t.data_treinamento else 0
         t.dias_decorridos = dias_dec
         t.dias_restantes = max(0, 30 - dias_dec)
         
@@ -347,6 +341,66 @@ def avaliacao_eficacia_list_view(request):
             else:
                 t.status_display = 'Pendente'
                 t.status_class = 'warning'
+
+        # Nome do gestor
+        if t.gestor_responsavel:
+            t.gestor_nome = t.gestor_responsavel.nome_completo
+        elif t.colaborador.posto_lideranca == 'SUPERVISOR':
+            t.gestor_nome = t.colaborador.gerente.nome_completo if t.colaborador.gerente else ''
+        elif t.colaborador.posto_lideranca == 'LIDER':
+            t.gestor_nome = t.colaborador.supervisor.nome_completo if t.colaborador.supervisor else ''
+        else:
+            t.gestor_nome = t.colaborador.lider.nome_completo if t.colaborador.lider else ''
+
+    # Aplicar ordenação multi-nível estável (do último subnível para o 1º nível)
+    if ordenacao_niveis:
+        def get_sort_value(item, campo):
+            if campo == 'colaborador':
+                return (item.colaborador.nome_completo or '').strip().upper()
+            elif campo == 'matricula':
+                return (item.colaborador.matricula or '').strip().upper()
+            elif campo in ['responsavel', 'gestor']:
+                return (getattr(item, 'gestor_nome', '') or '').strip().upper()
+            elif campo == 'setor':
+                return (item.colaborador.setor.nome if item.colaborador.setor else '').strip().upper()
+            elif campo in ['procedimento', 'codigo']:
+                return (item.procedimento.codigo or '').strip().upper()
+            elif campo in ['procedimento_nome', 'titulo', 'nome']:
+                return (getattr(item.procedimento, 'titulo', None) or item.procedimento.nome or '').strip().upper()
+            elif campo == 'data_treinamento':
+                return item.data_treinamento or date.min
+            elif campo in ['elegibilidade', 'data_elegibilidade']:
+                return getattr(item, 'data_elegibilidade', date.min) or date.min
+            elif campo in ['decorridos', 'dias_decorridos']:
+                return getattr(item, 'dias_decorridos', 0) or 0
+            elif campo == 'status':
+                return (getattr(item, 'status_display', '') or '').strip().upper()
+            return ''
+
+        for nivel in reversed(ordenacao_niveis):
+            is_desc = (nivel['direcao'] == 'desc')
+            registros_list.sort(key=lambda x: get_sort_value(x, nivel['campo']), reverse=is_desc)
+    else:
+        # Padrão: mais recentes primeiro
+        registros_list.sort(key=lambda x: (x.data_treinamento or date.min), reverse=True)
+
+    # Paginação
+    if exibir == 'todos':
+        per_page = max(1, len(registros_list))  # Evita zero para Paginator
+    else:
+        try:
+            per_page = int(exibir)
+        except ValueError:
+            per_page = 30
+
+    paginator = Paginator(registros_list, per_page)
+    page_number = request.GET.get('page')
+    try:
+        page_obj = paginator.page(page_number)
+    except PageNotAnInteger:
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        page_obj = paginator.page(paginator.num_pages)
 
     # Manter a query string dos filtros para paginação
     query_params = request.GET.copy()
@@ -377,6 +431,8 @@ def avaliacao_eficacia_list_view(request):
         'posterior_filtro': posterior_filtro,
         'matriz_filtro': matriz_filtro,
         'exibir': exibir,
+        'ordenacao': ordenacao,
+        'ordenacao_niveis': ordenacao_niveis,
         'query_string': query_string,
         # Totais
         'total_geral': total_geral,
