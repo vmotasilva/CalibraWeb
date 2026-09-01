@@ -17,14 +17,15 @@ class InboxItem:
     action_text: str        # Text for the button
     date: date              # For sorting (oldest first)
     is_urgent: bool = False # Flag for highlighting very old tasks
-    sub_type: str = ""      # "Demanda por Liderança", "Demanda por Instrutor", "Avaliação de Eficácia", "Atualização de Matriz de Habilidade", etc.
+    sub_type: str = ""      # Sub-aba / Origem específica
+
 
 def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
     """Retorna uma lista individual de pendências reais para formar a Inbox e as Notificações por Origem."""
     if not getattr(user, "is_authenticated", False):
         return []
         
-    cache_key = f"inbox_items:v5:user:{getattr(user, 'pk', 'anon')}:global:{is_global}"
+    cache_key = f"inbox_items:v6:user:{getattr(user, 'pk', 'anon')}:global:{is_global}"
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
@@ -34,9 +35,11 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
     is_global_viewer = is_global and _is_global_viewer(user)
     colaborador = _get_colaborador_for_user(user)
     
-    from shared.permissions import has_module_access, has_view_access
+    from shared.permissions import has_module_access
 
-    # 1. Auditoria
+    # =========================================================================
+    # 1. AUDITORIA
+    # =========================================================================
     try:
         if has_module_access(user, "auditoria") or user.is_superuser or user.is_staff or getattr(user, "is_authenticated", False):
             from auditoria.models import ModeloAuditoria, RelatorioCompartilhadoAuditoria
@@ -44,11 +47,11 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
             from auditoria.utils_periodos import calcular_periodos_pendentes
             from urllib.parse import urlencode
             
-            # 1.1 Ciclos / Modelos com períodos atrasados
+            # 1.1 Modelos com períodos em atraso
             modelos = ModeloAuditoria.objects.filter(ativo=True)
-            if not is_global_viewer and not (user.is_superuser or user.is_staff):
+            if not is_global_viewer:
                 scoped_modelos = modelos.filter(Q(responsavel=user) | Q(responsaveis=user)).distinct()
-                target_modelos = scoped_modelos if scoped_modelos.exists() else modelos
+                target_modelos = scoped_modelos if scoped_modelos.exists() else (modelos if user.is_superuser or user.is_staff else scoped_modelos)
             else:
                 target_modelos = modelos
                 
@@ -97,7 +100,9 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
     except Exception:
         pass
 
-    # 2. Metrologia - Calibrações Vencidas
+    # =========================================================================
+    # 2. METROLOGIA - CALIBRAÇÕES VENCIDAS
+    # =========================================================================
     try:
         if has_module_access(user, "metrologia") or user.is_superuser or user.is_staff or getattr(user, "is_authenticated", False):
             from metrologia.models import Instrumento
@@ -108,11 +113,11 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                 data_proxima_calibracao__lt=hoje,
             ).select_related('responsavel')
             
-            if not is_global_viewer and colaborador and not (user.is_superuser or user.is_staff):
+            if not is_global_viewer and colaborador:
                 scoped_vencidos = global_vencidos.filter(
                     Q(responsavel=colaborador) | Q(responsavel__isnull=True)
                 )
-                target_vencidos = scoped_vencidos if scoped_vencidos.exists() else global_vencidos
+                target_vencidos = scoped_vencidos
             else:
                 target_vencidos = global_vencidos
 
@@ -143,45 +148,46 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
     except Exception:
         pass
 
-    # 3. Metrologia - Cotações em Atraso
+    # =========================================================================
+    # 3. METROLOGIA - COTAÇÕES EM ATRASO
+    # =========================================================================
     try:
         if has_module_access(user, "metrologia") or user.is_superuser or user.is_staff or getattr(user, "is_authenticated", False):
             from metrologia.models import SolicitacaoCotacao
 
-            solicitacoes = SolicitacaoCotacao.objects.exclude(status__in=["CONCLUIDA", "CANCELADA"]).filter(
-                data_solicitacao_orcamento__isnull=False,
-                data_solicitacao_orcamento__lte=hoje,
-            )
-            if not is_global_viewer and not (user.is_superuser or user.is_staff):
-                scoped_sol = solicitacoes.filter(responsavel=user)
-                target_sol = scoped_sol if scoped_sol.exists() else solicitacoes
+            global_cotacoes = SolicitacaoCotacao.objects.filter(
+                status="SOLICITADO",
+                data_necessidade__lt=hoje,
+            ).select_related('responsavel')
+            
+            if not is_global_viewer and colaborador:
+                scoped_cotacoes = global_cotacoes.filter(responsavel=colaborador)
+                target_cotacoes = scoped_cotacoes
             else:
-                target_sol = solicitacoes
+                target_cotacoes = global_cotacoes
 
-            for sol in target_sol[:20]:
-                try:
-                    target_url = reverse("metrologia:solicitacao_detail", args=[sol.id])
-                except Exception:
-                    target_url = "/metrologia/solicitacoes/"
-
+            for sc in target_cotacoes[:50]:
+                dias_atraso = (hoje - sc.data_necessidade).days if sc.data_necessidade else 0
                 items.append(
                     InboxItem(
-                        id=f"cotacao_{sol.id}",
-                        title=f"Cotação Atrasada: Solicitação #{sol.id}",
-                        description=f"Prazo venceu em {sol.data_solicitacao_orcamento.strftime('%d/%m/%Y')}",
+                        id=f"cotacao_{sc.id}",
+                        title=f"Cotação Atrasada: #{sc.id} ({sc.tipo_servico})",
+                        description=f"Necessidade era {sc.data_necessidade.strftime('%d/%m/%Y')} ({dias_atraso} dias de atraso)",
                         module="Metrologia",
                         icon="bi-cash-coin",
-                        url=target_url,
+                        url=reverse("metrologia:solicitacoes_cotacao"),
                         action_text="Resolver",
-                        date=sol.data_solicitacao_orcamento,
-                        is_urgent=(hoje - sol.data_solicitacao_orcamento).days > 7,
-                        sub_type="Cotações Atrasadas"
+                        date=sc.data_necessidade,
+                        is_urgent=dias_atraso > 7,
+                        sub_type="Cotações em Atraso"
                     )
                 )
     except Exception:
         pass
 
-    # 4. Metrologia - Ocorrências em Aberto
+    # =========================================================================
+    # 4. METROLOGIA - OCORRÊNCIAS EM ABERTO
+    # =========================================================================
     try:
         if has_module_access(user, "metrologia") or user.is_superuser or user.is_staff or getattr(user, "is_authenticated", False):
             from qms.models import OcorrenciaInstrumento
@@ -192,7 +198,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
 
             for oc in ocorrencias_abertas[:50]:
                 inst = oc.instrumento
-                inst_tag = (inst.tag or inst.codigo or f"ID {inst.id}") if inst else "Instrumento Não Identificado"
+                inst_tag = (inst.tag or inst.codigo or f"ID {inst.id}") if inst else "Instrumento"
                 inst_desc = f"{inst.descricao} — " if inst and inst.descricao else ""
                 tipo_nome = oc.get_tipo_display() if hasattr(oc, 'get_tipo_display') else oc.tipo
                 
@@ -228,90 +234,12 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
     except Exception:
         pass
 
-    # 4. Quadros (Kanban)
-    try:
-        if has_module_access(user, "boards"):
-            from boards.models import Card, BoardNotification, BoardMention
-            from django.db.models import Q
-
-            # 4.1 Tarefas Atrasadas Atribuídas ao Usuário
-            if colaborador:
-                meus_cartoes_atrasados = Card.objects.filter(
-                    coluna__board__arquivado=False,
-                    responsaveis=colaborador,
-                    data_entrega__lt=hoje,
-                    data_conclusao__isnull=True
-                ).select_related("coluna__board")
-
-                for card in meus_cartoes_atrasados:
-                    dias = (hoje - card.data_entrega).days
-                    items.append(
-                        InboxItem(
-                            id=f"board_card_{card.id}",
-                            title=f"Tarefa Atrasada: {card.titulo}",
-                            description=f"Quadro: {card.coluna.board.nome} (Venceu há {dias} dias)",
-                            module="Quadros",
-                            icon="bi-kanban",
-                            url=f"{reverse('boards:board_detail', args=[card.coluna.board.id])}?card={card.id}",
-                            action_text="Abrir Card",
-                            date=card.data_entrega,
-                            is_urgent=dias > 7,
-                            sub_type="Tarefas Atrasadas"
-                        )
-                    )
-
-            # 4.2 Menções não lidas
-            mencoes_nao_lidas = BoardMention.objects.filter(
-                mencionado=colaborador,
-                visualizada=False
-            ).select_related("card__coluna__board")[:15] if colaborador else []
-
-            for mention in mencoes_nao_lidas:
-                if mention.card:
-                    items.append(
-                        InboxItem(
-                            id=f"board_mention_{mention.id}",
-                            title=f"Você foi mencionado em: {mention.card.titulo}",
-                            description=f"No quadro {mention.card.coluna.board.nome}",
-                            module="Quadros",
-                            icon="bi-at",
-                            url=f"{reverse('boards:board_detail', args=[mention.card.coluna.board.id])}?card={mention.card.id}",
-                            action_text="Ver Menção",
-                            date=mention.criado_em.date(),
-                            is_urgent=False,
-                            sub_type="Menções Não Lidas"
-                        )
-                    )
-
-            # 4.3 Notificações de cartões
-            notificacoes_boards = BoardNotification.objects.filter(
-                usuario=user,
-                lida=False
-            ).select_related("card__coluna__board")[:15]
-
-            for notif in notificacoes_boards:
-                if notif.card:
-                    items.append(
-                        InboxItem(
-                            id=f"board_notif_{notif.id}",
-                            title=notif.mensagem,
-                            description=f"Quadro: {notif.card.coluna.board.nome}",
-                            module="Quadros",
-                            icon="bi-bell-fill",
-                            url=reverse("boards:read_board_notification", args=[notif.id]),
-                            action_text="Ver Card",
-                            date=notif.criado_em.date(),
-                            is_urgent=False,
-                            sub_type="Notificações do Quadro"
-                        )
-                    )
-    except Exception:
-        pass
-
-    # 5. Treinamentos (Procedimentos, Avaliações de Eficácia, Demandas e Planejamentos)
+    # =========================================================================
+    # 5. TREINAMENTOS (Eficácia, Demandas por Liderança e Instrutor)
+    # =========================================================================
     try:
         if has_module_access(user, "procedures") or has_module_access(user, "treinamentos") or user.is_superuser or user.is_staff:
-            from procedures.models import RegistroTreinamento, SolicitacaoValidacaoMatriz, PlanejamentoTreinamento
+            from procedures.models import RegistroTreinamento, SolicitacaoValidacaoMatriz, PlanejamentoTreinamento, ResponsavelTreinamentoMatriz
             from datetime import timedelta
             from django.db.models import Q, F
 
@@ -327,7 +255,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                 colaborador__em_ferias=False,
             ).select_related("colaborador", "procedimento", "gestor_responsavel", "colaborador__lider", "colaborador__supervisor", "colaborador__gerente")
 
-            if not is_global_viewer and colaborador and not (user.is_superuser or user.is_staff):
+            if not is_global_viewer and colaborador:
                 scoped_eficacia = qs_eficacia.filter(
                     Q(gestor_responsavel=colaborador)
                     | (
@@ -339,7 +267,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                         )
                     )
                 )
-                target_eficacia = scoped_eficacia if scoped_eficacia.exists() else qs_eficacia
+                target_eficacia = scoped_eficacia
             else:
                 target_eficacia = qs_eficacia
 
@@ -360,7 +288,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                     )
                 )
 
-            # 5.2 Demandas de Treinamento Pendentes por Liderança
+            # 5.2 Demandas de Treinamento Pendentes por Liderança (Agrupadas por Colaborador)
             pendencias_demanda = (
                 Q(data_treinamento__isnull=True)
                 | (
@@ -384,35 +312,53 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                 colaborador__is_active=True,
             ).filter(pendencias_demanda).select_related("colaborador", "procedimento")
 
-            if not is_global_viewer and colaborador and not (user.is_superuser or user.is_staff):
+            if not is_global_viewer and colaborador:
                 scoped_demandas = qs_demandas.filter(
                     Q(colaborador=colaborador) | Q(colaborador__lider=colaborador) | Q(colaborador__supervisor=colaborador) | Q(colaborador__gerente=colaborador)
                 )
-                target_demandas = scoped_demandas if scoped_demandas.exists() else qs_demandas
+                target_demandas = scoped_demandas
             else:
                 target_demandas = qs_demandas
 
-            for d in target_demandas[:20]:
-                lider_id = ""
-                if d.colaborador and d.colaborador.lider_id:
-                    lider_id = str(d.colaborador.lider_id)
-                elif colaborador:
-                    lider_id = str(colaborador.id)
+            # Agrupar demandas de liderança por colaborador
+            demandas_lider_por_colab = {}
+            for d in target_demandas[:100]:
+                cid = d.colaborador_id
+                if cid not in demandas_lider_por_colab:
+                    lider_id = str(d.colaborador.lider_id) if d.colaborador and d.colaborador.lider_id else (str(colaborador.id) if colaborador else "")
+                    demandas_lider_por_colab[cid] = {
+                        'colaborador': d.colaborador,
+                        'procedimentos': [],
+                        'lider_id': lider_id,
+                        'data': d.criado_em.date() if hasattr(d, "criado_em") and d.criado_em else hoje,
+                    }
+                if d.procedimento.codigo not in demandas_lider_por_colab[cid]['procedimentos']:
+                    demandas_lider_por_colab[cid]['procedimentos'].append(d.procedimento.codigo)
 
-                target_url = f"{reverse('procedures:dashboard_treinamentos')}?colaborador_id={d.colaborador_id}"
-                if lider_id:
-                    target_url += f"&lider={lider_id}"
+            for cid, data_lid in list(demandas_lider_por_colab.items())[:20]:
+                colab = data_lid['colaborador']
+                procs = data_lid['procedimentos']
+                total_p = len(procs)
+                if total_p == 1:
+                    desc = f"Procedimento {procs[0]} pendente de treinamento da equipe"
+                else:
+                    procs_str = ", ".join(procs[:3]) + (f" e mais {total_p - 3}" if total_p > 3 else "")
+                    desc = f"{total_p} procedimentos pendentes: {procs_str}"
+
+                target_url = f"{reverse('procedures:dashboard_treinamentos')}?colaborador_id={colab.id}"
+                if data_lid['lider_id']:
+                    target_url += f"&lider={data_lid['lider_id']}"
 
                 items.append(
                     InboxItem(
-                        id=f"demanda_{d.id}",
-                        title=f"Demanda Liderança: {d.colaborador.nome_completo}",
-                        description=f"Procedimento {d.procedimento.codigo} pendente de treinamento da equipe",
+                        id=f"demanda_lider_{colab.id}",
+                        title=f"Demanda Liderança: {colab.nome_completo}",
+                        description=desc,
                         module="Treinamentos",
                         icon="bi-book",
                         url=target_url,
                         action_text="Abrir Painel",
-                        date=d.criado_em.date() if hasattr(d, "criado_em") and d.criado_em else hoje,
+                        date=data_lid['data'],
                         is_urgent=False,
                         sub_type="Demanda por Liderança"
                     )
@@ -423,9 +369,9 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                 qs_matriz = SolicitacaoValidacaoMatriz.objects.filter(
                     status="pendente",
                 ).select_related("colaborador")
-                if not is_global_viewer and colaborador and not (user.is_superuser or user.is_staff):
+                if not is_global_viewer and colaborador:
                     scoped_matriz = qs_matriz.filter(validador=colaborador)
-                    target_matriz = scoped_matriz if scoped_matriz.exists() else qs_matriz
+                    target_matriz = scoped_matriz
                 else:
                     target_matriz = qs_matriz
 
@@ -447,24 +393,25 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
             except Exception:
                 pass
 
-            # 5.4 Demanda por Instrutor (Responsáveis de Matriz e Planejamentos)
+            # 5.4 Demanda por Instrutor (Agrupadas por Colaborador)
             try:
-                from procedures.models import ResponsavelTreinamentoMatriz
-
                 # A. Instrutores Responsáveis por Matriz / Sub-Área
                 qs_resp_matriz = ResponsavelTreinamentoMatriz.objects.select_related(
                     "matriz", "sub_area", "colaborador"
                 )
-                if not is_global_viewer and colaborador and not (user.is_superuser or user.is_staff):
+                if not is_global_viewer and colaborador:
                     qs_resp_matriz = qs_resp_matriz.filter(colaborador=colaborador)
 
-                for rm in qs_resp_matriz[:30]:
+                # Dicionário para agrupar todas as pendências por colaborador
+                # {colab_id: {'colaborador': Colaborador, 'procedimentos': list, 'scopes': set, 'turno': str, 'instrutor_id': str, 'data': date}}
+                pendencias_por_colab = {}
+
+                for rm in qs_resp_matriz:
                     matriz_nome = rm.matriz.nome if rm.matriz else ""
                     sub_nome = rm.sub_area.nome if rm.sub_area else ""
                     instrutor_id = str(rm.colaborador_id)
-                    instrutor_nome = rm.colaborador.nome_completo if rm.colaborador else "Instrutor"
+                    scope_label = matriz_nome + (f" - {sub_nome}" if sub_nome else "")
 
-                    # Buscar pendências reais de colaboradores para este escopo
                     demanda_escopo_qs = RegistroTreinamento.objects.filter(
                         ativo=True,
                         tipo="PROCEDIMENTO",
@@ -479,54 +426,53 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                     if rm.turno:
                         demanda_escopo_qs = demanda_escopo_qs.filter(colaborador__turno=rm.turno)
 
-                    demanda_items = list(demanda_escopo_qs[:10])
+                    for d in demanda_escopo_qs[:50]:
+                        cid = d.colaborador_id
+                        if cid not in pendencias_por_colab:
+                            pendencias_por_colab[cid] = {
+                                'colaborador': d.colaborador,
+                                'procedimentos': [],
+                                'scopes': set(),
+                                'turno': d.colaborador.turno or rm.turno or 'Geral',
+                                'instrutor_id': instrutor_id,
+                                'data': d.criado_em.date() if hasattr(d, "criado_em") and d.criado_em else (rm.atualizado_em.date() if rm.atualizado_em else hoje),
+                            }
+                        if d.procedimento.codigo not in pendencias_por_colab[cid]['procedimentos']:
+                            pendencias_por_colab[cid]['procedimentos'].append(d.procedimento.codigo)
+                        if scope_label:
+                            pendencias_por_colab[cid]['scopes'].add(scope_label)
 
-                    if demanda_items:
-                        for d in demanda_items:
-                            target_url = f"{reverse('procedures:dashboard_treinamentos')}?colaborador_id={d.colaborador_id}&instrutor_responsavel={instrutor_id}"
-                            if rm.matriz_id:
-                                target_url += f"&matriz={rm.matriz_id}"
-                            if rm.sub_area_id:
-                                target_url += f"&sub_area={rm.sub_area_id}"
-                            if rm.turno:
-                                target_url += f"&turno={rm.turno}"
+                # Gerar 1 card único por colaborador para as responsabilidades de matriz
+                for cid, pdata in list(pendencias_por_colab.items())[:30]:
+                    colab = pdata['colaborador']
+                    procs = pdata['procedimentos']
+                    scopes_str = ", ".join(pdata['scopes']) if pdata['scopes'] else "Treinamentos"
+                    total_p = len(procs)
 
-                            items.append(
-                                InboxItem(
-                                    id=f"resp_matriz_{rm.id}_colab_{d.colaborador_id}",
-                                    title=f"Demanda Instrutor: {d.colaborador.nome_completo}",
-                                    description=f"Procedimento {d.procedimento.codigo} ({matriz_nome}{f' - {sub_nome}' if sub_nome else ''}) - Turno {d.colaborador.turno or rm.turno or 'Geral'}",
-                                    module="Treinamentos",
-                                    icon="bi-person-video3",
-                                    url=target_url,
-                                    action_text="Abrir Painel",
-                                    date=d.criado_em.date() if hasattr(d, "criado_em") and d.criado_em else (rm.atualizado_em.date() if rm.atualizado_em else hoje),
-                                    is_urgent=False,
-                                    sub_type="Demanda por Instrutor"
-                                )
-                            )
+                    if total_p == 1:
+                        desc = f"Procedimento {procs[0]} ({scopes_str}) - Turno {pdata['turno']}"
                     else:
-                        # Fallback do escopo da matriz caso não haja registros pendentes individuais catalogados
-                        target_url = f"{reverse('procedures:dashboard_treinamentos')}?instrutor_responsavel={instrutor_id}&matriz={rm.matriz_id}"
-                        if rm.sub_area_id:
-                            target_url += f"&sub_area={rm.sub_area_id}"
-                        if rm.turno:
-                            target_url += f"&turno={rm.turno}"
+                        procs_summary = ", ".join(procs[:3])
+                        if total_p > 3:
+                            procs_summary += f" e mais {total_p - 3}"
+                        desc = f"{total_p} procedimentos pendentes: {procs_summary} ({scopes_str}) - Turno {pdata['turno']}"
 
-                        items.append(
-                            InboxItem(
-                                id=f"resp_matriz_{rm.id}",
-                                title=f"Demanda Instrutor: {matriz_nome or 'Treinamentos'}{f' ({sub_nome})' if sub_nome else ''}",
-                                description=f"Instrutor: {instrutor_nome} - Turno {rm.turno or 'Geral'}",
-                                module="Treinamentos",
-                                icon="bi-person-video3",
-                                url=target_url,
-                                action_text="Abrir Painel",
-                                date=rm.atualizado_em.date() if rm.atualizado_em else hoje,
-                                is_urgent=False,
-                                sub_type="Demanda por Instrutor"
-                            )
+                    target_url = f"{reverse('procedures:dashboard_treinamentos')}?colaborador_id={colab.id}&instrutor_responsavel={pdata['instrutor_id']}"
+
+                    items.append(
+                        InboxItem(
+                            id=f"demanda_instrutor_colab_{colab.id}",
+                            title=f"Demanda Instrutor: {colab.nome_completo}",
+                            description=desc,
+                            module="Treinamentos",
+                            icon="bi-person-video3",
+                            url=target_url,
+                            action_text="Abrir Painel",
+                            date=pdata['data'],
+                            is_urgent=False,
+                            sub_type="Demanda por Instrutor"
                         )
+                    )
 
                 # B. Planejamentos de Treinamento
                 qs_plan = PlanejamentoTreinamento.objects.filter(
@@ -534,42 +480,27 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                     data_planejada__lte=hoje + timedelta(days=7)
                 ).select_related('procedimento', 'responsavel').prefetch_related('participantes')
 
-                if not is_global_viewer and colaborador and not (user.is_superuser or user.is_staff):
-                    scoped_plan = qs_plan.filter(responsavel=colaborador)
-                    target_plan = scoped_plan if scoped_plan.exists() else qs_plan
-                else:
-                    target_plan = qs_plan
+                if not is_global_viewer and colaborador:
+                    qs_plan = qs_plan.filter(responsavel=colaborador)
 
-                for pl in target_plan[:15]:
+                # Agrupar participantes de planejamentos para não duplicar
+                for pl in qs_plan[:15]:
                     atrasado = bool(pl.data_planejada and pl.data_planejada < hoje)
                     proc_code = pl.procedimento.codigo if pl.procedimento else "Treinamento"
-                    instrutor_id = pl.responsavel_id or (colaborador.id if colaborador else "")
+                    instrutor_id = str(pl.responsavel_id or (colaborador.id if colaborador else ""))
                     participantes = list(pl.participantes.all()[:5])
 
-                    if participantes:
-                        for part in participantes:
-                            target_url = f"{reverse('procedures:dashboard_treinamentos')}?colaborador_id={part.id}&instrutor_responsavel={instrutor_id}" if instrutor_id else f"{reverse('procedures:dashboard_treinamentos')}?colaborador_id={part.id}"
-                            items.append(
-                                InboxItem(
-                                    id=f"planejamento_{pl.id}_part_{part.id}",
-                                    title=f"Demanda Instrutor: {part.nome_completo}",
-                                    description=f"Planejamento {proc_code} ({'Atrasado desde ' if atrasado else 'Previsto para '}{pl.data_planejada.strftime('%d/%m/%Y') if pl.data_planejada else '-'})",
-                                    module="Treinamentos",
-                                    icon="bi-calendar-check",
-                                    url=target_url,
-                                    action_text="Abrir Painel",
-                                    date=pl.data_planejada if pl.data_planejada else hoje,
-                                    is_urgent=atrasado,
-                                    sub_type="Demanda por Instrutor"
-                                )
-                            )
-                    else:
-                        target_url = f"{reverse('procedures:dashboard_treinamentos')}?instrutor_responsavel={instrutor_id}" if instrutor_id else reverse('procedures:dashboard_treinamentos')
+                    for part in participantes:
+                        if part.id in pendencias_por_colab:
+                            # Já possui card de demanda para este colaborador, evitar duplicata
+                            continue
+
+                        target_url = f"{reverse('procedures:dashboard_treinamentos')}?colaborador_id={part.id}&instrutor_responsavel={instrutor_id}"
                         items.append(
                             InboxItem(
-                                id=f"planejamento_{pl.id}",
-                                title=f"Demanda Instrutor: {proc_code}",
-                                description=f"{'Atrasado desde ' if atrasado else 'Previsto para '}{pl.data_planejada.strftime('%d/%m/%Y') if pl.data_planejada else '-'}",
+                                id=f"planejamento_{pl.id}_part_{part.id}",
+                                title=f"Demanda Instrutor: {part.nome_completo}",
+                                description=f"Planejamento {proc_code} ({'Atrasado desde ' if atrasado else 'Previsto para '}{pl.data_planejada.strftime('%d/%m/%Y') if pl.data_planejada else '-'})",
                                 module="Treinamentos",
                                 icon="bi-calendar-check",
                                 url=target_url,
@@ -584,7 +515,9 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
     except Exception:
         pass
 
-    # 6. Laboratório (Ocorrências abertas)
+    # =========================================================================
+    # 6. LABORATÓRIO (Ocorrências em aberto)
+    # =========================================================================
     try:
         if has_module_access(user, "laboratorio") or user.is_superuser or user.is_staff or getattr(user, "is_authenticated", False):
             from laboratorio.models import OcorrenciaLaboratorio
@@ -607,9 +540,11 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
     except Exception:
         pass
 
-    # 7. Quadros de Atividades (Boards)
+    # =========================================================================
+    # 7. QUADROS DE ATIVIDADES (BOARDS)
+    # =========================================================================
     try:
-        if has_module_access(user, "quadros") or user.is_superuser or user.is_staff or getattr(user, "is_authenticated", False):
+        if has_module_access(user, "quadros") or has_module_access(user, "boards") or user.is_superuser or user.is_staff or getattr(user, "is_authenticated", False):
             from boards.models import Card, BoardNotification
             from django.db.models import Q
 
@@ -652,7 +587,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                     coluna__quadro__arquivado=False
                 ).select_related('coluna__quadro').prefetch_related('responsaveis')
 
-                if not is_global_viewer and colaborador and not (user.is_superuser or user.is_staff):
+                if not is_global_viewer and colaborador:
                     scoped_cards = base_cards.filter(
                         Q(responsaveis=colaborador) | Q(criado_por=colaborador) | Q(coluna__quadro__membros=colaborador) | Q(coluna__quadro__todos_colaboradores=True)
                     ).distinct()
