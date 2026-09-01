@@ -1339,6 +1339,7 @@ def deletar_ocorrencia(request, ocorrencia_id):
         ocorrencia = get_object_or_404(OcorrenciaInstrumento, pk=ocorrencia_id)
         ocorrencia.delete()
         messages.success(request, 'Ocorrência excluída com sucesso.')
+    return redirect(request.META.get('HTTP_REFERER', 'metrologia:modulo_metrologia'))
 @login_required
 def salvar_edicao_historico_modal_view(request, historico_id):
     """Atualiza o histórico e as medições por faixa diretamente pelo modal pop-up."""
