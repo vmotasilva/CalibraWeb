@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 # Imports dos models
 from metrologia.models import (
     Instrumento, FaixaMedicao, HistoricoCalibracao, CategoriaInstrumento,
-    ResultadoFaixaCalibracao, ArquivoPadrao
+    ResultadoFaixaCalibracao, ArquivoPadrao, TemplateEtiquetaInstrumento
 )
 from organization.models import Setor
 from rh.models import Colaborador
@@ -329,6 +329,8 @@ def modulo_metrologia_view(request):
         label = f"{meses_pt.get(mes, mes)}/{ano}"
         periodos_filtro.append({'value': p, 'label': label})
 
+    templates_etiquetas = TemplateEtiquetaInstrumento.objects.filter(ativo=True).order_by('tipo_variacao', '-padrao', 'nome')
+
     ctx = {
         "instrumentos": instrumentos,
         "setores_filtro": setores_filtro,
@@ -341,6 +343,7 @@ def modulo_metrologia_view(request):
         "can_edit": True,
         "historico_form": HistoricoCalibracaoForm(),
         "periodos_filtro": periodos_filtro,
+        "templates_etiquetas_disponiveis": templates_etiquetas,
     }
     return render(request, "metrologia/dashboard.html", ctx)
 

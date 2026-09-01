@@ -1,0 +1,374 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Configuração de Modelos de Etiquetas - Metrologia - CalibraWEB{% endblock %}
+
+{% block extra_css %}
+<style>
+    .template-card {
+        transition: all 0.25s ease-in-out;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        background: #ffffff;
+    }
+    .template-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+        border-color: #cbd5e1;
+    }
+    .template-card.active-template {
+        border-left: 5px solid #10b981;
+        background: linear-gradient(to right, #f0fdf4, #ffffff 30%);
+    }
+    .tag-badge {
+        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        font-size: 0.82rem;
+        background-color: #f1f5f9;
+        color: #334155;
+        border: 1px solid #e2e8f0;
+        padding: 0.25rem 0.6rem;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .tag-badge:hover {
+        background-color: #0284c7;
+        color: #ffffff;
+        border-color: #0284c7;
+        transform: scale(1.03);
+    }
+    .tag-badge i {
+        font-size: 0.75rem;
+        opacity: 0.8;
+    }
+    .stat-box {
+        border-radius: 12px;
+        padding: 1.25rem;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <!-- Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 pb-3 border-bottom gap-3">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill font-weight-medium">
+                    <i class="bi bi-tags-fill me-1"></i> Metrologia
+                </span>
+                <span class="text-muted fs-7">• Instrumentos</span>
+            </div>
+            <h2 class="h3 font-weight-bold text-dark mb-1">Modelos de Etiquetas em Excel</h2>
+            <p class="text-muted mb-0">Gerencie modelos de planilhas (.xlsx) para geração de etiquetas com substituição automática de tags.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-primary d-flex align-items-center gap-2 shadow-sm px-3" data-bs-toggle="modal" data-bs-target="#uploadTemplateModal">
+                <i class="bi bi-cloud-arrow-up-fill fs-5"></i>
+                <span>Novo Modelo de Etiqueta</span>
+            </button>
+            <a href="{% url 'metrologia:dashboard' %}" class="btn btn-outline-secondary d-flex align-items-center gap-2">
+                <i class="bi bi-arrow-left"></i>
+                <span>Voltar ao Dashboard</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Mensagens do Django -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show shadow-sm" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Estatísticas & Resumo -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="stat-box d-flex align-items-center justify-content-between shadow-sm">
+                <div>
+                    <span class="text-muted small text-uppercase font-weight-bold">Total de Modelos</span>
+                    <h3 class="h2 font-weight-bold text-dark mb-0 mt-1">{{ total_templates }}</h3>
+                </div>
+                <div class="bg-primary bg-opacity-10 p-3 rounded-circle text-primary">
+                    <i class="bi bi-tags fs-3"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-box d-flex align-items-center justify-content-between shadow-sm">
+                <div>
+                    <span class="text-muted small text-uppercase font-weight-bold">Variação Individual</span>
+                    <h3 class="h2 font-weight-bold text-info mb-0 mt-1">{{ total_individual }}</h3>
+                </div>
+                <div class="bg-info bg-opacity-10 p-3 rounded-circle text-info">
+                    <i class="bi bi-file-earmark-spreadsheet fs-3"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-box d-flex align-items-center justify-content-between shadow-sm">
+                <div>
+                    <span class="text-muted small text-uppercase font-weight-bold">Múltiplas Abas</span>
+                    <h3 class="h2 font-weight-bold text-success mb-0 mt-1">{{ total_multi_aba }}</h3>
+                </div>
+                <div class="bg-success bg-opacity-10 p-3 rounded-circle text-success">
+                    <i class="bi bi-collection fs-3"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-box d-flex align-items-center justify-content-between shadow-sm">
+                <div>
+                    <span class="text-muted small text-uppercase font-weight-bold">Grade / Tabela</span>
+                    <h3 class="h2 font-weight-bold text-warning mb-0 mt-1">{{ total_grade }}</h3>
+                </div>
+                <div class="bg-warning bg-opacity-10 p-3 rounded-circle text-warning">
+                    <i class="bi bi-grid-3x3 fs-3"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Conteúdo Principal: Lista de Templates & Guia de Tags -->
+    <div class="row g-4">
+        <!-- Lista de Templates -->
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm rounded-3">
+                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                    <h5 class="card-title fw-bold mb-0 text-dark">
+                        <i class="bi bi-files me-2 text-primary"></i>Modelos Cadastrados
+                    </h5>
+                    <span class="badge bg-light text-muted border">{{ templates|length }} modelo(s)</span>
+                </div>
+                <div class="card-body p-3">
+                    {% if templates %}
+                        <div class="d-flex flex-column gap-3">
+                            {% for t in templates %}
+                                <div class="template-card p-3 {% if t.padrao %}active-template{% endif %}">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <div class="d-flex align-items-center gap-2 mb-1">
+                                                <span class="badge bg-dark font-monospace">{{ t.codigo }}</span>
+                                                <span class="badge {% if t.tipo_variacao == 'INDIVIDUAL' %}bg-info text-dark{% elif t.tipo_variacao == 'MULTI_ABA' %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                                                    {{ t.get_tipo_variacao_display }}
+                                                </span>
+                                                {% if t.padrao %}
+                                                    <span class="badge bg-success bg-opacity-10 text-success border border-success-subtle">
+                                                        <i class="bi bi-star-fill me-1"></i>Padrão
+                                                    </span>
+                                                {% endif %}
+                                                {% if not t.ativo %}
+                                                    <span class="badge bg-secondary">Inativo</span>
+                                                {% endif %}
+                                            </div>
+                                            <h6 class="fw-bold mb-1 text-dark">{{ t.nome }}</h6>
+                                            {% if t.descricao %}
+                                                <p class="text-muted small mb-1">{{ t.descricao }}</p>
+                                            {% endif %}
+                                        </div>
+                                        <div class="d-flex gap-1">
+                                            <a href="{% url 'metrologia:template_etiqueta_download' t.id %}" class="btn btn-outline-primary btn-sm" title="Baixar arquivo modelo original">
+                                                <i class="bi bi-download"></i>
+                                            </a>
+                                            <form method="post" action="{% url 'metrologia:template_etiqueta_toggle' t.id %}" class="d-inline">
+                                                {% csrf_token %}
+                                                {% if not t.padrao %}
+                                                    <input type="hidden" name="action" value="set_padrao">
+                                                    <button type="submit" class="btn btn-outline-success btn-sm" title="Definir como modelo padrão desta variação">
+                                                        <i class="bi bi-star"></i>
+                                                    </button>
+                                                {% else %}
+                                                    <input type="hidden" name="action" value="toggle_ativo">
+                                                    <button type="submit" class="btn btn-outline-secondary btn-sm" title="Alternar status ativo/inativo">
+                                                        <i class="bi bi-power"></i>
+                                                    </button>
+                                                {% endif %}
+                                            </form>
+                                            <form method="post" action="{% url 'metrologia:template_etiqueta_delete' t.id %}" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir este modelo de etiqueta?');">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-outline-danger btn-sm" title="Excluir modelo">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-center justify-content-between text-muted small border-top pt-2 mt-2">
+                                        <span><i class="bi bi-file-earmark-excel text-success me-1"></i>{{ t.nome_arquivo_original|default:"template.xlsx" }}</span>
+                                        <span>Atualizado em {{ t.data_atualizacao|date:"d/m/Y H:i" }}</span>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <div class="text-muted mb-3">
+                                <i class="bi bi-tags fs-1 opacity-50"></i>
+                            </div>
+                            <h6 class="text-dark fw-bold">Nenhum modelo customizado cadastrado ainda</h6>
+                            <p class="text-muted small">O sistema já possui um layout padrão de etiquetas em Excel, mas você pode enviar seus próprios modelos customizados com sua identidade visual.</p>
+                            <button type="button" class="btn btn-primary btn-sm mt-2" data-bs-toggle="modal" data-bs-target="#uploadTemplateModal">
+                                <i class="bi bi-cloud-arrow-up me-1"></i>Enviar Primeiro Modelo
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Guia de Tags de Metrologia -->
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm rounded-3">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title fw-bold mb-0 text-dark">
+                            <i class="bi bi-code-slash me-2 text-primary"></i>Tags Dinâmicas
+                        </h5>
+                        <span class="badge bg-primary-light text-primary">Clique para copiar</span>
+                    </div>
+                    <p class="text-muted small mb-0 mt-1">Insira estas tags nas células do seu arquivo Excel. Elas serão substituídas automaticamente pelos dados do instrumento.</p>
+                </div>
+                <div class="card-body p-3" style="max-height: 600px; overflow-y: auto;">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm align-middle mb-0">
+                            <thead>
+                                <tr class="text-muted small">
+                                    <th>Tag</th>
+                                    <th>Dado Mapeado</th>
+                                    <th>Exemplo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for tag in tags_guia %}
+                                    <tr>
+                                        <td>
+                                            <span class="tag-badge" onclick="copyTag('{{ tag.tag }}')" title="Clique para copiar">
+                                                {{ tag.tag }} <i class="bi bi-clipboard"></i>
+                                            </span>
+                                        </td>
+                                        <td class="small text-dark">{{ tag.descricao }}</td>
+                                        <td class="small text-muted font-monospace">{{ tag.exemplo }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="alert alert-light border mt-3 mb-0 small">
+                        <div class="fw-bold text-dark mb-1"><i class="bi bi-info-circle text-primary me-1"></i> Dica para Grade / Tabela:</div>
+                        Para modelos de múltiplos instrumentos na mesma folha, você também pode utilizar tags indexadas como <code>{% verbatim %}{{TAG_1}}{% endverbatim %}</code>, <code>{% verbatim %}{{TAG_2}}{% endverbatim %}</code>, <code>{% verbatim %}{{VALIDADE_1}}{% endverbatim %}</code>, <code>{% verbatim %}{{VALIDADE_2}}{% endverbatim %}</code>, etc.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Upload Template -->
+<div class="modal fade" id="uploadTemplateModal" tabindex="-1" aria-labelledby="uploadTemplateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow" style="border-radius: 12px;">
+            <div class="modal-header bg-light border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold" id="uploadTemplateModalLabel">
+                    <i class="bi bi-cloud-arrow-up-fill me-2 text-primary"></i>Novo Modelo de Etiqueta (.xlsx)
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <form method="post" action="{% url 'metrologia:template_etiqueta_upload' %}" enctype="multipart/form-data" autocomplete="off">
+                {% csrf_token %}
+                <div class="modal-body py-3">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label text-muted small fw-bold">Código do Modelo *</label>
+                            <input type="text" name="codigo" class="form-control form-control-sm" placeholder="Ex: ETQ-IND-01" required>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label text-muted small fw-bold">Nome do Modelo *</label>
+                            <input type="text" name="nome" class="form-control form-control-sm" placeholder="Ex: Etiqueta 50x30mm Padrão" required>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label text-muted small fw-bold">Tipo de Variação da Etiqueta *</label>
+                            <select name="tipo_variacao" class="form-select form-select-sm" required>
+                                {% for val, label in variacoes_choices %}
+                                    <option value="{{ val }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text small">
+                                <strong>Individual:</strong> 1 instrumento por arquivo. <strong>Múltiplas Abas:</strong> 1 aba para cada instrumento selecionado. <strong>Grade:</strong> Vários instrumentos na mesma página.
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label text-muted small fw-bold">Arquivo Excel (.xlsx) *</label>
+                            <input type="file" name="arquivo" class="form-control form-control-sm" accept=".xlsx" required>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label text-muted small fw-bold">Descrição / Instruções de Impressão</label>
+                            <textarea name="descricao" class="form-control form-control-sm" rows="2" placeholder="Observações de dimensões, tipo de papel, impressora recomendada, etc."></textarea>
+                        </div>
+                        <div class="col-md-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="padrao" id="padraoSwitch">
+                                <label class="form-check-label small fw-bold text-dark" for="padraoSwitch">Definir como modelo padrão para esta variação</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top-0 pt-0">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary btn-sm px-4">
+                        <i class="bi bi-check-lg me-1"></i>Salvar Modelo
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Flutuante de Cópia -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11000;">
+    <div id="copyToast" class="toast align-items-center text-white bg-dark border-0 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="bi bi-check-circle-fill text-success me-2"></i>Tag <strong id="copiedTagText"></strong> copiada para a área de transferência!
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Fechar"></button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function copyTag(tag) {
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(tag).then(function() {
+            showCopyToast(tag);
+        });
+    } else {
+        const input = document.createElement('input');
+        input.value = tag;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+        showCopyToast(tag);
+    }
+}
+
+function showCopyToast(tag) {
+    const textEl = document.getElementById('copiedTagText');
+    if (textEl) textEl.textContent = tag;
+    const toastEl = document.getElementById('copyToast');
+    if (toastEl && window.bootstrap && bootstrap.Toast) {
+        const toast = new bootstrap.Toast(toastEl, { delay: 2500 });
+        toast.show();
+    }
+}
+</script>
+{% endblock %}

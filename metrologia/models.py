@@ -1548,3 +1548,96 @@ class ProcessoAutomatizacao(models.Model):
         verbose_name = "Processo de Automatização"
         verbose_name_plural = "Processos de Automatização"
         ordering = ['-data_inicio']
+
+
+# ==============================================================================
+# MODELO DE TEMPLATES DE ETIQUETAS DE METROLOGIA (EXCEL)
+# ==============================================================================
+
+class TemplateEtiquetaInstrumento(models.Model):
+    """
+    Template/Modelo de etiqueta configurável em Excel (.xlsx) para instrumentos de medição.
+    Suporta variações de etiquetas (Individual, Múltiplas Abas e Grade/Tabela).
+    """
+    VARIACAO_CHOICES = [
+        ('INDIVIDUAL', 'Individual (1 Instrumento por Arquivo)'),
+        ('MULTI_ABA', 'Múltiplas Abas (1 Aba por Instrumento)'),
+        ('GRADE_TABELA', 'Grade / Tabela (Múltiplos Instrumentos na mesma Folha)'),
+    ]
+
+    codigo = models.CharField(
+        max_length=50,
+        unique=True,
+        verbose_name="Código do Modelo",
+        help_text="Ex: ETQ-IND-01, ETQ-MULTI-A4, ETQ-GRADE-2X5"
+    )
+    nome = models.CharField(
+        max_length=200,
+        verbose_name="Nome do Template / Variação"
+    )
+    descricao = models.TextField(
+        null=True, blank=True,
+        verbose_name="Descrição / Instruções"
+    )
+    tipo_variacao = models.CharField(
+        max_length=30,
+        choices=VARIACAO_CHOICES,
+        default='INDIVIDUAL',
+        verbose_name="Tipo de Variação da Etiqueta"
+    )
+    arquivo = models.FileField(
+        upload_to='templates_etiquetas_metrologia/',
+        null=True, blank=True,
+        verbose_name="Arquivo do Template (.xlsx)"
+    )
+    arquivo_base64 = models.TextField(
+        blank=True, default="",
+        verbose_name="Conteúdo em Base64",
+        help_text="Persistência do binário em banco de dados para ambiente serverless/nuvem"
+    )
+    nome_arquivo_original = models.CharField(
+        max_length=255, blank=True, default="",
+        verbose_name="Nome Original do Arquivo"
+    )
+    tamanho_arquivo = models.IntegerField(
+        null=True, blank=True,
+        verbose_name="Tamanho (bytes)"
+    )
+    ativo = models.BooleanField(
+        default=True,
+        verbose_name="Ativo"
+    )
+    padrao = models.BooleanField(
+        default=False,
+        verbose_name="Template Padrão da Variação"
+    )
+    criado_por = models.ForeignKey(
+        User, on_delete=models.SET_NULL,
+        null=True, blank=True,
+        verbose_name="Criado por"
+    )
+    data_criacao = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Data de Criação"
+    )
+    data_atualizacao = models.DateTimeField(
+        auto_now=True,
+        verbose_name="Última Atualização"
+    )
+
+    def __str__(self):
+        return f"{self.codigo} - {self.nome} ({self.get_tipo_variacao_display()})"
+
+    def save(self, *args, **kwargs):
+        # Se for marcado como padrão desta variação, desmarcar outros da mesma variação
+        if self.padrao:
+            TemplateEtiquetaInstrumento.objects.filter(
+                tipo_variacao=self.tipo_variacao,
+                padrao=True
+            ).exclude(pk=self.pk).update(padrao=False)
+        super().save(*args, **kwargs)
+
+    class Meta:
+        verbose_name = "Template de Etiqueta de Instrumento"
+        verbose_name_plural = "Templates de Etiquetas de Instrumentos"
+        ordering = ['tipo_variacao', '-padrao', 'nome']

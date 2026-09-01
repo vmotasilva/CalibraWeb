@@ -97,4 +97,12 @@ urlpatterns = [
     path('api/instrumentos-vencendo/', views.api_instrumentos_vencendo, name='api_instrumentos_vencendo'),
     path('api/atualizar-todas-datas/', qms_views.atualizar_todas_datas_calibracao_view, name='atualizar_todas_datas_calibracao'),
     path('export/etiquetas/', views.export_etiquetas_view, name='export_etiquetas'),
+    path('export/etiquetas-excel/', views.export_etiquetas_excel_view, name='export_etiquetas_excel'),
+
+    # TEMPLATES DE ETIQUETAS
+    path('templates-etiquetas/', views.templates_etiquetas_list_view, name='templates_etiquetas_list'),
+    path('templates-etiquetas/upload/', views.template_etiqueta_upload_view, name='template_etiqueta_upload'),
+    path('templates-etiquetas/<int:template_id>/download/', views.template_etiqueta_download_view, name='template_etiqueta_download'),
+    path('templates-etiquetas/<int:template_id>/toggle/', views.template_etiqueta_toggle_view, name='template_etiqueta_toggle'),
+    path('templates-etiquetas/<int:template_id>/delete/', views.template_etiqueta_delete_view, name='template_etiqueta_delete'),
 ]

@@ -125,7 +125,22 @@ __all__ = [
     'solicitacao_reabrir',
     'atendimento_atualizar_data_calibracao',
     'atendimento_atualizar_chegada',
-    'atendimento_atualizar_rastreio',
     'atendimento_registrar_historico',
     'atendimento_iniciar_substituicao',
+    # Templates de Etiquetas e Exportação Excel
+    'templates_etiquetas_list_view',
+    'template_etiqueta_upload_view',
+    'template_etiqueta_download_view',
+    'template_etiqueta_toggle_view',
+    'template_etiqueta_delete_view',
+    'export_etiquetas_excel_view',
 ]
+
+from .templates_etiquetas_views import (
+    templates_etiquetas_list_view,
+    template_etiqueta_upload_view,
+    template_etiqueta_download_view,
+    template_etiqueta_toggle_view,
+    template_etiqueta_delete_view,
+    export_etiquetas_excel_view,
+)

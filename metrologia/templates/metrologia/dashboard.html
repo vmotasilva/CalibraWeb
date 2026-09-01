@@ -142,6 +142,11 @@
                             <i class="bi bi-arrow-clockwise me-2 text-info"></i>Atualizar Datas
                         </button>
                     </li>
+                    <li>
+                        <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#etqModal">
+                            <i class="bi bi-file-earmark-excel me-2 text-success"></i>Etiquetas Excel (.xlsx)
+                        </button>
+                    </li>
                     {% if can_exportar_etiquetas %}
                     <li>
                         <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#etqModal">
@@ -150,8 +155,13 @@
                     </li>
                     {% endif %}
                     <li>
+                        <a href="{% url 'metrologia:templates_etiquetas_list' %}" class="dropdown-item">
+                            <i class="bi bi-sliders me-2 text-primary"></i>Modelos de Etiquetas
+                        </a>
+                    </li>
+                    <li>
                         <a href="/admin/qms/categoriainstrumento/" target="_blank" class="dropdown-item">
-                            <i class="bi bi-tags me-2 text-primary"></i>Categorias
+                            <i class="bi bi-tags me-2 text-secondary"></i>Categorias
                         </a>
                     </li>
                 </ul>
@@ -172,52 +182,110 @@
     </div>
 
     <!-- Modal compacto para Etiquetas -->
-    {% if can_exportar_etiquetas %}
+    <!-- Modal de Etiquetas (Excel e PDF) -->
     <div class="modal fade" id="etqModal" tabindex="-1" aria-labelledby="etqModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="etqModalLabel">Configurar Etiquetas</h5>
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow" style="border-radius: 12px;">
+                <div class="modal-header bg-light border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold" id="etqModalLabel">
+                        <i class="bi bi-tags-fill me-2 text-primary"></i>Gerar Etiquetas de Instrumentos
+                    </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
-                    <div class="row g-3">
-                        <div class="col-12">
-                            <label class="form-label">Orientação</label>
-                            <select id="etq_orient" class="form-select">
-                                <option value="portrait" selected>Retrato</option>
-                                <option value="landscape">Paisagem</option>
-                            </select>
+                <div class="modal-body py-3">
+                    <!-- Nav Tabs: Excel e PDF -->
+                    <ul class="nav nav-pills nav-fill mb-3 bg-light p-1 rounded-3" id="etqTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active fw-bold small py-2" id="tab-excel-btn" data-bs-toggle="pill" data-bs-target="#tab-excel-content" type="button" role="tab">
+                                <i class="bi bi-file-earmark-excel me-1 text-success"></i>Etiquetas em Excel (.xlsx)
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fw-bold small py-2" id="tab-pdf-btn" data-bs-toggle="pill" data-bs-target="#tab-pdf-content" type="button" role="tab">
+                                <i class="bi bi-file-pdf me-1 text-danger"></i>Etiquetas em PDF (A4)
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="etqTabsContent">
+                        <!-- ABA EXCEL -->
+                        <div class="tab-pane fade show active" id="tab-excel-content" role="tabpanel">
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label class="form-label small fw-bold text-muted">Modelo / Variação de Etiqueta</label>
+                                    <select id="etq_excel_template" class="form-select form-select-sm" onchange="updateEtiquetasLink()">
+                                        <optgroup label="Modelos Customizados Cadastrados">
+                                            {% for t in templates_etiquetas_disponiveis %}
+                                                <option value="{{ t.id }}" {% if t.padrao %}selected{% endif %}>
+                                                    {{ t.codigo }} - {{ t.nome }} ({{ t.get_tipo_variacao_display }}) {% if t.padrao %}★ Padrão{% endif %}
+                                                </option>
+                                            {% empty %}
+                                                <option value="" disabled>Nenhum modelo customizado ativo</option>
+                                            {% endfor %}
+                                        </optgroup>
+                                        <optgroup label="Variações Padrão do Sistema">
+                                            <option value="var_INDIVIDUAL">Individual (1 Instrumento por Arquivo)</option>
+                                            <option value="var_MULTI_ABA">Múltiplas Abas (1 Aba por Instrumento Selecionado)</option>
+                                            <option value="var_GRADE_TABELA">Grade / Tabela (Múltiplos Instrumentos na mesma Folha)</option>
+                                        </optgroup>
+                                    </select>
+                                    <div class="d-flex justify-content-between align-items-center mt-1">
+                                        <span class="text-muted small">Suporta substituição automática de tags <code>&#123;&#123;TAG&#125;&#125;</code>, <code>&#123;&#123;DESCRICAO&#125;&#125;</code>, <code>&#123;&#123;PROXIMA_CALIBRACAO&#125;&#125;</code>...</span>
+                                        <a href="{% url 'metrologia:templates_etiquetas_list' %}" class="small text-decoration-none fw-semibold">
+                                            <i class="bi bi-gear-fill me-1"></i>Gerenciar Modelos
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-6">
-                            <label class="form-label">Colunas</label>
-                            <input id="etq_cols" type="number" min="1" max="5" value="2" class="form-control">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label">Linhas</label>
-                            <input id="etq_rows" type="number" min="1" max="10" value="5" class="form-control">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label">Margem (mm)</label>
-                            <input id="etq_margin" type="number" min="0" max="30" value="10" class="form-control">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label">Espaço (mm)</label>
-                            <input id="etq_pad" type="number" min="0" max="30" value="5" class="form-control">
+
+                        <!-- ABA PDF -->
+                        <div class="tab-pane fade" id="tab-pdf-content" role="tabpanel">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold text-muted">Orientação da Folha</label>
+                                    <select id="etq_orient" class="form-select form-select-sm" onchange="updateEtiquetasLink()">
+                                        <option value="portrait" selected>Retrato</option>
+                                        <option value="landscape">Paisagem</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3 col-6">
+                                    <label class="form-label small fw-bold text-muted">Colunas</label>
+                                    <input id="etq_cols" type="number" min="1" max="5" value="2" class="form-control form-control-sm" onchange="updateEtiquetasLink()">
+                                </div>
+                                <div class="col-md-3 col-6">
+                                    <label class="form-label small fw-bold text-muted">Linhas</label>
+                                    <input id="etq_rows" type="number" min="1" max="10" value="5" class="form-control form-control-sm" onchange="updateEtiquetasLink()">
+                                </div>
+                                <div class="col-md-6 col-6">
+                                    <label class="form-label small fw-bold text-muted">Margem (mm)</label>
+                                    <input id="etq_margin" type="number" min="0" max="30" value="10" class="form-control form-control-sm" onchange="updateEtiquetasLink()">
+                                </div>
+                                <div class="col-md-6 col-6">
+                                    <label class="form-label small fw-bold text-muted">Espaço (mm)</label>
+                                    <input id="etq_pad" type="number" min="0" max="30" value="5" class="form-control form-control-sm" onchange="updateEtiquetasLink()">
+                                </div>
+                            </div>
                         </div>
                     </div>
+
+                    <!-- Resumo de Seleção -->
                     <div id="etqSummary" class="mt-3 p-2 bg-light border rounded small text-muted">
-                        Serão geradas etiquetas para 0 instrumentos. Ajuste filtros e configurações.
+                        Serão geradas etiquetas para 0 instrumentos. Ajuste filtros ou selecione linhas na tabela.
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <a id="btnEtiquetas" href="#" class="btn btn-primary" target="_blank">Gerar PDF</a>
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+                <div class="modal-footer bg-light border-top-0 pt-0">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
+                    <a id="btnEtiquetasExcel" href="{% url 'metrologia:export_etiquetas_excel' %}" class="btn btn-success btn-sm px-3 shadow-sm">
+                        <i class="bi bi-file-earmark-excel me-1"></i>Gerar Etiquetas Excel (.xlsx)
+                    </a>
+                    <a id="btnEtiquetas" href="{% url 'metrologia:export_etiquetas' %}" class="btn btn-outline-danger btn-sm px-3" target="_blank">
+                        <i class="bi bi-file-pdf me-1"></i>Gerar PDF
+                    </a>
                 </div>
             </div>
         </div>
     </div>
-    {% endif %}
 
     <div class="row h-100 overflow-hidden">
         
@@ -1117,16 +1185,33 @@ function updateExportLink(){
 
 function updateEtiquetasLink(){
     const btnEtiquetas = document.getElementById('btnEtiquetas');
-    if(!btnEtiquetas) return;
+    const btnEtiquetasExcel = document.getElementById('btnEtiquetasExcel');
     const qs = buildQueryString(getFilterState());
-    const orient = (document.getElementById('etq_orient')?.value || 'portrait');
-    const cols = (document.getElementById('etq_cols')?.value || 2);
-    const rows = (document.getElementById('etq_rows')?.value || 5);
-    const margin = (document.getElementById('etq_margin')?.value || 10);
-    const pad = (document.getElementById('etq_pad')?.value || 5);
-    const extras = `orient=${encodeURIComponent(orient)}&cols=${encodeURIComponent(cols)}&rows=${encodeURIComponent(rows)}&margin_mm=${encodeURIComponent(margin)}&pad_mm=${encodeURIComponent(pad)}`;
-    const finalQs = qs ? (qs + '&' + extras) : extras;
-    btnEtiquetas.href = '{% url 'metrologia:export_etiquetas' %}' + (finalQs ? ('?' + finalQs) : '');
+
+    // Configurações PDF
+    if (btnEtiquetas) {
+        const orient = (document.getElementById('etq_orient')?.value || 'portrait');
+        const cols = (document.getElementById('etq_cols')?.value || 2);
+        const rows = (document.getElementById('etq_rows')?.value || 5);
+        const margin = (document.getElementById('etq_margin')?.value || 10);
+        const pad = (document.getElementById('etq_pad')?.value || 5);
+        const extras = `orient=${encodeURIComponent(orient)}&cols=${encodeURIComponent(cols)}&rows=${encodeURIComponent(rows)}&margin_mm=${encodeURIComponent(margin)}&pad_mm=${encodeURIComponent(pad)}`;
+        const finalQs = qs ? (qs + '&' + extras) : extras;
+        btnEtiquetas.href = '{% url 'metrologia:export_etiquetas' %}' + (finalQs ? ('?' + finalQs) : '');
+    }
+
+    // Configurações Excel
+    if (btnEtiquetasExcel) {
+        const templateVal = document.getElementById('etq_excel_template')?.value || '';
+        let excelExtras = '';
+        if (templateVal.startsWith('var_')) {
+            excelExtras = `variacao=${encodeURIComponent(templateVal.replace('var_', ''))}`;
+        } else if (templateVal) {
+            excelExtras = `template_id=${encodeURIComponent(templateVal)}`;
+        }
+        const finalExcelQs = qs ? (excelExtras ? `${qs}&${excelExtras}` : qs) : excelExtras;
+        btnEtiquetasExcel.href = '{% url 'metrologia:export_etiquetas_excel' %}' + (finalExcelQs ? ('?' + finalExcelQs) : '');
+    }
 }
 
 function renderEtiquetasSummary(){
@@ -1200,13 +1285,20 @@ function getSelectedIds(){
 const __origUpdateEtiquetasLink = updateEtiquetasLink;
 updateEtiquetasLink = function(){
     __origUpdateEtiquetasLink();
-    const btnEtiquetas = document.getElementById('btnEtiquetas');
-    if (!btnEtiquetas) return;
     const ids = getSelectedIds();
     if (ids.length) {
-        const u = new URL(btnEtiquetas.href);
-        u.searchParams.set('ids', ids.join(','));
-        btnEtiquetas.href = u.toString();
+        const btnEtiquetas = document.getElementById('btnEtiquetas');
+        if (btnEtiquetas) {
+            const u = new URL(btnEtiquetas.href);
+            u.searchParams.set('ids', ids.join(','));
+            btnEtiquetas.href = u.toString();
+        }
+        const btnEtiquetasExcel = document.getElementById('btnEtiquetasExcel');
+        if (btnEtiquetasExcel) {
+            const u2 = new URL(btnEtiquetasExcel.href);
+            u2.searchParams.set('ids', ids.join(','));
+            btnEtiquetasExcel.href = u2.toString();
+        }
     }
 }
 
@@ -1220,7 +1312,7 @@ renderEtiquetasSummary = function(){
     if (ids.length) {
         const note = document.createElement('div');
         note.className = 'mt-2 text-primary small';
-        note.innerHTML = `Selecionados manualmente nesta página: <strong>${ids.length}</strong> (prioriza estes no PDF)`;
+        note.innerHTML = `Selecionados manualmente nesta página: <strong>${ids.length}</strong> (prioriza estes instrumentos nas etiquetas)`;
         box.appendChild(note);
     }
 }

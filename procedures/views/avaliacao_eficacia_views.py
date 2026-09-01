@@ -406,6 +406,8 @@ def avaliacao_eficacia_list_view(request):
     query_params = request.GET.copy()
     if 'page' in query_params:
         del query_params['page']
+    query_string = query_params.urlencode()
+
     selected_gestor_obj = None
     if gestor_id:
         try:
