@@ -808,7 +808,7 @@ def editar_colaborador_view(request, colab_id):
 def criar_colaborador_view(request):
     """Cria um novo colaborador com permissões de RH."""
     # Verificar se usuário tem permissão para criar
-    if not (request.user.is_staff or request.user.is_superuser):
+    if not _has_nav_view_access(request.user, "rh:criar_colaborador"):
         messages.error(request, "Acesso Negado. Você não tem permissão para criar colaboradores.")
         return redirect("modulo_rh")
     
