@@ -96,14 +96,35 @@
         justify-content: space-between;
         min-height: 105px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        transition: all 0.2s ease;
         text-decoration: none;
         height: 100%;
+        cursor: pointer;
+        user-select: none;
+        position: relative;
     }
     .kpi-card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.15);
         color: #ffffff;
+    }
+    .kpi-card-active {
+        transform: translateY(-3px) scale(1.02);
+        box-shadow: 0 0 0 3px #ffffff, 0 0 0 5px #0f766e, 0 12px 25px rgba(0,0,0,0.2) !important;
+        position: relative;
+    }
+    .kpi-card-active::after {
+        content: '✓ ATIVO';
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        font-size: 0.65rem;
+        font-weight: 800;
+        background: rgba(255, 255, 255, 0.35);
+        padding: 2px 7px;
+        border-radius: 4px;
+        letter-spacing: 0.05em;
+        backdrop-filter: blur(4px);
     }
     .kpi-card.danger { background: linear-gradient(135deg, #e11d48 0%, #be123c 100%); }
     .kpi-card.warning { background: linear-gradient(135deg, #d97706 0%, #b45309 100%); }
@@ -371,7 +392,7 @@
     <div id="kpis-container" class="row g-2 g-md-3 mb-4">
         <!-- ABA TODOS (Grid 2x2 no mobile: col-6, 4 cols no desktop: col-md-3) -->
         <div class="col-6 col-md-3 kpi-group-item kpi-group-todos">
-            <a href="{% url 'modulo_metrologia' %}?st=ATIVO&sit=VENCIDO" class="kpi-card danger">
+            <div class="kpi-card danger" data-kpi="VENCIDOS" onclick="filtrarPorKpi('VENCIDOS')" title="Clique para filtrar apenas os Vencidos">
                 <div class="d-flex justify-content-between align-items-start">
                     <span class="kpi-label">Vencidos</span>
                     <i class="bi bi-calendar-x fs-5 fs-md-4 opacity-75"></i>
@@ -380,10 +401,10 @@
                     <div class="kpi-number">{{ kpis.todos.vencidos|default:0 }}</div>
                     <div class="kpi-desc">Calibração imediata</div>
                 </div>
-            </a>
+            </div>
         </div>
         <div class="col-6 col-md-3 kpi-group-item kpi-group-todos">
-            <a href="{% url 'modulo_metrologia' %}?st=ATIVO&sit=AVENCER_30" class="kpi-card warning">
+            <div class="kpi-card warning" data-kpi="AVENCER_30" onclick="filtrarPorKpi('AVENCER_30')" title="Clique para filtrar os que vencem em 30 dias">
                 <div class="d-flex justify-content-between align-items-start">
                     <span class="kpi-label">Vencem 30d</span>
                     <i class="bi bi-clock-history fs-5 fs-md-4 opacity-75"></i>
@@ -392,10 +413,10 @@
                     <div class="kpi-number">{{ kpis.todos.avencer_30|default:0 }}</div>
                     <div class="kpi-desc">Janela de atenção</div>
                 </div>
-            </a>
+            </div>
         </div>
         <div class="col-6 col-md-3 kpi-group-item kpi-group-todos">
-            <div class="kpi-card purple">
+            <div class="kpi-card purple" data-kpi="OCORRENCIAS" onclick="filtrarPorKpi('OCORRENCIAS')" title="Clique para filtrar instrumentos com ocorrências/RNC abertas">
                 <div class="d-flex justify-content-between align-items-start">
                     <span class="kpi-label">Ocorrências</span>
                     <i class="bi bi-exclamation-octagon fs-5 fs-md-4 opacity-75"></i>
@@ -407,7 +428,7 @@
             </div>
         </div>
         <div class="col-6 col-md-3 kpi-group-item kpi-group-todos">
-            <a href="{% url 'modulo_metrologia' %}" class="kpi-card blue">
+            <div class="kpi-card blue" data-kpi="TODOS" onclick="filtrarPorKpi('TODOS')" title="Clique para exibir todos os instrumentos">
                 <div class="d-flex justify-content-between align-items-start">
                     <span class="kpi-label">Parque Total</span>
                     <i class="bi bi-tools fs-5 fs-md-4 opacity-75"></i>
@@ -416,12 +437,12 @@
                     <div class="kpi-number">{{ kpis.todos.total_instrumentos|default:0 }}</div>
                     <div class="kpi-desc">{{ kpis.todos.em_dia|default:0 }} em dia</div>
                 </div>
-            </a>
+            </div>
         </div>
 
         <!-- ABA EXTERNO (Grid 2 cols mobile, 3 cols desktop) -->
         <div class="col-6 col-md-4 kpi-group-item kpi-group-externo d-none">
-            <a href="{% url 'metrologia:solicitacao_list' %}" class="kpi-card blue">
+            <a href="{% url 'metrologia:solicitacao_list' %}" class="kpi-card blue" title="Abrir painel de cotações">
                 <div class="d-flex justify-content-between align-items-start">
                     <span class="kpi-label">Cotações Abertas</span>
                     <i class="bi bi-cash-coin fs-5 fs-md-4 opacity-75"></i>
@@ -433,7 +454,7 @@
             </a>
         </div>
         <div class="col-6 col-md-4 kpi-group-item kpi-group-externo d-none">
-            <div class="kpi-card warning">
+            <div class="kpi-card warning" data-kpi="FORNECEDOR" onclick="filtrarPorKpi('FORNECEDOR')" title="Clique para filtrar instrumentos externos">
                 <div class="d-flex justify-content-between align-items-start">
                     <span class="kpi-label">No Fornecedor</span>
                     <i class="bi bi-truck fs-5 fs-md-4 opacity-75"></i>
@@ -445,7 +466,7 @@
             </div>
         </div>
         <div class="col-12 col-md-4 kpi-group-item kpi-group-externo d-none">
-            <div class="kpi-card danger">
+            <div class="kpi-card danger" data-kpi="VENCIDOS_AVENCER" onclick="filtrarPorKpi('VENCIDOS_AVENCER')" title="Clique para filtrar externos vencidos e a vencer">
                 <div class="d-flex justify-content-between align-items-start">
                     <span class="kpi-label">Vencidos / A Vencer</span>
                     <i class="bi bi-calendar-x fs-5 fs-md-4 opacity-75"></i>
@@ -459,7 +480,7 @@
 
         <!-- ABA INTERNO (Grid 2 cols mobile, 3 cols desktop) -->
         <div class="col-6 col-md-4 kpi-group-item kpi-group-interno d-none">
-            <div class="kpi-card teal">
+            <div class="kpi-card teal" data-kpi="FILA_LABORATORIO" onclick="filtrarPorKpi('FILA_LABORATORIO')" title="Clique para filtrar fila de calibração do laboratório">
                 <div class="d-flex justify-content-between align-items-start">
                     <span class="kpi-label">Fila Laboratório</span>
                     <i class="bi bi-droplet-half fs-5 fs-md-4 opacity-75"></i>
@@ -471,7 +492,7 @@
             </div>
         </div>
         <div class="col-6 col-md-4 kpi-group-item kpi-group-interno d-none">
-            <div class="kpi-card danger">
+            <div class="kpi-card danger" data-kpi="VENCIDOS" onclick="filtrarPorKpi('VENCIDOS')" title="Clique para filtrar internos vencidos">
                 <div class="d-flex justify-content-between align-items-start">
                     <span class="kpi-label">Internos Vencidos</span>
                     <i class="bi bi-exclamation-triangle fs-5 fs-md-4 opacity-75"></i>
@@ -483,7 +504,7 @@
             </div>
         </div>
         <div class="col-12 col-md-4 kpi-group-item kpi-group-interno d-none">
-            <div class="kpi-card purple">
+            <div class="kpi-card purple" data-kpi="OCORRENCIAS" onclick="filtrarPorKpi('OCORRENCIAS')" title="Clique para filtrar ocorrências internas ativas">
                 <div class="d-flex justify-content-between align-items-start">
                     <span class="kpi-label">Ocorrências Internas</span>
                     <i class="bi bi-tools fs-5 fs-md-4 opacity-75"></i>
@@ -1199,19 +1220,63 @@
         document.querySelectorAll('.kpi-group-item').forEach(el => el.classList.add('d-none'));
         document.querySelectorAll(`.kpi-group-${tab}`).forEach(el => el.classList.remove('d-none'));
 
+        // Limpar filtro de KPI ao mudar de aba
+        currentKpiFilter = null;
+        document.querySelectorAll('.kpi-card').forEach(card => card.classList.remove('kpi-card-active'));
+
         // Atualizar rótulo
-        const labels = { 'todos': 'TODOS', 'externo': 'EXTERNO (Fornecedores)', 'interno': 'INTERNO (Laboratório)' };
-        const labelEl = document.getElementById('activeTabLabel');
-        if (labelEl) labelEl.textContent = labels[tab] || tab.toUpperCase();
+        atualizarRotuloFiltro();
 
         // Filtrar e Paginar
         applyAllFilters();
     }
 
+    let currentKpiFilter = null;
+
+    function filtrarPorKpi(tipo) {
+        if (tipo === 'TODOS') {
+            currentKpiFilter = null;
+        } else if (currentKpiFilter === tipo) {
+            currentKpiFilter = null; // Toggle para desativar
+        } else {
+            currentKpiFilter = tipo;
+        }
+
+        // Atualizar visual dos cards
+        document.querySelectorAll('.kpi-card').forEach(card => card.classList.remove('kpi-card-active'));
+        if (currentKpiFilter) {
+            document.querySelectorAll(`.kpi-card[data-kpi="${currentKpiFilter}"]`).forEach(card => {
+                card.classList.add('kpi-card-active');
+            });
+        }
+
+        atualizarRotuloFiltro();
+        currentPage = 1;
+        applyAllFilters();
+    }
+
+    function atualizarRotuloFiltro() {
+        const labels = { 'todos': 'TODOS', 'externo': 'EXTERNO (Fornecedores)', 'interno': 'INTERNO (Laboratório)' };
+        let baseLabel = labels[currentTab] || currentTab.toUpperCase();
+        if (currentKpiFilter) {
+            const kpiLabels = {
+                'VENCIDOS': 'VENCIDOS',
+                'AVENCER_30': 'VENCEM EM 30D',
+                'VENCIDOS_AVENCER': 'VENCIDOS E A VENCER (30D)',
+                'OCORRENCIAS': 'COM OCORRÊNCIAS / RNC',
+                'FORNECEDOR': 'NO FORNECEDOR',
+                'FILA_LABORATORIO': 'FILA LABORATÓRIO'
+            };
+            baseLabel += ` • FILTRO: ${kpiLabels[currentKpiFilter] || currentKpiFilter}`;
+        }
+        const labelEl = document.getElementById('activeTabLabel');
+        if (labelEl) labelEl.textContent = baseLabel;
+    }
+
     const loggedUsername = ("{{ request.user.username|default:''|escapejs }}").toLowerCase().trim();
 
     // ==========================================
-    // 2. FILTRAGEM COMBINADA (ABAS + BUSCA + MODAL AVANÇADO)
+    // 2. FILTRAGEM COMBINADA (ABAS + KPIS + BUSCA + MODAL AVANÇADO)
     // ==========================================
     function applyAllFilters() {
         const searchInputEl = document.getElementById('dashboardSearchInput');
@@ -1253,6 +1318,7 @@
                 totalActiveFilters += activeFilters[k].length;
             }
         });
+        if (currentKpiFilter) totalActiveFilters += 1;
 
         const badge = document.getElementById('filtrosCountBadge');
         if (badge) {
@@ -1286,13 +1352,28 @@
             if (currentTab === 'externo' && isInternal) return false;
             if (currentTab === 'interno' && !isInternal) return false;
 
-            // 2. Checar Busca Textual
+            // 2. Checar Filtro dos Cards de KPI Superiores
+            if (currentKpiFilter === 'VENCIDOS') {
+                if (situacao !== 'VENCIDO') return false;
+            } else if (currentKpiFilter === 'AVENCER_30') {
+                if (situacao !== 'AVENCER_30') return false;
+            } else if (currentKpiFilter === 'VENCIDOS_AVENCER') {
+                if (situacao !== 'VENCIDO' && situacao !== 'AVENCER_30') return false;
+            } else if (currentKpiFilter === 'OCORRENCIAS') {
+                if (ocorrencia !== 'COM_ABERTA') return false;
+            } else if (currentKpiFilter === 'FORNECEDOR') {
+                if (situacao !== 'VENCIDO' && situacao !== 'AVENCER_30') return false;
+            } else if (currentKpiFilter === 'FILA_LABORATORIO') {
+                if (situacao !== 'VENCIDO' && situacao !== 'AVENCER_30') return false;
+            }
+
+            // 3. Checar Busca Textual
             if (query) {
                 const textMatch = tag.includes(query) || codigo.includes(query) || desc.includes(query) || fab.includes(query) || mod.includes(query) || setor.includes(query);
                 if (!textMatch) return false;
             }
 
-            // 3. Checar Filtros Avançados
+            // 4. Checar Filtros Avançados
             if (activeFilters.situacao.length && !activeFilters.situacao.includes(situacao)) return false;
             if (activeFilters.status.length && !activeFilters.status.includes(status)) return false;
             if (activeFilters.periodo.length && !activeFilters.periodo.includes(periodo)) return false;
@@ -1546,6 +1627,10 @@
     }
 
     function limparTodosFiltrosEBusca() {
+        currentKpiFilter = null;
+        document.querySelectorAll('.kpi-card').forEach(card => card.classList.remove('kpi-card-active'));
+        atualizarRotuloFiltro();
+
         const searchInputEl = document.getElementById('dashboardSearchInput');
         if (searchInputEl) {
             searchInputEl.value = '';
