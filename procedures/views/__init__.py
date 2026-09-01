@@ -114,6 +114,7 @@ from .avaliacao_eficacia_views import (
     avaliacao_eficacia_export_excel_view,
     exportar_avaliacao_eficacia_for142_view,
     exportar_avaliacao_eficacia_for142_massa_view,
+    avaliacao_eficacia_search_options_api,
 )
 
 from .planejamento_views import (
@@ -136,6 +137,7 @@ __all__ += [
     'avaliacao_eficacia_export_excel_view',
     'exportar_avaliacao_eficacia_for142_view',
     'exportar_avaliacao_eficacia_for142_massa_view',
+    'avaliacao_eficacia_search_options_api',
     'exportar_planejamento_for133_view',
     'exportar_auto_avaliacao_for141_view',
     'perguntas_avaliacao_list_view',

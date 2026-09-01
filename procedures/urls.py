@@ -72,6 +72,7 @@ urlpatterns = [
     path('treinamentos/avaliacao-eficacia/exportar-excel/', views.avaliacao_eficacia_export_excel_view, name='avaliacao_eficacia_export_excel'),
     path('treinamentos/avaliacao-eficacia/exportar-for142-massa/', views.exportar_avaliacao_eficacia_for142_massa_view, name='exportar_avaliacao_eficacia_for142_massa'),
     path('treinamentos/avaliacao-eficacia/<int:treinamento_id>/exportar-for142/', views.exportar_avaliacao_eficacia_for142_view, name='exportar_avaliacao_eficacia_for142'),
+    path('treinamentos/avaliacao-eficacia/api/search-options/', views.avaliacao_eficacia_search_options_api, name='avaliacao_eficacia_search_options_api'),
     path('treinamentos/<int:treinamento_id>/', views.treinamentos_detalhe_view, name='treinamentos_detalhe'),
     path('treinamentos/novo/', views.novo_treinamento_view, name='novo_treinamento'),
     path('treinamentos/<int:treinamento_id>/editar/', views.editar_treinamento_view, name='editar_treinamento'),

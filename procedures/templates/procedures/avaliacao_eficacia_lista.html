@@ -189,8 +189,8 @@
                 <div class="modal-body py-3">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label text-muted small fw-bold">Setor</label>
-                            <select name="setor" class="form-select form-select-sm">
+                            <label class="form-label text-muted small fw-bold"><i class="bi bi-diagram-3 me-1"></i>Setor</label>
+                            <select name="setor" id="filtro-select-setor" class="form-select form-select-sm select2-filtro">
                                 <option value="">-- Todos os Setores --</option>
                                 {% for s in setores_list %}
                                     <option value="{{ s.id }}" {% if setor_filtro == s.id|stringformat:"s" %}selected{% endif %}>{{ s.nome }}</option>
@@ -198,17 +198,17 @@
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label text-muted small fw-bold">Gestor / Responsável</label>
-                            <select name="gestor" class="form-select form-select-sm">
+                            <label class="form-label text-muted small fw-bold"><i class="bi bi-person-gear me-1"></i>Gestor / Responsável</label>
+                            <select name="gestor" id="filtro-select-gestor" class="form-select form-select-sm select2-filtro">
                                 <option value="">-- Todos os Gestores --</option>
                                 {% for g in gestores_list %}
                                     <option value="{{ g.id }}" {% if gestor_filtro == g.id|stringformat:"s" %}selected{% endif %}>{{ g.nome_completo }}</option>
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label text-muted small fw-bold">Procedimento Crítico</label>
-                            <select name="procedimento" class="form-select form-select-sm">
+                        <div class="col-md-12">
+                            <label class="form-label text-muted small fw-bold"><i class="bi bi-file-earmark-code me-1 text-danger"></i>Procedimento Crítico</label>
+                            <select name="procedimento" id="filtro-select-procedimento" class="form-select form-select-sm select2-filtro">
                                 <option value="">-- Todos os Procedimentos --</option>
                                 {% for p in procedimentos_list %}
                                     <option value="{{ p.id }}" {% if procedimento_filtro == p.id|stringformat:"s" %}selected{% endif %}>{{ p.codigo }} - {{ p.nome }}</option>
@@ -696,6 +696,10 @@
     </div>
 </div>
 
+<!-- Select2 CSS & Bootstrap 5 Theme -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+
 <!-- Custom CSS -->
 <style>
     .bg-primary-light { background-color: rgba(13, 110, 253, 0.08); }
@@ -728,6 +732,21 @@
             background-color: transparent !important;
         }
     }
+    /* Estilização refinada para Select2 em Modais */
+    .select2-container--bootstrap-5 .select2-selection {
+        font-size: 0.85rem;
+        min-height: 33px;
+        border-radius: 0.375rem;
+    }
+    .select2-container--bootstrap-5 .select2-dropdown {
+        z-index: 1065 !important;
+        font-size: 0.85rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+    .select2-container {
+        width: 100% !important;
+    }
 </style>
 
 <!-- Toast Flutuante de Feedback -->
@@ -743,9 +762,117 @@
     </div>
 </div>
 
+<!-- JQuery & Select2 JS -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
 <!-- Script para gerenciamento e modais -->
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // ============================================
+        // Inicialização do Select2 com AJAX nos Filtros
+        // ============================================
+        function initSelect2Filters() {
+            if (!window.jQuery || !$.fn.select2) return;
+
+            // 1. Setor com AJAX
+            $('#filtro-select-setor').select2({
+                theme: 'bootstrap-5',
+                dropdownParent: $('#filtrosModal'),
+                placeholder: '-- Todos os Setores --',
+                allowClear: true,
+                width: '100%',
+                ajax: {
+                    url: "{% url 'procedures:avaliacao_eficacia_search_options_api' %}?tipo=setor",
+                    dataType: 'json',
+                    delay: 250,
+                    data: function(params) {
+                        return { q: params.term || '' };
+                    },
+                    processResults: function(data) {
+                        return { results: data.results };
+                    },
+                    cache: true
+                }
+            });
+
+            // 2. Gestor / Responsável com AJAX
+            $('#filtro-select-gestor').select2({
+                theme: 'bootstrap-5',
+                dropdownParent: $('#filtrosModal'),
+                placeholder: '-- Todos os Gestores --',
+                allowClear: true,
+                width: '100%',
+                ajax: {
+                    url: "{% url 'procedures:avaliacao_eficacia_search_options_api' %}?tipo=gestor",
+                    dataType: 'json',
+                    delay: 250,
+                    data: function(params) {
+                        return { q: params.term || '' };
+                    },
+                    processResults: function(data) {
+                        return { results: data.results };
+                    },
+                    cache: true
+                }
+            });
+
+            // 3. Procedimento Crítico com AJAX
+            $('#filtro-select-procedimento').select2({
+                theme: 'bootstrap-5',
+                dropdownParent: $('#filtrosModal'),
+                placeholder: '-- Todos os Procedimentos --',
+                allowClear: true,
+                width: '100%',
+                ajax: {
+                    url: "{% url 'procedures:avaliacao_eficacia_search_options_api' %}?tipo=procedimento",
+                    dataType: 'json',
+                    delay: 250,
+                    data: function(params) {
+                        return { q: params.term || '' };
+                    },
+                    processResults: function(data) {
+                        return { results: data.results };
+                    },
+                    cache: true
+                }
+            });
+        }
+
+        const filtrosModalEl = document.getElementById('filtrosModal');
+        if (filtrosModalEl) {
+            filtrosModalEl.addEventListener('shown.bs.modal', function () {
+                initSelect2Filters();
+            });
+        }
+
+        // Modais de Avaliação e Gestor com Select2
+        const avaliacaoModalEl = document.getElementById('avaliacaoModal');
+        if (avaliacaoModalEl) {
+            avaliacaoModalEl.addEventListener('shown.bs.modal', function () {
+                if (window.jQuery && $.fn.select2) {
+                    $('#modal-field-gestor').select2({
+                        theme: 'bootstrap-5',
+                        dropdownParent: $('#avaliacaoModal'),
+                        width: '100%'
+                    });
+                }
+            });
+        }
+
+        const alterarGestorIndivModalEl = document.getElementById('alterarGestorIndividualModal');
+        if (alterarGestorIndivModalEl) {
+            alterarGestorIndivModalEl.addEventListener('shown.bs.modal', function () {
+                if (window.jQuery && $.fn.select2) {
+                    $('#modal-indiv-select-gestor').select2({
+                        theme: 'bootstrap-5',
+                        dropdownParent: $('#alterarGestorIndividualModal'),
+                        width: '100%'
+                    });
+                }
+            });
+        }
+
         // Individual Gestor Redirection Modal click
         document.querySelectorAll('.btn-alterar-gestor-individual').forEach(btn => {
             btn.addEventListener('click', function(e) {
@@ -764,6 +891,9 @@
                 const selectEl = document.getElementById('modal-indiv-select-gestor');
                 if (selectEl) {
                     selectEl.value = gestorId ? gestorId : 'padrao';
+                    if (window.jQuery && $.fn.select2) {
+                        $('#modal-indiv-select-gestor').val(gestorId ? gestorId : 'padrao').trigger('change');
+                    }
                 }
 
                 const modalEl = document.getElementById('alterarGestorIndividualModal');
@@ -810,6 +940,9 @@
 
                 if (fieldGestor) {
                     fieldGestor.value = gestorId ? gestorId : 'padrao';
+                    if (window.jQuery && $.fn.select2) {
+                        $('#modal-field-gestor').val(gestorId ? gestorId : 'padrao').trigger('change');
+                    }
                 }
 
                 fieldStatus.value = (status === 'PENDENTE' || !status) ? 'EFICAZ' : status;
