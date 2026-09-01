@@ -24,7 +24,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
     if not getattr(user, "is_authenticated", False):
         return []
         
-    cache_key = f"inbox_items:v4:user:{getattr(user, 'pk', 'anon')}:global:{is_global}"
+    cache_key = f"inbox_items:v5:user:{getattr(user, 'pk', 'anon')}:global:{is_global}"
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
@@ -458,35 +458,81 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                 if not is_global_viewer and colaborador and not (user.is_superuser or user.is_staff):
                     qs_resp_matriz = qs_resp_matriz.filter(colaborador=colaborador)
 
-                for rm in qs_resp_matriz[:20]:
-                    matriz_nome = rm.matriz.nome if rm.matriz else "Matriz de Procedimentos"
-                    sub_nome = f" ({rm.sub_area.nome})" if rm.sub_area else ""
-                    target_url = f"{reverse('procedures:dashboard_treinamentos')}?instrutor_responsavel={rm.colaborador_id}&matriz={rm.matriz_id}"
-                    if rm.sub_area_id:
-                        target_url += f"&sub_area={rm.sub_area_id}"
-                    if rm.turno:
-                        target_url += f"&turno={rm.turno}"
+                for rm in qs_resp_matriz[:30]:
+                    matriz_nome = rm.matriz.nome if rm.matriz else ""
+                    sub_nome = rm.sub_area.nome if rm.sub_area else ""
+                    instrutor_id = str(rm.colaborador_id)
+                    instrutor_nome = rm.colaborador.nome_completo if rm.colaborador else "Instrutor"
 
-                    items.append(
-                        InboxItem(
-                            id=f"resp_matriz_{rm.id}",
-                            title=f"Demanda Instrutor: {rm.colaborador.nome_completo}",
-                            description=f"{matriz_nome}{sub_nome} - Turno {rm.turno or 'Geral'}",
-                            module="Treinamentos",
-                            icon="bi-person-video3",
-                            url=target_url,
-                            action_text="Abrir Painel",
-                            date=rm.atualizado_em.date() if rm.atualizado_em else hoje,
-                            is_urgent=False,
-                            sub_type="Demanda por Instrutor"
+                    # Buscar pendências reais de colaboradores para este escopo
+                    demanda_escopo_qs = RegistroTreinamento.objects.filter(
+                        ativo=True,
+                        tipo="PROCEDIMENTO",
+                        procedimento__isnull=False,
+                        colaborador__is_active=True,
+                    ).filter(pendencias_demanda).select_related("colaborador", "procedimento")
+
+                    if matriz_nome:
+                        demanda_escopo_qs = demanda_escopo_qs.filter(procedimento__matriz__iexact=matriz_nome)
+                    if sub_nome:
+                        demanda_escopo_qs = demanda_escopo_qs.filter(procedimento__sub_area__iexact=sub_nome)
+                    if rm.turno:
+                        demanda_escopo_qs = demanda_escopo_qs.filter(colaborador__turno=rm.turno)
+
+                    demanda_items = list(demanda_escopo_qs[:10])
+
+                    if demanda_items:
+                        for d in demanda_items:
+                            target_url = f"{reverse('procedures:dashboard_treinamentos')}?colaborador_id={d.colaborador_id}&instrutor_responsavel={instrutor_id}"
+                            if rm.matriz_id:
+                                target_url += f"&matriz={rm.matriz_id}"
+                            if rm.sub_area_id:
+                                target_url += f"&sub_area={rm.sub_area_id}"
+                            if rm.turno:
+                                target_url += f"&turno={rm.turno}"
+
+                            items.append(
+                                InboxItem(
+                                    id=f"resp_matriz_{rm.id}_colab_{d.colaborador_id}",
+                                    title=f"Demanda Instrutor: {d.colaborador.nome_completo}",
+                                    description=f"Procedimento {d.procedimento.codigo} ({matriz_nome}{f' - {sub_nome}' if sub_nome else ''}) - Turno {d.colaborador.turno or rm.turno or 'Geral'}",
+                                    module="Treinamentos",
+                                    icon="bi-person-video3",
+                                    url=target_url,
+                                    action_text="Abrir Painel",
+                                    date=d.criado_em.date() if hasattr(d, "criado_em") and d.criado_em else (rm.atualizado_em.date() if rm.atualizado_em else hoje),
+                                    is_urgent=False,
+                                    sub_type="Demanda por Instrutor"
+                                )
+                            )
+                    else:
+                        # Fallback do escopo da matriz caso não haja registros pendentes individuais catalogados
+                        target_url = f"{reverse('procedures:dashboard_treinamentos')}?instrutor_responsavel={instrutor_id}&matriz={rm.matriz_id}"
+                        if rm.sub_area_id:
+                            target_url += f"&sub_area={rm.sub_area_id}"
+                        if rm.turno:
+                            target_url += f"&turno={rm.turno}"
+
+                        items.append(
+                            InboxItem(
+                                id=f"resp_matriz_{rm.id}",
+                                title=f"Demanda Instrutor: {matriz_nome or 'Treinamentos'}{f' ({sub_nome})' if sub_nome else ''}",
+                                description=f"Instrutor: {instrutor_nome} - Turno {rm.turno or 'Geral'}",
+                                module="Treinamentos",
+                                icon="bi-person-video3",
+                                url=target_url,
+                                action_text="Abrir Painel",
+                                date=rm.atualizado_em.date() if rm.atualizado_em else hoje,
+                                is_urgent=False,
+                                sub_type="Demanda por Instrutor"
+                            )
                         )
-                    )
 
                 # B. Planejamentos de Treinamento
                 qs_plan = PlanejamentoTreinamento.objects.filter(
                     status__in=['PLANEJADO', 'EM_ANDAMENTO'],
                     data_planejada__lte=hoje + timedelta(days=7)
-                ).select_related('procedimento', 'responsavel')
+                ).select_related('procedimento', 'responsavel').prefetch_related('participantes')
 
                 if not is_global_viewer and colaborador and not (user.is_superuser or user.is_staff):
                     scoped_plan = qs_plan.filter(responsavel=colaborador)
@@ -498,22 +544,41 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                     atrasado = bool(pl.data_planejada and pl.data_planejada < hoje)
                     proc_code = pl.procedimento.codigo if pl.procedimento else "Treinamento"
                     instrutor_id = pl.responsavel_id or (colaborador.id if colaborador else "")
-                    target_url = f"{reverse('procedures:dashboard_treinamentos')}?instrutor_responsavel={instrutor_id}" if instrutor_id else reverse('procedures:dashboard_treinamentos')
+                    participantes = list(pl.participantes.all()[:5])
 
-                    items.append(
-                        InboxItem(
-                            id=f"planejamento_{pl.id}",
-                            title=f"Demanda Instrutor: {proc_code}",
-                            description=f"{'Atrasado desde ' if atrasado else 'Previsto para '}{pl.data_planejada.strftime('%d/%m/%Y') if pl.data_planejada else '-'}",
-                            module="Treinamentos",
-                            icon="bi-calendar-check",
-                            url=target_url,
-                            action_text="Abrir Painel",
-                            date=pl.data_planejada if pl.data_planejada else hoje,
-                            is_urgent=atrasado,
-                            sub_type="Demanda por Instrutor"
+                    if participantes:
+                        for part in participantes:
+                            target_url = f"{reverse('procedures:dashboard_treinamentos')}?colaborador_id={part.id}&instrutor_responsavel={instrutor_id}" if instrutor_id else f"{reverse('procedures:dashboard_treinamentos')}?colaborador_id={part.id}"
+                            items.append(
+                                InboxItem(
+                                    id=f"planejamento_{pl.id}_part_{part.id}",
+                                    title=f"Demanda Instrutor: {part.nome_completo}",
+                                    description=f"Planejamento {proc_code} ({'Atrasado desde ' if atrasado else 'Previsto para '}{pl.data_planejada.strftime('%d/%m/%Y') if pl.data_planejada else '-'})",
+                                    module="Treinamentos",
+                                    icon="bi-calendar-check",
+                                    url=target_url,
+                                    action_text="Abrir Painel",
+                                    date=pl.data_planejada if pl.data_planejada else hoje,
+                                    is_urgent=atrasado,
+                                    sub_type="Demanda por Instrutor"
+                                )
+                            )
+                    else:
+                        target_url = f"{reverse('procedures:dashboard_treinamentos')}?instrutor_responsavel={instrutor_id}" if instrutor_id else reverse('procedures:dashboard_treinamentos')
+                        items.append(
+                            InboxItem(
+                                id=f"planejamento_{pl.id}",
+                                title=f"Demanda Instrutor: {proc_code}",
+                                description=f"{'Atrasado desde ' if atrasado else 'Previsto para '}{pl.data_planejada.strftime('%d/%m/%Y') if pl.data_planejada else '-'}",
+                                module="Treinamentos",
+                                icon="bi-calendar-check",
+                                url=target_url,
+                                action_text="Abrir Painel",
+                                date=pl.data_planejada if pl.data_planejada else hoje,
+                                is_urgent=atrasado,
+                                sub_type="Demanda por Instrutor"
+                            )
                         )
-                    )
             except Exception:
                 pass
     except Exception:
