@@ -446,9 +446,32 @@
         </div>
     </div>
 
-    <!-- CONTAINER DE KPIS DINÂMICOS CONFORME A ABA ATIVA (GRID 2x2 EM MOBILE, 4 COLS EM DESKTOP) -->
-    <div id="kpis-container" class="row g-2 g-md-3 mb-4">
-        <!-- ABA TODOS (Grid 2x2 no mobile: col-6, 4 cols no desktop: col-md-3) -->
+    <!-- VERSÃO MOBILE: BOTÃO PARA ABRIR O POP-UP DE CARDS DE STATUS/KPIS -->
+    <div class="d-block d-md-none mb-3">
+        <button type="button" class="btn btn-outline-dark btn-sm w-100 d-flex justify-content-between align-items-center py-2.5 px-3 bg-white border shadow-sm rounded-3" data-bs-toggle="modal" data-bs-target="#modalKpisMobile">
+            <div class="d-flex align-items-center gap-2">
+                <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                    <i class="bi bi-pie-chart-fill"></i>
+                </div>
+                <div class="text-start">
+                    <span class="d-block fw-bold text-dark" style="font-size: 0.85rem;">Status & Indicadores</span>
+                    <small class="text-muted" style="font-size: 0.72rem;" id="mobileKpiActiveSummary">
+                        {% if kpis.todos.vencidos > 0 %}<span class="text-danger fw-bold">{{ kpis.todos.vencidos }} vencidos</span> &bull; {% endif %}{{ kpis.todos.total_instrumentos|default:0 }} total
+                    </small>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-1.5">
+                <span class="badge {% if kpis.todos.vencidos > 0 %}bg-danger{% else %}bg-success{% endif %} rounded-pill px-2" id="mobileKpiBadgeAlert">
+                    {% if kpis.todos.vencidos > 0 %}{{ kpis.todos.vencidos }} Vencidos{% else %}Em dia{% endif %}
+                </span>
+                <i class="bi bi-chevron-right text-muted small"></i>
+            </div>
+        </button>
+    </div>
+
+    <!-- CONTAINER DE KPIS DESKTOP (4 COLS LADO A LADO) -->
+    <div id="kpis-container" class="d-none d-md-flex row g-2 g-md-3 mb-4">
+        <!-- ABA TODOS (Grid 4 cols no desktop: col-md-3) -->
         <div class="col-6 col-md-3 kpi-group-item kpi-group-todos">
             <div class="kpi-card danger" data-kpi="VENCIDOS" onclick="filtrarPorKpi('VENCIDOS')" title="Clique para filtrar apenas os Vencidos">
                 <div class="d-flex justify-content-between align-items-start">
@@ -1324,6 +1347,161 @@
     </div>
 </div>
 
+<!-- 4.5 MODAL POP-UP DE CARDS DE STATUS / KPIS (MOBILE) -->
+<div class="modal fade" id="modalKpisMobile" tabindex="-1" aria-labelledby="modalKpisMobileLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0" style="border-radius: 16px; overflow: hidden;">
+            <div class="modal-header bg-dark text-white py-3 px-3">
+                <h6 class="modal-title fw-bold mb-0 d-flex align-items-center gap-2" id="modalKpisMobileLabel">
+                    <i class="bi bi-pie-chart-fill text-primary"></i> Indicadores de Status
+                </h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-3 bg-light">
+                <p class="text-muted small mb-3">Toque em qualquer indicador para filtrar a listagem:</p>
+                
+                <!-- Cards Aba TODOS -->
+                <div class="row g-2 kpi-group-item kpi-group-todos">
+                    <div class="col-6">
+                        <div class="kpi-card danger h-100" data-kpi="VENCIDOS" onclick="filtrarPorKpi('VENCIDOS'); fecharModalKpisMobile();" role="button">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <span class="kpi-label">Vencidos</span>
+                                <i class="bi bi-calendar-x fs-5 opacity-75"></i>
+                            </div>
+                            <div>
+                                <div class="kpi-number">{{ kpis.todos.vencidos|default:0 }}</div>
+                                <div class="kpi-desc">Calibração imediata</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="kpi-card warning h-100" data-kpi="AVENCER_30" onclick="filtrarPorKpi('AVENCER_30'); fecharModalKpisMobile();" role="button">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <span class="kpi-label">Vencem 30d</span>
+                                <i class="bi bi-clock-history fs-5 opacity-75"></i>
+                            </div>
+                            <div>
+                                <div class="kpi-number">{{ kpis.todos.avencer_30|default:0 }}</div>
+                                <div class="kpi-desc">Janela de atenção</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="kpi-card purple h-100" data-kpi="OCORRENCIAS" onclick="filtrarPorKpi('OCORRENCIAS'); fecharModalKpisMobile();" role="button">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <span class="kpi-label">Ocorrências</span>
+                                <i class="bi bi-exclamation-octagon fs-5 opacity-75"></i>
+                            </div>
+                            <div>
+                                <div class="kpi-number">{{ kpis.todos.ocorrencias_ativas|default:0 }}</div>
+                                <div class="kpi-desc">RNCs em aberto</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="kpi-card blue h-100" data-kpi="TODOS" onclick="filtrarPorKpi('TODOS'); fecharModalKpisMobile();" role="button">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <span class="kpi-label">Parque Total</span>
+                                <i class="bi bi-tools fs-5 opacity-75"></i>
+                            </div>
+                            <div>
+                                <div class="kpi-number">{{ kpis.todos.total_instrumentos|default:0 }}</div>
+                                <div class="kpi-desc">{{ kpis.todos.em_dia|default:0 }} em dia</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cards Aba EXTERNO -->
+                <div class="row g-2 kpi-group-item kpi-group-externo d-none">
+                    <div class="col-12">
+                        <a href="{% url 'metrologia:solicitacao_list' %}" class="kpi-card blue d-block text-decoration-none" onclick="fecharModalKpisMobile();">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <span class="kpi-label">Cotações Abertas</span>
+                                <i class="bi bi-cash-coin fs-5 opacity-75"></i>
+                            </div>
+                            <div>
+                                <div class="kpi-number">{{ kpis.externo.cotacoes_abertas|default:0 }}</div>
+                                <div class="kpi-desc">Em andamento</div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <div class="kpi-card warning h-100" data-kpi="FORNECEDOR" onclick="filtrarPorKpi('FORNECEDOR'); fecharModalKpisMobile();" role="button">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <span class="kpi-label">No Fornecedor</span>
+                                <i class="bi bi-truck fs-5 opacity-75"></i>
+                            </div>
+                            <div>
+                                <div class="kpi-number">{{ kpis.externo.orcamentos_pendentes|default:0 }}</div>
+                                <div class="kpi-desc">Tratativa externa</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="kpi-card danger h-100" data-kpi="VENCIDOS_AVENCER" onclick="filtrarPorKpi('VENCIDOS_AVENCER'); fecharModalKpisMobile();" role="button">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <span class="kpi-label">Vencidos / 30d</span>
+                                <i class="bi bi-calendar-x fs-5 opacity-75"></i>
+                            </div>
+                            <div>
+                                <div class="kpi-number">{{ kpis.externo.necessitam_cotacao|default:0 }}</div>
+                                <div class="kpi-desc">{{ kpis.externo.vencidos|default:0 }}v + {{ kpis.externo.avencer_30|default:0 }}a</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cards Aba INTERNO -->
+                <div class="row g-2 kpi-group-item kpi-group-interno d-none">
+                    <div class="col-12">
+                        <div class="kpi-card teal" data-kpi="FILA_LABORATORIO" onclick="filtrarPorKpi('FILA_LABORATORIO'); fecharModalKpisMobile();" role="button">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <span class="kpi-label">Fila Laboratório</span>
+                                <i class="bi bi-droplet-half fs-5 opacity-75"></i>
+                            </div>
+                            <div>
+                                <div class="kpi-number">{{ kpis.interno.fila_laboratorio|default:0 }}</div>
+                                <div class="kpi-desc">Calibração urgente</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="kpi-card danger h-100" data-kpi="VENCIDOS" onclick="filtrarPorKpi('VENCIDOS'); fecharModalKpisMobile();" role="button">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <span class="kpi-label">Internos Vencidos</span>
+                                <i class="bi bi-exclamation-triangle fs-5 opacity-75"></i>
+                            </div>
+                            <div>
+                                <div class="kpi-number">{{ kpis.interno.vencidos|default:0 }}</div>
+                                <div class="kpi-desc">Aguardando equipe</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="kpi-card purple h-100" data-kpi="OCORRENCIAS" onclick="filtrarPorKpi('OCORRENCIAS'); fecharModalKpisMobile();" role="button">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <span class="kpi-label">Ocorrências Internas</span>
+                                <i class="bi bi-tools fs-5 opacity-75"></i>
+                            </div>
+                            <div>
+                                <div class="kpi-number">{{ kpis.interno.ocorrencias_ativas|default:0 }}</div>
+                                <div class="kpi-desc">Manutenções ativas</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-white py-2 px-3 d-flex justify-content-between">
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="filtrarPorKpi('TODOS'); fecharModalKpisMobile();">
+                    <i class="bi bi-x-circle me-1"></i>Limpar Filtro
+                </button>
+                <button type="button" class="btn btn-sm btn-dark" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- 5. MODAL VISUALIZAR OCORRÊNCIAS EM ABERTO -->
 <div class="modal fade" id="modalVisualizarOcorrenciasDashboard" tabindex="-1" aria-labelledby="modalVisualizarOcorrenciasDashboardLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -1353,6 +1531,16 @@
     let currentPage = 1;
     let pageSize = 15;
     let filteredIndexes = [];
+
+    function fecharModalKpisMobile() {
+        const modalEl = document.getElementById('modalKpisMobile');
+        if (modalEl) {
+            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+            if (modalInstance) {
+                modalInstance.hide();
+            }
+        }
+    }
 
     function updateMobileDropdownTab(label, count, icon) {
         const textEl = document.getElementById('mobileTabActiveText');
