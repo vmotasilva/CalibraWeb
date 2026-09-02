@@ -58,9 +58,10 @@ class AreaAdmin(admin.ModelAdmin):
 
 
 class ProcedimentoAdmin(admin.ModelAdmin):
-    list_display = ['codigo', 'nome', 'numero_revisao', 'ultima_revisao']
-    search_fields = ['codigo', 'nome']
-    list_filter = ['ultima_revisao']
+    list_display = ['codigo', 'nome', 'numero_revisao', 'ultima_revisao', 'criticidade', 'instrutor_fixo']
+    search_fields = ['codigo', 'nome', 'instrutor_fixo__nome_completo']
+    list_filter = ['ultima_revisao', 'criticidade', 'matriz']
+    raw_id_fields = ['instrutor_fixo']
     ordering = ['codigo']
 
 

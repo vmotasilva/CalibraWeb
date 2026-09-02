@@ -636,3 +636,42 @@ class MotivoPlanejamentoCRUDTests(TestCase):
         self.assertIn('Já existe um motivo cadastrado com este nome', res_dup_json['error'])
 
 
+class ColaboradorCentroCustoTests(TestCase):
+    def setUp(self):
+        from django.contrib.auth.models import User
+        from organization.models import Setor, CentroCusto
+        from rh.models import Colaborador
+        from rh.forms.forms import ColaboradorForm
+
+        self.user = User.objects.create_superuser(username='admin_rh', password='password123')
+        self.setor = Setor.objects.create(nome='Operação', responsavel='Gerente')
+        self.centro_custo = CentroCusto.objects.create(codigo='CC-101', descricao='Linha 1', setor=self.setor)
+
+    def test_colaborador_form_has_centro_custo(self):
+        from rh.forms.forms import ColaboradorForm
+        form = ColaboradorForm()
+        self.assertIn('centro_custo', form.fields)
+        self.assertEqual(form.fields['centro_custo'].empty_label, 'Selecione o Centro de Custo')
+
+    def test_criar_colaborador_com_centro_custo(self):
+        self.client.login(username='admin_rh', password='password123')
+        create_url = reverse('rh:criar_colaborador')
+        post_data = {
+            'nome_completo': 'NOVO FUNCIONARIO',
+            'matricula': '8888',
+            'cargo': 'Operador',
+            'grupo': 'Operações',
+            'setor': self.setor.id,
+            'centro_custo': self.centro_custo.id,
+            'turno': 'ADM',
+            'posto_lideranca': 'NAO_APLICA',
+            'is_active': 'on',
+        }
+        response = self.client.post(create_url, post_data)
+        self.assertEqual(response.status_code, 302)
+
+        from rh.models import Colaborador
+        colab = Colaborador.objects.get(matricula='8888')
+        self.assertEqual(colab.centro_custo, self.centro_custo)
+
+

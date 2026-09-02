@@ -805,3 +805,27 @@ def reavaliacao_delete(request, fornecedor_id):
         "reavaliacao": ultima_reavaliacao,
         "total_respostas": respostas.count(),
     })
+
+
+@login_required
+def modulo_fornecedores_view(request):
+    """HUB dedicado do Módulo de Fornecedores."""
+    total_fornecedores = Fornecedor.objects.count()
+    fornecedores_ativos = Fornecedor.objects.filter(ativo=True).count()
+    fornecedores_criticos = Fornecedor.objects.filter(tipo="CRITICO", ativo=True).count()
+    total_avaliacoes = AvaliacaoFornecedor.objects.count()
+    total_perguntas = PerguntaAvaliacao.objects.filter(ativo=True).count()
+    fornecedores_recentes = Fornecedor.objects.filter(ativo=True).order_by("-id")[:6]
+    avaliacoes_recentes = AvaliacaoFornecedor.objects.select_related("fornecedor", "avaliador").order_by("-data")[:5]
+
+    context = {
+        "total_fornecedores": total_fornecedores,
+        "fornecedores_ativos": fornecedores_ativos,
+        "fornecedores_criticos": fornecedores_criticos,
+        "total_avaliacoes": total_avaliacoes,
+        "total_perguntas": total_perguntas,
+        "fornecedores_recentes": fornecedores_recentes,
+        "avaliacoes_recentes": avaliacoes_recentes,
+    }
+    return render(request, "fornecedores/modulo_fornecedores.html", context)
+

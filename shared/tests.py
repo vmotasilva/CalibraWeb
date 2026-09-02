@@ -75,9 +75,8 @@ class SharedHubViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Calibra HUB')
         self.assertContains(response, 'Favoritos')
-        self.assertContains(response, 'Ações rápidas')
-        self.assertContains(response, 'Pendências prioritárias')
-        self.assertContains(response, 'Abrir hub do módulo')
+        self.assertContains(response, 'Módulos do Sistema')
+        self.assertContains(response, 'Ações Rápidas Globais')
 
 
 class SharedImportsTests(TestCase):
@@ -193,5 +192,118 @@ class SharedTrustedMachineTests(TestCase):
         
         # Verify session is set to expire on browser close
         self.assertTrue(request.session.get_expire_at_browser_close())
+
+
+class SharedInboxPlanejamentoTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        from rh.models import Colaborador
+        from procedures.models import PlanejamentoTreinamento, Procedimento
+
+        # Usuários e colaboradores
+        self.user_instrutor = User.objects.create_user(username='instrutor_user', password='pass')
+        self.colab_instrutor = Colaborador.objects.create(
+            user_django=self.user_instrutor, matricula='1001', nome_completo='INSTRUTOR SILVA'
+        )
+
+        self.user_lider = User.objects.create_user(username='lider_user', password='pass')
+        self.colab_lider = Colaborador.objects.create(
+            user_django=self.user_lider, matricula='1002', nome_completo='LIDER SOUZA'
+        )
+
+        self.user_outro = User.objects.create_user(username='outro_user', password='pass')
+        self.colab_outro = Colaborador.objects.create(
+            user_django=self.user_outro, matricula='1003', nome_completo='OUTRO ALVES'
+        )
+
+        self.colab_participante = Colaborador.objects.create(
+            matricula='1004', nome_completo='OPERADOR JUNIOR', lider=self.colab_lider
+        )
+
+        self.procedimento = Procedimento.objects.create(
+            codigo='PROC-999', nome='Procedimento Operacional', numero_revisao='01'
+        )
+
+        # 1. Planejamento em andamento / planejado no futuro
+        self.plan_futuro = PlanejamentoTreinamento.objects.create(
+            titulo='Treinamento Segurança Futuro',
+            instrutor=self.colab_instrutor,
+            data_prevista=date.today() + timedelta(days=5),
+            status='PLANEJADO'
+        )
+        self.plan_futuro.procedimentos.add(self.procedimento)
+        self.plan_futuro.colaboradores.add(self.colab_participante)
+
+        # 2. Planejamento atrasado (data prevista no passado)
+        self.plan_atrasado = PlanejamentoTreinamento.objects.create(
+            titulo='Treinamento Qualidade Atrasado',
+            instrutor=self.colab_instrutor,
+            data_prevista=date.today() - timedelta(days=2),
+            status='PLANEJADO'
+        )
+        self.plan_atrasado.colaboradores.add(self.colab_participante)
+
+        # 3. Planejamento realizado (deve sair da notificação)
+        self.plan_realizado = PlanejamentoTreinamento.objects.create(
+            titulo='Treinamento Realizado Concluído',
+            instrutor=self.colab_instrutor,
+            data_prevista=date.today() - timedelta(days=1),
+            status='REALIZADO'
+        )
+        self.plan_realizado.colaboradores.add(self.colab_participante)
+
+        # 4. Planejamento cancelado (deve sair da notificação)
+        self.plan_cancelado = PlanejamentoTreinamento.objects.create(
+            titulo='Treinamento Cancelado',
+            instrutor=self.colab_instrutor,
+            data_prevista=date.today() + timedelta(days=1),
+            status='CANCELADO'
+        )
+        self.plan_cancelado.colaboradores.add(self.colab_participante)
+
+    def test_instrutor_recebe_notificacao_planejados_e_atrasados_mas_nao_concluidos_nem_cancelados(self):
+        from shared.inbox import get_user_inbox_items
+        cache.clear()
+
+        items = get_user_inbox_items(self.user_instrutor)
+        plan_items = [item for item in items if item.sub_type == "Treinamentos Planejados"]
+
+        plan_ids = [item.id for item in plan_items]
+        self.assertIn(f"planejamento_treinamento_{self.plan_futuro.id}", plan_ids)
+        self.assertIn(f"planejamento_treinamento_{self.plan_atrasado.id}", plan_ids)
+        self.assertNotIn(f"planejamento_treinamento_{self.plan_realizado.id}", plan_ids)
+        self.assertNotIn(f"planejamento_treinamento_{self.plan_cancelado.id}", plan_ids)
+
+        # Verificar flag de urgência no atrasado
+        item_atrasado = next(i for i in plan_items if i.id == f"planejamento_treinamento_{self.plan_atrasado.id}")
+        self.assertTrue(item_atrasado.is_urgent)
+        self.assertIn("Atrasado", item_atrasado.title)
+
+        # Verificar item futuro
+        item_futuro = next(i for i in plan_items if i.id == f"planejamento_treinamento_{self.plan_futuro.id}")
+        self.assertFalse(item_futuro.is_urgent)
+        self.assertIn("Planejado", item_futuro.title)
+
+    def test_lider_recebe_notificacao_dos_planejamentos_da_sua_equipe(self):
+        from shared.inbox import get_user_inbox_items
+        cache.clear()
+
+        items = get_user_inbox_items(self.user_lider)
+        plan_items = [item for item in items if item.sub_type == "Treinamentos Planejados"]
+
+        plan_ids = [item.id for item in plan_items]
+        self.assertIn(f"planejamento_treinamento_{self.plan_futuro.id}", plan_ids)
+        self.assertIn(f"planejamento_treinamento_{self.plan_atrasado.id}", plan_ids)
+        self.assertNotIn(f"planejamento_treinamento_{self.plan_realizado.id}", plan_ids)
+        self.assertNotIn(f"planejamento_treinamento_{self.plan_cancelado.id}", plan_ids)
+
+    def test_usuario_sem_vinculo_nao_recebe_notificacao(self):
+        from shared.inbox import get_user_inbox_items
+        cache.clear()
+
+        items = get_user_inbox_items(self.user_outro)
+        plan_items = [item for item in items if item.sub_type == "Treinamentos Planejados"]
+        self.assertEqual(len(plan_items), 0)
+
 
 

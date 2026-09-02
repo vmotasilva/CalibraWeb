@@ -158,6 +158,15 @@ class Procedimento(models.Model):
         verbose_name="Criticidade",
         help_text="Nível de criticidade do procedimento"
     )
+    instrutor_fixo = models.ForeignKey(
+        'rh.Colaborador',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='procedimentos_instrutor_fixo',
+        verbose_name="Instrutor Fixo (Independente do Setor)",
+        help_text="Se definido, este colaborador será sempre o instrutor responsável por este procedimento, ignorando liderança/matriz de setor."
+    )
 
     def __str__(self):
         return f"{self.codigo} - {self.nome}"
@@ -170,6 +179,7 @@ class Procedimento(models.Model):
             models.Index(fields=["criticidade"], name="proc_criticidade_idx"),
             models.Index(fields=["matriz"], name="proc_matriz_idx"),
             models.Index(fields=["sub_area"], name="proc_sub_area_idx"),
+            models.Index(fields=["instrutor_fixo"], name="proc_instrutor_fixo_idx"),
         ]
 
 

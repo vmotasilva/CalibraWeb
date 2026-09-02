@@ -77,7 +77,7 @@ def get_user_cobrancas_counts(user: Any) -> dict[str, int]:
     if not getattr(user, "is_authenticated", False):
         return {"total": 0}
 
-    cache_key = f"nav_cobrancas_counts:v5:user:{getattr(user, 'pk', 'anon')}"
+    cache_key = f"nav_cobrancas_counts:v6:user:{getattr(user, 'pk', 'anon')}"
     cached = cache.get(cache_key)
     if isinstance(cached, dict):
         return cached
@@ -202,14 +202,21 @@ def get_user_cobrancas_counts(user: Any) -> dict[str, int]:
                 .count()
             )
 
-            # Planejamentos: prazos vencidos para treinamentos do escopo (instrutor ou participantes)
+            # Planejamentos: prazos vencidos/em andamento para treinamentos do escopo (instrutor ou líderes)
             planejamento_base = PlanejamentoTreinamento.objects.filter(
                 status__in=["PLANEJADO", "CONFIRMADO", "ATRASADO"],
             )
             if is_global_viewer:
                 counts["trein_planejamentos"] = planejamento_base.count()
+            elif colaborador:
+                counts["trein_planejamentos"] = planejamento_base.filter(
+                    Q(instrutor=colaborador)
+                    | Q(colaboradores__lider=colaborador)
+                    | Q(colaboradores__supervisor=colaborador)
+                    | Q(colaboradores__gerente=colaborador)
+                ).distinct().count()
             else:
-                counts["trein_planejamentos"] = planejamento_base.filter(instrutor=colaborador).count()
+                counts["trein_planejamentos"] = 0
         else:
             counts["trein_matriz"] = 0
             counts["trein_demanda"] = 0

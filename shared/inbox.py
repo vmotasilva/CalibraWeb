@@ -25,7 +25,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
     if not getattr(user, "is_authenticated", False):
         return []
         
-    cache_key = f"inbox_items:v8:user:{getattr(user, 'pk', 'anon')}:global:{is_global}"
+    cache_key = f"inbox_items:v9:user:{getattr(user, 'pk', 'anon')}:global:{is_global}"
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
@@ -238,7 +238,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
     # 5. TREINAMENTOS (Eficácia, Demandas por Liderança e Instrutor)
     # =========================================================================
     try:
-        if has_module_access(user, "procedures") or has_module_access(user, "treinamentos") or user.is_superuser or user.is_staff:
+        if has_module_access(user, "procedures") or has_module_access(user, "treinamentos") or user.is_superuser or user.is_staff or getattr(user, "is_authenticated", False):
             from procedures.models import (
                 RegistroTreinamento,
                 SolicitacaoValidacaoMatriz,
@@ -474,7 +474,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                     instrutor_id = str(rm.colaborador_id)
                     scope_label = matriz_nome + (f" - {sub_nome}" if sub_nome else "")
 
-                    demanda_escopo_qs = qs_base_pendentes
+                    demanda_escopo_qs = qs_base_pendentes.filter(procedimento__instrutor_fixo__isnull=True)
 
                     if matriz_nome:
                         demanda_escopo_qs = demanda_escopo_qs.filter(procedimento__matriz__iexact=matriz_nome)
@@ -498,6 +498,31 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                             pendencias_por_colab[cid]['procedimentos'].append(d.procedimento.codigo)
                         if scope_label:
                             pendencias_por_colab[cid]['scopes'].add(scope_label)
+
+                # B. Procedimentos com Instrutor Fixo
+                qs_procs_fixos = qs_base_pendentes.filter(procedimento__instrutor_fixo__isnull=False).select_related('procedimento__instrutor_fixo')
+                if not is_global_viewer and colaborador:
+                    qs_procs_fixos = qs_procs_fixos.filter(procedimento__instrutor_fixo=colaborador)
+
+                for d in qs_procs_fixos[:50]:
+                    cid = d.colaborador_id
+                    instrutor_fixo = d.procedimento.instrutor_fixo
+                    if not instrutor_fixo:
+                        continue
+                    instrutor_id = str(instrutor_fixo.id)
+                    scope_label = f"Instrutor Fixo ({d.procedimento.codigo})"
+                    if cid not in pendencias_por_colab:
+                        pendencias_por_colab[cid] = {
+                            'colaborador': d.colaborador,
+                            'procedimentos': [],
+                            'scopes': set(),
+                            'turno': d.colaborador.turno or 'Geral',
+                            'instrutor_id': instrutor_id,
+                            'data': d.criado_em.date() if hasattr(d, "criado_em") and d.criado_em else hoje,
+                        }
+                    if d.procedimento.codigo not in pendencias_por_colab[cid]['procedimentos']:
+                        pendencias_por_colab[cid]['procedimentos'].append(d.procedimento.codigo)
+                    pendencias_por_colab[cid]['scopes'].add(scope_label)
 
                 # Gerar 1 card único por colaborador para as responsabilidades de matriz
                 for cid, pdata in list(pendencias_por_colab.items())[:30]:
@@ -530,43 +555,65 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                             sub_type="Demanda por Instrutor"
                         )
                     )
+            except Exception:
+                pass
 
-                # B. Planejamentos de Treinamento
-                qs_plan = PlanejamentoTreinamento.objects.filter(
-                    status__in=['PLANEJADO', 'EM_ANDAMENTO'],
-                    data_planejada__lte=hoje + timedelta(days=7)
-                ).select_related('procedimento', 'responsavel').prefetch_related('participantes')
+            # 5.5 Treinamentos Planejados (Em Andamento / Confirmados / Atrasados)
+            try:
+                # Atualizar status dos planejamentos vencidos para ATRASADO
+                PlanejamentoTreinamento.objects.exclude(
+                    status__in=["REALIZADO", "CANCELADO", "ATRASADO"]
+                ).filter(
+                    data_prevista__lt=hoje
+                ).update(status="ATRASADO")
+
+                # "Precisamos de uma notificação para treinamentos planejados e que estão em andamento ou atrasados.
+                # Eles saem da notificação se estiverem cancelados ou concluídos.
+                # Tanto o instrutor quanto os líderes devem receber essa notificação."
+                qs_plan = PlanejamentoTreinamento.objects.exclude(
+                    status__in=["REALIZADO", "CANCELADO"]
+                ).select_related("instrutor").prefetch_related("colaboradores", "procedimentos")
 
                 if not is_global_viewer and colaborador:
-                    qs_plan = qs_plan.filter(responsavel=colaborador)
+                    qs_plan = qs_plan.filter(
+                        Q(instrutor=colaborador)
+                        | Q(colaboradores__lider=colaborador)
+                        | Q(colaboradores__supervisor=colaborador)
+                        | Q(colaboradores__gerente=colaborador)
+                    ).distinct()
 
-                # Agrupar participantes de planejamentos para não duplicar
-                for pl in qs_plan[:15]:
-                    atrasado = bool(pl.data_planejada and pl.data_planejada < hoje)
-                    proc_code = pl.procedimento.codigo if pl.procedimento else "Treinamento"
-                    instrutor_id = str(pl.responsavel_id or (colaborador.id if colaborador else ""))
-                    participantes = list(pl.participantes.all()[:5])
+                for pl in qs_plan[:40]:
+                    atrasado = bool(pl.status == "ATRASADO" or (pl.data_prevista and pl.data_prevista < hoje))
+                    status_label = "Atrasado" if atrasado else ("Confirmado" if pl.status == "CONFIRMADO" else "Planejado")
 
-                    for part in participantes:
-                        if part.id in pendencias_por_colab:
-                            # Já possui card de demanda para este colaborador, evitar duplicata
-                            continue
+                    procs = [p.codigo for p in pl.procedimentos.all()]
+                    procs_str = f" • Proc: {', '.join(procs[:2])}" if procs else ""
+                    total_parts = pl.colaboradores.count()
+                    instrutor_nome = pl.instrutor.nome_completo if pl.instrutor else "Instrutor a definir"
 
-                        target_url = f"{reverse('procedures:dashboard_treinamentos')}?colaborador_id={part.id}&instrutor_responsavel={instrutor_id}&status_treinamento=PENDENTE"
-                        items.append(
-                            InboxItem(
-                                id=f"planejamento_{pl.id}_part_{part.id}",
-                                title=f"Demanda Instrutor: {part.nome_completo}",
-                                description=f"Planejamento {proc_code} ({'Atrasado desde ' if atrasado else 'Previsto para '}{pl.data_planejada.strftime('%d/%m/%Y') if pl.data_planejada else '-'})",
-                                module="Treinamentos",
-                                icon="bi-calendar-check",
-                                url=target_url,
-                                action_text="Abrir Painel",
-                                date=pl.data_planejada if pl.data_planejada else hoje,
-                                is_urgent=atrasado,
-                                sub_type="Demanda por Instrutor"
-                            )
+                    if atrasado:
+                        title = f"Treinamento Atrasado: {pl.titulo}"
+                        desc = f"Atrasado desde {pl.data_prevista.strftime('%d/%m/%Y')} • Instrutor: {instrutor_nome} • {total_parts} participante(s){procs_str}"
+                    else:
+                        title = f"Treinamento Planejado: {pl.titulo}"
+                        desc = f"Previsto para {pl.data_prevista.strftime('%d/%m/%Y')} ({status_label}) • Instrutor: {instrutor_nome} • {total_parts} participante(s){procs_str}"
+
+                    target_url = reverse("procedures:detalhe_planejamento", args=[pl.id])
+
+                    items.append(
+                        InboxItem(
+                            id=f"planejamento_treinamento_{pl.id}",
+                            title=title,
+                            description=desc,
+                            module="Treinamentos",
+                            icon="bi-calendar-x" if atrasado else "bi-calendar-event",
+                            url=target_url,
+                            action_text="Ver Planejamento",
+                            date=pl.data_prevista if pl.data_prevista else hoje,
+                            is_urgent=atrasado,
+                            sub_type="Treinamentos Planejados"
                         )
+                    )
             except Exception:
                 pass
     except Exception:

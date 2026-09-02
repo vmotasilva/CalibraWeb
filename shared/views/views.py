@@ -379,7 +379,7 @@ def hub_view(request):
             "description": "Cadastro, documentos e avaliações da base de fornecedores.",
             "icon": "bi-truck",
             "color": "#7c3aed",
-            "hub_view_name": "fornecedores:fornecedor_list",
+            "hub_view_name": "fornecedores:modulo",
             "inbox_slug": "fornecedores",
             "pending_keys": [],
             "pending_label": "itens acompanhados",
@@ -540,6 +540,7 @@ def hub_view(request):
         "shared/hub.html",
         {
             "hub_stats": hub_stats,
+            "inbox_count": len(inbox_items),
             "pending_items": pending_items,
             "quick_actions": quick_actions,
             "modules": modules,

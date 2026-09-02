@@ -20,14 +20,15 @@ class TestDashboardFilters(TestCase):
     def setUp(self):
         User = get_user_model()
         self.user = User.objects.create_user(username='tester', password='pass')
-        # Criar colaborador e procedimento
+        # Criar colaborador e procedimentos
         self.col = Colaborador.objects.create(matricula='2000', nome_completo='Colab Teste')
         self.proc = Procedimento.objects.create(codigo='PROCX', nome='Proc X', numero_revisao='01')
+        self.proc2 = Procedimento.objects.create(codigo='PROCY', nome='Proc Y', numero_revisao='01')
 
         # Registro vigente (data + revisao bate)
         RegistroTreinamento.objects.create(colaborador=self.col, procedimento=self.proc, data_treinamento=date.today(), revisao_treinada='01', tipo='PROCEDIMENTO')
         # Registro pendente (sem data)
-        RegistroTreinamento.objects.create(colaborador=self.col, procedimento=self.proc, data_treinamento=None, revisao_treinada='00', tipo='PROCEDIMENTO')
+        RegistroTreinamento.objects.create(colaborador=self.col, procedimento=self.proc2, data_treinamento=None, revisao_treinada='00', tipo='PROCEDIMENTO')
 
     def test_filtered_status_vigente(self):
         client = self.client
@@ -254,10 +255,10 @@ class TestDashboardTreinamentosView(TestCase):
         self.assertEqual(
             [(item['procedimento'], item['procedimento_nome'], item['sub_area'], item['colaborador']) for item in pendencias],
             [
-                ('PROC-001', 'Procedimento Pendente', 'SUBAREA A', 'ALFA COLABORADOR'),
-                ('PROC-001', 'Procedimento Pendente', 'SUBAREA A', 'COLABORADOR TESTE'),
                 ('PROC-002', 'Outro Procedimento', '-', 'COLABORADOR EXTRA'),
                 ('PROC-003', 'Procedimento Geral da Matriz', '-', 'COLABORADOR GERAL'),
+                ('PROC-001', 'Procedimento Pendente', 'SUBAREA A', 'ALFA COLABORADOR'),
+                ('PROC-001', 'Procedimento Pendente', 'SUBAREA A', 'COLABORADOR TESTE'),
             ],
         )
 
@@ -313,7 +314,7 @@ class TestDashboardTreinamentosView(TestCase):
         self.assertEqual(second_page.context['pendencias_page_end'], 14)
         self.assertEqual(
             [item['procedimento'] for item in second_page.context['pendencias_dashboard']],
-            ['PROC-106', 'PROC-107', 'PROC-108', 'PROC-109'],
+            ['PROC-109', 'PROC-003', 'PROC-001', 'PROC-001'],
         )
         self.assertContains(second_page, 'Mostrando 11-14 de 14 pendências')
 
@@ -358,4 +359,43 @@ class TestDashboardTreinamentosView(TestCase):
         
         # Colaborador ativo comum deve estar na lista
         self.assertIn(self.colaborador.id, colab_ids)
+
+    def test_procedimento_com_instrutor_fixo_sobrepoe_matriz_no_dashboard(self):
+        self.client.force_login(self.user)
+        # Fixar outro_instrutor especificamente no procedimento (que pertence à matriz do instrutor_responsavel)
+        self.procedimento.instrutor_fixo = self.outro_instrutor
+        self.procedimento.save()
+
+        response = self.client.get(reverse('training:dashboard_treinamentos'))
+        self.assertEqual(response.status_code, 200)
+
+        # Na tabela de pendências, PROC-001 deve constar com outro_instrutor como responsável
+        pendencias = response.context['pendencias_dashboard']
+        item_proc1 = next((p for p in pendencias if p['procedimento'] == 'PROC-001'), None)
+        self.assertIsNotNone(item_proc1)
+        self.assertEqual(item_proc1['instrutor_responsavel'], self.outro_instrutor.nome_completo)
+
+    def test_filtro_instrutor_com_instrutor_fixo(self):
+        self.client.force_login(self.user)
+        self.procedimento.instrutor_fixo = self.outro_instrutor
+        self.procedimento.save()
+
+        # Filtrar por outro_instrutor deve trazer PROC-001 (devido ao instrutor_fixo)
+        response = self.client.get(
+            reverse('training:dashboard_treinamentos'),
+            {'instrutor_responsavel': [str(self.outro_instrutor.id)]}
+        )
+        self.assertEqual(response.status_code, 200)
+        procs = [p['procedimento'] for p in response.context['pendencias_dashboard']]
+        self.assertIn('PROC-001', procs)
+        self.assertIn('PROC-002', procs)
+
+        # Filtrar por instrutor_responsavel NÃO deve mais trazer PROC-001
+        response_leader = self.client.get(
+            reverse('training:dashboard_treinamentos'),
+            {'instrutor_responsavel': [str(self.instrutor_responsavel.id)]}
+        )
+        self.assertEqual(response_leader.status_code, 200)
+        procs_leader = [p['procedimento'] for p in response_leader.context['pendencias_dashboard']]
+        self.assertNotIn('PROC-001', procs_leader)
 

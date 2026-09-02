@@ -71,6 +71,7 @@ Forms para RH Module
 
 from django import forms
 from rh.models import Colaborador, Ocorrencia
+from organization.models import CentroCusto
 
 
 class ColaboradorForm(forms.ModelForm):
@@ -79,7 +80,7 @@ class ColaboradorForm(forms.ModelForm):
     class Meta:
         model = Colaborador
         fields = "__all__"
-        exclude = ["user_django", "criado_em", "centro_custo", "pacotes_treinamento"]
+        exclude = ["user_django", "criado_em", "pacotes_treinamento"]
         widgets = {
             "nome_completo": forms.TextInput(attrs={"class": "form-control"}),
             "matricula": forms.TextInput(attrs={"class": "form-control"}),
@@ -95,6 +96,7 @@ class ColaboradorForm(forms.ModelForm):
             "grupo": forms.TextInput(attrs={"class": "form-control"}),
 
             "setor": forms.Select(attrs={"class": "form-select"}),
+            "centro_custo": forms.Select(attrs={"class": "form-select"}),
             "turno": forms.Select(attrs={"class": "form-select"}),
             "posto_lideranca": forms.Select(attrs={"class": "form-select"}),
             "lider": forms.Select(attrs={"class": "form-select"}),
@@ -122,6 +124,11 @@ class ColaboradorForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
+        # Configurar opções de Centro de Custo
+        if 'centro_custo' in self.fields:
+            self.fields['centro_custo'].queryset = CentroCusto.objects.select_related('setor').all().order_by('codigo')
+            self.fields['centro_custo'].empty_label = "Selecione o Centro de Custo"
+
         # Formatar CPF existente
         if self.instance and self.instance.cpf:
             raw_cpf = re.sub(r'\D', '', str(self.instance.cpf))

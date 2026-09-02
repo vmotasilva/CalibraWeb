@@ -619,7 +619,7 @@ def dashboard_treinamentos_view(request):
     filtro_instrutor_responsavel_ids = _coerce_int_list(filtro_instrutor_responsavel_list)
     if filtro_instrutor_responsavel_list:
         scope_rows = list(
-            valid_registros.values_list(
+            valid_registros.filter(procedimento__instrutor_fixo__isnull=True).values_list(
                 'procedimento__matriz',
                 'procedimento__sub_area',
                 'colaborador__turno',
@@ -631,7 +631,12 @@ def dashboard_treinamentos_view(request):
             scope_rows,
             filtro_instrutor_responsavel_ids,
         )
-        valid_registros = valid_registros.filter(responsabilidades_scope_q) if responsabilidades_scope_q is not None else valid_registros.none()
+        instrutor_fixo_q = Q(procedimento__instrutor_fixo_id__in=filtro_instrutor_responsavel_ids)
+        if responsabilidades_scope_q is not None:
+            filtro_instrutor_q = instrutor_fixo_q | (Q(procedimento__instrutor_fixo__isnull=True) & responsabilidades_scope_q)
+        else:
+            filtro_instrutor_q = instrutor_fixo_q
+        valid_registros = valid_registros.filter(filtro_instrutor_q)
 
     if filtro_colaborador_id and filtro_colaborador_id.isdigit():
         valid_registros = valid_registros.filter(colaborador_id=int(filtro_colaborador_id))
@@ -682,42 +687,49 @@ def dashboard_treinamentos_view(request):
                 colaborador_obj = None
 
         if colaborador_obj:
-            from procedures.models import ColaboradorPerfil
+            try:
+                from procedures.models import ColaboradorPerfil
 
-            procedimentos_qs = Procedimento.objects.none()
-            for cp in ColaboradorPerfil.objects.filter(colaborador_id=colab_id_int, ativo=True).select_related('perfil'):
-                procedimentos_qs = procedimentos_qs | cp.get_procedimentos_necessarios()
+                procedimentos_qs = Procedimento.objects.none()
+                for cp in ColaboradorPerfil.objects.filter(colaborador_id=colaborador_obj.id, ativo=True).select_related('perfil'):
+                    procedimentos_qs = procedimentos_qs | cp.get_procedimentos_necessarios()
 
-            procedimentos_qs = procedimentos_qs.distinct()
+                procedimentos_qs = procedimentos_qs.distinct()
 
-            # Respeitar filtros do dashboard que são do procedimento
-            if filtro_criticidade_list:
-                procedimentos_qs = procedimentos_qs.filter(criticidade__in=filtro_criticidade_list)
-            if filtro_matriz_list:
-                procedimentos_qs = procedimentos_qs.filter(matriz__in=filtro_matriz_list)
-            if filtro_sub_area_list:
-                procedimentos_qs = procedimentos_qs.filter(sub_area__in=filtro_sub_area_list)
-            if filtro_instrutor_responsavel_ids:
-                procedimentos_ids_permitidos = []
-                for procedimento_id, matriz_nome, sub_area_nome in procedimentos_qs.values_list('id', 'matriz', 'sub_area'):
-                    responsavel = _resolve_responsavel_treinamento(
-                        responsabilidades_por_subarea,
-                        responsabilidades_gerais,
-                        matriz_nome,
-                        sub_area_nome,
-                        getattr(colaborador_obj, 'turno', None),
-                    )
-                    if responsavel and responsavel.id in filtro_instrutor_responsavel_ids:
-                        procedimentos_ids_permitidos.append(procedimento_id)
-                procedimentos_qs = procedimentos_qs.filter(id__in=procedimentos_ids_permitidos) if procedimentos_ids_permitidos else procedimentos_qs.none()
+                # Respeitar filtros do dashboard que são do procedimento
+                if filtro_criticidade_list:
+                    procedimentos_qs = procedimentos_qs.filter(criticidade__in=filtro_criticidade_list)
+                if filtro_matriz_list:
+                    procedimentos_qs = procedimentos_qs.filter(matriz__in=filtro_matriz_list)
+                if filtro_sub_area_list:
+                    procedimentos_qs = procedimentos_qs.filter(sub_area__in=filtro_sub_area_list)
+                if filtro_instrutor_responsavel_ids:
+                    procedimentos_ids_permitidos = []
+                    for procedimento_id, matriz_nome, sub_area_nome, instrutor_fixo_id in procedimentos_qs.values_list('id', 'matriz', 'sub_area', 'instrutor_fixo_id'):
+                        if instrutor_fixo_id:
+                            if instrutor_fixo_id in filtro_instrutor_responsavel_ids:
+                                procedimentos_ids_permitidos.append(procedimento_id)
+                        else:
+                            responsavel = _resolve_responsavel_treinamento(
+                                responsabilidades_por_subarea,
+                                responsabilidades_gerais,
+                                matriz_nome,
+                                sub_area_nome,
+                                getattr(colaborador_obj, 'turno', None),
+                            )
+                            if responsavel and responsavel.id in filtro_instrutor_responsavel_ids:
+                                procedimentos_ids_permitidos.append(procedimento_id)
+                    procedimentos_qs = procedimentos_qs.filter(id__in=procedimentos_ids_permitidos) if procedimentos_ids_permitidos else procedimentos_qs.none()
 
-            perfil_procedimentos_ids = list(procedimentos_qs.values_list('id', flat=True))
-            if not perfil_procedimentos_ids:
+                perfil_procedimentos_ids = list(procedimentos_qs.values_list('id', flat=True))
+                if not perfil_procedimentos_ids:
+                    perfil_procedimentos_ids = None
+
+                # Garantir que gráficos/tabela (baseados em registros) fiquem consistentes com o Perfil
+                if perfil_procedimentos_ids:
+                    valid_registros = valid_registros.filter(procedimento_id__in=perfil_procedimentos_ids)
+            except Exception:
                 perfil_procedimentos_ids = None
-
-            # Garantir que gráficos/tabela (baseados em registros) fiquem consistentes com o Perfil
-            if perfil_procedimentos_ids:
-                valid_registros = valid_registros.filter(procedimento_id__in=perfil_procedimentos_ids)
     
     # =========================================================================
     # REGISTROS ÚNICOS: Apenas o registro mais recente por colaborador+procedimento
@@ -969,12 +981,17 @@ def dashboard_treinamentos_view(request):
     demanda_por_instrutor = []
     total_responsabilidades_treinamento = len(responsabilidades_registros)
 
-    if total_responsabilidades_treinamento:
+    tem_instrutores = total_responsabilidades_treinamento > 0 or Procedimento.objects.filter(instrutor_fixo__isnull=False).exists()
+    if tem_instrutores:
         demanda_por_escopo = (
             registros_unicos
-            .exclude(procedimento__matriz__isnull=True)
-            .exclude(procedimento__matriz__exact='')
-            .values('procedimento__matriz', 'procedimento__sub_area', 'colaborador__turno')
+            .values(
+                'procedimento__matriz',
+                'procedimento__sub_area',
+                'colaborador__turno',
+                'procedimento__instrutor_fixo_id',
+                'procedimento__instrutor_fixo__nome_completo',
+            )
             .annotate(
                 vigentes=Count(
                     'id',
@@ -989,23 +1006,31 @@ def dashboard_treinamentos_view(request):
 
         demanda_por_instrutor_map = {}
         for row in demanda_por_escopo:
-            matriz_nome = (row.get('procedimento__matriz') or '').strip()
-            sub_area_nome = (row.get('procedimento__sub_area') or '').strip()
-            turno = row.get('colaborador__turno')
-            responsavel = _resolve_responsavel_treinamento(
-                responsabilidades_por_subarea,
-                responsabilidades_gerais,
-                matriz_nome,
-                sub_area_nome,
-                turno,
-            )
-            if not responsavel:
-                continue
+            instrutor_fixo_id = row.get('procedimento__instrutor_fixo_id')
+            instrutor_fixo_nome = row.get('procedimento__instrutor_fixo__nome_completo')
+            if instrutor_fixo_id:
+                resp_id = instrutor_fixo_id
+                resp_nome = instrutor_fixo_nome or f'Colaborador {instrutor_fixo_id}'
+            else:
+                matriz_nome = (row.get('procedimento__matriz') or '').strip()
+                sub_area_nome = (row.get('procedimento__sub_area') or '').strip()
+                turno = row.get('colaborador__turno')
+                responsavel = _resolve_responsavel_treinamento(
+                    responsabilidades_por_subarea,
+                    responsabilidades_gerais,
+                    matriz_nome,
+                    sub_area_nome,
+                    turno,
+                )
+                if not responsavel:
+                    continue
+                resp_id = responsavel.id
+                resp_nome = responsavel.nome_completo or f'Colaborador {responsavel.id}'
 
             item = demanda_por_instrutor_map.setdefault(
-                responsavel.id,
+                resp_id,
                 {
-                    'nome': _abreviar_nome_dashboard(responsavel.nome_completo or f'Colaborador {responsavel.id}') or f'Colaborador {responsavel.id}',
+                    'nome': _abreviar_nome_dashboard(resp_nome) or resp_nome,
                     'vigentes': 0,
                     'pendentes': 0,
                 }
@@ -1149,22 +1174,36 @@ def dashboard_treinamentos_view(request):
             'nome': responsabilidade.colaborador.nome_completo,
         })
 
+    # Incluir instrutores fixos cadastrados nos procedimentos
+    procs_com_instrutor_fixo = Procedimento.objects.filter(instrutor_fixo__isnull=False).select_related('instrutor_fixo')
+    for p in procs_com_instrutor_fixo:
+        if p.instrutor_fixo_id not in instrutores_responsaveis_ids:
+            instrutores_responsaveis_ids.add(p.instrutor_fixo_id)
+            instrutores_responsaveis.append({
+                'id': p.instrutor_fixo_id,
+                'nome': p.instrutor_fixo.nome_completo,
+            })
+    instrutores_responsaveis.sort(key=lambda x: str(x['nome'] or '').upper())
+
     pendencias_dashboard = []
     epoch_date = date(1970, 1, 1)
     if colaborador_obj is not None and perfil_procedimentos_ids:
-        procedimentos_pendentes = Procedimento.objects.filter(id__in=perfil_procedimentos_ids).order_by('codigo', 'nome')
+        procedimentos_pendentes = Procedimento.objects.filter(id__in=perfil_procedimentos_ids).select_related('instrutor_fixo').order_by('codigo', 'nome')
         for procedimento in procedimentos_pendentes:
             ultimo_registro = ultimo_treinamento_por_procedimento.get(procedimento.id)
             if ultimo_registro and ultimo_registro.data_treinamento != epoch_date and ultimo_registro.status_treinamento == 'OK':
                 continue
 
-            responsavel = _resolve_responsavel_treinamento(
-                responsabilidades_por_subarea,
-                responsabilidades_gerais,
-                procedimento.matriz,
-                procedimento.sub_area,
-                getattr(colaborador_obj, 'turno', None),
-            )
+            if procedimento.instrutor_fixo:
+                responsavel = procedimento.instrutor_fixo
+            else:
+                responsavel = _resolve_responsavel_treinamento(
+                    responsabilidades_por_subarea,
+                    responsabilidades_gerais,
+                    procedimento.matriz,
+                    procedimento.sub_area,
+                    getattr(colaborador_obj, 'turno', None),
+                )
             pendencias_dashboard.append({
                 'colaborador': colaborador_obj.nome_completo,
                 'matricula': colaborador_obj.matricula,
@@ -1179,7 +1218,7 @@ def dashboard_treinamentos_view(request):
         pendencias_queryset = (
             registros_unicos
             .filter(pendentes_q)
-            .select_related('colaborador', 'procedimento')
+            .select_related('colaborador', 'procedimento', 'procedimento__instrutor_fixo')
             .order_by(
                 'procedimento__codigo',
                 'procedimento__nome',
@@ -1188,13 +1227,16 @@ def dashboard_treinamentos_view(request):
             )
         )
         for registro in pendencias_queryset:
-            responsavel = _resolve_responsavel_treinamento(
-                responsabilidades_por_subarea,
-                responsabilidades_gerais,
-                registro.procedimento.matriz,
-                registro.procedimento.sub_area,
-                getattr(registro.colaborador, 'turno', None),
-            )
+            if registro.procedimento.instrutor_fixo:
+                responsavel = registro.procedimento.instrutor_fixo
+            else:
+                responsavel = _resolve_responsavel_treinamento(
+                    responsabilidades_por_subarea,
+                    responsabilidades_gerais,
+                    registro.procedimento.matriz,
+                    registro.procedimento.sub_area,
+                    getattr(registro.colaborador, 'turno', None),
+                )
             pendencias_dashboard.append({
                 'colaborador': registro.colaborador.nome_completo,
                 'matricula': registro.colaborador.matricula,
@@ -1650,7 +1692,7 @@ def dashboard_treinamentos_exportar_csv_view(request):
     if instrutores_responsaveis:
         instrutores_responsaveis_ids = _coerce_int_list(instrutores_responsaveis)
         scope_rows = list(
-            RegistroTreinamento.objects.filter(base_query)
+            RegistroTreinamento.objects.filter(base_query, procedimento__instrutor_fixo__isnull=True)
             .values_list('procedimento__matriz', 'procedimento__sub_area', 'colaborador__turno')
             .distinct()
         )
@@ -1660,7 +1702,12 @@ def dashboard_treinamentos_exportar_csv_view(request):
             scope_rows,
             instrutores_responsaveis_ids,
         )
-        base_query &= responsabilidades_scope_q if responsabilidades_scope_q is not None else Q(pk__in=[])
+        instrutor_fixo_q = Q(procedimento__instrutor_fixo_id__in=instrutores_responsaveis_ids)
+        if responsabilidades_scope_q is not None:
+            filtro_instrutor_q = instrutor_fixo_q | (Q(procedimento__instrutor_fixo__isnull=True) & responsabilidades_scope_q)
+        else:
+            filtro_instrutor_q = instrutor_fixo_q
+        base_query &= filtro_instrutor_q
 
     if colaborador_id and colaborador_id.isdigit():
         base_query &= Q(colaborador_id=int(colaborador_id))
@@ -1731,16 +1778,20 @@ def dashboard_treinamentos_exportar_csv_view(request):
                     procedimentos_qs = procedimentos_qs.filter(sub_area__in=sub_areas_clean)
             if instrutores_responsaveis:
                 procedimentos_ids_permitidos = []
-                for procedimento_id, matriz_nome, sub_area_nome in procedimentos_qs.values_list('id', 'matriz', 'sub_area'):
-                    responsavel = _resolve_responsavel_treinamento(
-                        responsabilidades_por_subarea,
-                        responsabilidades_gerais,
-                        matriz_nome,
-                        sub_area_nome,
-                        getattr(colaborador_obj, 'turno', None),
-                    )
-                    if responsavel and responsavel.id in instrutores_responsaveis_ids:
-                        procedimentos_ids_permitidos.append(procedimento_id)
+                for procedimento_id, matriz_nome, sub_area_nome, instrutor_fixo_id in procedimentos_qs.values_list('id', 'matriz', 'sub_area', 'instrutor_fixo_id'):
+                    if instrutor_fixo_id:
+                        if instrutor_fixo_id in instrutores_responsaveis_ids:
+                            procedimentos_ids_permitidos.append(procedimento_id)
+                    else:
+                        responsavel = _resolve_responsavel_treinamento(
+                            responsabilidades_por_subarea,
+                            responsabilidades_gerais,
+                            matriz_nome,
+                            sub_area_nome,
+                            getattr(colaborador_obj, 'turno', None),
+                        )
+                        if responsavel and responsavel.id in instrutores_responsaveis_ids:
+                            procedimentos_ids_permitidos.append(procedimento_id)
                 procedimentos_qs = procedimentos_qs.filter(id__in=procedimentos_ids_permitidos) if procedimentos_ids_permitidos else procedimentos_qs.none()
 
             procedimentos_ids = list(procedimentos_qs.values_list('id', flat=True))
@@ -1752,7 +1803,7 @@ def dashboard_treinamentos_exportar_csv_view(request):
                     base_query,
                     colaborador_id=colaborador_obj.id,
                     procedimento_id__in=procedimentos_ids,
-                ).select_related('procedimento').order_by('-data_treinamento', '-id')
+                ).select_related('procedimento', 'procedimento__instrutor_fixo').order_by('-data_treinamento', '-id')
 
                 for t in treinamentos_qs:
                     proc_id = t.procedimento_id
@@ -1779,36 +1830,17 @@ def dashboard_treinamentos_exportar_csv_view(request):
                         t = RegistroTreinamento(
                             colaborador=colaborador_obj,
                             procedimento=proc,
-                            ativo=True,
                             data_treinamento=None,
                             revisao_treinada=None,
                         )
-                    # Apenas pendências
-                    if t.status_treinamento != 'OK':
-                        itens_export.append(t)
+                    itens_export.append(t)
         except Exception:
             itens_export = None
 
-    # Fallback: exportar registros de pendências (não paginar)
-    registros = itens_export if isinstance(itens_export, list) else RegistroTreinamento.objects.filter(base_query).select_related(
-        'colaborador', 'procedimento'
-    )
-
-    # No modo queryset, manter consistência com o dashboard: apenas itens associados a algum perfil ativo e que estejam pendentes
-    if not isinstance(registros, list):
-        from django.db.models import Exists, OuterRef, F, Max
-        from procedures.models import ColaboradorPerfil
-
-        perfil_exists_qs = ColaboradorPerfil.objects.filter(
-            colaborador_id=OuterRef('colaborador_id'),
-            ativo=True,
-            perfil__grupos__subgrupos__procedimentos=OuterRef('procedimento_id'),
-        )
-        registros = registros.annotate(_associado_perfil=Exists(perfil_exists_qs)).filter(_associado_perfil=True)
-
-        # Obter o registro mais recente por colaborador + procedimento
-        from django.db.models import Subquery, OuterRef, Case, When, Value, IntegerField
-        
+    if itens_export is not None:
+        registros = itens_export
+    else:
+        from django.db.models import Subquery, OuterRef, Case, When, Value, IntegerField, F
         latest_id_subquery = RegistroTreinamento.objects.filter(
             colaborador_id=OuterRef('colaborador_id'),
             procedimento_id=OuterRef('procedimento_id')
@@ -1820,11 +1852,25 @@ def dashboard_treinamentos_exportar_csv_view(request):
             )
         ).order_by('-has_valid_date', '-data_treinamento', '-id').values('id')[:1]
         
-        registros = registros.filter(id=Subquery(latest_id_subquery)).select_related(
-            'colaborador', 'procedimento'
+        registros = (
+            RegistroTreinamento.objects.filter(base_query)
+            .filter(id__in=latest_id_subquery)
+            .select_related(
+                'colaborador',
+                'colaborador__setor',
+                'procedimento',
+                'procedimento__instrutor_fixo',
+            )
         )
 
-        # Filtrar apenas pendentes
+    # Filtrar apenas Pendentes, se requisitado
+    filtro_status = (
+        request.GET.get('status_treinamento')
+        or request.GET.get('filtro_status')
+        or request.GET.get('situacao')
+        or ''
+    ).strip().upper()
+    if filtro_status == 'PENDENTE':
         pendentes_q = Q(data_treinamento__isnull=True) | (
             Q(procedimento__data_aprovacao__isnull=False) &
             Q(data_treinamento__lt=F('procedimento__data_aprovacao'))
@@ -1838,13 +1884,16 @@ def dashboard_treinamentos_exportar_csv_view(request):
         sub_area = getattr(treinamento.procedimento, 'sub_area', '') or ''
         turno = getattr(treinamento.colaborador, 'turno', None)
         
-        responsavel = _resolve_responsavel_treinamento(
-            responsabilidades_por_subarea,
-            responsabilidades_gerais,
-            matriz,
-            sub_area,
-            turno,
-        )
+        if getattr(treinamento.procedimento, 'instrutor_fixo', None):
+            responsavel = treinamento.procedimento.instrutor_fixo
+        else:
+            responsavel = _resolve_responsavel_treinamento(
+                responsabilidades_por_subarea,
+                responsabilidades_gerais,
+                matriz,
+                sub_area,
+                turno,
+            )
         instrutor = getattr(responsavel, 'nome_completo', '') or ''
         
         proc_codigo = getattr(treinamento.procedimento, 'codigo', '') or ''
@@ -1900,13 +1949,16 @@ def dashboard_treinamentos_exportar_csv_view(request):
         sub_area = getattr(treinamento.procedimento, 'sub_area', '') or ''
         turno = getattr(treinamento.colaborador, 'turno', None)
         
-        responsavel = _resolve_responsavel_treinamento(
-            responsabilidades_por_subarea,
-            responsabilidades_gerais,
-            matriz,
-            sub_area,
-            turno,
-        )
+        if getattr(treinamento.procedimento, 'instrutor_fixo', None):
+            responsavel = treinamento.procedimento.instrutor_fixo
+        else:
+            responsavel = _resolve_responsavel_treinamento(
+                responsabilidades_por_subarea,
+                responsabilidades_gerais,
+                matriz,
+                sub_area,
+                turno,
+            )
         instrutor = getattr(responsavel, 'nome_completo', '') or ''
         
         writer.writerow([

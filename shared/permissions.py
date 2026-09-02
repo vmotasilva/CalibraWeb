@@ -707,6 +707,7 @@ NAV_STRUCTURE = [
                 "nome": "GESTÃO",
                 "perm": "core.nav_fornecedores_gestao",
                 "funcoes": [
+                    {"nome": "Hub de Fornecedores", "view_name": ["fornecedores:modulo", "fornecedores:hub"], "perm": "core.nav_fornecedores_lista"},
                     {"nome": "Lista de Fornecedores", "view_name": "fornecedores:fornecedor_list", "perm": "core.nav_fornecedores_lista"},
                     {"nome": "Novo Fornecedor", "view_name": "fornecedores:fornecedor_create", "perm": "core.nav_fornecedores_novo"},
                     {"nome": "Editar Fornecedor", "view_name": "fornecedores:fornecedor_update", "perm": "core.nav_fornecedores_editar"},

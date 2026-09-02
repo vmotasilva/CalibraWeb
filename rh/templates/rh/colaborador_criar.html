@@ -70,11 +70,18 @@
                                 {{ form.setor }}
                             </div>
 
-                            <div class="col-md-6">
+                            <div class="col-md-4">
+                                <label class="form-label">Centro de Custo</label>
+                                {{ form.centro_custo }}
+                                {% if form.centro_custo.errors %}
+                                    <div class="text-danger small mt-1">{{ form.centro_custo.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4">
                                 <label class="form-label">Turno</label>
                                 {{ form.turno }}
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label class="form-label">Posto de Liderança</label>
                                 {{ form.posto_lideranca }}
                                 {% if form.posto_lideranca.errors %}

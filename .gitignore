@@ -64,3 +64,8 @@ dump_*.py
 dumps/
 .coverage
 coverage.xml
+*.xlsx
+*.sql
+atualizar_cpf_colaboradores.py
+gerar_sql_neon.py
+

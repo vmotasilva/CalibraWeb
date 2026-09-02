@@ -75,6 +75,17 @@
                             {% endif %}
                         </td>
                     </tr>
+                    <tr>
+                        <th>Instrutor Fixo:</th>
+                        <td>
+                            {% if proc.instrutor_fixo %}
+                                <span class="badge bg-primary"><i class="bi bi-person-badge me-1"></i>{{ proc.instrutor_fixo.nome_completo }}</span>
+                                <small class="text-muted ms-1">(Fixo)</small>
+                            {% else %}
+                                <span class="text-muted">Padrão (conforme matriz/liderança de setor)</span>
+                            {% endif %}
+                        </td>
+                    </tr>
                 </table>
             </div>
         </div>

@@ -7,6 +7,7 @@ Consolida forms de training e procurements
 from django import forms
 from django.urls import reverse_lazy
 from core.models import TURNOS_CHOICES
+from rh.models import Colaborador
 from procedures.models import (
     Procedimento, RegistroTreinamento, PacoteTreinamento,
     MatrizProcedimento, SubAreaProcedimento, ResponsavelTreinamentoMatriz,
@@ -261,11 +262,23 @@ class ProcedimentoForm(forms.ModelForm):
         empty_label='Selecione',
         widget=forms.Select(attrs={'class': 'form-select'})
     )
+    instrutor_fixo = forms.ModelChoiceField(
+        queryset=Colaborador.objects.none(),
+        required=False,
+        empty_label='Padrão (conforme matriz/liderança)',
+        widget=forms.Select(attrs={'class': 'form-select select2-search'})
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['matriz'].queryset = MatrizProcedimento.objects.filter(ativo=True).order_by('nome')
         self.fields['sub_area'].widget.attrs['data-subareas-url'] = reverse_lazy('procedures:api_subareas_por_matriz')
+
+        # Configurar opções de instrutor fixo
+        instrutores_qs = Colaborador.objects.filter(is_active=True).order_by('nome_completo')
+        if self.instance and self.instance.pk and self.instance.instrutor_fixo_id:
+            instrutores_qs = (instrutores_qs | Colaborador.objects.filter(pk=self.instance.instrutor_fixo_id)).distinct().order_by('nome_completo')
+        self.fields['instrutor_fixo'].queryset = instrutores_qs
 
         matriz_id = None
 
@@ -334,7 +347,8 @@ class ProcedimentoForm(forms.ModelForm):
         fields = [
             'codigo', 'nome', 'descricao', 'pasta', 'classificacao', 'autor',
             'numero_revisao', 'ultima_revisao', 'data_aprovacao', 'proxima_revisao',
-            'data_validade', 'documentos_controlados', 'matriz', 'sub_area', 'criticidade'
+            'data_validade', 'documentos_controlados', 'matriz', 'sub_area', 'criticidade',
+            'instrutor_fixo'
         ]
         widgets = {
             'codigo': forms.TextInput(attrs={
@@ -371,6 +385,7 @@ class ProcedimentoForm(forms.ModelForm):
             }),
             'documentos_controlados': forms.TextInput(attrs={'class': 'form-control'}),
             'criticidade': forms.Select(attrs={'class': 'form-select'}),
+            'instrutor_fixo': forms.Select(attrs={'class': 'form-select select2-search'}),
         }
 
 
