@@ -553,6 +553,23 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('rolePickerClearBtn').addEventListener('click', function() {
         applyRoleSelection('');
     });
+
+    // Máscara CPF
+    const cpfInput = document.getElementById('id_cpf') || document.querySelector('input[name="cpf"]');
+    if (cpfInput) {
+        cpfInput.setAttribute('maxlength', '14');
+        cpfInput.setAttribute('placeholder', '000.000.000-00');
+        const formatCPF = (val) => {
+            let v = (val || '').replace(/\D/g, '').slice(0, 11);
+            if (v.length > 9) v = v.replace(/^(\d{3})(\d{3})(\d{3})(\d{0,2}).*/, '$1.$2.$3-$4');
+            else if (v.length > 6) v = v.replace(/^(\d{3})(\d{3})(\d{0,3}).*/, '$1.$2.$3');
+            else if (v.length > 3) v = v.replace(/^(\d{3})(\d{0,3}).*/, '$1.$2');
+            return v;
+        };
+        if (cpfInput.value) cpfInput.value = formatCPF(cpfInput.value);
+        cpfInput.addEventListener('input', function() { this.value = formatCPF(this.value); });
+        cpfInput.addEventListener('blur', function() { this.value = formatCPF(this.value); });
+    }
 });
 </script>
 

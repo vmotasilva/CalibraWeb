@@ -153,6 +153,16 @@ class Colaborador(models.Model):
         return self.historico_geral.all().order_by('-data_mudanca')
 
     @property
+    def cpf_formatado(self):
+        if not self.cpf:
+            return ""
+        import re
+        nums = re.sub(r'\D', '', str(self.cpf))
+        if len(nums) == 11:
+            return f"{nums[:3]}.{nums[3:6]}.{nums[6:9]}-{nums[9:]}"
+        return self.cpf
+
+    @property
     def nome_abreviado(self):
         if not self.nome_completo:
             return ""

@@ -317,7 +317,7 @@
                             <span class="text-muted small">CPF:</span>
                             <div class="d-flex align-items-center">
                                 {% if can_see_salary and alvo.cpf %}
-                                    <span class="small">{{ alvo.cpf|slice:":3" }}.{{ alvo.cpf|slice:"3:6" }}.{{ alvo.cpf|slice:"6:9" }}-{{ alvo.cpf|slice:"9:11" }}</span>
+                                    <span class="small">{{ alvo.cpf_formatado }}</span>
                                 {% else %}
                                     <span class="small" style="filter: blur(4px);" title="Oculto por segurança">###.###.###-##</span>
                                 {% endif %}
@@ -1195,7 +1195,7 @@
                 <span class="text-muted small">CPF:</span>
                 <div class="d-flex align-items-center">
                     {% if can_see_salary and alvo.cpf %}
-                        <span class="small">{{ alvo.cpf|slice:":3" }}.{{ alvo.cpf|slice:"3:6" }}.{{ alvo.cpf|slice:"6:9" }}-{{ alvo.cpf|slice:"9:11" }}</span>
+                        <span class="small">{{ alvo.cpf_formatado }}</span>
                     {% else %}
                         <span class="small" style="filter: blur(4px);" title="Oculto por segurança">###.###.###-##</span>
                     {% endif %}
@@ -1900,7 +1900,48 @@ function setTabColaborador(tabName) {
     }
 }
 
+function formatCPFValue(val) {
+    if (!val) return '';
+    let v = val.replace(/\D/g, '').slice(0, 11);
+    if (v.length > 9) v = v.replace(/^(\d{3})(\d{3})(\d{3})(\d{0,2}).*/, '$1.$2.$3-$4');
+    else if (v.length > 6) v = v.replace(/^(\d{3})(\d{3})(\d{0,3}).*/, '$1.$2.$3');
+    else if (v.length > 3) v = v.replace(/^(\d{3})(\d{0,3}).*/, '$1.$2');
+    return v;
+}
+
+function aplicarMascaraCPF(input) {
+    if (!input) return;
+    input.setAttribute('maxlength', '14');
+    input.setAttribute('placeholder', '000.000.000-00');
+    input.setAttribute('autocomplete', 'off');
+    
+    // Formatar valor atual se houver
+    if (input.value) {
+        input.value = formatCPFValue(input.value);
+    }
+    
+    input.addEventListener('input', function() {
+        this.value = formatCPFValue(this.value);
+    });
+    input.addEventListener('blur', function() {
+        this.value = formatCPFValue(this.value);
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    // Aplicar máscara de CPF em todos os campos de CPF da página
+    document.querySelectorAll('input[name="cpf"], #id_cpf, .cpf-mask').forEach(aplicarMascaraCPF);
+
+    const modalEditarFicha = document.getElementById('modalEditarFichaCadastral');
+    if (modalEditarFicha) {
+        modalEditarFicha.addEventListener('shown.bs.modal', function () {
+            const cpfInput = modalEditarFicha.querySelector('input[name="cpf"], #id_cpf');
+            if (cpfInput) {
+                cpfInput.value = formatCPFValue(cpfInput.value);
+            }
+        });
+    }
+
     if (window.localStorage) {
         const savedTab = localStorage.getItem('colaborador_detail_active_tab_' + '{{ alvo.id }}');
         if (savedTab) {
