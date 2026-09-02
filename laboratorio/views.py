@@ -2877,10 +2877,38 @@ def dashboard_coating(request):
             'subtotal': subtotal
         })
 
+    # 3. Total Geral
+    total_lotes_geral = 0
+    total_sec_rodando_geral = 0
+    total_sec_parada_geral = 0
+    total_datas_geral = set()
+
+    for kpi in kpi_agrupados.values():
+        total_lotes_geral += kpi['total_lotes']
+        total_sec_rodando_geral += kpi['total_sec_rodando']
+        total_sec_parada_geral += kpi['total_sec_parada']
+        total_datas_geral.update(kpi['datas'])
+
+    dias_geral = len(total_datas_geral)
+    med_dia_rod_geral = total_sec_rodando_geral / dias_geral if dias_geral > 0 else 0
+    med_lot_rod_geral = total_sec_rodando_geral / total_lotes_geral if total_lotes_geral > 0 else 0
+    med_lot_par_geral = total_sec_parada_geral / total_lotes_geral if total_lotes_geral > 0 else 0
+
+    kpi_total_geral = {
+        'titulo': 'TOTAL GERAL',
+        'total_lotes': total_lotes_geral if not isinstance(total_lotes_geral, float) or not total_lotes_geral.is_integer() else int(total_lotes_geral),
+        'media_dia_rodando': format_timedelta(timedelta(seconds=med_dia_rod_geral)),
+        'media_lote_rodando': format_timedelta(timedelta(seconds=med_lot_rod_geral)),
+        'media_lote_parada': format_timedelta(timedelta(seconds=med_lot_par_geral)),
+    }
+
     tratamentos = TratamentoAntiReflexo.objects.filter(ativo=True).order_by('nome')
     equipe = EquipeCoating.objects.filter(colaborador__is_active=True).select_related('colaborador').order_by('colaborador__nome_completo')
 
     return render(request, "laboratorio/dashboard_coating.html", {
+        "kpi_grupos_maq": kpi_grupos_maq,
+        "kpi_grupos_turno": kpi_grupos_turno,
+        "kpi_total_geral": kpi_total_geral,
         "maquinas": maquinas,
         "maquina_selecionada": int(maquina_id) if maquina_id and maquina_id.isdigit() else "",
         "turnos_disponiveis": turnos_disponiveis,

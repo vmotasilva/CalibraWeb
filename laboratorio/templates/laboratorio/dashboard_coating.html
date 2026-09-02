@@ -81,20 +81,37 @@
     <div class="row mb-4 g-3 d-none d-md-flex">
         <div class="col-lg-12">
             <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white border-bottom-0 pt-4 pb-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-2 d-flex flex-wrap justify-content-between align-items-center gap-3">
                     <h5 class="card-title fw-bold text-dark mb-0"><i class="bi bi-speedometer2 me-2 text-primary"></i> Resumo de Eficiência ({{ periodo_display }})</h5>
-                    <ul class="nav nav-pills nav-sm bg-light p-1 rounded-3" id="kpiTabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active py-1 px-3 fw-semibold small" id="kpi-maq-tab" data-bs-toggle="pill" data-bs-target="#kpi-maq-pane" type="button" role="tab">
-                                <i class="bi bi-cpu me-1"></i> Por Máquina
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link py-1 px-3 fw-semibold small" id="kpi-turno-tab" data-bs-toggle="pill" data-bs-target="#kpi-turno-pane" type="button" role="tab">
-                                <i class="bi bi-clock-history me-1"></i> Por Turno
-                            </button>
-                        </li>
-                    </ul>
+                    
+                    <div class="d-flex flex-wrap align-items-center gap-3">
+                        <!-- Flags de visualização -->
+                        <div class="d-flex align-items-center gap-3 bg-light px-3 py-1.5 rounded-3 border">
+                            <div class="form-check form-switch mb-0 d-flex align-items-center gap-2">
+                                <input class="form-check-input" type="checkbox" role="switch" id="toggleSubtotais" checked onchange="toggleKpiVisibility()">
+                                <label class="form-check-label small fw-semibold text-secondary" for="toggleSubtotais" style="cursor: pointer;">Sub-totais</label>
+                            </div>
+                            <div class="vr text-secondary opacity-25"></div>
+                            <div class="form-check form-switch mb-0 d-flex align-items-center gap-2">
+                                <input class="form-check-input" type="checkbox" role="switch" id="toggleTotalGeral" checked onchange="toggleKpiVisibility()">
+                                <label class="form-check-label small fw-semibold text-secondary" for="toggleTotalGeral" style="cursor: pointer;">Total Geral</label>
+                            </div>
+                        </div>
+
+                        <!-- Abas Por Máquina / Por Turno -->
+                        <ul class="nav nav-pills nav-sm bg-light p-1 rounded-3 border" id="kpiTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active py-1 px-3 fw-semibold small" id="kpi-maq-tab" data-bs-toggle="pill" data-bs-target="#kpi-maq-pane" type="button" role="tab">
+                                    <i class="bi bi-cpu me-1"></i> Por Máquina
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link py-1 px-3 fw-semibold small" id="kpi-turno-tab" data-bs-toggle="pill" data-bs-target="#kpi-turno-pane" type="button" role="tab">
+                                    <i class="bi bi-clock-history me-1"></i> Por Turno
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="tab-content" id="kpiTabsContent">
@@ -125,7 +142,7 @@
                                             </tr>
                                             {% endfor %}
                                             <!-- Subtotal por Máquina -->
-                                            <tr class="table-light fw-bold border-bottom" style="background-color: #f1f5f9;">
+                                            <tr class="table-light fw-bold border-bottom kpi-subtotal-row" style="background-color: #f1f5f9;">
                                                 <td class="text-start text-primary" colspan="2">
                                                     <i class="bi bi-calculator me-1"></i> {{ g.subtotal.titulo }}
                                                 </td>
@@ -139,6 +156,19 @@
                                                 <td colspan="6" class="text-muted">Nenhum dado encontrado para o período selecionado.</td>
                                             </tr>
                                         {% endfor %}
+
+                                        <!-- Total Geral -->
+                                        {% if kpi_total_geral and kpi_grupos_maq %}
+                                        <tr class="table-dark text-white fw-bold border-top border-2 kpi-total-geral-row" style="background-color: #1e293b !important; color: #ffffff !important;">
+                                            <td class="text-start text-warning" colspan="2">
+                                                <i class="bi bi-sigma me-1"></i> {{ kpi_total_geral.titulo }}
+                                            </td>
+                                            <td><span class="badge bg-warning text-dark rounded-pill fs-6">{{ kpi_total_geral.total_lotes }}</span></td>
+                                            <td><span class="text-success fw-bold">{{ kpi_total_geral.media_dia_rodando }}</span></td>
+                                            <td><span class="text-light fw-bold">{{ kpi_total_geral.media_lote_rodando }}</span></td>
+                                            <td><span class="text-danger-subtle fw-bold">{{ kpi_total_geral.media_lote_parada }}</span></td>
+                                        </tr>
+                                        {% endif %}
                                     </tbody>
                                 </table>
                             </div>
@@ -171,7 +201,7 @@
                                             </tr>
                                             {% endfor %}
                                             <!-- Subtotal por Turno -->
-                                            <tr class="table-light fw-bold border-bottom" style="background-color: #f1f5f9;">
+                                            <tr class="table-light fw-bold border-bottom kpi-subtotal-row" style="background-color: #f1f5f9;">
                                                 <td class="text-start text-primary" colspan="2">
                                                     <i class="bi bi-calculator me-1"></i> {{ g.subtotal.titulo }}
                                                 </td>
@@ -185,6 +215,19 @@
                                                 <td colspan="6" class="text-muted">Nenhum dado encontrado para o período selecionado.</td>
                                             </tr>
                                         {% endfor %}
+
+                                        <!-- Total Geral -->
+                                        {% if kpi_total_geral and kpi_grupos_turno %}
+                                        <tr class="table-dark text-white fw-bold border-top border-2 kpi-total-geral-row" style="background-color: #1e293b !important; color: #ffffff !important;">
+                                            <td class="text-start text-warning" colspan="2">
+                                                <i class="bi bi-sigma me-1"></i> {{ kpi_total_geral.titulo }}
+                                            </td>
+                                            <td><span class="badge bg-warning text-dark rounded-pill fs-6">{{ kpi_total_geral.total_lotes }}</span></td>
+                                            <td><span class="text-success fw-bold">{{ kpi_total_geral.media_dia_rodando }}</span></td>
+                                            <td><span class="text-light fw-bold">{{ kpi_total_geral.media_lote_rodando }}</span></td>
+                                            <td><span class="text-danger-subtle fw-bold">{{ kpi_total_geral.media_lote_parada }}</span></td>
+                                        </tr>
+                                        {% endif %}
                                     </tbody>
                                 </table>
                             </div>
@@ -1099,6 +1142,40 @@ function salvarLoteEdicao() {
         }
     });
 }
+
+function toggleKpiVisibility() {
+    const showSub = document.getElementById('toggleSubtotais')?.checked ?? true;
+    const showTotal = document.getElementById('toggleTotalGeral')?.checked ?? true;
+    
+    document.querySelectorAll('.kpi-subtotal-row').forEach(el => {
+        el.style.display = showSub ? '' : 'none';
+    });
+    
+    document.querySelectorAll('.kpi-total-geral-row').forEach(el => {
+        el.style.display = showTotal ? '' : 'none';
+    });
+
+    if (window.localStorage) {
+        localStorage.setItem('coating_kpi_show_subtotais', showSub);
+        localStorage.setItem('coating_kpi_show_total_geral', showTotal);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.localStorage) {
+        const savedSub = localStorage.getItem('coating_kpi_show_subtotais');
+        if (savedSub !== null) {
+            const subInput = document.getElementById('toggleSubtotais');
+            if (subInput) subInput.checked = (savedSub === 'true');
+        }
+        const savedTotal = localStorage.getItem('coating_kpi_show_total_geral');
+        if (savedTotal !== null) {
+            const totalInput = document.getElementById('toggleTotalGeral');
+            if (totalInput) totalInput.checked = (savedTotal === 'true');
+        }
+    }
+    toggleKpiVisibility();
+});
 </script>
 
 {% endblock %}
