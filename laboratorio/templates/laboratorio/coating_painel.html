@@ -262,69 +262,50 @@
         .pulse-danger {
             animation: pulseRed 2s infinite;
         }
-
-        /* Controle estrito de visibilidade de abas */
-        #evapTabsContent .tab-pane,
-        .tab-content > .tab-pane {
-            display: none !important;
-        }
-        #evapTabsContent .tab-pane.active,
-        #evapTabsContent .tab-pane.show.active,
-        .tab-content > .tab-pane.active,
-        .tab-content > .tab-pane.show.active {
-            display: block !important;
-        }
     </style>
+    <!-- Abas de Navegação Server-side por Máquina -->
     <ul class="nav nav-tabs mb-0 border-bottom-0 mt-4 px-2" id="evapTabs" role="tablist">
         {% for evap in evaporadoras %}
         {% cycle 'tab-color-1' 'tab-color-2' 'tab-color-3' 'tab-color-4' 'tab-color-5' 'tab-color-6' as tcolor silent %}
         <li class="nav-item" role="presentation">
-            <button class="nav-link {% if active_tab == 'evap-'|add:evap.id|stringformat:'s' or active_tab == evap.id|stringformat:'s' %}active{% elif not active_tab and forloop.first %}active{% endif %} fw-bold {{ tcolor }}" 
-                    id="evap-{{ evap.id }}-tab" data-bs-toggle="tab" 
-                    data-bs-target="#evap-{{ evap.id }}-pane" type="button" role="tab"
-                    onclick="switchEvapTab('evap-{{ evap.id }}'); document.getElementById('{{ registro_form.maquina.id_for_label }}').value = '{{ evap.id }}';">
+            <a href="?equipamento={{ evap.codigo }}&tab={{ evap.id }}&page=1{% if lote_search %}&lote_search={{ lote_search }}{% endif %}{% if date_search %}&date_search={{ date_search }}{% endif %}{% if audit_mode %}&audit=true{% endif %}{% if anomaly_filter %}&anomaly={{ anomaly_filter }}{% endif %}" 
+               class="nav-link {% if maquina_ativa and maquina_ativa.id == evap.id %}active{% elif not maquina_ativa and forloop.first %}active{% endif %} fw-bold {{ tcolor }}" 
+               id="evap-{{ evap.id }}-tab">
                 {{ evap.codigo }}
-            </button>
+            </a>
         </li>
         {% empty %}
         <li class="nav-item" role="presentation">
-            <button class="nav-link active fw-bold text-dark" type="button" role="tab">Geral</button>
+            <span class="nav-link active fw-bold text-dark">Geral</span>
         </li>
         {% endfor %}
     </ul>
 
-    <div class="tab-content" id="evapTabsContent">
-        {% for evap in evaporadoras %}
-        <div class="tab-pane fade {% if active_tab == 'evap-'|add:evap.id|stringformat:'s' or active_tab == evap.id|stringformat:'s' %}show active{% elif not active_tab and forloop.first %}show active{% endif %}" 
-             id="evap-{{ evap.id }}-pane" 
-             data-maquina-id="{{ evap.id }}" 
-             role="tabpanel"
-             style="{% if active_tab == 'evap-'|add:evap.id|stringformat:'s' or active_tab == evap.id|stringformat:'s' %}display: block !important;{% elif not active_tab and forloop.first %}display: block !important;{% else %}display: none !important;{% endif %}">
-            <div class="card shadow-sm border" style="border-top-left-radius: 0; border-top-right-radius: 0;">
-                                <div class="table-responsive d-none d-md-block">
-                        <table class="table table-hover align-middle mb-0 text-center text-nowrap w-100">
-                            <thead class="table-dark">
-                                <tr>
-                                    <th style="width: 1%; white-space: nowrap;">Data</th>
-                                    <th style="width: 1%; white-space: nowrap;">Turno</th>
-                                    <th style="width: 1%; white-space: nowrap;">Lote</th>
-                                    <th style="width: 1%; white-space: nowrap;">Lado</th>
-                                    <th>Tratamento</th>
-                                    <th>Entrada</th>
-                                    <th>Saída</th>
-                                    <th>T. Rodando</th>
-                                    <th>T. Parado</th>
-                                    <th>Preparação</th>
-                                    <th>Montagem</th>
-                                    <th>Limpezas</th>
-                                    <th>Trocas</th>
-                                    <th>Verificações</th>
-                                    <th>Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% with reg_page=registros_por_maquina|get_item:evap.id %}
-                                    {% for reg in reg_page %}
+    <!-- Tabela Única de Lotes (Filtrada no Backend por Máquina Selecionada) -->
+    <div class="card shadow-sm border mb-4" style="border-top-left-radius: 0; border-top-right-radius: 0;">
+        <div class="table-responsive d-none d-md-block">
+            <table class="table table-hover align-middle mb-0 text-center text-nowrap w-100">
+                <thead class="table-dark">
+                    <tr>
+                        <th style="width: 1%; white-space: nowrap;">Data</th>
+                        <th style="width: 1%; white-space: nowrap;">Turno</th>
+                        <th style="width: 1%; white-space: nowrap;">Lote</th>
+                        <th style="width: 1%; white-space: nowrap;">Lado</th>
+                        <th>Tratamento</th>
+                        <th>Entrada</th>
+                        <th>Saída</th>
+                        <th>T. Rodando</th>
+                        <th>T. Parado</th>
+                        <th>Preparação</th>
+                        <th>Montagem</th>
+                        <th>Limpezas</th>
+                        <th>Trocas</th>
+                        <th>Verificações</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for reg in registros_page %}
                                         <tr class="align-middle {% if reg.bg_group == 1 %}bg-lote-group{% else %}bg-white{% endif %}" style="cursor:pointer;" onclick="abrirModalEditarLote(this, '{{ reg.id }}', '{{ reg.lote }}', '{{ reg.lado }}', '{{ reg.maquina_id }}', '{{ reg.tratamento_id }}', '{{ reg.hora_entrada|date:'Y-m-d\TH:i'|default:'' }}', '{{ reg.hora_saida|date:'Y-m-d\TH:i'|default:'' }}', '{{ reg.preparacao_id|default:'' }}', '{{ reg.montagem_id|default:'' }}')" data-observacao="{{ reg.observacao|escapejs|default:'' }}" data-lote-num="{{ reg.lote }}">
                                             <td>{{ reg.turno_coating.data|date:"d/m/Y" }}</td>
                                             <td>{{ reg.turno_coating.regra.nome }}</td>
@@ -481,170 +462,162 @@
                                                 </div>
                                             </td>
                                         </tr>
-                                    {% empty %}
-                                        <tr>
-                                            <td colspan="15" class="text-center text-muted py-4">Nenhum lote registrado nesta máquina para as datas em exibição.</td>
-                                        </tr>
-                                    {% endfor %}
-                                {% endwith %}
-                            </tbody>
-                        </table>
-                    </div>
+                    {% empty %}
+                        <tr>
+                            <td colspan="15" class="text-center text-muted py-4">Nenhum lote registrado nesta máquina para as datas em exibição.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
-                    <!-- Modo Cards para Telas Mobile (<768px) -->
-                    <div class="d-md-none p-2">
-                        {% with reg_page=registros_por_maquina|get_item:evap.id %}
-                            {% for reg in reg_page %}
-                                <div class="card mb-2 shadow-sm border {% if reg.bg_group == 1 %}bg-lote-group{% else %}bg-white{% endif %}"
-                                     style="cursor:pointer;" 
-                                     onclick="abrirModalEditarLote(this, '{{ reg.id }}', '{{ reg.lote }}', '{{ reg.lado }}', '{{ reg.maquina_id }}', '{{ reg.tratamento_id }}', '{{ reg.hora_entrada|date:'Y-m-d\TH:i'|default:'' }}', '{{ reg.hora_saida|date:'Y-m-d\TH:i'|default:'' }}', '{{ reg.preparacao_id|default:'' }}', '{{ reg.montagem_id|default:'' }}')" 
-                                     data-observacao="{{ reg.observacao|escapejs|default:'' }}" 
-                                     data-lote-num="{{ reg.lote }}">
-                                    <div class="card-body p-2 position-relative">
-                                        <!-- Top Header: Lote, Lado, Tratamento e Turno -->
-                                        <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
-                                            <div class="d-flex align-items-center gap-1 flex-wrap">
-                                                <span class="fw-bold fs-6 text-dark">Lote {{ reg.lote }}</span>
-                                                <span class="badge bg-dark">{{ reg.lado }}</span>
-                                                <span class="badge rounded-pill" style="background-color: {{ reg.tratamento.cor|default:'#0d6efd' }}; color: #fff;">{{ reg.tratamento.nome }}</span>
-                                            </div>
-                                            <div class="text-end text-muted small ms-2" style="font-size: 0.75rem;">
-                                                <div class="fw-bold">{{ reg.turno_coating.data|date:"d/m/Y" }}</div>
-                                                <div>{{ reg.turno_coating.regra.nome }}</div>
-                                            </div>
-                                        </div>
+        <!-- Modo Cards para Telas Mobile (<768px) -->
+        <div class="d-md-none p-2">
+            {% for reg in registros_page %}
+                <div class="card mb-2 shadow-sm border {% if reg.bg_group == 1 %}bg-lote-group{% else %}bg-white{% endif %}"
+                     style="cursor:pointer;" 
+                     onclick="abrirModalEditarLote(this, '{{ reg.id }}', '{{ reg.lote }}', '{{ reg.lado }}', '{{ reg.maquina_id }}', '{{ reg.tratamento_id }}', '{{ reg.hora_entrada|date:'Y-m-d\TH:i'|default:'' }}', '{{ reg.hora_saida|date:'Y-m-d\TH:i'|default:'' }}', '{{ reg.preparacao_id|default:'' }}', '{{ reg.montagem_id|default:'' }}')" 
+                     data-observacao="{{ reg.observacao|escapejs|default:'' }}" 
+                     data-lote-num="{{ reg.lote }}">
+                    <div class="card-body p-2 position-relative">
+                        <!-- Top Header: Lote, Lado, Tratamento e Turno -->
+                        <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
+                            <div class="d-flex align-items-center gap-1 flex-wrap">
+                                <span class="fw-bold fs-6 text-dark">Lote {{ reg.lote }}</span>
+                                <span class="badge bg-dark">{{ reg.lado }}</span>
+                                <span class="badge rounded-pill" style="background-color: {{ reg.tratamento.cor|default:'#0d6efd' }}; color: #fff;">{{ reg.tratamento.nome }}</span>
+                            </div>
+                            <div class="text-end text-muted small ms-2" style="font-size: 0.75rem;">
+                                <div class="fw-bold">{{ reg.turno_coating.data|date:"d/m/Y" }}</div>
+                                <div>{{ reg.turno_coating.regra.nome }}</div>
+                            </div>
+                        </div>
 
-                                        <!-- Detail Grid -->
-                                        <div class="row g-1 small mb-2 text-dark" style="font-size: 0.8rem;">
-                                            <div class="col-6">
-                                                <span class="text-muted">Entrada:</span> <strong>{{ reg.hora_entrada|time:"H:i"|default:"-" }}</strong>
-                                            </div>
-                                            <div class="col-6">
-                                                <span class="text-muted">Saída:</span> <strong>{{ reg.hora_saida|time:"H:i"|default:"-" }}</strong>
-                                            </div>
-                                            <div class="col-6">
-                                                <span class="text-muted">T. Rodando:</span> <strong>{{ reg.tempo_rodando|time:"H:i"|default:"-" }}</strong>
-                                            </div>
-                                            <div class="col-6">
-                                                <span class="text-muted">T. Parado:</span> <strong>{{ reg.tempo_parado|time:"H:i"|default:"-" }}</strong>
-                                            </div>
-                                            <div class="col-6">
-                                                <span class="text-muted">Prep:</span> <strong>{{ reg.preparacao.nome_abreviado|default:"-" }}</strong>
-                                            </div>
-                                            <div class="col-6">
-                                                <span class="text-muted">Mont:</span> <strong>{{ reg.montagem.nome_abreviado|default:"-" }}</strong>
-                                            </div>
-                                        </div>
+                        <!-- Detail Grid -->
+                        <div class="row g-1 small mb-2 text-dark" style="font-size: 0.8rem;">
+                            <div class="col-6">
+                                <span class="text-muted">Entrada:</span> <strong>{{ reg.hora_entrada|time:"H:i"|default:"-" }}</strong>
+                            </div>
+                            <div class="col-6">
+                                <span class="text-muted">Saída:</span> <strong>{{ reg.hora_saida|time:"H:i"|default:"-" }}</strong>
+                            </div>
+                            <div class="col-6">
+                                <span class="text-muted">T. Rodando:</span> <strong>{{ reg.tempo_rodando|time:"H:i"|default:"-" }}</strong>
+                            </div>
+                            <div class="col-6">
+                                <span class="text-muted">T. Parado:</span> <strong>{{ reg.tempo_parado|time:"H:i"|default:"-" }}</strong>
+                            </div>
+                            <div class="col-6">
+                                <span class="text-muted">Prep:</span> <strong>{{ reg.preparacao.nome_abreviado|default:"-" }}</strong>
+                            </div>
+                            <div class="col-6">
+                                <span class="text-muted">Mont:</span> <strong>{{ reg.montagem.nome_abreviado|default:"-" }}</strong>
+                            </div>
+                        </div>
 
-                                        <!-- Footer: Manutenções + Ações -->
-                                        <div class="d-flex justify-content-between align-items-center pt-2 border-top">
-                                            <div class="d-flex gap-2 align-items-center flex-wrap">
-                                                <!-- Limpezas -->
-                                                <div class="d-flex align-items-center gap-1">
-                                                    <span class="text-muted small" style="font-size:0.75rem;">Limp:</span>
-                                                    {% if reg.limpezas_ok > 0 %}
-                                                    <span class="badge bg-success" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'LIMPEZA', '{{ reg.ciclos_status_json_lote|safe }}')">{{ reg.limpezas_ok }} <i class="bi bi-check-circle-fill"></i></span>
-                                                    {% endif %}
-                                                    {% if reg.limpezas_pendentes > 0 %}
-                                                    <span class="badge bg-danger pulse-danger" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'LIMPEZA', '{{ reg.ciclos_status_json_lote|safe }}')">{{ reg.limpezas_pendentes }} <i class="bi bi-exclamation-circle-fill"></i></span>
-                                                    {% endif %}
-                                                    {% if reg.limpezas_ok == 0 and reg.limpezas_pendentes == 0 %}
-                                                    <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'LIMPEZA', '{{ reg.ciclos_status_json_lote|safe }}')"><i class="bi bi-plus-lg"></i></span>
-                                                    {% endif %}
-                                                </div>
-
-                                                <!-- Trocas -->
-                                                <div class="d-flex align-items-center gap-1">
-                                                    <span class="text-muted small" style="font-size:0.75rem;">Trocas:</span>
-                                                    {% if reg.trocas_ok > 0 %}
-                                                    <span class="badge bg-success" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'TROCA', '{{ reg.ciclos_status_json_lote|safe }}')">{{ reg.trocas_ok }} <i class="bi bi-check-circle-fill"></i></span>
-                                                    {% endif %}
-                                                    {% if reg.trocas_pendentes > 0 %}
-                                                    <span class="badge bg-danger pulse-danger" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'TROCA', '{{ reg.ciclos_status_json_lote|safe }}')">{{ reg.trocas_pendentes }} <i class="bi bi-exclamation-circle-fill"></i></span>
-                                                    {% endif %}
-                                                    {% if reg.trocas_ok == 0 and reg.trocas_pendentes == 0 %}
-                                                    <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'TROCA', '{{ reg.ciclos_status_json_lote|safe }}')"><i class="bi bi-plus-lg"></i></span>
-                                                    {% endif %}
-                                                </div>
-
-                                                <!-- Verificações -->
-                                                <div class="d-flex align-items-center gap-1">
-                                                    <span class="text-muted small" style="font-size:0.75rem;">Verif:</span>
-                                                    {% if reg.verificacoes_ok > 0 %}
-                                                    <span class="badge bg-success" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'VERIFICACAO', '{{ reg.ciclos_status_json_lote|safe }}')">{{ reg.verificacoes_ok }} <i class="bi bi-check-circle-fill"></i></span>
-                                                    {% endif %}
-                                                    {% if reg.verificacoes_pendentes > 0 %}
-                                                    <span class="badge bg-danger pulse-danger" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'VERIFICACAO', '{{ reg.ciclos_status_json_lote|safe }}')">{{ reg.verificacoes_pendentes }} <i class="bi bi-exclamation-circle-fill"></i></span>
-                                                    {% endif %}
-                                                    {% if reg.verificacoes_alerta > 0 %}
-                                                    <span class="badge bg-warning text-dark" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'VERIFICACAO', '{{ reg.ciclos_status_json_lote|safe }}')">{{ reg.verificacoes_alerta }} <i class="bi bi-exclamation-triangle-fill"></i></span>
-                                                    {% endif %}
-                                                    {% if reg.verificacoes_ok == 0 and reg.verificacoes_pendentes == 0 and reg.verificacoes_alerta == 0 %}
-                                                    <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ evap.id }}', null, {{ reg.ok_cids|safe }}, 'VERIFICACAO', '{{ reg.ciclos_status_json_lote|safe }}')"><i class="bi bi-plus-lg"></i></span>
-                                                    {% endif %}
-                                                </div>
-                                            </div>
-
-                                            <div class="dropdown">
-                                                <button class="btn btn-sm btn-light border p-1 px-2" type="button" data-bs-toggle="dropdown" onclick="event.stopPropagation();" aria-expanded="false" title="Mais opções">
-                                                    <i class="bi bi-three-dots-vertical"></i>
-                                                </button>
-                                                <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="min-width: auto; padding: 0.25rem 0;">
-                                                    <li>
-                                                        <button class="dropdown-item py-2 px-3 small text-info" type="button" onclick="event.stopPropagation(); recalcularTurnoLinha({{ reg.id }})">
-                                                            <i class="bi bi-arrow-clockwise me-2"></i> Recalcular Turno
-                                                        </button>
-                                                    </li>
-                                                    <li><hr class="dropdown-divider my-1"></li>
-                                                    <li>
-                                                        <button class="dropdown-item py-2 px-3 small text-danger" type="button" onclick="event.stopPropagation(); abrirModalDelete('{% url 'laboratorio:registro_coating_delete' reg.id %}', '{{ reg.lote }}')">
-                                                            <i class="bi bi-trash me-2"></i> Excluir Lote
-                                                        </button>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    </div>
+                        <!-- Footer: Manutenções + Ações -->
+                        <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                            <div class="d-flex gap-2 align-items-center flex-wrap">
+                                <!-- Limpezas -->
+                                <div class="d-flex align-items-center gap-1">
+                                    <span class="text-muted small" style="font-size:0.75rem;">Limp:</span>
+                                    {% if reg.limpezas_ok > 0 %}
+                                    <span class="badge bg-success" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ reg.maquina_id }}', null, {{ reg.ok_cids|safe }}, 'LIMPEZA', '{{ reg.ciclos_status_json_lote|safe }}')">{{ reg.limpezas_ok }} <i class="bi bi-check-circle-fill"></i></span>
+                                    {% endif %}
+                                    {% if reg.limpezas_pendentes > 0 %}
+                                    <span class="badge bg-danger pulse-danger" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ reg.maquina_id }}', null, {{ reg.ok_cids|safe }}, 'LIMPEZA', '{{ reg.ciclos_status_json_lote|safe }}')">{{ reg.limpezas_pendentes }} <i class="bi bi-exclamation-circle-fill"></i></span>
+                                    {% endif %}
+                                    {% if reg.limpezas_ok == 0 and reg.limpezas_pendentes == 0 %}
+                                    <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ reg.maquina_id }}', null, {{ reg.ok_cids|safe }}, 'LIMPEZA', '{{ reg.ciclos_status_json_lote|safe }}')"><i class="bi bi-plus-lg"></i></span>
+                                    {% endif %}
                                 </div>
-                            {% empty %}
-                                <div class="text-center text-muted py-4 small">Nenhum lote registrado nesta máquina para as datas em exibição.</div>
-                            {% endfor %}
-                        {% endwith %}
+
+                                <!-- Trocas -->
+                                <div class="d-flex align-items-center gap-1">
+                                    <span class="text-muted small" style="font-size:0.75rem;">Trocas:</span>
+                                    {% if reg.trocas_ok > 0 %}
+                                    <span class="badge bg-success" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ reg.maquina_id }}', null, {{ reg.ok_cids|safe }}, 'TROCA', '{{ reg.ciclos_status_json_lote|safe }}')">{{ reg.trocas_ok }} <i class="bi bi-check-circle-fill"></i></span>
+                                    {% endif %}
+                                    {% if reg.trocas_pendentes > 0 %}
+                                    <span class="badge bg-danger pulse-danger" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ reg.maquina_id }}', null, {{ reg.ok_cids|safe }}, 'TROCA', '{{ reg.ciclos_status_json_lote|safe }}')">{{ reg.trocas_pendentes }} <i class="bi bi-exclamation-circle-fill"></i></span>
+                                    {% endif %}
+                                    {% if reg.trocas_ok == 0 and reg.trocas_pendentes == 0 %}
+                                    <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ reg.maquina_id }}', null, {{ reg.ok_cids|safe }}, 'TROCA', '{{ reg.ciclos_status_json_lote|safe }}')"><i class="bi bi-plus-lg"></i></span>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Verificações -->
+                                <div class="d-flex align-items-center gap-1">
+                                    <span class="text-muted small" style="font-size:0.75rem;">Verif:</span>
+                                    {% if reg.verificacoes_ok > 0 %}
+                                    <span class="badge bg-success" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ reg.maquina_id }}', null, {{ reg.ok_cids|safe }}, 'VERIFICACAO', '{{ reg.ciclos_status_json_lote|safe }}')">{{ reg.verificacoes_ok }} <i class="bi bi-check-circle-fill"></i></span>
+                                    {% endif %}
+                                    {% if reg.verificacoes_pendentes > 0 %}
+                                    <span class="badge bg-danger pulse-danger" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ reg.maquina_id }}', null, {{ reg.ok_cids|safe }}, 'VERIFICACAO', '{{ reg.ciclos_status_json_lote|safe }}')">{{ reg.verificacoes_pendentes }} <i class="bi bi-exclamation-circle-fill"></i></span>
+                                    {% endif %}
+                                    {% if reg.verificacoes_alerta > 0 %}
+                                    <span class="badge bg-warning text-dark" style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ reg.maquina_id }}', null, {{ reg.ok_cids|safe }}, 'VERIFICACAO', '{{ reg.ciclos_status_json_lote|safe }}')">{{ reg.verificacoes_alerta }} <i class="bi bi-exclamation-triangle-fill"></i></span>
+                                    {% endif %}
+                                    {% if reg.verificacoes_ok == 0 and reg.verificacoes_pendentes == 0 and reg.verificacoes_alerta == 0 %}
+                                    <span class="badge bg-secondary" style="cursor:pointer; opacity: 0.7;" onclick="event.stopPropagation(); abrirModalManutencao('{{ reg.id }}', '{{ reg.lote }}', '{{ reg.maquina_id }}', null, {{ reg.ok_cids|safe }}, 'VERIFICACAO', '{{ reg.ciclos_status_json_lote|safe }}')"><i class="bi bi-plus-lg"></i></span>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-light border p-1 px-2" type="button" data-bs-toggle="dropdown" onclick="event.stopPropagation();" aria-expanded="false" title="Mais opções">
+                                    <i class="bi bi-three-dots-vertical"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="min-width: auto; padding: 0.25rem 0;">
+                                    <li>
+                                        <button class="dropdown-item py-2 px-3 small text-info" type="button" onclick="event.stopPropagation(); recalcularTurnoLinha({{ reg.id }})">
+                                            <i class="bi bi-arrow-clockwise me-2"></i> Recalcular Turno
+                                        </button>
+                                    </li>
+                                    <li><hr class="dropdown-divider my-1"></li>
+                                    <li>
+                                        <button class="dropdown-item py-2 px-3 small text-danger" type="button" onclick="event.stopPropagation(); abrirModalDelete('{% url 'laboratorio:registro_coating_delete' reg.id %}', '{{ reg.lote }}')">
+                                            <i class="bi bi-trash me-2"></i> Excluir Lote
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
                     </div>
                 </div>
-
-            <!-- Paginação desta máquina -->
-            {% with reg_page=registros_por_maquina|get_item:evap.id %}
-            {% if reg_page.has_other_pages %}
-            <nav aria-label="Paginação {{ evap.codigo }}" class="mt-3">
-                <ul class="pagination justify-content-center">
-                    {% if reg_page.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page_{{ evap.id }}={{ reg_page.previous_page_number }}{% if lote_search %}&lote_search={{ lote_search }}{% endif %}{% if date_search %}&date_search={{ date_search }}{% endif %}{% if audit_mode %}&audit=true{% endif %}{% if anomaly_filter %}&anomaly={{ anomaly_filter }}{% endif %}&tab=evap-{{ evap.id }}" aria-label="Anterior">
-                            <span aria-hidden="true">&laquo; Anterior</span>
-                        </a>
-                    </li>
-                    {% else %}
-                    <li class="page-item disabled"><span class="page-link">&laquo; Anterior</span></li>
-                    {% endif %}
-                    <li class="page-item disabled">
-                        <span class="page-link">Página {{ reg_page.number }} de {{ reg_page.paginator.num_pages }}</span>
-                    </li>
-                    {% if reg_page.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page_{{ evap.id }}={{ reg_page.next_page_number }}{% if lote_search %}&lote_search={{ lote_search }}{% endif %}{% if date_search %}&date_search={{ date_search }}{% endif %}{% if audit_mode %}&audit=true{% endif %}{% if anomaly_filter %}&anomaly={{ anomaly_filter }}{% endif %}&tab=evap-{{ evap.id }}" aria-label="Próxima">
-                            <span aria-hidden="true">Próxima &raquo;</span>
-                        </a>
-                    </li>
-                    {% else %}
-                    <li class="page-item disabled"><span class="page-link">Próxima &raquo;</span></li>
-                    {% endif %}
-                </ul>
-            </nav>
-            {% endif %}
-            {% endwith %}
+            {% empty %}
+                <div class="text-center text-muted py-4 small">Nenhum lote registrado nesta máquina para as datas em exibição.</div>
+            {% endfor %}
         </div>
-        {% endfor %}
+
+        <!-- Paginação Server-Side da Máquina Ativa -->
+        {% if registros_page.has_other_pages %}
+        <nav aria-label="Paginação {{ maquina_ativa.codigo }}" class="my-3">
+            <ul class="pagination justify-content-center mb-0">
+                {% if registros_page.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?equipamento={{ maquina_ativa.codigo }}&tab={{ maquina_ativa.id }}&page={{ registros_page.previous_page_number }}{% if lote_search %}&lote_search={{ lote_search }}{% endif %}{% if date_search %}&date_search={{ date_search }}{% endif %}{% if audit_mode %}&audit=true{% endif %}{% if anomaly_filter %}&anomaly={{ anomaly_filter }}{% endif %}" aria-label="Anterior">
+                        <span aria-hidden="true">&laquo; Anterior</span>
+                    </a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">&laquo; Anterior</span></li>
+                {% endif %}
+                <li class="page-item disabled">
+                    <span class="page-link">Página {{ registros_page.number }} de {{ registros_page.paginator.num_pages }}</span>
+                </li>
+                {% if registros_page.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?equipamento={{ maquina_ativa.codigo }}&tab={{ maquina_ativa.id }}&page={{ registros_page.next_page_number }}{% if lote_search %}&lote_search={{ lote_search }}{% endif %}{% if date_search %}&date_search={{ date_search }}{% endif %}{% if audit_mode %}&audit=true{% endif %}{% if anomaly_filter %}&anomaly={{ anomaly_filter }}{% endif %}" aria-label="Próxima">
+                        <span aria-hidden="true">Próxima &raquo;</span>
+                    </a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">Próxima &raquo;</span></li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
     </div>
 
 
@@ -1604,58 +1577,13 @@
         });
     }
     
-    // Função explícita e direta de alternância de abas de máquinas
-    function switchEvapTab(tabId) {
-        if (!tabId) return;
-        if (!tabId.startsWith('evap-')) tabId = 'evap-' + tabId;
-        
-        // 1. Atualizar botões de navegação
-        document.querySelectorAll('#evapTabs .nav-link').forEach(btn => {
-            btn.classList.remove('active');
-            btn.setAttribute('aria-selected', 'false');
-        });
-        const targetBtn = document.getElementById(tabId + '-tab') || document.querySelector(`[data-bs-target="#${tabId}-pane"]`);
-        if (targetBtn) {
-            targetBtn.classList.add('active');
-            targetBtn.setAttribute('aria-selected', 'true');
-        }
-        
-        // 2. Ocultar todos os painéis e exibir apenas o selecionado
-        document.querySelectorAll('#evapTabsContent .tab-pane').forEach(p => {
-            p.classList.remove('show', 'active');
-            p.style.setProperty('display', 'none', 'important');
-        });
-        const targetPane = document.getElementById(tabId + '-pane') || document.getElementById(tabId);
-        if (targetPane) {
-            targetPane.classList.add('show', 'active');
-            targetPane.style.setProperty('display', 'block', 'important');
-        }
-        
-        // 3. Atualizar campo oculto do formulário de busca e URL
-        const rawId = tabId.replace('evap-', '');
-        const searchTabInput = document.getElementById('searchTabInput');
-        if (searchTabInput) searchTabInput.value = rawId;
-        localStorage.setItem('coating_active_tab', rawId);
-        
-        const currentUrl = new URL(window.location);
-        currentUrl.searchParams.set('tab', rawId);
-        window.history.replaceState({}, '', currentUrl);
-    }
-
-    // Inicializar os tooltips do Bootstrap e Gerenciador de Abas
+    // Inicializar os tooltips do Bootstrap
     document.addEventListener("DOMContentLoaded", function() {
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
         var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
             return new bootstrap.Tooltip(tooltipTriggerEl);
         });
 
-        // Restaurar aba ativa na inicialização se informada na URL ou salva no localStorage
-        const urlParams = new URLSearchParams(window.location.search);
-        let activeTab = urlParams.get('tab') || localStorage.getItem('coating_active_tab');
-        if (activeTab) {
-            switchEvapTab(activeTab);
-        }
-        
         // Trava para evitar duplo clique e múltiplos envios de formulário
         document.addEventListener("submit", function(e) {
             if (e.target.tagName === 'FORM') {

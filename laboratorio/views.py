@@ -1097,8 +1097,7 @@ def coating_painel(request):
         # Fetch all records
         todos_registros = base_qs.order_by('-lote', 'lado', '-id')
     
-    # --- Paginação por máquina (cada aba tem sua própria página) ---
-    # Identificar máquinas antes para poder paginar por ellas
+    # --- Paginação Server-side filtrada pela máquina ativa ---
     evaporadoras = Maquina.objects.filter(
         Q(categoria__nome__icontains='evaporadora') | 
         Q(nome__icontains='evaporadora')
@@ -1107,31 +1106,45 @@ def coating_painel(request):
     if not evaporadoras.exists():
         evaporadoras = Maquina.objects.all().order_by("codigo", "fabricante")
 
-    registros_por_maquina = {}  # maquina.id -> paginated page object
-    for evap in evaporadoras:
-        qs_evap = todos_registros.filter(maquina=evap)
-        page_param = f'page_{evap.id}'
-        page_num = request.GET.get(page_param, 1)
-        pag = Paginator(qs_evap, 10)
-        page_obj = pag.get_page(page_num)
-        # Zebra striping por lote
-        current_lote = None
-        group_idx = 0
-        for reg in page_obj:
-            if current_lote is None:
-                current_lote = reg.lote
-            elif reg.lote != current_lote:
-                current_lote = reg.lote
-                group_idx = 1 - group_idx
-            reg.bg_group = group_idx
-        registros_por_maquina[evap.id] = page_obj
+    # Identificar máquina selecionada por URL (?equipamento=DLX1200, ?tab=16, ?maquina=16)
+    equip_param = request.GET.get('equipamento', '').strip()
+    tab_param = request.GET.get('tab', '').strip()
+    maquina_param = request.GET.get('maquina', '').strip()
+    target_sel = equip_param or tab_param or maquina_param
 
-    # registros globais ainda necessários para cálculos de ciclos abaixo
-    # (usamos todos os registros da página ativa de todas as máquinas)
-    registros_all = []
-    for page_obj in registros_por_maquina.values():
-        registros_all.extend(list(page_obj))
-    registros = registros_all  # compatibilidade com o código de ciclos abaixo
+    maquina_ativa = None
+    if target_sel:
+        clean_sel = target_sel.replace('evap-', '')
+        if clean_sel.isdigit():
+            maquina_ativa = evaporadoras.filter(id=int(clean_sel)).first()
+        else:
+            maquina_ativa = evaporadoras.filter(codigo__iexact=clean_sel).first()
+            
+    if not maquina_ativa and evaporadoras.exists():
+        maquina_ativa = evaporadoras.first()
+
+    # Filtrar QuerySet pela máquina ativa ANTES de paginar
+    if maquina_ativa:
+        qs_maquina = todos_registros.filter(maquina=maquina_ativa)
+    else:
+        qs_maquina = todos_registros
+
+    page_num = request.GET.get('page', 1)
+    paginator = Paginator(qs_maquina, 10)
+    registros_page = paginator.get_page(page_num)
+
+    # Zebra striping por lote
+    current_lote = None
+    group_idx = 0
+    for reg in registros_page:
+        if current_lote is None:
+            current_lote = reg.lote
+        elif reg.lote != current_lote:
+            current_lote = reg.lote
+            group_idx = 1 - group_idx
+        reg.bg_group = group_idx
+
+    registros = list(registros_page)
 
     # Update form queryset to only show these machines
     registro_form.fields["maquina"].queryset = evaporadoras
@@ -1494,9 +1507,14 @@ def coating_painel(request):
         max_maq = RegistroCoating.objects.filter(maquina=maq).aggregate(max_lote=Max('lote'))['max_lote']
         proximos_lotes_map[maq.id] = (max_maq or 0) + 1
 
+    active_tab = str(maquina_ativa.id) if maquina_ativa else ''
+    active_equipamento = maquina_ativa.codigo if maquina_ativa else ''
+
     context = {
         "registros": registros,
-        "registros_por_maquina": registros_por_maquina,
+        "registros_page": registros_page,
+        "maquina_ativa": maquina_ativa,
+        "active_equipamento": active_equipamento,
         "maquinas_com_registros": maquinas_com_registros,
         "registro_form": registro_form,
         "alertas_ciclos": alertas_ciclos,
