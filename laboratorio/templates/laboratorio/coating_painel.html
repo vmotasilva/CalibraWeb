@@ -275,7 +275,6 @@
             display: block !important;
         }
     </style>
-    <!-- Tabela -->
     <ul class="nav nav-tabs mb-0 border-bottom-0 mt-4 px-2" id="evapTabs" role="tablist">
         {% for evap in evaporadoras %}
         {% cycle 'tab-color-1' 'tab-color-2' 'tab-color-3' 'tab-color-4' 'tab-color-5' 'tab-color-6' as tcolor silent %}
@@ -283,7 +282,7 @@
             <button class="nav-link {% if active_tab == 'evap-'|add:evap.id|stringformat:'s' or active_tab == evap.id|stringformat:'s' %}active{% elif not active_tab and forloop.first %}active{% endif %} fw-bold {{ tcolor }}" 
                     id="evap-{{ evap.id }}-tab" data-bs-toggle="tab" 
                     data-bs-target="#evap-{{ evap.id }}-pane" type="button" role="tab"
-                    onclick="document.getElementById('{{ registro_form.maquina.id_for_label }}').value = '{{ evap.id }}'">
+                    onclick="switchEvapTab('evap-{{ evap.id }}'); document.getElementById('{{ registro_form.maquina.id_for_label }}').value = '{{ evap.id }}';">
                 {{ evap.codigo }}
             </button>
         </li>
@@ -296,7 +295,11 @@
 
     <div class="tab-content" id="evapTabsContent">
         {% for evap in evaporadoras %}
-        <div class="tab-pane fade {% if active_tab == 'evap-'|add:evap.id|stringformat:'s' or active_tab == evap.id|stringformat:'s' %}show active{% elif not active_tab and forloop.first %}show active{% endif %}" id="evap-{{ evap.id }}-pane" data-maquina-id="{{ evap.id }}" role="tabpanel">
+        <div class="tab-pane fade {% if active_tab == 'evap-'|add:evap.id|stringformat:'s' or active_tab == evap.id|stringformat:'s' %}show active{% elif not active_tab and forloop.first %}show active{% endif %}" 
+             id="evap-{{ evap.id }}-pane" 
+             data-maquina-id="{{ evap.id }}" 
+             role="tabpanel"
+             style="{% if active_tab == 'evap-'|add:evap.id|stringformat:'s' or active_tab == evap.id|stringformat:'s' %}display: block !important;{% elif not active_tab and forloop.first %}display: block !important;{% else %}display: none !important;{% endif %}">
             <div class="card shadow-sm border" style="border-top-left-radius: 0; border-top-right-radius: 0;">
                                 <div class="table-responsive d-none d-md-block">
                         <table class="table table-hover align-middle mb-0 text-center text-nowrap w-100">
@@ -1601,6 +1604,44 @@
         });
     }
     
+    // Função explícita e direta de alternância de abas de máquinas
+    function switchEvapTab(tabId) {
+        if (!tabId) return;
+        if (!tabId.startsWith('evap-')) tabId = 'evap-' + tabId;
+        
+        // 1. Atualizar botões de navegação
+        document.querySelectorAll('#evapTabs .nav-link').forEach(btn => {
+            btn.classList.remove('active');
+            btn.setAttribute('aria-selected', 'false');
+        });
+        const targetBtn = document.getElementById(tabId + '-tab') || document.querySelector(`[data-bs-target="#${tabId}-pane"]`);
+        if (targetBtn) {
+            targetBtn.classList.add('active');
+            targetBtn.setAttribute('aria-selected', 'true');
+        }
+        
+        // 2. Ocultar todos os painéis e exibir apenas o selecionado
+        document.querySelectorAll('#evapTabsContent .tab-pane').forEach(p => {
+            p.classList.remove('show', 'active');
+            p.style.setProperty('display', 'none', 'important');
+        });
+        const targetPane = document.getElementById(tabId + '-pane') || document.getElementById(tabId);
+        if (targetPane) {
+            targetPane.classList.add('show', 'active');
+            targetPane.style.setProperty('display', 'block', 'important');
+        }
+        
+        // 3. Atualizar campo oculto do formulário de busca e URL
+        const rawId = tabId.replace('evap-', '');
+        const searchTabInput = document.getElementById('searchTabInput');
+        if (searchTabInput) searchTabInput.value = rawId;
+        localStorage.setItem('coating_active_tab', rawId);
+        
+        const currentUrl = new URL(window.location);
+        currentUrl.searchParams.set('tab', rawId);
+        window.history.replaceState({}, '', currentUrl);
+    }
+
     // Inicializar os tooltips do Bootstrap e Gerenciador de Abas
     document.addEventListener("DOMContentLoaded", function() {
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -1608,48 +1649,11 @@
             return new bootstrap.Tooltip(tooltipTriggerEl);
         });
 
-        // Gerenciamento fluido e dinâmico de abas com persistência
-        const tabBtns = document.querySelectorAll('#evapTabs button[data-bs-toggle="tab"]');
-        tabBtns.forEach(btn => {
-            btn.addEventListener('show.bs.tab', function (e) {
-                const targetSelector = e.target.getAttribute('data-bs-target') || '';
-                document.querySelectorAll('#evapTabsContent .tab-pane').forEach(p => {
-                    if ('#' + p.id !== targetSelector) {
-                        p.classList.remove('show', 'active');
-                    }
-                });
-            });
-            btn.addEventListener('shown.bs.tab', function (e) {
-                const targetSelector = e.target.getAttribute('data-bs-target') || '';
-                const targetId = targetSelector.replace('#', '').replace('-pane', '');
-                if (targetId) {
-                    const searchTabInput = document.getElementById('searchTabInput');
-                    if (searchTabInput) searchTabInput.value = targetId;
-                    localStorage.setItem('coating_active_tab', targetId);
-                    
-                    // Atualizar URL de forma fluida sem recarregar a página
-                    const currentUrl = new URL(window.location);
-                    currentUrl.searchParams.set('tab', targetId);
-                    window.history.replaceState({}, '', currentUrl);
-                }
-            });
-        });
-
         // Restaurar aba ativa na inicialização se informada na URL ou salva no localStorage
         const urlParams = new URLSearchParams(window.location.search);
         let activeTab = urlParams.get('tab') || localStorage.getItem('coating_active_tab');
         if (activeTab) {
-            if (!activeTab.startsWith('evap-') && !activeTab.includes('-tab')) {
-                activeTab = 'evap-' + activeTab;
-            }
-            const tabBtnToActivate = document.getElementById(activeTab + '-tab') || 
-                                     document.querySelector(`[data-bs-target="#${activeTab}-pane"]`) || 
-                                     document.querySelector(`[data-bs-target="#${activeTab}"]`);
-            if (tabBtnToActivate && typeof bootstrap !== 'undefined') {
-                const searchTabInput = document.getElementById('searchTabInput');
-                if (searchTabInput) searchTabInput.value = activeTab;
-                bootstrap.Tab.getOrCreateInstance(tabBtnToActivate).show();
-            }
+            switchEvapTab(activeTab);
         }
         
         // Trava para evitar duplo clique e múltiplos envios de formulário
