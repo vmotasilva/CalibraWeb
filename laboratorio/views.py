@@ -2783,7 +2783,7 @@ def dashboard_coating(request):
         sub_lotes = 0
         sub_sec_rodando = 0
         sub_sec_parada = 0
-        sub_datas = set()
+        soma_med_dia_rod = 0
         
         turnos_da_maq = sorted([k for k in kpi_agrupados.keys() if k[0] == maq], key=lambda x: x[1])
         for key in turnos_da_maq:
@@ -2798,7 +2798,7 @@ def dashboard_coating(request):
             sub_lotes += tot_l
             sub_sec_rodando += kpi['total_sec_rodando']
             sub_sec_parada += kpi['total_sec_parada']
-            sub_datas.update(kpi['datas'])
+            soma_med_dia_rod += med_dia_rod
             
             itens.append({
                 'maquina': maq,
@@ -2809,8 +2809,8 @@ def dashboard_coating(request):
                 'media_lote_parada': format_timedelta(timedelta(seconds=med_lot_par)),
             })
             
-        sub_dias = len(sub_datas)
-        sub_med_dia_rod = sub_sec_rodando / sub_dias if sub_dias > 0 else 0
+        sub_count = len(itens)
+        sub_med_dia_rod = soma_med_dia_rod / sub_count if sub_count > 0 else 0
         sub_med_lot_rod = sub_sec_rodando / sub_lotes if sub_lotes > 0 else 0
         sub_med_lot_par = sub_sec_parada / sub_lotes if sub_lotes > 0 else 0
         
@@ -2837,7 +2837,7 @@ def dashboard_coating(request):
         sub_lotes = 0
         sub_sec_rodando = 0
         sub_sec_parada = 0
-        sub_datas = set()
+        soma_med_dia_rod = 0
         
         maqs_do_turno = sorted([k for k in kpi_agrupados.keys() if k[1] == tur], key=lambda x: x[0])
         for key in maqs_do_turno:
@@ -2852,7 +2852,7 @@ def dashboard_coating(request):
             sub_lotes += tot_l
             sub_sec_rodando += kpi['total_sec_rodando']
             sub_sec_parada += kpi['total_sec_parada']
-            sub_datas.update(kpi['datas'])
+            soma_med_dia_rod += med_dia_rod
             
             itens.append({
                 'turno': tur,
@@ -2863,8 +2863,8 @@ def dashboard_coating(request):
                 'media_lote_parada': format_timedelta(timedelta(seconds=med_lot_par)),
             })
             
-        sub_dias = len(sub_datas)
-        sub_med_dia_rod = sub_sec_rodando / sub_dias if sub_dias > 0 else 0
+        sub_count = len(itens)
+        sub_med_dia_rod = soma_med_dia_rod / sub_count if sub_count > 0 else 0
         sub_med_lot_rod = sub_sec_rodando / sub_lotes if sub_lotes > 0 else 0
         sub_med_lot_par = sub_sec_parada / sub_lotes if sub_lotes > 0 else 0
         
@@ -2886,16 +2886,20 @@ def dashboard_coating(request):
     total_lotes_geral = 0
     total_sec_rodando_geral = 0
     total_sec_parada_geral = 0
-    total_datas_geral = set()
+    soma_med_dia_rod_geral = 0
 
     for kpi in kpi_agrupados.values():
-        total_lotes_geral += kpi['total_lotes']
+        tot_l = kpi['total_lotes']
+        dias_op = len(kpi['datas'])
+        med_dia = kpi['total_sec_rodando'] / dias_op if dias_op > 0 else 0
+
+        total_lotes_geral += tot_l
         total_sec_rodando_geral += kpi['total_sec_rodando']
         total_sec_parada_geral += kpi['total_sec_parada']
-        total_datas_geral.update(kpi['datas'])
+        soma_med_dia_rod_geral += med_dia
 
-    dias_geral = len(total_datas_geral)
-    med_dia_rod_geral = total_sec_rodando_geral / dias_geral if dias_geral > 0 else 0
+    total_itens_geral = len(kpi_agrupados)
+    med_dia_rod_geral = soma_med_dia_rod_geral / total_itens_geral if total_itens_geral > 0 else 0
     med_lot_rod_geral = total_sec_rodando_geral / total_lotes_geral if total_lotes_geral > 0 else 0
     med_lot_par_geral = total_sec_parada_geral / total_lotes_geral if total_lotes_geral > 0 else 0
 
