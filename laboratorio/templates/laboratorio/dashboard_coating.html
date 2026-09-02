@@ -81,39 +81,114 @@
     <div class="row mb-4 g-3 d-none d-md-flex">
         <div class="col-lg-12">
             <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white border-bottom-0 pt-4 pb-2">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
                     <h5 class="card-title fw-bold text-dark mb-0"><i class="bi bi-speedometer2 me-2 text-primary"></i> Resumo de Eficiência ({{ periodo_display }})</h5>
+                    <ul class="nav nav-pills nav-sm bg-light p-1 rounded-3" id="kpiTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active py-1 px-3 fw-semibold small" id="kpi-maq-tab" data-bs-toggle="pill" data-bs-target="#kpi-maq-pane" type="button" role="tab">
+                                <i class="bi bi-cpu me-1"></i> Por Máquina
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link py-1 px-3 fw-semibold small" id="kpi-turno-tab" data-bs-toggle="pill" data-bs-target="#kpi-turno-pane" type="button" role="tab">
+                                <i class="bi bi-clock-history me-1"></i> Por Turno
+                            </button>
+                        </li>
+                    </ul>
                 </div>
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-sm table-bordered table-striped text-center align-middle mb-0" style="font-size: 0.9rem;">
-                            <thead class="table-light">
-                                <tr>
-                                    <th class="text-start">Máquina</th>
-                                    <th>Turno</th>
-                                    <th>Total de Lotes</th>
-                                    <th>Média de Tempo Total Rodando / Dia</th>
-                                    <th>Média de Tempo Rodando / Lote</th>
-                                    <th>Média de Tempo Parado / Lote</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for row in kpi_grid_rows %}
-                                <tr>
-                                    <td class="text-start fw-bold">{{ row.maquina }}</td>
-                                    <td>{{ row.turno }}</td>
-                                    <td><span class="badge bg-primary rounded-pill">{{ row.total_lotes }}</span></td>
-                                    <td><span class="text-success fw-bold">{{ row.media_dia_rodando }}</span></td>
-                                    <td><span class="text-dark">{{ row.media_lote_rodando }}</span></td>
-                                    <td><span class="text-danger fw-bold">{{ row.media_lote_parada }}</span></td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="6" class="text-muted">Nenhum dado encontrado para o período selecionado.</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                    <div class="tab-content" id="kpiTabsContent">
+                        <!-- Visão por Máquina -->
+                        <div class="tab-pane fade show active" id="kpi-maq-pane" role="tabpanel" aria-labelledby="kpi-maq-tab">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered table-striped text-center align-middle mb-0" style="font-size: 0.9rem;">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="text-start">Máquina</th>
+                                            <th>Turno</th>
+                                            <th>Total de Lotes</th>
+                                            <th>Média de Tempo Total Rodando / Dia</th>
+                                            <th>Média de Tempo Rodando / Lote</th>
+                                            <th>Média de Tempo Parado / Lote</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for g in kpi_grupos_maq %}
+                                            {% for row in g.itens %}
+                                            <tr>
+                                                <td class="text-start fw-bold">{{ row.maquina }}</td>
+                                                <td>{{ row.turno }}</td>
+                                                <td><span class="badge bg-primary rounded-pill">{{ row.total_lotes }}</span></td>
+                                                <td><span class="text-success fw-bold">{{ row.media_dia_rodando }}</span></td>
+                                                <td><span class="text-dark">{{ row.media_lote_rodando }}</span></td>
+                                                <td><span class="text-danger fw-bold">{{ row.media_lote_parada }}</span></td>
+                                            </tr>
+                                            {% endfor %}
+                                            <!-- Subtotal por Máquina -->
+                                            <tr class="table-light fw-bold border-bottom" style="background-color: #f1f5f9;">
+                                                <td class="text-start text-primary" colspan="2">
+                                                    <i class="bi bi-calculator me-1"></i> {{ g.subtotal.titulo }}
+                                                </td>
+                                                <td><span class="badge bg-dark rounded-pill">{{ g.subtotal.total_lotes }}</span></td>
+                                                <td><span class="text-success fw-bold">{{ g.subtotal.media_dia_rodando }}</span></td>
+                                                <td><span class="text-dark fw-bold">{{ g.subtotal.media_lote_rodando }}</span></td>
+                                                <td><span class="text-danger fw-bold">{{ g.subtotal.media_lote_parada }}</span></td>
+                                            </tr>
+                                        {% empty %}
+                                            <tr>
+                                                <td colspan="6" class="text-muted">Nenhum dado encontrado para o período selecionado.</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Visão por Turno -->
+                        <div class="tab-pane fade" id="kpi-turno-pane" role="tabpanel" aria-labelledby="kpi-turno-tab">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered table-striped text-center align-middle mb-0" style="font-size: 0.9rem;">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="text-start">Turno</th>
+                                            <th>Máquina</th>
+                                            <th>Total de Lotes</th>
+                                            <th>Média de Tempo Total Rodando / Dia</th>
+                                            <th>Média de Tempo Rodando / Lote</th>
+                                            <th>Média de Tempo Parado / Lote</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for g in kpi_grupos_turno %}
+                                            {% for row in g.itens %}
+                                            <tr>
+                                                <td class="text-start fw-bold text-primary">{{ row.turno }}</td>
+                                                <td class="fw-semibold">{{ row.maquina }}</td>
+                                                <td><span class="badge bg-primary rounded-pill">{{ row.total_lotes }}</span></td>
+                                                <td><span class="text-success fw-bold">{{ row.media_dia_rodando }}</span></td>
+                                                <td><span class="text-dark">{{ row.media_lote_rodando }}</span></td>
+                                                <td><span class="text-danger fw-bold">{{ row.media_lote_parada }}</span></td>
+                                            </tr>
+                                            {% endfor %}
+                                            <!-- Subtotal por Turno -->
+                                            <tr class="table-light fw-bold border-bottom" style="background-color: #f1f5f9;">
+                                                <td class="text-start text-primary" colspan="2">
+                                                    <i class="bi bi-calculator me-1"></i> {{ g.subtotal.titulo }}
+                                                </td>
+                                                <td><span class="badge bg-dark rounded-pill">{{ g.subtotal.total_lotes }}</span></td>
+                                                <td><span class="text-success fw-bold">{{ g.subtotal.media_dia_rodando }}</span></td>
+                                                <td><span class="text-dark fw-bold">{{ g.subtotal.media_lote_rodando }}</span></td>
+                                                <td><span class="text-danger fw-bold">{{ g.subtotal.media_lote_parada }}</span></td>
+                                            </tr>
+                                        {% empty %}
+                                            <tr>
+                                                <td colspan="6" class="text-muted">Nenhum dado encontrado para o período selecionado.</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -169,121 +244,253 @@
     <div class="row mb-4 g-3">
         <div class="col-lg-12">
             <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white border-bottom-0 pt-4 pb-2 d-flex justify-content-between align-items-center" style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#collapseGrid">
-                    <h5 class="card-title fw-bold text-dark mb-0"><i class="bi bi-table me-2 text-info"></i> Grid Analítico de Produção</h5>
-                    <div class="d-flex align-items-center gap-3">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2" style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#collapseGrid">
+                        <h5 class="card-title fw-bold text-dark mb-0"><i class="bi bi-table me-2 text-info"></i> Grid Analítico de Produção</h5>
                         <i class="bi bi-chevron-down text-muted"></i>
                     </div>
+                    <!-- Seletor de Visão do Grid: Por Máquina ou Por Turno -->
+                    <ul class="nav nav-pills nav-sm bg-light p-1 rounded-3" id="gridAgrupamentoTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active py-1 px-3 fw-semibold small" id="grid-view-maq-tab" data-bs-toggle="pill" data-bs-target="#grid-view-maq-pane" type="button" role="tab">
+                                <i class="bi bi-cpu me-1"></i> Por Máquina
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link py-1 px-3 fw-semibold small" id="grid-view-turno-tab" data-bs-toggle="pill" data-bs-target="#grid-view-turno-pane" type="button" role="tab">
+                                <i class="bi bi-clock-history me-1"></i> Por Turno
+                            </button>
+                        </li>
+                    </ul>
                 </div>
                 <div id="collapseGrid" class="collapse show">
                     <div class="card-body p-0">
-                        {% regroup grid_rows|dictsort:"maquina" by maquina as grids_por_maquina %}
-                        <ul class="nav nav-tabs px-3 pt-3 border-bottom-0" id="gridTabs" role="tablist">
-                            {% for m in grids_por_maquina %}
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link {% if forloop.first %}active{% endif %}" id="tab-{{ m.grouper|slugify }}" data-bs-toggle="tab" data-bs-target="#pane-{{ m.grouper|slugify }}" type="button" role="tab" aria-controls="pane-{{ m.grouper|slugify }}" aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">
-                                        {{ m.grouper }}
-                                    </button>
-                                </li>
-                            {% empty %}
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link active" id="tab-todos" data-bs-toggle="tab" data-bs-target="#pane-todos" type="button" role="tab" aria-selected="true">
-                                        Todos
-                                    </button>
-                                </li>
-                            {% endfor %}
-                        </ul>
-                        
-                        <div class="tab-content" id="gridTabsContent">
-                            {% for m in grids_por_maquina %}
-                                <div class="tab-pane fade {% if forloop.first %}show active{% endif %}" id="pane-{{ m.grouper|slugify }}" role="tabpanel" aria-labelledby="tab-{{ m.grouper|slugify }}">
-                                    <!-- Tabela Desktop -->
-                                    <div class="table-responsive d-none d-md-block">
-                                        <table class="table table-hover table-striped align-middle mb-0" style="font-size: 0.85rem;">
-                                            <thead class="table-light">
-                                                <tr>
-                                                    <th>Data</th>
-                                                    <th>Turno</th>
-                                                    <th class="text-center">Lotes</th>
-                                                    <th class="text-center">Horas Rodando</th>
-                                                    <th class="text-center">Horas Parada</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {% for row in m.list %}
-                                                <tr class="grid-item-row" style="cursor:pointer; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#f8f9fa'" onmouseout="this.style.backgroundColor=''" onclick="openDetalhesModal(this)" data-detalhes="{{ row.detalhes_json|escape }}">
-                                                    <td>{{ row.data }}</td>
-                                                    <td>{{ row.turno }}</td>
-                                                    <td class="text-center fw-bold">{{ row.lotes }}</td>
-                                                    <td class="text-center">{{ row.horas_rodando }}</td>
-                                                    <td class="text-center text-danger fw-bold">
-                                                        {{ row.horas_parada }}
-                                                    </td>
-                                                </tr>
-                                                {% endfor %}
-                                            </tbody>
-                                        </table>
-                                    </div>
+                        <div class="tab-content" id="gridAgrupamentoTabsContent">
+                            
+                            <!-- 1. VISÃO DO GRID AGRUPADA POR MÁQUINA -->
+                            <div class="tab-pane fade show active" id="grid-view-maq-pane" role="tabpanel" aria-labelledby="grid-view-maq-tab">
+                                {% regroup grid_rows|dictsort:"maquina" by maquina as grids_por_maquina %}
+                                <ul class="nav nav-tabs px-3 pt-3 border-bottom-0" id="gridTabsMaq" role="tablist">
+                                    {% for m in grids_por_maquina %}
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link {% if forloop.first %}active{% endif %}" id="tab-maq-{{ m.grouper|slugify }}" data-bs-toggle="tab" data-bs-target="#pane-maq-{{ m.grouper|slugify }}" type="button" role="tab" aria-controls="pane-maq-{{ m.grouper|slugify }}" aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">
+                                                {{ m.grouper }}
+                                            </button>
+                                        </li>
+                                    {% empty %}
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link active" id="tab-maq-todos" data-bs-toggle="tab" data-bs-target="#pane-maq-todos" type="button" role="tab" aria-selected="true">
+                                                Todos
+                                            </button>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                                
+                                <div class="tab-content" id="gridTabsMaqContent">
+                                    {% for m in grids_por_maquina %}
+                                        <div class="tab-pane fade {% if forloop.first %}show active{% endif %}" id="pane-maq-{{ m.grouper|slugify }}" role="tabpanel" aria-labelledby="tab-maq-{{ m.grouper|slugify }}">
+                                            <!-- Tabela Desktop -->
+                                            <div class="table-responsive d-none d-md-block">
+                                                <table class="table table-hover table-striped align-middle mb-0" style="font-size: 0.85rem;">
+                                                    <thead class="table-light">
+                                                        <tr>
+                                                            <th>Data</th>
+                                                            <th>Turno</th>
+                                                            <th class="text-center">Lotes</th>
+                                                            <th class="text-center">Horas Rodando</th>
+                                                            <th class="text-center">Horas Parada</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% for row in m.list %}
+                                                        <tr class="grid-item-row" style="cursor:pointer; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#f8f9fa'" onmouseout="this.style.backgroundColor=''" onclick="openDetalhesModal(this)" data-detalhes="{{ row.detalhes_json|escape }}">
+                                                            <td>{{ row.data }}</td>
+                                                            <td>{{ row.turno }}</td>
+                                                            <td class="text-center fw-bold">{{ row.lotes }}</td>
+                                                            <td class="text-center">{{ row.horas_rodando }}</td>
+                                                            <td class="text-center text-danger fw-bold">
+                                                                {{ row.horas_parada }}
+                                                            </td>
+                                                        </tr>
+                                                        {% endfor %}
+                                                    </tbody>
+                                                </table>
+                                            </div>
 
-                                    <!-- Cards Mobile (<768px) -->
-                                    <div class="d-md-none p-2">
-                                        {% for row in m.list %}
-                                        <div class="card mb-2 shadow-sm border grid-item-row" 
-                                             style="cursor:pointer;" 
-                                             onclick="openDetalhesModal(this)" 
-                                             data-detalhes="{{ row.detalhes_json|escape }}">
-                                            <div class="card-body p-3">
-                                                <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
-                                                    <div>
-                                                        <span class="fw-bold text-dark fs-6">{{ row.data }}</span>
-                                                        <span class="badge bg-secondary ms-1">{{ row.turno }}</span>
-                                                    </div>
-                                                    <div>
-                                                        <span class="badge bg-primary fs-6">{{ row.lotes }} Lote{% if row.lotes != 1 %}s{% endif %}</span>
+                                            <!-- Cards Mobile (<768px) -->
+                                            <div class="d-md-none p-2">
+                                                {% for row in m.list %}
+                                                <div class="card mb-2 shadow-sm border grid-item-row" 
+                                                     style="cursor:pointer;" 
+                                                     onclick="openDetalhesModal(this)" 
+                                                     data-detalhes="{{ row.detalhes_json|escape }}">
+                                                    <div class="card-body p-3">
+                                                        <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
+                                                            <div>
+                                                                <span class="fw-bold text-dark fs-6">{{ row.data }}</span>
+                                                                <span class="badge bg-secondary ms-1">{{ row.turno }}</span>
+                                                            </div>
+                                                            <div>
+                                                                <span class="badge bg-primary fs-6">{{ row.lotes }} Lote{% if row.lotes != 1 %}s{% endif %}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="row g-2 text-dark small" style="font-size: 0.85rem;">
+                                                            <div class="col-6">
+                                                                <span class="text-muted"><i class="bi bi-play-circle text-success me-1"></i>Rodando:</span>
+                                                                <strong class="ms-1">{{ row.horas_rodando }}</strong>
+                                                            </div>
+                                                            <div class="col-6">
+                                                                <span class="text-muted"><i class="bi bi-pause-circle text-danger me-1"></i>Parada:</span>
+                                                                <strong class="text-danger ms-1">{{ row.horas_parada }}</strong>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <div class="row g-2 text-dark small" style="font-size: 0.85rem;">
-                                                    <div class="col-6">
-                                                        <span class="text-muted"><i class="bi bi-play-circle text-success me-1"></i>Rodando:</span>
-                                                        <strong class="ms-1">{{ row.horas_rodando }}</strong>
-                                                    </div>
-                                                    <div class="col-6">
-                                                        <span class="text-muted"><i class="bi bi-pause-circle text-danger me-1"></i>Parada:</span>
-                                                        <strong class="text-danger ms-1">{{ row.horas_parada }}</strong>
-                                                    </div>
-                                                </div>
+                                                {% empty %}
+                                                <div class="text-center text-muted py-4 small">Nenhum registro encontrado no período.</div>
+                                                {% endfor %}
                                             </div>
                                         </div>
-                                        {% empty %}
-                                        <div class="text-center text-muted py-4 small">Nenhum registro encontrado no período.</div>
-                                        {% endfor %}
-                                    </div>
+                                    {% empty %}
+                                        <div class="tab-pane fade show active" id="pane-maq-todos" role="tabpanel">
+                                            <div class="table-responsive d-none d-md-block">
+                                                <table class="table table-hover table-striped align-middle mb-0" style="font-size: 0.85rem;">
+                                                    <thead class="table-light">
+                                                        <tr>
+                                                            <th>Data</th>
+                                                            <th>Turno</th>
+                                                            <th class="text-center">Lotes</th>
+                                                            <th class="text-center">Horas Rodando</th>
+                                                            <th class="text-center">Horas Parada</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr>
+                                                            <td colspan="5" class="text-center text-muted py-4">Nenhum registro encontrado no período.</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                            <div class="d-md-none p-4 text-center text-muted small">
+                                                Nenhum registro encontrado no período.
+                                            </div>
+                                        </div>
+                                    {% endfor %}
                                 </div>
-                            {% empty %}
-                                <div class="tab-pane fade show active" id="pane-todos" role="tabpanel">
-                                    <div class="table-responsive d-none d-md-block">
-                                        <table class="table table-hover table-striped align-middle mb-0" style="font-size: 0.85rem;">
-                                            <thead class="table-light">
-                                                <tr>
-                                                    <th>Data</th>
-                                                    <th>Turno</th>
-                                                    <th class="text-center">Lotes</th>
-                                                    <th class="text-center">Horas Rodando</th>
-                                                    <th class="text-center">Horas Parada</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr id="emptyGridRow">
-                                                    <td colspan="5" class="text-center text-muted py-4">Nenhum registro encontrado no período.</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <div class="d-md-none p-4 text-center text-muted small">
-                                        Nenhum registro encontrado no período.
-                                    </div>
+                            </div>
+
+                            <!-- 2. VISÃO DO GRID AGRUPADA POR TURNO (VISÃO ALTERNATIVA) -->
+                            <div class="tab-pane fade" id="grid-view-turno-pane" role="tabpanel" aria-labelledby="grid-view-turno-tab">
+                                {% regroup grid_rows|dictsort:"turno" by turno as grids_por_turno %}
+                                <ul class="nav nav-tabs px-3 pt-3 border-bottom-0" id="gridTabsTurno" role="tablist">
+                                    {% for t in grids_por_turno %}
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link {% if forloop.first %}active{% endif %}" id="tab-tur-{{ t.grouper|slugify }}" data-bs-toggle="tab" data-bs-target="#pane-tur-{{ t.grouper|slugify }}" type="button" role="tab" aria-controls="pane-tur-{{ t.grouper|slugify }}" aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">
+                                                {{ t.grouper }}
+                                            </button>
+                                        </li>
+                                    {% empty %}
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link active" id="tab-tur-todos" data-bs-toggle="tab" data-bs-target="#pane-tur-todos" type="button" role="tab" aria-selected="true">
+                                                Todos
+                                            </button>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                                
+                                <div class="tab-content" id="gridTabsTurnoContent">
+                                    {% for t in grids_por_turno %}
+                                        <div class="tab-pane fade {% if forloop.first %}show active{% endif %}" id="pane-tur-{{ t.grouper|slugify }}" role="tabpanel" aria-labelledby="tab-tur-{{ t.grouper|slugify }}">
+                                            <!-- Tabela Desktop -->
+                                            <div class="table-responsive d-none d-md-block">
+                                                <table class="table table-hover table-striped align-middle mb-0" style="font-size: 0.85rem;">
+                                                    <thead class="table-light">
+                                                        <tr>
+                                                            <th>Data</th>
+                                                            <th>Máquina</th>
+                                                            <th class="text-center">Lotes</th>
+                                                            <th class="text-center">Horas Rodando</th>
+                                                            <th class="text-center">Horas Parada</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% for row in t.list %}
+                                                        <tr class="grid-item-row" style="cursor:pointer; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#f8f9fa'" onmouseout="this.style.backgroundColor=''" onclick="openDetalhesModal(this)" data-detalhes="{{ row.detalhes_json|escape }}">
+                                                            <td>{{ row.data }}</td>
+                                                            <td class="fw-semibold">{{ row.maquina }}</td>
+                                                            <td class="text-center fw-bold">{{ row.lotes }}</td>
+                                                            <td class="text-center">{{ row.horas_rodando }}</td>
+                                                            <td class="text-center text-danger fw-bold">
+                                                                {{ row.horas_parada }}
+                                                            </td>
+                                                        </tr>
+                                                        {% endfor %}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            <!-- Cards Mobile (<768px) -->
+                                            <div class="d-md-none p-2">
+                                                {% for row in t.list %}
+                                                <div class="card mb-2 shadow-sm border grid-item-row" 
+                                                     style="cursor:pointer;" 
+                                                     onclick="openDetalhesModal(this)" 
+                                                     data-detalhes="{{ row.detalhes_json|escape }}">
+                                                    <div class="card-body p-3">
+                                                        <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
+                                                            <div>
+                                                                <span class="fw-bold text-dark fs-6">{{ row.data }}</span>
+                                                                <span class="badge bg-primary ms-1">{{ row.maquina }}</span>
+                                                            </div>
+                                                            <div>
+                                                                <span class="badge bg-secondary fs-6">{{ row.lotes }} Lote{% if row.lotes != 1 %}s{% endif %}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="row g-2 text-dark small" style="font-size: 0.85rem;">
+                                                            <div class="col-6">
+                                                                <span class="text-muted"><i class="bi bi-play-circle text-success me-1"></i>Rodando:</span>
+                                                                <strong class="ms-1">{{ row.horas_rodando }}</strong>
+                                                            </div>
+                                                            <div class="col-6">
+                                                                <span class="text-muted"><i class="bi bi-pause-circle text-danger me-1"></i>Parada:</span>
+                                                                <strong class="text-danger ms-1">{{ row.horas_parada }}</strong>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                {% empty %}
+                                                <div class="text-center text-muted py-4 small">Nenhum registro encontrado no período.</div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    {% empty %}
+                                        <div class="tab-pane fade show active" id="pane-tur-todos" role="tabpanel">
+                                            <div class="table-responsive d-none d-md-block">
+                                                <table class="table table-hover table-striped align-middle mb-0" style="font-size: 0.85rem;">
+                                                    <thead class="table-light">
+                                                        <tr>
+                                                            <th>Data</th>
+                                                            <th>Máquina</th>
+                                                            <th class="text-center">Lotes</th>
+                                                            <th class="text-center">Horas Rodando</th>
+                                                            <th class="text-center">Horas Parada</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr>
+                                                            <td colspan="5" class="text-center text-muted py-4">Nenhum registro encontrado no período.</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                            <div class="d-md-none p-4 text-center text-muted small">
+                                                Nenhum registro encontrado no período.
+                                            </div>
+                                        </div>
+                                    {% endfor %}
                                 </div>
-                            {% endfor %}
+                            </div>
+
                         </div>
                     </div>
                 </div>
@@ -551,7 +758,7 @@
             <table class="table table-hover table-bordered text-center align-middle mb-0" style="font-size: 0.9rem;">
                 <thead class="table-light text-secondary">
                     <tr>
-                        <th class="fw-semibold">Lote</th>
+                        <th class="fw-semibold">Lote (Editar)</th>
                         <th class="fw-semibold">Lado</th>
                         <th class="fw-semibold">Entrada</th>
                         <th class="fw-semibold">Saída</th>
@@ -574,6 +781,113 @@
   </div>
 </div>
 
+<!-- Modal Edição Lote Inteiro -->
+<div class="modal fade" id="modalEditarLote" tabindex="-1" style="z-index: 1060;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-light border-bottom-0 rounded-top-4">
+                <h5 class="modal-title fw-bold text-dark">Editar Lote (CC e CX) <span id="editLoteTitleLado" class="badge bg-dark ms-2"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <ul class="nav nav-tabs px-3 pt-3" id="editLoteTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active fw-semibold small" id="dados-tab" data-bs-toggle="tab" data-bs-target="#dados" type="button" role="tab" aria-controls="dados" aria-selected="true">Dados do Lote</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link fw-semibold small" id="manutencao-tab" data-bs-toggle="tab" data-bs-target="#manutencao" type="button" role="tab" aria-controls="manutencao" aria-selected="false">Manutenções (Limpezas/Trocas)</button>
+                    </li>
+                </ul>
+                <div class="tab-content" id="editLoteTabsContent">
+                    <div class="tab-pane fade show active p-3" id="dados" role="tabpanel" aria-labelledby="dados-tab">
+                        <input type="hidden" id="editLoteId">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-muted">Número do Lote</label>
+                            <input type="number" class="form-control" id="editLoteNum">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-muted">Máquina</label>
+                            <div id="wrapperMaquinaEditLote">
+                                <select class="form-select" id="editMaquinaSelect">
+                                    <option value="">---------</option>
+                                    {% for m in maquinas %}
+                                    <option value="{{ m.id }}">{{ m.codigo }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-muted">Tratamento</label>
+                            <div id="wrapperTratamentoEditLote">
+                                <select class="form-select" id="editTratamentoSelect">
+                                    <option value="">---------</option>
+                                    {% for t in tratamentos %}
+                                    <option value="{{ t.id }}">{{ t.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold small text-muted">Hora Entrada</label>
+                                <input type="datetime-local" class="form-control" id="editHoraEntrada">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold small text-muted">Hora Saída</label>
+                                <input type="datetime-local" class="form-control" id="editHoraSaida">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold small text-muted">Preparação</label>
+                                <select class="form-select" id="editPreparacao">
+                                    <option value="">---------</option>
+                                    {% for eq in equipe %}
+                                    <option value="{{ eq.colaborador.id }}">{{ eq.colaborador.nome_completo }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold small text-muted">Montagem</label>
+                                <select class="form-select" id="editMontagem">
+                                    <option value="">---------</option>
+                                    {% for eq in equipe %}
+                                    <option value="{{ eq.colaborador.id }}">{{ eq.colaborador.nome_completo }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3 mt-2">
+                            <label class="form-label fw-bold small text-muted">Observações (Apenas desta linha)</label>
+                            <textarea class="form-control" id="editObservacao" rows="2" placeholder="Observações específicas para esta linha..."></textarea>
+                        </div>
+                        <div class="alert alert-info mt-2 mb-0" style="font-size: 0.85rem;">
+                            As alterações de Lote, Máquina e Tratamento serão aplicadas a <strong>ambas as linhas</strong> (Côncavo e Convexo) deste lote. As horas e colaboradores se aplicam apenas à linha selecionada.
+                        </div>
+                    </div>
+                    <div class="tab-pane fade p-3" id="manutencao" role="tabpanel" aria-labelledby="manutencao-tab">
+                        <div class="row text-center mb-3">
+                            <div class="col-12"><h6 class="fw-bold small text-muted">Limpezas</h6><div id="modalTabLimpezas" class="p-2 border rounded bg-light"></div></div>
+                        </div>
+                        <div class="row text-center mb-3">
+                            <div class="col-12"><h6 class="fw-bold small text-muted">Trocas</h6><div id="modalTabTrocas" class="p-2 border rounded bg-light"></div></div>
+                        </div>
+                        <div class="row text-center">
+                            <div class="col-12"><h6 class="fw-bold small text-muted">Verificações</h6><div id="modalTabVerificacoes" class="p-2 border rounded bg-light"></div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-top-0 rounded-bottom-4">
+                <button type="button" class="btn btn-secondary px-3 rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary px-4 rounded-pill shadow-sm" id="btnSalvarEdicaoLote" onclick="salvarLoteEdicao()">
+                    <i class="bi bi-check-lg me-1"></i>Salvar Alterações
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 function openDetalhesModal(trElement) {
     var rawData = trElement.getAttribute('data-detalhes');
@@ -585,10 +899,15 @@ function openDetalhesModal(trElement) {
     
     detalhes.forEach(function(item) {
         var tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.title = 'Clique para editar este lote';
+        tr.onclick = function() {
+            abrirModalEditarLoteItem(item);
+        };
         
         var tdLote = document.createElement('td');
         tdLote.className = 'fw-bold text-dark';
-        tdLote.textContent = item.lote;
+        tdLote.innerHTML = '<button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 fw-bold shadow-sm" title="Clique para editar este lote"><i class="bi bi-pencil-square me-1"></i>' + item.lote + '</button>';
         
         var tdLado = document.createElement('td');
         tdLado.innerHTML = '<span class="badge bg-secondary">' + item.lado + '</span>';
@@ -650,6 +969,135 @@ function openDetalhesModal(trElement) {
     if (modalEl && typeof bootstrap !== 'undefined') {
         bootstrap.Modal.getOrCreateInstance(modalEl).show();
     }
+}
+
+function abrirModalEditarLoteItem(item) {
+    if (!item) return;
+    
+    const titleLado = document.getElementById('editLoteTitleLado');
+    if (titleLado) {
+        titleLado.innerText = item.lado ? "Linha: " + item.lado : "";
+        titleLado.className = "badge ms-2 " + (item.lado === 'CC' ? "bg-primary" : "bg-info text-dark");
+    }
+    
+    document.getElementById('editLoteId').value = item.id || '';
+    document.getElementById('editLoteNum').value = item.lote || '';
+    document.getElementById('editObservacao').value = (item.observacao && item.observacao !== 'None') ? item.observacao : '';
+    
+    document.getElementById('editHoraEntrada').value = item.hora_entrada_raw || '';
+    document.getElementById('editHoraSaida').value = item.hora_saida_raw || '';
+    document.getElementById('editPreparacao').value = item.preparacao_id || '';
+    document.getElementById('editMontagem').value = item.montagem_id || '';
+    
+    const selectMaq = document.getElementById('editMaquinaSelect');
+    if (selectMaq) selectMaq.value = item.maquina_id || '';
+    
+    const selectTrat = document.getElementById('editTratamentoSelect');
+    if (selectTrat) selectTrat.value = item.tratamento_id || '';
+    
+    // Manutenções
+    const tabLimp = document.getElementById('modalTabLimpezas');
+    if (tabLimp) {
+        tabLimp.innerHTML = (item.limpezas && item.limpezas.length) ? item.limpezas.map(x => '<span class="badge bg-secondary m-1">' + x + '</span>').join('') : '<span class="text-muted small">Nenhuma limpeza registrada</span>';
+    }
+    const tabTroc = document.getElementById('modalTabTrocas');
+    if (tabTroc) {
+        tabTroc.innerHTML = (item.trocas && item.trocas.length) ? item.trocas.map(x => '<span class="badge bg-secondary m-1">' + x + '</span>').join('') : '<span class="text-muted small">Nenhuma troca registrada</span>';
+    }
+    const tabVer = document.getElementById('modalTabVerificacoes');
+    if (tabVer) {
+        tabVer.innerHTML = (item.verificacoes && item.verificacoes.length) ? item.verificacoes.map(x => '<span class="badge bg-secondary m-1">' + x + '</span>').join('') : '<span class="text-muted small">Nenhuma verificação registrada</span>';
+    }
+    
+    // Switch to first tab in edit modal
+    const tabFirst = document.getElementById('dados-tab');
+    if (tabFirst && typeof bootstrap !== 'undefined') {
+        bootstrap.Tab.getOrCreateInstance(tabFirst).show();
+    }
+    
+    const modalEl = document.getElementById('modalEditarLote');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+}
+
+function salvarLoteEdicao() {
+    const btn = document.getElementById('btnSalvarEdicaoLote');
+    const id = document.getElementById('editLoteId').value;
+    const lote = document.getElementById('editLoteNum').value;
+    const maquina = document.getElementById('editMaquinaSelect').value;
+    const tratamento = document.getElementById('editTratamentoSelect').value;
+    const horaIn = document.getElementById('editHoraEntrada').value;
+    const horaOut = document.getElementById('editHoraSaida').value;
+    const prep = document.getElementById('editPreparacao').value;
+    const mont = document.getElementById('editMontagem').value;
+    const observacao = document.getElementById('editObservacao').value;
+    
+    if (!id) {
+        alert('Identificador do registro não encontrado.');
+        return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Salvando...';
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    const csrf = document.querySelector('[name=csrfmiddlewaretoken]')?.value || getCookie('csrftoken') || '';
+
+    fetch("{% url 'laboratorio:api_editar_linha_coating' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrf
+        },
+        body: JSON.stringify({
+            id: id, 
+            lote: lote, 
+            maquina_id: maquina, 
+            tratamento_id: tratamento,
+            hora_entrada: horaIn,
+            hora_saida: horaOut,
+            preparacao_id: prep,
+            montagem_id: mont,
+            observacao: observacao
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Erro ao editar lote: ' + (data.error || 'Desconhecido'));
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Salvar Alterações';
+            }
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Erro de rede ao salvar lote.');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Salvar Alterações';
+        }
+    });
 }
 </script>
 

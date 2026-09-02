@@ -738,6 +738,7 @@ def detalhe_colaborador_view(request, colab_id):
     ctx = {
         "colaborador": usuario_logado,
         "alvo": alvo,
+        "colaborador_form": ColaboradorForm(instance=alvo),
         "can_see_salary": can_see_salary,
         "can_register_occ": can_register_occ,
         "can_edit_colaborador": can_edit_colaborador,

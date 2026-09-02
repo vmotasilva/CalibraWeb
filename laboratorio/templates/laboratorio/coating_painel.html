@@ -30,10 +30,12 @@
             <form method="get" action="." class="d-flex align-items-center gap-2" id="searchLoteForm">
                 {% if audit_mode %}<input type="hidden" name="audit" value="true">{% endif %}
                 {% if anomaly_filter %}<input type="hidden" name="anomaly" value="{{ anomaly_filter }}">{% endif %}
+                <input type="hidden" name="tab" id="searchTabInput" value="{{ active_tab|default:'' }}">
                 
-                <div class="input-group input-group-sm shadow-sm" style="max-width: 130px;">
+                <div class="input-group input-group-sm shadow-sm" style="max-width: 140px;">
                     <input type="date" 
                            name="date_search" 
+                           id="inputDateSearch"
                            class="form-control text-muted" 
                            value="{{ date_search|default:'' }}"
                            onchange="this.form.submit()">
@@ -52,7 +54,7 @@
                            autocomplete="off"
                            oninput="filterLotesLive(this.value)">
                     {% if lote_search or date_search %}
-                    <a href="?{% if audit_mode %}audit=true{% endif %}{% if anomaly_filter %}&anomaly={{ anomaly_filter }}{% endif %}" 
+                    <a href="?{% if audit_mode %}audit=true{% endif %}{% if anomaly_filter %}&anomaly={{ anomaly_filter }}{% endif %}{% if active_tab %}&tab={{ active_tab }}{% endif %}" 
                        class="btn btn-outline-secondary border-start-0 text-muted" 
                        title="Limpar busca">
                         <i class="bi bi-x-lg"></i>
@@ -266,7 +268,7 @@
         {% for evap in evaporadoras %}
         {% cycle 'tab-color-1' 'tab-color-2' 'tab-color-3' 'tab-color-4' 'tab-color-5' 'tab-color-6' as tcolor silent %}
         <li class="nav-item" role="presentation">
-            <button class="nav-link {% if forloop.first %}active{% endif %} fw-bold {{ tcolor }}" 
+            <button class="nav-link {% if active_tab == 'evap-'|add:evap.id|stringformat:'s' or active_tab == evap.id|stringformat:'s' %}active{% elif not active_tab and forloop.first %}active{% endif %} fw-bold {{ tcolor }}" 
                     id="evap-{{ evap.id }}-tab" data-bs-toggle="tab" 
                     data-bs-target="#evap-{{ evap.id }}-pane" type="button" role="tab"
                     onclick="document.getElementById('{{ registro_form.maquina.id_for_label }}').value = '{{ evap.id }}'">
@@ -282,7 +284,7 @@
 
     <div class="tab-content" id="evapTabsContent">
         {% for evap in evaporadoras %}
-        <div class="tab-pane fade {% if forloop.first %}show active{% endif %}" id="evap-{{ evap.id }}-pane" data-maquina-id="{{ evap.id }}" role="tabpanel">
+        <div class="tab-pane fade {% if active_tab == 'evap-'|add:evap.id|stringformat:'s' or active_tab == evap.id|stringformat:'s' %}show active{% elif not active_tab and forloop.first %}show active{% endif %}" id="evap-{{ evap.id }}-pane" data-maquina-id="{{ evap.id }}" role="tabpanel">
             <div class="card shadow-sm border" style="border-top-left-radius: 0; border-top-right-radius: 0;">
                                 <div class="table-responsive d-none d-md-block">
                         <table class="table table-hover align-middle mb-0 text-center text-nowrap w-100">
@@ -593,10 +595,8 @@
                                 <div class="text-center text-muted py-4 small">Nenhum lote registrado nesta máquina para as datas em exibição.</div>
                             {% endfor %}
                         {% endwith %}
-                    </div>          </table>
                     </div>
                 </div>
-            </div>
 
             <!-- Paginação desta máquina -->
             {% with reg_page=registros_por_maquina|get_item:evap.id %}
@@ -605,7 +605,7 @@
                 <ul class="pagination justify-content-center">
                     {% if reg_page.has_previous %}
                     <li class="page-item">
-                        <a class="page-link" href="?page_{{ evap.id }}={{ reg_page.previous_page_number }}{% if lote_search %}&lote_search={{ lote_search }}{% endif %}{% if audit_mode %}&audit=true{% endif %}{% if anomaly_filter %}&anomaly={{ anomaly_filter }}{% endif %}" aria-label="Anterior">
+                        <a class="page-link" href="?page_{{ evap.id }}={{ reg_page.previous_page_number }}{% if lote_search %}&lote_search={{ lote_search }}{% endif %}{% if date_search %}&date_search={{ date_search }}{% endif %}{% if audit_mode %}&audit=true{% endif %}{% if anomaly_filter %}&anomaly={{ anomaly_filter }}{% endif %}&tab=evap-{{ evap.id }}" aria-label="Anterior">
                             <span aria-hidden="true">&laquo; Anterior</span>
                         </a>
                     </li>
@@ -617,7 +617,7 @@
                     </li>
                     {% if reg_page.has_next %}
                     <li class="page-item">
-                        <a class="page-link" href="?page_{{ evap.id }}={{ reg_page.next_page_number }}{% if lote_search %}&lote_search={{ lote_search }}{% endif %}{% if audit_mode %}&audit=true{% endif %}{% if anomaly_filter %}&anomaly={{ anomaly_filter }}{% endif %}" aria-label="Próxima">
+                        <a class="page-link" href="?page_{{ evap.id }}={{ reg_page.next_page_number }}{% if lote_search %}&lote_search={{ lote_search }}{% endif %}{% if date_search %}&date_search={{ date_search }}{% endif %}{% if audit_mode %}&audit=true{% endif %}{% if anomaly_filter %}&anomaly={{ anomaly_filter }}{% endif %}&tab=evap-{{ evap.id }}" aria-label="Próxima">
                             <span aria-hidden="true">Próxima &raquo;</span>
                         </a>
                     </li>
@@ -1589,12 +1589,48 @@
         });
     }
     
-    // Inicializar os tooltips do Bootstrap
+    // Inicializar os tooltips do Bootstrap e Gerenciador de Abas
     document.addEventListener("DOMContentLoaded", function() {
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
         var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
             return new bootstrap.Tooltip(tooltipTriggerEl);
         });
+
+        // Gerenciamento fluido e dinâmico de abas com persistência
+        const tabBtns = document.querySelectorAll('#evapTabs button[data-bs-toggle="tab"]');
+        tabBtns.forEach(btn => {
+            btn.addEventListener('shown.bs.tab', function (e) {
+                const targetSelector = e.target.getAttribute('data-bs-target') || '';
+                const targetId = targetSelector.replace('#', '').replace('-pane', '');
+                if (targetId) {
+                    const searchTabInput = document.getElementById('searchTabInput');
+                    if (searchTabInput) searchTabInput.value = targetId;
+                    localStorage.setItem('coating_active_tab', targetId);
+                    
+                    // Atualizar URL de forma fluida sem recarregar a página
+                    const currentUrl = new URL(window.location);
+                    currentUrl.searchParams.set('tab', targetId);
+                    window.history.replaceState({}, '', currentUrl);
+                }
+            });
+        });
+
+        // Restaurar aba ativa na inicialização se informada na URL ou salva no localStorage
+        const urlParams = new URLSearchParams(window.location.search);
+        let activeTab = urlParams.get('tab') || localStorage.getItem('coating_active_tab');
+        if (activeTab) {
+            if (!activeTab.startsWith('evap-') && !activeTab.includes('-tab')) {
+                activeTab = 'evap-' + activeTab;
+            }
+            const tabBtnToActivate = document.getElementById(activeTab + '-tab') || 
+                                     document.querySelector(`[data-bs-target="#${activeTab}-pane"]`) || 
+                                     document.querySelector(`[data-bs-target="#${activeTab}"]`);
+            if (tabBtnToActivate && typeof bootstrap !== 'undefined') {
+                const searchTabInput = document.getElementById('searchTabInput');
+                if (searchTabInput) searchTabInput.value = activeTab;
+                bootstrap.Tab.getOrCreateInstance(tabBtnToActivate).show();
+            }
+        }
         
         // Trava para evitar duplo clique e múltiplos envios de formulário
         document.addEventListener("submit", function(e) {

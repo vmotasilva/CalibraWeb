@@ -37,9 +37,9 @@
         <!-- Ações Desktop (>= 768px) -->
         <div class="d-none d-md-flex flex-wrap gap-2 align-items-center">
             {% if can_edit_colaborador %}
-            <a href="/rh/colaborador/{{ alvo.id }}/editar/" class="btn btn-outline-secondary btn-sm">
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="abrirModalEditarFicha()">
                 <i class="bi bi-pencil me-1"></i> Editar Dados
-            </a>
+            </button>
             {% endif %}
             {% if can_register_occ %}
             <a href="{% url 'registrar_ocorrencia' %}?colab_id={{ alvo.id }}" class="btn btn-outline-primary btn-sm">
@@ -65,9 +65,9 @@
                 <ul class="dropdown-menu dropdown-menu-end w-100 shadow py-2" aria-labelledby="dropdownAcoesColabMobile">
                     {% if can_edit_colaborador %}
                     <li>
-                        <a href="/rh/colaborador/{{ alvo.id }}/editar/" class="dropdown-item py-2">
+                        <button type="button" class="dropdown-item py-2" onclick="abrirModalEditarFicha()">
                             <i class="bi bi-pencil text-secondary me-2"></i> Editar Dados Cadastrais
-                        </a>
+                        </button>
                     </li>
                     {% endif %}
                     {% if can_register_occ %}
@@ -178,93 +178,138 @@
             <div class="card shadow-sm mb-4 border-0">
                 <div class="card-header bg-dark text-white fw-bold d-flex justify-content-between align-items-center">
                     <span><i class="bi bi-person-badge me-1"></i> Ficha Cadastral</span>
-                    {% if alvo.is_active %}
-                        <span class="badge bg-success">ATIVO</span>
-                    {% else %}
-                        <span class="badge bg-danger">DESLIGADO</span>
-                    {% endif %}
+                    <div class="d-flex align-items-center gap-2">
+                        {% if can_edit_colaborador %}
+                        <button type="button" class="btn btn-sm btn-outline-light py-0 px-2 rounded-pill shadow-sm" onclick="abrirModalEditarFicha()" title="Editar Ficha Cadastral">
+                            <i class="bi bi-pencil me-1"></i>Editar
+                        </button>
+                        {% endif %}
+                        {% if alvo.is_active %}
+                            <span class="badge bg-success">ATIVO</span>
+                        {% else %}
+                            <span class="badge bg-danger">DESLIGADO</span>
+                        {% endif %}
+                    </div>
                 </div>
                 <div class="card-body p-3">
                     <div class="d-flex flex-column">
-                        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                        <div class="d-flex justify-content-between align-items-center border-bottom py-2 ficha-field-row" onclick="abrirModalEditarFicha('id_is_active')" title="Clique para editar o status">
                             <span class="text-muted small">Status:</span>
-                            {% if alvo.is_active %}
-                                <span class="badge bg-success">ATIVO</span>
-                            {% else %}
-                                <span class="badge bg-danger">DESLIGADO</span>
-                            {% endif %}
+                            <div class="d-flex align-items-center">
+                                {% if alvo.is_active %}
+                                    <span class="badge bg-success">ATIVO</span>
+                                {% else %}
+                                    <span class="badge bg-danger">DESLIGADO</span>
+                                {% endif %}
+                                <i class="bi bi-pencil small text-primary field-edit-icon ms-2"></i>
+                            </div>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                        <div class="d-flex justify-content-between align-items-center border-bottom py-2 ficha-field-row" onclick="abrirModalEditarFicha('id_setor')" title="Clique para editar o setor">
                             <span class="text-muted small">Setor:</span>
-                            <strong class="text-dark small text-end">{{ alvo.setor.nome|default:"-" }}</strong>
+                            <div class="d-flex align-items-center text-end">
+                                <strong class="text-dark small">{{ alvo.setor.nome|default:"-" }}</strong>
+                                <i class="bi bi-pencil small text-primary field-edit-icon ms-2"></i>
+                            </div>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                        <div class="d-flex justify-content-between align-items-center border-bottom py-2 ficha-field-row" onclick="abrirModalEditarFicha('id_setor')" title="Clique para editar">
                             <span class="text-muted small">Centro de Custo:</span>
-                            <span class="small text-end">{{ alvo.centro_custo.codigo|default:"-" }}</span>
+                            <div class="d-flex align-items-center text-end">
+                                <span class="small">{{ alvo.centro_custo.codigo|default:"-" }}</span>
+                                <i class="bi bi-pencil small text-primary field-edit-icon ms-2"></i>
+                            </div>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                        <div class="d-flex justify-content-between align-items-center border-bottom py-2 ficha-field-row" onclick="abrirModalEditarFicha('id_lider')" title="Clique para editar o líder imediato">
                             <span class="text-muted small">Líder Imediato:</span>
-                            <strong class="small text-end">
-                                {% if alvo.lider %}
-                                    <a href="{% url 'detalhe_colaborador' alvo.lider.id %}" class="text-decoration-none">
-                                        {{ alvo.lider.nome_completo|truncatewords:3 }}
-                                    </a>
-                                {% else %}-{% endif %}
-                            </strong>
+                            <div class="d-flex align-items-center text-end">
+                                <strong class="small">
+                                    {% if alvo.lider %}
+                                        <a href="{% url 'detalhe_colaborador' alvo.lider.id %}" class="text-decoration-none" onclick="event.stopPropagation()">
+                                            {{ alvo.lider.nome_completo }}
+                                        </a>
+                                    {% else %}-{% endif %}
+                                </strong>
+                                <i class="bi bi-pencil small text-primary field-edit-icon ms-2"></i>
+                            </div>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                        <div class="d-flex justify-content-between align-items-center border-bottom py-2 ficha-field-row" onclick="abrirModalEditarFicha('id_supervisor')" title="Clique para editar o supervisor">
                             <span class="text-muted small">Supervisor:</span>
-                            <strong class="small text-end">
-                                {% if alvo.supervisor %}
-                                    <a href="{% url 'detalhe_colaborador' alvo.supervisor.id %}" class="text-decoration-none">
-                                        {{ alvo.supervisor.nome_completo|truncatewords:3 }}
-                                    </a>
-                                {% else %}-{% endif %}
-                            </strong>
+                            <div class="d-flex align-items-center text-end">
+                                <strong class="small">
+                                    {% if alvo.supervisor %}
+                                        <a href="{% url 'detalhe_colaborador' alvo.supervisor.id %}" class="text-decoration-none" onclick="event.stopPropagation()">
+                                            {{ alvo.supervisor.nome_completo }}
+                                        </a>
+                                    {% else %}-{% endif %}
+                                </strong>
+                                <i class="bi bi-pencil small text-primary field-edit-icon ms-2"></i>
+                            </div>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                        <div class="d-flex justify-content-between align-items-center border-bottom py-2 ficha-field-row" onclick="abrirModalEditarFicha('id_gerente')" title="Clique para editar o gerente">
                             <span class="text-muted small">Gerente:</span>
-                            <strong class="small text-end">
-                                {% if alvo.gerente %}
-                                    <a href="{% url 'detalhe_colaborador' alvo.gerente.id %}" class="text-decoration-none">
-                                        {{ alvo.gerente.nome_completo|truncatewords:3 }}
-                                    </a>
-                                {% else %}-{% endif %}
-                            </strong>
+                            <div class="d-flex align-items-center text-end">
+                                <strong class="small">
+                                    {% if alvo.gerente %}
+                                        <a href="{% url 'detalhe_colaborador' alvo.gerente.id %}" class="text-decoration-none" onclick="event.stopPropagation()">
+                                            {{ alvo.gerente.nome_completo }}
+                                        </a>
+                                    {% else %}-{% endif %}
+                                </strong>
+                                <i class="bi bi-pencil small text-primary field-edit-icon ms-2"></i>
+                            </div>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                        <div class="d-flex justify-content-between align-items-center border-bottom py-2 ficha-field-row" onclick="abrirModalEditarFicha('id_turno')" title="Clique para editar o turno">
                             <span class="text-muted small">Turno:</span>
-                            <span class="badge bg-secondary">{{ alvo.get_turno_display }}</span>
+                            <div class="d-flex align-items-center">
+                                <span class="badge bg-secondary">{{ alvo.get_turno_display }}</span>
+                                <i class="bi bi-pencil small text-primary field-edit-icon ms-2"></i>
+                            </div>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center border-bottom py-2 bg-light-subtle px-1 rounded">
+                        <div class="d-flex justify-content-between align-items-center border-bottom py-2 bg-light-subtle px-1 rounded ficha-field-row" onclick="abrirModalEditarFicha('id_matricula_global')" title="Clique para editar a matrícula global">
                             <span class="text-muted small fw-semibold"><i class="bi bi-globe me-1 text-primary"></i>Matrícula Global:</span>
-                            <span class="badge bg-primary bg-opacity-10 text-primary fw-bold border border-primary border-opacity-25" style="font-size: 0.85rem;">
-                                {{ alvo.matricula_global|default:"Não cadastrada" }}
-                            </span>
+                            <div class="d-flex align-items-center">
+                                <span class="badge bg-primary bg-opacity-10 text-primary fw-bold border border-primary border-opacity-25" style="font-size: 0.85rem;">
+                                    {{ alvo.matricula_global|default:"Não cadastrada" }}
+                                </span>
+                                <i class="bi bi-pencil small text-primary field-edit-icon ms-2"></i>
+                            </div>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                        <div class="d-flex justify-content-between align-items-center border-bottom py-2 ficha-field-row" onclick="abrirModalEditarFicha('id_posto_trabalho')" title="Clique para editar o posto de trabalho">
                             <span class="text-muted small">Posto de Trabalho:</span>
-                            <span class="small text-end">{{ alvo.posto_trabalho|default:"-" }}</span>
+                            <div class="d-flex align-items-center text-end">
+                                <span class="small">{{ alvo.posto_trabalho|default:"-" }}</span>
+                                <i class="bi bi-pencil small text-primary field-edit-icon ms-2"></i>
+                            </div>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                        <div class="d-flex justify-content-between align-items-center border-bottom py-2 ficha-field-row" onclick="abrirModalEditarFicha('id_grupo')" title="Clique para editar o grupo">
                             <span class="text-muted small">Grupo:</span>
-                            <span class="small text-end">{{ alvo.grupo|default:"-" }}</span>
+                            <div class="d-flex align-items-center text-end">
+                                <span class="small">{{ alvo.grupo|default:"-" }}</span>
+                                <i class="bi bi-pencil small text-primary field-edit-icon ms-2"></i>
+                            </div>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                        <div class="d-flex justify-content-between align-items-center border-bottom py-2 ficha-field-row" onclick="abrirModalEditarFicha('id_cpf')" title="Clique para editar o CPF">
                             <span class="text-muted small">CPF:</span>
-                            {% if can_see_salary and alvo.cpf %}
-                                <span class="small">{{ alvo.cpf|slice:":3" }}.{{ alvo.cpf|slice:"3:6" }}.{{ alvo.cpf|slice:"6:9" }}-{{ alvo.cpf|slice:"9:11" }}</span>
-                            {% else %}
-                                <span class="small" style="filter: blur(4px);" title="Oculto por segurança">###.###.###-##</span>
-                            {% endif %}
+                            <div class="d-flex align-items-center">
+                                {% if can_see_salary and alvo.cpf %}
+                                    <span class="small">{{ alvo.cpf|slice:":3" }}.{{ alvo.cpf|slice:"3:6" }}.{{ alvo.cpf|slice:"6:9" }}-{{ alvo.cpf|slice:"9:11" }}</span>
+                                {% else %}
+                                    <span class="small" style="filter: blur(4px);" title="Oculto por segurança">###.###.###-##</span>
+                                {% endif %}
+                                <i class="bi bi-pencil small text-primary field-edit-icon ms-2"></i>
+                            </div>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center bg-light mt-2 p-2 rounded border">
+                        <div class="d-flex justify-content-between align-items-center bg-light mt-2 p-2 rounded border ficha-field-row" onclick="abrirModalEditarFicha('id_salario')" title="Clique para editar o salário">
                             <span class="fw-bold text-dark small"><i class="bi bi-cash me-1"></i> Salário Base:</span>
-                            {% if can_see_salary %}
-                                <span class="text-success fw-bold fs-6">R$ {{ alvo.salario|floatformat:2 }}</span>
-                            {% else %}
-                                <span class="badge bg-secondary"><i class="bi bi-lock-fill"></i> RESTRITO</span>
-                            {% endif %}
+                            <div class="d-flex align-items-center">
+                                {% if can_see_salary %}
+                                    <span class="text-success fw-bold fs-6">R$ {{ alvo.salario|floatformat:2 }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary"><i class="bi bi-lock-fill"></i> RESTRITO</span>
+                                {% endif %}
+                                {% if can_see_salary %}
+                                <i class="bi bi-pencil small text-success field-edit-icon ms-2"></i>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -290,683 +335,797 @@
                             <small>Nenhum documento anexado.</small>
                         </li>
                     {% endfor %}
-                </ul>
-            </div>
-        </div>
-
-        <!-- COLUNA DA DIREITA -->
+                       <!-- COLUNA DA DIREITA -->
         <div class="col-12 col-md-8 mt-4 mt-md-0">
             
-            <!-- CARD DE VENCIMENTOS DE FÉRIAS (PERÍODOS AQUISITIVOS) -->
-            <div class="card shadow-sm mb-4 border-0">
-                <div class="card-header bg-warning text-dark">
-                    <div class="d-flex justify-content-between align-items-center gap-2">
-                        <span class="fw-bold fs-6"><i class="bi bi-clock-history me-1"></i> Períodos Aquisitivos</span>
-                        {% if can_register_ferias %}
-                        <button class="btn btn-sm btn-dark fw-bold d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#modalVencimentoFerias">
-                            <i class="bi bi-plus-circle"></i> <span class="d-none d-sm-inline">Novo Vencimento</span>
-                        </button>
+            <!-- NAVEGAÇÃO POR ABAS / BOTÕES DE SELEÇÃO -->
+            <div class="mb-4">
+                <div class="d-flex flex-nowrap overflow-x-auto gap-2 p-1.5 bg-light rounded-4 border shadow-sm scrollbar-none" id="colaboradorDetailTabs" role="tablist">
+                    <!-- 1. Férias e Períodos -->
+                    <button class="nav-link-tab active d-flex align-items-center gap-2 px-3 py-2.5 rounded-3 fw-bold text-nowrap transition-all border-0 shadow-sm"
+                            id="tab-btn-ferias"
+                            data-bs-toggle="pill"
+                            data-bs-target="#tab-pane-ferias"
+                            type="button"
+                            role="tab"
+                            aria-controls="tab-pane-ferias"
+                            aria-selected="true"
+                            onclick="setTabColaborador('ferias')">
+                        <i class="bi bi-calendar2-week-fill"></i>
+                        <span>Férias e Períodos</span>
+                        {% if kpi_ferias_vencidas > 0 %}
+                            <span class="badge bg-danger text-white rounded-pill px-2 py-0.5" title="{{ kpi_ferias_vencidas }} vencida(s)">{{ kpi_ferias_vencidas }} vencida{{ kpi_ferias_vencidas|pluralize }}</span>
+                        {% elif vencimentos_ferias %}
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-0.5">{{ vencimentos_ferias|length }}</span>
+                        {% elif ferias %}
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-0.5">{{ ferias|length }}</span>
+                        {% else %}
+                            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5">0</span>
                         {% endif %}
-                    </div>
+                    </button>
+
+                    <!-- 2. Matriz de Treinamentos -->
+                    <button class="nav-link-tab d-flex align-items-center gap-2 px-3 py-2.5 rounded-3 fw-bold text-nowrap transition-all border-0"
+                            id="tab-btn-treinamentos"
+                            data-bs-toggle="pill"
+                            data-bs-target="#tab-pane-treinamentos"
+                            type="button"
+                            role="tab"
+                            aria-controls="tab-pane-treinamentos"
+                            aria-selected="false"
+                            onclick="setTabColaborador('treinamentos')">
+                        <i class="bi bi-mortarboard-fill"></i>
+                        <span>Matriz de Treinamentos</span>
+                        {% if total_pendentes > 0 %}
+                            <span class="badge bg-danger text-white rounded-pill px-2 py-0.5">{{ total_pendentes }} pendente{{ total_pendentes|pluralize }}</span>
+                        {% elif total_treinamentos > 0 %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-0.5">{{ total_treinamentos }}</span>
+                        {% else %}
+                            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5">0</span>
+                        {% endif %}
+                    </button>
+
+                    <!-- 3. Ocorrências / Feedback -->
+                    <button class="nav-link-tab d-flex align-items-center gap-2 px-3 py-2.5 rounded-3 fw-bold text-nowrap transition-all border-0"
+                            id="tab-btn-ocorrencias"
+                            data-bs-toggle="pill"
+                            data-bs-target="#tab-pane-ocorrencias"
+                            type="button"
+                            role="tab"
+                            aria-controls="tab-pane-ocorrencias"
+                            aria-selected="false"
+                            onclick="setTabColaborador('ocorrencias')">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        <span>Ocorrências / Feedback</span>
+                        {% if ocorrencias.count > 0 %}
+                            <span class="badge bg-warning text-dark fw-bold rounded-pill px-2 py-0.5">{{ ocorrencias.count }}</span>
+                        {% else %}
+                            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5">0</span>
+                        {% endif %}
+                    </button>
+
+                    <!-- 4. Histórico de Mudanças -->
+                    <button class="nav-link-tab d-flex align-items-center gap-2 px-3 py-2.5 rounded-3 fw-bold text-nowrap transition-all border-0"
+                            id="tab-btn-historico"
+                            data-bs-toggle="pill"
+                            data-bs-target="#tab-pane-historico"
+                            type="button"
+                            role="tab"
+                            aria-controls="tab-pane-historico"
+                            aria-selected="false"
+                            onclick="setTabColaborador('historico')">
+                        <i class="bi bi-clock-history"></i>
+                        <span>Histórico de Mudanças</span>
+                        {% if alvo.get_historico_completo %}
+                            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5">{{ alvo.get_historico_completo|length }}</span>
+                        {% else %}
+                            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5">0</span>
+                        {% endif %}
+                    </button>
                 </div>
-                <div class="card-body p-0">
-                    <!-- TABELA DESKTOP (>= 768px) -->
-                    <div class="table-responsive d-none d-md-block">
-                        <table class="table table-hover mb-0 text-center align-middle" style="font-size: 0.9rem;">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Período Aquisitivo</th>
-                                    <th>Data Limite (Gozo)</th>
-                                    <th>Dias de Direito</th>
-                                    <th>Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+            </div>
+
+            <!-- CONTEÚDO DAS ABAS (TAB CONTENT) -->
+            <div class="tab-content" id="colaboradorDetailTabsContent">
+                
+                <!-- ============================================================= -->
+                <!-- ABA 1: FÉRIAS E PERÍODOS AQUISITIVOS                          -->
+                <!-- ============================================================= -->
+                <div class="tab-pane fade show active" id="tab-pane-ferias" role="tabpanel" aria-labelledby="tab-btn-ferias">
+                    <!-- CARD DE VENCIMENTOS DE FÉRIAS (PERÍODOS AQUISITIVOS) -->
+                    <div class="card shadow-sm mb-4 border-0">
+                        <div class="card-header bg-warning text-dark">
+                            <div class="d-flex justify-content-between align-items-center gap-2">
+                                <span class="fw-bold fs-6"><i class="bi bi-clock-history me-1"></i> Períodos Aquisitivos</span>
+                                {% if can_register_ferias %}
+                                <button class="btn btn-sm btn-dark fw-bold d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#modalVencimentoFerias">
+                                    <i class="bi bi-plus-circle"></i> <span class="d-none d-sm-inline">Novo Vencimento</span>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="card-body p-0">
+                            <!-- TABELA DESKTOP (>= 768px) -->
+                            <div class="table-responsive d-none d-md-block">
+                                <table class="table table-hover mb-0 text-center align-middle" style="font-size: 0.9rem;">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Período Aquisitivo</th>
+                                            <th>Data Limite (Gozo)</th>
+                                            <th>Dias de Direito</th>
+                                            <th>Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for v in vencimentos_ferias %}
+                                        <tr>
+                                            <td>{{ v.data_inicio_aquisitivo|date:"d/m/Y" }} a {{ v.data_fim_aquisitivo|date:"d/m/Y" }}</td>
+                                            <td>
+                                                <span class="fw-bold {% if v.data_limite_gozo < today %}text-danger{% endif %}">
+                                                    {{ v.data_limite_gozo|date:"d/m/Y" }}
+                                                </span>
+                                            </td>
+                                            <td>{{ v.dias_direito }}</td>
+                                            <td>
+                                                {% if can_register_ferias %}
+                                                <form method="post" action="{% url 'rh:excluir_vencimento_ferias' colab_id=alvo.id venc_id=v.id %}" style="display:inline;">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Tem certeza?');">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </form>
+                                                {% else %}
+                                                -
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="4" class="text-muted py-3">Nenhum período aquisitivo cadastrado.</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- CARDS MOBILE (< 768px) -->
+                            <div class="d-block d-md-none p-3">
                                 {% for v in vencimentos_ferias %}
-                                <tr>
-                                    <td>{{ v.data_inicio_aquisitivo|date:"d/m/Y" }} a {{ v.data_fim_aquisitivo|date:"d/m/Y" }}</td>
-                                    <td>
-                                        <span class="fw-bold {% if v.data_limite_gozo < today %}text-danger{% endif %}">
-                                            {{ v.data_limite_gozo|date:"d/m/Y" }}
-                                        </span>
-                                    </td>
-                                    <td>{{ v.dias_direito }}</td>
-                                    <td>
+                                <div class="card mb-2 border shadow-sm p-2" style="background-color: #fffdf5;">
+                                    <div class="d-flex justify-content-between align-items-start mb-1">
+                                        <span class="small fw-bold text-dark">{{ v.data_inicio_aquisitivo|date:"d/m/Y" }} a {{ v.data_fim_aquisitivo|date:"d/m/Y" }}</span>
+                                        <span class="badge bg-secondary" style="font-size: 0.7rem;">{{ v.dias_direito }} dias</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mt-1 pt-1 border-top">
+                                        <small class="text-muted">
+                                            Limite: <strong class="{% if v.data_limite_gozo < today %}text-danger{% else %}text-dark{% endif %}">{{ v.data_limite_gozo|date:"d/m/Y" }}</strong>
+                                        </small>
                                         {% if can_register_ferias %}
                                         <form method="post" action="{% url 'rh:excluir_vencimento_ferias' colab_id=alvo.id venc_id=v.id %}" style="display:inline;">
                                             {% csrf_token %}
-                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Tem certeza?');">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="return confirm('Tem certeza?');">
                                                 <i class="bi bi-trash"></i>
                                             </button>
                                         </form>
-                                        {% else %}
-                                        -
                                         {% endif %}
-                                    </td>
-                                </tr>
+                                    </div>
+                                </div>
                                 {% empty %}
-                                <tr>
-                                    <td colspan="4" class="text-muted py-3">Nenhum período aquisitivo cadastrado.</td>
-                                </tr>
+                                <div class="text-muted text-center py-3 small">Nenhum período aquisitivo cadastrado.</div>
                                 {% endfor %}
-                            </tbody>
-                        </table>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- CARDS MOBILE (< 768px) -->
-                    <div class="d-block d-md-none p-3">
-                        {% for v in vencimentos_ferias %}
-                        <div class="card mb-2 border shadow-sm p-2" style="background-color: #fffdf5;">
-                            <div class="d-flex justify-content-between align-items-start mb-1">
-                                <span class="small fw-bold text-dark">{{ v.data_inicio_aquisitivo|date:"d/m/Y" }} a {{ v.data_fim_aquisitivo|date:"d/m/Y" }}</span>
-                                <span class="badge bg-secondary" style="font-size: 0.7rem;">{{ v.dias_direito }} dias</span>
+                    <!-- CARD DE FÉRIAS (ATUALIZADO COM DIAS VENDIDOS) -->
+                    <div class="card shadow-sm mb-4 border-0">
+                        <div class="card-header bg-info text-white">
+                            <div class="d-flex justify-content-between align-items-center gap-2">
+                                <span class="fw-bold fs-6"><i class="bi bi-airplane me-1"></i> Gestão de Férias</span>
+                                <div class="d-flex gap-1">
+                                    <span class="badge bg-white text-danger fw-bold" title="Períodos Vencidos/Pendentes" style="font-size: 0.75rem;">
+                                        Vencidas: {{ kpi_ferias_vencidas }}
+                                    </span>
+                                    <span class="badge bg-white text-success fw-bold" title="Períodos Programados" style="font-size: 0.75rem;">
+                                        Prog.: {{ kpi_ferias_programadas }}
+                                    </span>
+                                </div>
                             </div>
-                            <div class="d-flex justify-content-between align-items-center mt-1 pt-1 border-top">
-                                <small class="text-muted">
-                                    Limite: <strong class="{% if v.data_limite_gozo < today %}text-danger{% else %}text-dark{% endif %}">{{ v.data_limite_gozo|date:"d/m/Y" }}</strong>
-                                </small>
-                                {% if can_register_ferias %}
-                                <form method="post" action="{% url 'rh:excluir_vencimento_ferias' colab_id=alvo.id venc_id=v.id %}" style="display:inline;">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="return confirm('Tem certeza?');">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
+                        </div>
+                        <div class="card-body p-0">
+                            <!-- TABELA DESKTOP (>= 768px) -->
+                            <div class="table-responsive d-none d-md-block">
+                                <table class="table table-hover mb-0 text-center align-middle" style="font-size: 0.9rem;">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Limite / Vencimento</th>
+                                            <th>Programação</th>
+                                            <th>Dias Gozo</th>
+                                            <th>Dias Vendidos</th>
+                                            <th>Status</th>
+                                            <th>Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for f in ferias %}
+                                        <tr>
+                                            <td>
+                                                {% if f.vencimento %}
+                                                    <span class="fw-bold {% if f.vencimento < today %}text-danger{% endif %}">
+                                                        {{ f.vencimento|date:"d/m/Y" }}
+                                                    </span>
+                                                {% else %} - {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if f.data_inicio %}
+                                                    <span class="text-primary fw-bold">{{ f.data_inicio|date:"d/m/Y" }}</span>
+                                                    <br><small class="text-muted">a {{ f.data_fim|date:"d/m/Y" }}</small>
+                                                {% else %}
+                                                    <span class="text-muted small">Não programado</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ f.dias_solicitados|default:"-" }}</td>
+                                            <td>-</td>
+                                            <td>
+                                                <span class="badge bg-secondary">{{ f.status|default:"-" }}</span>
+                                            </td>
+                                            <td>
+                                                <a href="{% url 'editar_ferias' colab_id=alvo.id ferias_id=f.id %}" class="btn btn-sm btn-outline-primary me-1" title="Editar férias"><i class="bi bi-pencil"></i></a>
+                                                <form method="post" action="{% url 'excluir_ferias' colab_id=alvo.id ferias_id=f.id %}" style="display:inline;">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir férias" onclick="return confirm('Tem certeza que deseja excluir este registro de férias?');"><i class="bi bi-trash"></i></button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr><td colspan="6" class="p-4 text-muted">Nenhum registro de férias encontrado.</td></tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- CARDS MOBILE (< 768px) -->
+                            <div class="d-block d-md-none p-3">
+                                {% for f in ferias %}
+                                <div class="card mb-2 border shadow-sm p-2" style="background-color: #f8fafc;">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="small text-muted">
+                                            Limite: <strong class="{% if f.vencimento and f.vencimento < today %}text-danger{% else %}text-dark{% endif %}">{{ f.vencimento|date:"d/m/Y"|default:"-" }}</strong>
+                                        </span>
+                                        <span class="badge bg-secondary" style="font-size: 0.7rem;">{{ f.status|default:"-" }}</span>
+                                    </div>
+                                    <div class="mb-1">
+                                        <small class="text-muted d-block">
+                                            Programação: 
+                                            {% if f.data_inicio %}
+                                                <strong class="text-primary">{{ f.data_inicio|date:"d/m/Y" }}</strong> a <strong class="text-primary">{{ f.data_fim|date:"d/m/Y" }}</strong>
+                                            {% else %}
+                                                <span class="text-muted">Não programado</span>
+                                            {% endif %}
+                                        </small>
+                                        <small class="text-muted">Dias Gozo: <strong>{{ f.dias_solicitados|default:"-" }}</strong></small>
+                                    </div>
+                                    <div class="d-flex justify-content-end gap-2 mt-2 pt-1 border-top">
+                                        <a href="{% url 'editar_ferias' colab_id=alvo.id ferias_id=f.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar férias">
+                                            <i class="bi bi-pencil me-1"></i> Editar
+                                        </a>
+                                        <form method="post" action="{% url 'excluir_ferias' colab_id=alvo.id ferias_id=f.id %}" style="display:inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" title="Excluir férias" onclick="return confirm('Tem certeza que deseja excluir este registro de férias?');">
+                                                <i class="bi bi-trash me-1"></i> Excluir
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <div class="text-muted text-center py-3 small">Nenhum registro de férias encontrado.</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============================================================= -->
+                <!-- ABA 2: MATRIZ DE TREINAMENTOS                                 -->
+                <!-- ============================================================= -->
+                <div class="tab-pane fade" id="tab-pane-treinamentos" role="tabpanel" aria-labelledby="tab-btn-treinamentos">
+                    <!-- MATRIZ DE TREINAMENTOS EM CASCATA -->
+                    <div class="card shadow-sm mb-4 border-0">
+                        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <div>
+                                <span class="fw-bold"><i class="bi bi-mortarboard"></i> Matriz de Treinamentos</span>
+                                {% if total_treinamentos > 0 %}
+                                <span class="badge bg-light text-primary ms-2">{{ total_treinamentos }} total</span>
+                                {% if total_pendentes > 0 %}
+                                <span class="badge bg-danger ms-1">{{ total_pendentes }} pendente{{ total_pendentes|pluralize }}</span>
+                                {% else %}
+                                <span class="badge bg-success ms-1"><i class="bi bi-check-circle"></i> Tudo OK</span>
+                                {% endif %}
+                                {% endif %}
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                {% if total_pendentes > 0 %}
+                                <button type="button" class="btn btn-sm btn-warning text-dark fw-bold btn-toggle-pendencias" onclick="toggleFocoPendencias(this)">
+                                    <i class="bi bi-funnel-fill me-1"></i> <span>Apenas Pendências</span>
+                                </button>
+                                {% endif %}
+                                {% if can_edit %}
+                                <button type="button" class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#modalAssociarPerfil">
+                                    <i class="bi bi-plus-circle"></i> Associar Perfil
+                                </button>
                                 {% endif %}
                             </div>
                         </div>
-                        {% empty %}
-                        <div class="text-muted text-center py-3 small">Nenhum período aquisitivo cadastrado.</div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-
-            <!-- CARD DE FÉRIAS (ATUALIZADO COM DIAS VENDIDOS) -->
-            <div class="card shadow-sm mb-4 border-0">
-                <div class="card-header bg-info text-white">
-                    <div class="d-flex justify-content-between align-items-center gap-2">
-                        <span class="fw-bold fs-6"><i class="bi bi-airplane me-1"></i> Gestão de Férias</span>
-                        <div class="d-flex gap-1">
-                            <span class="badge bg-white text-danger fw-bold" title="Períodos Vencidos/Pendentes" style="font-size: 0.75rem;">
-                                Vencidas: {{ kpi_ferias_vencidas }}
-                            </span>
-                            <span class="badge bg-white text-success fw-bold" title="Períodos Programados" style="font-size: 0.75rem;">
-                                Prog.: {{ kpi_ferias_programadas }}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-body p-0">
-                    <!-- TABELA DESKTOP (>= 768px) -->
-                    <div class="table-responsive d-none d-md-block">
-                        <table class="table table-hover mb-0 text-center align-middle" style="font-size: 0.9rem;">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Limite / Vencimento</th>
-                                    <th>Programação</th>
-                                    <th>Dias Gozo</th>
-                                    <th>Dias Vendidos</th>
-                                    <th>Status</th>
-                                    <th>Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for f in ferias %}
-                                <tr>
-                                    <td>
-                                        {% if f.vencimento %}
-                                            <span class="fw-bold {% if f.vencimento < today %}text-danger{% endif %}">
-                                                {{ f.vencimento|date:"d/m/Y" }}
-                                            </span>
-                                        {% else %} - {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if f.data_inicio %}
-                                            <span class="text-primary fw-bold">{{ f.data_inicio|date:"d/m/Y" }}</span>
-                                            <br><small class="text-muted">a {{ f.data_fim|date:"d/m/Y" }}</small>
-                                        {% else %}
-                                            <span class="text-muted small">Não programado</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>{{ f.dias_solicitados|default:"-" }}</td>
-                                    <td>-</td>
-                                    <td>
-                                        <span class="badge bg-secondary">{{ f.status|default:"-" }}</span>
-                                    </td>
-                                    <td>
-                                        <a href="{% url 'editar_ferias' colab_id=alvo.id ferias_id=f.id %}" class="btn btn-sm btn-outline-primary me-1" title="Editar férias"><i class="bi bi-pencil"></i></a>
-                                        <form method="post" action="{% url 'excluir_ferias' colab_id=alvo.id ferias_id=f.id %}" style="display:inline;">
-                                            {% csrf_token %}
-                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir férias" onclick="return confirm('Tem certeza que deseja excluir este registro de férias?');"><i class="bi bi-trash"></i></button>
-                                        </form>
-                                    </td>
-                                </tr>
-                                {% empty %}
-                                <tr><td colspan="6" class="p-4 text-muted">Nenhum registro de férias encontrado.</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- CARDS MOBILE (< 768px) -->
-                    <div class="d-block d-md-none p-3">
-                        {% for f in ferias %}
-                        <div class="card mb-2 border shadow-sm p-2" style="background-color: #f8fafc;">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="small text-muted">
-                                    Limite: <strong class="{% if f.vencimento and f.vencimento < today %}text-danger{% else %}text-dark{% endif %}">{{ f.vencimento|date:"d/m/Y"|default:"-" }}</strong>
-                                </span>
-                                <span class="badge bg-secondary" style="font-size: 0.7rem;">{{ f.status|default:"-" }}</span>
-                            </div>
-                            <div class="mb-1">
-                                <small class="text-muted d-block">
-                                    Programação: 
-                                    {% if f.data_inicio %}
-                                        <strong class="text-primary">{{ f.data_inicio|date:"d/m/Y" }}</strong> a <strong class="text-primary">{{ f.data_fim|date:"d/m/Y" }}</strong>
-                                    {% else %}
-                                        <span class="text-muted">Não programado</span>
-                                    {% endif %}
-                                </small>
-                                <small class="text-muted">Dias Gozo: <strong>{{ f.dias_solicitados|default:"-" }}</strong></small>
-                            </div>
-                            <div class="d-flex justify-content-end gap-2 mt-2 pt-1 border-top">
-                                <a href="{% url 'editar_ferias' colab_id=alvo.id ferias_id=f.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar férias">
-                                    <i class="bi bi-pencil me-1"></i> Editar
-                                </a>
-                                <form method="post" action="{% url 'excluir_ferias' colab_id=alvo.id ferias_id=f.id %}" style="display:inline;">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" title="Excluir férias" onclick="return confirm('Tem certeza que deseja excluir este registro de férias?');">
-                                        <i class="bi bi-trash me-1"></i> Excluir
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                        {% empty %}
-                        <div class="text-muted text-center py-3 small">Nenhum registro de férias encontrado.</div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-
-            <!-- MATRIZ DE TREINAMENTOS EM CASCATA -->
-            <div class="card shadow-sm mb-4 border-0">
-                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <div>
-                        <span class="fw-bold"><i class="bi bi-mortarboard"></i> Matriz de Treinamentos</span>
-                        {% if total_treinamentos > 0 %}
-                        <span class="badge bg-light text-primary ms-2">{{ total_treinamentos }} total</span>
-                        {% if total_pendentes > 0 %}
-                        <span class="badge bg-danger ms-1">{{ total_pendentes }} pendente{{ total_pendentes|pluralize }}</span>
-                        {% else %}
-                        <span class="badge bg-success ms-1"><i class="bi bi-check-circle"></i> Tudo OK</span>
-                        {% endif %}
-                        {% endif %}
-                    </div>
-                    <div class="d-flex align-items-center gap-2">
-                        {% if total_pendentes > 0 %}
-                        <button type="button" class="btn btn-sm btn-warning text-dark fw-bold btn-toggle-pendencias" onclick="toggleFocoPendencias(this)">
-                            <i class="bi bi-funnel-fill me-1"></i> <span>Apenas Pendências</span>
-                        </button>
-                        {% endif %}
-                        {% if can_edit %}
-                        <button type="button" class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#modalAssociarPerfil">
-                            <i class="bi bi-plus-circle"></i> Associar Perfil
-                        </button>
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="card-body p-0">
-                    {% if matriz_treinamentos %}
-                        {% for perfil_codigo, perfil_data in matriz_treinamentos.items %}
-                        <div class="accordion accordion-flush perfil-accordion-container" data-pendentes="{{ perfil_data.pendentes }}" id="accordion-{{ perfil_codigo }}">
-                            <!-- PERFIL -->
-                            <div class="accordion-item border-0">
-                                <h2 class="accordion-header">
-                                    <button class="accordion-button collapsed bg-light fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#perfil-{{ perfil_codigo }}" aria-expanded="false">
-                                        <i class="bi bi-person-workspace me-2"></i> {{ perfil_data.perfil.codigo }} - {{ perfil_data.perfil.nome }}
-                                        <span class="badge bg-secondary ms-2">{{ perfil_data.total }}</span>
-                                        {% if perfil_data.pendentes > 0 %}
-                                        <span class="badge bg-danger ms-1">{{ perfil_data.pendentes }} pendente{{ perfil_data.pendentes|pluralize }}</span>
-                                        {% endif %}
-                                    </button>
-                                </h2>
-                                <div id="perfil-{{ perfil_codigo }}" class="accordion-collapse collapse" data-bs-parent="#accordion-{{ perfil_codigo }}">
-                                    <div class="accordion-body p-0">
-                                        <!-- Ações do Perfil -->
-                                        <div class="bg-light border-bottom p-2 d-flex justify-content-between align-items-center">
-                                            <div class="d-flex gap-2">
-                                                <a href="{% url 'procedures:detalhe_perfil' perfil_id=perfil_data.perfil.id %}" class="btn btn-sm btn-outline-primary" target="_blank">
-                                                    <i class="bi bi-box-arrow-up-right"></i> Ver Perfil Completo
-                                                </a>
-                                                <a href="{% url 'procedures:detalhe_perfil' perfil_id=perfil_data.perfil.id %}" class="btn btn-sm btn-outline-secondary">
-                                                    <i class="bi bi-gear"></i> Gerenciar Treinamentos
-                                                </a>
-                                            </div>
-                                            {% if can_edit %}
-                                             <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmarRemocaoPerfil('{{ perfil_data.perfil.codigo }}', {{ perfil_data.perfil.id }}, {{ alvo.id }})">
-                                                <i class="bi bi-trash"></i> Remover Associação
+                        <div class="card-body p-0">
+                            {% if matriz_treinamentos %}
+                                {% for perfil_codigo, perfil_data in matriz_treinamentos.items %}
+                                <div class="accordion accordion-flush perfil-accordion-container" data-pendentes="{{ perfil_data.pendentes }}" id="accordion-{{ perfil_codigo }}">
+                                    <!-- PERFIL -->
+                                    <div class="accordion-item border-0">
+                                        <h2 class="accordion-header">
+                                            <button class="accordion-button collapsed bg-light fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#perfil-{{ perfil_codigo }}" aria-expanded="false">
+                                                <i class="bi bi-person-workspace me-2"></i> {{ perfil_data.perfil.codigo }} - {{ perfil_data.perfil.nome }}
+                                                <span class="badge bg-secondary ms-2">{{ perfil_data.total }}</span>
+                                                {% if perfil_data.pendentes > 0 %}
+                                                <span class="badge bg-danger ms-1">{{ perfil_data.pendentes }} pendente{{ perfil_data.pendentes|pluralize }}</span>
+                                                {% endif %}
                                             </button>
-                                            {% endif %}
-                                        </div>
-                                        {% for grupo_id, grupo_data in perfil_data.grupos.items %}
-                                        <!-- GRUPO -->
-                                        <div class="accordion accordion-flush ms-3 grupo-accordion-container" data-pendentes="{{ grupo_data.pendentes }}" id="accordion-grupo-{{ grupo_id }}">
-                                            <div class="accordion-item border-0">
-                                                <h3 class="accordion-header">
-                                                    <button class="accordion-button collapsed bg-white" type="button" data-bs-toggle="collapse" data-bs-target="#grupo-{{ grupo_id }}" aria-expanded="false">
-                                                        <i class="bi bi-folder2-open me-2 text-primary"></i> {{ grupo_data.grupo.nome }}
-                                                        <span class="badge bg-secondary ms-2">{{ grupo_data.total }}</span>
-                                                        {% if grupo_data.pendentes > 0 %}
-                                                        <span class="badge bg-danger ms-1">{{ grupo_data.pendentes }} pendente{{ grupo_data.pendentes|pluralize }}</span>
-                                                        {% endif %}
+                                        </h2>
+                                        <div id="perfil-{{ perfil_codigo }}" class="accordion-collapse collapse" data-bs-parent="#accordion-{{ perfil_codigo }}">
+                                            <div class="accordion-body p-0">
+                                                <!-- Ações do Perfil -->
+                                                <div class="bg-light border-bottom p-2 d-flex justify-content-between align-items-center">
+                                                    <div class="d-flex gap-2">
+                                                        <a href="{% url 'procedures:detalhe_perfil' perfil_id=perfil_data.perfil.id %}" class="btn btn-sm btn-outline-primary" target="_blank">
+                                                            <i class="bi bi-box-arrow-up-right"></i> Ver Perfil Completo
+                                                        </a>
+                                                        <a href="{% url 'procedures:detalhe_perfil' perfil_id=perfil_data.perfil.id %}" class="btn btn-sm btn-outline-secondary">
+                                                            <i class="bi bi-gear"></i> Gerenciar Treinamentos
+                                                        </a>
+                                                    </div>
+                                                    {% if can_edit %}
+                                                     <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmarRemocaoPerfil('{{ perfil_data.perfil.codigo }}', {{ perfil_data.perfil.id }}, {{ alvo.id }})">
+                                                        <i class="bi bi-trash"></i> Remover Associação
                                                     </button>
-                                                </h3>
-                                                <div id="grupo-{{ grupo_id }}" class="accordion-collapse collapse" data-bs-parent="#accordion-grupo-{{ grupo_id }}">
-                                                    <div class="accordion-body p-0">
-                                                        {% for subgrupo_id, subgrupo_data in grupo_data.subgrupos.items %}
-                                                        <!-- SUBGRUPO -->
-                                                        <div class="accordion accordion-flush ms-3 subgrupo-accordion-container" data-pendentes="{{ subgrupo_data.pendentes }}" id="accordion-subgrupo-{{ subgrupo_id }}">
-                                                            <div class="accordion-item border-0">
-                                                                <h4 class="accordion-header">
-                                                                    <button class="accordion-button bg-white" type="button" data-bs-toggle="collapse" data-bs-target="#subgrupo-{{ subgrupo_id }}" aria-expanded="true">
-                                                                        <i class="bi bi-folder me-2 text-secondary"></i> {{ subgrupo_data.subgrupo.nome }}
-                                                                        <span class="badge bg-secondary ms-2">{{ subgrupo_data.total }}</span>
-                                                                        {% if subgrupo_data.pendentes > 0 %}
-                                                                        <span class="badge bg-danger ms-1">{{ subgrupo_data.pendentes }} pendente{{ subgrupo_data.pendentes|pluralize }}</span>
-                                                                        {% else %}
-                                                                        <span class="badge bg-success ms-1"><i class="bi bi-check-circle-fill"></i></span>
-                                                                        {% endif %}
-                                                                    </button>
-                                                                </h4>
-                                                                <div id="subgrupo-{{ subgrupo_id }}" class="accordion-collapse collapse show" data-bs-parent="#accordion-subgrupo-{{ subgrupo_id }}">
-                                                                    <div class="accordion-body p-0">
-                                                                        <!-- PROCEDIMENTOS (TABELA DESKTOP >= 768px) -->
-                                                                        <div class="table-responsive d-none d-md-block">
-                                                                            <table class="table table-hover mb-0 text-center align-middle" style="font-size: 0.85rem;">
-                                                                                <thead class="table-light">
-                                                                                    <tr>
-                                                                                        <th class="text-start ps-3" style="width: 30%;">Procedimento</th>
-                                                                                        <th style="width: 15%;">Revisão Atual</th>
-                                                                                        <th style="width: 13%;">Data Aprovação Doc.</th>
-                                                                                        <th style="width: 13%;">Data Realização</th>
-                                                                                        <th style="width: 13%;">Validade</th>
-                                                                                        <th style="width: 16%;">Status</th>
-                                                                                    </tr>
-                                                                                </thead>
-                                                                                <tbody>
+                                                    {% endif %}
+                                                </div>
+                                                {% for grupo_id, grupo_data in perfil_data.grupos.items %}
+                                                <!-- GRUPO -->
+                                                <div class="accordion accordion-flush ms-3 grupo-accordion-container" data-pendentes="{{ grupo_data.pendentes }}" id="accordion-grupo-{{ grupo_id }}">
+                                                    <div class="accordion-item border-0">
+                                                        <h3 class="accordion-header">
+                                                            <button class="accordion-button collapsed bg-white" type="button" data-bs-toggle="collapse" data-bs-target="#grupo-{{ grupo_id }}" aria-expanded="false">
+                                                                <i class="bi bi-folder2-open me-2 text-primary"></i> {{ grupo_data.grupo.nome }}
+                                                                <span class="badge bg-secondary ms-2">{{ grupo_data.total }}</span>
+                                                                {% if grupo_data.pendentes > 0 %}
+                                                                <span class="badge bg-danger ms-1">{{ grupo_data.pendentes }} pendente{{ grupo_data.pendentes|pluralize }}</span>
+                                                                {% endif %}
+                                                            </button>
+                                                        </h3>
+                                                        <div id="grupo-{{ grupo_id }}" class="accordion-collapse collapse" data-bs-parent="#accordion-grupo-{{ grupo_id }}">
+                                                            <div class="accordion-body p-0">
+                                                                {% for subgrupo_id, subgrupo_data in grupo_data.subgrupos.items %}
+                                                                <!-- SUBGRUPO -->
+                                                                <div class="accordion accordion-flush ms-3 subgrupo-accordion-container" data-pendentes="{{ subgrupo_data.pendentes }}" id="accordion-subgrupo-{{ subgrupo_id }}">
+                                                                    <div class="accordion-item border-0">
+                                                                        <h4 class="accordion-header">
+                                                                            <button class="accordion-button bg-white" type="button" data-bs-toggle="collapse" data-bs-target="#subgrupo-{{ subgrupo_id }}" aria-expanded="true">
+                                                                                <i class="bi bi-folder me-2 text-secondary"></i> {{ subgrupo_data.subgrupo.nome }}
+                                                                                <span class="badge bg-secondary ms-2">{{ subgrupo_data.total }}</span>
+                                                                                {% if subgrupo_data.pendentes > 0 %}
+                                                                                <span class="badge bg-danger ms-1">{{ subgrupo_data.pendentes }} pendente{{ subgrupo_data.pendentes|pluralize }}</span>
+                                                                                {% else %}
+                                                                                <span class="badge bg-success ms-1"><i class="bi bi-check-circle-fill"></i></span>
+                                                                                {% endif %}
+                                                                            </button>
+                                                                        </h4>
+                                                                        <div id="subgrupo-{{ subgrupo_id }}" class="accordion-collapse collapse show" data-bs-parent="#accordion-subgrupo-{{ subgrupo_id }}">
+                                                                            <div class="accordion-body p-0">
+                                                                                <!-- PROCEDIMENTOS (TABELA DESKTOP >= 768px) -->
+                                                                                <div class="table-responsive d-none d-md-block">
+                                                                                    <table class="table table-hover mb-0 text-center align-middle" style="font-size: 0.85rem;">
+                                                                                        <thead class="table-light">
+                                                                                            <tr>
+                                                                                                <th class="text-start ps-3" style="width: 30%;">Procedimento</th>
+                                                                                                <th style="width: 15%;">Revisão Atual</th>
+                                                                                                <th style="width: 13%;">Data Aprovação Doc.</th>
+                                                                                                <th style="width: 13%;">Data Realização</th>
+                                                                                                <th style="width: 13%;">Validade</th>
+                                                                                                <th style="width: 16%;">Status</th>
+                                                                                            </tr>
+                                                                                        </thead>
+                                                                                        <tbody>
+                                                                                            {% for item in subgrupo_data.procedimentos %}
+                                                                                            <tr class="item-procedimento-row" data-pendente="{% if not item.treinamento or item.treinamento.status_treinamento != 'OK' %}true{% else %}false{% endif %}">
+                                                                                                <td class="text-start ps-3">
+                                                                                                    <strong>{{ item.procedimento.codigo }}</strong><br>
+                                                                                                    <small class="text-muted">{{ item.procedimento.nome|truncatewords:10 }}</small>
+                                                                                                </td>
+                                                                                                <td>
+                                                                                                    <span class="badge bg-info">Rev. {{ item.procedimento.numero_revisao|default:"?" }}</span>
+                                                                                                    {% if item.treinamento %}
+                                                                                                        <br><small class="text-muted">(Treinado: {{ item.treinamento.revisao_treinada }})</small>
+                                                                                                    {% endif %}
+                                                                                                </td>
+                                                                                                <td>{{ item.procedimento.data_aprovacao|date:"d/m/Y"|default:"-" }}</td>
+                                                                                                <td>
+                                                                                                    {% if item.treinamento and item.treinamento.data_treinamento %}
+                                                                                                        {{ item.treinamento.data_treinamento|date:"d/m/Y" }}
+                                                                                                    {% else %}
+                                                                                                        <span class="text-muted">-</span>
+                                                                                                    {% endif %}
+                                                                                                </td>
+                                                                                                <td>
+                                                                                                    {% if item.treinamento %}
+                                                                                                        {{ item.treinamento.validade_treinamento|date:"d/m/Y"|default:"-" }}
+                                                                                                    {% else %}
+                                                                                                        -
+                                                                                                    {% endif %}
+                                                                                                </td>
+                                                                                                <td>
+                                                                                                    {% if item.treinamento %}
+                                                                                                        {% if item.treinamento.status_treinamento == 'OK' %}
+                                                                                                            <span class="badge bg-success">OK</span>
+                                                                                                        {% else %}
+                                                                                                            <span class="badge bg-danger">PENDENTE</span>
+                                                                                                        {% endif %}
+                                                                                                    {% else %}
+                                                                                                        <span class="badge bg-warning text-dark">NÃO TREINADO</span>
+                                                                                                    {% endif %}
+                                                                                                </td>
+                                                                                            </tr>
+                                                                                            {% endfor %}
+                                                                                        </tbody>
+                                                                                    </table>
+                                                                                </div>
+
+                                                                                <!-- PROCEDIMENTOS (CARDS MOBILE < 768px) -->
+                                                                                <div class="d-block d-md-none p-2">
                                                                                     {% for item in subgrupo_data.procedimentos %}
-                                                                                    <tr class="item-procedimento-row" data-pendente="{% if not item.treinamento or item.treinamento.status_treinamento != 'OK' %}true{% else %}false{% endif %}">
-                                                                                        <td class="text-start ps-3">
-                                                                                            <strong>{{ item.procedimento.codigo }}</strong><br>
-                                                                                            <small class="text-muted">{{ item.procedimento.nome|truncatewords:10 }}</small>
-                                                                                        </td>
-                                                                                        <td>
-                                                                                            <span class="badge bg-info">Rev. {{ item.procedimento.numero_revisao|default:"?" }}</span>
-                                                                                            {% if item.treinamento %}
-                                                                                                <br><small class="text-muted">(Treinado: {{ item.treinamento.revisao_treinada }})</small>
-                                                                                            {% endif %}
-                                                                                        </td>
-                                                                                        <td>{{ item.procedimento.data_aprovacao|date:"d/m/Y"|default:"-" }}</td>
-                                                                                        <td>
-                                                                                            {% if item.treinamento and item.treinamento.data_treinamento %}
-                                                                                                {{ item.treinamento.data_treinamento|date:"d/m/Y" }}
-                                                                                            {% else %}
-                                                                                                <span class="text-muted">-</span>
-                                                                                            {% endif %}
-                                                                                        </td>
-                                                                                        <td>
-                                                                                            {% if item.treinamento %}
-                                                                                                {{ item.treinamento.validade_treinamento|date:"d/m/Y"|default:"-" }}
-                                                                                            {% else %}
-                                                                                                -
-                                                                                            {% endif %}
-                                                                                        </td>
-                                                                                        <td>
+                                                                                    <div class="card mb-2 border shadow-sm p-2 item-procedimento-card" data-pendente="{% if not item.treinamento or item.treinamento.status_treinamento != 'OK' %}true{% else %}false{% endif %}" style="background-color: #f8fafc;">
+                                                                                        <div class="d-flex justify-content-between align-items-start mb-1">
+                                                                                            <div>
+                                                                                                <strong class="text-primary small d-block">{{ item.procedimento.codigo }}</strong>
+                                                                                                <small class="text-dark d-block" style="font-size: 0.8rem;">{{ item.procedimento.nome }}</small>
+                                                                                            </div>
                                                                                             {% if item.treinamento %}
                                                                                                 {% if item.treinamento.status_treinamento == 'OK' %}
-                                                                                                    <span class="badge bg-success">OK</span>
+                                                                                                    <span class="badge bg-success" style="font-size: 0.65rem;">OK</span>
                                                                                                 {% else %}
-                                                                                                    <span class="badge bg-danger">PENDENTE</span>
+                                                                                                    <span class="badge bg-danger" style="font-size: 0.65rem;">PENDENTE</span>
                                                                                                 {% endif %}
                                                                                             {% else %}
-                                                                                                <span class="badge bg-warning text-dark">NÃO TREINADO</span>
+                                                                                                <span class="badge bg-warning text-dark" style="font-size: 0.65rem;">NÃO TREINADO</span>
                                                                                             {% endif %}
-                                                                                        </td>
-                                                                                    </tr>
-                                                                                    {% endfor %}
-                                                                                </tbody>
-                                                                            </table>
-                                                                        </div>
-
-                                                                        <!-- PROCEDIMENTOS (CARDS MOBILE < 768px) -->
-                                                                        <div class="d-block d-md-none p-2">
-                                                                            {% for item in subgrupo_data.procedimentos %}
-                                                                            <div class="card mb-2 border shadow-sm p-2 item-procedimento-card" data-pendente="{% if not item.treinamento or item.treinamento.status_treinamento != 'OK' %}true{% else %}false{% endif %}" style="background-color: #f8fafc;">
-                                                                                <div class="d-flex justify-content-between align-items-start mb-1">
-                                                                                    <div>
-                                                                                        <strong class="text-primary small d-block">{{ item.procedimento.codigo }}</strong>
-                                                                                        <small class="text-dark d-block" style="font-size: 0.8rem;">{{ item.procedimento.nome }}</small>
+                                                                                        </div>
+                                                                                        <div class="d-flex justify-content-between align-items-center mt-1 pt-1 border-top" style="font-size: 0.75rem;">
+                                                                                            <span class="badge bg-info bg-opacity-10 text-info border">Rev. {{ item.procedimento.numero_revisao|default:"?" }}</span>
+                                                                                            <span class="text-muted">
+                                                                                                {% if item.treinamento and item.treinamento.data_treinamento %}
+                                                                                                    Treino: <strong>{{ item.treinamento.data_treinamento|date:"d/m/Y" }}</strong>
+                                                                                                {% else %}
+                                                                                                    <span class="text-muted">Sem data</span>
+                                                                                                {% endif %}
+                                                                                            </span>
+                                                                                        </div>
                                                                                     </div>
-                                                                                    {% if item.treinamento %}
-                                                                                        {% if item.treinamento.status_treinamento == 'OK' %}
-                                                                                            <span class="badge bg-success" style="font-size: 0.65rem;">OK</span>
-                                                                                        {% else %}
-                                                                                            <span class="badge bg-danger" style="font-size: 0.65rem;">PENDENTE</span>
-                                                                                        {% endif %}
-                                                                                    {% else %}
-                                                                                        <span class="badge bg-warning text-dark" style="font-size: 0.65rem;">NÃO TREINADO</span>
-                                                                                    {% endif %}
-                                                                                </div>
-                                                                                <div class="d-flex justify-content-between align-items-center mt-1 pt-1 border-top" style="font-size: 0.75rem;">
-                                                                                    <span class="badge bg-info bg-opacity-10 text-info border">Rev. {{ item.procedimento.numero_revisao|default:"?" }}</span>
-                                                                                    <span class="text-muted">
-                                                                                        {% if item.treinamento and item.treinamento.data_treinamento %}
-                                                                                            Treino: <strong>{{ item.treinamento.data_treinamento|date:"d/m/Y" }}</strong>
-                                                                                        {% else %}
-                                                                                            <span class="text-muted">Sem data</span>
-                                                                                        {% endif %}
-                                                                                    </span>
+                                                                                    {% endfor %}
                                                                                 </div>
                                                                             </div>
-                                                                            {% endfor %}
                                                                         </div>
                                                                     </div>
                                                                 </div>
+                                                                {% endfor %}
                                                             </div>
                                                         </div>
-                                                        {% endfor %}
                                                     </div>
                                                 </div>
+                                                {% endfor %}
                                             </div>
                                         </div>
-                                        {% endfor %}
                                     </div>
                                 </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="p-4 text-center text-muted">
+                                    <i class="bi bi-inbox fs-1"></i>
+                                    <p class="mt-2">Nenhum perfil de treinamento atribuído a este colaborador.</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============================================================= -->
+                <!-- ABA 3: OCORRÊNCIAS / FEEDBACK                                 -->
+                <!-- ============================================================= -->
+                <div class="tab-pane fade" id="tab-pane-ocorrencias" role="tabpanel" aria-labelledby="tab-btn-ocorrencias">
+                    {% if can_view_occ %}
+                    <!-- OCORRÊNCIAS (RESTRITO A RH/LIDERANÇA) -->
+                    <div class="card shadow-sm border-0 mb-4">
+                        <div class="card-header bg-warning text-dark fw-bold d-flex justify-content-between align-items-center">
+                            <span class="fs-6"><i class="bi bi-exclamation-triangle me-1"></i> Ocorrências / Feedback</span>
+                            <span class="badge bg-dark text-warning">{{ ocorrencias.count }}</span>
+                        </div>
+                        <div class="card-body p-0">
+                            <!-- TABELA DESKTOP (>= 768px) -->
+                            <div class="table-responsive d-none d-md-block">
+                                <table class="table table-hover mb-0 align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="ps-3">Data</th>
+                                            <th>Tipo</th>
+                                            <th>Descrição</th>
+                                            <th>Natureza</th>
+                                            <th>Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for o in ocorrencias %}
+                                        <tr>
+                                            <td class="ps-3"><small>{{ o.data_ocorrencia|date:"d/m/Y" }}</small></td>
+                                            <td><span class="fw-bold">{{ o.get_tipo_display }}</span></td>
+                                            <td><small>{{ o.descricao|truncatewords:10 }}</small></td>
+                                            <td>
+                                                {% if o.natureza == 'NEGATIVA' %}
+                                                    <span class="badge bg-danger">NEGATIVA</span>
+                                                {% elif o.natureza == 'POSITIVA' %}
+                                                    <span class="badge bg-success">POSITIVA</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">NEUTRA</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#ocorrenciaModal{{ o.id }}">
+                                                    <i class="bi bi-eye"></i> Ver
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr><td colspan="5" class="p-4 text-center text-muted">Nenhuma ocorrência registrada.</td></tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- CARDS MOBILE (< 768px) -->
+                            <div class="d-block d-md-none p-3">
+                                {% for o in ocorrencias %}
+                                <div class="card mb-2 border shadow-sm p-2" style="background-color: #fffdf5;">
+                                    <div class="d-flex justify-content-between align-items-start mb-1">
+                                        <div>
+                                            <span class="fw-bold text-dark small">{{ o.get_tipo_display }}</span>
+                                            <small class="text-muted d-block" style="font-size: 0.75rem;">{{ o.data_ocorrencia|date:"d/m/Y" }}</small>
+                                        </div>
+                                        <div>
+                                            {% if o.natureza == 'NEGATIVA' %}
+                                                <span class="badge bg-danger" style="font-size: 0.65rem;">NEGATIVA</span>
+                                            {% elif o.natureza == 'POSITIVA' %}
+                                                <span class="badge bg-success" style="font-size: 0.65rem;">POSITIVA</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary" style="font-size: 0.65rem;">NEUTRA</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <p class="small text-muted mb-2 text-truncate" style="font-size: 0.8rem;">{{ o.descricao }}</p>
+                                    <div class="d-flex justify-content-end border-top pt-1">
+                                        <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 0.75rem;" data-bs-toggle="modal" data-bs-target="#ocorrenciaModal{{ o.id }}">
+                                            <i class="bi bi-eye me-1"></i> Detalhes
+                                        </button>
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <div class="text-muted text-center py-3 small">Nenhuma ocorrência registrada.</div>
+                                {% endfor %}
                             </div>
                         </div>
-                        {% endfor %}
-                    {% else %}
-                        <div class="p-4 text-center text-muted">
-                            <i class="bi bi-inbox fs-1"></i>
-                            <p class="mt-2">Nenhum perfil de treinamento atribuído a este colaborador.</p>
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
-
-            {% if can_view_occ %}
-            <!-- OCORRÊNCIAS (RESTRITO A RH/LIDERANÇA) -->
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-warning text-dark fw-bold d-flex justify-content-between align-items-center">
-                    <span class="fs-6"><i class="bi bi-exclamation-triangle me-1"></i> Ocorrências / Feedback</span>
-                    <span class="badge bg-dark text-warning">{{ ocorrencias.count }}</span>
-                </div>
-                <div class="card-body p-0">
-                    <!-- TABELA DESKTOP (>= 768px) -->
-                    <div class="table-responsive d-none d-md-block">
-                        <table class="table table-hover mb-0 align-middle">
-                            <thead class="table-light">
-                                <tr>
-                                    <th class="ps-3">Data</th>
-                                    <th>Tipo</th>
-                                    <th>Descrição</th>
-                                    <th>Natureza</th>
-                                    <th>Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for o in ocorrencias %}
-                                <tr>
-                                    <td class="ps-3"><small>{{ o.data_ocorrencia|date:"d/m/Y" }}</small></td>
-                                    <td><span class="fw-bold">{{ o.get_tipo_display }}</span></td>
-                                    <td><small>{{ o.descricao|truncatewords:10 }}</small></td>
-                                    <td>
-                                        {% if o.natureza == 'NEGATIVA' %}
-                                            <span class="badge bg-danger">NEGATIVA</span>
-                                        {% elif o.natureza == 'POSITIVA' %}
-                                            <span class="badge bg-success">POSITIVA</span>
-                                        {% else %}
-                                            <span class="badge bg-secondary">NEUTRA</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#ocorrenciaModal{{ o.id }}">
-                                            <i class="bi bi-eye"></i> Ver
-                                        </button>
-                                    </td>
-                                </tr>
-                                {% empty %}
-                                <tr><td colspan="5" class="p-4 text-center text-muted">Nenhuma ocorrência registrada.</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
                     </div>
 
-                    <!-- CARDS MOBILE (< 768px) -->
-                    <div class="d-block d-md-none p-3">
-                        {% for o in ocorrencias %}
-                        <div class="card mb-2 border shadow-sm p-2" style="background-color: #fffdf5;">
-                            <div class="d-flex justify-content-between align-items-start mb-1">
-                                <div>
-                                    <span class="fw-bold text-dark small">{{ o.get_tipo_display }}</span>
-                                    <small class="text-muted d-block" style="font-size: 0.75rem;">{{ o.data_ocorrencia|date:"d/m/Y" }}</small>
+                    <!-- Modais de Ocorrências -->
+                    {% for o in ocorrencias %}
+                    <div class="modal fade" id="ocorrenciaModal{{ o.id }}" tabindex="-1">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header bg-warning bg-opacity-10">
+                                    <h5 class="modal-title">Detalhes da Ocorrência</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                 </div>
-                                <div>
-                                    {% if o.natureza == 'NEGATIVA' %}
-                                        <span class="badge bg-danger" style="font-size: 0.65rem;">NEGATIVA</span>
-                                    {% elif o.natureza == 'POSITIVA' %}
-                                        <span class="badge bg-success" style="font-size: 0.65rem;">POSITIVA</span>
-                                    {% else %}
-                                        <span class="badge bg-secondary" style="font-size: 0.65rem;">NEUTRA</span>
+                                <div class="modal-body">
+                                    <div class="row mb-3">
+                                        <div class="col-md-4">
+                                            <strong>Data:</strong>
+                                            <p>{{ o.data_ocorrencia|date:"d/m/Y" }}</p>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <strong>Tipo:</strong>
+                                            <p><span class="badge bg-primary">{{ o.get_tipo_display }}</span></p>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <strong>Natureza:</strong>
+                                            <p>
+                                                {% if o.natureza == 'NEGATIVA' %}
+                                                    <span class="badge bg-danger">NEGATIVA</span>
+                                                {% elif o.natureza == 'POSITIVA' %}
+                                                    <span class="badge bg-success">POSITIVA</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">NEUTRA</span>
+                                                {% endif %}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {% if o.condutor %}
+                                    <div class="row mb-3">
+                                        <div class="col-md-12">
+                                            <strong>Responsável pela Ocorrência:</strong>
+                                            <p><span class="badge bg-info">{{ o.condutor.get_full_name|default:o.condutor.username }}</span></p>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <div class="mb-3">
+                                        <strong>Descrição:</strong>
+                                        <div class="alert alert-light border">
+                                            <p class="mb-0">{{ o.descricao }}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    {% if o.motivo %}
+                                    <div class="mb-3">
+                                        <strong>Motivo:</strong>
+                                        <p>{{ o.motivo }}</p>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    {% if o.arquivo_evidencia %}
+                                    <div class="mb-3">
+                                        <strong>Arquivo de Evidência:</strong>
+                                        <p>
+                                            <a href="{{ o.arquivo_evidencia.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                                <i class="bi bi-download"></i> Baixar
+                                            </a>
+                                        </p>
+                                    </div>
                                     {% endif %}
                                 </div>
-                            </div>
-                            <p class="small text-muted mb-2 text-truncate" style="font-size: 0.8rem;">{{ o.descricao }}</p>
-                            <div class="d-flex justify-content-end border-top pt-1">
-                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 0.75rem;" data-bs-toggle="modal" data-bs-target="#ocorrenciaModal{{ o.id }}">
-                                    <i class="bi bi-eye me-1"></i> Detalhes
-                                </button>
-                            </div>
-                        </div>
-                        {% empty %}
-                        <div class="text-muted text-center py-3 small">Nenhuma ocorrência registrada.</div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Modais de Ocorrências -->
-            {% for o in ocorrencias %}
-            <div class="modal fade" id="ocorrenciaModal{{ o.id }}" tabindex="-1">
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header bg-warning bg-opacity-10">
-                            <h5 class="modal-title">Detalhes da Ocorrência</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="row mb-3">
-                                <div class="col-md-4">
-                                    <strong>Data:</strong>
-                                    <p>{{ o.data_ocorrencia|date:"d/m/Y" }}</p>
-                                </div>
-                                <div class="col-md-4">
-                                    <strong>Tipo:</strong>
-                                    <p><span class="badge bg-primary">{{ o.get_tipo_display }}</span></p>
-                                </div>
-                                <div class="col-md-4">
-                                    <strong>Natureza:</strong>
-                                    <p>
-                                        {% if o.natureza == 'NEGATIVA' %}
-                                            <span class="badge bg-danger">NEGATIVA</span>
-                                        {% elif o.natureza == 'POSITIVA' %}
-                                            <span class="badge bg-success">POSITIVA</span>
-                                        {% else %}
-                                            <span class="badge bg-secondary">NEUTRA</span>
-                                        {% endif %}
-                                    </p>
-                                </div>
-                            </div>
-
-                            {% if o.condutor %}
-                            <div class="row mb-3">
-                                <div class="col-md-12">
-                                    <strong>Responsável pela Ocorrência:</strong>
-                                    <p><span class="badge bg-info">{{ o.condutor.get_full_name|default:o.condutor.username }}</span></p>
-                                </div>
-                            </div>
-                            {% endif %}
-                            
-                            <div class="mb-3">
-                                <strong>Descrição:</strong>
-                                <div class="alert alert-light border">
-                                    <p class="mb-0">{{ o.descricao }}</p>
-                                </div>
-                            </div>
-                            
-                            {% if o.motivo %}
-                            <div class="mb-3">
-                                <strong>Motivo:</strong>
-                                <p>{{ o.motivo }}</p>
-                            </div>
-                            {% endif %}
-                            
-                            {% if o.arquivo_evidencia %}
-                            <div class="mb-3">
-                                <strong>Arquivo de Evidência:</strong>
-                                <p>
-                                    <a href="{{ o.arquivo_evidencia.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">
-                                        <i class="bi bi-download"></i> Baixar
+                                <div class="modal-footer">
+                                    {% if can_delete_occ %}
+                                    <form method="post" action="{% url 'deletar_ocorrencia' o.id %}" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir esta ocorrência?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-outline-danger">
+                                            <i class="bi bi-trash"></i> Excluir
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                    {% if can_edit_occ %}
+                                    <a href="/rh/ocorrencia/{{ o.id }}/editar/" class="btn btn-primary">
+                                        <i class="bi bi-pencil"></i> Editar
                                     </a>
-                                </p>
-                            </div>
-                            {% endif %}
-                        </div>
-                        <div class="modal-footer">
-                            {% if can_delete_occ %}
-                            <form method="post" action="{% url 'deletar_ocorrencia' o.id %}" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir esta ocorrência?');">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-outline-danger">
-                                    <i class="bi bi-trash"></i> Excluir
-                                </button>
-                            </form>
-                            {% endif %}
-                            {% if can_edit_occ %}
-                            <a href="/rh/ocorrencia/{{ o.id }}/editar/" class="btn btn-primary">
-                                <i class="bi bi-pencil"></i> Editar
-                            </a>
-                            {% endif %}
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            {% endfor %}
-            {% else %}
-            <div class="alert alert-secondary">
-                Ocorrências deste colaborador são visíveis apenas para RH e liderança.
-            </div>
-            {% endif %}
-
-            <!-- HISTÓRICO DE MUDANÇAS -->
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-dark text-white fw-bold">
-                    <i class="bi bi-clock-history me-1"></i> Histórico de Mudanças
-                </div>
-                <div class="card-body p-0">
-                    {% if alvo.get_historico_completo %}
-                    <!-- TABELA DESKTOP (>= 768px) -->
-                    <div class="table-responsive d-none d-md-block p-3">
-                        <table class="table table-hover table-sm mb-0 align-middle">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Data</th>
-                                    <th>Tipo de Mudança</th>
-                                    <th>Descrição</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for hist in alvo.get_historico_completo|slice:":10" %}
-                                <tr>
-                                    <td><small>{{ hist.data_mudanca|date:"d/m/Y" }}</small></td>
-                                    <td>
-                                        {% if hist.tipo_mudanca == "SETOR" %}
-                                            <span class="badge bg-info">Setor</span>
-                                        {% elif hist.tipo_mudanca == "CARGO" %}
-                                            <span class="badge bg-warning">Cargo</span>
-                                        {% elif hist.tipo_mudanca == "SALARIO" %}
-                                            <span class="badge bg-success">Salário</span>
-                                        {% elif hist.tipo_mudanca == "TURNO" %}
-                                            <span class="badge bg-primary">Turno</span>
-                                        {% elif hist.tipo_mudanca == "STATUS" %}
-                                            <span class="badge bg-danger">Status</span>
-                                        {% else %}
-                                            <span class="badge bg-secondary">{{ hist.get_tipo_mudanca_display }}</span>
-                                        {% endif %}
-                                    </td>
-                                    <td><small>{{ hist.descricao }}</small></td>
-                                    <td>
-                                        {% if hist.aprovado %}
-                                            <span class="badge bg-success">Aprovado</span>
-                                        {% else %}
-                                            <span class="badge bg-secondary">Pendente</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% empty %}
-                                <tr><td colspan="4" class="p-4 text-center text-muted">Sem mudanças registradas.</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- CARDS MOBILE (< 768px) -->
-                    <div class="d-block d-md-none p-3">
-                        {% for hist in alvo.get_historico_completo|slice:":10" %}
-                        <div class="card mb-2 border shadow-sm p-2" style="background-color: #f8fafc;">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="small text-muted">{{ hist.data_mudanca|date:"d/m/Y" }}</span>
-                                {% if hist.tipo_mudanca == "SETOR" %}
-                                    <span class="badge bg-info" style="font-size: 0.65rem;">Setor</span>
-                                {% elif hist.tipo_mudanca == "CARGO" %}
-                                    <span class="badge bg-warning" style="font-size: 0.65rem;">Cargo</span>
-                                {% elif hist.tipo_mudanca == "SALARIO" %}
-                                    <span class="badge bg-success" style="font-size: 0.65rem;">Salário</span>
-                                {% elif hist.tipo_mudanca == "TURNO" %}
-                                    <span class="badge bg-primary" style="font-size: 0.65rem;">Turno</span>
-                                {% elif hist.tipo_mudanca == "STATUS" %}
-                                    <span class="badge bg-danger" style="font-size: 0.65rem;">Status</span>
-                                {% else %}
-                                    <span class="badge bg-secondary" style="font-size: 0.65rem;">{{ hist.get_tipo_mudanca_display }}</span>
-                                {% endif %}
-                            </div>
-                            <p class="small text-dark mb-1" style="font-size: 0.8rem;">{{ hist.descricao }}</p>
-                            <div class="text-end">
-                                {% if hist.aprovado %}
-                                    <span class="badge bg-success" style="font-size: 0.65rem;">Aprovado</span>
-                                {% else %}
-                                    <span class="badge bg-secondary" style="font-size: 0.65rem;">Pendente</span>
-                                {% endif %}
+                                    {% endif %}
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                                </div>
                             </div>
                         </div>
-                        {% empty %}
-                        <div class="text-muted text-center py-3 small">Sem mudanças registradas.</div>
-                        {% endfor %}
                     </div>
-
-                    {% if alvo.get_historico_completo|length > 10 %}
-                    <div class="p-3 pt-0">
-                        <div class="alert alert-info mt-2 mb-0 py-2">
-                            <small><i class="bi bi-info-circle me-1"></i> Mostrando últimas 10 mudanças. Total: <strong>{{ alvo.get_historico_completo|length }}</strong> registros.</small>
-                        </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="alert alert-secondary">
+                        Ocorrências deste colaborador são visíveis apenas para RH e liderança.
                     </div>
                     {% endif %}
-                    {% else %}
-                    <div class="p-4 text-center text-muted">
-                        <p class="mb-0">Nenhuma mudança registrada ainda.</p>
+                </div>
+
+                <!-- ============================================================= -->
+                <!-- ABA 4: HISTÓRICO DE MUDANÇAS                                  -->
+                <!-- ============================================================= -->
+                <div class="tab-pane fade" id="tab-pane-historico" role="tabpanel" aria-labelledby="tab-btn-historico">
+                    <!-- HISTÓRICO DE MUDANÇAS -->
+                    <div class="card shadow-sm border-0 mb-4">
+                        <div class="card-header bg-dark text-white fw-bold">
+                            <i class="bi bi-clock-history me-1"></i> Histórico de Mudanças
+                        </div>
+                        <div class="card-body p-0">
+                            {% if alvo.get_historico_completo %}
+                            <!-- TABELA DESKTOP (>= 768px) -->
+                            <div class="table-responsive d-none d-md-block p-3">
+                                <table class="table table-hover table-sm mb-0 align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Data</th>
+                                            <th>Tipo de Mudança</th>
+                                            <th>Descrição</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for hist in alvo.get_historico_completo|slice:":10" %}
+                                        <tr>
+                                            <td><small>{{ hist.data_mudanca|date:"d/m/Y" }}</small></td>
+                                            <td>
+                                                {% if hist.tipo_mudanca == "SETOR" %}
+                                                    <span class="badge bg-info">Setor</span>
+                                                {% elif hist.tipo_mudanca == "CARGO" %}
+                                                    <span class="badge bg-warning">Cargo</span>
+                                                {% elif hist.tipo_mudanca == "SALARIO" %}
+                                                    <span class="badge bg-success">Salário</span>
+                                                {% elif hist.tipo_mudanca == "TURNO" %}
+                                                    <span class="badge bg-primary">Turno</span>
+                                                {% elif hist.tipo_mudanca == "STATUS" %}
+                                                    <span class="badge bg-danger">Status</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">{{ hist.get_tipo_mudanca_display }}</span>
+                                                {% endif %}
+                                            </td>
+                                            <td><small>{{ hist.descricao }}</small></td>
+                                            <td>
+                                                {% if hist.aprovado %}
+                                                    <span class="badge bg-success">Aprovado</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Pendente</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr><td colspan="4" class="p-4 text-center text-muted">Sem mudanças registradas.</td></tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- CARDS MOBILE (< 768px) -->
+                            <div class="d-block d-md-none p-3">
+                                {% for hist in alvo.get_historico_completo|slice:":10" %}
+                                <div class="card mb-2 border shadow-sm p-2" style="background-color: #f8fafc;">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="small text-muted">{{ hist.data_mudanca|date:"d/m/Y" }}</span>
+                                        {% if hist.tipo_mudanca == "SETOR" %}
+                                            <span class="badge bg-info" style="font-size: 0.65rem;">Setor</span>
+                                        {% elif hist.tipo_mudanca == "CARGO" %}
+                                            <span class="badge bg-warning" style="font-size: 0.65rem;">Cargo</span>
+                                        {% elif hist.tipo_mudanca == "SALARIO" %}
+                                            <span class="badge bg-success" style="font-size: 0.65rem;">Salário</span>
+                                        {% elif hist.tipo_mudanca == "TURNO" %}
+                                            <span class="badge bg-primary" style="font-size: 0.65rem;">Turno</span>
+                                        {% elif hist.tipo_mudanca == "STATUS" %}
+                                            <span class="badge bg-danger" style="font-size: 0.65rem;">Status</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary" style="font-size: 0.65rem;">{{ hist.get_tipo_mudanca_display }}</span>
+                                        {% endif %}
+                                    </div>
+                                    <p class="small text-dark mb-1" style="font-size: 0.8rem;">{{ hist.descricao }}</p>
+                                    <div class="text-end">
+                                        {% if hist.aprovado %}
+                                            <span class="badge bg-success" style="font-size: 0.65rem;">Aprovado</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary" style="font-size: 0.65rem;">Pendente</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <div class="text-muted text-center py-3 small">Sem mudanças registradas.</div>
+                                {% endfor %}
+                            </div>
+
+                            {% if alvo.get_historico_completo|length > 10 %}
+                            <div class="p-3 pt-0">
+                                <div class="alert alert-info mt-2 mb-0 py-2">
+                                    <small><i class="bi bi-info-circle me-1"></i> Mostrando últimas 10 mudanças. Total: <strong>{{ alvo.get_historico_completo|length }}</strong> registros.</small>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% else %}
+                            <div class="p-4 text-center text-muted">
+                                <p class="mb-0">Nenhuma mudança registrada ainda.</p>
+                            </div>
+                            {% endif %}
+                        </div>
                     </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>  </div>
                     {% endif %}
                 </div>
             </div>
@@ -986,90 +1145,135 @@
             <h5 class="offcanvas-title fw-bold fs-6 mb-0 d-flex align-items-center" id="offcanvasFichaCadastralLabel">
                 <i class="bi bi-person-badge me-2 text-warning fs-5"></i> Ficha Cadastral
             </h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            <div class="d-flex align-items-center gap-2">
+                {% if can_edit_colaborador %}
+                <button type="button" class="btn btn-sm btn-outline-light py-0 px-2 rounded-pill shadow-sm" onclick="abrirModalEditarFicha()" title="Editar Ficha Cadastral">
+                    <i class="bi bi-pencil me-1"></i>Editar
+                </button>
+                {% endif %}
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
         </div>
     </div>
     <div class="offcanvas-body p-3">
         <div class="d-flex flex-column">
-            <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+            <div class="d-flex justify-content-between align-items-center border-bottom py-2 ficha-field-row" onclick="abrirModalEditarFicha('id_is_active')" title="Clique para editar o status">
                 <span class="text-muted small">Status:</span>
-                {% if alvo.is_active %}
-                    <span class="badge bg-success">ATIVO</span>
-                {% else %}
-                    <span class="badge bg-danger">DESLIGADO</span>
-                {% endif %}
+                <div class="d-flex align-items-center">
+                    {% if alvo.is_active %}
+                        <span class="badge bg-success">ATIVO</span>
+                    {% else %}
+                        <span class="badge bg-danger">DESLIGADO</span>
+                    {% endif %}
+                    <i class="bi bi-pencil small text-primary field-edit-icon ms-2"></i>
+                </div>
             </div>
-            <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+            <div class="d-flex justify-content-between align-items-center border-bottom py-2 ficha-field-row" onclick="abrirModalEditarFicha('id_setor')" title="Clique para editar o setor">
                 <span class="text-muted small">Setor:</span>
-                <strong class="text-dark small text-end">{{ alvo.setor.nome|default:"-" }}</strong>
+                <div class="d-flex align-items-center text-end">
+                    <strong class="text-dark small">{{ alvo.setor.nome|default:"-" }}</strong>
+                    <i class="bi bi-pencil small text-primary field-edit-icon ms-2"></i>
+                </div>
             </div>
-            <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+            <div class="d-flex justify-content-between align-items-center border-bottom py-2 ficha-field-row" onclick="abrirModalEditarFicha('id_setor')" title="Clique para editar">
                 <span class="text-muted small">Centro de Custo:</span>
-                <span class="small text-end">{{ alvo.centro_custo.codigo|default:"-" }}</span>
+                <div class="d-flex align-items-center text-end">
+                    <span class="small">{{ alvo.centro_custo.codigo|default:"-" }}</span>
+                    <i class="bi bi-pencil small text-primary field-edit-icon ms-2"></i>
+                </div>
             </div>
-            <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+            <div class="d-flex justify-content-between align-items-center border-bottom py-2 ficha-field-row" onclick="abrirModalEditarFicha('id_lider')" title="Clique para editar o líder imediato">
                 <span class="text-muted small">Líder Imediato:</span>
-                <strong class="small text-end">
-                    {% if alvo.lider %}
-                        <a href="{% url 'detalhe_colaborador' alvo.lider.id %}" class="text-decoration-none">
-                            {{ alvo.lider.nome_completo|truncatewords:3 }}
-                        </a>
-                    {% else %}-{% endif %}
-                </strong>
+                <div class="d-flex align-items-center text-end">
+                    <strong class="small">
+                        {% if alvo.lider %}
+                            <a href="{% url 'detalhe_colaborador' alvo.lider.id %}" class="text-decoration-none" onclick="event.stopPropagation()">
+                                {{ alvo.lider.nome_completo }}
+                            </a>
+                        {% else %}-{% endif %}
+                    </strong>
+                    <i class="bi bi-pencil small text-primary field-edit-icon ms-2"></i>
+                </div>
             </div>
-            <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+            <div class="d-flex justify-content-between align-items-center border-bottom py-2 ficha-field-row" onclick="abrirModalEditarFicha('id_supervisor')" title="Clique para editar o supervisor">
                 <span class="text-muted small">Supervisor:</span>
-                <strong class="small text-end">
-                    {% if alvo.supervisor %}
-                        <a href="{% url 'detalhe_colaborador' alvo.supervisor.id %}" class="text-decoration-none">
-                            {{ alvo.supervisor.nome_completo|truncatewords:3 }}
-                        </a>
-                    {% else %}-{% endif %}
-                </strong>
+                <div class="d-flex align-items-center text-end">
+                    <strong class="small">
+                        {% if alvo.supervisor %}
+                            <a href="{% url 'detalhe_colaborador' alvo.supervisor.id %}" class="text-decoration-none" onclick="event.stopPropagation()">
+                                {{ alvo.supervisor.nome_completo }}
+                            </a>
+                        {% else %}-{% endif %}
+                    </strong>
+                    <i class="bi bi-pencil small text-primary field-edit-icon ms-2"></i>
+                </div>
             </div>
-            <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+            <div class="d-flex justify-content-between align-items-center border-bottom py-2 ficha-field-row" onclick="abrirModalEditarFicha('id_gerente')" title="Clique para editar o gerente">
                 <span class="text-muted small">Gerente:</span>
-                <strong class="small text-end">
-                    {% if alvo.gerente %}
-                        <a href="{% url 'detalhe_colaborador' alvo.gerente.id %}" class="text-decoration-none">
-                            {{ alvo.gerente.nome_completo|truncatewords:3 }}
-                        </a>
-                    {% else %}-{% endif %}
-                </strong>
+                <div class="d-flex align-items-center text-end">
+                    <strong class="small">
+                        {% if alvo.gerente %}
+                            <a href="{% url 'detalhe_colaborador' alvo.gerente.id %}" class="text-decoration-none" onclick="event.stopPropagation()">
+                                {{ alvo.gerente.nome_completo }}
+                            </a>
+                        {% else %}-{% endif %}
+                    </strong>
+                    <i class="bi bi-pencil small text-primary field-edit-icon ms-2"></i>
+                </div>
             </div>
-            <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+            <div class="d-flex justify-content-between align-items-center border-bottom py-2 ficha-field-row" onclick="abrirModalEditarFicha('id_turno')" title="Clique para editar o turno">
                 <span class="text-muted small">Turno:</span>
-                <span class="badge bg-secondary">{{ alvo.get_turno_display }}</span>
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-secondary">{{ alvo.get_turno_display }}</span>
+                    <i class="bi bi-pencil small text-primary field-edit-icon ms-2"></i>
+                </div>
             </div>
-            <div class="d-flex justify-content-between align-items-center border-bottom py-2 bg-light px-2 rounded">
+            <div class="d-flex justify-content-between align-items-center border-bottom py-2 bg-light px-2 rounded ficha-field-row" onclick="abrirModalEditarFicha('id_matricula_global')" title="Clique para editar a matrícula global">
                 <span class="text-muted small fw-semibold"><i class="bi bi-globe me-1 text-primary"></i>Matrícula Global:</span>
-                <span class="badge bg-primary bg-opacity-10 text-primary fw-bold border border-primary border-opacity-25" style="font-size: 0.85rem;">
-                    {{ alvo.matricula_global|default:"Não cadastrada" }}
-                </span>
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-primary bg-opacity-10 text-primary fw-bold border border-primary border-opacity-25" style="font-size: 0.85rem;">
+                        {{ alvo.matricula_global|default:"Não cadastrada" }}
+                    </span>
+                    <i class="bi bi-pencil small text-primary field-edit-icon ms-2"></i>
+                </div>
             </div>
-            <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+            <div class="d-flex justify-content-between align-items-center border-bottom py-2 ficha-field-row" onclick="abrirModalEditarFicha('id_posto_trabalho')" title="Clique para editar o posto de trabalho">
                 <span class="text-muted small">Posto de Trabalho:</span>
-                <span class="small text-end">{{ alvo.posto_trabalho|default:"-" }}</span>
+                <div class="d-flex align-items-center text-end">
+                    <span class="small">{{ alvo.posto_trabalho|default:"-" }}</span>
+                    <i class="bi bi-pencil small text-primary field-edit-icon ms-2"></i>
+                </div>
             </div>
-            <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+            <div class="d-flex justify-content-between align-items-center border-bottom py-2 ficha-field-row" onclick="abrirModalEditarFicha('id_grupo')" title="Clique para editar o grupo">
                 <span class="text-muted small">Grupo:</span>
-                <span class="small text-end">{{ alvo.grupo|default:"-" }}</span>
+                <div class="d-flex align-items-center text-end">
+                    <span class="small">{{ alvo.grupo|default:"-" }}</span>
+                    <i class="bi bi-pencil small text-primary field-edit-icon ms-2"></i>
+                </div>
             </div>
-            <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+            <div class="d-flex justify-content-between align-items-center border-bottom py-2 ficha-field-row" onclick="abrirModalEditarFicha('id_cpf')" title="Clique para editar o CPF">
                 <span class="text-muted small">CPF:</span>
-                {% if can_see_salary and alvo.cpf %}
-                    <span class="small">{{ alvo.cpf|slice:":3" }}.{{ alvo.cpf|slice:"3:6" }}.{{ alvo.cpf|slice:"6:9" }}-{{ alvo.cpf|slice:"9:11" }}</span>
-                {% else %}
-                    <span class="small" style="filter: blur(4px);" title="Oculto por segurança">###.###.###-##</span>
-                {% endif %}
+                <div class="d-flex align-items-center">
+                    {% if can_see_salary and alvo.cpf %}
+                        <span class="small">{{ alvo.cpf|slice:":3" }}.{{ alvo.cpf|slice:"3:6" }}.{{ alvo.cpf|slice:"6:9" }}-{{ alvo.cpf|slice:"9:11" }}</span>
+                    {% else %}
+                        <span class="small" style="filter: blur(4px);" title="Oculto por segurança">###.###.###-##</span>
+                    {% endif %}
+                    <i class="bi bi-pencil small text-primary field-edit-icon ms-2"></i>
+                </div>
             </div>
-            <div class="d-flex justify-content-between align-items-center bg-light mt-2 p-2 rounded border">
+            <div class="d-flex justify-content-between align-items-center bg-light mt-2 p-2 rounded border ficha-field-row" onclick="abrirModalEditarFicha('id_salario')" title="Clique para editar o salário">
                 <span class="fw-bold text-dark small"><i class="bi bi-cash me-1"></i> Salário Base:</span>
-                {% if can_see_salary %}
-                    <span class="text-success fw-bold fs-6">R$ {{ alvo.salario|floatformat:2 }}</span>
-                {% else %}
-                    <span class="badge bg-secondary"><i class="bi bi-lock-fill"></i> RESTRITO</span>
-                {% endif %}
+                <div class="d-flex align-items-center">
+                    {% if can_see_salary %}
+                        <span class="text-success fw-bold fs-6">R$ {{ alvo.salario|floatformat:2 }}</span>
+                    {% else %}
+                        <span class="badge bg-secondary"><i class="bi bi-lock-fill"></i> RESTRITO</span>
+                    {% endif %}
+                    {% if can_see_salary %}
+                    <i class="bi bi-pencil small text-success field-edit-icon ms-2"></i>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
@@ -1656,7 +1860,253 @@ function toggleFocoPendencias(btnTrigger) {
         perfil.style.display = (focoApenasPendenciasAtivo && pendentes === 0) ? 'none' : '';
     });
 }
+
+function abrirModalEditarFicha(fieldId) {
+    const modalEl = document.getElementById('modalEditarFichaCadastral');
+    if (!modalEl) {
+        window.location.href = "/rh/colaborador/{{ alvo.id }}/editar/";
+        return;
+    }
+    
+    // Fechar offcanvas caso esteja aberto no mobile
+    const offcanvasEl = document.getElementById('offcanvasFichaCadastral');
+    if (offcanvasEl && typeof bootstrap !== 'undefined') {
+        const bsOffcanvas = bootstrap.Offcanvas.getInstance(offcanvasEl);
+        if (bsOffcanvas) bsOffcanvas.hide();
+    }
+    
+    // Se um campo específico foi passado, mudar para a aba correspondente e focar no campo
+    if (fieldId) {
+        if (['id_setor', 'id_cargo', 'id_turno', 'id_posto_trabalho', 'id_grupo'].includes(fieldId)) {
+            const tabBtn = document.getElementById('tab-cargo-tab');
+            if (tabBtn && typeof bootstrap !== 'undefined') bootstrap.Tab.getOrCreateInstance(tabBtn).show();
+        } else if (['id_posto_lideranca', 'id_lider', 'id_supervisor', 'id_gerente'].includes(fieldId)) {
+            const tabBtn = document.getElementById('tab-hierarquia-tab');
+            if (tabBtn && typeof bootstrap !== 'undefined') bootstrap.Tab.getOrCreateInstance(tabBtn).show();
+        } else {
+            const tabBtn = document.getElementById('tab-geral-tab');
+            if (tabBtn && typeof bootstrap !== 'undefined') bootstrap.Tab.getOrCreateInstance(tabBtn).show();
+        }
+        
+        setTimeout(() => {
+            const inputTarget = document.getElementById(fieldId);
+            if (inputTarget) {
+                inputTarget.focus();
+                if (inputTarget.select) inputTarget.select();
+            }
+        }, 350);
+    }
+    
+    if (typeof bootstrap !== 'undefined') {
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+}
+
+function setTabColaborador(tabName) {
+    if (window.localStorage) {
+        localStorage.setItem('colaborador_detail_active_tab_' + '{{ alvo.id }}', tabName);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.localStorage) {
+        const savedTab = localStorage.getItem('colaborador_detail_active_tab_' + '{{ alvo.id }}');
+        if (savedTab) {
+            const targetBtn = document.getElementById('tab-btn-' + savedTab);
+            if (targetBtn && typeof bootstrap !== 'undefined') {
+                bootstrap.Tab.getOrCreateInstance(targetBtn).show();
+            }
+        }
+    }
+});
 </script>
+
+<style>
+.nav-link-tab {
+    background-color: #ffffff;
+    color: #4b5563;
+    font-size: 0.875rem;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid #e5e7eb !important;
+}
+.nav-link-tab:hover:not(.active) {
+    background-color: #f3f4f6 !important;
+    color: #111827 !important;
+    border-color: #d1d5db !important;
+}
+.nav-link-tab.active {
+    background-color: #0d6efd !important;
+    color: #ffffff !important;
+    border-color: #0d6efd !important;
+    box-shadow: 0 4px 8px -2px rgba(13, 110, 253, 0.35) !important;
+}
+.nav-link-tab.active .badge.bg-primary-subtle,
+.nav-link-tab.active .badge.bg-secondary-subtle,
+.nav-link-tab.active .badge.bg-success-subtle {
+    background-color: rgba(255, 255, 255, 0.25) !important;
+    color: #ffffff !important;
+    border-color: rgba(255, 255, 255, 0.4) !important;
+}
+.scrollbar-none::-webkit-scrollbar {
+    display: none;
+}
+.scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.ficha-field-row {
+    cursor: pointer;
+    transition: background-color 0.15s ease, padding 0.15s ease;
+    border-radius: 6px;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+}
+.ficha-field-row:hover {
+    background-color: rgba(13, 110, 253, 0.06) !important;
+}
+.ficha-field-row .field-edit-icon {
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+.ficha-field-row:hover .field-edit-icon {
+    opacity: 0.85 !important;
+}
+</style>
+
+<!-- Modal Edição Rápida da Ficha Cadastral -->
+{% if can_edit_colaborador %}
+<div class="modal fade" id="modalEditarFichaCadastral" tabindex="-1" aria-labelledby="modalEditarFichaCadastralLabel" aria-hidden="true" style="z-index: 1065;">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <form method="post" action="{% url 'editar_colaborador' alvo.id %}" id="formEditarFichaCadastral">
+                {% csrf_token %}
+                <div class="modal-header bg-dark text-white rounded-top-4 py-3 px-4">
+                    <h5 class="modal-title fw-bold fs-5 mb-0 d-flex align-items-center" id="modalEditarFichaCadastralLabel">
+                        <i class="bi bi-person-badge text-warning me-2"></i> Editar Ficha Cadastral
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                
+                <div class="modal-body p-4">
+                    <!-- Nav Tabs -->
+                    <ul class="nav nav-pills nav-fill mb-3 bg-light p-1 rounded-3" id="editFichaTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active fw-semibold small rounded-2" id="tab-geral-tab" data-bs-toggle="pill" data-bs-target="#tab-geral" type="button" role="tab">
+                                <i class="bi bi-person me-1"></i> Dados Cadastrais
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fw-semibold small rounded-2" id="tab-cargo-tab" data-bs-toggle="pill" data-bs-target="#tab-cargo" type="button" role="tab">
+                                <i class="bi bi-briefcase me-1"></i> Setor & Cargo
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fw-semibold small rounded-2" id="tab-hierarquia-tab" data-bs-toggle="pill" data-bs-target="#tab-hierarquia" type="button" role="tab">
+                                <i class="bi bi-diagram-3 me-1"></i> Liderança & Hierarquia
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content pt-2" id="editFichaTabsContent">
+                        <!-- Aba 1: Dados Cadastrais -->
+                        <div class="tab-pane fade show active" id="tab-geral" role="tabpanel">
+                            <div class="row g-3">
+                                <div class="col-md-8">
+                                    <label class="form-label fw-bold small text-muted">Nome Completo</label>
+                                    {{ colaborador_form.nome_completo }}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold small text-muted">Matrícula</label>
+                                    {{ colaborador_form.matricula }}
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small text-muted"><i class="bi bi-globe me-1 text-primary"></i>Matrícula Global</label>
+                                    {{ colaborador_form.matricula_global }}
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small text-muted">CPF</label>
+                                    {{ colaborador_form.cpf }}
+                                </div>
+                                {% if can_see_salary %}
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small text-muted"><i class="bi bi-cash me-1 text-success"></i>Salário Base (R$)</label>
+                                    {{ colaborador_form.salario }}
+                                </div>
+                                {% endif %}
+                                <div class="col-md-6 d-flex align-items-center pt-3">
+                                    <div class="form-check form-switch ps-5">
+                                        {{ colaborador_form.is_active }}
+                                        <label class="form-check-label fw-bold small" for="{{ colaborador_form.is_active.id_for_label }}">Colaborador Ativo na Empresa</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Aba 2: Setor, Cargo & Turno -->
+                        <div class="tab-pane fade" id="tab-cargo" role="tabpanel">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small text-muted">Setor</label>
+                                    {{ colaborador_form.setor }}
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small text-muted">Cargo</label>
+                                    {{ colaborador_form.cargo }}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold small text-muted">Turno</label>
+                                    {{ colaborador_form.turno }}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold small text-muted">Posto de Trabalho</label>
+                                    {{ colaborador_form.posto_trabalho }}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold small text-muted">Grupo</label>
+                                    {{ colaborador_form.grupo }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Aba 3: Liderança & Hierarquia -->
+                        <div class="tab-pane fade" id="tab-hierarquia" role="tabpanel">
+                            <div class="row g-3">
+                                <div class="col-md-12">
+                                    <label class="form-label fw-bold small text-muted">Posto de Liderança</label>
+                                    {{ colaborador_form.posto_lideranca }}
+                                    <small class="text-muted d-block mt-1">Classificação para determinar liderança na estrutura hierárquica.</small>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="form-label fw-bold small text-muted">Líder Imediato</label>
+                                    {{ colaborador_form.lider }}
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small text-muted">Supervisor</label>
+                                    {{ colaborador_form.supervisor }}
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small text-muted">Gerente</label>
+                                    {{ colaborador_form.gerente }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer bg-light border-top-0 rounded-bottom-4 py-3 px-4">
+                    <button type="button" class="btn btn-secondary px-3 rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary px-4 rounded-pill shadow-sm" id="btnSalvarFichaCadastral">
+                        <i class="bi bi-check-lg me-1"></i>Salvar Alterações
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <!-- Modal Vencimento Férias -->
 <div class="modal fade" id="modalVencimentoFerias" tabindex="-1">

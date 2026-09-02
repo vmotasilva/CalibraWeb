@@ -1055,6 +1055,7 @@ def coating_painel(request):
     anomaly_filter = request.GET.get('anomaly', '')
     lote_search = request.GET.get('lote_search', '').strip()
     date_search = request.GET.get('date_search', '').strip()
+    active_tab = request.GET.get('tab', '').strip()
     
     base_qs = RegistroCoating.objects.all().select_related(
         'turno_coating', 'maquina', 'tratamento', 'preparacao', 'montagem'
@@ -1508,6 +1509,7 @@ def coating_painel(request):
         "anomaly_filter": anomaly_filter,
         "lote_search": lote_search,
         "date_search": date_search,
+        "active_tab": active_tab,
     }
     
     return render(request, "laboratorio/coating_painel.html", context)
@@ -2690,15 +2692,26 @@ def dashboard_coating(request):
             
             lotes_set.add(reg.lote)
             
-            manuts = list(reg.manutencoes.all())
+            manuts = list(reg.manutencoes.select_related('ciclo').all())
             manutencao_str = ", ".join([m.ciclo.nome for m in manuts]) if manuts else "Não"
             manutencao_count = len(manuts)
             
+            limpezas_list = [m.ciclo.nome for m in manuts if getattr(m.ciclo, 'tipo', '') == 'limpeza']
+            trocas_list = [m.ciclo.nome for m in manuts if getattr(m.ciclo, 'tipo', '') == 'troca']
+            verif_list = [m.ciclo.nome for m in manuts if getattr(m.ciclo, 'tipo', '') == 'verificacao']
+
             obs_text = reg.observacao if reg.observacao and str(reg.observacao).strip() != 'None' else ''
             
             detalhes_lotes.append({
+                'id': reg.id,
                 'lote': reg.lote,
                 'lado': reg.lado,
+                'maquina_id': reg.maquina_id,
+                'tratamento_id': reg.tratamento_id,
+                'hora_entrada_raw': reg.hora_entrada.strftime('%Y-%m-%dT%H:%M') if reg.hora_entrada else '',
+                'hora_saida_raw': reg.hora_saida.strftime('%Y-%m-%dT%H:%M') if reg.hora_saida else '',
+                'preparacao_id': reg.preparacao_id or '',
+                'montagem_id': reg.montagem_id or '',
                 'entrada': reg.hora_entrada_dt.strftime('%H:%M') if reg.hora_entrada_dt else '-',
                 'saida': reg.hora_saida_dt.strftime('%H:%M') if reg.hora_saida_dt else '-',
                 'rodando': format_timedelta(timedelta(seconds=reg.tempo_rodando_sec)),
@@ -2706,6 +2719,9 @@ def dashboard_coating(request):
                 'motivo_gap': motivo_gap if motivo_gap else '-',
                 'manutencao': manutencao_str,
                 'manutencao_count': manutencao_count,
+                'limpezas': limpezas_list,
+                'trocas': trocas_list,
+                'verificacoes': verif_list,
                 'observacao': obs_text
             })
 
@@ -2732,51 +2748,145 @@ def dashboard_coating(request):
             'detalhes_json': detalhes_json
         })
 
-    # Agrupar para o Grid Analítico de KPI (Substituindo os cards)
+    # Agrupar para o Grid Analítico de KPI com Subtotais
     kpi_agrupados = {}
     for row in grid_rows:
-        key = (row['maquina'].codigo if hasattr(row['maquina'], 'codigo') else str(row['maquina']), row['turno'])
+        maq_nome = row['maquina'].codigo if hasattr(row['maquina'], 'codigo') else str(row['maquina'])
+        tur_nome = str(row['turno'])
+        key = (maq_nome, tur_nome)
         if key not in kpi_agrupados:
             kpi_agrupados[key] = {
-                'maquina': key[0],
-                'turno': key[1],
-                'dias_operados': 0,
+                'maquina': maq_nome,
+                'turno': tur_nome,
+                'datas': set(),
                 'total_lotes': 0,
                 'total_sec_rodando': 0,
                 'total_sec_parada': 0,
             }
         
-        kpi_agrupados[key]['dias_operados'] += 1
+        kpi_agrupados[key]['datas'].add(row['data'])
         kpi_agrupados[key]['total_lotes'] += row['lotes']
         kpi_agrupados[key]['total_sec_rodando'] += row['raw_sec_rodando']
         kpi_agrupados[key]['total_sec_parada'] += row['raw_sec_parada']
 
-    kpi_grid_rows = []
-    for kpi in kpi_agrupados.values():
-        total_lotes = kpi['total_lotes']
-        dias_op = kpi['dias_operados']
+    # 1. Estruturar Grupos por Máquina com Subtotal
+    maq_chaves = sorted(list(set(k[0] for k in kpi_agrupados.keys())))
+    kpi_grupos_maq = []
+    
+    for maq in maq_chaves:
+        itens = []
+        sub_lotes = 0
+        sub_sec_rodando = 0
+        sub_sec_parada = 0
+        sub_datas = set()
         
-        media_dia_rodando_sec = kpi['total_sec_rodando'] / dias_op if dias_op > 0 else 0
-        media_lote_rodando_sec = kpi['total_sec_rodando'] / total_lotes if total_lotes > 0 else 0
-        media_lote_parada_sec = kpi['total_sec_parada'] / total_lotes if total_lotes > 0 else 0
+        turnos_da_maq = sorted([k for k in kpi_agrupados.keys() if k[0] == maq], key=lambda x: x[1])
+        for key in turnos_da_maq:
+            kpi = kpi_agrupados[key]
+            tot_l = kpi['total_lotes']
+            dias_op = len(kpi['datas'])
+            
+            med_dia_rod = kpi['total_sec_rodando'] / dias_op if dias_op > 0 else 0
+            med_lot_rod = kpi['total_sec_rodando'] / tot_l if tot_l > 0 else 0
+            med_lot_par = kpi['total_sec_parada'] / tot_l if tot_l > 0 else 0
+            
+            sub_lotes += tot_l
+            sub_sec_rodando += kpi['total_sec_rodando']
+            sub_sec_parada += kpi['total_sec_parada']
+            sub_datas.update(kpi['datas'])
+            
+            itens.append({
+                'maquina': maq,
+                'turno': kpi['turno'],
+                'total_lotes': tot_l if not isinstance(tot_l, float) or not tot_l.is_integer() else int(tot_l),
+                'media_dia_rodando': format_timedelta(timedelta(seconds=med_dia_rod)),
+                'media_lote_rodando': format_timedelta(timedelta(seconds=med_lot_rod)),
+                'media_lote_parada': format_timedelta(timedelta(seconds=med_lot_par)),
+            })
+            
+        sub_dias = len(sub_datas)
+        sub_med_dia_rod = sub_sec_rodando / sub_dias if sub_dias > 0 else 0
+        sub_med_lot_rod = sub_sec_rodando / sub_lotes if sub_lotes > 0 else 0
+        sub_med_lot_par = sub_sec_parada / sub_lotes if sub_lotes > 0 else 0
         
-        kpi_grid_rows.append({
-            'maquina': kpi['maquina'],
-            'turno': kpi['turno'],
-            'total_lotes': total_lotes if not isinstance(total_lotes, float) or not total_lotes.is_integer() else int(total_lotes),
-            'media_dia_rodando': format_timedelta(timedelta(seconds=media_dia_rodando_sec)),
-            'media_lote_rodando': format_timedelta(timedelta(seconds=media_lote_rodando_sec)),
-            'media_lote_parada': format_timedelta(timedelta(seconds=media_lote_parada_sec)),
+        subtotal = {
+            'titulo': f'Subtotal {maq}',
+            'total_lotes': sub_lotes if not isinstance(sub_lotes, float) or not sub_lotes.is_integer() else int(sub_lotes),
+            'media_dia_rodando': format_timedelta(timedelta(seconds=sub_med_dia_rod)),
+            'media_lote_rodando': format_timedelta(timedelta(seconds=sub_med_lot_rod)),
+            'media_lote_parada': format_timedelta(timedelta(seconds=sub_med_lot_par)),
+        }
+        
+        kpi_grupos_maq.append({
+            'grupo': maq,
+            'itens': itens,
+            'subtotal': subtotal
         })
 
-    # Ordenar por maquina e turno
-    kpi_grid_rows = sorted(kpi_grid_rows, key=lambda x: (x['maquina'], x['turno']))
+    # 2. Estruturar Grupos por Turno com Subtotal
+    turno_chaves = sorted(list(set(k[1] for k in kpi_agrupados.keys())))
+    kpi_grupos_turno = []
+    
+    for tur in turno_chaves:
+        itens = []
+        sub_lotes = 0
+        sub_sec_rodando = 0
+        sub_sec_parada = 0
+        sub_datas = set()
+        
+        maqs_do_turno = sorted([k for k in kpi_agrupados.keys() if k[1] == tur], key=lambda x: x[0])
+        for key in maqs_do_turno:
+            kpi = kpi_agrupados[key]
+            tot_l = kpi['total_lotes']
+            dias_op = len(kpi['datas'])
+            
+            med_dia_rod = kpi['total_sec_rodando'] / dias_op if dias_op > 0 else 0
+            med_lot_rod = kpi['total_sec_rodando'] / tot_l if tot_l > 0 else 0
+            med_lot_par = kpi['total_sec_parada'] / tot_l if tot_l > 0 else 0
+            
+            sub_lotes += tot_l
+            sub_sec_rodando += kpi['total_sec_rodando']
+            sub_sec_parada += kpi['total_sec_parada']
+            sub_datas.update(kpi['datas'])
+            
+            itens.append({
+                'turno': tur,
+                'maquina': kpi['maquina'],
+                'total_lotes': tot_l if not isinstance(tot_l, float) or not tot_l.is_integer() else int(tot_l),
+                'media_dia_rodando': format_timedelta(timedelta(seconds=med_dia_rod)),
+                'media_lote_rodando': format_timedelta(timedelta(seconds=med_lot_rod)),
+                'media_lote_parada': format_timedelta(timedelta(seconds=med_lot_par)),
+            })
+            
+        sub_dias = len(sub_datas)
+        sub_med_dia_rod = sub_sec_rodando / sub_dias if sub_dias > 0 else 0
+        sub_med_lot_rod = sub_sec_rodando / sub_lotes if sub_lotes > 0 else 0
+        sub_med_lot_par = sub_sec_parada / sub_lotes if sub_lotes > 0 else 0
+        
+        subtotal = {
+            'titulo': f'Subtotal {tur}',
+            'total_lotes': sub_lotes if not isinstance(sub_lotes, float) or not sub_lotes.is_integer() else int(sub_lotes),
+            'media_dia_rodando': format_timedelta(timedelta(seconds=sub_med_dia_rod)),
+            'media_lote_rodando': format_timedelta(timedelta(seconds=sub_med_lot_rod)),
+            'media_lote_parada': format_timedelta(timedelta(seconds=sub_med_lot_par)),
+        }
+        
+        kpi_grupos_turno.append({
+            'grupo': tur,
+            'itens': itens,
+            'subtotal': subtotal
+        })
+
+    tratamentos = TratamentoAntirreflexo.objects.filter(is_active=True).order_by('nome')
+    equipe = EquipeCoating.objects.filter(is_active=True).select_related('colaborador').order_by('colaborador__nome_completo')
 
     return render(request, "laboratorio/dashboard_coating.html", {
         "maquinas": maquinas,
         "maquina_selecionada": int(maquina_id) if maquina_id and maquina_id.isdigit() else "",
         "turnos_disponiveis": turnos_disponiveis,
         "turno_selecionado": int(turno_id) if turno_id and turno_id.isdigit() else "",
+        "tratamentos": tratamentos,
+        "equipe": equipe,
         "periodo": periodo,
         "periodo_display": periodo_display,
         "data_de": inicio.strftime('%Y-%m-%d'),
@@ -2798,7 +2908,8 @@ def dashboard_coating(request):
         "manut_datasets_sem": json.dumps(manut_datasets_sem),
         "manut_datasets_mes": json.dumps(manut_datasets_mes),
         "grid_rows": grid_rows,
-        "kpi_grid_rows": kpi_grid_rows,
+        "kpi_grupos_maq": kpi_grupos_maq,
+        "kpi_grupos_turno": kpi_grupos_turno,
     })
 
 @login_required
