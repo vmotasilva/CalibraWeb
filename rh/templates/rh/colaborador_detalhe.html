@@ -3,120 +3,124 @@
 {% block content %}
 <div class="container-fluid py-3 overflow-x-hidden">
     
-    <!-- CABEÇALHO RESPONSIVO DO PERFIL + NAVEGAÇÃO POR ABAS NA MESMA FAIXA -->
-    <div class="d-flex flex-column flex-xl-row justify-content-between align-items-start align-items-xl-center gap-3 mb-4 border-bottom pb-3 w-100">
+    <!-- CABEÇALHO RESPONSIVO DO PERFIL + NAVEGAÇÃO POR ABAS ALINHADA À DIREITA / COM OS CARDS -->
+    <div class="row align-items-center mb-4 border-bottom pb-3 g-3">
         
-        <!-- Perfil (Avatar + Nome/Cargo) e Botão Voltar Compacto -->
-        <div class="d-flex align-items-center gap-3 min-w-0">
-            <a href="{% url 'modulo_rh' %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px; border-radius: 4px;" title="Voltar para Gestão de Pessoas">
-                <i class="bi bi-arrow-left fs-6"></i>
-            </a>
-            <div class="bg-primary text-white rounded-1 d-flex align-items-center justify-content-center fw-bold shadow-sm flex-shrink-0" style="width: 48px; height: 48px; font-size: 19px;">
-                {{ alvo.nome_completo|slice:":1" }}
-            </div>
-            <div class="min-w-0 text-break">
-                <h3 class="fw-bold mb-1 text-truncate fs-5 fs-md-4 text-dark" title="{{ alvo.nome_completo }}">{{ alvo.nome_completo }}</h3>
-                
-                <!-- Informações em linhas separadas (Cargo, Matrícula e Mat. Global) -->
-                <div class="text-muted small">
-                    <div class="fw-semibold text-secondary text-truncate" title="{{ alvo.cargo|default:'Sem cargo' }}">
-                        {{ alvo.cargo|default:"Sem cargo" }}
+        <!-- Perfil (Avatar + Nome/Cargo) e Botão Voltar Compacto (Alinhado com a Ficha Cadastral) -->
+        <div class="col-12 col-md-4">
+            <div class="d-flex align-items-center gap-3 min-w-0">
+                <a href="{% url 'modulo_rh' %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px; border-radius: 4px;" title="Voltar para Gestão de Pessoas">
+                    <i class="bi bi-arrow-left fs-6"></i>
+                </a>
+                <div class="bg-primary text-white rounded-1 d-flex align-items-center justify-content-center fw-bold shadow-sm flex-shrink-0" style="width: 48px; height: 48px; font-size: 19px;">
+                    {{ alvo.nome_completo|slice:":1" }}
+                </div>
+                <div class="min-w-0 text-break">
+                    <h3 class="fw-bold mb-1 text-truncate fs-5 text-dark" title="{{ alvo.nome_completo }}">{{ alvo.nome_completo }}</h3>
+                    
+                    <!-- Informações em linhas separadas (Cargo, Matrícula e Mat. Global) -->
+                    <div class="text-muted small">
+                        <div class="fw-semibold text-secondary text-truncate" title="{{ alvo.cargo|default:'Sem cargo' }}">
+                            {{ alvo.cargo|default:"Sem cargo" }}
+                        </div>
+                        <div class="text-muted" style="font-size: 0.82rem;">
+                            Matrícula: <strong>{{ alvo.matricula }}</strong>
+                        </div>
+                        {% if alvo.matricula_global %}
+                        <div class="text-muted" style="font-size: 0.82rem;">
+                            Mat. Global: <strong class="text-primary">{{ alvo.matricula_global }}</strong>
+                        </div>
+                        {% endif %}
                     </div>
-                    <div class="text-muted" style="font-size: 0.82rem;">
-                        Matrícula: <strong>{{ alvo.matricula }}</strong>
-                    </div>
-                    {% if alvo.matricula_global %}
-                    <div class="text-muted" style="font-size: 0.82rem;">
-                        Mat. Global: <strong class="text-primary">{{ alvo.matricula_global }}</strong>
-                    </div>
-                    {% endif %}
                 </div>
             </div>
         </div>
 
-        <!-- NAVEGAÇÃO PRINCIPAL POR ABAS (QUADRADAS) NA MESMA FAIXA -->
-        <div class="d-flex flex-nowrap overflow-x-auto gap-2 p-1 bg-light rounded-1 border shadow-sm scrollbar-none w-100 w-xl-auto" id="colaboradorDetailTabs" role="tablist">
-            <!-- 1. Férias e Períodos -->
-            <button class="nav-link-tab active d-flex align-items-center gap-2 px-3 py-2 fw-bold text-nowrap transition-all border-0 shadow-sm rounded-1"
-                    id="tab-btn-ferias"
-                    data-bs-toggle="pill"
-                    data-bs-target="#tab-pane-ferias"
-                    type="button"
-                    role="tab"
-                    aria-controls="tab-pane-ferias"
-                    aria-selected="true"
-                    onclick="setTabColaborador('ferias')">
-                <i class="bi bi-calendar2-week-fill"></i>
-                <span>Férias e Períodos</span>
-                {% if kpi_ferias_vencidas > 0 %}
-                    <span class="badge bg-danger text-white rounded-1 px-2 py-0.5" title="{{ kpi_ferias_vencidas }} vencida(s)">{{ kpi_ferias_vencidas }} vencida{{ kpi_ferias_vencidas|pluralize }}</span>
-                {% elif vencimentos_ferias %}
-                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-1 px-2 py-0.5">{{ vencimentos_ferias|length }}</span>
-                {% elif ferias %}
-                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-1 px-2 py-0.5">{{ ferias|length }}</span>
-                {% else %}
-                    <span class="badge bg-secondary-subtle text-secondary rounded-1 px-2 py-0.5">0</span>
-                {% endif %}
-            </button>
+        <!-- NAVEGAÇÃO PRINCIPAL POR ABAS (QUADRADAS) ALINHADA COM OS CARDS DA DIREITA -->
+        <div class="col-12 col-md-8 d-flex justify-content-start justify-content-md-end">
+            <div class="d-flex flex-nowrap overflow-x-auto gap-2 p-1 bg-light rounded-1 border shadow-sm scrollbar-none w-100 w-md-auto" id="colaboradorDetailTabs" role="tablist">
+                <!-- 1. Férias e Períodos -->
+                <button class="nav-link-tab active d-flex align-items-center gap-2 px-3 py-2 fw-bold text-nowrap transition-all border-0 shadow-sm rounded-1"
+                        id="tab-btn-ferias"
+                        data-bs-toggle="pill"
+                        data-bs-target="#tab-pane-ferias"
+                        type="button"
+                        role="tab"
+                        aria-controls="tab-pane-ferias"
+                        aria-selected="true"
+                        onclick="setTabColaborador('ferias')">
+                    <i class="bi bi-calendar2-week-fill"></i>
+                    <span>Férias e Períodos</span>
+                    {% if kpi_ferias_vencidas > 0 %}
+                        <span class="badge bg-danger text-white rounded-1 px-2 py-0.5" title="{{ kpi_ferias_vencidas }} vencida(s)">{{ kpi_ferias_vencidas }} vencida{{ kpi_ferias_vencidas|pluralize }}</span>
+                    {% elif vencimentos_ferias %}
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-1 px-2 py-0.5">{{ vencimentos_ferias|length }}</span>
+                    {% elif ferias %}
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-1 px-2 py-0.5">{{ ferias|length }}</span>
+                    {% else %}
+                        <span class="badge bg-secondary-subtle text-secondary rounded-1 px-2 py-0.5">0</span>
+                    {% endif %}
+                </button>
 
-            <!-- 2. Matriz de Treinamentos -->
-            <button class="nav-link-tab d-flex align-items-center gap-2 px-3 py-2 fw-bold text-nowrap transition-all border-0 rounded-1"
-                    id="tab-btn-treinamentos"
-                    data-bs-toggle="pill"
-                    data-bs-target="#tab-pane-treinamentos"
-                    type="button"
-                    role="tab"
-                    aria-controls="tab-pane-treinamentos"
-                    aria-selected="false"
-                    onclick="setTabColaborador('treinamentos')">
-                <i class="bi bi-mortarboard-fill"></i>
-                <span>Matriz de Treinamentos</span>
-                {% if total_pendentes > 0 %}
-                    <span class="badge bg-danger text-white rounded-1 px-2 py-0.5">{{ total_pendentes }} pendente{{ total_pendentes|pluralize }}</span>
-                {% elif total_treinamentos > 0 %}
-                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-1 px-2 py-0.5">{{ total_treinamentos }}</span>
-                {% else %}
-                    <span class="badge bg-secondary-subtle text-secondary rounded-1 px-2 py-0.5">0</span>
-                {% endif %}
-            </button>
+                <!-- 2. Matriz de Treinamentos -->
+                <button class="nav-link-tab d-flex align-items-center gap-2 px-3 py-2 fw-bold text-nowrap transition-all border-0 rounded-1"
+                        id="tab-btn-treinamentos"
+                        data-bs-toggle="pill"
+                        data-bs-target="#tab-pane-treinamentos"
+                        type="button"
+                        role="tab"
+                        aria-controls="tab-pane-treinamentos"
+                        aria-selected="false"
+                        onclick="setTabColaborador('treinamentos')">
+                    <i class="bi bi-mortarboard-fill"></i>
+                    <span>Matriz de Treinamentos</span>
+                    {% if total_pendentes > 0 %}
+                        <span class="badge bg-danger text-white rounded-1 px-2 py-0.5">{{ total_pendentes }} pendente{{ total_pendentes|pluralize }}</span>
+                    {% elif total_treinamentos > 0 %}
+                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-1 px-2 py-0.5">{{ total_treinamentos }}</span>
+                    {% else %}
+                        <span class="badge bg-secondary-subtle text-secondary rounded-1 px-2 py-0.5">0</span>
+                    {% endif %}
+                </button>
 
-            <!-- 3. Ocorrências / Feedback -->
-            <button class="nav-link-tab d-flex align-items-center gap-2 px-3 py-2 fw-bold text-nowrap transition-all border-0 rounded-1"
-                    id="tab-btn-ocorrencias"
-                    data-bs-toggle="pill"
-                    data-bs-target="#tab-pane-ocorrencias"
-                    type="button"
-                    role="tab"
-                    aria-controls="tab-pane-ocorrencias"
-                    aria-selected="false"
-                    onclick="setTabColaborador('ocorrencias')">
-                <i class="bi bi-exclamation-triangle-fill"></i>
-                <span>Ocorrências / Feedback</span>
-                {% if ocorrencias.count > 0 %}
-                    <span class="badge bg-warning text-dark fw-bold rounded-1 px-2 py-0.5">{{ ocorrencias.count }}</span>
-                {% else %}
-                    <span class="badge bg-secondary-subtle text-secondary rounded-1 px-2 py-0.5">0</span>
-                {% endif %}
-            </button>
+                <!-- 3. Ocorrências / Feedback -->
+                <button class="nav-link-tab d-flex align-items-center gap-2 px-3 py-2 fw-bold text-nowrap transition-all border-0 rounded-1"
+                        id="tab-btn-ocorrencias"
+                        data-bs-toggle="pill"
+                        data-bs-target="#tab-pane-ocorrencias"
+                        type="button"
+                        role="tab"
+                        aria-controls="tab-pane-ocorrencias"
+                        aria-selected="false"
+                        onclick="setTabColaborador('ocorrencias')">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <span>Ocorrências / Feedback</span>
+                    {% if ocorrencias.count > 0 %}
+                        <span class="badge bg-warning text-dark fw-bold rounded-1 px-2 py-0.5">{{ ocorrencias.count }}</span>
+                    {% else %}
+                        <span class="badge bg-secondary-subtle text-secondary rounded-1 px-2 py-0.5">0</span>
+                    {% endif %}
+                </button>
 
-            <!-- 4. Histórico de Mudanças -->
-            <button class="nav-link-tab d-flex align-items-center gap-2 px-3 py-2 fw-bold text-nowrap transition-all border-0 rounded-1"
-                    id="tab-btn-historico"
-                    data-bs-toggle="pill"
-                    data-bs-target="#tab-pane-historico"
-                    type="button"
-                    role="tab"
-                    aria-controls="tab-pane-historico"
-                    aria-selected="false"
-                    onclick="setTabColaborador('historico')">
-                <i class="bi bi-clock-history"></i>
-                <span>Histórico de Mudanças</span>
-                {% if alvo.get_historico_completo %}
-                    <span class="badge bg-secondary-subtle text-secondary rounded-1 px-2 py-0.5">{{ alvo.get_historico_completo|length }}</span>
-                {% else %}
-                    <span class="badge bg-secondary-subtle text-secondary rounded-1 px-2 py-0.5">0</span>
-                {% endif %}
-            </button>
+                <!-- 4. Histórico de Mudanças -->
+                <button class="nav-link-tab d-flex align-items-center gap-2 px-3 py-2 fw-bold text-nowrap transition-all border-0 rounded-1"
+                        id="tab-btn-historico"
+                        data-bs-toggle="pill"
+                        data-bs-target="#tab-pane-historico"
+                        type="button"
+                        role="tab"
+                        aria-controls="tab-pane-historico"
+                        aria-selected="false"
+                        onclick="setTabColaborador('historico')">
+                    <i class="bi bi-clock-history"></i>
+                    <span>Histórico de Mudanças</span>
+                    {% if alvo.get_historico_completo %}
+                        <span class="badge bg-secondary-subtle text-secondary rounded-1 px-2 py-0.5">{{ alvo.get_historico_completo|length }}</span>
+                    {% else %}
+                        <span class="badge bg-secondary-subtle text-secondary rounded-1 px-2 py-0.5">0</span>
+                    {% endif %}
+                </button>
+            </div>
         </div>
     </div>
 
