@@ -1617,25 +1617,47 @@ def get_metrologia_dashboard_data():
         from fornecedores.models import Fornecedor
         fornecedores_list = list(Fornecedor.objects.filter(ativo=True).order_by('nome'))
     except Exception:
-        fornecedores_list = []
+        try:
+            from fornecedores.models import Fornecedor
+            fornecedores_list = list(Fornecedor.objects.all().order_by('nome'))
+        except Exception:
+            fornecedores_list = []
 
     try:
+        from metrologia.models import CategoriaInstrumento
         from django.db.models.functions import Lower
-        categorias_list = list(CategoriaInstrumento.objects.filter(ativo=True).order_by(Lower('nome')))
+        categorias_list = list(CategoriaInstrumento.objects.all().order_by(Lower('nome')))
     except Exception:
         try:
-            categorias_list = list(CategoriaInstrumento.objects.filter(ativo=True).order_by('nome'))
+            from metrologia.models import CategoriaInstrumento
+            categorias_list = list(CategoriaInstrumento.objects.all().order_by('nome'))
         except Exception:
             categorias_list = []
 
+    if not categorias_list:
+        cat_map = {}
+        for inst in instrumentos_qs:
+            if inst.categoria_id and inst.categoria:
+                cat_map[inst.categoria_id] = inst.categoria.nome
+        categorias_list = [{'id': k, 'nome': v} for k, v in sorted(cat_map.items(), key=lambda x: str(x[1]).lower())]
+
     try:
+        from organization.models import Setor
         from django.db.models.functions import Lower
-        setores_list = list(Setor.objects.filter(ativo=True).order_by(Lower('nome')))
+        setores_list = list(Setor.objects.all().order_by(Lower('nome')))
     except Exception:
         try:
-            setores_list = list(Setor.objects.filter(ativo=True).order_by('nome'))
+            from organization.models import Setor
+            setores_list = list(Setor.objects.all().order_by('nome'))
         except Exception:
             setores_list = []
+
+    if not setores_list:
+        set_map = {}
+        for inst in instrumentos_qs:
+            if inst.setor_id and inst.setor:
+                set_map[inst.setor_id] = inst.setor.nome
+        setores_list = [{'id': k, 'nome': v} for k, v in sorted(set_map.items(), key=lambda x: str(x[1]).lower())]
 
     # Cotações Abertas e Equipamentos no Fornecedor
     cotacoes_abertas = SolicitacaoCotacao.objects.filter(status='ABERTA').count()
