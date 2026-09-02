@@ -570,7 +570,20 @@
                                 {% endif %}
                                 {% endif %}
                             </div>
-                            <div class="d-flex align-items-center gap-2">
+                            <div class="d-flex align-items-center flex-wrap gap-2">
+                                <!-- Botões de Níveis de Expansão -->
+                                <div class="btn-group btn-group-sm shadow-sm" role="group" aria-label="Níveis de Expansão">
+                                    <button type="button" class="btn btn-light text-dark fw-bold px-2 py-1 btn-nivel-matriz" id="btnNivel1" onclick="setNivelMatriz(1)" title="Nível 1: Expande os perfis e mantém subníveis recolhidos">
+                                        <i class="bi bi-diagram-2 me-1"></i>Nível 1
+                                    </button>
+                                    <button type="button" class="btn btn-light text-dark fw-bold px-2 py-1 btn-nivel-matriz" id="btnNivel2" onclick="setNivelMatriz(2)" title="Nível 2: Expande perfis e a primeira camada (grupos)">
+                                        <i class="bi bi-diagram-3 me-1"></i>Nível 2
+                                    </button>
+                                    <button type="button" class="btn btn-light text-dark fw-bold px-2 py-1 btn-nivel-matriz" id="btnNivel3" onclick="setNivelMatriz(3)" title="Nível 3: Expande todos os níveis (perfis, grupos e procedimentos)">
+                                        <i class="bi bi-list-nested me-1"></i>Nível 3
+                                    </button>
+                                </div>
+
                                 {% if total_pendentes > 0 %}
                                 <button type="button" class="btn btn-sm btn-warning text-dark fw-bold btn-toggle-pendencias" onclick="toggleFocoPendencias(this)">
                                     <i class="bi bi-funnel-fill me-1"></i> <span>Apenas Pendências</span>
@@ -1786,6 +1799,58 @@ function toggleFocoPendencias(btnTrigger) {
         const pendentes = parseInt(perfil.getAttribute('data-pendentes') || '0', 10);
         perfil.style.display = (focoApenasPendenciasAtivo && pendentes === 0) ? 'none' : '';
     });
+}
+
+function setNivelMatriz(nivel) {
+    const container = document.getElementById('tab-pane-treinamentos');
+    if (!container) return;
+
+    // Atualizar visual dos botões de nível
+    document.querySelectorAll('.btn-nivel-matriz').forEach((btn, idx) => {
+        if (idx + 1 === nivel) {
+            btn.classList.remove('btn-light', 'text-dark');
+            btn.classList.add('btn-dark', 'text-white', 'active');
+        } else {
+            btn.classList.remove('btn-dark', 'text-white', 'active');
+            btn.classList.add('btn-light', 'text-dark');
+        }
+    });
+
+    const perfis = container.querySelectorAll('.perfil-accordion-container > .accordion-item > .accordion-collapse');
+    const grupos = container.querySelectorAll('.grupo-accordion-container > .accordion-item > .accordion-collapse');
+    const subgrupos = container.querySelectorAll('.subgrupo-accordion-container > .accordion-item > .accordion-collapse');
+
+    function toggleCollapse(el, show) {
+        if (!el) return;
+        const btn = document.querySelector(`[data-bs-target="#${el.id}"]`);
+        if (show) {
+            el.classList.add('show');
+            if (btn) {
+                btn.classList.remove('collapsed');
+                btn.setAttribute('aria-expanded', 'true');
+            }
+        } else {
+            el.classList.remove('show');
+            if (btn) {
+                btn.classList.add('collapsed');
+                btn.setAttribute('aria-expanded', 'false');
+            }
+        }
+    }
+
+    if (nivel === 1) {
+        perfis.forEach(el => toggleCollapse(el, true));
+        grupos.forEach(el => toggleCollapse(el, false));
+        subgrupos.forEach(el => toggleCollapse(el, false));
+    } else if (nivel === 2) {
+        perfis.forEach(el => toggleCollapse(el, true));
+        grupos.forEach(el => toggleCollapse(el, true));
+        subgrupos.forEach(el => toggleCollapse(el, false));
+    } else if (nivel === 3) {
+        perfis.forEach(el => toggleCollapse(el, true));
+        grupos.forEach(el => toggleCollapse(el, true));
+        subgrupos.forEach(el => toggleCollapse(el, true));
+    }
 }
 
 function abrirModalEditarFicha(fieldId) {
