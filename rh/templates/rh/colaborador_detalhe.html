@@ -33,59 +33,94 @@
                 </div>
             </div>
         </div>
-        
-        <!-- Ações Desktop (>= 768px) -->
-        <div class="d-none d-md-flex flex-wrap gap-2 align-items-center">
-            {% if can_edit_colaborador %}
-            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="abrirModalEditarFicha()">
-                <i class="bi bi-pencil me-1"></i> Editar Dados
-            </button>
-            {% endif %}
-            {% if can_register_occ %}
-            <a href="{% url 'registrar_ocorrencia' %}?colab_id={{ alvo.id }}" class="btn btn-outline-primary btn-sm">
-                <i class="bi bi-exclamation-triangle me-1"></i> Nova Ocorrência
-            </a>
-            {% endif %}
-            {% if can_register_ferias %}
-            <a href="/rh/colaborador/{{ alvo.id }}/ferias/registrar/" class="btn btn-outline-success btn-sm">
-                <i class="bi bi-calendar-check me-1"></i> Registrar Férias
-            </a>
-            {% endif %}
-            <a href="{% url 'modulo_rh' %}" class="btn btn-outline-dark btn-sm">
-                <i class="bi bi-arrow-left me-1"></i> Voltar
-            </a>
-        </div>
+    </div>
 
-        <!-- Ações Mobile (< 768px): Dropdown "Ações" 100% -->
-        <div class="d-flex d-md-none w-100">
-            <div class="dropdown w-100">
-                <button class="btn btn-outline-primary w-100 dropdown-toggle d-flex align-items-center justify-content-center shadow-sm" type="button" id="dropdownAcoesColabMobile" data-bs-toggle="dropdown" aria-expanded="false" style="min-height: 38px;">
-                    <i class="bi bi-three-dots-vertical me-2"></i> Ações Rápidas
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end w-100 shadow py-2" aria-labelledby="dropdownAcoesColabMobile">
-                    {% if can_edit_colaborador %}
-                    <li>
-                        <button type="button" class="dropdown-item py-2" onclick="abrirModalEditarFicha()">
-                            <i class="bi bi-pencil text-secondary me-2"></i> Editar Dados Cadastrais
-                        </button>
-                    </li>
-                    {% endif %}
-                    {% if can_register_occ %}
-                    <li>
-                        <a href="{% url 'registrar_ocorrencia' %}?colab_id={{ alvo.id }}" class="dropdown-item py-2">
-                            <i class="bi bi-exclamation-triangle text-primary me-2"></i> Nova Ocorrência / Feedback
-                        </a>
-                    </li>
-                    {% endif %}
-                    {% if can_register_ferias %}
-                    <li>
-                        <a href="/rh/colaborador/{{ alvo.id }}/ferias/registrar/" class="dropdown-item py-2">
-                            <i class="bi bi-calendar-check text-success me-2"></i> Registrar Férias
-                        </a>
-                    </li>
-                    {% endif %}
-                </ul>
-            </div>
+    <!-- ========================================================================= -->
+    <!-- NAVEGAÇÃO PRINCIPAL POR ABAS NO TOPO (DESKTOP & MOBILE)                    -->
+    <!-- ========================================================================= -->
+    <div class="mb-4">
+        <div class="d-flex flex-nowrap overflow-x-auto gap-2 p-1.5 bg-light rounded-4 border shadow-sm scrollbar-none" id="colaboradorDetailTabs" role="tablist">
+            <!-- 1. Férias e Períodos -->
+            <button class="nav-link-tab active d-flex align-items-center gap-2 px-3 py-2.5 rounded-3 fw-bold text-nowrap transition-all border-0 shadow-sm"
+                    id="tab-btn-ferias"
+                    data-bs-toggle="pill"
+                    data-bs-target="#tab-pane-ferias"
+                    type="button"
+                    role="tab"
+                    aria-controls="tab-pane-ferias"
+                    aria-selected="true"
+                    onclick="setTabColaborador('ferias')">
+                <i class="bi bi-calendar2-week-fill"></i>
+                <span>Férias e Períodos</span>
+                {% if kpi_ferias_vencidas > 0 %}
+                    <span class="badge bg-danger text-white rounded-pill px-2 py-0.5" title="{{ kpi_ferias_vencidas }} vencida(s)">{{ kpi_ferias_vencidas }} vencida{{ kpi_ferias_vencidas|pluralize }}</span>
+                {% elif vencimentos_ferias %}
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-0.5">{{ vencimentos_ferias|length }}</span>
+                {% elif ferias %}
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-0.5">{{ ferias|length }}</span>
+                {% else %}
+                    <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5">0</span>
+                {% endif %}
+            </button>
+
+            <!-- 2. Matriz de Treinamentos -->
+            <button class="nav-link-tab d-flex align-items-center gap-2 px-3 py-2.5 rounded-3 fw-bold text-nowrap transition-all border-0"
+                    id="tab-btn-treinamentos"
+                    data-bs-toggle="pill"
+                    data-bs-target="#tab-pane-treinamentos"
+                    type="button"
+                    role="tab"
+                    aria-controls="tab-pane-treinamentos"
+                    aria-selected="false"
+                    onclick="setTabColaborador('treinamentos')">
+                <i class="bi bi-mortarboard-fill"></i>
+                <span>Matriz de Treinamentos</span>
+                {% if total_pendentes > 0 %}
+                    <span class="badge bg-danger text-white rounded-pill px-2 py-0.5">{{ total_pendentes }} pendente{{ total_pendentes|pluralize }}</span>
+                {% elif total_treinamentos > 0 %}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-0.5">{{ total_treinamentos }}</span>
+                {% else %}
+                    <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5">0</span>
+                {% endif %}
+            </button>
+
+            <!-- 3. Ocorrências / Feedback -->
+            <button class="nav-link-tab d-flex align-items-center gap-2 px-3 py-2.5 rounded-3 fw-bold text-nowrap transition-all border-0"
+                    id="tab-btn-ocorrencias"
+                    data-bs-toggle="pill"
+                    data-bs-target="#tab-pane-ocorrencias"
+                    type="button"
+                    role="tab"
+                    aria-controls="tab-pane-ocorrencias"
+                    aria-selected="false"
+                    onclick="setTabColaborador('ocorrencias')">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <span>Ocorrências / Feedback</span>
+                {% if ocorrencias.count > 0 %}
+                    <span class="badge bg-warning text-dark fw-bold rounded-pill px-2 py-0.5">{{ ocorrencias.count }}</span>
+                {% else %}
+                    <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5">0</span>
+                {% endif %}
+            </button>
+
+            <!-- 4. Histórico de Mudanças -->
+            <button class="nav-link-tab d-flex align-items-center gap-2 px-3 py-2.5 rounded-3 fw-bold text-nowrap transition-all border-0"
+                    id="tab-btn-historico"
+                    data-bs-toggle="pill"
+                    data-bs-target="#tab-pane-historico"
+                    type="button"
+                    role="tab"
+                    aria-controls="tab-pane-historico"
+                    aria-selected="false"
+                    onclick="setTabColaborador('historico')">
+                <i class="bi bi-clock-history"></i>
+                <span>Histórico de Mudanças</span>
+                {% if alvo.get_historico_completo %}
+                    <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5">{{ alvo.get_historico_completo|length }}</span>
+                {% else %}
+                    <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5">0</span>
+                {% endif %}
+            </button>
         </div>
     </div>
 
@@ -106,16 +141,7 @@
                 </button>
             </div>
 
-            <!-- 2. Documentos Pessoais -->
-            <div class="col">
-                <button type="button" class="btn btn-outline-secondary w-100 h-100 py-3 shadow-sm d-flex flex-column align-items-center justify-content-center text-center rounded-3" data-bs-toggle="offcanvas" data-bs-target="#offcanvasDocumentos">
-                    <i class="bi bi-folder fs-2 mb-1 text-secondary"></i>
-                    <span class="fw-bold small">Documentos</span>
-                    <span class="badge bg-secondary mt-1" style="font-size: 0.65rem;">{{ documentos|length }} anexos</span>
-                </button>
-            </div>
-
-            <!-- 3. Períodos Aquisitivos -->
+            <!-- 2. Períodos Aquisitivos -->
             <div class="col">
                 <button type="button" class="btn btn-outline-warning text-dark w-100 h-100 py-3 shadow-sm d-flex flex-column align-items-center justify-content-center text-center rounded-3" data-bs-toggle="offcanvas" data-bs-target="#offcanvasVencimentos">
                     <i class="bi bi-clock-history fs-2 mb-1 text-warning"></i>
@@ -124,7 +150,7 @@
                 </button>
             </div>
 
-            <!-- 4. Gestão de Férias -->
+            <!-- 3. Gestão de Férias -->
             <div class="col">
                 <button type="button" class="btn btn-outline-info text-dark w-100 h-100 py-3 shadow-sm d-flex flex-column align-items-center justify-content-center text-center rounded-3" data-bs-toggle="offcanvas" data-bs-target="#offcanvasFerias">
                     <i class="bi bi-airplane fs-2 mb-1 text-info"></i>
@@ -133,7 +159,7 @@
                 </button>
             </div>
 
-            <!-- 5. Matriz de Treinamentos -->
+            <!-- 4. Matriz de Treinamentos -->
             <div class="col">
                 <button type="button" class="btn btn-outline-primary w-100 h-100 py-3 shadow-sm d-flex flex-column align-items-center justify-content-center text-center rounded-3" data-bs-toggle="offcanvas" data-bs-target="#offcanvasTreinamentos">
                     <i class="bi bi-mortarboard fs-2 mb-1 text-primary"></i>
@@ -146,7 +172,7 @@
                 </button>
             </div>
 
-            <!-- 6. Ocorrências / Feedback -->
+            <!-- 5. Ocorrências / Feedback -->
             {% if can_view_occ %}
             <div class="col">
                 <button type="button" class="btn btn-outline-danger w-100 h-100 py-3 shadow-sm d-flex flex-column align-items-center justify-content-center text-center rounded-3" data-bs-toggle="offcanvas" data-bs-target="#offcanvasOcorrencias">
@@ -157,7 +183,7 @@
             </div>
             {% endif %}
 
-            <!-- 7. Histórico de Mudanças (Largura Total se ímpar ou adaptado) -->
+            <!-- 6. Histórico de Mudanças -->
             <div class="col {% if not can_view_occ %}col-12{% endif %}">
                 <button type="button" class="btn btn-outline-dark w-100 h-100 py-3 shadow-sm d-flex flex-column align-items-center justify-content-center text-center rounded-3" data-bs-toggle="offcanvas" data-bs-target="#offcanvasHistorico">
                     <i class="bi bi-clock-history fs-2 mb-1 text-muted"></i>
@@ -314,121 +340,11 @@
                     </div>
                 </div>
             </div>
-
-            <div class="card shadow-sm mb-4 border-0">
-                <div class="card-header bg-secondary text-white fw-bold">
-                    <i class="bi bi-folder"></i> Documentos Pessoais
-                </div>
-                <ul class="list-group list-group-flush">
-                    {% for doc in documentos %}
-                        <li class="list-group-item d-flex flex-wrap justify-content-between align-items-center gap-2">
-                            <div>
-                                <i class="bi bi-file-earmark-text text-primary"></i> {{ doc.tipo }}
-                                <br><small class="text-muted">{{ doc.data_upload|date:"d/m/Y" }}</small>
-                            </div>
-                            <a href="{{ doc.arquivo.url }}" target="_blank" class="btn btn-sm btn-light border">
-                                <i class="bi bi-download"></i>
-                            </a>
-                        </li>
-                    {% empty %}
-                        <li class="list-group-item text-center text-muted py-3">
-                            <small>Nenhum documento anexado.</small>
-                        </li>
-                    {% endfor %}
-                </ul>
-            </div>
         </div>
 
         <!-- COLUNA DA DIREITA -->
         <div class="col-12 col-md-8 mt-4 mt-md-0">
             
-            <!-- NAVEGAÇÃO POR ABAS / BOTÕES DE SELEÇÃO -->
-            <div class="mb-4">
-                <div class="d-flex flex-nowrap overflow-x-auto gap-2 p-1.5 bg-light rounded-4 border shadow-sm scrollbar-none" id="colaboradorDetailTabs" role="tablist">
-                    <!-- 1. Férias e Períodos -->
-                    <button class="nav-link-tab active d-flex align-items-center gap-2 px-3 py-2.5 rounded-3 fw-bold text-nowrap transition-all border-0 shadow-sm"
-                            id="tab-btn-ferias"
-                            data-bs-toggle="pill"
-                            data-bs-target="#tab-pane-ferias"
-                            type="button"
-                            role="tab"
-                            aria-controls="tab-pane-ferias"
-                            aria-selected="true"
-                            onclick="setTabColaborador('ferias')">
-                        <i class="bi bi-calendar2-week-fill"></i>
-                        <span>Férias e Períodos</span>
-                        {% if kpi_ferias_vencidas > 0 %}
-                            <span class="badge bg-danger text-white rounded-pill px-2 py-0.5" title="{{ kpi_ferias_vencidas }} vencida(s)">{{ kpi_ferias_vencidas }} vencida{{ kpi_ferias_vencidas|pluralize }}</span>
-                        {% elif vencimentos_ferias %}
-                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-0.5">{{ vencimentos_ferias|length }}</span>
-                        {% elif ferias %}
-                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-0.5">{{ ferias|length }}</span>
-                        {% else %}
-                            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5">0</span>
-                        {% endif %}
-                    </button>
-
-                    <!-- 2. Matriz de Treinamentos -->
-                    <button class="nav-link-tab d-flex align-items-center gap-2 px-3 py-2.5 rounded-3 fw-bold text-nowrap transition-all border-0"
-                            id="tab-btn-treinamentos"
-                            data-bs-toggle="pill"
-                            data-bs-target="#tab-pane-treinamentos"
-                            type="button"
-                            role="tab"
-                            aria-controls="tab-pane-treinamentos"
-                            aria-selected="false"
-                            onclick="setTabColaborador('treinamentos')">
-                        <i class="bi bi-mortarboard-fill"></i>
-                        <span>Matriz de Treinamentos</span>
-                        {% if total_pendentes > 0 %}
-                            <span class="badge bg-danger text-white rounded-pill px-2 py-0.5">{{ total_pendentes }} pendente{{ total_pendentes|pluralize }}</span>
-                        {% elif total_treinamentos > 0 %}
-                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-0.5">{{ total_treinamentos }}</span>
-                        {% else %}
-                            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5">0</span>
-                        {% endif %}
-                    </button>
-
-                    <!-- 3. Ocorrências / Feedback -->
-                    <button class="nav-link-tab d-flex align-items-center gap-2 px-3 py-2.5 rounded-3 fw-bold text-nowrap transition-all border-0"
-                            id="tab-btn-ocorrencias"
-                            data-bs-toggle="pill"
-                            data-bs-target="#tab-pane-ocorrencias"
-                            type="button"
-                            role="tab"
-                            aria-controls="tab-pane-ocorrencias"
-                            aria-selected="false"
-                            onclick="setTabColaborador('ocorrencias')">
-                        <i class="bi bi-exclamation-triangle-fill"></i>
-                        <span>Ocorrências / Feedback</span>
-                        {% if ocorrencias.count > 0 %}
-                            <span class="badge bg-warning text-dark fw-bold rounded-pill px-2 py-0.5">{{ ocorrencias.count }}</span>
-                        {% else %}
-                            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5">0</span>
-                        {% endif %}
-                    </button>
-
-                    <!-- 4. Histórico de Mudanças -->
-                    <button class="nav-link-tab d-flex align-items-center gap-2 px-3 py-2.5 rounded-3 fw-bold text-nowrap transition-all border-0"
-                            id="tab-btn-historico"
-                            data-bs-toggle="pill"
-                            data-bs-target="#tab-pane-historico"
-                            type="button"
-                            role="tab"
-                            aria-controls="tab-pane-historico"
-                            aria-selected="false"
-                            onclick="setTabColaborador('historico')">
-                        <i class="bi bi-clock-history"></i>
-                        <span>Histórico de Mudanças</span>
-                        {% if alvo.get_historico_completo %}
-                            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5">{{ alvo.get_historico_completo|length }}</span>
-                        {% else %}
-                            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5">0</span>
-                        {% endif %}
-                    </button>
-                </div>
-            </div>
-
             <!-- CONTEÚDO DAS ABAS (TAB CONTENT) -->
             <div class="tab-content" id="colaboradorDetailTabsContent">
                 
@@ -526,13 +442,20 @@
                         <div class="card-header bg-info text-white">
                             <div class="d-flex justify-content-between align-items-center gap-2">
                                 <span class="fw-bold fs-6"><i class="bi bi-airplane me-1"></i> Gestão de Férias</span>
-                                <div class="d-flex gap-1">
-                                    <span class="badge bg-white text-danger fw-bold" title="Períodos Vencidos/Pendentes" style="font-size: 0.75rem;">
-                                        Vencidas: {{ kpi_ferias_vencidas }}
-                                    </span>
-                                    <span class="badge bg-white text-success fw-bold" title="Períodos Programados" style="font-size: 0.75rem;">
-                                        Prog.: {{ kpi_ferias_programadas }}
-                                    </span>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="d-flex gap-1">
+                                        <span class="badge bg-white text-danger fw-bold" title="Períodos Vencidos/Pendentes" style="font-size: 0.75rem;">
+                                            Vencidas: {{ kpi_ferias_vencidas }}
+                                        </span>
+                                        <span class="badge bg-white text-success fw-bold" title="Períodos Programados" style="font-size: 0.75rem;">
+                                            Prog.: {{ kpi_ferias_programadas }}
+                                        </span>
+                                    </div>
+                                    {% if can_register_ferias %}
+                                    <a href="/rh/colaborador/{{ alvo.id }}/ferias/registrar/" class="btn btn-sm btn-light text-dark fw-bold d-flex align-items-center gap-1 shadow-sm">
+                                        <i class="bi bi-plus-circle"></i> <span class="d-none d-sm-inline">Registrar Férias</span>
+                                    </a>
+                                    {% endif %}
                                 </div>
                             </div>
                         </div>
@@ -849,7 +772,14 @@
                     <div class="card shadow-sm border-0 mb-4">
                         <div class="card-header bg-warning text-dark fw-bold d-flex justify-content-between align-items-center">
                             <span class="fs-6"><i class="bi bi-exclamation-triangle me-1"></i> Ocorrências / Feedback</span>
-                            <span class="badge bg-dark text-warning">{{ ocorrencias.count }}</span>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-dark text-warning">{{ ocorrencias.count }}</span>
+                                {% if can_register_occ %}
+                                <a href="{% url 'registrar_ocorrencia' %}?colab_id={{ alvo.id }}" class="btn btn-sm btn-dark fw-bold d-flex align-items-center gap-1 shadow-sm">
+                                    <i class="bi bi-plus-circle"></i> <span class="d-none d-sm-inline">Nova Ocorrência</span>
+                                </a>
+                                {% endif %}
+                            </div>
                         </div>
                         <div class="card-body p-0">
                             <!-- TABELA DESKTOP (>= 768px) -->
