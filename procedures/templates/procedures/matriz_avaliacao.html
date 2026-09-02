@@ -1540,21 +1540,36 @@
     const btnRemoverDesligados = document.getElementById('btn-remover-desligados');
     if (btnRemoverDesligados) {
         btnRemoverDesligados.addEventListener('click', function() {
-            const ids = JSON.parse(this.dataset.ids);
-            if (!ids || ids.length === 0) return;
+            let ids = [];
+            const rawData = this.getAttribute('data-ids') || this.dataset.ids;
+            try {
+                ids = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+            } catch(e) {
+                console.error("Erro ao analisar IDs de desligados:", e);
+                if (typeof rawData === 'string') {
+                    ids = rawData.replace(/[\[\]\s]/g, '').split(',').filter(Boolean).map(Number);
+                }
+            }
+            if (!ids || ids.length === 0) {
+                alert('Nenhum colaborador desligado identificado para remoção.');
+                return;
+            }
             
-            if (!confirm(`Deseja realmente remover os ${ids.length} colaborador(es) desligado(s) desta matriz?`)) {
+            if (!confirm(`Deseja realmente desassociar os ${ids.length} colaborador(es) desligado(s) desta matriz?`)) {
                 return;
             }
             
             this.disabled = true;
             this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Removendo...';
             
-            fetch(`/procedures/matrizes/${matrizId}/desassociar-colaboradores/`, {
+            const currentMatrizId = typeof matrizId !== 'undefined' ? matrizId : '{{ matriz_selecionada.id }}';
+            const csrf = document.querySelector('[name=csrfmiddlewaretoken]')?.value || getCookie('csrftoken') || (typeof csrfToken !== 'undefined' ? csrfToken : '');
+            
+            fetch(`/procedures/matrizes/${currentMatrizId}/desassociar-colaboradores/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken
+                    'X-CSRFToken': csrf
                 },
                 body: JSON.stringify({
                     colaboradores: ids
@@ -1580,9 +1595,52 @@
         });
     }
 
-    // ===== Carregar Colaboradores Disponíveis =====
+    // ===== Carregar e Filtrar Colaboradores Disponíveis no Modal =====
+    window.colaboradoresDisponiveis = [];
+
+    function filtrarColaboradoresModal() {
+        const inputPesquisa = document.getElementById('inputPesquisaColab');
+        const selectSetor = document.getElementById('modalFilterSetor');
+        const selectLider = document.getElementById('modalFilterLider');
+        const selectTurno = document.getElementById('modalFilterTurno');
+
+        const termo = (inputPesquisa?.value || '').toLowerCase().trim();
+        const setorId = selectSetor?.value || '';
+        const liderId = selectLider?.value || '';
+        const turnoVal = selectTurno?.value || '';
+        
+        const lista = window.colaboradoresDisponiveis || [];
+        const filtrados = lista.filter(c => {
+            const nome = (c.nome_completo || '').toLowerCase();
+            const matricula = (c.matricula || '').toLowerCase();
+            const matchesTermo = !termo || nome.includes(termo) || matricula.includes(termo);
+                
+            const matchesSetor = !setorId || String(c.setor_id) === String(setorId);
+            const matchesLider = !liderId || String(c.lider_id) === String(liderId);
+            const matchesTurno = !turnoVal || String(c.turno) === String(turnoVal);
+            
+            return matchesTermo && matchesSetor && matchesLider && matchesTurno;
+        });
+        atualizarSelectColaboradores(filtrados);
+    }
+
+    function atualizarSelectColaboradores(colaboradores) {
+        const select = document.getElementById('selectColaborador');
+        if (!select) return;
+        
+        if (!colaboradores || colaboradores.length === 0) {
+            select.innerHTML = '<option value="">Nenhum resultado encontrado</option>';
+        } else {
+            select.innerHTML = '<option value="">Selecione um colaborador...</option>' +
+                colaboradores.map(c => 
+                    `<option value="${c.id}">${c.nome_completo} (${c.matricula || 'N/A'})</option>`
+                ).join('');
+        }
+    }
+
     function carregarColaboradoresDisponiveis() {
-        const matrizSelectId = document.getElementById('modalAssociarMatriz').value;
+        const matrizSelect = document.getElementById('modalAssociarMatriz');
+        const matrizSelectId = matrizSelect ? matrizSelect.value : null;
         const select = document.getElementById('selectColaborador');
         const alerta = document.getElementById('alerta-nenhum');
         const inputPesquisa = document.getElementById('inputPesquisaColab');
@@ -1591,40 +1649,43 @@
         const selectTurno = document.getElementById('modalFilterTurno');
         
         if (!matrizSelectId) {
-            select.innerHTML = '<option value="">Selecione uma matriz primeiro...</option>';
-            select.disabled = true;
-            inputPesquisa.disabled = true;
+            if (select) {
+                select.innerHTML = '<option value="">Selecione uma matriz primeiro...</option>';
+                select.disabled = true;
+            }
+            if (inputPesquisa) inputPesquisa.disabled = true;
             return;
         }
 
-        select.innerHTML = '<option value="">Carregando...</option>';
-        alerta.style.display = 'none';
-        inputPesquisa.value = '';
-        selectSetor.innerHTML = '<option value="">Carregando...</option>';
-        selectLider.innerHTML = '<option value="">Carregando...</option>';
-        selectTurno.innerHTML = '<option value="">Carregando...</option>';
+        if (select) select.innerHTML = '<option value="">Carregando colaboradores...</option>';
+        if (alerta) alerta.style.display = 'none';
+        if (selectSetor) selectSetor.innerHTML = '<option value="">Carregando...</option>';
+        if (selectLider) selectLider.innerHTML = '<option value="">Carregando...</option>';
+        if (selectTurno) selectTurno.innerHTML = '<option value="">Carregando...</option>';
 
         fetch(`/procedures/matrizes/${matrizSelectId}/colaboradores-disponiveis/`)
             .then(response => response.json())
             .then(data => {
-                if (data.colaboradores.length === 0) {
-                    select.innerHTML = '<option value="">Nenhum colaborador disponível</option>';
-                    select.disabled = true;
-                    inputPesquisa.disabled = true;
-                    alerta.style.display = 'block';
-                    selectSetor.innerHTML = '<option value="">Todos</option>';
-                    selectLider.innerHTML = '<option value="">Todos</option>';
-                    selectTurno.innerHTML = '<option value="">Todos</option>';
+                const lista = data.colaboradores || [];
+                if (lista.length === 0) {
+                    if (select) {
+                        select.innerHTML = '<option value="">Nenhum colaborador disponível</option>';
+                        select.disabled = true;
+                    }
+                    if (inputPesquisa) inputPesquisa.disabled = true;
+                    if (alerta) alerta.style.display = 'block';
+                    if (selectSetor) selectSetor.innerHTML = '<option value="">Todos</option>';
+                    if (selectLider) selectLider.innerHTML = '<option value="">Todos</option>';
+                    if (selectTurno) selectTurno.innerHTML = '<option value="">Todos</option>';
+                    window.colaboradoresDisponiveis = [];
                 } else {
-                    // Armazenar dados para filtrar
-                    window.colaboradoresDisponiveis = data.colaboradores;
+                    window.colaboradoresDisponiveis = lista;
                     
-                    // Extrair opções únicas para os filtros
                     const setoresMap = new Map();
                     const lideresMap = new Map();
                     const turnosSet = new Set();
                     
-                    data.colaboradores.forEach(c => {
+                    lista.forEach(c => {
                         if (c.setor_id && c.setor__nome) {
                             setoresMap.set(String(c.setor_id), c.setor__nome);
                         }
@@ -1636,136 +1697,123 @@
                         }
                     });
                     
-                    // Preencher Setor
-                    selectSetor.innerHTML = '<option value="">Todos</option>' + 
-                        Array.from(setoresMap.entries())
-                            .sort((a, b) => a[1].localeCompare(b[1]))
-                            .map(entry => `<option value="${entry[0]}">${entry[1]}</option>`)
-                            .join('');
-                            
-                    // Preencher Líder
-                    selectLider.innerHTML = '<option value="">Todos</option>' + 
-                        Array.from(lideresMap.entries())
-                            .sort((a, b) => a[1].localeCompare(b[1]))
-                            .map(entry => `<option value="${entry[0]}">${entry[1]}</option>`)
-                            .join('');
-                            
-                    // Preencher Turno
-                    selectTurno.innerHTML = '<option value="">Todos</option>' + 
-                        Array.from(turnosSet)
-                            .sort()
-                            .map(t => `<option value="${t}">${t}</option>`)
-                            .join('');
-                    
-                    // Renderizar inicialmente todos
-                    atualizarSelectColaboradores(data.colaboradores);
-                    select.disabled = false;
-                    inputPesquisa.disabled = false;
-                    
-                    // Remover event listeners antigos clonando o input
-                    const novoInputPesquisa = inputPesquisa.cloneNode(true);
-                    inputPesquisa.parentNode.replaceChild(novoInputPesquisa, inputPesquisa);
-                    const novoSelectSetor = selectSetor.cloneNode(true);
-                    selectSetor.parentNode.replaceChild(novoSelectSetor, selectSetor);
-                    const novoSelectLider = selectLider.cloneNode(true);
-                    selectLider.parentNode.replaceChild(novoSelectLider, selectLider);
-                    const novoSelectTurno = selectTurno.cloneNode(true);
-                    selectTurno.parentNode.replaceChild(novoSelectTurno, selectTurno);
-                    
-                    // Filtrar colaboradores dinamicamente
-                    function filtrarColaboradoresModal() {
-                        const termo = novoInputPesquisa.value.toLowerCase();
-                        const setorId = novoSelectSetor.value;
-                        const liderId = novoSelectLider.value;
-                        const turnoVal = novoSelectTurno.value;
-                        
-                        const filtrados = window.colaboradoresDisponiveis.filter(c => {
-                            const matchesTermo = !termo || 
-                                c.nome_completo.toLowerCase().includes(termo) || 
-                                (c.matricula && c.matricula.toLowerCase().includes(termo));
-                                
-                            const matchesSetor = !setorId || String(c.setor_id) === setorId;
-                            const matchesLider = !liderId || String(c.lider_id) === liderId;
-                            const matchesTurno = !turnoVal || c.turno === turnoVal;
-                            
-                            return matchesTermo && matchesSetor && matchesLider && matchesTurno;
-                        });
-                        atualizarSelectColaboradores(filtrados);
+                    if (selectSetor) {
+                        selectSetor.innerHTML = '<option value="">Todos</option>' + 
+                            Array.from(setoresMap.entries())
+                                .sort((a, b) => a[1].localeCompare(b[1]))
+                                .map(entry => `<option value="${entry[0]}">${entry[1]}</option>`)
+                                .join('');
+                    }
+                    if (selectLider) {
+                        selectLider.innerHTML = '<option value="">Todos</option>' + 
+                            Array.from(lideresMap.entries())
+                                .sort((a, b) => a[1].localeCompare(b[1]))
+                                .map(entry => `<option value="${entry[0]}">${entry[1]}</option>`)
+                                .join('');
+                    }
+                    if (selectTurno) {
+                        selectTurno.innerHTML = '<option value="">Todos</option>' + 
+                            Array.from(turnosSet)
+                                .sort()
+                                .map(t => `<option value="${t}">${t}</option>`)
+                                .join('');
                     }
                     
-                    // Adicionar ouvintes para filtro dinâmico
-                    novoInputPesquisa.addEventListener('input', filtrarColaboradoresModal);
-                    novoSelectSetor.addEventListener('change', filtrarColaboradoresModal);
-                    novoSelectLider.addEventListener('change', filtrarColaboradoresModal);
-                    novoSelectTurno.addEventListener('change', filtrarColaboradoresModal);
+                    if (select) select.disabled = false;
+                    if (inputPesquisa) inputPesquisa.disabled = false;
+                    
+                    filtrarColaboradoresModal();
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao buscar colaboradores disponíveis:', error);
+                if (select) select.innerHTML = '<option value="">Erro ao carregar colaboradores</option>';
+            });
+    }
+
+    // Ouvintes dos filtros do Modal
+    const inputPesquisaEl = document.getElementById('inputPesquisaColab');
+    if (inputPesquisaEl) inputPesquisaEl.addEventListener('input', filtrarColaboradoresModal);
+    
+    const selectSetorEl = document.getElementById('modalFilterSetor');
+    if (selectSetorEl) selectSetorEl.addEventListener('change', filtrarColaboradoresModal);
+    
+    const selectLiderEl = document.getElementById('modalFilterLider');
+    if (selectLiderEl) selectLiderEl.addEventListener('change', filtrarColaboradoresModal);
+    
+    const selectTurnoEl = document.getElementById('modalFilterTurno');
+    if (selectTurnoEl) selectTurnoEl.addEventListener('change', filtrarColaboradoresModal);
+
+    const modalAssociarColabEl = document.getElementById('modalAssociarColab');
+    if (modalAssociarColabEl) {
+        modalAssociarColabEl.addEventListener('show.bs.modal', function() {
+            carregarColaboradoresDisponiveis();
+        });
+        modalAssociarColabEl.addEventListener('shown.bs.modal', function() {
+            if (inputPesquisaEl) inputPesquisaEl.focus();
+        });
+    }
+    
+    const modalAssociarMatrizEl = document.getElementById('modalAssociarMatriz');
+    if (modalAssociarMatrizEl) {
+        modalAssociarMatrizEl.addEventListener('change', function() {
+            carregarColaboradoresDisponiveis();
+        });
+    }
+
+    // ===== Associar Novo Colaborador =====
+    const btnAssociarColabEl = document.getElementById('btnAssociarColab');
+    if (btnAssociarColabEl) {
+        btnAssociarColabEl.addEventListener('click', function() {
+            const colaboradorId = document.getElementById('selectColaborador')?.value;
+            const matrizSelectId = document.getElementById('modalAssociarMatriz')?.value;
+            
+            if (!matrizSelectId) {
+                alert('Selecione uma matriz!');
+                return;
+            }
+
+            if (!colaboradorId) {
+                alert('Selecione um colaborador da lista!');
+                return;
+            }
+
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Associando...';
+
+            const csrf = document.querySelector('[name=csrfmiddlewaretoken]')?.value || getCookie('csrftoken') || (typeof csrfToken !== 'undefined' ? csrfToken : '');
+
+            fetch(`/procedures/matrizes/${matrizSelectId}/associar-colaborador/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrf
+                },
+                body: JSON.stringify({
+                    colaborador_id: parseInt(colaboradorId)
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.sucesso) {
+                    alert('Colaborador associado com sucesso!');
+                    const modalInst = bootstrap.Modal.getInstance(document.getElementById('modalAssociarColab'));
+                    if (modalInst) modalInst.hide();
+                    location.reload();
+                } else {
+                    alert('Erro: ' + (data.erro || 'Falha ao associar'));
                 }
             })
             .catch(error => {
                 console.error('Erro:', error);
-                select.innerHTML = '<option value="">Erro ao carregar colaboradores</option>';
-            });
-    }
-
-    document.getElementById('modalAssociarColab').addEventListener('show.bs.modal', function() {
-        carregarColaboradoresDisponiveis();
-    });
-    
-    document.getElementById('modalAssociarMatriz').addEventListener('change', function() {
-        carregarColaboradoresDisponiveis();
-    });
-
-    function atualizarSelectColaboradores(colaboradores) {
-        const select = document.getElementById('selectColaborador');
-        if (colaboradores.length === 0) {
-            select.innerHTML = '<option value="">Nenhum resultado encontrado</option>';
-        } else {
-            select.innerHTML = '<option value="">Selecione um colaborador...</option>' +
-                colaboradores.map(c => 
-                    `<option value="${c.id}">${c.nome_completo} (${c.matricula || 'N/A'})</option>`
-                ).join('');
-        }
-    }
-
-    // ===== Associar Novo Colaborador =====
-    document.getElementById('btnAssociarColab').addEventListener('click', function() {
-        const colaboradorId = document.getElementById('selectColaborador').value;
-        const matrizSelectId = document.getElementById('modalAssociarMatriz').value;
-        
-        if (!matrizSelectId) {
-            alert('Selecione uma matriz!');
-            return;
-        }
-
-        if (!colaboradorId) {
-            alert('Selecione um colaborador!');
-            return;
-        }
-
-        fetch(`/procedures/matrizes/${matrizSelectId}/associar-colaborador/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-            },
-            body: JSON.stringify({
-                colaborador_id: parseInt(colaboradorId)
+                alert('Erro ao associar colaborador');
             })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.sucesso) {
-                alert('Colaborador associado com sucesso!');
-                bootstrap.Modal.getInstance(document.getElementById('modalAssociarColab')).hide();
-                location.reload();
-            } else {
-                alert('Erro: ' + (data.erro || 'Falha ao associar'));
-            }
-        })
-        .catch(error => {
-            console.error('Erro:', error);
-            alert('Erro ao associar colaborador');
+            .finally(() => {
+                this.disabled = false;
+                this.innerHTML = 'Associar';
+            });
         });
-    });
+    }
 
     // ===== JAVASCRIPT AVALIAÇÃO EM LOTE =====
     

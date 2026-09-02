@@ -2327,7 +2327,7 @@ def salvar_observacoes_lote(request):
 @permission_required('core.nav_laboratorio_coating_dashboard', raise_exception=True)
 def dashboard_coating(request):
     from django.utils import timezone
-    from datetime import timedelta, datetime
+    from datetime import timedelta, datetime, time, date
     from django.db.models import Count, Avg, F, ExpressionWrapper, DurationField, Sum, Min, Max
     import json
     
@@ -2336,40 +2336,113 @@ def dashboard_coating(request):
     default_periodo = '1' if is_mobile else '7'
     
     periodo = request.GET.get('periodo', default_periodo)
-    maquina_id = request.GET.get('maquina', '')
+    maquina_id = request.GET.get('maquina', '').strip()
+    turno_id = request.GET.get('turno', '').strip()
+    apenas_dias_uteis = request.GET.get('apenas_dias_uteis') in ['1', 'true', 'on', 'True']
+    data_de_str = request.GET.get('data_de', '').strip()
+    data_ate_str = request.GET.get('data_ate', '').strip()
     
     hoje = timezone.localtime().date()
     
-    if periodo == '1':
+    if data_de_str and data_ate_str:
+        try:
+            inicio = datetime.strptime(data_de_str, '%Y-%m-%d').date()
+            fim = datetime.strptime(data_ate_str, '%Y-%m-%d').date()
+            if inicio > fim:
+                inicio, fim = fim, inicio
+            periodo = 'custom'
+        except ValueError:
+            inicio = hoje - timedelta(days=7)
+            fim = hoje
+            periodo = '7'
+    elif periodo == '1':
         inicio = hoje
-        dias_totais = 1
+        fim = hoje
     elif periodo == '7':
         inicio = hoje - timedelta(days=7)
-        dias_totais = 8
+        fim = hoje
+    elif periodo == '15':
+        inicio = hoje - timedelta(days=15)
+        fim = hoje
     elif periodo == '30':
         inicio = hoje - timedelta(days=30)
-        dias_totais = 31
+        fim = hoje
     elif periodo == 'mes':
         inicio = hoje.replace(day=1)
-        dias_totais = (hoje - inicio).days + 1
+        fim = hoje
     elif periodo == 'ano':
         inicio = hoje.replace(month=1, day=1)
-        dias_totais = (hoje - inicio).days + 1
-    else: # fallback if somehow 15 is passed
-        inicio = hoje - timedelta(days=15)
-        dias_totais = 16
+        fim = hoje
+    else:
+        inicio = hoje - timedelta(days=7)
+        fim = hoje
+        periodo = '7'
         
-    dias = [inicio + timedelta(days=i) for i in range(dias_totais)]
+    dias_totais = (fim - inicio).days + 1
+    dias_todos = [inicio + timedelta(days=i) for i in range(dias_totais)]
     
-    qs_registros = RegistroCoating.objects.filter(turno_coating__data__gte=inicio, turno_coating__data__lte=hoje).select_related('maquina', 'turno_coating', 'tratamento')
-    qs_manutencoes = ManutencaoRealizadaCoating.objects.filter(registro__turno_coating__data__gte=inicio, registro__turno_coating__data__lte=hoje).select_related('ciclo')
+    if apenas_dias_uteis:
+        dias = [d for d in dias_todos if d.weekday() < 5]  # 0=Segunda, 4=Sexta
+    else:
+        dias = dias_todos
+    
+    qs_registros = RegistroCoating.objects.filter(
+        turno_coating__data__gte=inicio, 
+        turno_coating__data__lte=fim
+    ).select_related('maquina', 'turno_coating', 'turno_coating__regra', 'tratamento')
+    
+    qs_manutencoes = ManutencaoRealizadaCoating.objects.filter(
+        registro__turno_coating__data__gte=inicio, 
+        registro__turno_coating__data__lte=fim
+    ).select_related('ciclo', 'registro', 'registro__turno_coating')
+    
+    if apenas_dias_uteis:
+        qs_registros = qs_registros.filter(turno_coating__data__in=dias)
+        qs_manutencoes = qs_manutencoes.filter(registro__turno_coating__data__in=dias)
     
     if maquina_id:
-        qs_registros = qs_registros.filter(maquina_id=maquina_id)
-        qs_manutencoes = qs_manutencoes.filter(registro__maquina_id=maquina_id)
+        try:
+            m_id_int = int(maquina_id)
+            qs_registros = qs_registros.filter(maquina_id=m_id_int)
+            qs_manutencoes = qs_manutencoes.filter(registro__maquina_id=m_id_int)
+        except ValueError:
+            pass
+            
+    if turno_id:
+        try:
+            t_id_int = int(turno_id)
+            qs_registros = qs_registros.filter(turno_coating__regra_id=t_id_int)
+            qs_manutencoes = qs_manutencoes.filter(registro__turno_coating__regra_id=t_id_int)
+        except ValueError:
+            pass
         
-    maquinas_ids = qs_registros.values_list('maquina_id', flat=True).order_by().distinct()
-    maquinas = Maquina.objects.filter(id__in=maquinas_ids)
+    maquinas_ids = RegistroCoating.objects.values_list('maquina_id', flat=True).order_by().distinct()
+    maquinas = Maquina.objects.filter(id__in=maquinas_ids).order_by('codigo')
+    if not maquinas.exists():
+        maquinas = Maquina.objects.filter(status=True).order_by('codigo')
+
+    turnos_disponiveis = RegraTurnoCoating.objects.filter(ativo=True).order_by('hora_inicio')
+    if not turnos_disponiveis.exists():
+        turnos_disponiveis = RegraTurnoCoating.objects.all().order_by('hora_inicio')
+    
+    # Período display
+    if periodo == '1':
+        periodo_display = "Hoje"
+    elif periodo == '7':
+        periodo_display = "Últimos 7 dias"
+    elif periodo == '15':
+        periodo_display = "Últimos 15 dias"
+    elif periodo == '30':
+        periodo_display = "Últimos 30 dias"
+    elif periodo == 'mes':
+        periodo_display = "Este Mês"
+    elif periodo == 'ano':
+        periodo_display = "Este Ano"
+    else:
+        periodo_display = f"{inicio.strftime('%d/%m/%Y')} até {fim.strftime('%d/%m/%Y')}"
+        
+    if apenas_dias_uteis:
+        periodo_display += " (Seg a Sex)"
     
     # KPI 1: Total Lotes
     total_lotes = qs_registros.count() * 0.5
@@ -2493,20 +2566,21 @@ def dashboard_coating(request):
     esperado_total = 0
     
     qtd_maquinas = qs_registros.values('maquina_id').distinct().count() or 1
+    dias_base_count = len(dias) or 1
     
     for ciclo in ciclos_ativos:
         if ciclo.criterio == 'LOTES' and ciclo.limite_lotes:
             esperado_total += (total_lotes_periodo / ciclo.limite_lotes) * qtd_maquinas
         elif ciclo.criterio == 'DIAS' and ciclo.limite_lotes:
-            esperado_total += (dias_totais / ciclo.limite_lotes) * qtd_maquinas
+            esperado_total += (dias_base_count / ciclo.limite_lotes) * qtd_maquinas
         elif ciclo.criterio == 'DIARIO':
-            esperado_total += (dias_totais / 1) * qtd_maquinas
+            esperado_total += (dias_base_count / 1) * qtd_maquinas
         elif ciclo.criterio == 'SEMANAL':
-            esperado_total += (dias_totais / 7) * qtd_maquinas
+            esperado_total += (dias_base_count / 7) * qtd_maquinas
         elif ciclo.criterio == 'QUINZENAL':
-            esperado_total += (dias_totais / 15) * qtd_maquinas
+            esperado_total += (dias_base_count / 15) * qtd_maquinas
         elif ciclo.criterio == 'MENSAL':
-            esperado_total += (dias_totais / 30) * qtd_maquinas
+            esperado_total += (dias_base_count / 30) * qtd_maquinas
             
     esperado_total = max(int(esperado_total), 1)
     pendentes_total = max(esperado_total - realizados_total, 0)
@@ -2519,7 +2593,7 @@ def dashboard_coating(request):
     manut_datasets_sem = manut_datasets_dia
     manut_datasets_mes = manut_datasets_dia
     
-    # Novo Grid Analítico de Produção
+    # Grid Analítico de Produção
     def format_timedelta(td):
         if not td: return '00:00:00'
         total_seconds = int(td.total_seconds())
@@ -2534,13 +2608,13 @@ def dashboard_coating(request):
         'manutencoes', 'manutencoes__ciclo'
     ).order_by('turno_coating__data', 'maquina__codigo', 'turno_coating__regra__nome', 'hora_entrada', 'id')
 
-    # Agrupar registros por turno/maquina para aplicar a matematica precisa
+    # Agrupar registros por turno/maquina
     from collections import defaultdict
-    import json
     
     groups = defaultdict(list)
     for reg in grid_raw:
-        key = (reg.turno_coating.data, reg.maquina.codigo, reg.turno_coating.regra.nome)
+        regra_nome = reg.turno_coating.regra.nome if reg.turno_coating and reg.turno_coating.regra else 'Sem Turno'
+        key = (reg.turno_coating.data, reg.maquina.codigo, regra_nome)
         groups[key].append(reg)
 
     grid_rows = []
@@ -2680,9 +2754,9 @@ def dashboard_coating(request):
     kpi_grid_rows = []
     for kpi in kpi_agrupados.values():
         total_lotes = kpi['total_lotes']
-        dias = kpi['dias_operados']
+        dias_op = kpi['dias_operados']
         
-        media_dia_rodando_sec = kpi['total_sec_rodando'] / dias if dias > 0 else 0
+        media_dia_rodando_sec = kpi['total_sec_rodando'] / dias_op if dias_op > 0 else 0
         media_lote_rodando_sec = kpi['total_sec_rodando'] / total_lotes if total_lotes > 0 else 0
         media_lote_parada_sec = kpi['total_sec_parada'] / total_lotes if total_lotes > 0 else 0
         
@@ -2700,8 +2774,14 @@ def dashboard_coating(request):
 
     return render(request, "laboratorio/dashboard_coating.html", {
         "maquinas": maquinas,
-        "maquina_selecionada": int(maquina_id) if maquina_id else "",
+        "maquina_selecionada": int(maquina_id) if maquina_id and maquina_id.isdigit() else "",
+        "turnos_disponiveis": turnos_disponiveis,
+        "turno_selecionado": int(turno_id) if turno_id and turno_id.isdigit() else "",
         "periodo": periodo,
+        "periodo_display": periodo_display,
+        "data_de": inicio.strftime('%Y-%m-%d'),
+        "data_ate": fim.strftime('%Y-%m-%d'),
+        "apenas_dias_uteis": apenas_dias_uteis,
         "total_lotes": total_lotes,
         "maq_mais_produtiva": maq_mais_produtiva,
         "avg_rodando": avg_rodando_str,

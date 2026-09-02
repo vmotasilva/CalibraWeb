@@ -17,27 +17,61 @@
 
     <!-- Filtros Globais -->
     <div class="card shadow-sm border-0 mb-4 bg-white">
-        <div class="card-body">
-            <form method="get" class="row g-3 align-items-end">
-                <div class="col-md-6">
-                    <label class="form-label fw-bold text-muted small mb-1">Período de Análise</label>
-                    <select name="periodo" class="form-select form-select-sm" onchange="this.form.submit()">
+        <div class="card-body py-3">
+            <form id="filtroCoatingForm" method="get" class="row g-3 align-items-end">
+                <div class="col-12 col-sm-6 col-md-3 col-lg-2">
+                    <label class="form-label fw-bold text-muted small mb-1">Período Rápido</label>
+                    <select name="periodo" id="selectPeriodo" class="form-select form-select-sm">
                         <option value="1" {% if periodo == '1' %}selected{% endif %}>Hoje</option>
                         <option value="7" {% if periodo == '7' %}selected{% endif %}>Últimos 7 dias</option>
                         <option value="15" {% if periodo == '15' %}selected{% endif %}>Últimos 15 dias</option>
                         <option value="30" {% if periodo == '30' %}selected{% endif %}>Últimos 30 dias</option>
                         <option value="mes" {% if periodo == 'mes' %}selected{% endif %}>Este Mês</option>
                         <option value="ano" {% if periodo == 'ano' %}selected{% endif %}>Este Ano</option>
+                        <option value="custom" {% if periodo == 'custom' %}selected{% endif %}>Personalizado</option>
                     </select>
                 </div>
-                <div class="col-md-6">
+                <div class="col-6 col-sm-3 col-md-2 col-lg-2">
+                    <label class="form-label fw-bold text-muted small mb-1">De</label>
+                    <input type="date" name="data_de" id="inputDataDe" class="form-control form-control-sm" value="{{ data_de }}">
+                </div>
+                <div class="col-6 col-sm-3 col-md-2 col-lg-2">
+                    <label class="form-label fw-bold text-muted small mb-1">Até</label>
+                    <input type="date" name="data_ate" id="inputDataAte" class="form-control form-control-sm" value="{{ data_ate }}">
+                </div>
+                <div class="col-12 col-sm-6 col-md-2 col-lg-2">
                     <label class="form-label fw-bold text-muted small mb-1">Máquina</label>
-                    <select name="maquina" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <select name="maquina" id="selectMaquina" class="form-select form-select-sm">
                         <option value="">Todas as Máquinas</option>
                         {% for maq in maquinas %}
                         <option value="{{ maq.id }}" {% if maquina_selecionada == maq.id %}selected{% endif %}>{{ maq.codigo }}</option>
                         {% endfor %}
                     </select>
+                </div>
+                <div class="col-12 col-sm-6 col-md-3 col-lg-2">
+                    <label class="form-label fw-bold text-muted small mb-1">Turno</label>
+                    <select name="turno" id="selectTurno" class="form-select form-select-sm">
+                        <option value="">Todos os Turnos</option>
+                        {% for t in turnos_disponiveis %}
+                        <option value="{{ t.id }}" {% if turno_selecionado == t.id %}selected{% endif %}>{{ t.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-lg-2 d-flex flex-column justify-content-end">
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" name="apenas_dias_uteis" id="checkDiasUteis" value="1" {% if apenas_dias_uteis %}checked{% endif %}>
+                        <label class="form-check-label fw-semibold text-muted small" for="checkDiasUteis" title="Ignora sábados e domingos">
+                            <i class="bi bi-briefcase me-1"></i>Seg a Sex
+                        </label>
+                    </div>
+                    <div class="d-flex gap-1">
+                        <button type="submit" class="btn btn-primary btn-sm flex-grow-1 shadow-sm">
+                            <i class="bi bi-funnel-fill me-1"></i>Filtrar
+                        </button>
+                        <a href="{% url 'laboratorio:dashboard_coating' %}" class="btn btn-outline-secondary btn-sm" title="Limpar Filtros">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                        </a>
+                    </div>
                 </div>
             </form>
         </div>
@@ -48,7 +82,7 @@
         <div class="col-lg-12">
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-white border-bottom-0 pt-4 pb-2">
-                    <h5 class="card-title fw-bold text-dark mb-0"><i class="bi bi-speedometer2 me-2 text-primary"></i> Resumo de Eficiência ({{ periodo }} dias)</h5>
+                    <h5 class="card-title fw-bold text-dark mb-0"><i class="bi bi-speedometer2 me-2 text-primary"></i> Resumo de Eficiência ({{ periodo_display }})</h5>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -264,6 +298,58 @@
 
 <script>
     document.addEventListener("DOMContentLoaded", function() {
+        // Sincronização dos Filtros de Período e Datas
+        const selectPeriodo = document.getElementById('selectPeriodo');
+        const inputDataDe = document.getElementById('inputDataDe');
+        const inputDataAte = document.getElementById('inputDataAte');
+
+        function formatDate(d) {
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        if (selectPeriodo && inputDataDe && inputDataAte) {
+            selectPeriodo.addEventListener('change', function() {
+                const val = this.value;
+                const today = new Date();
+                let de = new Date();
+                let ate = new Date();
+
+                if (val === '1') {
+                    de = today;
+                    ate = today;
+                } else if (val === '7') {
+                    de.setDate(today.getDate() - 7);
+                    ate = today;
+                } else if (val === '15') {
+                    de.setDate(today.getDate() - 15);
+                    ate = today;
+                } else if (val === '30') {
+                    de.setDate(today.getDate() - 30);
+                    ate = today;
+                } else if (val === 'mes') {
+                    de = new Date(today.getFullYear(), today.getMonth(), 1);
+                    ate = today;
+                } else if (val === 'ano') {
+                    de = new Date(today.getFullYear(), 0, 1);
+                    ate = today;
+                } else if (val === 'custom') {
+                    return;
+                }
+                inputDataDe.value = formatDate(de);
+                inputDataAte.value = formatDate(ate);
+            });
+
+            inputDataDe.addEventListener('change', function() {
+                if (selectPeriodo) selectPeriodo.value = 'custom';
+            });
+            inputDataAte.addEventListener('change', function() {
+                if (selectPeriodo) selectPeriodo.value = 'custom';
+            });
+        }
+
         // Tabelas de Lotes
         const table = document.getElementById('chartDataTable');
         function renderTable(labels, datasets) {

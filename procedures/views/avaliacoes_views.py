@@ -559,11 +559,11 @@ def avaliacao_rapida_view(request):
             })
         
         except Exception as e:
-            from django.http import JsonResponse
-            return JsonResponse({'success': False, 'error': str(e)})
-    
-    from django.http import JsonResponse
-    return JsonResponse({'success': False, 'error': 'Método não permitido'})
+                from django.http import JsonResponse
+                return JsonResponse({'success': False, 'error': str(e)})
+        
+        from django.http import JsonResponse
+        return JsonResponse({'success': False, 'error': 'Método não permitido'})
 
 
 # ==================== GERENCIAMENTO DE COLABORADORES ====================
@@ -571,7 +571,7 @@ def avaliacao_rapida_view(request):
 @login_required
 def desassociar_colaboradores_view(request, matriz_id):
     """
-    Desassocia um ou mais colaboradores da matriz
+    Remove colaboradores de uma matriz de habilidade
     """
     import json
     from django.http import JsonResponse
@@ -586,6 +586,9 @@ def desassociar_colaboradores_view(request, matriz_id):
         
         if not colaboradores_ids:
             return JsonResponse({'sucesso': False, 'erro': 'Nenhum colaborador informado'})
+        
+        # Converter para inteiros
+        colaboradores_ids = [int(x) for x in colaboradores_ids if str(x).isdigit()]
         
         # Importar modelo
         from procedures.models import ColaboradorMatrizHabilidade
@@ -619,12 +622,13 @@ def colaboradores_disponiveis_view(request, matriz_id):
         # Importar modelo
         from procedures.models import ColaboradorMatrizHabilidade
         
-        # Buscar IDs dos colaboradores já associados
+        # Buscar IDs dos colaboradores já associados e ativos
         associados = ColaboradorMatrizHabilidade.objects.filter(
-            matriz=matriz
+            matriz=matriz,
+            ativo=True
         ).values_list('colaborador_id', flat=True)
         
-        # Buscar colaboradores disponíveis (SEM limite)
+        # Buscar colaboradores disponíveis (apenas ativos no RH)
         disponiveis = Colaborador.objects.filter(
             is_active=True
         ).exclude(
@@ -634,12 +638,12 @@ def colaboradores_disponiveis_view(request, matriz_id):
         ).order_by('nome_completo')
         
         return JsonResponse({
+            'sucesso': True,
             'colaboradores': list(disponiveis)
         })
     
     except Exception as e:
-        from django.http import JsonResponse
-        return JsonResponse({'erro': str(e)})
+        return JsonResponse({'sucesso': False, 'erro': str(e), 'colaboradores': []})
 
 
 @login_required
@@ -662,7 +666,7 @@ def associar_colaborador_view(request, matriz_id):
             return JsonResponse({'sucesso': False, 'erro': 'Colaborador não informado'})
         
         # Verificar se colaborador existe
-        colaborador = get_object_or_404(Colaborador, id=colaborador_id)
+        colaborador = get_object_or_404(Colaborador, id=int(colaborador_id))
         
         # Importar modelo
         from procedures.models import ColaboradorMatrizHabilidade
@@ -674,19 +678,25 @@ def associar_colaborador_view(request, matriz_id):
             defaults={'ativo': True}
         )
         
-        if created:
+        if not created and not assoc.ativo:
+            assoc.ativo = True
+            assoc.save(update_fields=['ativo'])
             return JsonResponse({
                 'sucesso': True,
                 'mensagem': f'{colaborador.nome_completo} associado com sucesso!'
             })
-        else:
+        elif not created and assoc.ativo:
             return JsonResponse({
                 'sucesso': False,
                 'erro': f'{colaborador.nome_completo} já está associado a esta matriz'
             })
+        else:
+            return JsonResponse({
+                'sucesso': True,
+                'mensagem': f'{colaborador.nome_completo} associado com sucesso!'
+            })
     
     except Exception as e:
-        from django.http import JsonResponse
         return JsonResponse({'sucesso': False, 'erro': str(e)})
 
 
