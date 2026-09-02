@@ -3,18 +3,18 @@
 {% block content %}
 <div class="container-fluid py-3 overflow-x-hidden">
     
-    <!-- CABEÇALHO RESPONSIVO DO PERFIL -->
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4 border-bottom pb-3 w-100 overflow-hidden">
+    <!-- CABEÇALHO RESPONSIVO DO PERFIL + NAVEGAÇÃO POR ABAS NA MESMA FAIXA -->
+    <div class="d-flex flex-column flex-xl-row justify-content-between align-items-start align-items-xl-center gap-3 mb-4 border-bottom pb-3 w-100">
         
         <!-- Perfil (Avatar + Nome/Cargo) e Botão Voltar Compacto -->
-        <div class="d-flex align-items-center gap-3 w-100 min-w-0">
-            <a href="{% url 'modulo_rh' %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px; border-radius: 50%;" title="Voltar para Gestão de Pessoas">
+        <div class="d-flex align-items-center gap-3 min-w-0">
+            <a href="{% url 'modulo_rh' %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px; border-radius: 4px;" title="Voltar para Gestão de Pessoas">
                 <i class="bi bi-arrow-left fs-6"></i>
             </a>
-            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-sm flex-shrink-0" style="width: 48px; height: 48px; font-size: 19px;">
+            <div class="bg-primary text-white rounded-1 d-flex align-items-center justify-content-center fw-bold shadow-sm flex-shrink-0" style="width: 48px; height: 48px; font-size: 19px;">
                 {{ alvo.nome_completo|slice:":1" }}
             </div>
-            <div class="flex-grow-1 min-w-0 text-break">
+            <div class="min-w-0 text-break">
                 <h3 class="fw-bold mb-1 text-truncate fs-5 fs-md-4 text-dark" title="{{ alvo.nome_completo }}">{{ alvo.nome_completo }}</h3>
                 
                 <!-- Informações em linhas separadas (Cargo, Matrícula e Mat. Global) -->
@@ -33,15 +33,11 @@
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- ========================================================================= -->
-    <!-- NAVEGAÇÃO PRINCIPAL POR ABAS NO TOPO (DESKTOP & MOBILE)                    -->
-    <!-- ========================================================================= -->
-    <div class="mb-4">
-        <div class="d-flex flex-nowrap overflow-x-auto gap-2 p-1.5 bg-light rounded-4 border shadow-sm scrollbar-none" id="colaboradorDetailTabs" role="tablist">
+        <!-- NAVEGAÇÃO PRINCIPAL POR ABAS (QUADRADAS) NA MESMA FAIXA -->
+        <div class="d-flex flex-nowrap overflow-x-auto gap-2 p-1 bg-light rounded-1 border shadow-sm scrollbar-none w-100 w-xl-auto" id="colaboradorDetailTabs" role="tablist">
             <!-- 1. Férias e Períodos -->
-            <button class="nav-link-tab active d-flex align-items-center gap-2 px-3 py-2.5 rounded-3 fw-bold text-nowrap transition-all border-0 shadow-sm"
+            <button class="nav-link-tab active d-flex align-items-center gap-2 px-3 py-2 fw-bold text-nowrap transition-all border-0 shadow-sm rounded-1"
                     id="tab-btn-ferias"
                     data-bs-toggle="pill"
                     data-bs-target="#tab-pane-ferias"
@@ -53,18 +49,18 @@
                 <i class="bi bi-calendar2-week-fill"></i>
                 <span>Férias e Períodos</span>
                 {% if kpi_ferias_vencidas > 0 %}
-                    <span class="badge bg-danger text-white rounded-pill px-2 py-0.5" title="{{ kpi_ferias_vencidas }} vencida(s)">{{ kpi_ferias_vencidas }} vencida{{ kpi_ferias_vencidas|pluralize }}</span>
+                    <span class="badge bg-danger text-white rounded-1 px-2 py-0.5" title="{{ kpi_ferias_vencidas }} vencida(s)">{{ kpi_ferias_vencidas }} vencida{{ kpi_ferias_vencidas|pluralize }}</span>
                 {% elif vencimentos_ferias %}
-                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-0.5">{{ vencimentos_ferias|length }}</span>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-1 px-2 py-0.5">{{ vencimentos_ferias|length }}</span>
                 {% elif ferias %}
-                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-0.5">{{ ferias|length }}</span>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-1 px-2 py-0.5">{{ ferias|length }}</span>
                 {% else %}
-                    <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5">0</span>
+                    <span class="badge bg-secondary-subtle text-secondary rounded-1 px-2 py-0.5">0</span>
                 {% endif %}
             </button>
 
             <!-- 2. Matriz de Treinamentos -->
-            <button class="nav-link-tab d-flex align-items-center gap-2 px-3 py-2.5 rounded-3 fw-bold text-nowrap transition-all border-0"
+            <button class="nav-link-tab d-flex align-items-center gap-2 px-3 py-2 fw-bold text-nowrap transition-all border-0 rounded-1"
                     id="tab-btn-treinamentos"
                     data-bs-toggle="pill"
                     data-bs-target="#tab-pane-treinamentos"
@@ -76,16 +72,16 @@
                 <i class="bi bi-mortarboard-fill"></i>
                 <span>Matriz de Treinamentos</span>
                 {% if total_pendentes > 0 %}
-                    <span class="badge bg-danger text-white rounded-pill px-2 py-0.5">{{ total_pendentes }} pendente{{ total_pendentes|pluralize }}</span>
+                    <span class="badge bg-danger text-white rounded-1 px-2 py-0.5">{{ total_pendentes }} pendente{{ total_pendentes|pluralize }}</span>
                 {% elif total_treinamentos > 0 %}
-                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-0.5">{{ total_treinamentos }}</span>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-1 px-2 py-0.5">{{ total_treinamentos }}</span>
                 {% else %}
-                    <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5">0</span>
+                    <span class="badge bg-secondary-subtle text-secondary rounded-1 px-2 py-0.5">0</span>
                 {% endif %}
             </button>
 
             <!-- 3. Ocorrências / Feedback -->
-            <button class="nav-link-tab d-flex align-items-center gap-2 px-3 py-2.5 rounded-3 fw-bold text-nowrap transition-all border-0"
+            <button class="nav-link-tab d-flex align-items-center gap-2 px-3 py-2 fw-bold text-nowrap transition-all border-0 rounded-1"
                     id="tab-btn-ocorrencias"
                     data-bs-toggle="pill"
                     data-bs-target="#tab-pane-ocorrencias"
@@ -97,14 +93,14 @@
                 <i class="bi bi-exclamation-triangle-fill"></i>
                 <span>Ocorrências / Feedback</span>
                 {% if ocorrencias.count > 0 %}
-                    <span class="badge bg-warning text-dark fw-bold rounded-pill px-2 py-0.5">{{ ocorrencias.count }}</span>
+                    <span class="badge bg-warning text-dark fw-bold rounded-1 px-2 py-0.5">{{ ocorrencias.count }}</span>
                 {% else %}
-                    <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5">0</span>
+                    <span class="badge bg-secondary-subtle text-secondary rounded-1 px-2 py-0.5">0</span>
                 {% endif %}
             </button>
 
             <!-- 4. Histórico de Mudanças -->
-            <button class="nav-link-tab d-flex align-items-center gap-2 px-3 py-2.5 rounded-3 fw-bold text-nowrap transition-all border-0"
+            <button class="nav-link-tab d-flex align-items-center gap-2 px-3 py-2 fw-bold text-nowrap transition-all border-0 rounded-1"
                     id="tab-btn-historico"
                     data-bs-toggle="pill"
                     data-bs-target="#tab-pane-historico"
@@ -116,9 +112,9 @@
                 <i class="bi bi-clock-history"></i>
                 <span>Histórico de Mudanças</span>
                 {% if alvo.get_historico_completo %}
-                    <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5">{{ alvo.get_historico_completo|length }}</span>
+                    <span class="badge bg-secondary-subtle text-secondary rounded-1 px-2 py-0.5">{{ alvo.get_historico_completo|length }}</span>
                 {% else %}
-                    <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5">0</span>
+                    <span class="badge bg-secondary-subtle text-secondary rounded-1 px-2 py-0.5">0</span>
                 {% endif %}
             </button>
         </div>
@@ -1852,22 +1848,27 @@ document.addEventListener('DOMContentLoaded', function() {
 .nav-link-tab {
     background-color: #ffffff;
     color: #4b5563;
-    font-size: 0.875rem;
+    font-size: 0.84rem;
     cursor: pointer;
     text-decoration: none;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    border: 1px solid #e5e7eb !important;
+    transition: all 0.15s ease-in-out;
+    border: 1px solid #d1d5db !important;
+    border-radius: 4px !important;
 }
 .nav-link-tab:hover:not(.active) {
     background-color: #f3f4f6 !important;
     color: #111827 !important;
-    border-color: #d1d5db !important;
+    border-color: #9ca3af !important;
 }
 .nav-link-tab.active {
     background-color: #0d6efd !important;
     color: #ffffff !important;
     border-color: #0d6efd !important;
-    box-shadow: 0 4px 8px -2px rgba(13, 110, 253, 0.35) !important;
+    box-shadow: 0 2px 4px rgba(13, 110, 253, 0.25) !important;
+    border-radius: 4px !important;
+}
+.nav-link-tab .badge {
+    border-radius: 3px !important;
 }
 .nav-link-tab.active .badge.bg-primary-subtle,
 .nav-link-tab.active .badge.bg-secondary-subtle,
