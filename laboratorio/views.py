@@ -2877,7 +2877,7 @@ def dashboard_coating(request):
             'subtotal': subtotal
         })
 
-    tratamentos = TratamentoAntirreflexo.objects.filter(is_active=True).order_by('nome')
+    tratamentos = TratamentoAntiReflexo.objects.filter(is_active=True).order_by('nome')
     equipe = EquipeCoating.objects.filter(is_active=True).select_related('colaborador').order_by('colaborador__nome_completo')
 
     return render(request, "laboratorio/dashboard_coating.html", {
