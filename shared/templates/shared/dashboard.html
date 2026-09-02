@@ -306,11 +306,11 @@
         </div>
 
         <!-- Grupo de Ações e Novo -->
-        <div class="d-flex align-items-center gap-2 w-100 w-md-auto justify-content-between justify-content-md-end">
+        <div class="d-flex align-items-center gap-1.5 gap-sm-2 w-100 w-md-auto justify-content-between justify-content-md-end">
             <!-- Dropdown Ações -->
             <div class="dropdown">
                 <button class="btn btn-outline-secondary btn-sm shadow-sm dropdown-toggle d-flex align-items-center gap-1" type="button" id="metroActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-three-dots-vertical"></i> <span>Ações</span>
+                    <i class="bi bi-three-dots-vertical"></i> <span class="d-none d-sm-inline">Ações</span>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="metroActionsDropdown">
                     <li>
@@ -348,13 +348,13 @@
             </div>
 
             <!-- Botão Registrar Histórico em Massa -->
-            <button type="button" id="btn-historico-massa" class="btn btn-success btn-sm shadow-sm d-inline-flex align-items-center gap-1 btn-historico-massa-trigger" disabled data-bs-toggle="modal" data-bs-target="#modalNovoHistoricoMassa">
-                <i class="bi bi-calendar-plus"></i> Registrar Histórico
+            <button type="button" id="btn-historico-massa" class="btn btn-success btn-sm shadow-sm d-inline-flex align-items-center gap-1 btn-historico-massa-trigger" disabled data-bs-toggle="modal" data-bs-target="#modalNovoHistoricoMassa" title="Registrar Histórico">
+                <i class="bi bi-calendar-plus"></i> <span class="d-none d-sm-inline">Registrar Histórico</span>
             </button>
 
             <!-- Botão Novo Instrumento -->
-            <a href="{% url 'novo_instrumento' %}" class="btn btn-primary btn-sm shadow-sm d-inline-flex align-items-center gap-1">
-                <i class="bi bi-plus-lg"></i> Novo
+            <a href="{% url 'novo_instrumento' %}" class="btn btn-primary btn-sm shadow-sm d-inline-flex align-items-center gap-1" title="Novo Instrumento">
+                <i class="bi bi-plus-lg"></i> <span class="d-none d-sm-inline">Novo</span>
             </a>
         </div>
     </div>
@@ -547,8 +547,8 @@
                         </th>
                         <th class="py-3">TAG / Código</th>
                         <th class="py-3 d-none d-md-table-cell">Descrição</th>
-                        <th class="py-3 d-none d-lg-table-cell">Setor</th>
-                        <th class="py-3 text-center d-none d-sm-table-cell">Atividade & Local</th>
+                        <th class="py-3 d-none d-md-table-cell">Setor</th>
+                        <th class="py-3 text-center d-none d-md-table-cell">Atividade & Local</th>
                         <th class="py-3">Próx. Calibração</th>
                         <th class="py-3 text-center">Status / RNC</th>
                         <th class="text-end pe-3 py-3">Ações Rápidas</th>
@@ -602,13 +602,13 @@
                             </div>
                         </td>
 
-                        <!-- SETOR (OCULTO EM TELAS MENORES) -->
-                        <td class="py-2.5 small text-muted d-none d-lg-table-cell">
+                        <!-- SETOR (OCULTO EM TELAS MOBILE) -->
+                        <td class="py-2.5 small text-muted d-none d-md-table-cell">
                             {{ item.setor_nome }}
                         </td>
 
-                        <!-- ATIVIDADE & LOCAL (OCULTO EM TELAS ULTRA-PEQUENAS) -->
-                        <td class="py-2.5 text-center d-none d-sm-table-cell">
+                        <!-- ATIVIDADE & LOCAL (OCULTO EM TELAS MOBILE) -->
+                        <td class="py-2.5 text-center d-none d-md-table-cell">
                             <div class="d-flex flex-column align-items-center gap-1">
                                 <!-- Atividade -->
                                 {% if item.activity_type == 'VERIFICACAO' %}
