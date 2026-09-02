@@ -2341,6 +2341,7 @@ def dashboard_coating(request):
     maquina_id = request.GET.get('maquina', '').strip()
     turno_id = request.GET.get('turno', '').strip()
     apenas_dias_uteis = request.GET.get('apenas_dias_uteis') in ['1', 'true', 'on', 'True']
+    apenas_fim_semana = request.GET.get('apenas_fim_semana') in ['1', 'true', 'on', 'True']
     data_de_str = request.GET.get('data_de', '').strip()
     data_ate_str = request.GET.get('data_ate', '').strip()
     
@@ -2385,6 +2386,8 @@ def dashboard_coating(request):
     
     if apenas_dias_uteis:
         dias = [d for d in dias_todos if d.weekday() < 5]  # 0=Segunda, 4=Sexta
+    elif apenas_fim_semana:
+        dias = [d for d in dias_todos if d.weekday() >= 5]  # 5=Sábado, 6=Domingo
     else:
         dias = dias_todos
     
@@ -2398,7 +2401,7 @@ def dashboard_coating(request):
         registro__turno_coating__data__lte=fim
     ).select_related('ciclo', 'registro', 'registro__turno_coating')
     
-    if apenas_dias_uteis:
+    if apenas_dias_uteis or apenas_fim_semana:
         qs_registros = qs_registros.filter(turno_coating__data__in=dias)
         qs_manutencoes = qs_manutencoes.filter(registro__turno_coating__data__in=dias)
     
@@ -2445,6 +2448,8 @@ def dashboard_coating(request):
         
     if apenas_dias_uteis:
         periodo_display += " (Seg a Sex)"
+    elif apenas_fim_semana:
+        periodo_display += " (Sáb-Dom)"
     
     # KPI 1: Total Lotes
     total_lotes = qs_registros.count() * 0.5
@@ -2920,6 +2925,7 @@ def dashboard_coating(request):
         "data_de": inicio.strftime('%Y-%m-%d'),
         "data_ate": fim.strftime('%Y-%m-%d'),
         "apenas_dias_uteis": apenas_dias_uteis,
+        "apenas_fim_semana": apenas_fim_semana,
         "total_lotes": total_lotes,
         "maq_mais_produtiva": maq_mais_produtiva,
         "avg_rodando": avg_rodando_str,
