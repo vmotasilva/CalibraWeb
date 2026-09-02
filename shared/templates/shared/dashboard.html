@@ -380,8 +380,41 @@
     </div>
 
     <!-- ABAS DE NAVEGAÇÃO INTERATIVA (TODOS, EXTERNO, INTERNO) -->
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-3">
-        <div class="dashboard-tabs-container">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-3">
+        
+        <!-- Mobile: Botão Drop-down de Abas -->
+        <div class="d-block d-md-none w-100">
+            <div class="dropdown w-100">
+                <button class="btn btn-outline-dark btn-sm dropdown-toggle w-100 d-flex justify-content-between align-items-center py-2 px-3 shadow-sm bg-white border" type="button" id="mobileTabsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span id="mobileTabActiveText" class="fw-bold text-dark">
+                        <i class="bi bi-grid-3x3-gap-fill text-primary me-1.5"></i> TODOS ({{ kpis.todos.total_instrumentos|default:0 }})
+                    </span>
+                </button>
+                <ul class="dropdown-menu w-100 shadow border-0" aria-labelledby="mobileTabsDropdown">
+                    <li>
+                        <button type="button" class="dropdown-item py-2 d-flex justify-content-between align-items-center" onclick="setDashboardTab('todos'); updateMobileDropdownTab('TODOS', '{{ kpis.todos.total_instrumentos|default:0 }}', 'bi-grid-3x3-gap-fill');">
+                            <span><i class="bi bi-grid-3x3-gap-fill text-primary me-2"></i>TODOS</span>
+                            <span class="badge bg-secondary rounded-pill" id="mobile-tab-count-todos">{{ kpis.todos.total_instrumentos|default:0 }}</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button type="button" class="dropdown-item py-2 d-flex justify-content-between align-items-center" onclick="setDashboardTab('externo'); updateMobileDropdownTab('EXTERNO (Fornecedor)', '{{ kpis.externo.necessitam_cotacao|default:0 }}', 'bi-truck');">
+                            <span><i class="bi bi-truck text-info me-2"></i>EXTERNO (Fornecedor)</span>
+                            <span class="badge bg-secondary rounded-pill" id="mobile-tab-count-externo">{{ kpis.externo.necessitam_cotacao|default:0 }}</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button type="button" class="dropdown-item py-2 d-flex justify-content-between align-items-center" onclick="setDashboardTab('interno'); updateMobileDropdownTab('INTERNO (Laboratório)', '{{ kpis.interno.fila_laboratorio|default:0 }}', 'bi-wrench-adjustable-circle');">
+                            <span><i class="bi bi-wrench-adjustable-circle text-success me-2"></i>INTERNO (Laboratório)</span>
+                            <span class="badge bg-secondary rounded-pill" id="mobile-tab-count-interno">{{ kpis.interno.fila_laboratorio|default:0 }}</span>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Desktop: Abas Horizontais -->
+        <div class="dashboard-tabs-container d-none d-md-flex">
             <button type="button" class="dashboard-tab-btn active" data-tab="todos" onclick="setDashboardTab('todos')">
                 <i class="bi bi-grid-3x3-gap-fill"></i>
                 <span>TODOS</span>
@@ -400,9 +433,9 @@
         </div>
 
         <!-- Seletor de Quantidade por Página -->
-        <div class="d-flex align-items-center gap-2">
+        <div class="d-flex align-items-center gap-2 w-100 w-md-auto justify-content-end">
             <span class="small text-muted">Exibir:</span>
-            <select id="pageSizeSelect" class="form-select form-select-sm" style="width: 90px;" onchange="changePageSize(this.value)">
+            <select id="pageSizeSelect" class="form-select form-select-sm" style="width: 85px;" onchange="changePageSize(this.value)">
                 <option value="10">10</option>
                 <option value="15" selected>15</option>
                 <option value="25">25</option>
@@ -558,7 +591,101 @@
             </div>
         </div>
 
-        <div class="table-responsive" style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+        <!-- VERSÃO MOBILE: LISTAGEM DE INSTRUMENTOS EM CARDS -->
+        <div class="d-block d-md-none p-2 bg-light bg-opacity-25" id="dashboardInstrumentsCards">
+            {% for item in instrumentos %}
+            <div class="card mb-2.5 shadow-sm border-0 border-start border-4 {% if item.status_situacao == 'VENCIDO' %}border-danger{% elif item.status_situacao == 'AVENCER_30' %}border-warning{% else %}border-success{% endif %} instrument-row instrument-card-item"
+                data-row-index="{{ forloop.counter0 }}"
+                data-tratativa="{{ item.tratativa|lower }}"
+                data-is-internal="{% if item.is_internal %}true{% else %}false{% endif %}"
+                data-tag="{{ item.tag|lower }}"
+                data-codigo="{{ item.codigo|lower }}"
+                data-desc="{{ item.descricao|lower }}"
+                data-fabricante="{{ item.fabricante|lower }}"
+                data-modelo="{{ item.modelo|lower }}"
+                data-setor="{{ item.setor_nome|lower }}"
+                data-setor-id="{{ item.setor_id|default:'' }}"
+                data-categoria-id="{{ item.categoria_id|default:'' }}"
+                data-acao="{{ item.activity_type }}"
+                data-status="{% if item.ativo %}ATIVO{% else %}INATIVO{% endif %}"
+                data-periodo="{{ item.periodo|default:'' }}"
+                data-resultado="{{ item.resultado_ultima_calibracao|default:'' }}"
+                data-ocorrencia="{% if item.has_active_occurrence %}COM_ABERTA{% else %}SEM_ABERTA{% endif %}"
+                data-situacao="{{ item.situacao_detalhada }}">
+                
+                <div class="card-body p-3">
+                    <!-- Linha 1: TAG + Badges de Status -->
+                    <div class="d-flex justify-content-between align-items-center mb-1.5">
+                        <a href="{{ item.url_detalhes }}" class="font-monospace fw-bold text-primary fs-6 text-decoration-none">
+                            {{ item.tag }}
+                        </a>
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="badge rounded-pill {% if item.status_situacao == 'VENCIDO' %}bg-danger{% elif item.status_situacao == 'AVENCER_30' %}bg-warning text-dark{% else %}bg-success{% endif %}" style="font-size: 0.70rem;">
+                                {{ item.status_situacao }}
+                            </span>
+                            {% if item.has_active_occurrence %}
+                                <button type="button" 
+                                        class="btn btn-xs btn-outline-danger p-0 px-1.5 rounded-pill" 
+                                        title="Ocorrência Aberta"
+                                        onclick="abrirModalOcorrenciasDashboard('{{ item.id }}', '{{ item.tag }}')">
+                                    <i class="bi bi-exclamation-octagon-fill text-danger"></i>
+                                    <span style="font-size: 0.65rem;" class="fw-bold">{{ item.ocorrencias_count }}</span>
+                                </button>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Linha 2: Descrição e Categoria -->
+                    <div class="text-dark small fw-semibold text-truncate mb-0.5">{{ item.descricao }}</div>
+                    <div class="text-muted small mb-2" style="font-size: 0.72rem;">
+                        {{ item.categoria_nome }}{% if item.fabricante %} &bull; {{ item.fabricante }}{% endif %}
+                    </div>
+
+                    <!-- Linha 3: Informações em Bloco Cinza -->
+                    <div class="d-flex justify-content-between align-items-center bg-light p-2 rounded-2 mb-2.5" style="font-size: 0.75rem;">
+                        <div>
+                            <span class="text-muted d-block" style="font-size: 0.65rem;">PRÓX. CALIBRAÇÃO</span>
+                            <strong class="{% if item.status_situacao == 'VENCIDO' %}text-danger{% elif item.status_situacao == 'AVENCER_30' %}text-warning text-dark{% else %}text-dark{% endif %}">
+                                {{ item.data_proxima_calibracao_display }}
+                            </strong>
+                            {% if item.dias_para_vencer is not None %}
+                                <span class="small text-muted">
+                                    {% if item.dias_para_vencer < 0 %}({{ item.dias_para_vencer|stringformat:"+d"|slice:"1:" }}d atraso){% elif item.dias_para_vencer <= 30 %}(em {{ item.dias_para_vencer }}d){% endif %}
+                                </span>
+                            {% endif %}
+                        </div>
+                        <div class="text-end">
+                            <span class="badge rounded-pill {% if item.is_internal %}badge-local-interno{% else %}badge-local-externo{% endif %}" style="font-size: 0.70rem;">
+                                {% if item.is_internal %}Interno{% else %}Externo{% endif %}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Linha 4: Botões de Ação -->
+                    <div class="d-flex gap-1.5">
+                        {% if not item.is_internal %}
+                            <a href="{% url 'metrologia:solicitacao_create' %}?instrumento_id={{ item.id }}" class="btn btn-sm btn-outline-primary flex-fill fw-semibold py-1.5" style="font-size: 0.78rem;">
+                                <i class="bi bi-cash-coin me-1"></i> Cotar
+                            </a>
+                        {% else %}
+                            <a href="{% url 'modulo_metrologia' %}?search={{ item.tag }}" class="btn btn-sm btn-outline-success flex-fill fw-semibold py-1.5" style="font-size: 0.78rem;">
+                                <i class="bi bi-calendar-check me-1"></i> Agendar
+                            </a>
+                        {% endif %}
+                        <a href="{{ item.url_detalhes }}" class="btn btn-sm btn-primary flex-fill fw-semibold py-1.5 shadow-sm" style="font-size: 0.78rem;">
+                            <span>Ver Detalhes</span>
+                            <i class="bi bi-chevron-right small ms-1"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-center py-4 text-muted small">Nenhum instrumento encontrado.</div>
+            {% endfor %}
+        </div>
+
+        <!-- VERSÃO DESKTOP: TABELA TRADICIONAL -->
+        <div class="table-responsive d-none d-md-block" style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
             <table class="table table-hover align-middle mb-0" id="dashboardInstrumentsTable">
                 <thead class="table-light small text-uppercase text-muted font-monospace">
                     <tr>
@@ -576,7 +703,8 @@
                 </thead>
                 <tbody id="instrumentosTableBody">
                     {% for item in instrumentos %}
-                    <tr class="instrument-row" 
+                    <tr class="instrument-row instrument-table-item" 
+                        data-row-index="{{ forloop.counter0 }}" 
                         data-tratativa="{{ item.tratativa|lower }}"
                         data-is-internal="{% if item.is_internal %}true{% else %}false{% endif %}"
                         data-tag="{{ item.tag|lower }}"
@@ -1220,10 +1348,18 @@
 </div>
 
 <script>
+    let isUserActivelySearching = false;
     let currentTab = 'todos'; // 'todos' | 'externo' | 'interno'
     let currentPage = 1;
     let pageSize = 15;
-    let filteredRows = [];
+    let filteredIndexes = [];
+
+    function updateMobileDropdownTab(label, count, icon) {
+        const textEl = document.getElementById('mobileTabActiveText');
+        if (textEl) {
+            textEl.innerHTML = `<i class="bi ${icon} text-primary me-1.5"></i> ${label} (${count})`;
+        }
+    }
 
     // ==========================================
     // 1. GESTÃO DE ABAS PRINCIPAIS
@@ -1313,7 +1449,9 @@
             query = '';
         }
 
-        const allRows = Array.from(document.querySelectorAll('.instrument-row'));
+        const allTableRows = Array.from(document.querySelectorAll('.instrument-table-item'));
+        const allCardRows = Array.from(document.querySelectorAll('.instrument-card-item'));
+        const sourceRows = allTableRows.length > 0 ? allTableRows : allCardRows;
 
         // Obter valores marcados no modal de filtros avançados
         const activeFilters = {
@@ -1355,8 +1493,9 @@
             }
         }
 
-        // Filtrar linhas
-        filteredRows = allRows.filter(row => {
+        // Filtrar índices
+        filteredIndexes = [];
+        sourceRows.forEach((row, idx) => {
             const isInternal = row.getAttribute('data-is-internal') === 'true';
             const tag = row.getAttribute('data-tag') || '';
             const codigo = row.getAttribute('data-codigo') || '';
@@ -1374,41 +1513,41 @@
             const situacao = row.getAttribute('data-situacao') || '';
 
             // 1. Checar Aba
-            if (currentTab === 'externo' && isInternal) return false;
-            if (currentTab === 'interno' && !isInternal) return false;
+            if (currentTab === 'externo' && isInternal) return;
+            if (currentTab === 'interno' && !isInternal) return;
 
             // 2. Checar Filtro dos Cards de KPI Superiores
             if (currentKpiFilter === 'VENCIDOS') {
-                if (situacao !== 'VENCIDO') return false;
+                if (situacao !== 'VENCIDO') return;
             } else if (currentKpiFilter === 'AVENCER_30') {
-                if (situacao !== 'AVENCER_30') return false;
+                if (situacao !== 'AVENCER_30') return;
             } else if (currentKpiFilter === 'VENCIDOS_AVENCER') {
-                if (situacao !== 'VENCIDO' && situacao !== 'AVENCER_30') return false;
+                if (situacao !== 'VENCIDO' && situacao !== 'AVENCER_30') return;
             } else if (currentKpiFilter === 'OCORRENCIAS') {
-                if (ocorrencia !== 'COM_ABERTA') return false;
+                if (ocorrencia !== 'COM_ABERTA') return;
             } else if (currentKpiFilter === 'FORNECEDOR') {
-                if (situacao !== 'VENCIDO' && situacao !== 'AVENCER_30') return false;
+                if (situacao !== 'VENCIDO' && situacao !== 'AVENCER_30') return;
             } else if (currentKpiFilter === 'FILA_LABORATORIO') {
-                if (situacao !== 'VENCIDO' && situacao !== 'AVENCER_30') return false;
+                if (situacao !== 'VENCIDO' && situacao !== 'AVENCER_30') return;
             }
 
             // 3. Checar Busca Textual
             if (query) {
                 const textMatch = tag.includes(query) || codigo.includes(query) || desc.includes(query) || fab.includes(query) || mod.includes(query) || setor.includes(query);
-                if (!textMatch) return false;
+                if (!textMatch) return;
             }
 
             // 4. Checar Filtros Avançados
-            if (activeFilters.situacao.length && !activeFilters.situacao.includes(situacao)) return false;
-            if (activeFilters.status.length && !activeFilters.status.includes(status)) return false;
-            if (activeFilters.periodo.length && !activeFilters.periodo.includes(periodo)) return false;
-            if (activeFilters.acao.length && !activeFilters.acao.includes(acao)) return false;
-            if (activeFilters.categoria.length && !activeFilters.categoria.includes(catId)) return false;
-            if (activeFilters.setor.length && !activeFilters.setor.includes(setorId)) return false;
-            if (activeFilters.resultado.length && !activeFilters.resultado.includes(resultado)) return false;
-            if (activeFilters.ocorrencia.length && !activeFilters.ocorrencia.includes(ocorrencia)) return false;
+            if (activeFilters.situacao.length && !activeFilters.situacao.includes(situacao)) return;
+            if (activeFilters.status.length && !activeFilters.status.includes(status)) return;
+            if (activeFilters.periodo.length && !activeFilters.periodo.includes(periodo)) return;
+            if (activeFilters.acao.length && !activeFilters.acao.includes(acao)) return;
+            if (activeFilters.categoria.length && !activeFilters.categoria.includes(catId)) return;
+            if (activeFilters.setor.length && !activeFilters.setor.includes(setorId)) return;
+            if (activeFilters.resultado.length && !activeFilters.resultado.includes(resultado)) return;
+            if (activeFilters.ocorrencia.length && !activeFilters.ocorrencia.includes(ocorrencia)) return;
 
-            return true;
+            filteredIndexes.push(idx);
         });
 
         // Renderizar Paginação
@@ -1430,19 +1569,29 @@
     }
 
     function renderPagination() {
-        const total = filteredRows.length;
+        const total = filteredIndexes.length;
         const countBadge = document.getElementById('tableFilteredCount');
         if (countBadge) countBadge.textContent = `${total} itens`;
 
-        // Ocultar todas as linhas
-        document.querySelectorAll('.instrument-row').forEach(row => row.style.display = 'none');
+        const allTableRows = Array.from(document.querySelectorAll('.instrument-table-item'));
+        const allCardRows = Array.from(document.querySelectorAll('.instrument-card-item'));
+
+        // Ocultar todas as linhas e cards
+        allTableRows.forEach(row => row.style.display = 'none');
+        allCardRows.forEach(card => card.style.display = 'none');
+
+        const pagStart = document.getElementById('pagStart');
+        const pagEnd = document.getElementById('pagEnd');
+        const pagTotal = document.getElementById('pagTotal');
+        const pagInfo = document.getElementById('paginationInfo');
+        const pagControls = document.getElementById('paginationControls');
 
         if (total === 0) {
-            document.getElementById('pagStart').textContent = '0';
-            document.getElementById('pagEnd').textContent = '0';
-            document.getElementById('pagTotal').textContent = '0';
-            document.getElementById('paginationInfo').textContent = '0 instrumentos encontrados';
-            document.getElementById('paginationControls').innerHTML = '';
+            if (pagStart) pagStart.textContent = '0';
+            if (pagEnd) pagEnd.textContent = '0';
+            if (pagTotal) pagTotal.textContent = '0';
+            if (pagInfo) pagInfo.textContent = '0 instrumentos encontrados';
+            if (pagControls) pagControls.innerHTML = '';
             return;
         }
 
@@ -1453,16 +1602,18 @@
         const startIndex = (currentPage - 1) * pageSize;
         const endIndex = Math.min(startIndex + pageSize, total);
 
-        // Exibir linhas da página atual
+        // Exibir linhas e cards da página atual
         for (let i = startIndex; i < endIndex; i++) {
-            filteredRows[i].style.display = '';
+            const idx = filteredIndexes[i];
+            if (allTableRows[idx]) allTableRows[idx].style.display = '';
+            if (allCardRows[idx]) allCardRows[idx].style.display = '';
         }
 
         // Atualizar textos informativos
-        document.getElementById('pagStart').textContent = (startIndex + 1).toString();
-        document.getElementById('pagEnd').textContent = endIndex.toString();
-        document.getElementById('pagTotal').textContent = total.toString();
-        document.getElementById('paginationInfo').textContent = `Mostrando ${startIndex + 1} a ${endIndex} de ${total}`;
+        if (pagStart) pagStart.textContent = (startIndex + 1).toString();
+        if (pagEnd) pagEnd.textContent = endIndex.toString();
+        if (pagTotal) pagTotal.textContent = total.toString();
+        if (pagInfo) pagInfo.textContent = `Mostrando ${startIndex + 1} a ${endIndex} de ${total}`;
 
         // Construir botões de paginação
         let paginationHtml = '';
@@ -1494,7 +1645,7 @@
                 </li>
             `;
         }
-        document.getElementById('paginationControls').innerHTML = paginationHtml;
+        if (pagControls) pagControls.innerHTML = paginationHtml;
 
         // Atualizar estado de seleção
         updateSelectionState();
