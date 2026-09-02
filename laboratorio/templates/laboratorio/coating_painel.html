@@ -262,6 +262,18 @@
         .pulse-danger {
             animation: pulseRed 2s infinite;
         }
+
+        /* Controle estrito de visibilidade de abas */
+        #evapTabsContent .tab-pane,
+        .tab-content > .tab-pane {
+            display: none !important;
+        }
+        #evapTabsContent .tab-pane.active,
+        #evapTabsContent .tab-pane.show.active,
+        .tab-content > .tab-pane.active,
+        .tab-content > .tab-pane.show.active {
+            display: block !important;
+        }
     </style>
     <!-- Tabela -->
     <ul class="nav nav-tabs mb-0 border-bottom-0 mt-4 px-2" id="evapTabs" role="tablist">
@@ -1599,6 +1611,14 @@
         // Gerenciamento fluido e dinâmico de abas com persistência
         const tabBtns = document.querySelectorAll('#evapTabs button[data-bs-toggle="tab"]');
         tabBtns.forEach(btn => {
+            btn.addEventListener('show.bs.tab', function (e) {
+                const targetSelector = e.target.getAttribute('data-bs-target') || '';
+                document.querySelectorAll('#evapTabsContent .tab-pane').forEach(p => {
+                    if ('#' + p.id !== targetSelector) {
+                        p.classList.remove('show', 'active');
+                    }
+                });
+            });
             btn.addEventListener('shown.bs.tab', function (e) {
                 const targetSelector = e.target.getAttribute('data-bs-target') || '';
                 const targetId = targetSelector.replace('#', '').replace('-pane', '');
