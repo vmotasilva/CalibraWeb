@@ -76,7 +76,8 @@ class SharedHubViewTests(TestCase):
         self.assertContains(response, 'Calibra HUB')
         self.assertContains(response, 'Favoritos')
         self.assertContains(response, 'Módulos do Sistema')
-        self.assertContains(response, 'Ações Rápidas Globais')
+        self.assertContains(response, 'Acessar HUB de')
+        self.assertNotContains(response, 'Ações Rápidas Globais')
 
 
 class SharedImportsTests(TestCase):

@@ -291,7 +291,7 @@
                                 id="hubSearchInput"
                                 name="q_calibra_hub_search"
                                 class="form-control form-control-sm border-0 shadow-none py-1.5 pe-3 text-dark"
-                                placeholder="Buscar telas, módulos e ações..."
+                                placeholder="Buscar módulos do sistema..."
                                 autocomplete="off"
                                 autocorrect="off"
                                 autocapitalize="off"
@@ -308,7 +308,7 @@
                         <i class="bi bi-grid-3x3-gap me-1.5"></i> Módulos
                     </a>
                     <a class="btn btn-warning btn-sm hub-primary-btn text-dark fw-bold shadow-sm py-1 px-3 rounded-pill d-inline-flex align-items-center text-nowrap" href="{% url 'inbox' %}" style="min-height: 34px; font-size: 0.82rem;">
-                        <i class="bi bi-bell-fill me-1.5"></i> Notificações ({{ inbox_count|default:hub_stats.1.value }})
+                        <i class="bi bi-bell-fill me-1.5"></i> Notificações{% if nav_notifications_total %} ({{ nav_notifications_total }}){% endif %}
                     </a>
                 </div>
             </div>
@@ -319,10 +319,10 @@
         <div class="hub-section-header">
             <div>
                 <h2 class="h4 mb-1">Favoritos</h2>
-                <p>Fixe módulos e atalhos para montar seu HUB pessoal.</p>
+                <p>Fixe módulos para montar seu HUB pessoal.</p>
             </div>
         </div>
-        <div id="hub-favorites-empty" class="hub-empty-state">Marque as estrelas dos cards abaixo para manter os itens mais usados sempre no topo.</div>
+        <div id="hub-favorites-empty" class="hub-empty-state">Marque as estrelas dos cards abaixo para manter os módulos mais usados sempre no topo.</div>
         <div id="hub-favorites-list" class="row g-3 d-none"></div>
     </section>
 
@@ -330,7 +330,7 @@
         <div class="hub-section-header">
             <div>
                 <h2 class="h4 mb-1">Módulos do Sistema</h2>
-                <p>Navegue pelo HUB de cada módulo ou acerte pendências diretamente.</p>
+                <p>Acesse o HUB dedicado de cada módulo para gerenciar suas rotinas e indicadores.</p>
             </div>
             <span class="module-chip">{{ modules|length }} módulos ativos</span>
         </div>
@@ -346,11 +346,6 @@
                                 </div>
                             </a>
                             <div class="d-flex align-items-center gap-1">
-                                {% if module.pending_count %}
-                                <a href="{{ module.inbox_url|default:'/inbox/' }}" class="badge rounded-pill text-white text-decoration-none shadow-sm px-2.5 py-1.5" style="background: #dc3545; font-size: 0.8rem;" title="Ver pendências no Inbox">
-                                    <i class="bi bi-bell-fill me-1"></i> {{ module.pending_count }}
-                                </a>
-                                {% endif %}
                                 <button
                                     type="button"
                                     class="hub-favorite-toggle"
@@ -374,30 +369,8 @@
                                     <h3 class="h5 mb-0 fw-bold">{{ module.title }}</h3>
                                 </a>
                             </div>
-                            <p class="text-muted small mb-0" style="min-height: 38px;">{{ module.description }}</p>
+                            <p class="text-muted small mb-0" style="min-height: 42px;">{{ module.description }}</p>
                         </div>
-
-                        <div class="module-status d-flex justify-content-between align-items-center">
-                            <div>
-                                <div class="small text-uppercase text-muted mb-0" style="font-size: 0.7rem;">Status do Módulo</div>
-                                <div class="small fw-semibold {% if module.pending_count %}text-danger{% else %}text-muted{% endif %}">{{ module.status_text }}</div>
-                            </div>
-                            {% if module.inbox_url %}
-                            <a href="{{ module.inbox_url }}" class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size: 0.75rem;">
-                                Ver <i class="bi bi-arrow-right"></i>
-                            </a>
-                            {% endif %}
-                        </div>
-
-                        {% if module.actions %}
-                        <div class="d-flex flex-wrap gap-1.5">
-                            {% for action in module.actions %}
-                            <a href="{{ action.url }}" class="btn btn-outline-secondary btn-sm hub-secondary-btn py-1 px-2 text-nowrap" style="font-size: 0.8rem;">
-                                <i class="bi {{ action.icon }} me-1"></i> {{ action.label }}
-                            </a>
-                            {% endfor %}
-                        </div>
-                        {% endif %}
 
                         <a href="{{ module.url }}" class="btn btn-dark hub-primary-btn mt-auto fw-semibold">
                             <i class="bi bi-grid-1x2-fill me-1"></i> Acessar HUB de {{ module.title }}
@@ -408,57 +381,6 @@
             {% empty %}
             <div class="col-12">
                 <div class="hub-empty-state">Nenhum módulo foi liberado para o seu perfil. Consulte a administração do sistema.</div>
-            </div>
-            {% endfor %}
-        </div>
-    </section>
-
-    <section id="acoes-rapidas" class="hub-section">
-        <div class="hub-section-header">
-            <div>
-                <h2 class="h4 mb-1">Ações Rápidas Globais</h2>
-                <p>Atalhos prontos para acelerar as rotinas mais frequentes.</p>
-            </div>
-            <span class="module-chip">{{ quick_actions|length }} atalhos</span>
-        </div>
-        <div class="row g-3" id="quickActionsGrid">
-            {% for action in quick_actions %}
-            <div class="col-12 col-md-6 col-xl-4 action-item" data-action-title="{{ action.label|lower }}" data-action-desc="{{ action.description|lower }}">
-                <div class="card quick-card" style="--module-color: {{ action.color|default:'#16353b' }};">
-                    <div class="card-body d-flex flex-column gap-3">
-                        <div class="d-flex align-items-start justify-content-between gap-3">
-                            <div class="quick-icon">
-                                <i class="bi {{ action.icon }}"></i>
-                            </div>
-                            <button
-                                type="button"
-                                class="hub-favorite-toggle"
-                                aria-label="Favoritar {{ action.label }}"
-                                aria-pressed="false"
-                                data-hub-favorite-id="action:{{ action.id }}"
-                                data-hub-favorite-label="{{ action.label }}"
-                                data-hub-favorite-url="{{ action.url }}"
-                                data-hub-favorite-kind="Ação rápida"
-                                data-hub-favorite-icon="{{ action.icon }}"
-                                data-hub-favorite-module="{{ action.module_title }}"
-                            >
-                                <i class="bi bi-star"></i>
-                            </button>
-                        </div>
-                        <div class="flex-grow-1">
-                            <div class="pending-chip mb-2">{{ action.module_title }}</div>
-                            <h3 class="h5 mb-2 fw-semibold">{{ action.label }}</h3>
-                            <p class="text-muted small mb-0">{{ action.description }}</p>
-                        </div>
-                        <a href="{{ action.url }}" class="btn btn-outline-dark hub-secondary-btn fw-semibold">
-                            <i class="bi bi-box-arrow-up-right me-1"></i> Abrir Ação
-                        </a>
-                    </div>
-                </div>
-            </div>
-            {% empty %}
-            <div class="col-12">
-                <div class="hub-empty-state">Nenhuma ação rápida está disponível para o seu perfil neste momento.</div>
             </div>
             {% endfor %}
         </div>
@@ -599,20 +521,7 @@
                     } else {
                         el.style.display = 'none';
                     }
-                });
-
-                // Filter quick actions
-                document.querySelectorAll('.action-item').forEach(el => {
-                    const title = el.getAttribute('data-action-title') || '';
-                    const desc = el.getAttribute('data-action-desc') || '';
-                    const text = el.innerText.toLowerCase();
-                    if (!q || title.includes(q) || desc.includes(q) || text.includes(q)) {
-                        el.style.display = '';
-                    } else {
-                        el.style.display = 'none';
-                    }
-                });
-            });
+                });            });
         }
     });
 </script>

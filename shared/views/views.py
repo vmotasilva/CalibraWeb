@@ -116,51 +116,7 @@ def _hub_build_action(user, module_key, module_title, action_config):
 
 @login_required
 def hub_view(request):
-    from shared.inbox import get_user_inbox_items
-    from django.utils.text import slugify
-
-    inbox_items = get_user_inbox_items(request.user)
-    
-    # Agrupar contagem de pendências por módulo
-    inbox_by_module = {}
-    for item in inbox_items:
-        m_name = (item.module or "").lower().strip()
-        inbox_by_module[m_name] = inbox_by_module.get(m_name, 0) + 1
-
-    laboratorio_open_count = _hub_get_laboratorio_open_count()
-    counts = {
-        **get_user_cobrancas_counts(request.user),
-        "laboratorio_abertas": laboratorio_open_count,
-    }
-
-    pending_items = [
-        {
-            "key": item.key,
-            "label": item.label,
-            "count": int(item.count or 0),
-            "url": item.url,
-            "section": item.section,
-        }
-        for item in get_user_cobrancas_items(request.user)
-        if int(item.count or 0) > 0
-    ]
-
-    if laboratorio_open_count and _hub_can_access(request.user, "laboratorio", "laboratorio:modulo"):
-        pending_items.append(
-            {
-                "key": "laboratorio_abertas",
-                "label": "Laboratório (ocorrências abertas)",
-                "count": laboratorio_open_count,
-                "url": _hub_safe_reverse("laboratorio:modulo"),
-                "section": "Laboratório",
-            }
-        )
-
-    pending_items = sorted(
-        pending_items,
-        key=lambda item: (-item["count"], item["section"], item["label"]),
-    )[:8]
-
+    """Página inicial do Calibra HUB: direcionamento rápido e ultraleve aos HUBS dos módulos."""
     module_configs = [
         {
             "id": "auditoria",
@@ -170,32 +126,6 @@ def hub_view(request):
             "icon": "bi-clipboard-data",
             "color": "#8b5cf6",
             "hub_view_name": "auditoria:dashboard",
-            "inbox_slug": "auditoria",
-            "pending_keys": ["auditoria"],
-            "pending_label": "auditorias pendentes",
-            "quick_actions": [
-                {
-                    "id": "auditoria-dashboard",
-                    "label": "Dashboard de auditoria",
-                    "description": "Visualizar os indicadores e o calendário do módulo.",
-                    "icon": "bi-bar-chart-line",
-                    "view_name": "auditoria:dashboard",
-                },
-                {
-                    "id": "auditoria-preencher",
-                    "label": "Preencher auditoria",
-                    "description": "Iniciar um novo registro a partir de um modelo.",
-                    "icon": "bi-journal-plus",
-                    "view_name": "auditoria:selecionar_modelo_preenchimento",
-                },
-                {
-                    "id": "auditoria-modelos",
-                    "label": "Modelos de auditoria",
-                    "description": "Gerenciar questionários e modelos ativos.",
-                    "icon": "bi-folder2-open",
-                    "view_name": "auditoria:modelos_lista",
-                },
-            ],
         },
         {
             "id": "metrologia",
@@ -205,32 +135,6 @@ def hub_view(request):
             "icon": "bi-rulers",
             "color": "#0d6efd",
             "hub_view_name": "modulo_metrologia",
-            "inbox_slug": "metrologia",
-            "pending_keys": ["metrologia", "cotacoes"],
-            "pending_label": "alertas operacionais",
-            "quick_actions": [
-                {
-                    "id": "metrologia-lista-instrumentos",
-                    "label": "Lista de instrumentos",
-                    "description": "Abrir a visão geral de instrumentos e calibrações.",
-                    "icon": "bi-list-check",
-                    "view_name": "modulo_metrologia",
-                },
-                {
-                    "id": "metrologia-novo-instrumento",
-                    "label": "Novo instrumento",
-                    "description": "Cadastrar um novo instrumento no acervo.",
-                    "icon": "bi-plus-circle",
-                    "view_name": "novo_instrumento",
-                },
-                {
-                    "id": "metrologia-cotacoes",
-                    "label": "Cotações",
-                    "description": "Acompanhar solicitações e seus prazos.",
-                    "icon": "bi-cash-stack",
-                    "view_name": "metrologia:solicitacao_list",
-                },
-            ],
         },
         {
             "id": "treinamentos",
@@ -240,39 +144,6 @@ def hub_view(request):
             "icon": "bi-mortarboard",
             "color": "#2563eb",
             "hub_view_name": "procedures:dashboard_treinamentos",
-            "inbox_slug": "treinamentos",
-            "pending_keys": ["trein_matriz", "trein_demanda", "trein_planejamentos"],
-            "pending_label": "pendências de treinamento",
-            "quick_actions": [
-                {
-                    "id": "treinamentos-dashboard",
-                    "label": "Dashboard de treinamentos",
-                    "description": "Visualizar o desempenho e as pendências da equipe.",
-                    "icon": "bi-easel2",
-                    "view_name": "procedures:dashboard_treinamentos",
-                },
-                {
-                    "id": "treinamentos-procedimentos",
-                    "label": "Procedimentos",
-                    "description": "Consultar procedimentos e instruções de trabalho.",
-                    "icon": "bi-journal-text",
-                    "view_name": "procedures:procedimentos_list",
-                },
-                {
-                    "id": "treinamentos-matriz",
-                    "label": "Matriz de habilidades",
-                    "description": "Acompanhar o quadro geral de competências do time.",
-                    "icon": "bi-award",
-                    "view_name": "procedures:matriz_habilidade_geral",
-                },
-                {
-                    "id": "treinamentos-validacoes",
-                    "label": "Validações pendentes",
-                    "description": "Atuar nas validações da matriz de habilidade.",
-                    "icon": "bi-patch-check",
-                    "view_name": "procedures:validacoes_pendentes",
-                },
-            ],
         },
         {
             "id": "boards",
@@ -282,18 +153,6 @@ def hub_view(request):
             "icon": "bi-kanban",
             "color": "#0284c7",
             "hub_view_name": "boards:dashboard",
-            "inbox_slug": "quadros",
-            "pending_keys": ["boards"],
-            "pending_label": "tarefas e menções",
-            "quick_actions": [
-                {
-                    "id": "boards-dashboard",
-                    "label": "Painel de quadros",
-                    "description": "Acessar todos os quadros e quadros da equipe.",
-                    "icon": "bi-kanban",
-                    "view_name": "boards:dashboard",
-                },
-            ],
         },
         {
             "id": "laboratorio",
@@ -303,32 +162,6 @@ def hub_view(request):
             "icon": "bi-flask",
             "color": "#1f7a66",
             "hub_view_name": "laboratorio:modulo",
-            "inbox_slug": "laboratorio",
-            "pending_keys": ["laboratorio_abertas"],
-            "pending_label": "ocorrências abertas",
-            "quick_actions": [
-                {
-                    "id": "laboratorio-dashboard",
-                    "label": "Dashboard do laboratório",
-                    "description": "Acompanhar os principais indicadores do módulo.",
-                    "icon": "bi-speedometer2",
-                    "view_name": "laboratorio:dashboard",
-                },
-                {
-                    "id": "laboratorio-nova-ocorrencia",
-                    "label": "Nova ocorrência",
-                    "description": "Registrar uma ocorrência geral do laboratório.",
-                    "icon": "bi-plus-square",
-                    "view_name": "laboratorio:ocorrencia_create",
-                },
-                {
-                    "id": "laboratorio-maquinas",
-                    "label": "Máquinas",
-                    "description": "Consultar o cadastro e histórico das máquinas.",
-                    "icon": "bi-gear-wide-connected",
-                    "view_name": "maquinas:maquinas_list",
-                },
-            ],
         },
         {
             "id": "rh",
@@ -338,39 +171,6 @@ def hub_view(request):
             "icon": "bi-people",
             "color": "#0f766e",
             "hub_view_name": "modulo_rh",
-            "inbox_slug": "pessoas",
-            "pending_keys": [],
-            "pending_label": "rotinas de equipe",
-            "quick_actions": [
-                {
-                    "id": "rh-dashboard",
-                    "label": "Quadro de colaboradores",
-                    "description": "Abrir a visão principal da equipe.",
-                    "icon": "bi-people-fill",
-                    "view_name": "modulo_rh",
-                },
-                {
-                    "id": "rh-ferias",
-                    "label": "Gestão de férias",
-                    "description": "Consultar e programar férias do time.",
-                    "icon": "bi-calendar-check",
-                    "view_name": "rh:gestao_ferias",
-                },
-                {
-                    "id": "rh-horas-extras",
-                    "label": "Planejamento de Horas Extras",
-                    "description": "Programar e acompanhar as horas extras convocadas.",
-                    "icon": "bi-clock-history",
-                    "view_name": "rh:planejamento_hora_extra_list",
-                },
-                {
-                    "id": "rh-usuarios",
-                    "label": "Usuários do sistema",
-                    "description": "Administrar acessos e permissões.",
-                    "icon": "bi-person-gear",
-                    "view_name": "rh:listar_usuarios",
-                },
-            ],
         },
         {
             "id": "fornecedores",
@@ -380,25 +180,6 @@ def hub_view(request):
             "icon": "bi-truck",
             "color": "#7c3aed",
             "hub_view_name": "fornecedores:modulo",
-            "inbox_slug": "fornecedores",
-            "pending_keys": [],
-            "pending_label": "itens acompanhados",
-            "quick_actions": [
-                {
-                    "id": "fornecedores-lista",
-                    "label": "Lista de fornecedores",
-                    "description": "Consultar a base atual de fornecedores.",
-                    "icon": "bi-building",
-                    "view_name": "fornecedores:fornecedor_list",
-                },
-                {
-                    "id": "fornecedores-novo",
-                    "label": "Novo fornecedor",
-                    "description": "Cadastrar um novo fornecedor na base.",
-                    "icon": "bi-building-add",
-                    "view_name": "fornecedores:fornecedor_create",
-                },
-            ],
         },
         {
             "id": "acoes",
@@ -408,32 +189,6 @@ def hub_view(request):
             "icon": "bi-check2-square",
             "color": "#bf6b04",
             "hub_view_name": "acoes:dashboard",
-            "inbox_slug": "acoes",
-            "pending_keys": ["acoes"],
-            "pending_label": "ações vencidas",
-            "quick_actions": [
-                {
-                    "id": "acoes-dashboard",
-                    "label": "Painel de ações",
-                    "description": "Ver o panorama consolidado do módulo.",
-                    "icon": "bi-kanban",
-                    "view_name": "acoes:dashboard",
-                },
-                {
-                    "id": "acoes-registradas",
-                    "label": "Ações registradas",
-                    "description": "Listar e filtrar as ações em andamento.",
-                    "icon": "bi-card-checklist",
-                    "view_name": "acoes:acoes_registradas",
-                },
-                {
-                    "id": "acoes-cadastro",
-                    "label": "Cadastro base",
-                    "description": "Acessar o cadastro principal do módulo.",
-                    "icon": "bi-folder2-open",
-                    "view_name": "acoes:listar_acoes",
-                },
-            ],
         },
         {
             "id": "documents",
@@ -443,71 +198,26 @@ def hub_view(request):
             "icon": "bi-file-earmark-text",
             "color": "#475569",
             "hub_view_name": "documents:document_list",
-            "inbox_slug": "documentos",
-            "pending_keys": [],
-            "pending_label": "documentos ativos",
-            "quick_actions": [
-                {
-                    "id": "documents-lista",
-                    "label": "Lista de documentos",
-                    "description": "Acessar acervo e documentos normativos.",
-                    "icon": "bi-folder-check",
-                    "view_name": "documents:document_list",
-                },
-            ],
         },
     ]
 
     modules = []
-    quick_actions = []
-    seen_action_ids = set()
-
-    for module_config in module_configs:
-        if not _hub_can_access(request.user, module_config["module_key"], module_config["hub_view_name"]):
+    for cfg in module_configs:
+        if not _hub_can_access(request.user, cfg["module_key"], cfg["hub_view_name"]):
             continue
 
-        module_url = _hub_safe_reverse(module_config["hub_view_name"])
-        if not module_url:
+        url = _hub_safe_reverse(cfg["hub_view_name"])
+        if not url:
             continue
-
-        module_actions = []
-        for action_config in module_config["quick_actions"]:
-            action = _hub_build_action(
-                request.user,
-                module_config["module_key"],
-                module_config["title"],
-                action_config,
-            )
-            if not action:
-                continue
-
-            module_actions.append(action)
-            if action["id"] not in seen_action_ids:
-                seen_action_ids.add(action["id"])
-                quick_actions.append(action)
-
-        # Priorizar contagem precisa do Inbox
-        slug = module_config.get("inbox_slug", module_config["id"])
-        inbox_count = inbox_by_module.get(slug, 0) or inbox_by_module.get(module_config["title"].lower(), 0)
-        cobrancas_count = sum(int(counts.get(key, 0) or 0) for key in module_config["pending_keys"])
-        pending_count = max(inbox_count, cobrancas_count)
 
         modules.append(
             {
-                "id": module_config["id"],
-                "title": module_config["title"],
-                "description": module_config["description"],
-                "icon": module_config["icon"],
-                "color": module_config["color"],
-                "url": module_url,
-                "inbox_url": f"/inbox/?tab={slug}" if pending_count else None,
-                "pending_count": pending_count,
-                "status_text": (
-                    f"{pending_count} {module_config['pending_label']}"
-                    if pending_count
-                    else "Sem pendências críticas no radar"
-                ),
-                "actions": module_actions[:4],
+                "id": cfg["id"],
+                "title": cfg["title"],
+                "description": cfg["description"],
+                "icon": cfg["icon"],
+                "color": cfg["color"],
+                "url": url,
             }
         )
 
@@ -518,19 +228,9 @@ def hub_view(request):
             "detail": "áreas disponíveis no sistema",
         },
         {
-            "label": "Pendências na Caixa",
-            "value": len(inbox_items),
-            "detail": "notificações ativas por módulo",
-        },
-        {
-            "label": "Ações rápidas",
-            "value": len(quick_actions),
-            "detail": "atalhos operacionais no hub",
-        },
-        {
             "label": "Favoritos",
             "value": 0,
-            "detail": "atalhos fixados no navegador",
+            "detail": "módulos fixados no topo",
             "dynamic_id": "hub-favorites-count",
         },
     ]
@@ -540,10 +240,9 @@ def hub_view(request):
         "shared/hub.html",
         {
             "hub_stats": hub_stats,
-            "inbox_count": len(inbox_items),
-            "pending_items": pending_items,
-            "quick_actions": quick_actions,
             "modules": modules,
+            "quick_actions": [],
+            "pending_items": [],
         },
     )
 
