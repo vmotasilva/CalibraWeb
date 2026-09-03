@@ -94,7 +94,11 @@ MODULE_HUBS_CONFIG = {
         "badge": "Qualidade & Conformidade",
         "description": "Central de gestão de auditorias internas, modelos de questionários, avaliações de conformidade e rotinas programadas.",
         "icon": "bi-clipboard-data",
-        "color": "#8b5cf6",
+        "color": "#7c3aed",
+        "color_light": "#f5f3ff",
+        "color_border": "rgba(124, 58, 237, 0.4)",
+        "gradient": "linear-gradient(135deg, #1e1035 0%, #3b1366 50%, #6d28d9 100%)",
+        "icon_bg": "#6d28d9",
         "activities": [
             {
                 "title": "Dashboard de Auditoria",
@@ -147,7 +151,11 @@ MODULE_HUBS_CONFIG = {
         "badge": "Instrumentos & Calibração",
         "description": "Gestão completa do parque de instrumentos de medição, histórico de calibrações, certificados e cotações externas.",
         "icon": "bi-rulers",
-        "color": "#0d6efd",
+        "color": "#0284c7",
+        "color_light": "#f0f9ff",
+        "color_border": "rgba(2, 132, 199, 0.4)",
+        "gradient": "linear-gradient(135deg, #082138 0%, #0c3b64 50%, #0284c7 100%)",
+        "icon_bg": "#0369a1",
         "activities": [
             {
                 "title": "Lista de Instrumentos",
@@ -208,6 +216,10 @@ MODULE_HUBS_CONFIG = {
         "description": "Matriz de competências, procedimentos operacionais (POP/IT), cronograma de treinamentos e avaliações de eficácia.",
         "icon": "bi-mortarboard",
         "color": "#2563eb",
+        "color_light": "#eff6ff",
+        "color_border": "rgba(37, 99, 235, 0.4)",
+        "gradient": "linear-gradient(135deg, #0b1938 0%, #1e3a8a 50%, #2563eb 100%)",
+        "icon_bg": "#1d4ed8",
         "activities": [
             {
                 "title": "Dashboard de Treinamentos",
@@ -288,7 +300,11 @@ MODULE_HUBS_CONFIG = {
         "badge": "Gestão Visual & Kanban",
         "description": "Gestão ágil de fluxos de trabalho, cartões com prazos e checklists, acompanhamento de projetos e comunicação da equipe.",
         "icon": "bi-kanban",
-        "color": "#0284c7",
+        "color": "#0891b2",
+        "color_light": "#ecfeff",
+        "color_border": "rgba(8, 145, 178, 0.4)",
+        "gradient": "linear-gradient(135deg, #062a33 0%, #0e5b6b 50%, #0891b2 100%)",
+        "icon_bg": "#0e7490",
         "activities": [
             {
                 "title": "Painel de Quadros",
@@ -313,7 +329,11 @@ MODULE_HUBS_CONFIG = {
         "badge": "Operações Técnicas",
         "description": "Registro de ocorrências técnicas, manutenção preventiva e corretiva de máquinas, tratamentos e indicadores analíticos.",
         "icon": "bi-flask",
-        "color": "#1f7a66",
+        "color": "#059669",
+        "color_light": "#ecfdf5",
+        "color_border": "rgba(5, 150, 105, 0.4)",
+        "gradient": "linear-gradient(135deg, #05261d 0%, #064e3b 50%, #059669 100%)",
+        "icon_bg": "#047857",
         "activities": [
             {
                 "title": "Painel de Ocorrências",
@@ -346,7 +366,7 @@ MODULE_HUBS_CONFIG = {
             {
                 "title": "Tratamento Antirreflexo",
                 "description": "Controle de lotes, inspeções visuais e acompanhamento de tratamentos ópticos especiais.",
-                "icon": "bi-eyeglasses",
+                "icon": "bi-infinity",
                 "view_name": "laboratorio:tratamento_list",
                 "badge": "Processos",
             },
@@ -366,7 +386,11 @@ MODULE_HUBS_CONFIG = {
         "badge": "Recursos Humanos & Equipe",
         "description": "Quadro de colaboradores, estrutura de liderança, escalas de férias, horas extras convocadas e controle de acessos.",
         "icon": "bi-people",
-        "color": "#0f766e",
+        "color": "#ea580c",
+        "color_light": "#fff7ed",
+        "color_border": "rgba(234, 88, 12, 0.4)",
+        "gradient": "linear-gradient(135deg, #2e1205 0%, #7c2d12 50%, #ea580c 100%)",
+        "icon_bg": "#c2410c",
         "activities": [
             {
                 "title": "Quadro de Colaboradores",
@@ -419,7 +443,11 @@ MODULE_HUBS_CONFIG = {
         "badge": "Qualificação & Suprimentos",
         "description": "Base de fornecedores homologados, monitoramento de desempenho, matriz de qualificação e documentação obrigatória.",
         "icon": "bi-truck",
-        "color": "#7c3aed",
+        "color": "#c026d3",
+        "color_light": "#fdf4ff",
+        "color_border": "rgba(192, 38, 211, 0.4)",
+        "gradient": "linear-gradient(135deg, #2e083a 0%, #701a75 50%, #c026d3 100%)",
+        "icon_bg": "#a21caf",
         "activities": [
             {
                 "title": "Base de Fornecedores",

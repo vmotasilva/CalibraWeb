@@ -6,19 +6,25 @@
 {% block extra_head %}
 <style>
     :root {
-        --mod-color: {{ module.color|default:'#198754' }};
-        --mod-color-light: color-mix(in srgb, var(--mod-color) 12%, white);
-        --mod-color-border: color-mix(in srgb, var(--mod-color) 25%, transparent);
+        --mod-color: {{ module.color|default:'#0d6efd' }};
+        --mod-color-light: {{ module.color_light|default:'#eff6ff' }};
+        --mod-color-border: {{ module.color_border|default:'rgba(13,110,253,0.35)' }};
     }
 
     .mod-hero {
-        background: linear-gradient(135deg, #16353b 0%, #1e454b 60%, color-mix(in srgb, var(--mod-color) 45%, #16353b) 100%);
-        border-radius: 16px;
-        padding: 1.75rem 2rem;
-        color: #ffffff;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        background: {{ module.gradient|default:'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' }} !important;
+        border: 1px solid {{ module.color_border|default:'rgba(255,255,255,0.15)' }};
+        border-radius: 18px;
+        padding: 2rem 2.25rem;
+        color: #ffffff !important;
+        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.16);
         position: relative;
         overflow: hidden;
+    }
+
+    .mod-hero * {
+        position: relative;
+        z-index: 2;
     }
 
     .mod-hero::after {
@@ -26,24 +32,26 @@
         position: absolute;
         right: -40px;
         top: -40px;
-        width: 220px;
-        height: 220px;
+        width: 260px;
+        height: 260px;
         border-radius: 50%;
-        background: radial-gradient(circle, color-mix(in srgb, var(--mod-color) 30%, transparent) 0%, transparent 70%);
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.18) 0%, transparent 70%);
         pointer-events: none;
+        z-index: 1;
     }
 
     .mod-icon-badge {
-        width: 48px;
-        height: 48px;
-        border-radius: 12px;
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        background: color-mix(in srgb, var(--mod-color) 30%, white);
-        color: #ffffff;
-        font-size: 1.5rem;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        background: {{ module.icon_bg|default:'rgba(255,255,255,0.2)' }} !important;
+        color: #ffffff !important;
+        font-size: 1.6rem;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+        border: 1px solid rgba(255, 255, 255, 0.3);
     }
 
     .activity-card {
@@ -70,7 +78,7 @@
         width: 4px;
         height: 100%;
         background: var(--mod-color);
-        opacity: 0.85;
+        opacity: 0.9;
     }
 
     .activity-icon {
@@ -103,12 +111,124 @@
     .activity-btn:hover {
         background: var(--mod-color);
         color: #ffffff !important;
-        box-shadow: 0 4px 14px color-mix(in srgb, var(--mod-color) 40%, transparent);
+        box-shadow: 0 4px 14px var(--mod-color-border);
     }
 </style>
 {% endblock %}
 
 {% block content %}
+<style>
+    /* Estilos embutidos no content para garantia absoluta de renderização */
+    :root {
+        --mod-color: {{ module.color|default:'#0d6efd' }};
+        --mod-color-light: {{ module.color_light|default:'#eff6ff' }};
+        --mod-color-border: {{ module.color_border|default:'rgba(13,110,253,0.35)' }};
+    }
+
+    .mod-hero {
+        background: {{ module.gradient|default:'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' }} !important;
+        border: 1px solid {{ module.color_border|default:'rgba(255,255,255,0.15)' }};
+        border-radius: 18px;
+        padding: 2rem 2.25rem;
+        color: #ffffff !important;
+        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.16);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .mod-hero * {
+        position: relative;
+        z-index: 2;
+    }
+
+    .mod-hero::after {
+        content: '';
+        position: absolute;
+        right: -40px;
+        top: -40px;
+        width: 260px;
+        height: 260px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.18) 0%, transparent 70%);
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    .mod-icon-badge {
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: {{ module.icon_bg|default:'rgba(255,255,255,0.2)' }} !important;
+        color: #ffffff !important;
+        font-size: 1.6rem;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .activity-card {
+        border-radius: 14px;
+        border: 1px solid rgba(0, 0, 0, 0.07);
+        background: #ffffff;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+        transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .activity-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+        border-color: var(--mod-color-border);
+    }
+
+    .activity-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: var(--mod-color);
+        opacity: 0.9;
+    }
+
+    .activity-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--mod-color-light);
+        color: var(--mod-color);
+        font-size: 1.35rem;
+    }
+
+    .activity-btn {
+        background: #1e293b;
+        color: #ffffff !important;
+        border: none;
+        border-radius: 8px;
+        padding: 0.55rem 1rem;
+        font-size: 0.88rem;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+    }
+
+    .activity-btn:hover {
+        background: var(--mod-color);
+        color: #ffffff !important;
+        box-shadow: 0 4px 14px var(--mod-color-border);
+    }
+</style>
+
 <div class="container-fluid px-3 px-md-4 py-3">
     <!-- NAVEGAÇÃO E BREADCRUMB -->
     <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
@@ -123,46 +243,60 @@
         </a>
     </div>
 
-    <!-- HERO DO MÓDULO -->
-    <div class="mod-hero mb-4">
+    <!-- HERO DO MÓDULO COM COR DE FUNDO EXCLUSIVA -->
+    <div class="mod-hero mb-4" style="background: {{ module.gradient }} !important; border: 1px solid {{ module.color_border }};">
         <div class="row align-items-center g-3">
             <div class="col-12 col-lg-7">
                 <div class="d-flex align-items-center gap-3 mb-2">
-                    <div class="mod-icon-badge">
+                    <div class="mod-icon-badge" style="background: {{ module.icon_bg }} !important;">
                         <i class="bi {{ module.icon }}"></i>
                     </div>
                     <div>
-                        <span class="badge bg-white bg-opacity-20 text-white border-0 py-1 px-2.5 rounded-pill small fw-semibold text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                        <span class="badge bg-white bg-opacity-25 text-white border-0 py-1.5 px-3 rounded-pill small fw-semibold text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px; backdrop-filter: blur(4px);">
                             {{ module.badge|default:'HUB Operacional' }}
                         </span>
-                        <h1 class="h3 fw-bold mb-0 text-white mt-1">HUB de {{ module.title }}</h1>
+                        <h1 class="h3 fw-bold mb-0 text-white mt-1" style="text-shadow: 0 2px 4px rgba(0,0,0,0.35);">HUB de {{ module.title }}</h1>
                     </div>
                 </div>
-                <p class="text-white text-opacity-80 mb-0 small" style="max-width: 680px; font-size: 0.88rem;">
+                <p class="text-white text-opacity-90 mb-0 small" style="max-width: 680px; font-size: 0.9rem; text-shadow: 0 1px 2px rgba(0,0,0,0.25);">
                     {{ module.description }}
                 </p>
             </div>
 
             <div class="col-12 col-lg-5">
                 <div class="d-flex flex-column flex-sm-row justify-content-lg-end align-items-stretch align-items-sm-center gap-2">
-                    <!-- BUSCA EM TEMPO REAL -->
+                    <!-- BUSCA EM TEMPO REAL COM AUTOPREENCHIMENTO TOTALMENTE DESATIVADO -->
                     <div class="position-relative flex-grow-1" style="max-width: 320px;">
+                        <!-- FAKE TRAP INPUTS PARA IMPEDIR AUTOFILL DE SENHAS/USUÁRIOS DO NAVEGADOR -->
+                        <div style="position: absolute; left: -9999px; top: -9999px; width: 1px; height: 1px; overflow: hidden; opacity: 0;" aria-hidden="true">
+                            <input type="text" name="fake_username_trap_{{ module.id }}" tabindex="-1" autocomplete="username">
+                            <input type="password" name="fake_password_trap_{{ module.id }}" tabindex="-1" autocomplete="current-password">
+                        </div>
+
                         <div class="input-group input-group-sm shadow-sm rounded-pill overflow-hidden border-0 bg-white">
                             <span class="input-group-text bg-white border-0 text-muted ps-2.5 pe-1 py-1.5">
-                                <i class="bi bi-search" style="color: var(--mod-color);"></i>
+                                <i class="bi bi-search" style="color: {{ module.color }};"></i>
                             </span>
                             <input
                                 type="search"
                                 id="moduleHubSearchInput"
+                                name="hub_search_{{ module.id }}_no_autofill"
                                 class="form-control form-control-sm border-0 shadow-none py-1.5 pe-3 text-dark"
                                 placeholder="Buscar atividades..."
                                 autocomplete="off"
+                                autocorrect="off"
+                                autocapitalize="off"
                                 spellcheck="false"
+                                data-lpignore="true"
+                                data-form-type="other"
+                                aria-autocomplete="none"
+                                readonly
+                                onfocus="this.removeAttribute('readonly');"
                                 style="font-size: 0.85rem;"
                             >
                         </div>
                     </div>
-                    <span class="badge bg-white bg-opacity-15 text-white py-2 px-3 rounded-pill text-nowrap align-self-center small">
+                    <span class="badge bg-white bg-opacity-20 text-white py-2 px-3 rounded-pill text-nowrap align-self-center small" style="backdrop-filter: blur(4px);">
                         {{ activities|length }} atividades
                     </span>
                 </div>
@@ -181,7 +315,7 @@
                             <i class="bi {{ act.icon }}"></i>
                         </div>
                         {% if act.badge %}
-                        <span class="badge rounded-pill text-uppercase fw-semibold" style="background: var(--mod-color-light); color: var(--mod-color); font-size: 0.7rem; letter-spacing: 0.3px;">
+                        <span class="badge rounded-pill text-uppercase fw-semibold" style="background: {{ module.color_light|default:'var(--mod-color-light)' }}; color: {{ module.color|default:'var(--mod-color)' }}; font-size: 0.7rem; letter-spacing: 0.3px;">
                             {{ act.badge }}
                         </span>
                         {% endif %}
@@ -224,6 +358,18 @@
         const searchInput = document.getElementById('moduleHubSearchInput');
         const items = Array.from(document.querySelectorAll('.activity-item'));
         const noResults = document.getElementById('noResultsMessage');
+
+        // Desativar e limpar qualquer autopreenchimento indevido do navegador
+        function clearAutofill() {
+            if (searchInput) {
+                searchInput.value = '';
+            }
+        }
+        clearAutofill();
+        setTimeout(clearAutofill, 50);
+        setTimeout(clearAutofill, 200);
+        setTimeout(clearAutofill, 600);
+        window.addEventListener('pageshow', clearAutofill);
 
         if (searchInput) {
             searchInput.addEventListener('input', function () {

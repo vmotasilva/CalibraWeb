@@ -98,6 +98,9 @@ class SharedHubViewTests(TestCase):
             self.assertEqual(response.status_code, 200, f"Falha ao carregar HUB do módulo {slug}")
             self.assertContains(response, expected_title)
             self.assertContains(response, expected_activity)
+            self.assertContains(response, 'mod-hero')
+            self.assertContains(response, 'data-lpignore="true"')
+            self.assertContains(response, 'fake_username_trap')
 
     def test_direct_app_hub_routes(self):
         """Testa que as rotas diretas dos apps (ex: /auditoria/hub/) funcionam perfeitamente."""
