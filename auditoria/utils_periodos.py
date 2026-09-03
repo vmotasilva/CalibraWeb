@@ -80,46 +80,118 @@ def iter_periodos(modelo, start_date, end_date):
             
     return periodos
 
+MAPA_DIA_SEMANA = {
+    "SEGUNDA": 0,
+    "TERCA": 1,
+    "QUARTA": 2,
+    "QUINTA": 3,
+    "SEXTA": 4,
+    "SABADO": 5,
+    "DOMINGO": 6,
+}
+
 def calcular_periodos_pendentes(modelo, limit=24):
     """
-    Retorna uma lista de dicts com {'inicio': date, 'fim': date, 'label': str}
-    dos períodos que não possuem Registros nem Justificativas.
+    Retorna uma lista de dicts dos períodos pendentes ou em andamento.
+    Campos de cada item:
+    - inicio: str ISO
+    - fim: str ISO
+    - label: str
+    - inicio_date: date
+    - fim_date: date
+    - status: 'EM_ANDAMENTO' | 'PENDENTE'
+    - progresso: int
+    - registro_id: int | None
     """
     hoje = timezone.localdate()
     start_date = timezone.localtime(modelo.criado_em).date()
     
     todos_periodos = iter_periodos(modelo, start_date, hoje)
     
-    registros = RegistroAuditoria.objects.filter(modelo=modelo).values_list('periodo_inicio', 'periodo_fim')
-    justificativas = JustificativaAuditoria.objects.filter(modelo=modelo).values_list('periodo_inicio', 'periodo_fim')
-    just_set = set(justificativas)
+    registros = list(
+        RegistroAuditoria.objects.filter(modelo=modelo)
+        .values('id', 'periodo_inicio', 'periodo_fim', 'status', 'progresso')
+    )
+    justificativas = set(
+        JustificativaAuditoria.objects.filter(modelo=modelo)
+        .values_list('periodo_inicio', 'periodo_fim')
+    )
     
     pendentes = []
     
     for p_inicio, p_fim in todos_periodos:
-        # Períodos em andamento não devem constar como pendentes/vencidos.
-        # Apenas períodos cujo término já passou (p_fim < hoje) são considerados pendentes.
-        # Exceção para "UNICA", que permanece pendente até ser realizada.
-        if modelo.periodicidade != "UNICA" and p_fim >= hoje:
+        # Períodos futuros que ainda não iniciaram
+        if p_inicio > hoje:
             continue
 
-        if (p_inicio, p_fim) in just_set:
-            continue
-            
-        tem_registro = any(
-            r_inicio and r_fim and (r_inicio <= p_fim and r_fim >= p_inicio)
-            for r_inicio, r_fim in registros
+        # Registros vinculados a este período
+        registros_periodo = [
+            r for r in registros
+            if r['periodo_inicio'] and r['periodo_fim']
+            and (r['periodo_inicio'] <= p_fim and r['periodo_fim'] >= p_inicio)
+        ]
+
+        # Se houver registro concluído (100% ou status CONCLUIDO), período está finalizado
+        tem_concluido = any(
+            r['status'] == 'CONCLUIDO' or (r['progresso'] is not None and r['progresso'] >= 100)
+            for r in registros_periodo
         )
-        if tem_registro:
+        if tem_concluido:
             continue
-            
+
+        # Se houver justificativa registrada para este período
+        if (p_inicio, p_fim) in justificativas:
+            continue
+
+        # Auditoria criada, mas não concluída (progresso < 100% e status != CONCLUIDO):
+        reg_em_andamento = next(
+            (r for r in registros_periodo if r['status'] != 'CONCLUIDO' and (r['progresso'] is None or r['progresso'] < 100)),
+            None
+        )
+
+        is_periodo_atual = (p_inicio <= hoje <= p_fim)
+
+        if reg_em_andamento:
+            label = formatar_periodo(modelo.periodicidade, p_inicio, p_fim)
+            pendentes.append({
+                'inicio': p_inicio.isoformat(),
+                'fim': p_fim.isoformat(),
+                'label': label,
+                'inicio_date': p_inicio,
+                'fim_date': p_fim,
+                'status': 'EM_ANDAMENTO',
+                'progresso': reg_em_andamento['progresso'] or 0,
+                'registro_id': reg_em_andamento['id'],
+            })
+            continue
+
+        # Caso não haja auditoria criada para o período:
+        if is_periodo_atual:
+            if modelo.periodicidade == "SEMANAL":
+                dia_def = getattr(modelo, 'dia_semana', None)
+                if dia_def:
+                    dia_alvo = MAPA_DIA_SEMANA.get(str(dia_def).upper())
+                    if dia_alvo is not None and hoje.weekday() < dia_alvo:
+                        # Ainda não atingiu o dia da semana definido para a auditoria ocorrer
+                        continue
+                # Se não há dia da semana definido ou se hoje já está no dia da semana ou depois:
+                # Apresenta pendência na semana atual
+            elif modelo.periodicidade != "UNICA":
+                # Outras periodicidades (mensal, quinzenal) só vencem após término do período
+                continue
+        elif p_fim >= hoje and modelo.periodicidade != "UNICA":
+            continue
+
         label = formatar_periodo(modelo.periodicidade, p_inicio, p_fim)
         pendentes.append({
             'inicio': p_inicio.isoformat(),
             'fim': p_fim.isoformat(),
             'label': label,
             'inicio_date': p_inicio,
-            'fim_date': p_fim
+            'fim_date': p_fim,
+            'status': 'PENDENTE',
+            'progresso': 0,
+            'registro_id': None,
         })
         
     pendentes.reverse()

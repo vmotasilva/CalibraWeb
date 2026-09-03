@@ -1283,9 +1283,34 @@ def selecionar_modelo_preenchimento(request):
 
     for modelo in modelos:
         pendencias = calcular_periodos_pendentes(modelo, limit=24)
-        modelo.is_pendente = len(pendencias) > 0
+
+        # Identificar se há auditoria em andamento (criada mas não 100% concluída)
+        reg_andamento = None
+        for p in pendencias:
+            if p.get("status") == "EM_ANDAMENTO" and p.get("registro_id"):
+                reg_andamento = RegistroAuditoria.objects.filter(id=p["registro_id"]).first()
+                if reg_andamento:
+                    break
+
+        if not reg_andamento:
+            # Fallback: buscar rascunho mais recente não concluído do modelo
+            reg_andamento = modelo.registros.filter(status="RASCUNHO").exclude(progresso__gte=100).order_by("-atualizado_em").first()
+
+        modelo.registro_em_andamento = reg_andamento
+        modelo.tem_em_andamento = bool(reg_andamento)
+
+        if modelo.tem_em_andamento:
+            modelo.status_display = "EM_ANDAMENTO"
+            modelo.is_pendente = True
+        elif len(pendencias) > 0:
+            modelo.status_display = "PENDENTE"
+            modelo.is_pendente = True
+        else:
+            modelo.status_display = "EM_DIA"
+            modelo.is_pendente = False
+
         modelo.periodos_pendentes = pendencias
-        if not pendencias and pendentes == "mes":
+        if not modelo.is_pendente and pendentes == "mes":
             continue
         modelos_com_pendencias.append(modelo)
         

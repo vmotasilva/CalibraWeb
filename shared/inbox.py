@@ -60,18 +60,24 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                 for p in periodos:
                     fim_date = p.get('fim_date')
                     if fim_date:
+                        is_em_andamento = (p.get('status') == 'EM_ANDAMENTO')
+                        action_text = "Continuar" if is_em_andamento else "Preencher"
+                        title = f"Auditoria em Andamento: {modelo.nome}" if is_em_andamento else f"Preencher Auditoria: {modelo.nome}"
+                        sub_type = "Auditorias em Andamento" if is_em_andamento else "Períodos em Atraso"
+                        url = reverse("auditoria:registro_edit", args=[p['registro_id']]) if is_em_andamento and p.get('registro_id') else reverse("auditoria:selecionar_modelo_preenchimento")
+                        desc = f"Em andamento ({p.get('progresso', 0)}%): {p['label']}" if is_em_andamento else f"Período pendente: {p['label']}"
                         items.append(
                             InboxItem(
                                 id=f"auditoria_{modelo.id}_{fim_date.isoformat()}",
-                                title=f"Preencher Auditoria: {modelo.nome}",
-                                description=f"Período atrasado: {p['label']}",
+                                title=title,
+                                description=desc,
                                 module="Auditoria",
-                                icon="bi-clipboard-check",
-                                url=reverse("auditoria:selecionar_modelo_preenchimento"),
-                                action_text="Preencher",
+                                icon="bi-clock-history" if is_em_andamento else "bi-clipboard-check",
+                                url=url,
+                                action_text=action_text,
                                 date=fim_date,
-                                is_urgent=(hoje - fim_date).days > 30,
-                                sub_type="Períodos em Atraso"
+                                is_urgent=(hoje - fim_date).days > 30 and not is_em_andamento,
+                                sub_type=sub_type
                             )
                         )
             

@@ -1142,6 +1142,191 @@ class AuditoriaIsoDocxExportTests(TestCase):
         self.assertIn("Lote piloto inspecionado", doc_text)
 
 
+class AuditoriaPendenciasSemanalETestesAndamento(TestCase):
+    def setUp(self):
+        user_model = get_user_model()
+        self.user = user_model.objects.create_user(
+            username="auditor_test",
+            email="auditor_test@example.com",
+            password="senha-forte-123",
+            is_staff=True,
+        )
+        try:
+            from django_otp.plugins.otp_static.models import StaticDevice
+            StaticDevice.objects.create(user=self.user, name="test-device", confirmed=True)
+        except Exception:
+            pass
+
+    def test_semanal_com_dia_segunda_aparece_pendente_na_quinta(self):
+        from unittest.mock import patch
+        from auditoria.utils_periodos import calcular_periodos_pendentes
+        from django.utils import timezone
+        import datetime
+
+        # Quinta-feira: 2026-09-03 (weekday 3)
+        data_quinta = datetime.date(2026, 9, 3)
+        
+        modelo = ModeloAuditoria.objects.create(
+            nome="CPD - Teste Segunda",
+            objeto_auditoria="Objeto teste",
+            periodicidade="SEMANAL",
+            dia_semana="SEGUNDA",
+        )
+        # Força data de criação no início da semana
+        ModeloAuditoria.objects.filter(pk=modelo.pk).update(
+            criado_em=timezone.make_aware(datetime.datetime(2026, 8, 31, 8, 0, 0))
+        )
+        modelo.refresh_from_db()
+
+        with patch("django.utils.timezone.localdate", return_value=data_quinta):
+            pendencias = calcular_periodos_pendentes(modelo)
+            self.assertTrue(len(pendencias) >= 1)
+            # Semana atual deve estar nas pendências
+            periodo_atual = next((p for p in pendencias if p["inicio"] == "2026-08-31"), None)
+            self.assertIsNotNone(periodo_atual)
+            self.assertEqual(periodo_atual["status"], "PENDENTE")
+
+    def test_semanal_com_dia_sexta_nao_aparece_na_quinta_mas_aparece_na_sexta(self):
+        from unittest.mock import patch
+        from auditoria.utils_periodos import calcular_periodos_pendentes
+        from django.utils import timezone
+        import datetime
+
+        modelo = ModeloAuditoria.objects.create(
+            nome="QMS - Teste Sexta",
+            objeto_auditoria="Objeto teste",
+            periodicidade="SEMANAL",
+            dia_semana="SEXTA",
+        )
+        ModeloAuditoria.objects.filter(pk=modelo.pk).update(
+            criado_em=timezone.make_aware(datetime.datetime(2026, 8, 31, 8, 0, 0))
+        )
+        modelo.refresh_from_db()
+
+        # Quinta-feira (2026-09-03, weekday 3): Sexta é 4, logo não deve aparecer para a semana atual
+        data_quinta = datetime.date(2026, 9, 3)
+        with patch("django.utils.timezone.localdate", return_value=data_quinta):
+            pendencias = calcular_periodos_pendentes(modelo)
+            periodo_atual = next((p for p in pendencias if p["inicio"] == "2026-08-31"), None)
+            self.assertIsNone(periodo_atual)
+
+        # Sexta-feira (2026-09-04, weekday 4): Deve aparecer para a semana atual
+        data_sexta = datetime.date(2026, 9, 4)
+        with patch("django.utils.timezone.localdate", return_value=data_sexta):
+            pendencias = calcular_periodos_pendentes(modelo)
+            periodo_atual = next((p for p in pendencias if p["inicio"] == "2026-08-31"), None)
+            self.assertIsNotNone(periodo_atual)
+            self.assertEqual(periodo_atual["status"], "PENDENTE")
+
+    def test_semanal_sem_dia_certo_aparece_na_semana_atual(self):
+        from unittest.mock import patch
+        from auditoria.utils_periodos import calcular_periodos_pendentes
+        from django.utils import timezone
+        import datetime
+
+        modelo = ModeloAuditoria.objects.create(
+            nome="Sem Dia Definido",
+            objeto_auditoria="Objeto teste",
+            periodicidade="SEMANAL",
+            dia_semana=None,
+        )
+        ModeloAuditoria.objects.filter(pk=modelo.pk).update(
+            criado_em=timezone.make_aware(datetime.datetime(2026, 8, 31, 8, 0, 0))
+        )
+        modelo.refresh_from_db()
+
+        # Terça-feira (2026-09-01)
+        data_terca = datetime.date(2026, 9, 1)
+        with patch("django.utils.timezone.localdate", return_value=data_terca):
+            pendencias = calcular_periodos_pendentes(modelo)
+            periodo_atual = next((p for p in pendencias if p["inicio"] == "2026-08-31"), None)
+            self.assertIsNotNone(periodo_atual)
+            self.assertEqual(periodo_atual["status"], "PENDENTE")
+
+    def test_auditoria_criada_nao_concluida_mostra_em_andamento(self):
+        from unittest.mock import patch
+        from auditoria.utils_periodos import calcular_periodos_pendentes
+        from django.utils import timezone
+        import datetime
+
+        data_quinta = datetime.date(2026, 9, 3)
+
+        modelo = ModeloAuditoria.objects.create(
+            nome="Auditoria Em Andamento Teste",
+            objeto_auditoria="Objeto teste",
+            periodicidade="SEMANAL",
+            dia_semana="SEGUNDA",
+        )
+        ModeloAuditoria.objects.filter(pk=modelo.pk).update(
+            criado_em=timezone.make_aware(datetime.datetime(2026, 8, 31, 8, 0, 0))
+        )
+        modelo.refresh_from_db()
+
+        # Cria registro com 35% de progresso (status RASCUNHO)
+        registro = RegistroAuditoria.objects.create(
+            modelo=modelo,
+            nome="Ciclo Teste",
+            status="RASCUNHO",
+            progresso=35,
+            periodo_inicio=datetime.date(2026, 8, 31),
+            periodo_fim=datetime.date(2026, 9, 6),
+            avaliador=self.user,
+        )
+
+        with patch("django.utils.timezone.localdate", return_value=data_quinta):
+            pendencias = calcular_periodos_pendentes(modelo)
+            periodo_atual = next((p for p in pendencias if p["inicio"] == "2026-08-31"), None)
+            self.assertIsNotNone(periodo_atual)
+            self.assertEqual(periodo_atual["status"], "EM_ANDAMENTO")
+            self.assertEqual(periodo_atual["progresso"], 35)
+            self.assertEqual(periodo_atual["registro_id"], registro.id)
+
+        # Testa na view selecionar_modelo_preenchimento
+        self.client.force_login(self.user)
+        with patch("django.utils.timezone.localdate", return_value=data_quinta):
+            response = self.client.get(reverse("auditoria:selecionar_modelo_preenchimento"))
+            self.assertEqual(response.status_code, 200)
+            self.assertContains(response, "Em andamento")
+            self.assertContains(response, "35%")
+            self.assertContains(response, "Continuar Preenchimento")
+
+    def test_auditoria_concluida_100_nao_consta_como_pendente_nem_andamento(self):
+        from unittest.mock import patch
+        from auditoria.utils_periodos import calcular_periodos_pendentes
+        from django.utils import timezone
+        import datetime
+
+        data_quinta = datetime.date(2026, 9, 3)
+
+        modelo = ModeloAuditoria.objects.create(
+            nome="Auditoria Concluida Teste",
+            objeto_auditoria="Objeto teste",
+            periodicidade="SEMANAL",
+            dia_semana="SEGUNDA",
+        )
+        ModeloAuditoria.objects.filter(pk=modelo.pk).update(
+            criado_em=timezone.make_aware(datetime.datetime(2026, 8, 31, 8, 0, 0))
+        )
+        modelo.refresh_from_db()
+
+        # Cria registro 100% concluído
+        RegistroAuditoria.objects.create(
+            modelo=modelo,
+            nome="Ciclo Concluído",
+            status="CONCLUIDO",
+            progresso=100,
+            periodo_inicio=datetime.date(2026, 8, 31),
+            periodo_fim=datetime.date(2026, 9, 6),
+            avaliador=self.user,
+        )
+
+        with patch("django.utils.timezone.localdate", return_value=data_quinta):
+            pendencias = calcular_periodos_pendentes(modelo)
+            periodo_atual = next((p for p in pendencias if p["inicio"] == "2026-08-31"), None)
+            self.assertIsNone(periodo_atual)
+
+
+
 
 
 
