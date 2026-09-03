@@ -1,7 +1,13 @@
 import datetime
 from dateutil.relativedelta import relativedelta
 from django.utils import timezone
-from .models import RegistroAuditoria, JustificativaAuditoria
+from .models import (
+    RegistroAuditoria,
+    JustificativaAuditoria,
+    ModeloAuditoria,
+    PerguntaAuditoria,
+    RespostaAuditoria,
+)
 
 def iter_periodos(modelo, start_date, end_date):
     """
@@ -153,29 +159,57 @@ def calcular_periodos_pendentes(modelo, limit=24):
 
         if reg_em_andamento:
             label = formatar_periodo(modelo.periodicidade, p_inicio, p_fim)
+
+            # Avaliar se o dia atual está preenchido
+            dia_atual_preenchido = False
+            dia_hoje_nome = ""
+            if is_periodo_atual and modelo.periodicidade == "SEMANAL":
+                dia_keys = ["SEGUNDA", "TERCA", "QUARTA", "QUINTA", "SEXTA", "SABADO", "DOMINGO"]
+                dia_hoje_key = dia_keys[hoje.weekday()]
+                dia_hoje_nome = dict(ModeloAuditoria.DIA_SEMANA_CHOICES).get(dia_hoje_key, dia_hoje_key)
+
+                perguntas_por_dia = modelo.perguntas.filter(
+                    ativo=True, preenchimento_semanal="POR_DIA"
+                )
+                if perguntas_por_dia.exists():
+                    total_esperado = perguntas_por_dia.count()
+                    grid_colunas = getattr(modelo, "grid_colunas", "") or ""
+                    colunas_list = [c.strip() for c in grid_colunas.split(",") if c.strip()]
+                    if colunas_list:
+                        total_esperado *= len(colunas_list)
+
+                    respostas_hoje_count = RespostaAuditoria.objects.filter(
+                        registro_id=reg_em_andamento["id"],
+                        pergunta__in=perguntas_por_dia,
+                        dia_semana=dia_hoje_key,
+                    ).exclude(valor__exact="").exclude(valor__isnull=True).count()
+
+                    dia_atual_preenchido = (respostas_hoje_count >= total_esperado and total_esperado > 0)
+                else:
+                    dia_atual_preenchido = (reg_em_andamento.get("progresso") or 0) >= 100
+            elif is_periodo_atual:
+                dia_atual_preenchido = (reg_em_andamento.get("progresso") or 0) >= 100
+
             pendentes.append({
-                'inicio': p_inicio.isoformat(),
-                'fim': p_fim.isoformat(),
-                'label': label,
-                'inicio_date': p_inicio,
-                'fim_date': p_fim,
-                'status': 'EM_ANDAMENTO',
-                'progresso': reg_em_andamento['progresso'] or 0,
-                'registro_id': reg_em_andamento['id'],
+                "inicio": p_inicio.isoformat(),
+                "fim": p_fim.isoformat(),
+                "label": label,
+                "inicio_date": p_inicio,
+                "fim_date": p_fim,
+                "status": "EM_ANDAMENTO",
+                "progresso": reg_em_andamento["progresso"] or 0,
+                "registro_id": reg_em_andamento["id"],
+                "dia_atual_preenchido": dia_atual_preenchido,
+                "dia_atual_nome": dia_hoje_nome,
             })
             continue
 
         # Caso não haja auditoria criada para o período:
         if is_periodo_atual:
             if modelo.periodicidade == "SEMANAL":
-                dia_def = getattr(modelo, 'dia_semana', None)
-                if dia_def:
-                    dia_alvo = MAPA_DIA_SEMANA.get(str(dia_def).upper())
-                    if dia_alvo is not None and hoje.weekday() < dia_alvo:
-                        # Ainda não atingiu o dia da semana definido para a auditoria ocorrer
-                        continue
-                # Se não há dia da semana definido ou se hoje já está no dia da semana ou depois:
-                # Apresenta pendência na semana atual
+                # Para auditoria semanal, a semana iniciada (ex: 31/08/2026 a 06/09/2026)
+                # deve aparecer como PENDENTE desde o início da semana até se iniciar uma nova auditoria.
+                pass
             elif modelo.periodicidade != "UNICA":
                 # Outras periodicidades (mensal, quinzenal) só vencem após término do período
                 continue
@@ -184,14 +218,16 @@ def calcular_periodos_pendentes(modelo, limit=24):
 
         label = formatar_periodo(modelo.periodicidade, p_inicio, p_fim)
         pendentes.append({
-            'inicio': p_inicio.isoformat(),
-            'fim': p_fim.isoformat(),
-            'label': label,
-            'inicio_date': p_inicio,
-            'fim_date': p_fim,
-            'status': 'PENDENTE',
-            'progresso': 0,
-            'registro_id': None,
+            "inicio": p_inicio.isoformat(),
+            "fim": p_fim.isoformat(),
+            "label": label,
+            "inicio_date": p_inicio,
+            "fim_date": p_fim,
+            "status": "PENDENTE",
+            "progresso": 0,
+            "registro_id": None,
+            "dia_atual_preenchido": False,
+            "dia_atual_nome": "",
         })
         
     pendentes.reverse()

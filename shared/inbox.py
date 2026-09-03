@@ -61,14 +61,31 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                     fim_date = p.get('fim_date')
                     if fim_date:
                         is_em_andamento = (p.get('status') == 'EM_ANDAMENTO')
+                        dia_atual_preenchido = p.get('dia_atual_preenchido', False)
+
+                        # Se estiver em andamento e o dia atual já estiver preenchido,
+                        # não cobra nas notificações de hoje
+                        if is_em_andamento and dia_atual_preenchido:
+                            continue
+
                         action_text = "Continuar" if is_em_andamento else "Preencher"
                         title = f"Auditoria em Andamento: {modelo.nome}" if is_em_andamento else f"Preencher Auditoria: {modelo.nome}"
                         sub_type = "Auditorias em Andamento" if is_em_andamento else "Períodos em Atraso"
                         url = reverse("auditoria:registro_edit", args=[p['registro_id']]) if is_em_andamento and p.get('registro_id') else reverse("auditoria:selecionar_modelo_preenchimento")
-                        desc = f"Em andamento ({p.get('progresso', 0)}%): {p['label']}" if is_em_andamento else f"Período pendente: {p['label']}"
+                        
+                        if is_em_andamento:
+                            dia_nome = p.get('dia_atual_nome')
+                            if dia_nome:
+                                desc = f"Preenchimento de hoje ({dia_nome}) pendente &bull; {p['label']} ({p.get('progresso', 0)}%)"
+                            else:
+                                desc = f"Em andamento ({p.get('progresso', 0)}%): {p['label']}"
+                        else:
+                            desc = f"Período pendente: {p['label']}"
+
+                        item_id = f"auditoria_{modelo.id}_{fim_date.isoformat()}_{p.get('registro_id') or 'novo'}"
                         items.append(
                             InboxItem(
-                                id=f"auditoria_{modelo.id}_{fim_date.isoformat()}",
+                                id=item_id,
                                 title=title,
                                 description=desc,
                                 module="Auditoria",

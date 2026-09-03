@@ -1186,14 +1186,14 @@ class AuditoriaPendenciasSemanalETestesAndamento(TestCase):
             self.assertIsNotNone(periodo_atual)
             self.assertEqual(periodo_atual["status"], "PENDENTE")
 
-    def test_semanal_com_dia_sexta_nao_aparece_na_quinta_mas_aparece_na_sexta(self):
+    def test_semanal_aparece_como_pendente_na_semana_atual_mesmo_antes_do_dia_alvo(self):
         from unittest.mock import patch
         from auditoria.utils_periodos import calcular_periodos_pendentes
         from django.utils import timezone
         import datetime
 
         modelo = ModeloAuditoria.objects.create(
-            nome="QMS - Teste Sexta",
+            nome="Roteiro QMS - Surfaçagem Teste",
             objeto_auditoria="Objeto teste",
             periodicidade="SEMANAL",
             dia_semana="SEXTA",
@@ -1203,20 +1203,22 @@ class AuditoriaPendenciasSemanalETestesAndamento(TestCase):
         )
         modelo.refresh_from_db()
 
-        # Quinta-feira (2026-09-03, weekday 3): Sexta é 4, logo não deve aparecer para a semana atual
+        # Quinta-feira (2026-09-03, weekday 3): Mesmo antes de sexta-feira,
+        # a semana 31/08/2026 a 06/09/2026 já iniciou e DEVE constar como PENDENTE
         data_quinta = datetime.date(2026, 9, 3)
         with patch("django.utils.timezone.localdate", return_value=data_quinta):
             pendencias = calcular_periodos_pendentes(modelo)
             periodo_atual = next((p for p in pendencias if p["inicio"] == "2026-08-31"), None)
-            self.assertIsNone(periodo_atual)
-
-        # Sexta-feira (2026-09-04, weekday 4): Deve aparecer para a semana atual
-        data_sexta = datetime.date(2026, 9, 4)
-        with patch("django.utils.timezone.localdate", return_value=data_sexta):
-            pendencias = calcular_periodos_pendentes(modelo)
-            periodo_atual = next((p for p in pendencias if p["inicio"] == "2026-08-31"), None)
             self.assertIsNotNone(periodo_atual)
             self.assertEqual(periodo_atual["status"], "PENDENTE")
+
+        # Na view selecionar_modelo_preenchimento deve constar como Pendente
+        self.client.force_login(self.user)
+        with patch("django.utils.timezone.localdate", return_value=data_quinta):
+            response = self.client.get(reverse("auditoria:selecionar_modelo_preenchimento"))
+            self.assertEqual(response.status_code, 200)
+            self.assertContains(response, "Pendente")
+            self.assertNotContains(response, "Roteiro QMS - Surfaçagem Teste</td>\n                    <td><small class=\"text-muted\"><i class=\"bi bi-box\"></i> Objeto teste</small></td>\n                    <td>\n                        <span class=\"badge bg-primary\">\n                            <i class=\"bi bi-calendar-event\"></i> Semanal (Sexta-feira)\n                        </span>\n                    </td>\n                    <td>\n                        <span class=\"badge bg-info text-dark\">\n                            <i class=\"bi bi-question-circle\"></i> 0\n                        </span>\n                    </td>\n                    <td>\n                        <span class=\"badge bg-success rounded-pill\">\n                            <i class=\"bi bi-check-circle-fill\"></i> Em dia")
 
     def test_semanal_sem_dia_certo_aparece_na_semana_atual(self):
         from unittest.mock import patch
@@ -1324,6 +1326,71 @@ class AuditoriaPendenciasSemanalETestesAndamento(TestCase):
             pendencias = calcular_periodos_pendentes(modelo)
             periodo_atual = next((p for p in pendencias if p["inicio"] == "2026-08-31"), None)
             self.assertIsNone(periodo_atual)
+
+    def test_auditoria_em_andamento_avalia_dia_atual_preenchido_nas_notificacoes(self):
+        from unittest.mock import patch
+        from auditoria.utils_periodos import calcular_periodos_pendentes
+        from auditoria.models import PerguntaAuditoria, RespostaAuditoria
+        from shared.inbox import get_user_inbox_items
+        from shared.notifications import get_user_cobrancas_counts
+        from django.utils import timezone
+        import datetime
+
+        data_quinta = datetime.date(2026, 9, 3)  # Quinta-feira
+
+        modelo = ModeloAuditoria.objects.create(
+            nome="Roteiro QMS - Andamento Diário",
+            objeto_auditoria="Objeto teste",
+            periodicidade="SEMANAL",
+            dia_semana="SEGUNDA",
+            responsavel=self.user,
+        )
+        p1 = PerguntaAuditoria.objects.create(
+            modelo=modelo,
+            pergunta="Pergunta Diária 1",
+            tipo_resposta="TEXTO",
+            preenchimento_semanal="POR_DIA",
+            ordem=1,
+        )
+        registro = RegistroAuditoria.objects.create(
+            modelo=modelo,
+            nome="Ciclo Atual",
+            status="RASCUNHO",
+            progresso=20,
+            periodo_inicio=datetime.date(2026, 8, 31),
+            periodo_fim=datetime.date(2026, 9, 6),
+            avaliador=self.user,
+        )
+
+        with patch("django.utils.timezone.localdate", return_value=data_quinta):
+            # 1. Sem resposta na quinta-feira: dia_atual_preenchido é False e DEVE ser cobrado
+            pendencias = calcular_periodos_pendentes(modelo)
+            self.assertEqual(len(pendencias), 1)
+            self.assertEqual(pendencias[0]["status"], "EM_ANDAMENTO")
+            self.assertFalse(pendencias[0]["dia_atual_preenchido"])
+            self.assertEqual(pendencias[0]["dia_atual_nome"], "Quinta-feira")
+
+            inbox = get_user_inbox_items(self.user)
+            self.assertTrue(any("Auditoria em Andamento" in item.title and "Quinta-feira" in item.description for item in inbox))
+
+            counts = get_user_cobrancas_counts(self.user)
+            self.assertGreaterEqual(counts.get("auditoria", 0), 1)
+
+            # 2. Preenchendo a resposta da quinta-feira:
+            RespostaAuditoria.objects.create(
+                registro=registro,
+                pergunta=p1,
+                dia_semana="QUINTA",
+                valor="Conforme verificado",
+            )
+
+            pendencias = calcular_periodos_pendentes(modelo)
+            self.assertEqual(len(pendencias), 1)
+            self.assertTrue(pendencias[0]["dia_atual_preenchido"])
+
+            inbox = get_user_inbox_items(self.user)
+            # Não deve cobrar hoje pois a quinta-feira já está preenchida
+            self.assertFalse(any("Auditoria em Andamento" in item.title and "Roteiro QMS - Andamento Diário" in item.title for item in inbox))
 
     def test_progresso_semanal_considera_dias_da_semana(self):
         from auditoria.models import PerguntaAuditoria, RespostaAuditoria

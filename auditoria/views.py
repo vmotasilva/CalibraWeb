@@ -1308,6 +1308,16 @@ def selecionar_modelo_preenchimento(request):
         modelo.registro_em_andamento = reg_andamento
         modelo.tem_em_andamento = bool(reg_andamento)
 
+        dia_atual_preenchido = False
+        dia_atual_nome = ""
+        for p in pendencias:
+            if p.get("status") == "EM_ANDAMENTO":
+                dia_atual_preenchido = p.get("dia_atual_preenchido", False)
+                dia_atual_nome = p.get("dia_atual_nome", "")
+                break
+        modelo.dia_atual_preenchido = dia_atual_preenchido
+        modelo.dia_atual_nome = dia_atual_nome
+
         if modelo.tem_em_andamento:
             modelo.status_display = "EM_ANDAMENTO"
             modelo.is_pendente = True

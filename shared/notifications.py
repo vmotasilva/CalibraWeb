@@ -142,10 +142,20 @@ def get_user_cobrancas_counts(user: Any) -> dict[str, int]:
 
         pendencias_count = 0
         for modelo in modelos:
-            periodos = calcular_periodos_pendentes(modelo, limit=1)
-            if periodos:
+            periodos = calcular_periodos_pendentes(modelo, limit=3)
+            tem_cobranca = False
+            for p in periodos:
+                if p.get('status') == 'PENDENTE':
+                    tem_cobranca = True
+                    break
+                elif p.get('status') == 'EM_ANDAMENTO':
+                    # Se em andamento, cobrar apenas se o dia atual NÃO estiver preenchido
+                    if not p.get('dia_atual_preenchido', False):
+                        tem_cobranca = True
+                        break
+            if tem_cobranca:
                 pendencias_count += 1
-                
+
         counts["auditoria"] = pendencias_count
     except Exception:
         counts["auditoria"] = 0
