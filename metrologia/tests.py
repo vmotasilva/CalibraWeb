@@ -175,10 +175,27 @@ class MetrologiaViewsTests(TestCase):
         self.assertEqual(response.status_code, 302)
     
     def test_modulo_metrologia_view_authenticated(self):
-        """Test metrologia module view with authenticated user"""
+        """Test metrologia module view with authenticated user and active/inactive status badges"""
+        Instrumento.objects.create(
+            tag="TEST-ATIVO",
+            descricao="Instrumento Ativo Teste",
+            categoria=self.categoria,
+            setor=self.setor,
+            ativo=True,
+        )
+        Instrumento.objects.create(
+            tag="TEST-INATIVO",
+            descricao="Instrumento Inativo Teste",
+            categoria=self.categoria,
+            setor=self.setor,
+            ativo=False,
+        )
         self.client.login(username='test_user', password='testpass123')
         response = self.client.get(reverse('modulo_metrologia'))
-        self.assertIn(response.status_code, [200, 404])  # 200 if view exists
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Status')
+        self.assertContains(response, 'Ativo')
+        self.assertContains(response, 'Inativo')
     
     def test_novo_instrumento_requires_authentication(self):
         """Test that novo_instrumento view requires authentication"""

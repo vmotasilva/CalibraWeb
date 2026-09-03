@@ -563,6 +563,7 @@
                         <tr>
                             <th class="ps-3 py-3"><input type="checkbox" id="selectAll" title="Selecionar todos visíveis"></th>
                             <th class="ps-4 py-3">Tag / Código</th>
+                            <th class="py-3">Status</th>
                             <th class="py-3">Descrição</th>
                             <th class="py-3">Categoria</th>
                             <th class="py-3">Setor</th>
@@ -588,6 +589,18 @@
                             
                             <td class="ps-4 py-2 fw-bold text-primary font-monospace">
                                 {{ i.tag }}
+                            </td>
+
+                            <td class="py-2">
+                                {% if i.ativo %}
+                                    <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-2.5 py-1 fw-semibold d-inline-flex align-items-center gap-1" style="font-size: 0.72rem;">
+                                        <i class="bi bi-check-circle-fill"></i> Ativo
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 rounded-pill px-2.5 py-1 fw-semibold d-inline-flex align-items-center gap-1" style="font-size: 0.72rem;">
+                                        <i class="bi bi-slash-circle"></i> Inativo
+                                    </span>
+                                {% endif %}
                             </td>
                             
                             <td class="py-2">
@@ -716,7 +729,7 @@
                             </td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="8" class="text-center py-5 text-muted">Nenhum instrumento cadastrado.</td></tr>
+                        <tr><td colspan="9" class="text-center py-5 text-muted">Nenhum instrumento cadastrado.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -736,11 +749,20 @@
                     data-ocorrencia="{% if i.ocorrencias.all %}{% for oc in i.ocorrencias.all %}{% if oc.status == 'ABERTA' %}COM_ABERTA{% endif %}{% endfor %}{% endif %}"
                     data-situacao="{% if i.data_proxima_calibracao %}{% if i.data_proxima_calibracao < hoje %}VENCIDO{% elif i.data_proxima_calibracao <= alerta_30d %}AVENCER_30{% elif i.data_proxima_calibracao <= alerta_60d %}AVENCER_60{% elif i.data_proxima_calibracao <= alerta_90d %}AVENCER_90{% elif i.data_proxima_calibracao <= alerta_120d %}AVENCER_120{% else %}EM_DIA{% endif %}{% else %}EM_DIA{% endif %}">
                     
-                    <!-- Topo do Card: Checkbox, TAG e Botões de Ação -->
+                    <!-- Topo do Card: Checkbox, TAG, Status e Botões de Ação -->
                     <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
-                        <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
                             <input type="checkbox" class="row-select form-check-input mt-0" value="{{ i.id }}" data-tag="{{ i.tag }}" data-frequencia="{% if i.frequencia_meses %}{{ i.frequencia_meses }}{% elif i.categoria and i.categoria.frequencia_calibracao_meses %}{{ i.categoria.frequencia_calibracao_meses }}{% else %}12{% endif %}" data-tratativa="{% if i.tratativa_calibracao %}{{ i.tratativa_calibracao }}{% elif i.categoria and i.categoria.tratativa_calibracao %}{{ i.categoria.tratativa_calibracao }}{% else %}INTERNA{% endif %}" />
                             <span class="fw-bold text-primary font-monospace fs-6">{{ i.tag }}</span>
+                            {% if i.ativo %}
+                                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-2 py-0.5 fw-semibold" style="font-size: 0.68rem;">
+                                    <i class="bi bi-check-circle-fill me-0.5"></i> Ativo
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 rounded-pill px-2 py-0.5 fw-semibold" style="font-size: 0.68rem;">
+                                    <i class="bi bi-slash-circle me-0.5"></i> Inativo
+                                </span>
+                            {% endif %}
                             {% if i.categoria %}
                                 <span class="badge bg-light text-muted border" style="font-size: 0.65rem;">{{ i.categoria.nome }}</span>
                             {% endif %}
