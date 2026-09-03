@@ -333,6 +333,13 @@
                     <i class="bi bi-three-dots-vertical"></i> <span class="d-none d-sm-inline">Ações</span>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="metroActionsDropdown">
+                    <!-- Cadastrar Novo Instrumento -->
+                    <li>
+                        <a href="{% url 'novo_instrumento' %}" class="dropdown-item fw-semibold text-primary">
+                            <i class="bi bi-plus-circle me-2 text-primary"></i>Novo Instrumento
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
                     <li>
                         <button id="btnCopyFilters" type="button" class="dropdown-item" onclick="copiarLinkFiltros()">
                             <i class="bi bi-link-45deg me-2 text-secondary"></i>Copiar Link

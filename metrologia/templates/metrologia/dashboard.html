@@ -103,7 +103,7 @@
             </div>
 
             <!-- Botão Novo destacado no mobile -->
-            {% if can_novo_instrumento %}
+            {% if can_novo_instrumento or can_edit or user.is_staff or user.is_superuser %}
             <a href="{% url 'novo_instrumento' %}" class="btn btn-primary btn-sm shadow-sm d-md-none d-flex align-items-center gap-1 ms-auto">
                 <i class="bi bi-plus-lg"></i> Novo
             </a>
@@ -118,6 +118,14 @@
                     <i class="bi bi-three-dots-vertical"></i> <span>Ações</span>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="metroActionsDropdown">
+                    <!-- Cadastrar Novo Instrumento -->
+                    <li>
+                        <a href="{% url 'novo_instrumento' %}" class="dropdown-item fw-semibold text-primary">
+                            <i class="bi bi-plus-circle me-2 text-primary"></i>Novo Instrumento
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+
                     <!-- Opção de Registrar Histórico no Dropdown para Mobile -->
                     <li class="d-md-none">
                         <button type="button" class="dropdown-item btn-historico-massa-trigger" disabled data-bs-toggle="modal" data-bs-target="#modalNovoHistoricoMassa">
@@ -173,7 +181,7 @@
             </button>
 
             <!-- Botão Novo em Desktop (>= 768px) -->
-            {% if can_novo_instrumento %}
+            {% if can_novo_instrumento or can_edit or user.is_staff or user.is_superuser %}
             <a href="{% url 'novo_instrumento' %}" class="btn btn-primary btn-sm shadow-sm d-none d-md-inline-flex align-items-center gap-1">
                 <i class="bi bi-plus-lg"></i> Novo
             </a>
