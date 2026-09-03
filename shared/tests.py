@@ -385,5 +385,75 @@ class SharedInboxPlanejamentoTests(TestCase):
         self.assertIsNone(proc.instrutor_fixo)
 
 
+class Iso13485PermissionsTests(TestCase):
+    """Testa o conjunto de permissões para a sessão ISO 13485 e suas ferramentas."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser(
+            username='admin_iso',
+            password='testpass123',
+            email='admin_iso@example.com',
+        )
+        self.operador = User.objects.create_user(
+            username='operador_iso',
+            password='testpass123',
+            email='operador_iso@example.com',
+        )
+
+    def test_nav_structure_contains_iso13485_blocks_and_tools(self):
+        """Valida que a estrutura de navegação contém os blocos e ferramentas da ISO 13485."""
+        from shared.permissions import get_nav_structure, get_view_permission_map
+
+        nav_structure = get_nav_structure()
+        auditoria_mod = next((m for m in nav_structure if m.get("key") == "auditoria"), None)
+        self.assertIsNotNone(auditoria_mod, "Módulo auditoria não encontrado")
+
+        blocos_keys = [b.get("key") for b in auditoria_mod.get("blocos", [])]
+        self.assertIn("iso_13485", blocos_keys)
+        self.assertIn("iso_13485_setup", blocos_keys)
+
+        view_map = get_view_permission_map()
+        self.assertIn("auditoria:iso_auditoria_list", view_map)
+        self.assertIn("auditoria:iso_entrevista_view", view_map)
+        self.assertIn("auditoria:iso_setup_dashboard", view_map)
+        self.assertIn("auditoria:iso_revisao_dashboard", view_map)
+        self.assertIn("auditoria:iso_auditoria_capa", view_map)
+
+    def test_user_detail_renders_iso13485_toggles(self):
+        """Garante que a tela de permissões de usuário (/rh/usuarios/<id>/) exibe a sessão ISO 13485."""
+        self.client.force_login(self.admin)
+        url = reverse('rh:detalhe_usuario', args=[self.operador.id])
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'ISO 13485 - AUDITORIAS')
+        self.assertContains(response, 'ISO 13485 - SETUP')
+        self.assertContains(response, 'Modo Entrevista (Lista de Auditorias)')
+        self.assertContains(response, 'Painel de Setup ISO')
+        self.assertContains(response, 'Planos de Ação (CAPA)')
+
+    def test_has_view_access_controls_iso13485_views(self):
+        """Valida que has_view_access bloqueia sem permissão e libera com permissão."""
+        from shared.permissions import has_view_access
+        from django.contrib.auth.models import Permission
+
+        # Sem permissão
+        self.assertFalse(has_view_access(self.operador, 'auditoria:iso_auditoria_list'))
+        self.assertFalse(has_view_access(self.operador, 'auditoria:iso_setup_dashboard'))
+
+        # Superuser tem acesso irrestrito
+        self.assertTrue(has_view_access(self.admin, 'auditoria:iso_auditoria_list'))
+        self.assertTrue(has_view_access(self.admin, 'auditoria:iso_setup_dashboard'))
+
+        # Conceder módulo Auditoria e ferramenta de Modo Entrevista
+        perm_mod = Permission.objects.get(codename='nav_mod_auditoria')
+        perm_lista = Permission.objects.get(codename='nav_auditoria_iso_lista')
+        self.operador.user_permissions.add(perm_mod, perm_lista)
+
+        self.assertTrue(has_view_access(self.operador, 'auditoria:iso_auditoria_list'))
+        self.assertFalse(has_view_access(self.operador, 'auditoria:iso_setup_dashboard'))
+
+
+
 
 
