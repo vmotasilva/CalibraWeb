@@ -21,7 +21,7 @@ urlpatterns = [
     path('changelog/', views.changelog_view, name='changelog'),
     # path('', views.dashboard_view, name='dashboard'),
     # path('health/', views.health_check, name='health_check'),
-    # Mais URLs serão adicionadas na Fase 3
+    path('api/hub/search/', views.api_hub_search, name='api_hub_search'),
     path('api/cron/run-tasks/', views.run_cron_tasks, name='run_cron_tasks'),
 ]
 

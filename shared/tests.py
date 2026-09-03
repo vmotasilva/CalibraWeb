@@ -74,10 +74,37 @@ class SharedHubViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Calibra HUB')
-        self.assertContains(response, 'Favoritos')
+        self.assertNotContains(response, 'Favoritos')
         self.assertContains(response, 'Módulos do Sistema')
         self.assertContains(response, 'Acessar HUB de')
         self.assertNotContains(response, 'Ações Rápidas Globais')
+
+    def test_api_hub_search_returns_resources(self):
+        """Testa o endpoint AJAX de busca global de funcionalidades e telas."""
+        self.client.force_login(self.user)
+        url = reverse('api_hub_search')
+
+        # Busca sem termo (retorna principais)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.assertGreater(data['total'], 0)
+
+        # Busca por módulo
+        response = self.client.get(f"{url}?q=auditoria")
+        data = response.json()
+        self.assertTrue(any("Auditoria" in item["module"] for item in data["results"]))
+
+        # Busca por termo de função
+        response = self.client.get(f"{url}?q=instrumentos")
+        data = response.json()
+        self.assertTrue(any("Instrumentos" in item["title"] for item in data["results"]))
+
+        # Busca por sessão
+        response = self.client.get(f"{url}?q=operacional")
+        data = response.json()
+        self.assertTrue(any("Operacional" in item["session"] for item in data["results"]))
 
     def test_module_hubs_render_for_all_modules(self):
         """Testa que cada módulo ativo possui seu HUB dedicado com atividades."""

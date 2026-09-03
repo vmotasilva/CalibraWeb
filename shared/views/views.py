@@ -554,6 +554,659 @@ def fornecedores_hub_view(request):
     return module_hub_view(request, "fornecedores")
 
 
+SYSTEM_FEATURES_CATALOG = [
+    # AUDITORIA
+    {
+        "title": "Dashboard de Auditoria",
+        "module": "Auditoria",
+        "module_key": "auditoria",
+        "session": "Indicadores",
+        "description": "Acompanhe o calendário mensal, auditorias agendadas e indicadores consolidados de conformidade.",
+        "icon": "bi-bar-chart-line",
+        "color": "#7c3aed",
+        "view_name": "auditoria:dashboard",
+        "keywords": ["auditoria", "graficos", "metricas", "kpi", "calendario", "conformidade"],
+    },
+    {
+        "title": "Preencher Auditoria",
+        "module": "Auditoria",
+        "module_key": "auditoria",
+        "session": "Operacional",
+        "description": "Inicie a execução e preenchimento de uma nova auditoria a partir de um questionário ativo.",
+        "icon": "bi-journal-plus",
+        "color": "#7c3aed",
+        "view_name": "auditoria:selecionar_modelo_preenchimento",
+        "keywords": ["nova", "executar", "responder", "formulario", "auditoria", "preenchimento"],
+    },
+    {
+        "title": "Modelos de Questionários",
+        "module": "Auditoria",
+        "module_key": "auditoria",
+        "session": "Configuração",
+        "description": "Crie, edite e estruture questionários, tópicos e critérios de avaliação de auditoria.",
+        "icon": "bi-folder2-open",
+        "color": "#7c3aed",
+        "view_name": "auditoria:modelos_list",
+        "keywords": ["templates", "formularios", "perguntas", "criterios"],
+    },
+    {
+        "title": "Perguntas por Modelo",
+        "module": "Auditoria",
+        "module_key": "auditoria",
+        "session": "Cadastro",
+        "description": "Gerencie a lista de perguntas e critérios específicos organizados por modelo de auditoria.",
+        "icon": "bi-question-circle",
+        "color": "#7c3aed",
+        "view_name": "auditoria:perguntas_list",
+        "keywords": ["perguntas", "itens", "checklist"],
+    },
+    {
+        "title": "Registros de Auditoria",
+        "module": "Auditoria",
+        "module_key": "auditoria",
+        "session": "Histórico",
+        "description": "Consulte o histórico de auditorias concluídas, relatórios emitidos e gere exportações em PDF.",
+        "icon": "bi-file-earmark-check",
+        "color": "#7c3aed",
+        "view_name": "auditoria:registros_list",
+        "keywords": ["historico", "relatorios", "concluidas", "pdf", "auditorias passadas"],
+    },
+    {
+        "title": "Auditorias ISO 13485",
+        "module": "Auditoria",
+        "module_key": "auditoria",
+        "session": "Normas ISO",
+        "description": "Rotinas específicas de entrevistas e checagem de conformidade com a norma ISO 13485.",
+        "icon": "bi-patch-check",
+        "color": "#7c3aed",
+        "view_name": "auditoria:iso_auditoria_list",
+        "keywords": ["iso", "13485", "certificacao", "normas", "qualidade"],
+    },
+    {
+        "title": "Setup & Cadastros ISO 13485",
+        "module": "Auditoria",
+        "module_key": "auditoria",
+        "session": "Setup ISO",
+        "description": "Painel de configuração de requisitos normativos, tópicos e questionários ISO 13485.",
+        "icon": "bi-gear",
+        "color": "#7c3aed",
+        "view_name": "auditoria:iso_setup_dashboard",
+        "keywords": ["setup", "iso", "cadastros", "requisitos"],
+    },
+    {
+        "title": "HUB de Auditoria",
+        "module": "Auditoria",
+        "module_key": "auditoria",
+        "session": "HUB",
+        "description": "Acesse a central de atividades e rotinas dedicadas do módulo de Auditoria.",
+        "icon": "bi-clipboard-data",
+        "color": "#7c3aed",
+        "view_name": "module_hub",
+        "view_kwargs": {"module_slug": "auditoria"},
+        "keywords": ["hub", "central", "modulo"],
+    },
+
+    # METROLOGIA
+    {
+        "title": "Lista de Instrumentos",
+        "module": "Metrologia",
+        "module_key": "metrologia",
+        "session": "Acervo",
+        "description": "Consulte todos os instrumentos ativos, vencimentos de calibração, responsáveis e certificados.",
+        "icon": "bi-list-check",
+        "color": "#0284c7",
+        "view_name": "modulo_metrologia",
+        "keywords": ["instrumentos", "equipamentos", "calibracao", "vencidos", "ativos"],
+    },
+    {
+        "title": "Novo Instrumento",
+        "module": "Metrologia",
+        "module_key": "metrologia",
+        "session": "Cadastro",
+        "description": "Cadastre um novo instrumento de medição, definindo faixas, fabricante, modelo e tolerâncias.",
+        "icon": "bi-plus-circle",
+        "color": "#0284c7",
+        "view_name": "novo_instrumento",
+        "keywords": ["cadastrar", "criar", "adicionar", "instrumento", "paquimetro", "micrometro"],
+    },
+    {
+        "title": "Cotações de Calibração",
+        "module": "Metrologia",
+        "module_key": "metrologia",
+        "session": "Orçamentos",
+        "description": "Gerencie solicitações de cotação com laboratórios parceiros, propostas comerciais e aprovações.",
+        "icon": "bi-cash-stack",
+        "color": "#0284c7",
+        "view_name": "metrologia:solicitacao_list",
+        "keywords": ["cotacoes", "orcamento", "laboratorios", "precos", "propostas"],
+    },
+    {
+        "title": "Categorias de Instrumentos",
+        "module": "Metrologia",
+        "module_key": "metrologia",
+        "session": "Classificação",
+        "description": "Organize grupos de instrumentos, critérios de periodicidade e faixas de calibração padrão.",
+        "icon": "bi-tags",
+        "color": "#0284c7",
+        "view_name": "metrologia:categorias_list",
+        "keywords": ["categorias", "grupos", "familias", "tipos"],
+    },
+    {
+        "title": "Unidades de Medida",
+        "module": "Metrologia",
+        "module_key": "metrologia",
+        "session": "Parâmetros",
+        "description": "Cadastre e configure unidades físicas de medição utilizadas nos certificados e tolerâncias.",
+        "icon": "bi-rulers",
+        "color": "#0284c7",
+        "view_name": "metrologia:unidades_list",
+        "keywords": ["unidades", "mm", "graus", "medidas", "dimensao"],
+    },
+    {
+        "title": "Etiquetas e Exportação",
+        "module": "Metrologia",
+        "module_key": "metrologia",
+        "session": "Impressão",
+        "description": "Gere etiquetas com QR code para identificação nos equipamentos e exporte dados para Excel.",
+        "icon": "bi-upc-scan",
+        "color": "#0284c7",
+        "view_name": "export_etiquetas",
+        "keywords": ["etiquetas", "qrcode", "impressao", "exportar", "excel", "adesivos"],
+    },
+    {
+        "title": "Histórico de Substituições",
+        "module": "Metrologia",
+        "module_key": "metrologia",
+        "session": "Rastreabilidade",
+        "description": "Rastreie trocas de instrumentos equivalentes e histórico de referências substituídas.",
+        "icon": "bi-arrow-left-right",
+        "color": "#0284c7",
+        "view_name": "listar_substitucoes",
+        "keywords": ["substituicoes", "trocas", "referencias", "rastreabilidade"],
+    },
+    {
+        "title": "HUB de Metrologia",
+        "module": "Metrologia",
+        "module_key": "metrologia",
+        "session": "HUB",
+        "description": "Acesse a central de atividades e rotinas dedicadas do módulo de Metrologia.",
+        "icon": "bi-rulers",
+        "color": "#0284c7",
+        "view_name": "module_hub",
+        "view_kwargs": {"module_slug": "metrologia"},
+        "keywords": ["hub", "central", "modulo"],
+    },
+
+    # TREINAMENTOS
+    {
+        "title": "Dashboard de Treinamentos",
+        "module": "Treinamentos",
+        "module_key": "procedures",
+        "session": "Visão Geral",
+        "description": "Visão geral de conformidade, indicadores de qualificação por equipe, demandas e pendências.",
+        "icon": "bi-speedometer2",
+        "color": "#2563eb",
+        "view_name": "procedures:dashboard_treinamentos",
+        "keywords": ["indicadores", "graficos", "qualificacao", "capacitacao"],
+    },
+    {
+        "title": "Matriz de Habilidades Geral",
+        "module": "Treinamentos",
+        "module_key": "procedures",
+        "session": "Competências",
+        "description": "Acompanhe a matriz consolidada de colaboradores, cargos, setores e procedimentos obrigatórios.",
+        "icon": "bi-award",
+        "color": "#2563eb",
+        "view_name": "procedures:matrizes_list",
+        "keywords": ["matriz", "habilidades", "competencias", "colaboradores", "polivalencia"],
+    },
+    {
+        "title": "Avaliações de Habilidade",
+        "module": "Treinamentos",
+        "module_key": "procedures",
+        "session": "Avaliações",
+        "description": "Matriz completa de avaliações, notas e proficiência por colaborador e disciplina.",
+        "icon": "bi-check2-square",
+        "color": "#2563eb",
+        "view_name": "procedures:matriz_avaliacoes",
+        "keywords": ["avaliacoes", "notas", "proficiencia", "testes", "provas"],
+    },
+    {
+        "title": "Procedimentos e Instruções (POP/IT)",
+        "module": "Treinamentos",
+        "module_key": "procedures",
+        "session": "Normativos",
+        "description": "Acesse, cadastre e revise procedimentos operacionais padrão (POP), instruções e formulários.",
+        "icon": "bi-journal-text",
+        "color": "#2563eb",
+        "view_name": "procedures:procedimentos_list",
+        "keywords": ["pop", "it", "procedimentos", "instrucoes", "documentos", "qualidade"],
+    },
+    {
+        "title": "Planejamento de Treinamentos",
+        "module": "Treinamentos",
+        "module_key": "procedures",
+        "session": "Planejamento",
+        "description": "Agende novos treinamentos, defina datas, instrutores, colaboradores convocados e acompanhe status.",
+        "icon": "bi-calendar-event",
+        "color": "#2563eb",
+        "view_name": "procedures:planejamentos_list",
+        "keywords": ["agendar", "planejar", "turmas", "convocacao", "cursos"],
+    },
+    {
+        "title": "Validações Pendentes",
+        "module": "Treinamentos",
+        "module_key": "procedures",
+        "session": "Homologação",
+        "description": "Avalie e homologue pendências na matriz de habilidades de colaboradores recém-treinados.",
+        "icon": "bi-patch-check",
+        "color": "#2563eb",
+        "view_name": "procedures:validacoes_pendentes",
+        "keywords": ["validacoes", "homologacao", "pendencias", "aprovar"],
+    },
+    {
+        "title": "Histórico de Treinamentos",
+        "module": "Treinamentos",
+        "module_key": "procedures",
+        "session": "Histórico",
+        "description": "Consulte o acervo de treinamentos concluídos, listas de presença digitalizadas e registros históricos.",
+        "icon": "bi-clock-history",
+        "color": "#2563eb",
+        "view_name": "procedures:treinamentos_list",
+        "keywords": ["historico", "presenca", "certificados", "concluidos"],
+    },
+    {
+        "title": "Calendário de Treinamentos",
+        "module": "Treinamentos",
+        "module_key": "procedures",
+        "session": "Agenda",
+        "description": "Visualização mensal em formato de grade com as sessões programadas e suas salas/áreas.",
+        "icon": "bi-calendar3",
+        "color": "#2563eb",
+        "view_name": "procedures:treinamentos_calendario",
+        "keywords": ["calendario", "agenda", "grade", "datas", "cronograma"],
+    },
+    {
+        "title": "Avaliação de Eficácia",
+        "module": "Treinamentos",
+        "module_key": "procedures",
+        "session": "Eficácia",
+        "description": "Acompanhe e registre a avaliação pós-treinamento realizada pelos gestores e líderes de setor.",
+        "icon": "bi-check2-circle",
+        "color": "#2563eb",
+        "view_name": "procedures:avaliacao_eficacia_list",
+        "keywords": ["eficacia", "pos-treinamento", "lideres", "gestores"],
+    },
+    {
+        "title": "Perguntas FOR.141",
+        "module": "Treinamentos",
+        "module_key": "procedures",
+        "session": "FOR.141",
+        "description": "Banco de perguntas do formulário FOR.141 para avaliação de eficácia de procedimentos.",
+        "icon": "bi-question-circle",
+        "color": "#2563eb",
+        "view_name": "procedures:perguntas_avaliacao_list",
+        "keywords": ["for.141", "questionario", "perguntas", "eficacia"],
+    },
+    {
+        "title": "HUB de Treinamentos",
+        "module": "Treinamentos",
+        "module_key": "procedures",
+        "session": "HUB",
+        "description": "Acesse a central de atividades e rotinas dedicadas do módulo de Treinamentos.",
+        "icon": "bi-mortarboard",
+        "color": "#2563eb",
+        "view_name": "module_hub",
+        "view_kwargs": {"module_slug": "treinamentos"},
+        "keywords": ["hub", "central", "modulo"],
+    },
+
+    # QUADROS / BOARDS
+    {
+        "title": "Painel de Quadros (Kanban)",
+        "module": "Quadros",
+        "module_key": "boards",
+        "session": "Principal",
+        "description": "Acesse e gerencie todos os fluxos de trabalho kanban, quadros departamentais e projetos ativos.",
+        "icon": "bi-kanban",
+        "color": "#0891b2",
+        "view_name": "boards:dashboard",
+        "keywords": ["kanban", "quadros", "cartoes", "tarefas", "projetos", "colunas"],
+    },
+    {
+        "title": "Fluxos e Demandas",
+        "module": "Quadros",
+        "module_key": "boards",
+        "session": "Operações",
+        "description": "Mova cartões, defina prioridades, prazos limites e organize colunas operacionais da equipe.",
+        "icon": "bi-card-checklist",
+        "color": "#0891b2",
+        "view_name": "boards:dashboard",
+        "keywords": ["fluxos", "demandas", "cartoes", "operacoes", "prazos"],
+    },
+    {
+        "title": "HUB de Quadros",
+        "module": "Quadros",
+        "module_key": "boards",
+        "session": "HUB",
+        "description": "Acesse a central de atividades e rotinas dedicadas do módulo de Quadros.",
+        "icon": "bi-kanban",
+        "color": "#0891b2",
+        "view_name": "module_hub",
+        "view_kwargs": {"module_slug": "boards"},
+        "keywords": ["hub", "central", "modulo"],
+    },
+
+    # LABORATÓRIO
+    {
+        "title": "Painel de Ocorrências",
+        "module": "Laboratório",
+        "module_key": "laboratorio",
+        "session": "Ocorrências",
+        "description": "Consulte e acompanhe todas as ocorrências abertas, em andamento e histórico de encerramentos.",
+        "icon": "bi-card-list",
+        "color": "#059669",
+        "view_name": "laboratorio:modulo",
+        "keywords": ["ocorrencias", "chamados", "problemas", "anomalias", "abertas"],
+    },
+    {
+        "title": "Dashboard do Laboratório",
+        "module": "Laboratório",
+        "module_key": "laboratorio",
+        "session": "Indicadores",
+        "description": "Métricas de tempo de resposta, volume de não conformidades, gráficos por máquina e relatórios.",
+        "icon": "bi-speedometer2",
+        "color": "#059669",
+        "view_name": "laboratorio:dashboard",
+        "keywords": ["indicadores", "graficos", "laboratorio", "maquinas", "metricas"],
+    },
+    {
+        "title": "Registrar Nova Ocorrência",
+        "module": "Laboratório",
+        "module_key": "laboratorio",
+        "session": "Novo Registro",
+        "description": "Abra um novo chamado técnico ou aponte anomalias operacionais no ambiente laboratorial.",
+        "icon": "bi-plus-square",
+        "color": "#059669",
+        "view_name": "laboratorio:ocorrencia_create",
+        "keywords": ["nova ocorrencia", "abrir chamado", "defeito", "registro"],
+    },
+    {
+        "title": "Parque de Máquinas",
+        "module": "Laboratório",
+        "module_key": "laboratorio",
+        "session": "Equipamentos",
+        "description": "Consulte equipamentos do laboratório, especificações técnicas e histórico de intervenções.",
+        "icon": "bi-gear-wide-connected",
+        "color": "#059669",
+        "view_name": "maquinas:maquinas_list",
+        "keywords": ["maquinas", "equipamentos", "parque", "laboratorio", "manutencao"],
+    },
+    {
+        "title": "Tratamento Antirreflexo",
+        "module": "Laboratório",
+        "module_key": "laboratorio",
+        "session": "Processos",
+        "description": "Controle de lotes, inspeções visuais e acompanhamento de tratamentos ópticos especiais.",
+        "icon": "bi-infinity",
+        "color": "#059669",
+        "view_name": "laboratorio:tratamento_list",
+        "keywords": ["ar", "antirreflexo", "tratamento", "lotes", "lentes", "otica"],
+    },
+    {
+        "title": "Categorias de Ocorrência",
+        "module": "Laboratório",
+        "module_key": "laboratorio",
+        "session": "Parâmetros",
+        "description": "Classificações, motivos de paradas e tipos de defeitos para padronização de registros.",
+        "icon": "bi-tags",
+        "color": "#059669",
+        "view_name": "laboratorio:categorias_list",
+        "keywords": ["categorias", "motivos", "defeitos", "paradas"],
+    },
+    {
+        "title": "HUB de Laboratório",
+        "module": "Laboratório",
+        "module_key": "laboratorio",
+        "session": "HUB",
+        "description": "Acesse a central de atividades e rotinas dedicadas do módulo de Laboratório.",
+        "icon": "bi-flask",
+        "color": "#059669",
+        "view_name": "module_hub",
+        "view_kwargs": {"module_slug": "laboratorio"},
+        "keywords": ["hub", "central", "modulo"],
+    },
+
+    # PESSOAS (RH)
+    {
+        "title": "Quadro de Colaboradores",
+        "module": "Pessoas",
+        "module_key": "rh",
+        "session": "Equipe",
+        "description": "Visão centralizada de colaboradores ativos, cargos, setores, lideranças e centros de custo.",
+        "icon": "bi-people-fill",
+        "color": "#ea580c",
+        "view_name": "modulo_rh",
+        "keywords": ["colaboradores", "funcionarios", "equipe", "rh", "quadro", "cargos"],
+    },
+    {
+        "title": "Novo Colaborador",
+        "module": "Pessoas",
+        "module_key": "rh",
+        "session": "Cadastro",
+        "description": "Cadastre um novo colaborador na organização preenchendo matrícula, cargo, setor e centro de custo.",
+        "icon": "bi-person-plus",
+        "color": "#ea580c",
+        "view_name": "rh:criar_colaborador",
+        "keywords": ["novo", "cadastrar", "admitir", "colaborador", "funcionario"],
+    },
+    {
+        "title": "Gestão e Escala de Férias",
+        "module": "Pessoas",
+        "module_key": "rh",
+        "session": "Férias",
+        "description": "Programação de descanso anual, controle de períodos aquisitivos e calendário de férias da equipe.",
+        "icon": "bi-calendar-check",
+        "color": "#ea580c",
+        "view_name": "rh:gestao_ferias",
+        "keywords": ["ferias", "escala", "descanso", "periodo aquisitivo", "calendario"],
+    },
+    {
+        "title": "Planejamento de Horas Extras",
+        "module": "Pessoas",
+        "module_key": "rh",
+        "session": "Jornada",
+        "description": "Convocação, aprovação e monitoramento das horas extras programadas pelos líderes de setor.",
+        "icon": "bi-clock-history",
+        "color": "#ea580c",
+        "view_name": "rh:planejamento_hora_extra_list",
+        "keywords": ["horas extras", "he", "convocacao", "jornada", "sobreaviso"],
+    },
+    {
+        "title": "Usuários e Acessos",
+        "module": "Pessoas",
+        "module_key": "rh",
+        "session": "Segurança",
+        "description": "Administre contas de login no sistema, permissões de acesso aos módulos e autenticação 2FA.",
+        "icon": "bi-person-gear",
+        "color": "#ea580c",
+        "view_name": "rh:listar_usuarios",
+        "keywords": ["usuarios", "login", "permissoes", "senhas", "seguranca", "2fa"],
+    },
+    {
+        "title": "Demandas e Falhas de Ponto",
+        "module": "Pessoas",
+        "module_key": "rh",
+        "session": "Ponto",
+        "description": "Gerenciamento de justificativas, inconsistências de batidas de ponto e regularizações.",
+        "icon": "bi-fingerprint",
+        "color": "#ea580c",
+        "view_name": "rh:demandas_falhas_ponto",
+        "keywords": ["ponto", "falhas", "batidas", "justificativas", "relogio"],
+    },
+    {
+        "title": "HUB de Pessoas",
+        "module": "Pessoas",
+        "module_key": "rh",
+        "session": "HUB",
+        "description": "Acesse a central de atividades e rotinas dedicadas do módulo de Pessoas.",
+        "icon": "bi-people",
+        "color": "#ea580c",
+        "view_name": "module_hub",
+        "view_kwargs": {"module_slug": "pessoas"},
+        "keywords": ["hub", "central", "modulo"],
+    },
+
+    # FORNECEDORES
+    {
+        "title": "Base de Fornecedores",
+        "module": "Fornecedores",
+        "module_key": "fornecedores",
+        "session": "Cadastro",
+        "description": "Consulte a lista completa de fornecedores ativos, contatos comerciais e categorias fornecidas.",
+        "icon": "bi-building",
+        "color": "#c026d3",
+        "view_name": "fornecedores:fornecedor_list",
+        "keywords": ["fornecedores", "empresas", "parceiros", "homologados", "contatos"],
+    },
+    {
+        "title": "Novo Fornecedor",
+        "module": "Fornecedores",
+        "module_key": "fornecedores",
+        "session": "Novo",
+        "description": "Cadastre um novo fornecedor para processo de homologação, cotação e avaliação da qualidade.",
+        "icon": "bi-building-add",
+        "color": "#c026d3",
+        "view_name": "fornecedores:fornecedor_create",
+        "keywords": ["novo fornecedor", "cadastrar empresa", "homologar"],
+    },
+    {
+        "title": "Painel & Avaliações",
+        "module": "Fornecedores",
+        "module_key": "fornecedores",
+        "session": "Desempenho",
+        "description": "Acesse a matriz de fornecedores, histórico de avaliações periódicas e critérios de seleção.",
+        "icon": "bi-stars",
+        "color": "#c026d3",
+        "view_name": "fornecedores:modulo",
+        "keywords": ["painel", "avaliacoes", "iqf", "desempenho", "qualificacao"],
+    },
+    {
+        "title": "HUB de Fornecedores",
+        "module": "Fornecedores",
+        "module_key": "fornecedores",
+        "session": "HUB",
+        "description": "Acesse a central de atividades e rotinas dedicadas do módulo de Fornecedores.",
+        "icon": "bi-truck",
+        "color": "#c026d3",
+        "view_name": "module_hub",
+        "view_kwargs": {"module_slug": "fornecedores"},
+        "keywords": ["hub", "central", "modulo"],
+    },
+
+    # GERAL
+    {
+        "title": "Notificações / Caixa de Entrada",
+        "module": "Geral",
+        "module_key": None,
+        "session": "Comunicação",
+        "description": "Central de avisos, tarefas atribuídas, cobranças e pendências sob sua responsabilidade.",
+        "icon": "bi-bell-fill",
+        "color": "#f59e0b",
+        "view_name": "inbox",
+        "keywords": ["notificacoes", "inbox", "tarefas", "pendencias", "mensagens"],
+    },
+    {
+        "title": "Histórico de Atualizações (Changelog)",
+        "module": "Geral",
+        "module_key": None,
+        "session": "Sistema",
+        "description": "Consulte o histórico de novidades, correções e melhorias implementadas no CalibraWeb.",
+        "icon": "bi-info-circle",
+        "color": "#64748b",
+        "view_name": "changelog",
+        "keywords": ["changelog", "versao", "atualizacoes", "novidades", "release"],
+    },
+]
+
+
+@login_required
+def api_hub_search(request):
+    """API Ajax estilo Select2 para busca global de recursos/funções do sistema baseada em módulo e sessão."""
+    query = (request.GET.get("q") or "").strip().lower()
+
+    results = []
+    for item in SYSTEM_FEATURES_CATALOG:
+        mod_key = item.get("module_key")
+        view_name = item.get("view_name")
+        view_kwargs = item.get("view_kwargs", {})
+
+        if mod_key and not _hub_can_access(request.user, mod_key, view_name):
+            continue
+
+        url = _hub_safe_reverse(view_name, **view_kwargs)
+        if not url:
+            continue
+
+        title_lower = item["title"].lower()
+        module_lower = item["module"].lower()
+        session_lower = item["session"].lower()
+        desc_lower = item["description"].lower()
+        keywords_str = " ".join(item.get("keywords", [])).lower()
+
+        if query:
+            if (
+                query in title_lower
+                or query in module_lower
+                or query in session_lower
+                or query in desc_lower
+                or query in keywords_str
+            ):
+                score = 0
+                if title_lower.startswith(query):
+                    score += 50
+                elif query in title_lower:
+                    score += 30
+                if query in session_lower:
+                    score += 20
+                if query in module_lower:
+                    score += 15
+                if query in keywords_str:
+                    score += 10
+                if query in desc_lower:
+                    score += 5
+
+                results.append((score, {
+                    "title": item["title"],
+                    "module": item["module"],
+                    "session": item["session"],
+                    "description": item["description"],
+                    "icon": item["icon"],
+                    "color": item["color"],
+                    "url": url,
+                }))
+        else:
+            results.append((0, {
+                "title": item["title"],
+                "module": item["module"],
+                "session": item["session"],
+                "description": item["description"],
+                "icon": item["icon"],
+                "color": item["color"],
+                "url": url,
+            }))
+
+    results.sort(key=lambda x: x[0], reverse=True)
+    clean_results = [r[1] for r in results[:25]]
+
+    return JsonResponse({
+        "success": True,
+        "query": query,
+        "total": len(clean_results),
+        "results": clean_results,
+    })
+
+
 @login_required
 def hub_view(request):
     """Página inicial do Calibra HUB: direcionamento aos HUBS dedicados dos módulos."""
@@ -582,12 +1235,6 @@ def hub_view(request):
             "label": "Módulos liberados",
             "value": len(modules),
             "detail": "áreas disponíveis no sistema",
-        },
-        {
-            "label": "Favoritos",
-            "value": 0,
-            "detail": "módulos fixados no topo",
-            "dynamic_id": "hub-favorites-count",
         },
     ]
 

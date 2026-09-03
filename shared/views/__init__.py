@@ -29,11 +29,13 @@ from .views import (
     laboratorio_hub_view,
     rh_hub_view,
     fornecedores_hub_view,
+    api_hub_search,
 )
 
 __all__ = [
     'home_view',
     'hub_view',
+    'api_hub_search',
     'module_hub_view',
     'auditoria_hub_view',
     'metrologia_hub_view',

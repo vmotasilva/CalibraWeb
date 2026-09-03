@@ -20,9 +20,9 @@
 
     .hub-hero {
         position: relative;
-        overflow: hidden;
+        overflow: visible; /* Permite que o dropdown ultrapasse se necessário */
         border-radius: 20px;
-        padding: 1.15rem 1.4rem;
+        padding: 1.25rem 1.5rem;
         background:
             radial-gradient(circle at top right, rgba(239, 246, 164, 0.2), transparent 30%),
             linear-gradient(135deg, #133035 0%, #1a564b 55%, #246d5f 100%);
@@ -66,20 +66,73 @@
         text-transform: uppercase;
     }
 
-    .hub-stat {
-        height: 100%;
-        padding: 0.5rem 0.75rem;
-        border-radius: 14px;
-        background: rgba(255, 255, 255, 0.12);
-        border: 1px solid rgba(255, 255, 255, 0.16);
-        backdrop-filter: blur(6px);
+    .hub-search-container {
+        position: relative;
+        min-width: 260px;
+        max-width: 400px;
+    }
+
+    .hub-search-input-group {
+        background: #ffffff;
+        border-radius: 999px;
+        transition: box-shadow 0.2s ease, border-color 0.2s ease;
+        border: 2px solid transparent;
+    }
+
+    .hub-search-input-group:focus-within {
+        border-color: rgba(255, 255, 255, 0.85);
+        box-shadow: 0 0 0 3px rgba(36, 109, 95, 0.35);
+    }
+
+    .hub-search-dropdown {
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 0;
+        right: 0;
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 18px 45px rgba(0, 0, 0, 0.22);
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        z-index: 1060;
+        max-height: 420px;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    .hub-search-item {
+        padding: 0.75rem 1rem;
         display: flex;
-        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        text-decoration: none;
+        color: #1e293b;
+        transition: background 0.15s ease;
+        cursor: pointer;
+    }
+
+    .hub-search-item:last-child {
+        border-bottom: none;
+    }
+
+    .hub-search-item:hover,
+    .hub-search-item.active {
+        background: #f1f5f9;
+    }
+
+    .hub-search-item-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 11px;
+        display: inline-flex;
+        align-items: center;
         justify-content: center;
+        font-size: 1.15rem;
+        flex-shrink: 0;
     }
 
     .hub-section {
-        margin-top: 1.25rem;
+        margin-top: 1.5rem;
     }
 
     .hub-section-header {
@@ -95,59 +148,26 @@
         margin-bottom: 0;
     }
 
-    .hub-card,
-    .quick-card,
-    .favorite-card,
-    .pending-card,
     .module-card {
         border: 1px solid var(--hub-border);
         border-radius: 22px;
         background: var(--hub-surface);
         box-shadow: 0 12px 26px rgba(22, 53, 59, 0.08);
-    }
-
-    .favorite-card,
-    .quick-card,
-    .pending-card,
-    .module-card {
         height: 100%;
-    }
-
-    .favorite-card,
-    .quick-card,
-    .module-card {
         position: relative;
         overflow: hidden;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
-    .favorite-card .stretched-link,
-    .quick-card .stretched-link {
-        position: relative;
-        z-index: 2;
+    .module-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 18px 34px rgba(22, 53, 59, 0.12);
     }
 
-    .favorite-badge,
-    .module-icon,
-    .quick-icon {
-        width: 52px;
-        height: 52px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 16px;
-        background: rgba(22, 53, 59, 0.08);
-        color: var(--hub-ink);
-        font-size: 1.25rem;
+    .module-card .card-body {
+        padding: 1.25rem;
     }
 
-    .quick-card .card-body,
-    .module-card .card-body,
-    .pending-card .card-body,
-    .favorite-card .card-body {
-        padding: 1.15rem;
-    }
-
-    .quick-card::before,
     .module-card::before {
         content: "";
         position: absolute;
@@ -159,106 +179,56 @@
         opacity: 0.8;
     }
 
-    .module-chip,
-    .pending-chip {
+    .module-icon {
+        width: 52px;
+        height: 52px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 16px;
+        background: rgba(22, 53, 59, 0.08);
+        color: var(--hub-ink);
+        font-size: 1.25rem;
+    }
+
+    .module-chip {
         display: inline-flex;
         align-items: center;
         gap: 0.4rem;
-        padding: 0.3rem 0.6rem;
+        padding: 0.35rem 0.75rem;
         border-radius: 999px;
         font-size: 0.76rem;
         font-weight: 700;
         letter-spacing: 0.04em;
         text-transform: uppercase;
-    }
-
-    .module-chip {
         background: rgba(22, 53, 59, 0.08);
         color: var(--hub-ink);
     }
 
-    .pending-chip {
-        background: rgba(13, 110, 253, 0.1);
-        color: #0d6efd;
-    }
-
-    .hub-favorite-toggle {
-        position: relative;
-        z-index: 2;
-        width: 44px;
-        height: 44px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 14px;
-        border: 1px solid rgba(22, 53, 59, 0.14);
-        background: #fff;
-        color: var(--hub-ink);
-        transition: all 0.2s ease;
-    }
-
-    .hub-favorite-toggle.active {
-        background: #ffe7a8;
-        border-color: #f2c94c;
-        color: #8a5b00;
-    }
-
-    .hub-favorite-toggle:hover {
-        transform: translateY(-1px);
-    }
-
-    .hub-empty-state {
-        padding: 1.5rem;
-        border: 2px dashed var(--hub-border);
-        border-radius: 20px;
-        background: rgba(22, 53, 59, 0.03);
-        color: var(--hub-muted);
-        text-align: center;
-    }
-
-    .hub-primary-btn,
-    .hub-secondary-btn {
+    .hub-primary-btn {
         min-height: 44px;
-    }
-
-    .hub-secondary-btn {
         border-radius: 12px;
-    }
-
-    .module-status {
-        padding: 0.85rem 0.95rem;
-        border-radius: 16px;
-        background: rgba(22, 53, 59, 0.05);
-        color: var(--hub-ink);
-    }
-
-    .pending-card {
-        text-decoration: none;
-        color: inherit;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    .pending-card:hover,
-    .module-card:hover,
-    .quick-card:hover,
-    .favorite-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 18px 34px rgba(22, 53, 59, 0.12);
     }
 
     @media (max-width: 767.98px) {
         .hub-hero {
-            border-radius: 22px;
+            border-radius: 20px;
         }
 
         .hub-section-header {
             flex-direction: column;
             align-items: flex-start;
         }
+
+        .hub-search-container {
+            max-width: 100%;
+            min-width: 100%;
+        }
     }
 </style>
 
 <div class="hub-shell">
+    <!-- HERO HEADER -->
     <section class="hub-hero">
         <div class="row g-3 align-items-center justify-content-between">
             <div class="col-12 col-lg-5 col-xl-5 position-relative">
@@ -275,48 +245,60 @@
                     <h1 class="h3 fw-bold mb-0 text-white">Calibra HUB</h1>
                     <span class="text-white-50 small d-none d-sm-inline" style="font-size: 0.82rem;">Painel Unificado de Gestão</span>
                 </div>
-                <p class="text-white text-opacity-75 mb-0 small" style="font-size: 0.85rem;">Acesse todos os módulos, controle pendências e execute ações rápidas.</p>
+                <p class="text-white text-opacity-75 mb-0 small" style="font-size: 0.85rem;">Acesse todos os módulos, controle pendências e busque recursos do sistema.</p>
             </div>
 
             <div class="col-12 col-lg-7 col-xl-7 position-relative">
                 <div class="d-flex flex-wrap align-items-center justify-content-lg-end gap-2">
-                    <!-- BUSCA INTERATIVA -->
-                    <div class="position-relative flex-grow-1 flex-lg-grow-0" style="min-width: 220px; max-width: 320px;">
+                    <!-- BUSCA GLOBAL AJAX ESTILO SELECT2 (SEM FILTRAR OS HUBS ABAIXO) -->
+                    <div class="hub-search-container flex-grow-1 flex-lg-grow-0">
                         <!-- FAKE TRAP INPUTS PARA IMPEDIR AUTOFILL DE SENHAS/USUÁRIOS DO NAVEGADOR -->
                         <div style="position: absolute; left: -9999px; top: -9999px; width: 1px; height: 1px; overflow: hidden; opacity: 0;" aria-hidden="true">
                             <input type="text" name="fake_username_trap_hub" tabindex="-1" autocomplete="username">
                             <input type="password" name="fake_password_trap_hub" tabindex="-1" autocomplete="current-password">
                         </div>
 
-                        <div class="input-group input-group-sm shadow-sm rounded-pill overflow-hidden border-0 bg-white">
-                            <span class="input-group-text bg-white border-0 text-muted ps-2.5 pe-1 py-1.5">
-                                <i class="bi bi-search text-primary" style="font-size: 0.85rem;"></i>
+                        <div class="input-group input-group-sm shadow-sm hub-search-input-group overflow-hidden">
+                            <span class="input-group-text bg-white border-0 text-muted ps-3 pe-1 py-2">
+                                <i class="bi bi-search text-primary" id="hubSearchIcon" style="font-size: 0.88rem;"></i>
+                                <div class="spinner-border spinner-border-sm text-primary d-none" id="hubSearchSpinner" role="status" style="width: 0.85rem; height: 0.85rem;"></div>
                             </span>
                             <input
-                                type="search"
+                                type="text"
                                 id="hubSearchInput"
-                                name="q_calibra_hub_search_no_autofill"
-                                class="form-control form-control-sm border-0 shadow-none py-1.5 pe-3 text-dark"
-                                placeholder="Buscar módulos do sistema..."
+                                name="calibra_global_search_q"
+                                class="form-control form-control-sm border-0 shadow-none py-2 pe-2 text-dark"
+                                placeholder="Buscar funções, telas ou módulos..."
                                 autocomplete="off"
                                 autocorrect="off"
                                 autocapitalize="off"
                                 spellcheck="false"
+                                role="combobox"
+                                aria-expanded="false"
+                                aria-autocomplete="list"
                                 data-lpignore="true"
                                 data-form-type="other"
-                                aria-autocomplete="none"
+                                data-1p-ignore="true"
                                 readonly
                                 onfocus="this.removeAttribute('readonly');"
                                 style="font-size: 0.88rem;"
                             >
+                            <button type="button" id="hubSearchClearBtn" class="btn btn-sm btn-link text-muted pe-3 d-none text-decoration-none" title="Limpar busca">
+                                <i class="bi bi-x-circle-fill"></i>
+                            </button>
+                        </div>
+
+                        <!-- DROPDOWN AJAX DE RESULTADOS (ESTILO SELECT2) -->
+                        <div id="hubSearchDropdown" class="hub-search-dropdown d-none">
+                            <div id="hubSearchResultsList"></div>
                         </div>
                     </div>
 
                     <!-- BOTÕES MÓDULOS E NOTIFICAÇÕES -->
-                    <a class="btn btn-light btn-sm hub-primary-btn fw-semibold py-1 px-3 rounded-pill d-inline-flex align-items-center text-nowrap" href="#modulos" style="min-height: 34px; font-size: 0.82rem;">
+                    <a class="btn btn-light btn-sm hub-primary-btn fw-semibold py-1 px-3 rounded-pill d-inline-flex align-items-center text-nowrap" href="#modulos" style="min-height: 36px; font-size: 0.82rem;">
                         <i class="bi bi-grid-3x3-gap me-1.5"></i> Módulos
                     </a>
-                    <a class="btn btn-warning btn-sm hub-primary-btn text-dark fw-bold shadow-sm py-1 px-3 rounded-pill d-inline-flex align-items-center text-nowrap" href="{% url 'inbox' %}" style="min-height: 34px; font-size: 0.82rem;">
+                    <a class="btn btn-warning btn-sm hub-primary-btn text-dark fw-bold shadow-sm py-1 px-3 rounded-pill d-inline-flex align-items-center text-nowrap" href="{% url 'inbox' %}" style="min-height: 36px; font-size: 0.82rem;">
                         <i class="bi bi-bell-fill me-1.5"></i> Notificações{% if nav_notifications_total %} ({{ nav_notifications_total }}){% endif %}
                     </a>
                 </div>
@@ -324,17 +306,7 @@
         </div>
     </section>
 
-    <section id="favoritos" class="hub-section">
-        <div class="hub-section-header">
-            <div>
-                <h2 class="h4 mb-1">Favoritos</h2>
-                <p>Fixe módulos para montar seu HUB pessoal.</p>
-            </div>
-        </div>
-        <div id="hub-favorites-empty" class="hub-empty-state">Marque as estrelas dos cards abaixo para manter os módulos mais usados sempre no topo.</div>
-        <div id="hub-favorites-list" class="row g-3 d-none"></div>
-    </section>
-
+    <!-- MÓDULOS DO SISTEMA (SEM FILTRO LOCAL, PERMANECEM VISÍVEIS) -->
     <section id="modulos" class="hub-section">
         <div class="hub-section-header">
             <div>
@@ -345,7 +317,7 @@
         </div>
         <div class="row g-3" id="modulesGrid">
             {% for module in modules %}
-            <div class="col-12 col-md-6 col-xl-4 module-item" data-module-title="{{ module.title|lower }}" data-module-desc="{{ module.description|lower }}">
+            <div class="col-12 col-md-6 col-xl-4 module-item">
                 <div class="card module-card" style="--module-color: {{ module.color }};">
                     <div class="card-body d-flex flex-column gap-3">
                         <div class="d-flex align-items-start justify-content-between gap-3">
@@ -354,22 +326,6 @@
                                     <i class="bi {{ module.icon }}"></i>
                                 </div>
                             </a>
-                            <div class="d-flex align-items-center gap-1">
-                                <button
-                                    type="button"
-                                    class="hub-favorite-toggle"
-                                    aria-label="Favoritar {{ module.title }}"
-                                    aria-pressed="false"
-                                    data-hub-favorite-id="module:{{ module.id }}"
-                                    data-hub-favorite-label="{{ module.title }}"
-                                    data-hub-favorite-url="{{ module.url }}"
-                                    data-hub-favorite-kind="Módulo"
-                                    data-hub-favorite-icon="{{ module.icon }}"
-                                    data-hub-favorite-module="Hub principal"
-                                >
-                                    <i class="bi bi-star"></i>
-                                </button>
-                            </div>
                         </div>
 
                         <div class="flex-grow-1">
@@ -389,7 +345,11 @@
             </div>
             {% empty %}
             <div class="col-12">
-                <div class="hub-empty-state">Nenhum módulo foi liberado para o seu perfil. Consulte a administração do sistema.</div>
+                <div class="alert alert-light border text-center py-4 rounded-3 text-muted">
+                    <i class="bi bi-shield-lock display-6 d-block mb-2 text-secondary"></i>
+                    <h4 class="h6 fw-semibold text-dark">Nenhum módulo liberado</h4>
+                    <p class="small mb-0">Você não possui permissões liberadas para acessar os módulos.</p>
+                </div>
             </div>
             {% endfor %}
         </div>
@@ -398,151 +358,201 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const storageKey = 'calibra-hub-favorites-v1';
-        const toggles = Array.from(document.querySelectorAll('.hub-favorite-toggle'));
-        const favoritesList = document.getElementById('hub-favorites-list');
-        const emptyState = document.getElementById('hub-favorites-empty');
-        const countTarget = document.getElementById('hub-favorites-count');
-
-        const readFavorites = () => {
-            try {
-                const parsed = JSON.parse(localStorage.getItem(storageKey) || '[]');
-                return Array.isArray(parsed) ? parsed : [];
-            } catch (error) {
-                return [];
-            }
-        };
-
-        let favorites = readFavorites();
-        const catalog = {};
-
-        toggles.forEach((toggle) => {
-            const itemId = toggle.dataset.hubFavoriteId;
-            if (!itemId || catalog[itemId]) {
-                return;
-            }
-
-            catalog[itemId] = {
-                id: itemId,
-                label: toggle.dataset.hubFavoriteLabel || 'Favorito',
-                url: toggle.dataset.hubFavoriteUrl || '#',
-                kind: toggle.dataset.hubFavoriteKind || 'Atalho',
-                icon: toggle.dataset.hubFavoriteIcon || 'bi-star',
-                module: toggle.dataset.hubFavoriteModule || 'Acesso rápido',
-            };
-        });
-
-        const saveFavorites = () => {
-            localStorage.setItem(storageKey, JSON.stringify(favorites));
-        };
-
-        const isFavorite = (itemId) => favorites.includes(itemId);
-
-        const syncToggleState = () => {
-            toggles.forEach((toggle) => {
-                const icon = toggle.querySelector('i');
-                const active = isFavorite(toggle.dataset.hubFavoriteId || '');
-                toggle.classList.toggle('active', active);
-                toggle.setAttribute('aria-pressed', active ? 'true' : 'false');
-
-                if (icon) {
-                    icon.classList.remove('bi-star', 'bi-star-fill');
-                    icon.classList.add(active ? 'bi-star-fill' : 'bi-star');
-                }
-            });
-
-            if (countTarget) {
-                countTarget.textContent = String(favorites.length);
-            }
-        };
-
-        const renderFavorites = () => {
-            if (!favoritesList || !emptyState) {
-                return;
-            }
-
-            favoritesList.innerHTML = '';
-            const favoriteItems = favorites.map((itemId) => catalog[itemId]).filter(Boolean);
-
-            if (!favoriteItems.length) {
-                favoritesList.classList.add('d-none');
-                emptyState.classList.remove('d-none');
-                return;
-            }
-
-            favoritesList.classList.remove('d-none');
-            emptyState.classList.add('d-none');
-
-            favoriteItems.forEach((item) => {
-                const column = document.createElement('div');
-                column.className = 'col-12 col-md-6 col-xl-4';
-                column.innerHTML = `
-                    <div class="card favorite-card">
-                        <div class="card-body d-flex align-items-center justify-content-between gap-3">
-                            <div>
-                                <div class="small text-uppercase text-muted mb-1">${item.kind}</div>
-                                <a href="${item.url}" class="stretched-link text-decoration-none fw-semibold text-dark">${item.label}</a>
-                                <div class="small text-muted">${item.module}</div>
-                            </div>
-                            <span class="favorite-badge">
-                                <i class="bi ${item.icon}"></i>
-                            </span>
-                        </div>
-                    </div>
-                `;
-                favoritesList.appendChild(column);
-            });
-        };
-
-        toggles.forEach((toggle) => {
-            toggle.addEventListener('click', function () {
-                const itemId = toggle.dataset.hubFavoriteId;
-                if (!itemId) {
-                    return;
-                }
-
-                favorites = isFavorite(itemId)
-                    ? favorites.filter((currentId) => currentId !== itemId)
-                    : [...favorites, itemId];
-
-                saveFavorites();
-                syncToggleState();
-                renderFavorites();
-            });
-        });
-
-        syncToggleState();
-        renderFavorites();
-
-        // Real-time search filter for modules and quick actions
         const searchInput = document.getElementById('hubSearchInput');
-        function clearHubAutofill() {
+        const searchDropdown = document.getElementById('hubSearchDropdown');
+        const searchResultsList = document.getElementById('hubSearchResultsList');
+        const searchIcon = document.getElementById('hubSearchIcon');
+        const searchSpinner = document.getElementById('hubSearchSpinner');
+        const clearBtn = document.getElementById('hubSearchClearBtn');
+
+        let debounceTimer = null;
+        let selectedIndex = -1;
+        let currentItems = [];
+
+        // Prevenção de autofill
+        function clearAutofill() {
             if (searchInput) {
                 searchInput.value = '';
             }
         }
-        clearHubAutofill();
-        setTimeout(clearHubAutofill, 50);
-        setTimeout(clearHubAutofill, 200);
-        setTimeout(clearHubAutofill, 600);
-        window.addEventListener('pageshow', clearHubAutofill);
+        clearAutofill();
+        setTimeout(clearAutofill, 50);
+        setTimeout(clearAutofill, 200);
+        setTimeout(clearAutofill, 600);
+        window.addEventListener('pageshow', clearAutofill);
 
-        if (searchInput) {
-            searchInput.addEventListener('input', function() {
-                const q = this.value.trim().toLowerCase();
-                
-                // Filter modules
-                document.querySelectorAll('.module-item').forEach(el => {
-                    const title = el.getAttribute('data-module-title') || '';
-                    const desc = el.getAttribute('data-module-desc') || '';
-                    const text = el.innerText.toLowerCase();
-                    if (!q || title.includes(q) || desc.includes(q) || text.includes(q)) {
-                        el.style.display = '';
-                    } else {
-                        el.style.display = 'none';
-                    }
-                });            });
+        if (!searchInput || !searchDropdown || !searchResultsList) return;
+
+        function showLoading() {
+            searchIcon?.classList.add('d-none');
+            searchSpinner?.classList.remove('d-none');
         }
+
+        function hideLoading() {
+            searchSpinner?.classList.add('d-none');
+            searchIcon?.classList.remove('d-none');
+        }
+
+        function closeDropdown() {
+            searchDropdown.classList.add('d-none');
+            searchInput.setAttribute('aria-expanded', 'false');
+            selectedIndex = -1;
+        }
+
+        function openDropdown() {
+            searchDropdown.classList.remove('d-none');
+            searchInput.setAttribute('aria-expanded', 'true');
+        }
+
+        function highlightQuery(text, query) {
+            if (!query) return text;
+            const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            return text.replace(regex, '<mark class="bg-warning text-dark p-0 rounded-1">$1</mark>');
+        }
+
+        function renderResults(results, query) {
+            currentItems = results;
+            selectedIndex = -1;
+            searchResultsList.innerHTML = '';
+
+            if (!results || results.length === 0) {
+                searchResultsList.innerHTML = `
+                    <div class="p-4 text-center text-muted">
+                        <i class="bi bi-search-heart display-6 d-block mb-2 text-secondary opacity-50"></i>
+                        <p class="mb-1 fw-semibold text-dark">Nenhum recurso encontrado</p>
+                        <small class="text-muted">Não encontramos nenhuma tela ou função com "${query}".</small>
+                    </div>
+                `;
+                openDropdown();
+                return;
+            }
+
+            results.forEach((item, index) => {
+                const a = document.createElement('a');
+                a.href = item.url;
+                a.className = 'hub-search-item';
+                a.dataset.index = index;
+
+                const highlightedTitle = highlightQuery(item.title, query);
+                const highlightedSession = highlightQuery(item.session, query);
+                const highlightedModule = highlightQuery(item.module, query);
+
+                a.innerHTML = `
+                    <div class="hub-search-item-icon" style="background: color-mix(in srgb, ${item.color} 15%, white); color: ${item.color};">
+                        <i class="bi ${item.icon}"></i>
+                    </div>
+                    <div class="flex-grow-1 overflow-hidden">
+                        <div class="d-flex align-items-center gap-2 flex-wrap mb-0.5">
+                            <span class="fw-bold text-dark" style="font-size: 0.88rem;">${highlightedTitle}</span>
+                            <span class="badge rounded-pill text-uppercase px-2 py-0.5" style="font-size: 0.65rem; background: color-mix(in srgb, ${item.color} 15%, white); color: ${item.color};">
+                                ${highlightedModule} &bull; ${highlightedSession}
+                            </span>
+                        </div>
+                        <small class="text-muted text-truncate d-block" style="font-size: 0.78rem;">${item.description}</small>
+                    </div>
+                    <i class="bi bi-arrow-right-short text-muted fs-5 flex-shrink-0"></i>
+                `;
+                searchResultsList.appendChild(a);
+            });
+
+            openDropdown();
+        }
+
+        function performSearch(query) {
+            showLoading();
+            const url = `{% url 'api_hub_search' %}?q=${encodeURIComponent(query)}`;
+
+            fetch(url, { credentials: 'same-origin' })
+                .then((res) => res.json())
+                .then((data) => {
+                    hideLoading();
+                    if (data && data.success) {
+                        renderResults(data.results, query);
+                    }
+                })
+                .catch((err) => {
+                    hideLoading();
+                    console.error('Erro na busca global:', err);
+                });
+        }
+
+        searchInput.addEventListener('input', function () {
+            const query = this.value.trim();
+            if (clearBtn) {
+                clearBtn.classList.toggle('d-none', !query);
+            }
+
+            clearTimeout(debounceTimer);
+            if (query.length === 0) {
+                // Se estiver vazio, exibe recursos principais/destaques
+                debounceTimer = setTimeout(() => performSearch(''), 150);
+                return;
+            }
+
+            debounceTimer = setTimeout(() => {
+                performSearch(query);
+            }, 180);
+        });
+
+        // Abrir ao focar no campo
+        searchInput.addEventListener('focus', function () {
+            if (searchDropdown.classList.contains('d-none')) {
+                performSearch(this.value.trim());
+            }
+        });
+
+        // Botão limpar
+        if (clearBtn) {
+            clearBtn.addEventListener('click', function () {
+                searchInput.value = '';
+                clearBtn.classList.add('d-none');
+                searchInput.focus();
+                performSearch('');
+            });
+        }
+
+        // Navegação por teclado (Cima / Baixo / Enter / Esc)
+        searchInput.addEventListener('keydown', function (e) {
+            const items = searchResultsList.querySelectorAll('.hub-search-item');
+            if (searchDropdown.classList.contains('d-none') || items.length === 0) {
+                return;
+            }
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                selectedIndex = (selectedIndex + 1) % items.length;
+                updateSelection(items);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                selectedIndex = (selectedIndex - 1 + items.length) % items.length;
+                updateSelection(items);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (selectedIndex >= 0 && items[selectedIndex]) {
+                    items[selectedIndex].click();
+                } else if (items.length > 0) {
+                    items[0].click();
+                }
+            } else if (e.key === 'Escape') {
+                closeDropdown();
+            }
+        });
+
+        function updateSelection(items) {
+            items.forEach((it, idx) => {
+                it.classList.toggle('active', idx === selectedIndex);
+                if (idx === selectedIndex) {
+                    it.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                }
+            });
+        }
+
+        // Fechar ao clicar fora
+        document.addEventListener('click', function (e) {
+            if (!searchInput.contains(e.target) && !searchDropdown.contains(e.target)) {
+                closeDropdown();
+            }
+        });
     });
 </script>
 {% endblock %}
