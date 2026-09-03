@@ -378,13 +378,13 @@
             <!-- Progresso de Preenchimento -->
             <div class="mt-2 pt-2 border-top">
                 <div class="d-flex justify-content-between align-items-center mb-1">
-                    <small class="text-muted">{{ preenchidas }} de {{ total_respostas }} perguntas respondidas</small>
-                    <span class="badge {% if percentual_preenchimento == 100 %}bg-success{% elif percentual_preenchimento >= 50 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                    <small class="text-muted" id="progressGlobalText">{{ preenchidas }} de {{ total_respostas }} perguntas respondidas</small>
+                    <span id="progressGlobalBadge" class="badge {% if percentual_preenchimento == 100 %}bg-success{% elif percentual_preenchimento >= 50 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
                         {{ percentual_preenchimento }}%
                     </span>
                 </div>
                 <div class="progress" style="height: 6px;" role="progressbar" aria-valuenow="{{ percentual_preenchimento }}" aria-valuemin="0" aria-valuemax="100">
-                    <div class="progress-bar {% if percentual_preenchimento == 100 %}bg-success{% elif percentual_preenchimento >= 50 %}bg-warning{% else %}bg-danger{% endif %}" style="width: {{ percentual_preenchimento }}%"></div>
+                    <div id="progressBarGlobal" class="progress-bar {% if percentual_preenchimento == 100 %}bg-success{% elif percentual_preenchimento >= 50 %}bg-warning{% else %}bg-danger{% endif %}" style="width: {{ percentual_preenchimento }}%"></div>
                 </div>
             </div>
         </div>
@@ -1183,15 +1183,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 // Atualizar barra de progresso no topo se existir
-                const progressBar = document.querySelector('.progress-bar');
+                const progressBar = document.getElementById('progressBarGlobal') || document.querySelector('.progress-bar');
                 if (progressBar && data.percentual_preenchimento !== undefined) {
                     progressBar.style.width = data.percentual_preenchimento + '%';
-                    progressBar.textContent = data.percentual_preenchimento + '% Preenchido';
                     progressBar.className = 'progress-bar ' + (
                         data.percentual_preenchimento === 100 ? 'bg-success' : (data.percentual_preenchimento >= 50 ? 'bg-warning' : 'bg-danger')
                     );
                 }
-                const progressSubtext = document.querySelector('.progress + small');
+                const progressBadge = document.getElementById('progressGlobalBadge');
+                if (progressBadge && data.percentual_preenchimento !== undefined) {
+                    progressBadge.textContent = data.percentual_preenchimento + '%';
+                    progressBadge.className = 'badge ' + (
+                        data.percentual_preenchimento === 100 ? 'bg-success' : (data.percentual_preenchimento >= 50 ? 'bg-warning text-dark' : 'bg-danger')
+                    );
+                }
+                const progressSubtext = document.getElementById('progressGlobalText') || document.querySelector('.progress + small');
                 if (progressSubtext && data.preenchidas !== undefined && data.total_perguntas !== undefined) {
                     progressSubtext.textContent = `${data.preenchidas} de ${data.total_perguntas} perguntas respondidas`;
                 }

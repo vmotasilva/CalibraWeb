@@ -1325,6 +1325,64 @@ class AuditoriaPendenciasSemanalETestesAndamento(TestCase):
             periodo_atual = next((p for p in pendencias if p["inicio"] == "2026-08-31"), None)
             self.assertIsNone(periodo_atual)
 
+    def test_progresso_semanal_considera_dias_da_semana(self):
+        from auditoria.models import PerguntaAuditoria, RespostaAuditoria
+        from auditoria.views import _build_resumo_respostas_registro
+        import datetime
+
+        modelo = ModeloAuditoria.objects.create(
+            nome="CPD - Teste 6 Perguntas",
+            objeto_auditoria="Objeto teste semanal",
+            periodicidade="SEMANAL",
+            dia_semana="SEGUNDA",
+        )
+        # Cria 6 perguntas
+        perguntas = []
+        for i in range(1, 7):
+            perguntas.append(
+                PerguntaAuditoria.objects.create(
+                    modelo=modelo,
+                    pergunta=f"Pergunta {i}",
+                    tipo_resposta="SIM_NAO",
+                    ordem=i,
+                )
+            )
+
+        registro = RegistroAuditoria.objects.create(
+            modelo=modelo,
+            nome="Ciclo Teste Semanal 6 perguntas",
+            status="RASCUNHO",
+            progresso=0,
+            periodo_inicio=datetime.date(2026, 8, 31),
+            periodo_fim=datetime.date(2026, 9, 6),
+            avaliador=self.user,
+        )
+
+        # Responde as 6 perguntas apenas para a SEGUNDA (6 respostas de 42 esperadas)
+        for p in perguntas:
+            RespostaAuditoria.objects.create(
+                registro=registro,
+                pergunta=p,
+                dia_semana="SEGUNDA",
+                valor="Sim",
+            )
+
+        resumo = _build_resumo_respostas_registro(registro)
+        # 6 perguntas * 7 dias = 42 total de perguntas/respostas esperadas
+        self.assertEqual(resumo["total_perguntas"], 42)
+        self.assertEqual(resumo["preenchidas"], 6)
+        # 6 / 42 = 14.3%
+        self.assertEqual(resumo["percentual_preenchimento"], 14.3)
+
+        # Testa também a view registro_detail
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("auditoria:registro_detail", args=[registro.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "6 de 42 perguntas respondidas")
+        content = response.content.decode("utf-8")
+        self.assertTrue("14,3%" in content or "14.3%" in content)
+
+
 
 
 

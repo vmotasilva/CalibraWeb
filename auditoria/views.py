@@ -529,9 +529,18 @@ def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
         bloco["is_iniciado"] = (total_respondido > 0)
 
     blocos = list(blocos_map.values())
-    total_perguntas = len(perguntas_consolidadas)
-    preenchidas = sum(1 for b in blocos for l in b["linhas"] if l["tem_resposta"])
-    percentual_preenchimento = round((preenchidas / total_perguntas) * 100, 1) if total_perguntas else 0
+    total_esperado_geral = sum(b.get("total_esperado", 0) for b in blocos)
+    total_respondido_geral = sum(b.get("total_respondido", 0) for b in blocos)
+
+    if total_esperado_geral > 0:
+        total_perguntas = total_esperado_geral
+        preenchidas = total_respondido_geral
+        percentual_preenchimento = round((total_respondido_geral / total_esperado_geral) * 100, 1)
+    else:
+        total_perguntas = len(perguntas_consolidadas)
+        preenchidas = sum(1 for b in blocos for l in b["linhas"] if l["tem_resposta"])
+        percentual_preenchimento = round((preenchidas / total_perguntas) * 100, 1) if total_perguntas else 0
+
     exibir_dias = is_semanal or any(l["usa_colunas_dia"] for b in blocos for l in b["linhas"])
 
     return {
@@ -1822,6 +1831,11 @@ def registro_detail(request, pk):
         return redirect("auditoria:registro_detail", pk=registro.pk)
 
     resumo = _build_resumo_respostas_registro(registro)
+    progresso_calculado = int(resumo["percentual_preenchimento"])
+    if registro.progresso != progresso_calculado:
+        registro.progresso = progresso_calculado
+        registro.save(update_fields=["progresso"])
+
     dias_semana_abrev = {
         "SEGUNDA": "Seg",
         "TERCA": "Ter",

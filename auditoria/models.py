@@ -454,13 +454,15 @@ class RegistroAuditoria(models.Model):
             grid_items = [i.strip() for i in self.grid_itens.split('\n') if i.strip()]
         
         is_semanal = self.modelo.periodicidade == 'SEMANAL'
+        if not perguntas.exists():
+            perguntas = self.modelo.perguntas.filter(ativo=True)
         
         for p in perguntas:
             # Multiplicador (GRID)
             fator_grid = len(grid_items) if grid_items else 1
             
-            # Multiplicador (Semanal)
-            fator_semanal = 7 if (is_semanal and getattr(p, 'preenchimento_semanal', 'UNICO') == 'POR_DIA') else 1
+            # Multiplicador (Semanal: 7 dias da semana)
+            fator_semanal = 7 if (is_semanal or getattr(p, 'preenchimento_semanal', 'UNICO') == 'POR_DIA') else 1
             
             total_esperado += (fator_grid * fator_semanal)
             
