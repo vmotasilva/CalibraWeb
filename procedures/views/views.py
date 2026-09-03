@@ -328,10 +328,34 @@ def editar_procedimento_view(request, procedimento_id):
 
 @login_required
 def detalhe_procedimento_view(request, procedimento_id):
-    """Visualiza detalhes de um procedimento."""
+    """Visualiza detalhes de um procedimento e permite ajustar o instrutor fixo."""
     proc = get_object_or_404(Procedimento, id=procedimento_id)
+    can_manage = can_manage_procedimentos(request.user)
+
+    if request.method == 'POST' and 'definir_instrutor_fixo' in request.POST:
+        if not can_manage:
+            messages.error(request, 'Sem permissão para alterar o instrutor fixo.')
+            return redirect('procedures:detalhe_procedimento', procedimento_id=proc.id)
+
+        instrutor_id = (request.POST.get('instrutor_fixo_id') or '').strip()
+        if instrutor_id:
+            instrutor = get_object_or_404(Colaborador, id=instrutor_id)
+            proc.instrutor_fixo = instrutor
+            messages.success(request, f"Instrutor fixo definido como {instrutor.nome_completo}.")
+        else:
+            proc.instrutor_fixo = None
+            messages.success(request, "Instrutor fixo removido. O procedimento segue o padrão da matriz/liderança.")
+
+        proc.save(update_fields=['instrutor_fixo'])
+        from django.core.cache import cache
+        cache.clear()
+        return redirect('procedures:detalhe_procedimento', procedimento_id=proc.id)
+
+    colaboradores = Colaborador.objects.filter(is_active=True).order_by('nome_completo')
     return render(request, 'procedures/procedimento_detalhe.html', {
-        'proc': proc
+        'proc': proc,
+        'colaboradores': colaboradores,
+        'can_manage': can_manage,
     })
 
 

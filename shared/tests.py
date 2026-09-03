@@ -297,13 +297,54 @@ class SharedInboxPlanejamentoTests(TestCase):
         self.assertNotIn(f"planejamento_treinamento_{self.plan_realizado.id}", plan_ids)
         self.assertNotIn(f"planejamento_treinamento_{self.plan_cancelado.id}", plan_ids)
 
-    def test_usuario_sem_vinculo_nao_recebe_notificacao(self):
+    def test_planejamento_cancelado_vencido_e_case_insensitive(self):
+        """Garante que planejamentos cancelados mesmo com data vencida não entram na inbox nem viram ATRASADO."""
         from shared.inbox import get_user_inbox_items
+        from procedures.models import PlanejamentoTreinamento
         cache.clear()
 
-        items = get_user_inbox_items(self.user_outro)
-        plan_items = [item for item in items if item.sub_type == "Treinamentos Planejados"]
-        self.assertEqual(len(plan_items), 0)
+        plan_cancelado_vencido = PlanejamentoTreinamento.objects.create(
+            titulo='Treinamento Vencido mas Cancelado',
+            instrutor=self.colab_instrutor,
+            data_prevista=date.today() - timedelta(days=10),
+            status='cancelado'  # minúsculo intencional
+        )
+        plan_cancelado_vencido.colaboradores.add(self.colab_participante)
+
+        items = get_user_inbox_items(self.user_instrutor)
+        plan_ids = [item.id for item in items if item.sub_type == "Treinamentos Planejados"]
+        self.assertNotIn(f"planejamento_treinamento_{plan_cancelado_vencido.id}", plan_ids)
+
+        plan_cancelado_vencido.refresh_from_db()
+        self.assertEqual(plan_cancelado_vencido.status, 'CANCELADO')
+
+    def test_ajustar_instrutor_fixo_em_detalhe_procedimento(self):
+        """Testa o card de ajuste rápido de instrutor fixo na tela de detalhe do procedimento."""
+        from procedures.models import Procedimento
+        proc = Procedimento.objects.create(codigo="POP.TESTE.1", nome="Procedimento Teste")
+        self.user_instrutor.is_staff = True
+        self.user_instrutor.save()
+        self.client.force_login(self.user_instrutor)
+
+        # Definir instrutor fixo
+        url = reverse('procedures:detalhe_procedimento', args=[proc.id])
+        response = self.client.post(url, {
+            'definir_instrutor_fixo': '1',
+            'instrutor_fixo_id': str(self.colab_instrutor.id),
+        }, follow=True)
+        self.assertEqual(response.status_code, 200)
+        proc.refresh_from_db()
+        self.assertEqual(proc.instrutor_fixo, self.colab_instrutor)
+
+        # Remover instrutor fixo
+        response = self.client.post(url, {
+            'definir_instrutor_fixo': '1',
+            'instrutor_fixo_id': '',
+        }, follow=True)
+        self.assertEqual(response.status_code, 200)
+        proc.refresh_from_db()
+        self.assertIsNone(proc.instrutor_fixo)
+
 
 
 

@@ -560,9 +560,9 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
 
             # 5.5 Treinamentos Planejados (Em Andamento / Confirmados / Atrasados)
             try:
-                # Atualizar status dos planejamentos vencidos para ATRASADO
+                # Atualizar status dos planejamentos vencidos para ATRASADO apenas se não estiver cancelado ou realizado
                 PlanejamentoTreinamento.objects.exclude(
-                    status__in=["REALIZADO", "CANCELADO", "ATRASADO"]
+                    Q(status__iexact="REALIZADO") | Q(status__iexact="CANCELADO") | Q(status__iexact="ATRASADO")
                 ).filter(
                     data_prevista__lt=hoje
                 ).update(status="ATRASADO")
@@ -571,7 +571,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                 # Eles saem da notificação se estiverem cancelados ou concluídos.
                 # Tanto o instrutor quanto os líderes devem receber essa notificação."
                 qs_plan = PlanejamentoTreinamento.objects.exclude(
-                    status__in=["REALIZADO", "CANCELADO"]
+                    Q(status__iexact="REALIZADO") | Q(status__iexact="CANCELADO")
                 ).select_related("instrutor").prefetch_related("colaboradores", "procedimentos")
 
                 if not is_global_viewer and colaborador:

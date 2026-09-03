@@ -34,7 +34,7 @@ def planejamentos_list_view(request):
     """Lista todos os planejamentos de treinamento"""
     # Primeiro, atualiza o status de planejamentos que passaram da data
     PlanejamentoTreinamento.objects.exclude(
-        status__in=["REALIZADO", "CANCELADO", "ATRASADO"]
+        Q(status__iexact="REALIZADO") | Q(status__iexact="CANCELADO") | Q(status__iexact="ATRASADO")
     ).filter(
         data_prevista__lt=timezone.now().date()
     ).update(status="ATRASADO")
@@ -409,7 +409,7 @@ def alterar_status_planejamento_view(request, planejamento_id):
     planejamento = get_object_or_404(PlanejamentoTreinamento, id=planejamento_id)
     
     if request.method == 'POST':
-        novo_status = request.POST.get('status')
+        novo_status = (request.POST.get('status') or '').strip().upper()
 
         if novo_status == 'REALIZADO':
             messages.info(request, 'Confirme participantes, data, horário e duração para concluir o treinamento.')
@@ -423,6 +423,10 @@ def alterar_status_planejamento_view(request, planejamento_id):
                 planejamento.data_realizada = timezone.now().date()
             
             planejamento.save()
+            
+            from django.core.cache import cache
+            cache.clear()
+            
             messages.success(request, f'Status alterado para {planejamento.get_status_display()}!')
         else:
             messages.error(request, 'Status inválido!')

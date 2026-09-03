@@ -203,8 +203,10 @@ def get_user_cobrancas_counts(user: Any) -> dict[str, int]:
             )
 
             # Planejamentos: prazos vencidos/em andamento para treinamentos do escopo (instrutor ou líderes)
-            planejamento_base = PlanejamentoTreinamento.objects.filter(
-                status__in=["PLANEJADO", "CONFIRMADO", "ATRASADO"],
+            planejamento_base = PlanejamentoTreinamento.objects.exclude(
+                Q(status__iexact="REALIZADO") | Q(status__iexact="CANCELADO")
+            ).filter(
+                Q(status__iexact="PLANEJADO") | Q(status__iexact="CONFIRMADO") | Q(status__iexact="ATRASADO")
             )
             if is_global_viewer:
                 counts["trein_planejamentos"] = planejamento_base.count()
