@@ -1,0 +1,253 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}HUB de {{ module.title }} | CalibraWeb{% endblock %}
+
+{% block extra_head %}
+<style>
+    :root {
+        --mod-color: {{ module.color|default:'#198754' }};
+        --mod-color-light: color-mix(in srgb, var(--mod-color) 12%, white);
+        --mod-color-border: color-mix(in srgb, var(--mod-color) 25%, transparent);
+    }
+
+    .mod-hero {
+        background: linear-gradient(135deg, #16353b 0%, #1e454b 60%, color-mix(in srgb, var(--mod-color) 45%, #16353b) 100%);
+        border-radius: 16px;
+        padding: 1.75rem 2rem;
+        color: #ffffff;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .mod-hero::after {
+        content: '';
+        position: absolute;
+        right: -40px;
+        top: -40px;
+        width: 220px;
+        height: 220px;
+        border-radius: 50%;
+        background: radial-gradient(circle, color-mix(in srgb, var(--mod-color) 30%, transparent) 0%, transparent 70%);
+        pointer-events: none;
+    }
+
+    .mod-icon-badge {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: color-mix(in srgb, var(--mod-color) 30%, white);
+        color: #ffffff;
+        font-size: 1.5rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .activity-card {
+        border-radius: 14px;
+        border: 1px solid rgba(0, 0, 0, 0.07);
+        background: #ffffff;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+        transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .activity-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+        border-color: var(--mod-color-border);
+    }
+
+    .activity-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: var(--mod-color);
+        opacity: 0.85;
+    }
+
+    .activity-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--mod-color-light);
+        color: var(--mod-color);
+        font-size: 1.35rem;
+    }
+
+    .activity-btn {
+        background: #1e293b;
+        color: #ffffff !important;
+        border: none;
+        border-radius: 8px;
+        padding: 0.55rem 1rem;
+        font-size: 0.88rem;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+    }
+
+    .activity-btn:hover {
+        background: var(--mod-color);
+        color: #ffffff !important;
+        box-shadow: 0 4px 14px color-mix(in srgb, var(--mod-color) 40%, transparent);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-md-4 py-3">
+    <!-- NAVEGAÇÃO E BREADCRUMB -->
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0 small">
+                <li class="breadcrumb-item"><a href="{% url 'hub' %}" class="text-decoration-none text-muted"><i class="bi bi-grid me-1"></i>Calibra HUB</a></li>
+                <li class="breadcrumb-item active fw-semibold text-dark" aria-current="page">HUB de {{ module.title }}</li>
+            </ol>
+        </nav>
+        <a href="{% url 'hub' %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold">
+            <i class="bi bi-arrow-left me-1"></i> Voltar ao Calibra HUB
+        </a>
+    </div>
+
+    <!-- HERO DO MÓDULO -->
+    <div class="mod-hero mb-4">
+        <div class="row align-items-center g-3">
+            <div class="col-12 col-lg-7">
+                <div class="d-flex align-items-center gap-3 mb-2">
+                    <div class="mod-icon-badge">
+                        <i class="bi {{ module.icon }}"></i>
+                    </div>
+                    <div>
+                        <span class="badge bg-white bg-opacity-20 text-white border-0 py-1 px-2.5 rounded-pill small fw-semibold text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                            {{ module.badge|default:'HUB Operacional' }}
+                        </span>
+                        <h1 class="h3 fw-bold mb-0 text-white mt-1">HUB de {{ module.title }}</h1>
+                    </div>
+                </div>
+                <p class="text-white text-opacity-80 mb-0 small" style="max-width: 680px; font-size: 0.88rem;">
+                    {{ module.description }}
+                </p>
+            </div>
+
+            <div class="col-12 col-lg-5">
+                <div class="d-flex flex-column flex-sm-row justify-content-lg-end align-items-stretch align-items-sm-center gap-2">
+                    <!-- BUSCA EM TEMPO REAL -->
+                    <div class="position-relative flex-grow-1" style="max-width: 320px;">
+                        <div class="input-group input-group-sm shadow-sm rounded-pill overflow-hidden border-0 bg-white">
+                            <span class="input-group-text bg-white border-0 text-muted ps-2.5 pe-1 py-1.5">
+                                <i class="bi bi-search" style="color: var(--mod-color);"></i>
+                            </span>
+                            <input
+                                type="search"
+                                id="moduleHubSearchInput"
+                                class="form-control form-control-sm border-0 shadow-none py-1.5 pe-3 text-dark"
+                                placeholder="Buscar atividades..."
+                                autocomplete="off"
+                                spellcheck="false"
+                                style="font-size: 0.85rem;"
+                            >
+                        </div>
+                    </div>
+                    <span class="badge bg-white bg-opacity-15 text-white py-2 px-3 rounded-pill text-nowrap align-self-center small">
+                        {{ activities|length }} atividades
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GRADE DE ATIVIDADES DO MÓDULO -->
+    <div class="row g-3" id="activitiesGrid">
+        {% for act in activities %}
+        <div class="col-12 col-md-6 col-xl-4 activity-item" data-act-title="{{ act.title|lower }}" data-act-desc="{{ act.description|lower }}">
+            <div class="card activity-card h-100">
+                <div class="card-body p-3.5 d-flex flex-column">
+                    <div class="d-flex align-items-start justify-content-between gap-2 mb-3">
+                        <div class="activity-icon">
+                            <i class="bi {{ act.icon }}"></i>
+                        </div>
+                        {% if act.badge %}
+                        <span class="badge rounded-pill text-uppercase fw-semibold" style="background: var(--mod-color-light); color: var(--mod-color); font-size: 0.7rem; letter-spacing: 0.3px;">
+                            {{ act.badge }}
+                        </span>
+                        {% endif %}
+                    </div>
+
+                    <div class="flex-grow-1 mb-3">
+                        <h3 class="h6 fw-bold mb-1.5 text-dark">{{ act.title }}</h3>
+                        <p class="text-muted small mb-0" style="min-height: 40px; font-size: 0.82rem; line-height: 1.45;">
+                            {{ act.description }}
+                        </p>
+                    </div>
+
+                    <a href="{{ act.url }}" class="activity-btn mt-auto">
+                        <i class="bi {{ act.icon }} me-1.5"></i> Acessar {{ act.title }}
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-light border text-center py-4 rounded-3 text-muted">
+                <i class="bi bi-shield-lock display-6 d-block mb-2 text-secondary"></i>
+                <h4 class="h6 fw-semibold text-dark">Nenhuma atividade disponível</h4>
+                <p class="small mb-0">Você não possui permissões liberadas para as rotinas deste módulo ou não há telas configuradas.</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- MENSAGEM QUANDO O FILTRO NÃO ENCONTRA NADA -->
+    <div id="noResultsMessage" class="alert alert-light border text-center py-4 rounded-3 text-muted d-none mt-3">
+        <i class="bi bi-search display-6 d-block mb-2 text-secondary"></i>
+        <h4 class="h6 fw-semibold text-dark">Nenhuma atividade encontrada</h4>
+        <p class="small mb-0">Tente buscar por outro termo ou limpe o campo de pesquisa.</p>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const searchInput = document.getElementById('moduleHubSearchInput');
+        const items = Array.from(document.querySelectorAll('.activity-item'));
+        const noResults = document.getElementById('noResultsMessage');
+
+        if (searchInput) {
+            searchInput.addEventListener('input', function () {
+                const query = this.value.trim().toLowerCase();
+                let visibleCount = 0;
+
+                items.forEach((item) => {
+                    const title = item.getAttribute('data-act-title') || '';
+                    const desc = item.getAttribute('data-act-desc') || '';
+                    const text = item.innerText.toLowerCase();
+
+                    if (!query || title.includes(query) || desc.includes(query) || text.includes(query)) {
+                        item.style.display = '';
+                        visibleCount++;
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+
+                if (noResults) {
+                    noResults.classList.toggle('d-none', visibleCount > 0 || items.length === 0);
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

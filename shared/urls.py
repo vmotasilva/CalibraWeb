@@ -16,6 +16,7 @@ urlpatterns = [
     
     # Shared URLs
     path('hub/', views.hub_view, name='hub'),
+    path('hub/<slug:module_slug>/', views.module_hub_view, name='module_hub'),
     path('inbox/', views.inbox_view, name='inbox'),
     path('changelog/', views.changelog_view, name='changelog'),
     # path('', views.dashboard_view, name='dashboard'),

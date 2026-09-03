@@ -22,10 +22,12 @@ from .views import (
 )
 from .views.planejamento_api_matriz import api_disciplinas_por_matriz_view, api_procedimentos_por_disciplina_view, api_colaboradores_por_matriz_view, api_procedimentos_buscar_view, api_colaboradores_buscar_view
 from training.views import views as training_views
+from shared.views import procedures_hub_view
 
 app_name = 'procedures'
 
 urlpatterns = [
+    path('hub/', procedures_hub_view, name='hub'),
 
 
     # ==========================

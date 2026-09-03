@@ -35,11 +35,13 @@
 from django.urls import path
 
 from . import views
+from shared.views import laboratorio_hub_view
 
 app_name = "laboratorio"
 
 urlpatterns = [
     path("", views.modulo_laboratorio_view, name="modulo"),
+    path("hub/", laboratorio_hub_view, name="hub"),
     path("ocorrencias/", views.ocorrencias_list, name="ocorrencias_list"),
     path("ocorrencias/nova/", views.ocorrencia_create, name="ocorrencia_create"),
     path("ocorrencias/<int:pk>/", views.ocorrencia_detail, name="ocorrencia_detail"),

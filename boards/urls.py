@@ -1,9 +1,11 @@
-﻿from django.urls import path
+from django.urls import path
 from boards import views
+from shared.views import boards_hub_view
 
 app_name = 'boards'
 
 urlpatterns = [
+    path('hub/', boards_hub_view, name='hub'),
     path('', views.dashboard_view, name='dashboard'),
     path('<int:board_id>/', views.board_detail_view, name='board_detail'),
     path('calendario-publico/<str:token>/', views.public_calendar_view, name='public_calendar'),

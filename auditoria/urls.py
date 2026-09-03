@@ -1,11 +1,13 @@
 from django.urls import path
 
 from . import views
+from shared.views import auditoria_hub_view
 
 app_name = "auditoria"
 
 urlpatterns = [
     path("", views.modulo_auditoria_view, name="modulo"),
+    path("hub/", auditoria_hub_view, name="hub"),
     path("modelos/", views.modelos_list, name="modelos_list"),
     path("modelos/novo/", views.modelo_create, name="modelo_create"),
     path("modelos/<int:pk>/editar/", views.modelo_edit, name="modelo_edit"),

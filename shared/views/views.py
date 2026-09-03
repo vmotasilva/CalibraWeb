@@ -63,9 +63,9 @@ def home_view(request):
     return hub_view(request)
 
 
-def _hub_safe_reverse(view_name):
+def _hub_safe_reverse(view_name, *args, **kwargs):
     try:
-        return reverse(view_name)
+        return reverse(view_name, args=args, kwargs=kwargs)
     except NoReverseMatch:
         return ""
 
@@ -86,127 +86,455 @@ def _hub_can_access(user, module_key, view_name=None):
     return True
 
 
-def _hub_get_laboratorio_open_count():
-    try:
-        from laboratorio.models import OcorrenciaLaboratorio
+MODULE_HUBS_CONFIG = {
+    "auditoria": {
+        "id": "auditoria",
+        "title": "Auditoria",
+        "module_key": "auditoria",
+        "badge": "Qualidade & Conformidade",
+        "description": "Central de gestão de auditorias internas, modelos de questionários, avaliações de conformidade e rotinas programadas.",
+        "icon": "bi-clipboard-data",
+        "color": "#8b5cf6",
+        "activities": [
+            {
+                "title": "Dashboard de Auditoria",
+                "description": "Acompanhe o calendário mensal, auditorias agendadas e os indicadores consolidados de conformidade.",
+                "icon": "bi-bar-chart-line",
+                "view_name": "auditoria:dashboard",
+                "badge": "Indicadores",
+            },
+            {
+                "title": "Preencher Auditoria",
+                "description": "Inicie a execução e preenchimento de uma nova auditoria a partir de um questionário ativo.",
+                "icon": "bi-journal-plus",
+                "view_name": "auditoria:selecionar_modelo_preenchimento",
+                "badge": "Operacional",
+            },
+            {
+                "title": "Modelos de Questionários",
+                "description": "Crie, edite e estruture questionários, tópicos e critérios de avaliação de auditoria.",
+                "icon": "bi-folder2-open",
+                "view_name": "auditoria:modelos_list",
+                "badge": "Configuração",
+            },
+            {
+                "title": "Registros de Auditoria",
+                "description": "Consulte o histórico de auditorias concluídas, relatórios emitidos e gere exportações em PDF.",
+                "icon": "bi-file-earmark-check",
+                "view_name": "auditoria:registros_list",
+                "badge": "Histórico",
+            },
+            {
+                "title": "Banco de Perguntas",
+                "description": "Gerencie a biblioteca central de perguntas, requisitos e normas de auditoria.",
+                "icon": "bi-question-diamond",
+                "view_name": "auditoria:perguntas_list",
+                "badge": "Biblioteca",
+            },
+            {
+                "title": "Auditorias ISO 13485",
+                "description": "Rotinas específicas de entrevistas e checagem de conformidade com a norma ISO 13485.",
+                "icon": "bi-patch-check",
+                "view_name": "auditoria:iso_auditoria_list",
+                "badge": "Normas",
+            },
+        ],
+    },
+    "metrologia": {
+        "id": "metrologia",
+        "title": "Metrologia",
+        "module_key": "metrologia",
+        "badge": "Instrumentos & Calibração",
+        "description": "Gestão completa do parque de instrumentos de medição, histórico de calibrações, certificados e cotações externas.",
+        "icon": "bi-rulers",
+        "color": "#0d6efd",
+        "activities": [
+            {
+                "title": "Lista de Instrumentos",
+                "description": "Consulte todos os instrumentos ativos, vencimentos de calibração, responsáveis e certificados.",
+                "icon": "bi-list-check",
+                "view_name": "modulo_metrologia",
+                "badge": "Acervo",
+            },
+            {
+                "title": "Novo Instrumento",
+                "description": "Cadastre um novo instrumento de medição, definindo faixas, fabricante, modelo e tolerâncias.",
+                "icon": "bi-plus-circle",
+                "view_name": "novo_instrumento",
+                "badge": "Cadastro",
+            },
+            {
+                "title": "Cotações de Calibração",
+                "description": "Gerencie solicitações de cotação com laboratórios parceiros, propostas comerciais e aprovações.",
+                "icon": "bi-cash-stack",
+                "view_name": "metrologia:solicitacao_list",
+                "badge": "Orçamentos",
+            },
+            {
+                "title": "Categorias de Instrumentos",
+                "description": "Organize grupos de instrumentos, critérios de periodicidade e faixas de calibração padrão.",
+                "icon": "bi-tags",
+                "view_name": "metrologia:categorias_list",
+                "badge": "Classificação",
+            },
+            {
+                "title": "Unidades de Medida",
+                "description": "Cadastre e configure unidades físicas de medição utilizadas nos certificados e tolerâncias.",
+                "icon": "bi-rulers",
+                "view_name": "metrologia:unidades_list",
+                "badge": "Parâmetros",
+            },
+            {
+                "title": "Etiquetas e Exportação",
+                "description": "Gere etiquetas com QR code para identificação nos equipamentos e exporte dados para Excel.",
+                "icon": "bi-upc-scan",
+                "view_name": "export_etiquetas",
+                "badge": "Impressão",
+            },
+            {
+                "title": "Histórico de Substituições",
+                "description": "Rastreie trocas de instrumentos equivalentes e histórico de referências substituídas.",
+                "icon": "bi-arrow-left-right",
+                "view_name": "listar_substitucoes",
+                "badge": "Rastreabilidade",
+            },
+        ],
+    },
+    "treinamentos": {
+        "id": "treinamentos",
+        "title": "Treinamentos",
+        "module_key": "procedures",
+        "badge": "Capacitação & Procedimentos",
+        "description": "Matriz de competências, procedimentos operacionais (POP/IT), cronograma de treinamentos e avaliações de eficácia.",
+        "icon": "bi-mortarboard",
+        "color": "#2563eb",
+        "activities": [
+            {
+                "title": "Dashboard de Treinamentos",
+                "description": "Visão geral de conformidade, indicadores de qualificação por equipe, demandas e pendências.",
+                "icon": "bi-speedometer2",
+                "view_name": "procedures:dashboard_treinamentos",
+                "badge": "Visão Geral",
+            },
+            {
+                "title": "Matriz de Habilidades Geral",
+                "description": "Acompanhe a matriz consolidada de colaboradores, cargos, setores e procedimentos obrigatórios.",
+                "icon": "bi-award",
+                "view_name": "procedures:matrizes_list",
+                "badge": "Competências",
+            },
+            {
+                "title": "Avaliações de Habilidade",
+                "description": "Matriz completa de avaliações, notas e proficiência por colaborador e disciplina.",
+                "icon": "bi-check2-square",
+                "view_name": "procedures:matriz_avaliacoes",
+                "badge": "Avaliações",
+            },
+            {
+                "title": "Procedimentos e Instruções",
+                "description": "Acesse, cadastre e revise procedimentos operacionais padrão (POP), instruções e formulários.",
+                "icon": "bi-journal-text",
+                "view_name": "procedures:procedimentos_list",
+                "badge": "Normativos",
+            },
+            {
+                "title": "Planejamento de Treinamentos",
+                "description": "Agende novos treinamentos, defina datas, instrutores, colaboradores convocados e acompanhe status.",
+                "icon": "bi-calendar-event",
+                "view_name": "procedures:planejamentos_list",
+                "badge": "Planejamento",
+            },
+            {
+                "title": "Validações Pendentes",
+                "description": "Avalie e homologue pendências na matriz de habilidades de colaboradores recém-treinados.",
+                "icon": "bi-patch-check",
+                "view_name": "procedures:validacoes_pendentes",
+                "badge": "Homologação",
+            },
+            {
+                "title": "Histórico de Treinamentos",
+                "description": "Consulte o acervo de treinamentos concluídos, listas de presença digitalizadas e registros históricos.",
+                "icon": "bi-clock-history",
+                "view_name": "procedures:treinamentos_list",
+                "badge": "Histórico",
+            },
+            {
+                "title": "Calendário de Treinamentos",
+                "description": "Visualização mensal em formato de grade com as sessões programadas e suas respectivas salas/áreas.",
+                "icon": "bi-calendar3",
+                "view_name": "procedures:treinamentos_calendario",
+                "badge": "Agenda",
+            },
+            {
+                "title": "Avaliação de Eficácia",
+                "description": "Acompanhe e registre a avaliação pós-treinamento realizada pelos gestores e líderes de setor.",
+                "icon": "bi-check2-circle",
+                "view_name": "procedures:avaliacao_eficacia_list",
+                "badge": "Eficácia",
+            },
+            {
+                "title": "Perguntas de Auto-Avaliação",
+                "description": "Banco de perguntas do formulário FOR.141 para avaliação de eficácia de procedimentos.",
+                "icon": "bi-question-circle",
+                "view_name": "procedures:perguntas_avaliacao_list",
+                "badge": "FOR.141",
+            },
+        ],
+    },
+    "boards": {
+        "id": "boards",
+        "title": "Quadros",
+        "module_key": "boards",
+        "badge": "Gestão Visual & Kanban",
+        "description": "Gestão ágil de fluxos de trabalho, cartões com prazos e checklists, acompanhamento de projetos e comunicação da equipe.",
+        "icon": "bi-kanban",
+        "color": "#0284c7",
+        "activities": [
+            {
+                "title": "Painel de Quadros",
+                "description": "Acesse e gerencie todos os fluxos de trabalho kanban, quadros departamentais e projetos ativos.",
+                "icon": "bi-kanban",
+                "view_name": "boards:dashboard",
+                "badge": "Principal",
+            },
+            {
+                "title": "Fluxos e Demandas",
+                "description": "Mova cartões, defina prioridades, prazos limites e organize colunas operacionais da equipe.",
+                "icon": "bi-card-checklist",
+                "view_name": "boards:dashboard",
+                "badge": "Operações",
+            },
+        ],
+    },
+    "laboratorio": {
+        "id": "laboratorio",
+        "title": "Laboratório",
+        "module_key": "laboratorio",
+        "badge": "Operações Técnicas",
+        "description": "Registro de ocorrências técnicas, manutenção preventiva e corretiva de máquinas, tratamentos e indicadores analíticos.",
+        "icon": "bi-flask",
+        "color": "#1f7a66",
+        "activities": [
+            {
+                "title": "Painel de Ocorrências",
+                "description": "Consulte e acompanhe todas as ocorrências abertas, em andamento e histórico de encerramentos.",
+                "icon": "bi-card-list",
+                "view_name": "laboratorio:modulo",
+                "badge": "Ocorrências",
+            },
+            {
+                "title": "Dashboard do Laboratório",
+                "description": "Métricas de tempo de resposta, volume de não conformidades, gráficos por máquina e relatórios.",
+                "icon": "bi-speedometer2",
+                "view_name": "laboratorio:dashboard",
+                "badge": "Indicadores",
+            },
+            {
+                "title": "Registrar Nova Ocorrência",
+                "description": "Abra um novo chamado técnico ou aponte anomalias operacionais no ambiente laboratorial.",
+                "icon": "bi-plus-square",
+                "view_name": "laboratorio:ocorrencia_create",
+                "badge": "Novo Registro",
+            },
+            {
+                "title": "Parque de Máquinas",
+                "description": "Consulte equipamentos do laboratório, especificações técnicas e histórico de intervenções.",
+                "icon": "bi-gear-wide-connected",
+                "view_name": "maquinas:maquinas_list",
+                "badge": "Equipamentos",
+            },
+            {
+                "title": "Tratamento Antirreflexo",
+                "description": "Controle de lotes, inspeções visuais e acompanhamento de tratamentos ópticos especiais.",
+                "icon": "bi-eyeglasses",
+                "view_name": "laboratorio:tratamento_list",
+                "badge": "Processos",
+            },
+            {
+                "title": "Categorias de Ocorrência",
+                "description": "Classificações, motivos de paradas e tipos de defeitos para padronização de registros.",
+                "icon": "bi-tags",
+                "view_name": "laboratorio:categorias_list",
+                "badge": "Parâmetros",
+            },
+        ],
+    },
+    "pessoas": {
+        "id": "pessoas",
+        "title": "Pessoas",
+        "module_key": "rh",
+        "badge": "Recursos Humanos & Equipe",
+        "description": "Quadro de colaboradores, estrutura de liderança, escalas de férias, horas extras convocadas e controle de acessos.",
+        "icon": "bi-people",
+        "color": "#0f766e",
+        "activities": [
+            {
+                "title": "Quadro de Colaboradores",
+                "description": "Visão centralizada de colaboradores ativos, cargos, setores, lideranças e centros de custo.",
+                "icon": "bi-people-fill",
+                "view_name": "modulo_rh",
+                "badge": "Equipe",
+            },
+            {
+                "title": "Novo Colaborador",
+                "description": "Cadastre um novo colaborador na organização preenchendo matrícula, cargo, setor e centro de custo.",
+                "icon": "bi-person-plus",
+                "view_name": "rh:criar_colaborador",
+                "badge": "Cadastro",
+            },
+            {
+                "title": "Gestão e Escala de Férias",
+                "description": "Programação de descanso anual, controle de períodos aquisitivos e calendário de férias da equipe.",
+                "icon": "bi-calendar-check",
+                "view_name": "rh:gestao_ferias",
+                "badge": "Férias",
+            },
+            {
+                "title": "Planejamento de Horas Extras",
+                "description": "Convocação, aprovação e monitoramento das horas extras programadas pelos líderes de setor.",
+                "icon": "bi-clock-history",
+                "view_name": "rh:planejamento_hora_extra_list",
+                "badge": "Jornada",
+            },
+            {
+                "title": "Usuários e Acessos",
+                "description": "Administre contas de login no sistema, permissões de acesso aos módulos e autenticação em 2 etapas.",
+                "icon": "bi-person-gear",
+                "view_name": "rh:listar_usuarios",
+                "badge": "Segurança",
+            },
+            {
+                "title": "Demandas e Falhas de Ponto",
+                "description": "Gerenciamento de justificativas, inconsistências de batidas de ponto e regularizações.",
+                "icon": "bi-fingerprint",
+                "view_name": "rh:demandas_falhas_ponto",
+                "badge": "Ponto",
+            },
+        ],
+    },
+    "fornecedores": {
+        "id": "fornecedores",
+        "title": "Fornecedores",
+        "module_key": "fornecedores",
+        "badge": "Qualificação & Suprimentos",
+        "description": "Base de fornecedores homologados, monitoramento de desempenho, matriz de qualificação e documentação obrigatória.",
+        "icon": "bi-truck",
+        "color": "#7c3aed",
+        "activities": [
+            {
+                "title": "Base de Fornecedores",
+                "description": "Consulte a lista completa de fornecedores ativos, contatos comerciais e categorias fornecidas.",
+                "icon": "bi-building",
+                "view_name": "fornecedores:fornecedor_list",
+                "badge": "Cadastro",
+            },
+            {
+                "title": "Novo Fornecedor",
+                "description": "Cadastre um novo fornecedor para processo de homologação, cotação e avaliação da qualidade.",
+                "icon": "bi-building-add",
+                "view_name": "fornecedores:fornecedor_create",
+                "badge": "Novo",
+            },
+            {
+                "title": "Painel & Avaliações",
+                "description": "Acesse a matriz de fornecedores, histórico de avaliações periódicas e critérios de seleção.",
+                "icon": "bi-stars",
+                "view_name": "fornecedores:modulo",
+                "badge": "Desempenho",
+            },
+        ],
+    },
+}
 
-        return OcorrenciaLaboratorio.objects.filter(data_encerramento__isnull=True).count()
-    except Exception:
-        return 0
+
+@login_required
+def module_hub_view(request, module_slug):
+    """HUB dedicado de um módulo específico, listando todas as suas atividades."""
+    slug = module_slug.lower().strip()
+    config = MODULE_HUBS_CONFIG.get(slug)
+    if not config:
+        # Tentar mapear aliases comuns
+        alias_map = {
+            "procedimentos": "treinamentos",
+            "training": "treinamentos",
+            "rh": "pessoas",
+            "quadros": "boards",
+        }
+        target_slug = alias_map.get(slug)
+        config = MODULE_HUBS_CONFIG.get(target_slug) if target_slug else None
+
+    if not config:
+        messages.error(request, "Módulo não encontrado.")
+        return redirect("hub")
+
+    # Verificar se o usuário tem permissão para o módulo
+    if not _hub_can_access(request.user, config["module_key"]):
+        messages.error(request, f"Você não possui permissão para acessar o módulo {config['title']}.")
+        return redirect("hub")
+
+    # Filtrar atividades liberadas para o usuário
+    activities = []
+    for act in config.get("activities", []):
+        url = _hub_safe_reverse(act["view_name"])
+        if not url:
+            continue
+        if not _hub_can_access(request.user, config["module_key"], act["view_name"]):
+            continue
+        activities.append({
+            "title": act["title"],
+            "description": act["description"],
+            "icon": act["icon"],
+            "badge": act.get("badge", ""),
+            "url": url,
+        })
+
+    return render(
+        request,
+        "shared/module_hub.html",
+        {
+            "module": config,
+            "activities": activities,
+        },
+    )
 
 
-def _hub_build_action(user, module_key, module_title, action_config):
-    view_name = action_config["view_name"]
-    if not _hub_can_access(user, module_key, view_name):
-        return None
+def auditoria_hub_view(request):
+    return module_hub_view(request, "auditoria")
 
-    url = _hub_safe_reverse(view_name)
-    if not url:
-        return None
 
-    return {
-        "id": action_config["id"],
-        "label": action_config["label"],
-        "description": action_config["description"],
-        "icon": action_config["icon"],
-        "url": url,
-        "module_title": module_title,
-    }
+def metrologia_hub_view(request):
+    return module_hub_view(request, "metrologia")
+
+
+def procedures_hub_view(request):
+    return module_hub_view(request, "treinamentos")
+
+
+def boards_hub_view(request):
+    return module_hub_view(request, "boards")
+
+
+def laboratorio_hub_view(request):
+    return module_hub_view(request, "laboratorio")
+
+
+def rh_hub_view(request):
+    return module_hub_view(request, "pessoas")
+
+
+def fornecedores_hub_view(request):
+    return module_hub_view(request, "fornecedores")
 
 
 @login_required
 def hub_view(request):
-    """Página inicial do Calibra HUB: direcionamento rápido e ultraleve aos HUBS dos módulos."""
-    module_configs = [
-        {
-            "id": "auditoria",
-            "title": "Auditoria",
-            "module_key": "auditoria",
-            "description": "Execução de auditorias, modelos e acompanhamento mensal das rotinas.",
-            "icon": "bi-clipboard-data",
-            "color": "#8b5cf6",
-            "hub_view_name": "auditoria:dashboard",
-        },
-        {
-            "id": "metrologia",
-            "title": "Metrologia",
-            "module_key": "metrologia",
-            "description": "Instrumentos, calibrações e fluxo de solicitações de cotação.",
-            "icon": "bi-rulers",
-            "color": "#0d6efd",
-            "hub_view_name": "modulo_metrologia",
-        },
-        {
-            "id": "treinamentos",
-            "title": "Treinamentos",
-            "module_key": "procedures",
-            "description": "Matriz de habilidade, demandas e planejamento de treinamentos.",
-            "icon": "bi-mortarboard",
-            "color": "#2563eb",
-            "hub_view_name": "procedures:dashboard_treinamentos",
-        },
-        {
-            "id": "boards",
-            "title": "Quadros",
-            "module_key": "boards",
-            "description": "Gestão visual de fluxos de trabalho, cartões, prazos e métricas da equipe.",
-            "icon": "bi-kanban",
-            "color": "#0284c7",
-            "hub_view_name": "boards:dashboard",
-        },
-        {
-            "id": "laboratorio",
-            "title": "Laboratório",
-            "module_key": "laboratorio",
-            "description": "Ocorrências, dashboards e visão operacional das máquinas do laboratório.",
-            "icon": "bi-flask",
-            "color": "#1f7a66",
-            "hub_view_name": "laboratorio:modulo",
-        },
-        {
-            "id": "rh",
-            "title": "Pessoas",
-            "module_key": "rh",
-            "description": "Equipe, férias, lideranças e visão central do quadro de colaboradores.",
-            "icon": "bi-people",
-            "color": "#0f766e",
-            "hub_view_name": "modulo_rh",
-        },
-        {
-            "id": "fornecedores",
-            "title": "Fornecedores",
-            "module_key": "fornecedores",
-            "description": "Cadastro, documentos e avaliações da base de fornecedores.",
-            "icon": "bi-truck",
-            "color": "#7c3aed",
-            "hub_view_name": "fornecedores:modulo",
-        },
-        {
-            "id": "acoes",
-            "title": "Ações",
-            "module_key": "acoes",
-            "description": "Gerenciamento de ações corretivas, soluções e acompanhamento de prazos.",
-            "icon": "bi-check2-square",
-            "color": "#bf6b04",
-            "hub_view_name": "acoes:dashboard",
-        },
-        {
-            "id": "documents",
-            "title": "Documentos (GED)",
-            "module_key": "documents",
-            "description": "Controle eletrônico de documentos, procedimentos e registros da qualidade.",
-            "icon": "bi-file-earmark-text",
-            "color": "#475569",
-            "hub_view_name": "documents:document_list",
-        },
-    ]
-
+    """Página inicial do Calibra HUB: direcionamento aos HUBS dedicados dos módulos."""
     modules = []
-    for cfg in module_configs:
-        if not _hub_can_access(request.user, cfg["module_key"], cfg["hub_view_name"]):
+    for cfg in MODULE_HUBS_CONFIG.values():
+        if not _hub_can_access(request.user, cfg["module_key"]):
             continue
 
-        url = _hub_safe_reverse(cfg["hub_view_name"])
+        url = _hub_safe_reverse("module_hub", module_slug=cfg["id"])
         if not url:
             continue
 

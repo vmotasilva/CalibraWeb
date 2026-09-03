@@ -1,11 +1,12 @@
 from django.urls import path
 from . import views
+from shared.views import fornecedores_hub_view
 
 app_name = "fornecedores"
 
 urlpatterns = [
     path("", views.modulo_fornecedores_view, name="modulo"),
-    path("hub/", views.modulo_fornecedores_view, name="hub"),
+    path("hub/", fornecedores_hub_view, name="hub"),
     path("lista/", views.fornecedor_list, name="fornecedor_list"),
     path("novo/", views.fornecedor_create, name="fornecedor_create"),
     path("<int:pk>/editar/", views.fornecedor_update, name="fornecedor_update"),

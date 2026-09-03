@@ -63,10 +63,13 @@ from rh.views_ponto import (
     api_excluir_demanda,
 )
 
+from shared.views import rh_hub_view
+
 app_name = 'rh'
 
 
 urlpatterns = [
+    path('hub/', rh_hub_view, name='hub'),
     # Detalhe do colaborador
     path('colaborador/<int:colab_id>/', detalhe_colaborador_view, name='detalhe_colaborador'),
     path('colaborador/criar/', criar_colaborador_view, name='criar_colaborador'),

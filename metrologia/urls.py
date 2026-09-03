@@ -2,10 +2,12 @@ from django.urls import path
 from . import views
 from .views import categorias, unidades
 from qms import views as qms_views
+from shared.views import metrologia_hub_view
 
 app_name = 'metrologia'
 
 urlpatterns = [
+    path('hub/', metrologia_hub_view, name='hub'),
     # Metrologia URLs
     # path('', views.modulo_metrologia_view, name='dashboard'),
 

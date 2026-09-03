@@ -79,6 +79,44 @@ class SharedHubViewTests(TestCase):
         self.assertContains(response, 'Acessar HUB de')
         self.assertNotContains(response, 'Ações Rápidas Globais')
 
+    def test_module_hubs_render_for_all_modules(self):
+        """Testa que cada módulo ativo possui seu HUB dedicado com atividades."""
+        self.client.force_login(self.user)
+        modulos = [
+            ('auditoria', 'HUB de Auditoria', 'Dashboard de Auditoria'),
+            ('metrologia', 'HUB de Metrologia', 'Lista de Instrumentos'),
+            ('treinamentos', 'HUB de Treinamentos', 'Matriz de Habilidades Geral'),
+            ('boards', 'HUB de Quadros', 'Painel de Quadros'),
+            ('laboratorio', 'HUB de Laboratório', 'Painel de Ocorrências'),
+            ('pessoas', 'HUB de Pessoas', 'Quadro de Colaboradores'),
+            ('fornecedores', 'HUB de Fornecedores', 'Base de Fornecedores'),
+        ]
+
+        for slug, expected_title, expected_activity in modulos:
+            url = reverse('module_hub', kwargs={'module_slug': slug})
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200, f"Falha ao carregar HUB do módulo {slug}")
+            self.assertContains(response, expected_title)
+            self.assertContains(response, expected_activity)
+
+    def test_direct_app_hub_routes(self):
+        """Testa que as rotas diretas dos apps (ex: /auditoria/hub/) funcionam perfeitamente."""
+        self.client.force_login(self.user)
+        direct_routes = [
+            'auditoria:hub',
+            'metrologia:hub',
+            'procedures:hub',
+            'boards:hub',
+            'laboratorio:hub',
+            'rh:hub',
+            'fornecedores:hub',
+        ]
+        for route_name in direct_routes:
+            url = reverse(route_name)
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200, f"Rota {route_name} falhou")
+
+
 
 class SharedImportsTests(TestCase):
     """Test that all shared imports are working correctly"""
