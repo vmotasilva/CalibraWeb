@@ -525,16 +525,23 @@
                             </th>
                             {% endfor %}
                             <th>Observações</th>
+                            <th width="90" class="text-center">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for item in amostras_dados %}
                         <tr>
                             <td class="text-center fw-bold">
-                                <span class="badge bg-primary rounded-pill">#{{ item.amostra.numero }}</span>
+                                <button type="button" class="badge bg-primary rounded-pill border-0 text-white text-decoration-none shadow-sm" data-bs-toggle="modal" data-bs-target="#modalEditarAmostra{{ item.amostra.id }}" title="Clique para Visualizar/Editar Amostra #{{ item.amostra.numero }}" style="cursor: pointer;">
+                                    #{{ item.amostra.numero }}
+                                </button>
                             </td>
                             <td class="small text-muted">{{ item.amostra.criado_em|date:'d/m/Y H:i:s' }}</td>
-                            <td class="fw-semibold">{{ item.amostra.identificador|default:'-' }}</td>
+                            <td class="fw-semibold">
+                                <a href="#" role="button" class="text-decoration-none text-dark fw-bold" data-bs-toggle="modal" data-bs-target="#modalEditarAmostra{{ item.amostra.id }}" title="Visualizar/Editar esta amostra">
+                                    {{ item.amostra.identificador|default:'(Sem OS)' }}
+                                </a>
+                            </td>
                             <td class="small">
                                 {% if item.amostra.autor %}
                                     {{ item.amostra.autor.get_full_name|default:item.amostra.autor.username }}
@@ -556,7 +563,138 @@
                             </td>
                             {% endfor %}
                             <td class="small text-muted">{{ item.amostra.observacoes|default:'-' }}</td>
+                            <td class="text-center text-nowrap">
+                                <button type="button" class="btn btn-sm btn-outline-primary p-1 px-2 me-1" data-bs-toggle="modal" data-bs-target="#modalEditarAmostra{{ item.amostra.id }}" title="Visualizar e Editar Amostra #{{ item.amostra.numero }}">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger p-1 px-2" data-bs-toggle="modal" data-bs-target="#modalExcluirAmostra{{ item.amostra.id }}" title="Excluir Amostra #{{ item.amostra.numero }}">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
                         </tr>
+
+                        <!-- Modal Editar/Visualizar Amostra -->
+                        <div class="modal fade" id="modalEditarAmostra{{ item.amostra.id }}" tabindex="-1" aria-labelledby="modalEditarAmostraLabel{{ item.amostra.id }}" aria-hidden="true">
+                            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                                <div class="modal-content">
+                                    <form method="post" action="{% url 'auditoria:registro_detail' registro.pk %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="edit_amostra">
+                                        <input type="hidden" name="amostra_id" value="{{ item.amostra.id }}">
+                                        <div class="modal-header bg-primary text-white py-2">
+                                            <h5 class="modal-title fs-6" id="modalEditarAmostraLabel{{ item.amostra.id }}">
+                                                <i class="bi bi-pencil-square me-2"></i> Detalhes & Edição - Amostra #{{ item.amostra.numero }}
+                                            </h5>
+                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="alert alert-light border small py-2 mb-3 text-secondary d-flex justify-content-between align-items-center">
+                                                <span>
+                                                    <i class="bi bi-person me-1"></i> <strong>Avaliador:</strong> {{ item.amostra.autor.get_full_name|default:item.amostra.autor.username|default:'Não identificado' }}
+                                                </span>
+                                                <span>
+                                                    <i class="bi bi-clock me-1"></i> <strong>Data/Hora:</strong> {{ item.amostra.criado_em|date:'d/m/Y H:i:s' }}
+                                                </span>
+                                            </div>
+                                            <div class="row g-2 mb-3">
+                                                <div class="col-md-6">
+                                                    <label class="form-label small fw-bold">Identificador / O.S. / Lote</label>
+                                                    <input type="text" name="identificador" class="form-control form-control-sm" value="{{ item.amostra.identificador|default:'' }}" placeholder="Ex.: OS 123456 ou Lote 42">
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label small fw-bold">Observações desta amostra</label>
+                                                    <input type="text" name="observacoes" class="form-control form-control-sm" value="{{ item.amostra.observacoes|default:'' }}" placeholder="Observações opcionais...">
+                                                </div>
+                                            </div>
+
+                                            <div class="fw-bold mb-2 border-bottom pb-1 text-secondary">
+                                                Respostas das Perguntas:
+                                            </div>
+
+                                            <div class="d-flex flex-column gap-3">
+                                                {% for resp in item.respostas %}
+                                                <div class="p-2 border rounded bg-light">
+                                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                                        <label class="form-label fw-semibold mb-0 small">
+                                                            <span class="badge bg-secondary me-1">{{ resp.pergunta.ordem }}</span> {{ resp.pergunta.pergunta }}
+                                                            {% if resp.pergunta.obrigatoria %}<span class="text-danger">*</span>{% endif %}
+                                                        </label>
+                                                        <span class="badge bg-secondary-subtle text-secondary small">{{ resp.pergunta.get_tipo_resposta_display }}</span>
+                                                    </div>
+                                                    {% if resp.pergunta.tipo_resposta == 'SIM_NAO' %}
+                                                        <select class="form-select form-select-sm" name="amostra_pergunta_{{ resp.pergunta.id }}">
+                                                            <option value="">-- Selecione --</option>
+                                                            <option value="Sim" {% if resp.valor == 'Sim' %}selected{% endif %}>Sim</option>
+                                                            <option value="Não" {% if resp.valor == 'Não' %}selected{% endif %}>Não</option>
+                                                        </select>
+                                                    {% elif resp.pergunta.tipo_resposta == 'LISTA' %}
+                                                        <select class="form-select form-select-sm" name="amostra_pergunta_{{ resp.pergunta.id }}">
+                                                            <option value="">-- Selecione --</option>
+                                                            {% for opt in resp.pergunta.opcoes_resposta_com_cores %}
+                                                            <option value="{{ opt.label }}" {% if resp.valor == opt.label %}selected{% endif %}>{{ opt.label }}</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                    {% elif resp.pergunta.tipo_resposta == 'NUMERO' %}
+                                                        <input type="number" class="form-control form-control-sm" name="amostra_pergunta_{{ resp.pergunta.id }}" step="1" value="{{ resp.valor }}" placeholder="Número inteiro">
+                                                    {% elif resp.pergunta.tipo_resposta == 'DECIMAL' %}
+                                                        <input type="number" class="form-control form-control-sm" name="amostra_pergunta_{{ resp.pergunta.id }}" step="0.01" value="{{ resp.valor }}" placeholder="0.00">
+                                                    {% elif resp.pergunta.tipo_resposta == 'TEXTO' %}
+                                                        <input type="text" class="form-control form-control-sm" name="amostra_pergunta_{{ resp.pergunta.id }}" value="{{ resp.valor }}" placeholder="Digite a resposta...">
+                                                    {% endif %}
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer py-2 d-flex justify-content-between">
+                                            <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalExcluirAmostra{{ item.amostra.id }}" data-bs-dismiss="modal">
+                                                <i class="bi bi-trash me-1"></i> Excluir Amostra
+                                            </button>
+                                            <div>
+                                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
+                                                <button type="submit" class="btn btn-primary btn-sm">
+                                                    <i class="bi bi-check-circle me-1"></i> Salvar Alterações
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Modal Excluir Amostra -->
+                        <div class="modal fade" id="modalExcluirAmostra{{ item.amostra.id }}" tabindex="-1" aria-labelledby="modalExcluirAmostraLabel{{ item.amostra.id }}" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content border-danger">
+                                    <form method="post" action="{% url 'auditoria:registro_detail' registro.pk %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="delete_amostra">
+                                        <input type="hidden" name="amostra_id" value="{{ item.amostra.id }}">
+                                        <div class="modal-header bg-danger text-white py-2">
+                                            <h5 class="modal-title fs-6" id="modalExcluirAmostraLabel{{ item.amostra.id }}">
+                                                <i class="bi bi-exclamation-triangle me-2"></i> Confirmar Exclusão
+                                            </h5>
+                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <p class="mb-0">
+                                                Tem certeza de que deseja excluir permanentemente a <strong>Amostra #{{ item.amostra.numero }}</strong>
+                                                {% if item.amostra.identificador %}(Identificador: <strong>{{ item.amostra.identificador }}</strong>){% endif %}?
+                                            </p>
+                                            <small class="text-danger d-block mt-2">
+                                                Todas as respostas associadas a esta amostra serão removidas do ciclo.
+                                            </small>
+                                        </div>
+                                        <div class="modal-footer py-2">
+                                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                                            <button type="submit" class="btn btn-danger btn-sm">
+                                                <i class="bi bi-trash me-1"></i> Sim, Excluir Amostra
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
                         {% endfor %}
                     </tbody>
                 </table>

@@ -1885,6 +1885,48 @@ def registro_detail(request, pk):
             messages.success(request, f"Amostra #{amostra.numero} registrada com sucesso!")
             return redirect("auditoria:registro_detail", pk=registro.pk)
 
+        elif action == "edit_amostra" and registro.modelo.multiplos_registros:
+            amostra_id = request.POST.get("amostra_id")
+            amostra = get_object_or_404(registro.amostras, pk=amostra_id)
+            identificador = (request.POST.get("identificador") or "").strip()
+            observacoes = (request.POST.get("observacoes") or "").strip()
+
+            with transaction.atomic():
+                amostra.identificador = identificador
+                amostra.observacoes = observacoes
+                amostra.save(update_fields=["identificador", "observacoes"])
+
+                perguntas_ativas = registro.modelo.perguntas.filter(ativo=True)
+                for p in perguntas_ativas:
+                    resp_val = (request.POST.get(f"amostra_pergunta_{p.id}") or "").strip()
+                    resp_obj = RespostaAuditoria.objects.filter(registro=registro, amostra=amostra, pergunta=p).first()
+                    if resp_val:
+                        if resp_obj:
+                            if resp_obj.valor != resp_val:
+                                resp_obj.valor = resp_val
+                                resp_obj.save(update_fields=["valor"])
+                        else:
+                            RespostaAuditoria.objects.create(
+                                registro=registro,
+                                amostra=amostra,
+                                pergunta=p,
+                                valor=resp_val,
+                            )
+                    else:
+                        if resp_obj:
+                            resp_obj.delete()
+
+            messages.success(request, f"Amostra #{amostra.numero} atualizada com sucesso!")
+            return redirect("auditoria:registro_detail", pk=registro.pk)
+
+        elif action == "delete_amostra" and registro.modelo.multiplos_registros:
+            amostra_id = request.POST.get("amostra_id")
+            amostra = get_object_or_404(registro.amostras, pk=amostra_id)
+            num = amostra.numero
+            amostra.delete()
+            messages.success(request, f"Amostra #{num} excluída com sucesso!")
+            return redirect("auditoria:registro_detail", pk=registro.pk)
+
     resumo = _build_resumo_respostas_registro(registro)
     progresso_calculado = int(resumo["percentual_preenchimento"])
     if registro.progresso != progresso_calculado:
@@ -1927,6 +1969,7 @@ def registro_detail(request, pk):
                 valor = resp.valor if resp else ""
                 cor = _resolve_cor_resposta(p, valor) if valor else ""
                 colunas_respostas.append({
+                    "pergunta": p,
                     "pergunta_id": p.id,
                     "valor": valor,
                     "cor": cor,
