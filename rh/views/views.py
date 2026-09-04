@@ -3392,6 +3392,39 @@ def detalhe_usuario_view(request, user_id):
     raw_modulos = get_nav_structure()
     modulos = []
     for modulo in raw_modulos:
+        # Organizar blocos em itens diretos ou grupos (ex: grupo "ISO 13485")
+        itens_modulo = []
+        grupos_dict = {}
+        for bloco in (modulo.get("blocos") or []):
+            bloco_data = {
+                "key": bloco.get("key"),
+                "nome": bloco.get("nome"),
+                "perm": _perm_parts(bloco.get("perm")),
+                "funcoes": [
+                    {
+                        "nome": func.get("nome"),
+                        "view_name": func.get("view_name"),
+                        "perm": _perm_parts(func.get("perm")),
+                    }
+                    for func in (bloco.get("funcoes") or [])
+                ],
+            }
+            grupo_nome = bloco.get("grupo")
+            if grupo_nome:
+                if grupo_nome not in grupos_dict:
+                    grupo_obj = {
+                        "is_grupo": True,
+                        "nome": grupo_nome,
+                        "key": grupo_nome.lower().replace(" ", "_"),
+                        "blocos": []
+                    }
+                    grupos_dict[grupo_nome] = grupo_obj
+                    itens_modulo.append(grupo_obj)
+                grupos_dict[grupo_nome]["blocos"].append(bloco_data)
+            else:
+                bloco_data["is_grupo"] = False
+                itens_modulo.append(bloco_data)
+
         modulos.append(
             {
                 "key": modulo.get("key"),
@@ -3399,22 +3432,7 @@ def detalhe_usuario_view(request, user_id):
                 "cor": modulo.get("cor"),
                 "icone": modulo.get("icone"),
                 "module_perm": _perm_parts(modulo.get("module_perm")),
-                "blocos": [
-                    {
-                        "key": bloco.get("key"),
-                        "nome": bloco.get("nome"),
-                        "perm": _perm_parts(bloco.get("perm")),
-                        "funcoes": [
-                            {
-                                "nome": func.get("nome"),
-                                "view_name": func.get("view_name"),
-                                "perm": _perm_parts(func.get("perm")),
-                            }
-                            for func in (bloco.get("funcoes") or [])
-                        ],
-                    }
-                    for bloco in (modulo.get("blocos") or [])
-                ],
+                "itens": itens_modulo,
             }
         )
     

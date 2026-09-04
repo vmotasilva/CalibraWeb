@@ -285,6 +285,8 @@
                                                 <input type="number" class="form-control" name="grid_{{ pergunta.id }}_{{ forloop.parentloop.counter0 }}" step="1">
                                             {% elif pergunta.tipo_resposta == 'DECIMAL' %}
                                                 <input type="number" class="form-control" name="grid_{{ pergunta.id }}_{{ forloop.parentloop.counter0 }}" step="0.01">
+                                            {% elif pergunta.tipo_resposta == 'TEXTO' %}
+                                                <input type="text" class="form-control" name="grid_{{ pergunta.id }}_{{ forloop.parentloop.counter0 }}" placeholder="Digite o texto...">
                                             {% endif %}
                                         </div>
                                     </div>
@@ -365,6 +367,8 @@
                                                         <input type="number" class="form-control form-control-sm" name="griddia_{{ pergunta.id }}_{{ forloop.parentloop.parentloop.counter0 }}_{{ dia_key }}" step="1">
                                                     {% elif pergunta.tipo_resposta == 'DECIMAL' %}
                                                         <input type="number" class="form-control form-control-sm" name="griddia_{{ pergunta.id }}_{{ forloop.parentloop.parentloop.counter0 }}_{{ dia_key }}" step="0.01">
+                                                    {% elif pergunta.tipo_resposta == 'TEXTO' %}
+                                                        <input type="text" class="form-control form-control-sm" name="griddia_{{ pergunta.id }}_{{ forloop.parentloop.parentloop.counter0 }}_{{ dia_key }}" placeholder="Texto...">
                                                     {% endif %}
                                                 </div>
                                                 {% endfor %}
@@ -448,6 +452,8 @@
                                     <input type="number" class="form-control" name="resposta_{{ pergunta.id }}" step="1">
                                 {% elif pergunta.tipo_resposta == 'DECIMAL' %}
                                     <input type="number" class="form-control" name="resposta_{{ pergunta.id }}" step="0.01">
+                                {% elif pergunta.tipo_resposta == 'TEXTO' %}
+                                    <input type="text" class="form-control" name="resposta_{{ pergunta.id }}" placeholder="Digite o texto...">
                                 {% endif %}
                             </div>
                         </div>
@@ -530,6 +536,8 @@
                                             <input type="number" class="form-control form-control-sm" name="resposta_{{ pergunta.id }}_{{ dia_key }}" step="1">
                                         {% elif pergunta.tipo_resposta == 'DECIMAL' %}
                                             <input type="number" class="form-control form-control-sm" name="resposta_{{ pergunta.id }}_{{ dia_key }}" step="0.01">
+                                        {% elif pergunta.tipo_resposta == 'TEXTO' %}
+                                            <input type="text" class="form-control form-control-sm" name="resposta_{{ pergunta.id }}_{{ dia_key }}" placeholder="Texto...">
                                         {% endif %}
                                     </div>
                                     {% endfor %}

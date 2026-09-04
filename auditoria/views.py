@@ -40,6 +40,7 @@ from .models import (
     RelatorioCompartilhadoAuditoria,
     RegistroAuditoria,
     RespostaAuditoria,
+    AmostraAuditoria,
     get_pergunta_resposta_preset,
     list_pergunta_resposta_presets,
     Norma,
@@ -350,6 +351,8 @@ def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
             "pergunta": pergunta.pergunta,
             "descricao_detalhada": pergunta.descricao_detalhada,
             "obrigatoria": pergunta.obrigatoria,
+            "exibir_indicador_sessao": getattr(pergunta, "exibir_indicador_sessao", False),
+            "exibir_como_farol": getattr(pergunta, "exibir_como_farol", True),
             "tipo_resposta": pergunta.tipo_resposta,
             "tipo_resposta_display": pergunta.get_tipo_resposta_display(),
             "opcoes_resposta_com_cores": list(getattr(pergunta, "opcoes_resposta_com_cores", []) or []),
@@ -385,6 +388,8 @@ def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
                 "pergunta": pergunta.pergunta,
                 "descricao_detalhada": pergunta.descricao_detalhada,
                 "obrigatoria": pergunta.obrigatoria,
+                "exibir_indicador_sessao": getattr(pergunta, "exibir_indicador_sessao", False),
+                "exibir_como_farol": getattr(pergunta, "exibir_como_farol", True),
                 "tipo_resposta": pergunta.tipo_resposta,
                 "tipo_resposta_display": pergunta.get_tipo_resposta_display(),
                 "opcoes_resposta_com_cores": list(getattr(pergunta, "opcoes_resposta_com_cores", []) or []),
@@ -451,10 +456,20 @@ def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
         total_respostas_lista = 0
 
         for linha in bloco["linhas"]:
-            if linha.get("tipo_resposta") != "LISTA":
+            if not linha.get("exibir_indicador_sessao"):
+                continue
+            if linha.get("tipo_resposta") not in ("LISTA", "SIM_NAO"):
                 continue
 
-            for opcao in linha.get("opcoes_resposta_com_cores", []):
+            # Para SIM_NAO que não tiver opções configuradas manualmente, cria Conforme/Não Conforme ou Sim/Não
+            opcoes_da_linha = linha.get("opcoes_resposta_com_cores", [])
+            if linha.get("tipo_resposta") == "SIM_NAO" and not opcoes_da_linha:
+                opcoes_da_linha = [
+                    {"label": "Sim", "color": "#198754"},
+                    {"label": "Não", "color": "#dc3545"},
+                ]
+
+            for opcao in opcoes_da_linha:
                 label = str((opcao or {}).get("label") or "").strip()
                 if not label:
                     continue
@@ -1807,38 +1822,68 @@ def registro_detail(request, pk):
         ),
         pk=pk,
     )
-    if request.method == "POST" and (request.POST.get("action") or "").strip() == "add_question_comment":
-        pergunta_id_raw = (request.POST.get("pergunta_id") or "").strip()
-        texto = (request.POST.get("comentario") or "").strip()
-        if not pergunta_id_raw.isdigit():
-            messages.error(request, "Pergunta inválida para comentário.")
+    if request.method == "POST":
+        action = (request.POST.get("action") or "").strip()
+        if action == "add_question_comment":
+            pergunta_id_raw = (request.POST.get("pergunta_id") or "").strip()
+            texto = (request.POST.get("comentario") or "").strip()
+            if not pergunta_id_raw.isdigit():
+                messages.error(request, "Pergunta inválida para comentário.")
+                return redirect("auditoria:registro_detail", pk=registro.pk)
+
+            pergunta = PerguntaAuditoria.objects.filter(
+                id=int(pergunta_id_raw),
+                modelo_id=registro.modelo_id,
+                ativo=True,
+            ).first()
+            if not pergunta:
+                messages.error(request, "Pergunta não encontrada para este registro.")
+                return redirect("auditoria:registro_detail", pk=registro.pk)
+
+            if not texto:
+                messages.error(request, "Informe um comentário.")
+                return redirect("auditoria:registro_detail", pk=registro.pk)
+            if len(texto) > 8000:
+                messages.error(request, "Comentário muito longo (máx. 8000 caracteres).")
+                return redirect("auditoria:registro_detail", pk=registro.pk)
+
+            ComentarioRespostaAuditoria.objects.create(
+                registro=registro,
+                pergunta=pergunta,
+                autor=request.user,
+                texto=texto,
+                data_referencia=registro.data_auditoria,
+            )
+            messages.success(request, "Comentário adicionado com sucesso.")
             return redirect("auditoria:registro_detail", pk=registro.pk)
 
-        pergunta = PerguntaAuditoria.objects.filter(
-            id=int(pergunta_id_raw),
-            modelo_id=registro.modelo_id,
-            ativo=True,
-        ).first()
-        if not pergunta:
-            messages.error(request, "Pergunta não encontrada para este registro.")
-            return redirect("auditoria:registro_detail", pk=registro.pk)
+        elif action == "add_amostra" and registro.modelo.multiplos_registros:
+            identificador = (request.POST.get("identificador") or "").strip()
+            observacoes = (request.POST.get("observacoes") or "").strip()
+            
+            with transaction.atomic():
+                proximo_numero = (registro.amostras.aggregate(m=models.Max("numero"))["m"] or 0) + 1
+                amostra = AmostraAuditoria.objects.create(
+                    registro=registro,
+                    numero=proximo_numero,
+                    identificador=identificador,
+                    observacoes=observacoes,
+                    autor=request.user,
+                )
 
-        if not texto:
-            messages.error(request, "Informe um comentário.")
-            return redirect("auditoria:registro_detail", pk=registro.pk)
-        if len(texto) > 8000:
-            messages.error(request, "Comentário muito longo (máx. 8000 caracteres).")
-            return redirect("auditoria:registro_detail", pk=registro.pk)
+                perguntas_ativas = registro.modelo.perguntas.filter(ativo=True)
+                for p in perguntas_ativas:
+                    resp_val = (request.POST.get(f"amostra_pergunta_{p.id}") or "").strip()
+                    if resp_val:
+                        RespostaAuditoria.objects.create(
+                            registro=registro,
+                            amostra=amostra,
+                            pergunta=p,
+                            valor=resp_val,
+                        )
 
-        ComentarioRespostaAuditoria.objects.create(
-            registro=registro,
-            pergunta=pergunta,
-            autor=request.user,
-            texto=texto,
-            data_referencia=registro.data_auditoria,
-        )
-        messages.success(request, "Comentário adicionado com sucesso.")
-        return redirect("auditoria:registro_detail", pk=registro.pk)
+            messages.success(request, f"Amostra #{amostra.numero} registrada com sucesso!")
+            return redirect("auditoria:registro_detail", pk=registro.pk)
 
     resumo = _build_resumo_respostas_registro(registro)
     progresso_calculado = int(resumo["percentual_preenchimento"])
@@ -1866,9 +1911,31 @@ def registro_detail(request, pk):
             }
         )
 
-
     # Gráfico único de distribuição de situações por topico (dashboard style)
     subcat_chart = _build_topico_chart_from_resumo(resumo["blocos"])
+
+    # Dados do fluxo amostral (se o modelo tiver multiplos_registros)
+    amostras_dados = []
+    perguntas_amostrais = []
+    if registro.modelo.multiplos_registros:
+        perguntas_amostrais = list(registro.modelo.perguntas.filter(ativo=True).order_by("ordem", "id"))
+        for a in registro.amostras.select_related("autor").prefetch_related("respostas__pergunta").order_by("numero"):
+            respostas_map = {r.pergunta_id: r for r in a.respostas.all()}
+            colunas_respostas = []
+            for p in perguntas_amostrais:
+                resp = respostas_map.get(p.id)
+                valor = resp.valor if resp else ""
+                cor = _resolve_cor_resposta(p, valor) if valor else ""
+                colunas_respostas.append({
+                    "pergunta_id": p.id,
+                    "valor": valor,
+                    "cor": cor,
+                    "exibir_como_farol": p.exibir_como_farol,
+                })
+            amostras_dados.append({
+                "amostra": a,
+                "respostas": colunas_respostas,
+            })
 
     context = {
         "registro": registro,
@@ -1881,6 +1948,8 @@ def registro_detail(request, pk):
         "percentual_preenchimento": resumo["percentual_preenchimento"],
         "comentarios_por_pergunta": resumo["comentarios_por_pergunta"],
         "can_delete_registro": _has_nav_view_access(request.user, "auditoria:registro_delete"),
+        "amostras_dados": amostras_dados,
+        "perguntas_amostrais": perguntas_amostrais,
     }
     return render(request, "auditoria/registro_detail.html", context)
 

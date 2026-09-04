@@ -365,10 +365,20 @@
                             <i class="bi bi-tags me-2 text-secondary"></i>Categorias
                         </a>
                     </li>
-                    <li><hr class="dropdown-divider"></li>
                     <li>
                         <a href="{% url 'export_metrologia' %}" class="dropdown-item">
                             <i class="bi bi-download me-2 text-success"></i>Exportar Excel
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a href="{% url 'qms:importar_instrumentos' %}" class="dropdown-item">
+                            <i class="bi bi-cloud-upload me-2 text-primary"></i>Importar Instrumentos
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'qms:importar_historico' %}" class="dropdown-item">
+                            <i class="bi bi-clock-history me-2 text-info"></i>Importar Histórico
                         </a>
                     </li>
                 </ul>

@@ -160,7 +160,11 @@ class ModeloAuditoria(models.Model):
         help_text="Uma coluna por linha (ex.: EQP-001). Se vazio, as colunas serão informadas no registro.",
     )
 
-
+    multiplos_registros = models.BooleanField(
+        default=False,
+        verbose_name="Ciclo com múltiplos registros (amostral)",
+        help_text="Se ativado, cada ciclo deste modelo permite cadastrar múltiplos registros amostrais das perguntas base, contabilizando o tempo de início e fim da amostragem.",
+    )
     
     ativo = models.BooleanField(default=True)
     arquivado = models.BooleanField(default=False)
@@ -241,6 +245,7 @@ class PerguntaAuditoria(models.Model):
         ("LISTA", "Lista (opções)"),
         ("NUMERO", "Número inteiro"),
         ("DECIMAL", "Número decimal"),
+        ("TEXTO", "Texto"),
     ]
 
     PREENCHIMENTO_SEMANAL_CHOICES = [
@@ -292,6 +297,16 @@ class PerguntaAuditoria(models.Model):
         default=True,
         verbose_name="Aplicar no GRID",
         help_text="Se marcado, esta pergunta aparece no preenchimento em GRID (quando habilitado no modelo).",
+    )
+    exibir_indicador_sessao = models.BooleanField(
+        default=False,
+        verbose_name="Exibir indicador na sessão",
+        help_text="Se marcado, inclui as respostas desta pergunta no resumo de indicadores do cabeçalho da sessão.",
+    )
+    exibir_como_farol = models.BooleanField(
+        default=True,
+        verbose_name="Exibir como Farol",
+        help_text="Se marcado, a resposta será exibida como farol colorido. Quando desmarcado, exibe o resultado diretamente.",
     )
     ordem = models.PositiveIntegerField(default=1)
 
@@ -482,6 +497,39 @@ class RegistroAuditoria(models.Model):
             self.progresso = prog
             self.save(update_fields=['progresso'])
 
+    @property
+    def tempo_inicio_amostras(self):
+        primeira = self.amostras.order_by("criado_em").first()
+        return primeira.criado_em if primeira else None
+
+    @property
+    def tempo_fim_amostras(self):
+        ultima = self.amostras.order_by("criado_em").last()
+        return ultima.criado_em if ultima else None
+
+    @property
+    def duracao_total_amostras(self):
+        inicio = self.tempo_inicio_amostras
+        fim = self.tempo_fim_amostras
+        if not inicio or not fim or inicio == fim:
+            return "0 min" if inicio else "-"
+        diff = fim - inicio
+        total_seconds = int(diff.total_seconds())
+        if total_seconds < 0:
+            return "-"
+        horas = total_seconds // 3600
+        minutos = (total_seconds % 3600) // 60
+        segundos = total_seconds % 60
+        if horas > 0:
+            return f"{horas}h {minutos:02d}min"
+        elif minutos > 0:
+            return f"{minutos} min {segundos:02d}s"
+        else:
+            return f"{segundos}s"
+
+    @property
+    def total_amostras(self):
+        return self.amostras.count()
 
     class Meta:
         verbose_name = "Registro de Auditoria"
@@ -492,11 +540,55 @@ class RegistroAuditoria(models.Model):
         return f"{self.modelo.nome} - {self.data_auditoria:%d/%m/%Y}"
 
 
+class AmostraAuditoria(models.Model):
+    registro = models.ForeignKey(
+        RegistroAuditoria,
+        on_delete=models.CASCADE,
+        related_name="amostras",
+        verbose_name="Ciclo de Auditoria",
+    )
+    numero = models.PositiveIntegerField(default=1, verbose_name="Número da Amostra")
+    identificador = models.CharField(
+        max_length=120,
+        blank=True,
+        default="",
+        verbose_name="Identificador / O.S. / Lote",
+        help_text="Opcional: código ou referência desta amostra.",
+    )
+    autor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="amostras_auditoria",
+        verbose_name="Avaliador / Autor",
+    )
+    observacoes = models.TextField(blank=True, default="", verbose_name="Observações")
+    criado_em = models.DateTimeField(auto_now_add=True, verbose_name="Data/Hora de Registro")
+
+    class Meta:
+        verbose_name = "Amostra de Auditoria"
+        verbose_name_plural = "Amostras de Auditoria"
+        ordering = ["numero", "criado_em"]
+        unique_together = ("registro", "numero")
+
+    def __str__(self):
+        return f"{self.registro.nome} - Amostra #{self.numero}"
+
+
 class RespostaAuditoria(models.Model):
     registro = models.ForeignKey(
         RegistroAuditoria,
         on_delete=models.CASCADE,
         related_name="respostas",
+    )
+    amostra = models.ForeignKey(
+        AmostraAuditoria,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="respostas",
+        verbose_name="Amostra (se ciclo amostral)",
     )
     pergunta = models.ForeignKey(
         PerguntaAuditoria,
@@ -524,7 +616,7 @@ class RespostaAuditoria(models.Model):
         verbose_name = "Resposta de Auditoria"
         verbose_name_plural = "Respostas de Auditoria"
         ordering = ["registro", "pergunta__ordem", "dia_semana", "id"]
-        unique_together = ("registro", "pergunta", "dia_semana", "grid_item")
+        unique_together = ("registro", "pergunta", "dia_semana", "grid_item", "amostra")
 
     def __str__(self):
         return f"{self.registro} - {self.pergunta.pergunta[:60]}"

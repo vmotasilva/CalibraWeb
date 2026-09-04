@@ -354,7 +354,8 @@
                             {% can_nav_view user 'qms:listar_historicos_calibracao' 'metrologia' as nav_met_hist %}
                             {% can_nav_view user 'metrologia:categorias_list' 'metrologia' as nav_met_cat %}
                             {% can_nav_view user 'metrologia:unidades_list' 'metrologia' as nav_met_uni %}
-                            {% if nav_met_lista or nav_met_hist or nav_met_cat or nav_met_uni %}
+                            {% can_nav_view user 'metrologia:templates_etiquetas_list' 'metrologia' as nav_met_etq %}
+                            {% if nav_met_lista or nav_met_hist or nav_met_cat or nav_met_uni or nav_met_etq %}
                                 <li>
                                     <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseGESTO" style="cursor: pointer;">
                                         GESTÃO <i class="bi bi-chevron-down transition-transform rotate-180"></i>
@@ -364,7 +365,7 @@
                                 {% if nav_met_hist %}<li><a class="dropdown-item" href="{% url 'qms:listar_historicos_calibracao' %}"><i class="bi bi-clock-history"></i> Históricos de Calibração</a></li>{% endif %}
                                 {% if nav_met_cat %}<li><a class="dropdown-item" href="{% url 'metrologia:categorias_list' %}"><i class="bi bi-tags"></i> Categorias</a></li>{% endif %}
                                 {% if nav_met_uni %}<li><a class="dropdown-item" href="{% url 'metrologia:unidades_list' %}"><i class="bi bi-rulers"></i> Unidades de Medida</a></li>{% endif %}
-                                <li><a class="dropdown-item" href="{% url 'metrologia:templates_etiquetas_list' %}"><i class="bi bi-sliders"></i> Modelos de Etiquetas</a></li>
+                                {% if nav_met_etq %}<li><a class="dropdown-item" href="{% url 'metrologia:templates_etiquetas_list' %}"><i class="bi bi-sliders"></i> Modelos de Etiquetas</a></li>{% endif %}
                                     </ul>
                                 </li>
                                 <li><hr class="dropdown-divider"></li>
@@ -384,23 +385,6 @@
                                     </ul>
                                 </li>
                                 <li><hr class="dropdown-divider"></li>
-                            {% endif %}
-                        {% endif %}
-
-                        {% can_nav_block user 'metrologia' 'importacao' as nav_met_import %}
-                        {% if nav_met_import %}
-                            {% can_nav_view user 'qms:importar_instrumentos' 'metrologia' as nav_met_imp_inst %}
-                            {% can_nav_view user 'qms:importar_historico' 'metrologia' as nav_met_imp_hist %}
-                            {% if nav_met_imp_inst or nav_met_imp_hist %}
-                                <li>
-                                    <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseIMPORTAO" style="cursor: pointer;">
-                                        IMPORTAÇÃO <i class="bi bi-chevron-down transition-transform rotate-180"></i>
-                                    </h6>
-                                    <ul class="list-unstyled collapse show" id="collapseIMPORTAO">
-                                {% if nav_met_imp_inst %}<li><a class="dropdown-item" href="{% url 'qms:importar_instrumentos' %}">📥 Importar Instrumentos</a></li>{% endif %}
-                                {% if nav_met_imp_hist %}<li><a class="dropdown-item" href="{% url 'qms:importar_historico' %}">📜 Importar Histórico</a></li>{% endif %}
-                                    </ul>
-                                </li>
                             {% endif %}
                         {% endif %}
                     </ul>

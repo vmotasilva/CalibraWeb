@@ -375,6 +375,48 @@
                 </div>
             </div>
 
+            {% if registro.modelo.multiplos_registros %}
+            <!-- Painel de Cronometria e Métricas do Ciclo Amostral -->
+            <div class="row g-2 mt-2 pt-2 border-top bg-light-subtle rounded p-2 align-items-center">
+                <div class="col-6 col-md-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-stack fs-4 text-primary"></i>
+                        <div>
+                            <div class="small text-muted">Amostras Coletadas</div>
+                            <div class="fw-bold fs-6">{{ registro.total_amostras }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-play-circle text-success fs-4"></i>
+                        <div>
+                            <div class="small text-muted">Início da Amostragem</div>
+                            <div class="fw-bold small">{{ registro.tempo_inicio_amostras|date:'d/m/Y H:i'|default:'-' }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-stop-circle text-danger fs-4"></i>
+                        <div>
+                            <div class="small text-muted">Última Amostra</div>
+                            <div class="fw-bold small">{{ registro.tempo_fim_amostras|date:'d/m/Y H:i'|default:'-' }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-stopwatch text-warning fs-4"></i>
+                        <div>
+                            <div class="small text-muted">Tempo Decorrido</div>
+                            <div class="fw-bold fs-6 text-primary">{{ registro.duracao_total_amostras }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
             <!-- Progresso de Preenchimento -->
             <div class="mt-2 pt-2 border-top">
                 <div class="d-flex justify-content-between align-items-center mb-1">
@@ -410,7 +452,13 @@
                         <dd class="col-sm-8">{{ registro.nome }}</dd>
 
                         <dt class="col-sm-4 text-muted">Avaliador:</dt>
-                        <dd class="col-sm-8">{{ registro.avaliador.get_full_name|default:registro.avaliador.username }}</dd>
+                        <dd class="col-sm-8">
+                            {% if registro.avaliador %}
+                                {{ registro.avaliador.get_full_name|default:registro.avaliador.username }}
+                            {% else %}
+                                Não informado
+                            {% endif %}
+                        </dd>
 
                         {% if registro.alvo %}
                         <dt class="col-sm-4 text-muted">Avaliado (Alvo):</dt>
@@ -445,6 +493,158 @@
             </div>
         </div>
     </div>
+
+    {% if registro.modelo.multiplos_registros %}
+    <!-- SEÇÃO EXCLUSIVA DE CICLO COM MÚLTIPLOS REGISTROS (AMOSTRAL) -->
+    <div class="card shadow-sm mb-4 border-primary">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-2">
+            <h5 class="mb-0 fs-6">
+                <i class="bi bi-collection-play me-2"></i> Registros Amostrais do Ciclo
+            </h5>
+            <button type="button" class="btn btn-sm btn-light fw-bold text-primary" data-bs-toggle="modal" data-bs-target="#modalNovaAmostra">
+                <i class="bi bi-plus-circle me-1"></i> Nova Amostra
+            </button>
+        </div>
+        <div class="card-body p-0">
+            {% if amostras_dados %}
+            <div class="table-responsive">
+                <table class="table table-striped table-hover mb-0 align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th width="70" class="text-center">#</th>
+                            <th width="140">Data/Hora</th>
+                            <th width="160">Identificador / OS</th>
+                            <th width="140">Avaliador</th>
+                            {% for p in perguntas_amostrais %}
+                            <th class="text-center" title="{{ p.pergunta }}">
+                                <span class="d-inline-block text-truncate" style="max-width: 140px;">
+                                    {{ p.ordem }}. {{ p.pergunta }}
+                                </span>
+                            </th>
+                            {% endfor %}
+                            <th>Observações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in amostras_dados %}
+                        <tr>
+                            <td class="text-center fw-bold">
+                                <span class="badge bg-primary rounded-pill">#{{ item.amostra.numero }}</span>
+                            </td>
+                            <td class="small text-muted">{{ item.amostra.criado_em|date:'d/m/Y H:i:s' }}</td>
+                            <td class="fw-semibold">{{ item.amostra.identificador|default:'-' }}</td>
+                            <td class="small">
+                                {% if item.amostra.autor %}
+                                    {{ item.amostra.autor.get_full_name|default:item.amostra.autor.username }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            {% for resp in item.respostas %}
+                            <td class="text-center">
+                                {% if resp.valor %}
+                                    {% if resp.exibir_como_farol %}
+                                    <span class="answer-semaphore" data-bs-toggle="tooltip" title="{{ resp.valor }}" style="background-color: {{ resp.cor|default:'#198754' }};"></span>
+                                    {% else %}
+                                    <span class="badge bg-light text-dark border px-2 py-1 fw-bold">{{ resp.valor }}</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                            <td class="small text-muted">{{ item.amostra.observacoes|default:'-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="p-4 text-center text-muted">
+                <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
+                Nenhuma amostra cadastrada neste ciclo ainda.<br>
+                <button type="button" class="btn btn-primary btn-sm mt-2" data-bs-toggle="modal" data-bs-target="#modalNovaAmostra">
+                    <i class="bi bi-plus-circle me-1"></i> Cadastrar Primeira Amostra
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Modal para Cadastrar Nova Amostra das Perguntas Base -->
+    <div class="modal fade" id="modalNovaAmostra" tabindex="-1" aria-labelledby="modalNovaAmostraLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <form method="post" action="{% url 'auditoria:registro_detail' registro.pk %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="add_amostra">
+                    <div class="modal-header bg-primary text-white py-2">
+                        <h5 class="modal-title fs-6" id="modalNovaAmostraLabel">
+                            <i class="bi bi-plus-circle me-2"></i> Registrar Nova Amostra
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Identificador / O.S. / Lote</label>
+                                <input type="text" name="identificador" class="form-control form-control-sm" placeholder="Ex.: OS 123456 ou Lote 42">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Observações gerais desta amostra</label>
+                                <input type="text" name="observacoes" class="form-control form-control-sm" placeholder="Observações opcionais...">
+                            </div>
+                        </div>
+
+                        <div class="fw-bold mb-2 border-bottom pb-1 text-secondary">
+                            Perguntas Base do Ciclo:
+                        </div>
+
+                        <div class="d-flex flex-column gap-3">
+                            {% for p in perguntas_amostrais %}
+                            <div class="p-2 border rounded bg-light">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <label class="form-label fw-semibold mb-0 small">
+                                        <span class="badge bg-secondary me-1">{{ p.ordem }}</span> {{ p.pergunta }}
+                                        {% if p.obrigatoria %}<span class="text-danger">*</span>{% endif %}
+                                    </label>
+                                    <span class="badge bg-secondary-subtle text-secondary small">{{ p.get_tipo_resposta_display }}</span>
+                                </div>
+                                {% if p.tipo_resposta == 'SIM_NAO' %}
+                                    <select class="form-select form-select-sm" name="amostra_pergunta_{{ p.id }}">
+                                        <option value="">-- Selecione --</option>
+                                        <option value="Sim">Sim</option>
+                                        <option value="Não">Não</option>
+                                    </select>
+                                {% elif p.tipo_resposta == 'LISTA' %}
+                                    <select class="form-select form-select-sm" name="amostra_pergunta_{{ p.id }}">
+                                        <option value="">-- Selecione --</option>
+                                        {% for opt in p.opcoes_resposta_com_cores %}
+                                        <option value="{{ opt.label }}">{{ opt.label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                {% elif p.tipo_resposta == 'NUMERO' %}
+                                    <input type="number" class="form-control form-control-sm" name="amostra_pergunta_{{ p.id }}" step="1" placeholder="Número inteiro">
+                                {% elif p.tipo_resposta == 'DECIMAL' %}
+                                    <input type="number" class="form-control form-control-sm" name="amostra_pergunta_{{ p.id }}" step="0.01" placeholder="0.00">
+                                {% elif p.tipo_resposta == 'TEXTO' %}
+                                    <input type="text" class="form-control form-control-sm" name="amostra_pergunta_{{ p.id }}" placeholder="Digite a resposta...">
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="modal-footer py-2">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="bi bi-check-circle me-1"></i> Gravar Amostra
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <div class="card shadow-sm mb-3">
         <div class="card-header bg-success text-white">
@@ -617,7 +817,7 @@
                                 <th class="col-dia" title="{{ dia.label }}">{{ dia.short_label }}</th>
                                 {% endfor %}
                             {% else %}
-                                <th class="col-dia text-center" width="100">Farol</th>
+                                <th class="col-dia text-center" width="140">Farol / Resposta</th>
                             {% endif %}
                             <th class="col-comentarios">Comentários</th>
                         </tr>
@@ -681,13 +881,19 @@
                                         title="Clique para alterar a resposta"
                                     >
                                         {% if linha.resposta_geral %}
-                                        <span
-                                            class="answer-semaphore"
-                                            data-bs-toggle="tooltip"
-                                            data-bs-placement="top"
-                                            title="{{ linha.resposta_geral }}"
-                                            style="background-color: {{ linha.resposta_geral_cor|default:'#198754' }};"
-                                        ></span>
+                                            {% if linha.exibir_como_farol %}
+                                            <span
+                                                class="answer-semaphore"
+                                                data-bs-toggle="tooltip"
+                                                data-bs-placement="top"
+                                                title="{{ linha.resposta_geral }}"
+                                                style="background-color: {{ linha.resposta_geral_cor|default:'#198754' }};"
+                                            ></span>
+                                            {% else %}
+                                            <span class="badge bg-light text-dark border px-2 py-1 fs-6 fw-semibold" style="white-space: normal; text-align: center; max-width: 180px; display: inline-block;">
+                                                {{ linha.resposta_geral }}
+                                            </span>
+                                            {% endif %}
                                         {% else %}
                                         <span class="semaphore-empty" data-bs-toggle="tooltip" title="Clique para responder">+</span>
                                         {% endif %}
@@ -784,14 +990,20 @@
                                         title="Clique para alterar a resposta"
                                     >
                                         {% if linha.resposta_geral %}
-                                        <span
-                                            class="answer-semaphore"
-                                            data-bs-toggle="tooltip"
-                                            data-bs-placement="top"
-                                            title="{{ linha.resposta_geral }}"
-                                            style="background-color: {{ linha.resposta_geral_cor|default:'#198754' }};"
-                                        ></span>
-                                        <span class="small fw-semibold ms-2">{{ linha.resposta_geral }}</span>
+                                            {% if linha.exibir_como_farol %}
+                                            <span
+                                                class="answer-semaphore"
+                                                data-bs-toggle="tooltip"
+                                                data-bs-placement="top"
+                                                title="{{ linha.resposta_geral }}"
+                                                style="background-color: {{ linha.resposta_geral_cor|default:'#198754' }};"
+                                            ></span>
+                                            <span class="small fw-semibold ms-2">{{ linha.resposta_geral }}</span>
+                                            {% else %}
+                                            <span class="badge bg-white text-dark border px-2 py-1 fs-6 fw-bold">
+                                                {{ linha.resposta_geral }}
+                                            </span>
+                                            {% endif %}
                                         {% else %}
                                         <span class="semaphore-empty" data-bs-toggle="tooltip" title="Clique para responder">+</span>
                                         <span class="small text-muted ms-2 fst-italic">Pendente</span>

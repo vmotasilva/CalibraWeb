@@ -293,6 +293,151 @@ class PerguntaCreateTests(TestCase):
         self.assertTrue(pergunta.exibir_grafico)
         self.assertTrue(pergunta.aplicar_no_grid)
 
+    def test_pergunta_create_with_tipo_texto(self):
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            reverse("auditoria:pergunta_create"),
+            data={
+                "modelo": str(self.modelo.pk),
+                "pergunta": "Número da O.S.",
+                "descricao_detalhada": "Preencha a OS",
+                "tipo_resposta": "TEXTO",
+                "preenchimento_semanal": "UNICO",
+                "opcoes_resposta": "",
+                "opcoes_resposta_cores": "",
+                "ordem": "1",
+                "obrigatoria": "on",
+                "ativo": "on",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        pergunta = PerguntaAuditoria.objects.get(modelo=self.modelo, pergunta="Número da O.S.")
+        self.assertEqual(pergunta.tipo_resposta, "TEXTO")
+        self.assertEqual(pergunta.get_tipo_resposta_display(), "Texto")
+        self.assertFalse(pergunta.exibir_grafico)
+        self.assertFalse(pergunta.aplicar_no_grid)
+        self.assertFalse(pergunta.exibir_indicador_sessao)
+
+    def test_pergunta_create_with_exibir_indicador_sessao(self):
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            reverse("auditoria:pergunta_create"),
+            data={
+                "modelo": str(self.modelo.pk),
+                "pergunta": "Pergunta com indicador de sessão",
+                "tipo_resposta": "SIM_NAO",
+                "preenchimento_semanal": "UNICO",
+                "ordem": "2",
+                "exibir_indicador_sessao": "on",
+                "obrigatoria": "on",
+                "ativo": "on",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        pergunta = PerguntaAuditoria.objects.get(modelo=self.modelo, pergunta="Pergunta com indicador de sessão")
+        self.assertTrue(pergunta.exibir_indicador_sessao)
+
+    def test_pergunta_create_with_exibir_como_farol_flag(self):
+        self.client.force_login(self.user)
+
+        # 1. Criação com checkbox desmarcado (exibir resultado diretamente)
+        response = self.client.post(
+            reverse("auditoria:pergunta_create"),
+            data={
+                "modelo": str(self.modelo.pk),
+                "pergunta": "Posto de Trabalho",
+                "tipo_resposta": "TEXTO",
+                "preenchimento_semanal": "UNICO",
+                "ordem": "3",
+                "obrigatoria": "on",
+                "ativo": "on",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        pergunta = PerguntaAuditoria.objects.get(modelo=self.modelo, pergunta="Posto de Trabalho")
+        self.assertFalse(pergunta.exibir_como_farol)
+
+        # 2. Criação com checkbox marcado (exibir como farol)
+        response = self.client.post(
+            reverse("auditoria:pergunta_create"),
+            data={
+                "modelo": str(self.modelo.pk),
+                "pergunta": "Conformidade Visual",
+                "tipo_resposta": "SIM_NAO",
+                "preenchimento_semanal": "UNICO",
+                "exibir_como_farol": "on",
+                "ordem": "4",
+                "obrigatoria": "on",
+                "ativo": "on",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        pergunta_farol = PerguntaAuditoria.objects.get(modelo=self.modelo, pergunta="Conformidade Visual")
+        self.assertTrue(pergunta_farol.exibir_como_farol)
+
+    def test_ciclo_multiplos_registros_amostrais_timing(self):
+        from .models import AmostraAuditoria, RespostaAuditoria
+        from django.utils import timezone
+        import time
+
+        self.client.force_login(self.user)
+        self.modelo.multiplos_registros = True
+        self.modelo.save()
+
+        pergunta = PerguntaAuditoria.objects.create(
+            modelo=self.modelo,
+            pergunta="Temperatura do Tanque",
+            tipo_resposta="DECIMAL",
+            ordem=1,
+        )
+
+        registro = RegistroAuditoria.objects.create(
+            modelo=self.modelo,
+            nome="Ciclo Amostral Retrabalho",
+            periodo_inicio=timezone.now().date(),
+            periodo_fim=timezone.now().date(),
+        )
+
+        # Envia primeira amostra via POST
+        url = reverse("auditoria:registro_detail", args=[registro.pk])
+        resp1 = self.client.post(
+            url,
+            data={
+                "action": "add_amostra",
+                "identificador": "Lote A1",
+                f"amostra_pergunta_{pergunta.id}": "65.5",
+            },
+        )
+        self.assertEqual(resp1.status_code, 302)
+        self.assertEqual(registro.total_amostras, 1)
+
+        # Envia segunda amostra via POST
+        resp2 = self.client.post(
+            url,
+            data={
+                "action": "add_amostra",
+                "identificador": "Lote A2",
+                f"amostra_pergunta_{pergunta.id}": "68.2",
+            },
+        )
+        self.assertEqual(resp2.status_code, 302)
+        self.assertEqual(registro.total_amostras, 2)
+
+        # Valida cronometria e renderização na tela
+        self.assertIsNotNone(registro.tempo_inicio_amostras)
+        self.assertIsNotNone(registro.tempo_fim_amostras)
+        detail_resp = self.client.get(url)
+        self.assertEqual(detail_resp.status_code, 200)
+        content = detail_resp.content.decode("utf-8")
+        self.assertIn("Registros Amostrais do Ciclo", content)
+        self.assertIn("Lote A1", content)
+        self.assertIn("Lote A2", content)
+        self.assertIn("65.5", content)
+
 
 class PerguntaBulkRespostaPresetTests(TestCase):
     def setUp(self):
@@ -1291,6 +1436,7 @@ class AuditoriaPendenciasSemanalETestesAndamento(TestCase):
             self.assertContains(response, "Em andamento")
             self.assertContains(response, "35%")
             self.assertContains(response, "Continuar Preenchimento")
+            self.assertContains(response, reverse("auditoria:registro_detail", args=[registro.id]))
 
     def test_auditoria_concluida_100_nao_consta_como_pendente_nem_andamento(self):
         from unittest.mock import patch
@@ -1345,6 +1491,10 @@ class AuditoriaPendenciasSemanalETestesAndamento(TestCase):
             dia_semana="SEGUNDA",
             responsavel=self.user,
         )
+        ModeloAuditoria.objects.filter(pk=modelo.pk).update(
+            criado_em=timezone.make_aware(datetime.datetime(2026, 8, 31, 8, 0, 0))
+        )
+        modelo.refresh_from_db()
         p1 = PerguntaAuditoria.objects.create(
             modelo=modelo,
             pergunta="Pergunta Diária 1",

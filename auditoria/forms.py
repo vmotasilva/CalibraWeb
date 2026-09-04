@@ -28,6 +28,7 @@ class ModeloAuditoriaForm(forms.ModelForm):
             "preenchimento_grid",
             "grid_rotulo_item",
             "grid_colunas",
+            "multiplos_registros",
             "ativo",
         ]
         widgets = {
@@ -48,6 +49,7 @@ class ModeloAuditoriaForm(forms.ModelForm):
                     "placeholder": "Uma coluna por linha (ex.: EQP-001)\nEQP-002\nEQP-003",
                 }
             ),
+            "multiplos_registros": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "ativo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
         
@@ -104,6 +106,8 @@ class PerguntaAuditoriaForm(forms.ModelForm):
             "opcoes_resposta_cores",
             "exibir_grafico",
             "aplicar_no_grid",
+            "exibir_indicador_sessao",
+            "exibir_como_farol",
             "ordem",
             "obrigatoria",
             "ativo",
@@ -130,6 +134,8 @@ class PerguntaAuditoriaForm(forms.ModelForm):
             ),
             "exibir_grafico": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "aplicar_no_grid": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "exibir_indicador_sessao": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "exibir_como_farol": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "ordem": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
             "obrigatoria": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "ativo": forms.CheckboxInput(attrs={"class": "form-check-input"}),

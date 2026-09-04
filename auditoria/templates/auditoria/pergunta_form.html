@@ -1,4 +1,4 @@
-﻿{% extends 'base.html' %}
+{% extends 'base.html' %}
 
 {% block content %}
 <div class="container mt-4">
@@ -111,8 +111,25 @@
             {% endif %}
         </div>
         <div class="form-check mb-2">
+            {{ form.exibir_indicador_sessao }}
+            <label class="form-check-label">Exibir indicador de acompanhamento na sessão</label>
+            {% if form.exibir_indicador_sessao.help_text %}
+                <div class="form-text">{{ form.exibir_indicador_sessao.help_text }}</div>
+            {% endif %}
+        </div>
+        <div class="form-check mb-2">
+            {{ form.exibir_como_farol }}
+            <label class="form-check-label">Exibir como Farol</label>
+            <div class="form-text text-muted">
+                Quando marcado, a resposta aparece como círculo colorido (farol). Se desmarcado, exibe o resultado diretamente por extenso (texto/número).
+            </div>
+            {% if form.exibir_como_farol.errors %}
+                <div class="text-danger">{{ form.exibir_como_farol.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="form-check mb-2">
             {{ form.obrigatoria }}
-            <label class="form-check-label">Resposta obrigatÃ³ria</label>
+            <label class="form-check-label">Resposta obrigatória</label>
         </div>
         <div class="form-check mb-3">
             {{ form.ativo }}

@@ -169,7 +169,7 @@ NAV_STRUCTURE = [
         "blocos": [
             {
                 "key": "visao_geral",
-                "nome": "VISÃO GERAL",
+                "nome": "Dashboard Metrologia",
                 "perm": "core.nav_metrologia_visao_geral",
                 "funcoes": [
                     {
@@ -180,8 +180,8 @@ NAV_STRUCTURE = [
                 ],
             },
             {
-                "key": "gestao",
-                "nome": "GESTÃO",
+                "key": "instrumentos",
+                "nome": "Lista de Instrumentos",
                 "perm": "core.nav_metrologia_gestao",
                 "funcoes": [
                     {
@@ -211,6 +211,43 @@ NAV_STRUCTURE = [
                         "perm": "core.nav_metrologia_editar_instrumento",
                     },
                     {
+                        "nome": "Remover Faixa-Instrumento",
+                        "view_name": "metrologia:faixa_instrumento_delete",
+                        "perm": "core.nav_metrologia_faixa_instrumento_delete",
+                    },
+                    {
+                        "nome": "Remover Faixa-Instrumento em Massa",
+                        "view_name": "metrologia:faixa_instrumento_bulk_delete",
+                        "perm": "core.nav_metrologia_faixa_instrumento_bulk_delete",
+                    },
+                    {
+                        "nome": "Exportar Instrumentos (Excel/CSV)",
+                        "view_name": ["export_metrologia", "exportar_instrumentos", "qms:exportar_instrumentos"],
+                        "perm": "core.nav_metrologia_export_instrumentos",
+                    },
+                    {
+                        "nome": "Exportar Estatísticas (Metrologia)",
+                        "view_name": "qms:exportar_estatisticas",
+                        "perm": "core.nav_metrologia_export_estatisticas",
+                    },
+                    {
+                        "nome": "Importar Instrumentos",
+                        "view_name": "qms:importar_instrumentos",
+                        "perm": "core.nav_metrologia_importar_instrumentos",
+                    },
+                    {
+                        "nome": "Acompanhar Importações (Jobs)",
+                        "view_name": ["import_jobs", "import_jobs_json"],
+                        "perm": "core.nav_metrologia_import_jobs",
+                    },
+                ],
+            },
+            {
+                "key": "historicos",
+                "nome": "Históricos de Calibração",
+                "perm": "core.nav_metrologia_historicos_calibracao",
+                "funcoes": [
+                    {
                         "nome": "Históricos de Calibração",
                         "view_name": "qms:listar_historicos_calibracao",
                         "perm": "core.nav_metrologia_historicos_calibracao",
@@ -235,6 +272,33 @@ NAV_STRUCTURE = [
                         "view_name": "remover_historico",
                         "perm": "core.nav_metrologia_remover_historico",
                     },
+                    {
+                        "nome": "Certificado (Download)",
+                        "view_name": ["download_certificado", "get_certificado_bytes"],
+                        "perm": "core.nav_metrologia_download_certificado",
+                    },
+                    {
+                        "nome": "Certificado (Remover Carimbo)",
+                        "view_name": "remover_carimbo_certificado",
+                        "perm": "core.nav_metrologia_remover_carimbo_certificado",
+                    },
+                    {
+                        "nome": "Certificado (Remover)",
+                        "view_name": "remover_certificado_historico",
+                        "perm": "core.nav_metrologia_remover_certificado_historico",
+                    },
+                    {
+                        "nome": "Importar Histórico",
+                        "view_name": "qms:importar_historico",
+                        "perm": "core.nav_metrologia_importar_historico",
+                    },
+                ],
+            },
+            {
+                "key": "categorias",
+                "nome": "Categorias",
+                "perm": "core.nav_metrologia_categorias",
+                "funcoes": [
                     {
                         "nome": "Categorias",
                         "view_name": "metrologia:categorias_list",
@@ -286,15 +350,22 @@ NAV_STRUCTURE = [
                         "perm": "core.nav_metrologia_faixa_categoria_delete",
                     },
                     {
-                        "nome": "Remover Faixa-Instrumento",
-                        "view_name": "metrologia:faixa_instrumento_delete",
-                        "perm": "core.nav_metrologia_faixa_instrumento_delete",
+                        "nome": "Arquivo Padrão (Download)",
+                        "view_name": "download_arquivo_padrao",
+                        "perm": "core.nav_metrologia_download_arquivo_padrao",
                     },
                     {
-                        "nome": "Remover Faixa-Instrumento em Massa",
-                        "view_name": "metrologia:faixa_instrumento_bulk_delete",
-                        "perm": "core.nav_metrologia_faixa_instrumento_bulk_delete",
+                        "nome": "Arquivo Padrão (Remover)",
+                        "view_name": "remover_arquivo_padrao",
+                        "perm": "core.nav_metrologia_remover_arquivo_padrao",
                     },
+                ],
+            },
+            {
+                "key": "unidades",
+                "nome": "Unidades de Medida",
+                "perm": "core.nav_metrologia_unidades_medida",
+                "funcoes": [
                     {
                         "nome": "Unidades de Medida",
                         "view_name": "metrologia:unidades_list",
@@ -315,37 +386,28 @@ NAV_STRUCTURE = [
                         "view_name": "metrologia:unidade_delete",
                         "perm": "core.nav_metrologia_unidade_delete",
                     },
-
+                ],
+            },
+            {
+                "key": "modelos_etiquetas",
+                "nome": "Modelos de Etiquetas",
+                "perm": "core.nav_metrologia_export_etiquetas",
+                "funcoes": [
                     {
-                        "nome": "Arquivo Padrão (Download)",
-                        "view_name": "download_arquivo_padrao",
-                        "perm": "core.nav_metrologia_download_arquivo_padrao",
+                        "nome": "Modelos de Etiquetas",
+                        "view_name": "metrologia:templates_etiquetas_list",
+                        "perm": "core.nav_metrologia_templates_etiquetas",
                     },
                     {
-                        "nome": "Arquivo Padrão (Remover)",
-                        "view_name": "remover_arquivo_padrao",
-                        "perm": "core.nav_metrologia_remover_arquivo_padrao",
-                    },
-                    {
-                        "nome": "Certificado (Download)",
-                        "view_name": ["download_certificado", "get_certificado_bytes"],
-                        "perm": "core.nav_metrologia_download_certificado",
-                    },
-                    {
-                        "nome": "Certificado (Remover Carimbo)",
-                        "view_name": "remover_carimbo_certificado",
-                        "perm": "core.nav_metrologia_remover_carimbo_certificado",
-                    },
-                    {
-                        "nome": "Certificado (Remover)",
-                        "view_name": "remover_certificado_historico",
-                        "perm": "core.nav_metrologia_remover_certificado_historico",
+                        "nome": "Exportar Etiquetas",
+                        "view_name": ["metrologia:export_etiquetas", "export_etiquetas"],
+                        "perm": "core.nav_metrologia_export_etiquetas",
                     },
                 ],
             },
             {
                 "key": "cotacoes",
-                "nome": "COTAÇÕES",
+                "nome": "Solicitações de Cotação",
                 "perm": "core.nav_metrologia_cotacoes",
                 "funcoes": [
                     {
@@ -397,43 +459,6 @@ NAV_STRUCTURE = [
                         "nome": "Criar Atendimento (via Cotação)",
                         "view_name": "metrologia:atendimento_create_from_cotacao",
                         "perm": "core.nav_metrologia_atendimento_create",
-                    },
-                    {
-                        "nome": "Exportar Etiquetas",
-                        "view_name": ["metrologia:export_etiquetas", "export_etiquetas"],
-                        "perm": "core.nav_metrologia_export_etiquetas",
-                    },
-                    {
-                        "nome": "Exportar Instrumentos (Excel/CSV)",
-                        "view_name": ["export_metrologia", "exportar_instrumentos", "qms:exportar_instrumentos"],
-                        "perm": "core.nav_metrologia_export_instrumentos",
-                    },
-                    {
-                        "nome": "Exportar Estatísticas (Metrologia)",
-                        "view_name": "qms:exportar_estatisticas",
-                        "perm": "core.nav_metrologia_export_estatisticas",
-                    },
-                ],
-            },
-            {
-                "key": "importacao",
-                "nome": "IMPORTAÇÃO",
-                "perm": "core.nav_metrologia_importacao",
-                "funcoes": [
-                    {
-                        "nome": "Importar Instrumentos",
-                        "view_name": "qms:importar_instrumentos",
-                        "perm": "core.nav_metrologia_importar_instrumentos",
-                    },
-                    {
-                        "nome": "Importar Histórico",
-                        "view_name": "qms:importar_historico",
-                        "perm": "core.nav_metrologia_importar_historico",
-                    },
-                    {
-                        "nome": "Acompanhar Importações (Jobs)",
-                        "view_name": ["import_jobs", "import_jobs_json"],
-                        "perm": "core.nav_metrologia_import_jobs",
                     },
                 ],
             },
@@ -800,6 +825,7 @@ NAV_STRUCTURE = [
             {
                 "key": "iso_13485",
                 "nome": "ISO 13485 - AUDITORIAS & FERRAMENTAS",
+                "grupo": "ISO 13485",
                 "perm": "core.nav_auditoria_iso_bloco",
                 "funcoes": [
                     {"nome": "Modo Entrevista (Lista de Auditorias)", "view_name": "auditoria:iso_auditoria_list", "perm": "core.nav_auditoria_iso_lista"},
@@ -819,6 +845,7 @@ NAV_STRUCTURE = [
             {
                 "key": "iso_13485_setup",
                 "nome": "ISO 13485 - SETUP & CADASTROS",
+                "grupo": "ISO 13485",
                 "perm": "core.nav_auditoria_iso_setup_bloco",
                 "funcoes": [
                     {"nome": "Painel de Setup ISO", "view_name": "auditoria:iso_setup_dashboard", "perm": "core.nav_auditoria_iso_setup"},

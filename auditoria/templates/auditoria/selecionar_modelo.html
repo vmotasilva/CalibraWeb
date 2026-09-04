@@ -147,7 +147,7 @@
                     <td colspan="5" class="p-3">
                         <div class="d-flex flex-wrap gap-2 align-items-center">
                             {% if modelo.registro_em_andamento %}
-                            <a href="{% url 'auditoria:registro_edit' modelo.registro_em_andamento.id %}" class="btn btn-warning btn-sm fw-bold">
+                            <a href="{% url 'auditoria:registro_detail' modelo.registro_em_andamento.id %}" class="btn btn-warning btn-sm fw-bold">
                                 <i class="bi bi-pencil-square"></i> Continuar Preenchimento ({{ modelo.registro_em_andamento.progresso|default:0 }}%)
                             </a>
                             <a href="{% url 'auditoria:registro_create_modelo' modelo.id %}" class="btn btn-outline-success btn-sm">

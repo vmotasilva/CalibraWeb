@@ -152,6 +152,17 @@
         </div>
         
         <div class="form-check mb-3">
+            {{ form.multiplos_registros }}
+            <label class="form-check-label fw-bold">Ciclo com múltiplos registros (Amostral)</label>
+            <div class="form-text text-muted">
+                Se ativado, cada ciclo deste modelo permite cadastrar múltiplos registros amostrais das perguntas base, cronometrando automaticamente o tempo de início, fim e duração da amostragem.
+            </div>
+            {% if form.multiplos_registros.errors %}
+                <div class="text-danger">{{ form.multiplos_registros.errors }}</div>
+            {% endif %}
+        </div>
+
+        <div class="form-check mb-3">
             {{ form.ativo }}
             <label class="form-check-label">Ativo</label>
         </div>
