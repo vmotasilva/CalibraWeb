@@ -1512,7 +1512,11 @@ class AuditoriaPendenciasSemanalETestesAndamento(TestCase):
             avaliador=self.user,
         )
 
-        with patch("django.utils.timezone.localdate", return_value=data_quinta):
+        with patch("django.utils.timezone.localdate", return_value=data_quinta), \
+             patch("shared.inbox.date") as mock_date_inbox, \
+             patch("shared.notifications.date") as mock_date_notif:
+            mock_date_inbox.today.return_value = data_quinta
+            mock_date_notif.today.return_value = data_quinta
             # 1. Sem resposta na quinta-feira: dia_atual_preenchido é False e DEVE ser cobrado
             pendencias = calcular_periodos_pendentes(modelo)
             self.assertEqual(len(pendencias), 1)
@@ -1538,6 +1542,8 @@ class AuditoriaPendenciasSemanalETestesAndamento(TestCase):
             self.assertEqual(len(pendencias), 1)
             self.assertTrue(pendencias[0]["dia_atual_preenchido"])
 
+            from django.core.cache import cache
+            cache.clear()
             inbox = get_user_inbox_items(self.user)
             # Não deve cobrar hoje pois a quinta-feira já está preenchida
             self.assertFalse(any("Auditoria em Andamento" in item.title and "Roteiro QMS - Andamento Diário" in item.title for item in inbox))
