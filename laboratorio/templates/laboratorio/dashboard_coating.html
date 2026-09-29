@@ -888,6 +888,7 @@
                                 <input type="datetime-local" class="form-control" id="editHoraSaida">
                             </div>
                         </div>
+                        <div id="editHorariosAlerta" class="alert alert-danger small d-none" role="alert"></div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label fw-bold small text-muted">Preparação</label>
@@ -939,7 +940,18 @@
     </div>
 </div>
 
+{% include "laboratorio/_coating_validacao_horarios.html" %}
+
 <script>
+let editLoteLado = '';
+const validacaoHorariosEdit = CoatingValidacao.ligar({
+    entradaId: 'editHoraEntrada',
+    saidaId: 'editHoraSaida',
+    alertaId: 'editHorariosAlerta',
+    botaoSalvar: document.getElementById('btnSalvarEdicaoLote'),
+    getLado: () => editLoteLado
+});
+
 function openDetalhesModal(trElement) {
     var rawData = trElement.getAttribute('data-detalhes');
     if(!rawData) return;
@@ -1039,7 +1051,10 @@ function abrirModalEditarLoteItem(item) {
     document.getElementById('editHoraSaida').value = item.hora_saida_raw || '';
     document.getElementById('editPreparacao').value = item.preparacao_id || '';
     document.getElementById('editMontagem').value = item.montagem_id || '';
-    
+
+    editLoteLado = item.lado || '';
+    if (validacaoHorariosEdit) validacaoHorariosEdit.revalidar();
+
     const selectMaq = document.getElementById('editMaquinaSelect');
     if (selectMaq) selectMaq.value = item.maquina_id || '';
     
@@ -1089,6 +1104,8 @@ function salvarLoteEdicao() {
         return;
     }
 
+    if (validacaoHorariosEdit && !validacaoHorariosEdit.checar()) return;
+
     if (btn) {
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Salvando...';
@@ -1134,10 +1151,12 @@ function salvarLoteEdicao() {
         if (data.success) {
             location.reload();
         } else {
-            alert('Erro ao editar lote: ' + (data.error || 'Desconhecido'));
             if (btn) {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Salvar Alterações';
+            }
+            if (!(validacaoHorariosEdit && validacaoHorariosEdit.mostrarErroServidor(data))) {
+                alert('Erro ao editar lote: ' + (data.error || 'Desconhecido'));
             }
         }
     })

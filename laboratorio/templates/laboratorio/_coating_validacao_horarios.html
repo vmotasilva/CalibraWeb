@@ -1,0 +1,163 @@
+<script>
+/*
+ * Validação de horários do Coating no ato do lançamento.
+ * Espelha as regras do Modo Auditoria (over_24h, negative, missing) e de _validar_horarios_coating
+ * em laboratorio/views.py — mantenha as duas em sincronia. O servidor também bloqueia.
+ */
+window.CoatingValidacao = (function () {
+    const DURACAO_MAXIMA_MS = 24 * 60 * 60 * 1000;
+    const TOLERANCIA_FUTURO_MS = 10 * 60 * 1000;
+    const DIA_MS = 24 * 60 * 60 * 1000;
+
+    function parse(valor) {
+        if (!valor) return null;
+        const d = new Date(valor); // "YYYY-MM-DDTHH:MM" é interpretado no fuso local
+        return isNaN(d.getTime()) ? null : d;
+    }
+
+    function pad(n) { return String(n).padStart(2, '0'); }
+
+    function fmt(d) {
+        return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    function fmtDuracao(ms) {
+        const totalMin = Math.floor(Math.abs(ms) / 60000);
+        const dias = Math.floor(totalMin / 1440);
+        const horas = Math.floor((totalMin % 1440) / 60);
+        const minutos = totalMin % 60;
+        return (dias ? `${dias}d ` : '') + `${pad(horas)}h${pad(minutos)}min`;
+    }
+
+    function validar(entradaStr, saidaStr, lado) {
+        const entrada = parse(entradaStr);
+        const saida = parse(saidaStr);
+        const linha = lado ? ` da linha ${lado}` : '';
+        const agora = new Date();
+        const anomalias = [];
+
+        if (saida && !entrada) {
+            anomalias.push({
+                codigo: 'missing', campos: ['entrada'],
+                titulo: 'Horário incompleto: saída sem entrada',
+                detalhe: `A Hora Saída${linha} foi informada (${fmt(saida)}), mas a Hora Entrada está vazia. Informe também a Hora Entrada desta linha.`
+            });
+        } else if (entrada && !saida && agora - entrada > DURACAO_MAXIMA_MS) {
+            anomalias.push({
+                codigo: 'missing', campos: ['saida'],
+                titulo: 'Horário incompleto: lote sem saída há mais de 24h',
+                detalhe: `A entrada${linha} foi em ${fmt(entrada)} (há ${fmtDuracao(agora - entrada)}) e a Hora Saída continua vazia. Informe a Hora Saída.`
+            });
+        }
+
+        if (entrada && saida) {
+            const duracao = saida - entrada;
+            if (duracao <= 0) {
+                let detalhe = duracao === 0
+                    ? `A Hora Saída (${fmt(saida)}) é IGUAL à Hora Entrada. A saída precisa ser posterior à entrada. Confira se a hora foi digitada corretamente`
+                    : `A Hora Saída (${fmt(saida)}) é ${fmtDuracao(duracao)} ANTERIOR à Hora Entrada (${fmt(entrada)}). Um lote não pode sair antes de entrar. Confira se a hora foi digitada corretamente`;
+                const saidaDiaSeguinte = new Date(saida.getTime() + DIA_MS);
+                if (saidaDiaSeguinte - entrada < DURACAO_MAXIMA_MS) {
+                    detalhe += ` ou, se a saída ocorreu após a meia-noite, ajuste a DATA da saída para ${fmt(saidaDiaSeguinte)} (duração de ${fmtDuracao(saidaDiaSeguinte - entrada)})`;
+                }
+                anomalias.push({ codigo: 'negative', campos: ['entrada', 'saida'], titulo: 'Tempo negativo', detalhe: detalhe + '.' });
+            } else if (duracao > DURACAO_MAXIMA_MS) {
+                anomalias.push({
+                    codigo: 'over_24h', campos: ['entrada', 'saida'],
+                    titulo: 'Lote com mais de 24h',
+                    detalhe: `Entre a entrada (${fmt(entrada)}) e a saída (${fmt(saida)}) há ${fmtDuracao(duracao)} — acima do limite de 24h. Provável erro na DATA da entrada ou da saída.`
+                });
+            }
+        }
+
+        [['entrada', 'Entrada', entrada], ['saida', 'Saída', saida]].forEach(([campo, rotulo, valor]) => {
+            if (valor && valor - agora > TOLERANCIA_FUTURO_MS) {
+                anomalias.push({
+                    codigo: 'future', campos: [campo],
+                    titulo: `Hora ${rotulo} no futuro`,
+                    detalhe: `A Hora ${rotulo}${linha} (${fmt(valor)}) é posterior ao momento atual (${fmt(agora)}). Registre apenas horários que já ocorreram.`
+                });
+            }
+        });
+
+        return anomalias;
+    }
+
+    function escapar(txt) {
+        const div = document.createElement('div');
+        div.textContent = txt;
+        return div.innerHTML;
+    }
+
+    /*
+     * Liga a validação a um modal de edição.
+     * cfg: { entradaId, saidaId, alertaId, botaoSalvar (elemento), getLado () => 'CC'|'CX' }
+     * Retorna { checar(): boolean, mostrarErroServidor(data): boolean, limpar() }.
+     */
+    function ligar(cfg) {
+        const inEntrada = document.getElementById(cfg.entradaId);
+        const inSaida = document.getElementById(cfg.saidaId);
+        const alerta = document.getElementById(cfg.alertaId);
+        if (!inEntrada || !inSaida || !alerta) return null;
+
+        function render(anomalias) {
+            // O seletor de data/hora da saída não oferece horários anteriores à entrada
+            inSaida.min = inEntrada.value || '';
+            const campos = new Set();
+            anomalias.forEach(a => (a.campos || []).forEach(c => campos.add(c)));
+            inEntrada.classList.toggle('is-invalid', campos.has('entrada'));
+            inSaida.classList.toggle('is-invalid', campos.has('saida'));
+            if (cfg.botaoSalvar) cfg.botaoSalvar.disabled = anomalias.length > 0;
+
+            if (!anomalias.length) {
+                alerta.classList.add('d-none');
+                alerta.innerHTML = '';
+                return;
+            }
+            alerta.innerHTML =
+                `<div class="fw-bold mb-1"><i class="bi bi-shield-exclamation me-1"></i>` +
+                `Este lançamento cairia na Auditoria — corrija os horários para salvar:</div>` +
+                `<ul class="mb-0 ps-3">` +
+                anomalias.map(a => `<li><strong>${escapar(a.titulo)}:</strong> ${escapar(a.detalhe)}</li>`).join('') +
+                `</ul>`;
+            alerta.classList.remove('d-none');
+        }
+
+        function checar() {
+            const lado = cfg.getLado ? cfg.getLado() : '';
+            const anomalias = validar(inEntrada.value, inSaida.value, lado);
+            render(anomalias);
+            if (anomalias.length) {
+                alerta.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                (anomalias[0].campos.includes('saida') ? inSaida : inEntrada).focus();
+            }
+            return anomalias.length === 0;
+        }
+
+        function revalidar() {
+            const lado = cfg.getLado ? cfg.getLado() : '';
+            render(validar(inEntrada.value, inSaida.value, lado));
+        }
+
+        ['input', 'change'].forEach(ev => {
+            inEntrada.addEventListener(ev, revalidar);
+            inSaida.addEventListener(ev, revalidar);
+        });
+
+        return {
+            checar: checar,
+            revalidar: revalidar,
+            limpar: () => render([]),
+            // Exibe anomalias devolvidas pelo servidor; retorna true se havia anomalias.
+            mostrarErroServidor: function (data) {
+                if (!data || !Array.isArray(data.anomalias) || !data.anomalias.length) return false;
+                render(data.anomalias.map(a => Object.assign({ campos: ['entrada', 'saida'] }, a)));
+                alerta.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                return true;
+            }
+        };
+    }
+
+    return { validar: validar, ligar: ligar };
+})();
+</script>

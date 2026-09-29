@@ -778,6 +778,7 @@
                         <input type="datetime-local" class="form-control" id="editHoraSaida">
                     </div>
                 </div>
+                <div id="editHorariosAlerta" class="alert alert-danger small d-none" role="alert"></div>
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label class="form-label fw-bold">Preparação</label>
@@ -821,7 +822,7 @@
             </div>
             <div class="modal-footer border-top-0">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="salvarLoteCompleto()">Salvar Alterações</button>
+                <button type="button" class="btn btn-primary" id="btnSalvarLoteCompleto" onclick="salvarLoteCompleto()">Salvar Alterações</button>
             </div>
         </div>
     </div>
@@ -901,9 +902,18 @@
 </div>
 
 
+{% include "laboratorio/_coating_validacao_horarios.html" %}
 
 <script>
     let modalEdicaoRapida;
+    let editLoteLado = '';
+    const validacaoHorariosEdit = CoatingValidacao.ligar({
+        entradaId: 'editHoraEntrada',
+        saidaId: 'editHoraSaida',
+        alertaId: 'editHorariosAlerta',
+        botaoSalvar: document.getElementById('btnSalvarLoteCompleto'),
+        getLado: () => editLoteLado
+    });
     const statusMaquinas = JSON.parse(document.getElementById('status_maquinas_data').textContent);
     
     function showTabContent(targetId) {
@@ -1325,7 +1335,11 @@
         document.getElementById('editHoraSaida').value = horaOut;
         document.getElementById('editPreparacao').value = prep;
         document.getElementById('editMontagem').value = mont;
-        
+
+        // Já mostra o motivo de auditoria caso o registro aberto tenha horários inválidos
+        editLoteLado = lado || '';
+        if (validacaoHorariosEdit) validacaoHorariosEdit.revalidar();
+
         showModalSafely('modalEditarLote');
     }
 
@@ -1339,7 +1353,9 @@
         const prep = document.getElementById('editPreparacao').value;
         const mont = document.getElementById('editMontagem').value;
         const observacao = document.getElementById('editObservacao').value;
-        
+
+        if (validacaoHorariosEdit && !validacaoHorariosEdit.checar()) return;
+
         fetch("{% url 'laboratorio:api_editar_linha_coating' %}", {
             method: 'POST',
             headers: {
@@ -1362,7 +1378,7 @@
         .then(data => {
             if (data.success) {
                 location.reload();
-            } else {
+            } else if (!(validacaoHorariosEdit && validacaoHorariosEdit.mostrarErroServidor(data))) {
                 alert('Erro ao editar: ' + (data.error || 'Desconhecido'));
             }
         })
@@ -1479,8 +1495,9 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                location.reload(); 
+                location.reload();
             } else {
+                // data.error já traz o motivo de auditoria detalhado quando o servidor rejeita os horários
                 alert('Erro ao salvar: ' + (data.error || 'Desconhecido'));
             }
         })
