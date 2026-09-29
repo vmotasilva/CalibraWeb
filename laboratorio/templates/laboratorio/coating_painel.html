@@ -912,7 +912,14 @@
         saidaId: 'editHoraSaida',
         alertaId: 'editHorariosAlerta',
         botaoSalvar: document.getElementById('btnSalvarLoteCompleto'),
-        getLado: () => editLoteLado
+        getLado: () => editLoteLado,
+        urlAnalise: "{% url 'laboratorio:api_analisar_horarios_coating' %}",
+        getDadosAnalise: () => ({
+            id: document.getElementById('editLoteId').value,
+            lote: document.getElementById('editLoteNum').value,
+            maquina_id: (document.querySelector('#wrapperMaquinaEditLote select') || {}).value,
+            tratamento_id: (document.querySelector('#wrapperTratamentoEditLote select') || {}).value
+        })
     });
     const statusMaquinas = JSON.parse(document.getElementById('status_maquinas_data').textContent);
     

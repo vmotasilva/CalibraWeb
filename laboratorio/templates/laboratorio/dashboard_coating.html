@@ -949,7 +949,14 @@ const validacaoHorariosEdit = CoatingValidacao.ligar({
     saidaId: 'editHoraSaida',
     alertaId: 'editHorariosAlerta',
     botaoSalvar: document.getElementById('btnSalvarEdicaoLote'),
-    getLado: () => editLoteLado
+    getLado: () => editLoteLado,
+    urlAnalise: "{% url 'laboratorio:api_analisar_horarios_coating' %}",
+    getDadosAnalise: () => ({
+        id: document.getElementById('editLoteId').value,
+        lote: document.getElementById('editLoteNum').value,
+        maquina_id: (document.getElementById('editMaquinaSelect') || {}).value,
+        tratamento_id: (document.getElementById('editTratamentoSelect') || {}).value
+    })
 });
 
 function openDetalhesModal(trElement) {

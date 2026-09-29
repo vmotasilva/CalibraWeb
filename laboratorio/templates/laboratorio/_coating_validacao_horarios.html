@@ -1,13 +1,21 @@
+<style>
+    .coating-horarios-alerta .table { font-size: .8rem; }
+    .coating-horarios-alerta .table td, .coating-horarios-alerta .table th { padding: .15rem .4rem; white-space: nowrap; }
+    .coating-horarios-alerta .sugestao { background: rgba(255,255,255,.65); border-radius: .375rem; }
+    .coating-horarios-aplicado { animation: coatingHorarioAplicado 1.2s ease-out; }
+    @keyframes coatingHorarioAplicado { from { box-shadow: 0 0 0 .3rem rgba(25,135,84,.45); } to { box-shadow: none; } }
+</style>
 <script>
 /*
  * Validação de horários do Coating no ato do lançamento.
- * Espelha as regras do Modo Auditoria (over_24h, negative, missing) e de _validar_horarios_coating
- * em laboratorio/views.py — mantenha as duas em sincronia. O servidor também bloqueia.
+ * - validar(): regras do Modo Auditoria (bloqueiam), espelhando validar_horarios em
+ *   laboratorio/coating_horarios.py — mantenha as duas em sincronia. O servidor também bloqueia.
+ * - A análise no servidor (lotes vizinhos, duração típica) acrescenta contexto, avisos e
+ *   sugestões de correção automática ao alerta.
  */
 window.CoatingValidacao = (function () {
     const DURACAO_MAXIMA_MS = 24 * 60 * 60 * 1000;
     const TOLERANCIA_FUTURO_MS = 10 * 60 * 1000;
-    const DIA_MS = 24 * 60 * 60 * 1000;
 
     function parse(valor) {
         if (!valor) return null;
@@ -52,15 +60,16 @@ window.CoatingValidacao = (function () {
 
         if (entrada && saida) {
             const duracao = saida - entrada;
-            if (duracao <= 0) {
-                let detalhe = duracao === 0
-                    ? `A Hora Saída (${fmt(saida)}) é IGUAL à Hora Entrada. A saída precisa ser posterior à entrada. Confira se a hora foi digitada corretamente`
-                    : `A Hora Saída (${fmt(saida)}) é ${fmtDuracao(duracao)} ANTERIOR à Hora Entrada (${fmt(entrada)}). Um lote não pode sair antes de entrar. Confira se a hora foi digitada corretamente`;
-                const saidaDiaSeguinte = new Date(saida.getTime() + DIA_MS);
-                if (saidaDiaSeguinte - entrada < DURACAO_MAXIMA_MS) {
-                    detalhe += ` ou, se a saída ocorreu após a meia-noite, ajuste a DATA da saída para ${fmt(saidaDiaSeguinte)} (duração de ${fmtDuracao(saidaDiaSeguinte - entrada)})`;
-                }
-                anomalias.push({ codigo: 'negative', campos: ['entrada', 'saida'], titulo: 'Tempo negativo', detalhe: detalhe + '.' });
+            if (duracao === 0) {
+                anomalias.push({
+                    codigo: 'negative', campos: ['entrada', 'saida'], titulo: 'Tempo negativo',
+                    detalhe: `A Hora Saída (${fmt(saida)}) é IGUAL à Hora Entrada. A saída precisa ser posterior à entrada.`
+                });
+            } else if (duracao < 0) {
+                anomalias.push({
+                    codigo: 'negative', campos: ['entrada', 'saida'], titulo: 'Tempo negativo',
+                    detalhe: `A Hora Saída (${fmt(saida)}) é ${fmtDuracao(duracao)} ANTERIOR à Hora Entrada (${fmt(entrada)}). Um lote não pode sair antes de entrar.`
+                });
             } else if (duracao > DURACAO_MAXIMA_MS) {
                 anomalias.push({
                     codigo: 'over_24h', campos: ['entrada', 'saida'],
@@ -85,23 +94,90 @@ window.CoatingValidacao = (function () {
 
     function escapar(txt) {
         const div = document.createElement('div');
-        div.textContent = txt;
+        div.textContent = txt == null ? '' : String(txt);
         return div.innerHTML;
+    }
+
+    function csrfToken() {
+        const campo = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (campo) return campo.value;
+        const m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+        return m ? decodeURIComponent(m[1]) : '';
+    }
+
+    function renderContexto(ctx) {
+        if (!ctx || !ctx.vizinhos || !ctx.vizinhos.length) return '';
+        const status = {
+            ok: '<span class="badge bg-success">ok</span>',
+            aberto: '<span class="badge bg-secondary">em aberto</span>',
+            anomalia: '<span class="badge bg-danger">anomalia</span>'
+        };
+        const linhas = ctx.vizinhos.map(v => `
+            <tr class="${v.atual ? 'table-warning fw-bold' : ''}">
+                <td>${v.atual ? '▶ ' : ''}${escapar(v.lote)}</td><td>${escapar(v.lado)}</td>
+                <td>${escapar(v.entrada)}</td><td>${escapar(v.saida)}</td>
+                <td>${v.atual ? '<span class="badge bg-dark">este lançamento</span>' : (status[v.status] || '')}</td>
+            </tr>`).join('');
+        return `
+            <details class="mt-2" open>
+                <summary class="fw-bold">Lotes vizinhos na ${escapar(ctx.maquina)}
+                    <span class="fw-normal text-muted">· duração típica ${escapar(ctx.duracao_tipica)} (${escapar(ctx.base_duracao_tipica)})</span>
+                </summary>
+                <div class="table-responsive mt-1">
+                    <table class="table table-sm table-bordered bg-white mb-0">
+                        <thead><tr><th>Lote</th><th>Lado</th><th>Entrada</th><th>Saída</th><th></th></tr></thead>
+                        <tbody>${linhas}</tbody>
+                    </table>
+                </div>
+            </details>`;
+    }
+
+    function renderSugestoes(sugestoes) {
+        if (!sugestoes || !sugestoes.length) return '';
+        const itens = sugestoes.map((s, i) => `
+            <div class="sugestao border p-2 mt-2">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div>
+                        <span class="badge ${s.confianca === 'alta' ? 'bg-success' : 'bg-warning text-dark'} me-1">
+                            ${i === 0 ? 'Mais provável' : 'Alternativa'} · confiança ${s.confianca === 'alta' ? 'alta' : 'média'}
+                        </span>
+                        <strong>${escapar(s.titulo)}</strong>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-success text-nowrap" data-coating-sugestao="${i}">
+                        <i class="bi bi-magic me-1"></i>Aplicar correção
+                    </button>
+                </div>
+                <ul class="mb-0 ps-3 mt-1">${s.motivos.map(m => `<li>${escapar(m)}</li>`).join('')}</ul>
+            </div>`).join('');
+        return `<div class="mt-2"><div class="fw-bold"><i class="bi bi-lightbulb me-1"></i>Correção sugerida com base nos lotes vizinhos:</div>${itens}
+                <div class="text-muted mt-1">A correção só preenche os campos — revise e clique em <strong>Salvar Alterações</strong>.</div></div>`;
     }
 
     /*
      * Liga a validação a um modal de edição.
-     * cfg: { entradaId, saidaId, alertaId, botaoSalvar (elemento), getLado () => 'CC'|'CX' }
-     * Retorna { checar(): boolean, mostrarErroServidor(data): boolean, limpar() }.
+     * cfg: { entradaId, saidaId, alertaId, botaoSalvar (elemento), getLado () => 'CC'|'CX',
+     *        urlAnalise, getDadosAnalise () => {id, lote, maquina_id, tratamento_id} }
      */
     function ligar(cfg) {
         const inEntrada = document.getElementById(cfg.entradaId);
         const inSaida = document.getElementById(cfg.saidaId);
         const alerta = document.getElementById(cfg.alertaId);
         if (!inEntrada || !inSaida || !alerta) return null;
+        alerta.classList.add('coating-horarios-alerta');
 
-        function render(anomalias) {
-            // O seletor de data/hora da saída não oferece horários anteriores à entrada
+        let anomaliasAtuais = [];
+        let analise = null;        // última resposta do servidor
+        let chaveAnalise = '';     // valores a que a análise se refere
+        let seq = 0;
+        let timer = null;
+
+        const chaveAtual = () => `${inEntrada.value}|${inSaida.value}`;
+
+        function render() {
+            const anomalias = anomaliasAtuais;
+            const analiseValida = analise && chaveAnalise === chaveAtual() ? analise : null;
+            const avisos = analiseValida ? (analiseValida.avisos || []) : [];
+
             inSaida.min = inEntrada.value || '';
             const campos = new Set();
             anomalias.forEach(a => (a.campos || []).forEach(c => campos.add(c)));
@@ -109,34 +185,90 @@ window.CoatingValidacao = (function () {
             inSaida.classList.toggle('is-invalid', campos.has('saida'));
             if (cfg.botaoSalvar) cfg.botaoSalvar.disabled = anomalias.length > 0;
 
-            if (!anomalias.length) {
+            if (!anomalias.length && !avisos.length) {
                 alerta.classList.add('d-none');
                 alerta.innerHTML = '';
                 return;
             }
-            alerta.innerHTML =
-                `<div class="fw-bold mb-1"><i class="bi bi-shield-exclamation me-1"></i>` +
-                `Este lançamento cairia na Auditoria — corrija os horários para salvar:</div>` +
-                `<ul class="mb-0 ps-3">` +
-                anomalias.map(a => `<li><strong>${escapar(a.titulo)}:</strong> ${escapar(a.detalhe)}</li>`).join('') +
-                `</ul>`;
-            alerta.classList.remove('d-none');
+
+            let html = '';
+            if (anomalias.length) {
+                html += `<div class="fw-bold mb-1"><i class="bi bi-shield-exclamation me-1"></i>Este lançamento cairia na Auditoria — corrija os horários para salvar:</div>
+                         <ul class="mb-0 ps-3">${anomalias.map(a => `<li><strong>${escapar(a.titulo)}:</strong> ${escapar(a.detalhe)}</li>`).join('')}</ul>`;
+            } else {
+                html += `<div class="fw-bold mb-1"><i class="bi bi-exclamation-triangle me-1"></i>Confira antes de salvar:</div>
+                         <ul class="mb-0 ps-3">${avisos.map(a => `<li><strong>${escapar(a.titulo)}:</strong> ${escapar(a.detalhe)}</li>`).join('')}</ul>`;
+            }
+            if (analiseValida) {
+                if (anomalias.length) html += renderSugestoes(analiseValida.sugestoes);
+                if (anomalias.length && !(analiseValida.sugestoes || []).length) {
+                    html += `<div class="mt-2 text-muted">Não foi possível sugerir uma correção automática segura — confira os horários com o registro físico do lote.</div>`;
+                }
+                html += renderContexto(analiseValida.contexto);
+            } else if (cfg.urlAnalise) {
+                html += `<div class="mt-2 text-muted"><span class="spinner-border spinner-border-sm me-1"></span>Analisando lotes vizinhos...</div>`;
+            }
+
+            alerta.className = `coating-horarios-alerta alert ${anomalias.length ? 'alert-danger' : 'alert-warning'} small`;
+            alerta.innerHTML = html;
+            alerta.querySelectorAll('[data-coating-sugestao]').forEach(btn => {
+                btn.addEventListener('click', () => aplicarSugestao(analiseValida.sugestoes[+btn.dataset.coatingSugestao]));
+            });
         }
 
-        function checar() {
-            const lado = cfg.getLado ? cfg.getLado() : '';
-            const anomalias = validar(inEntrada.value, inSaida.value, lado);
-            render(anomalias);
-            if (anomalias.length) {
-                alerta.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                (anomalias[0].campos.includes('saida') ? inSaida : inEntrada).focus();
-            }
-            return anomalias.length === 0;
+        function aplicarSugestao(s) {
+            if (!s) return;
+            inEntrada.value = s.hora_entrada;
+            inSaida.value = s.hora_saida;
+            [inEntrada, inSaida].forEach(el => {
+                el.classList.remove('coating-horarios-aplicado');
+                void el.offsetWidth;
+                el.classList.add('coating-horarios-aplicado');
+            });
+            revalidar();
+        }
+
+        function analisar() {
+            if (!cfg.urlAnalise || !cfg.getDadosAnalise) return;
+            const dados = cfg.getDadosAnalise() || {};
+            if (!dados.id || (!inEntrada.value && !inSaida.value)) return;
+            const chave = chaveAtual();
+            const meu = ++seq;
+            fetch(cfg.urlAnalise, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() },
+                body: JSON.stringify(Object.assign({}, dados, { hora_entrada: inEntrada.value, hora_saida: inSaida.value }))
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (meu !== seq || !data.success) return;
+                analise = data;
+                chaveAnalise = chave;
+                render();
+            })
+            .catch(err => {
+                console.error('Análise de horários do coating falhou', err);
+                if (meu !== seq) return;
+                analise = { avisos: [], sugestoes: [], contexto: null };
+                chaveAnalise = chave;
+                render();
+            });
         }
 
         function revalidar() {
-            const lado = cfg.getLado ? cfg.getLado() : '';
-            render(validar(inEntrada.value, inSaida.value, lado));
+            anomaliasAtuais = validar(inEntrada.value, inSaida.value, cfg.getLado ? cfg.getLado() : '');
+            render();
+            clearTimeout(timer);
+            if (chaveAnalise !== chaveAtual()) timer = setTimeout(analisar, 350);
+        }
+
+        function checar() {
+            revalidar();
+            if (anomaliasAtuais.length) {
+                alerta.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                (anomaliasAtuais[0].campos.includes('saida') ? inSaida : inEntrada).focus();
+            }
+            return anomaliasAtuais.length === 0;
         }
 
         ['input', 'change'].forEach(ev => {
@@ -146,12 +278,14 @@ window.CoatingValidacao = (function () {
 
         return {
             checar: checar,
-            revalidar: revalidar,
-            limpar: () => render([]),
-            // Exibe anomalias devolvidas pelo servidor; retorna true se havia anomalias.
+            // Chamar ao abrir o modal: descarta a análise do registro anterior
+            revalidar: function () { analise = null; chaveAnalise = ''; revalidar(); },
+            // Exibe anomalias devolvidas pelo servidor ao salvar; retorna true se havia anomalias.
             mostrarErroServidor: function (data) {
                 if (!data || !Array.isArray(data.anomalias) || !data.anomalias.length) return false;
-                render(data.anomalias.map(a => Object.assign({ campos: ['entrada', 'saida'] }, a)));
+                anomaliasAtuais = data.anomalias.map(a => Object.assign({ campos: ['entrada', 'saida'] }, a));
+                render();
+                analisar();
                 alerta.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 return true;
             }

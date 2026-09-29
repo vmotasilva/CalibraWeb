@@ -72,6 +72,7 @@ urlpatterns = [
     path("coating/registro/editar_linha/", views.api_editar_linha_coating, name="api_editar_linha_coating"),
     path("coating/registro/editar_lote_completo/", views.editar_lote_completo_coating, name="editar_lote_completo_coating"),
     path("coating/celula/atualizar/", views.atualizar_celula_coating, name="atualizar_celula_coating"),
+    path("coating/registro/analisar-horarios/", views.api_analisar_horarios_coating, name="api_analisar_horarios_coating"),
     path("coating/manutencao/salvar/", views.registrar_manutencao_coating, name="registrar_manutencao_coating"),
     path("coating/registro/obter-manutencoes/", views.obter_manutencoes_lote, name="obter_manutencoes_lote"),
     path("coating/registro/obter-observacoes/", views.obter_observacoes_lote, name="obter_observacoes_lote"),

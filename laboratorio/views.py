@@ -45,6 +45,11 @@ from .models import (
     RespostaChecklistManutencao,
 )
 from maquinas.models import Maquina
+from .coating_horarios import (
+    analisar_horarios as analisar_horarios_coating,
+    parse_hora as parse_hora_coating,
+    validar_horarios as validar_horarios_coating,
+)
 
 
 def _atualizar_turno_coating(registro):
@@ -90,101 +95,6 @@ def _atualizar_turno_coating(registro):
             regra=regra_encontrada
         )
         registro.turno_coating = turno_diario
-
-
-# Regras espelhadas do Modo Auditoria do Painel de Coating (filtros over_24h, negative, missing).
-# Mantenha em sincronia com laboratorio/_coating_validacao_horarios.html (validação no navegador).
-COATING_DURACAO_MAXIMA = timedelta(hours=24)
-COATING_TOLERANCIA_FUTURO = timedelta(minutes=10)
-
-
-def _parse_hora_coating(valor):
-    """Converte o valor recebido (string ISO/datetime-local ou datetime) em datetime aware."""
-    if not valor:
-        return None
-    if isinstance(valor, str):
-        from django.utils.dateparse import parse_datetime
-        dt = parse_datetime(valor)
-        if dt is None:
-            raise ValueError(f"Formato de data/hora inválido: {valor}")
-    else:
-        dt = valor
-    if timezone.is_naive(dt):
-        dt = timezone.make_aware(dt, timezone.get_current_timezone())
-    return dt
-
-
-def _formatar_duracao_coating(td):
-    total_min = int(abs(td).total_seconds() // 60)
-    dias, resto = divmod(total_min, 24 * 60)
-    horas, minutos = divmod(resto, 60)
-    partes = []
-    if dias:
-        partes.append(f"{dias}d")
-    partes.append(f"{horas:02d}h{minutos:02d}min")
-    return " ".join(partes)
-
-
-def _validar_horarios_coating(entrada, saida, lado=None):
-    """
-    Verifica se os horários de uma linha de coating configurariam motivo de auditoria.
-    Retorna lista de dicts {codigo, titulo, detalhe}; lista vazia = horários válidos.
-    """
-    fmt = lambda dt: timezone.localtime(dt).strftime("%d/%m/%Y %H:%M")
-    linha = f" da linha {lado}" if lado else ""
-    agora = timezone.now()
-    anomalias = []
-
-    if saida and not entrada:
-        anomalias.append({
-            "codigo": "missing",
-            "titulo": "Horário incompleto: saída sem entrada",
-            "detalhe": f"A Hora Saída{linha} foi informada ({fmt(saida)}), mas a Hora Entrada está vazia. "
-                       f"Informe também a Hora Entrada desta linha.",
-        })
-    elif entrada and not saida and agora - entrada > COATING_DURACAO_MAXIMA:
-        anomalias.append({
-            "codigo": "missing",
-            "titulo": "Horário incompleto: lote sem saída há mais de 24h",
-            "detalhe": f"A entrada{linha} foi em {fmt(entrada)} (há {_formatar_duracao_coating(agora - entrada)}) "
-                       f"e a Hora Saída continua vazia. Informe a Hora Saída.",
-        })
-
-    if entrada and saida:
-        duracao = saida - entrada
-        if duracao <= timedelta(0):
-            if duracao == timedelta(0):
-                detalhe = (f"A Hora Saída ({fmt(saida)}) é IGUAL à Hora Entrada. A saída precisa ser "
-                           f"posterior à entrada. Confira se a hora foi digitada corretamente")
-            else:
-                detalhe = (f"A Hora Saída ({fmt(saida)}) é {_formatar_duracao_coating(duracao)} ANTERIOR à "
-                           f"Hora Entrada ({fmt(entrada)}). Um lote não pode sair antes de entrar. "
-                           f"Confira se a hora foi digitada corretamente")
-            saida_dia_seguinte = saida + timedelta(days=1)
-            if saida_dia_seguinte - entrada < COATING_DURACAO_MAXIMA:
-                detalhe += (f" ou, se a saída ocorreu após a meia-noite, ajuste a DATA da saída para "
-                            f"{fmt(saida_dia_seguinte)} (duração de "
-                            f"{_formatar_duracao_coating(saida_dia_seguinte - entrada)})")
-            anomalias.append({"codigo": "negative", "titulo": "Tempo negativo", "detalhe": detalhe + "."})
-        elif duracao > COATING_DURACAO_MAXIMA:
-            anomalias.append({
-                "codigo": "over_24h",
-                "titulo": "Lote com mais de 24h",
-                "detalhe": f"Entre a entrada ({fmt(entrada)}) e a saída ({fmt(saida)}) há "
-                           f"{_formatar_duracao_coating(duracao)} — acima do limite de 24h. "
-                           f"Provável erro na DATA da entrada ou da saída.",
-            })
-
-    for campo, valor in (("Entrada", entrada), ("Saída", saida)):
-        if valor and valor - agora > COATING_TOLERANCIA_FUTURO:
-            anomalias.append({
-                "codigo": "future",
-                "titulo": f"Hora {campo} no futuro",
-                "detalhe": f"A Hora {campo}{linha} ({fmt(valor)}) é posterior ao momento atual "
-                           f"({fmt(agora)}). Registre apenas horários que já ocorreram.",
-            })
-
-    return anomalias
 
 
 def _resposta_anomalias_coating(anomalias):
@@ -1712,11 +1622,11 @@ def api_editar_linha_coating(request):
 
         # Valida os horários resultantes ANTES de qualquer gravação (inclusive a do lote CC/CX)
         try:
-            entrada = _parse_hora_coating(data['hora_entrada']) if 'hora_entrada' in data else registro.hora_entrada
-            saida = _parse_hora_coating(data['hora_saida']) if 'hora_saida' in data else registro.hora_saida
+            entrada = parse_hora_coating(data['hora_entrada']) if 'hora_entrada' in data else registro.hora_entrada
+            saida = parse_hora_coating(data['hora_saida']) if 'hora_saida' in data else registro.hora_saida
         except ValueError as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=400)
-        anomalias = _validar_horarios_coating(entrada, saida, registro.lado)
+        anomalias = validar_horarios_coating(entrada, saida, registro.lado)
         if anomalias:
             return _resposta_anomalias_coating(anomalias)
 
@@ -1823,9 +1733,9 @@ def atualizar_celula_coating(request):
                         
                 setattr(registro, campo, parsed)
 
-            anomalias = _validar_horarios_coating(
-                _parse_hora_coating(registro.hora_entrada),
-                _parse_hora_coating(registro.hora_saida),
+            anomalias = validar_horarios_coating(
+                parse_hora_coating(registro.hora_entrada),
+                parse_hora_coating(registro.hora_saida),
                 registro.lado,
             )
             if anomalias:
@@ -1838,6 +1748,26 @@ def atualizar_celula_coating(request):
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+@login_required
+@require_POST
+def api_analisar_horarios_coating(request):
+    """Somente leitura: anomalias, contexto dos lotes vizinhos e sugestões de correção dos horários."""
+    try:
+        data = json.loads(request.body)
+        registro = get_object_or_404(
+            RegistroCoating.objects.select_related('maquina', 'tratamento', 'turno_coating'), pk=data.get('id')
+        )
+        entrada = parse_hora_coating(data.get('hora_entrada'))
+        saida = parse_hora_coating(data.get('hora_saida'))
+        maquina = Maquina.objects.filter(pk=data['maquina_id']).first() if data.get('maquina_id') else None
+        tratamento = TratamentoAntiReflexo.objects.filter(pk=data['tratamento_id']).first() if data.get('tratamento_id') else None
+        lote = int(data['lote']) if str(data.get('lote') or '').isdigit() else None
+    except (ValueError, json.JSONDecodeError) as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+    resultado = analisar_horarios_coating(registro, entrada, saida, maquina=maquina, tratamento=tratamento, lote=lote)
+    return JsonResponse({'success': True, **resultado})
 
 @login_required
 def equipe_coating_list(request):

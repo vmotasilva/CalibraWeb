@@ -110,3 +110,109 @@ class CoatingValidacaoHorariosTests(TestCase):
         )
         self.assertEqual(response.status_code, 400)
         self.assertEqual(self._codigos(response), ["over_24h"])
+
+
+class CoatingSugestaoCorrecaoTests(TestCase):
+    """Correção automática baseada nos lotes vizinhos e na duração típica da máquina."""
+
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="coating.sug", password="x", is_staff=True)
+        self.client.force_login(self.user)
+        self.regra = RegraTurnoCoating.objects.create(nome="Turno 01", hora_inicio=time(0, 0), hora_fim=time(23, 59))
+        self.maquina = Maquina.objects.create(
+            codigo="DLX1200",
+            categoria=CategoriaMaquina.objects.create(nome="Evaporadora"),
+            setor=Setor.objects.create(nome="Coating"),
+        )
+        self.tratamento = TratamentoAntiReflexo.objects.create(nome="BLUE CUT")
+        self.dia = timezone.localdate() - timedelta(days=5)
+        # Histórico: ciclos de 50 min em dias anteriores (define a duração típica)
+        for i in range(12):
+            e = self._dt(-3, 8 + i)
+            self._criar(10000 + i, "CC", e, e + timedelta(minutes=50))
+
+    def _dt(self, dias, hora, minuto=0):
+        return timezone.make_aware(datetime.combine(self.dia + timedelta(days=dias), time(hora, minuto)))
+
+    def _criar(self, lote, lado, entrada, saida):
+        turno, _ = TurnoCoating.objects.get_or_create(
+            data=timezone.localtime(entrada).date() if entrada else self.dia, regra=self.regra
+        )
+        return RegistroCoating.objects.create(
+            turno_coating=turno, maquina=self.maquina, lote=lote, tratamento=self.tratamento,
+            lado=lado, hora_entrada=entrada, hora_saida=saida,
+        )
+
+    def _analisar(self, registro, entrada, saida):
+        response = self.client.post(
+            reverse("laboratorio:api_analisar_horarios_coating"),
+            data=json.dumps({"id": registro.id,
+                             "hora_entrada": timezone.localtime(entrada).strftime("%Y-%m-%dT%H:%M") if entrada else "",
+                             "hora_saida": timezone.localtime(saida).strftime("%Y-%m-%dT%H:%M") if saida else ""}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        return response.json()
+
+    def test_hora_digitada_errada_sugere_encaixe_entre_vizinhos(self):
+        # Caso da tela: entrada 02:37, saída digitada 02:06 (deveria ser 03:06)
+        self._criar(13852, "CC", self._dt(0, 0, 40), self._dt(0, 1, 30))
+        self._criar(13852, "CX", self._dt(0, 1, 40), self._dt(0, 2, 30))
+        self._criar(13859, "CX", self._dt(0, 3, 40), self._dt(0, 4, 30))
+        atual = self._criar(13859, "CC", self._dt(0, 2, 37), None)
+
+        data = self._analisar(atual, self._dt(0, 2, 37), self._dt(0, 2, 6))
+
+        self.assertEqual([a["codigo"] for a in data["anomalias"]], ["negative"])
+        melhor = data["sugestoes"][0]
+        self.assertEqual(melhor["hora_saida"], timezone.localtime(self._dt(0, 3, 6)).strftime("%Y-%m-%dT%H:%M"))
+        self.assertEqual(melhor["campo"], "saida")
+        self.assertEqual(melhor["confianca"], "alta")
+        self.assertTrue(any("13852 CX" in m and "13859 CX" in m for m in melhor["motivos"]))
+        lotes = {(v["lote"], v["lado"]) for v in data["contexto"]["vizinhos"]}
+        self.assertTrue({(13852, "CC"), (13852, "CX"), (13859, "CX"), (13859, "CC")} <= lotes)
+
+    def test_virada_de_meia_noite_sugere_apenas_trocar_a_data(self):
+        self._criar(13900, "CX", self._dt(1, 1, 0), self._dt(1, 1, 50))
+        atual = self._criar(13900, "CC", self._dt(0, 23, 40), None)
+
+        data = self._analisar(atual, self._dt(0, 23, 40), self._dt(0, 0, 30))
+
+        melhor = data["sugestoes"][0]
+        self.assertEqual(melhor["hora_saida"], timezone.localtime(self._dt(1, 0, 30)).strftime("%Y-%m-%dT%H:%M"))
+        self.assertIn("apenas a data", melhor["titulo"])
+
+    def test_sugestao_nunca_sobrepoe_outro_ciclo(self):
+        vizinho = self._criar(13860, "CC", self._dt(0, 3, 0), self._dt(0, 3, 50))
+        atual = self._criar(13859, "CC", self._dt(0, 2, 37), None)
+
+        data = self._analisar(atual, self._dt(0, 2, 37), self._dt(0, 2, 6))
+
+        for s in data["sugestoes"]:
+            e = timezone.make_aware(datetime.fromisoformat(s["hora_entrada"]))
+            sa = timezone.make_aware(datetime.fromisoformat(s["hora_saida"]))
+            self.assertTrue(sa <= vizinho.hora_entrada + timedelta(minutes=10) or e >= vizinho.hora_saida - timedelta(minutes=10))
+
+    def test_horario_vazio_nao_gera_sugestao_inventada(self):
+        atual = self._criar(13859, "CC", self._dt(0, 2, 37), None)
+        data = self._analisar(atual, self._dt(0, 2, 37), None)
+        self.assertEqual([a["codigo"] for a in data["anomalias"]], ["missing"])
+        self.assertEqual(data["sugestoes"], [])
+
+    def test_horarios_validos_com_sobreposicao_geram_aviso(self):
+        self._criar(13859, "CX", self._dt(0, 3, 0), self._dt(0, 3, 50))
+        atual = self._criar(13859, "CC", self._dt(0, 2, 37), None)
+
+        data = self._analisar(atual, self._dt(0, 2, 37), self._dt(0, 3, 30))
+
+        self.assertEqual(data["anomalias"], [])
+        self.assertEqual([a["codigo"] for a in data["avisos"]], ["overlap"])
+
+    def test_paginas_de_edicao_carregam_validacao(self):
+        self.client.force_login(get_user_model().objects.create_superuser(username="coating.admin", password="x"))
+        url_analise = reverse("laboratorio:api_analisar_horarios_coating")
+        for nome in ("laboratorio:coating_painel", "laboratorio:dashboard_coating"):
+            response = self.client.get(reverse(nome))
+            self.assertEqual(response.status_code, 200, nome)
+            self.assertContains(response, "CoatingValidacao.ligar")
+            self.assertContains(response, url_analise)
