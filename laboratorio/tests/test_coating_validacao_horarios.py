@@ -212,18 +212,33 @@ class CoatingSugestaoCorrecaoTests(TestCase):
         self.assertEqual(melhor["hora_saida"], timezone.localtime(self._dt(0, 1, 40)).strftime("%Y-%m-%dT%H:%M"))
         self.assertTrue(any("coerente com a coluna Data" in m for m in melhor["motivos"]))
         linha_atual = next(v for v in data["contexto"]["vizinhos"] if v["atual"])
-        self.assertIn("TURNO 03", linha_atual["turno"])
+        self.assertEqual(linha_atual["turno"], "TURNO 03")
 
-    def test_sugestao_nunca_sobrepoe_outro_ciclo(self):
-        vizinho = self._criar(13860, "CC", self._dt(0, 3, 0), self._dt(0, 3, 50))
-        atual = self._criar(13859, "CC", self._dt(0, 2, 37), None)
+    def test_sugestao_sobreposta_aparece_com_confianca_baixa(self):
+        # Caso da tela: 13937 CC entrada 15/09 22:37, saída digitada 16/09 23:32. Um vizinho
+        # registrado sobre o horário correto não pode fazer a sugestão sumir.
+        vizinho = self._criar(13937, "CX", self._dt(0, 23, 0), self._dt(0, 23, 50))
+        atual = self._criar(13937, "CC", self._dt(0, 22, 37), None)
 
-        data = self._analisar(atual, self._dt(0, 2, 37), self._dt(0, 2, 6))
+        data = self._analisar(atual, self._dt(0, 22, 37), self._dt(1, 23, 32))
 
-        for s in data["sugestoes"]:
-            e = timezone.make_aware(datetime.fromisoformat(s["hora_entrada"]))
-            sa = timezone.make_aware(datetime.fromisoformat(s["hora_saida"]))
-            self.assertTrue(sa <= vizinho.hora_entrada + timedelta(minutes=10) or e >= vizinho.hora_saida - timedelta(minutes=10))
+        melhor = data["sugestoes"][0]
+        self.assertEqual(melhor["hora_saida"], timezone.localtime(self._dt(0, 23, 32)).strftime("%Y-%m-%dT%H:%M"))
+        self.assertEqual(melhor["confianca"], "baixa")
+        self.assertTrue(any("sobrepõe" in m and "13937 CX" in m for m in melhor["motivos"]))
+        self.assertTrue(vizinho.hora_entrada < self._dt(0, 23, 32))
+
+    def test_sugestao_sem_sobreposicao_vence_a_sobreposta(self):
+        self._criar(13860, "CC", self._dt(0, 3, 0), self._dt(0, 3, 50))
+        atual = self._criar(13859, "CC", self._dt(0, 1, 37), None)
+
+        data = self._analisar(atual, self._dt(0, 1, 37), self._dt(0, 1, 6))
+
+        melhor = data["sugestoes"][0]
+        self.assertNotEqual(melhor["confianca"], "baixa")
+        self.assertLessEqual(
+            timezone.make_aware(datetime.fromisoformat(melhor["hora_saida"])), self._dt(0, 3, 10)
+        )
 
     def test_horario_vazio_nao_gera_sugestao_inventada(self):
         atual = self._criar(13859, "CC", self._dt(0, 2, 37), None)

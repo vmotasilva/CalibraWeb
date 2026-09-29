@@ -1,6 +1,8 @@
 <style>
     .coating-horarios-alerta .table { font-size: .8rem; }
-    .coating-horarios-alerta .table td, .coating-horarios-alerta .table th { padding: .15rem .4rem; white-space: nowrap; }
+    .coating-horarios-alerta .table { table-layout: auto; text-align: left; }
+    .coating-horarios-alerta .table td, .coating-horarios-alerta .table th { padding: .15rem .35rem; vertical-align: middle; }
+    .coating-horarios-alerta .table .col-turno { font-size: .7rem; color: #6c757d; }
     .coating-horarios-alerta .sugestao { background: rgba(255,255,255,.65); border-radius: .375rem; }
     .coating-horarios-aplicado { animation: coatingHorarioAplicado 1.2s ease-out; }
     @keyframes coatingHorarioAplicado { from { box-shadow: 0 0 0 .3rem rgba(25,135,84,.45); } to { box-shadow: none; } }
@@ -114,7 +116,7 @@ window.CoatingValidacao = (function () {
         };
         const linhas = ctx.vizinhos.map(v => `
             <tr class="${v.atual ? 'table-warning fw-bold' : ''}">
-                <td>${escapar(v.turno || '—')}</td>
+                <td>${escapar(v.data)}${v.turno ? `<div class="col-turno">${escapar(v.turno)}</div>` : ''}</td>
                 <td>${v.atual ? '▶ ' : ''}${escapar(v.lote)}</td><td>${escapar(v.lado)}</td>
                 <td>${escapar(v.entrada)}</td><td>${escapar(v.saida)}</td>
                 <td>${v.atual ? '<span class="badge bg-dark">este lançamento</span>' : (status[v.status] || '')}</td>
@@ -135,12 +137,17 @@ window.CoatingValidacao = (function () {
 
     function renderSugestoes(sugestoes) {
         if (!sugestoes || !sugestoes.length) return '';
+        const badges = {
+            alta: ['bg-success', 'confiança alta'],
+            media: ['bg-warning text-dark', 'confiança média'],
+            baixa: ['bg-secondary', 'confiança baixa — conflita com outro lote']
+        };
         const itens = sugestoes.map((s, i) => `
             <div class="sugestao border p-2 mt-2">
                 <div class="d-flex justify-content-between align-items-start gap-2">
                     <div>
-                        <span class="badge ${s.confianca === 'alta' ? 'bg-success' : 'bg-warning text-dark'} me-1">
-                            ${i === 0 ? 'Mais provável' : 'Alternativa'} · confiança ${s.confianca === 'alta' ? 'alta' : 'média'}
+                        <span class="badge ${(badges[s.confianca] || badges.media)[0]} me-1">
+                            ${i === 0 ? 'Mais provável' : 'Alternativa'} · ${(badges[s.confianca] || badges.media)[1]}
                         </span>
                         <strong>${escapar(s.titulo)}</strong>
                     </div>
