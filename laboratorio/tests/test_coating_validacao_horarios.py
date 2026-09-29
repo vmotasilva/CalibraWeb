@@ -182,6 +182,38 @@ class CoatingSugestaoCorrecaoTests(TestCase):
         self.assertEqual(melhor["hora_saida"], timezone.localtime(self._dt(1, 0, 30)).strftime("%Y-%m-%dT%H:%M"))
         self.assertIn("apenas a data", melhor["titulo"])
 
+    def test_respeita_coluna_data_da_linha(self):
+        # Caso da tela: lote 13878 CC na coluna Data 04/09 · Turno 03, entrada 04/09 00:55 e
+        # saída digitada 05/09 01:40. A data errada é a da saída, não a da entrada.
+        self.regra.ativo = False
+        self.regra.save()
+        RegraTurnoCoating.objects.create(nome="TURNO 01", hora_inicio=time(6, 0), hora_fim=time(15, 59))
+        turno2 = RegraTurnoCoating.objects.create(nome="TURNO 02", hora_inicio=time(16, 0), hora_fim=time(23, 29))
+        turno3 = RegraTurnoCoating.objects.create(nome="TURNO 03", hora_inicio=time(23, 30), hora_fim=time(5, 59))
+
+        def criar(lote, lado, regra, entrada, saida):
+            turno, _ = TurnoCoating.objects.get_or_create(data=timezone.localtime(entrada).date(), regra=regra)
+            return RegistroCoating.objects.create(
+                turno_coating=turno, maquina=self.maquina, lote=lote, tratamento=self.tratamento,
+                lado=lado, hora_entrada=entrada, hora_saida=saida,
+            )
+
+        criar(13876, "CC", turno2, self._dt(0, 21, 0), self._dt(0, 21, 40))
+        criar(13877, "CX", turno2, self._dt(0, 22, 40), self._dt(0, 23, 25))
+        criar(13879, "CC", turno3, self._dt(1, 1, 51), self._dt(1, 2, 35))
+        atual = criar(13878, "CC", turno3, self._dt(0, 0, 55), None)
+
+        data = self._analisar(atual, self._dt(0, 0, 55), self._dt(1, 1, 40))
+
+        self.assertEqual([a["codigo"] for a in data["anomalias"]], ["over_24h"])
+        melhor = data["sugestoes"][0]
+        self.assertEqual(melhor["campo"], "saida")
+        self.assertEqual(melhor["hora_entrada"], timezone.localtime(self._dt(0, 0, 55)).strftime("%Y-%m-%dT%H:%M"))
+        self.assertEqual(melhor["hora_saida"], timezone.localtime(self._dt(0, 1, 40)).strftime("%Y-%m-%dT%H:%M"))
+        self.assertTrue(any("coerente com a coluna Data" in m for m in melhor["motivos"]))
+        linha_atual = next(v for v in data["contexto"]["vizinhos"] if v["atual"])
+        self.assertIn("TURNO 03", linha_atual["turno"])
+
     def test_sugestao_nunca_sobrepoe_outro_ciclo(self):
         vizinho = self._criar(13860, "CC", self._dt(0, 3, 0), self._dt(0, 3, 50))
         atual = self._criar(13859, "CC", self._dt(0, 2, 37), None)

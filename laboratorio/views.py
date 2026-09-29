@@ -48,6 +48,7 @@ from maquinas.models import Maquina
 from .coating_horarios import (
     analisar_horarios as analisar_horarios_coating,
     parse_hora as parse_hora_coating,
+    regra_turno_para,
     validar_horarios as validar_horarios_coating,
 )
 
@@ -75,19 +76,8 @@ def _atualizar_turno_coating(registro):
         return
         
     hora_time = timezone.localtime(hora_entrada).time()
-    regras = RegraTurnoCoating.objects.filter(ativo=True)
-    
-    regra_encontrada = None
-    for regra in regras:
-        if regra.hora_inicio <= regra.hora_fim:
-            if regra.hora_inicio <= hora_time <= regra.hora_fim:
-                regra_encontrada = regra
-                break
-        else:
-            if hora_time >= regra.hora_inicio or hora_time <= regra.hora_fim:
-                regra_encontrada = regra
-                break
-                
+    regra_encontrada = regra_turno_para(hora_time, RegraTurnoCoating.objects.filter(ativo=True))
+
     if regra_encontrada:
         data_escolhida = timezone.localtime(registro.hora_entrada).date()
         turno_diario, created = TurnoCoating.objects.get_or_create(

@@ -14,7 +14,7 @@ from statistics import median
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
-from .models import RegistroCoating
+from .models import RegistroCoating, RegraTurnoCoating
 
 DURACAO_MAXIMA = timedelta(hours=24)
 TOLERANCIA_FUTURO = timedelta(minutes=10)
@@ -25,6 +25,9 @@ AMOSTRA_MINIMA_TRATAMENTO = 10
 AMOSTRA_MINIMA_MAQUINA = 5
 LOTES_VIZINHOS = 2  # quantos números de lote antes/depois considerar
 MAX_SUGESTOES = 3
+# Pesos da nota das sugestões (menor = melhor)
+PESO_FORA_DO_TURNO = 1.5   # entrada deixaria de bater com a coluna Data (dia + turno) da linha
+PESO_LOTE_FORA_DE_ORDEM = 0.4  # por número de lote vizinho fora da ordem
 
 
 def parse_hora(valor):
@@ -153,9 +156,27 @@ def duracao_tipica(maquina, tratamento):
     return DURACAO_PADRAO, "valor padrão — pouco histórico nesta máquina", False
 
 
+def regra_turno_para(hora, regras):
+    """Regra de turno que contém o horário (mesma lógica que define a coluna Data do painel)."""
+    for regra in regras:
+        if regra.hora_inicio <= regra.hora_fim:
+            if regra.hora_inicio <= hora <= regra.hora_fim:
+                return regra
+        elif hora >= regra.hora_inicio or hora <= regra.hora_fim:
+            return regra
+    return None
+
+
+def _rotulo_turno(turno):
+    if not turno:
+        return ""
+    return f"{turno.data:%d/%m/%Y}" + (f" · {turno.regra.nome}" if turno.regra_id else "")
+
+
 class _Ciclo:
     def __init__(self, reg):
         self.id = reg.id
+        self.turno = _rotulo_turno(reg.turno_coating)
         self.lote = reg.lote
         self.lado = reg.lado
         self.entrada = reg.hora_entrada
@@ -235,7 +256,7 @@ def analisar_horarios(registro, entrada, saida, maquina=None, tratamento=None, l
     ciclos_tempo = [
         _Ciclo(r) for r in RegistroCoating.objects.filter(
             maquina=maquina, hora_entrada__range=(janela_ini, janela_fim)
-        ).exclude(pk=registro.pk)[:500]
+        ).exclude(pk=registro.pk).select_related("turno_coating__regra")[:500]
     ]
     ancoras = [c for c in ciclos_tempo if c.valido]
 
@@ -244,17 +265,29 @@ def analisar_horarios(registro, entrada, saida, maquina=None, tratamento=None, l
     qs_lotes = RegistroCoating.objects.filter(
         maquina=maquina,
         turno_coating__data__range=(data_ref - timedelta(days=3), data_ref + timedelta(days=3)),
-    ).exclude(pk=registro.pk)
+    ).exclude(pk=registro.pk).select_related("turno_coating__regra")
     anteriores = list(qs_lotes.filter(lote__lt=lote).order_by("-lote").values_list("lote", flat=True).distinct()[:LOTES_VIZINHOS])
     posteriores = list(qs_lotes.filter(lote__gt=lote).order_by("lote").values_list("lote", flat=True).distinct()[:LOTES_VIZINHOS])
     vizinhos = [_Ciclo(r) for r in qs_lotes.filter(lote__in=anteriores + posteriores + [lote])]
 
     def violacoes_ordem(e):
-        """Lotes de número menor que entraram depois deste, ou maior que entraram antes."""
-        return [
-            v for v in vizinhos
+        """Números de lote menores que entraram depois deste, ou maiores que entraram antes."""
+        return sorted({
+            v.lote for v in vizinhos
             if v.entrada and v.lote != lote and ((v.lote < lote and v.entrada > e) or (v.lote > lote and v.entrada < e))
-        ]
+        })
+
+    # A coluna Data (dia + turno) da linha: a entrada sugerida deve continuar nela.
+    turno = registro.turno_coating
+    rotulo_turno = _rotulo_turno(turno)
+    regras = list(RegraTurnoCoating.objects.filter(ativo=True)) if turno and turno.regra_id else []
+
+    def no_turno_da_linha(e):
+        if not regras:
+            return True
+        local = timezone.localtime(e)
+        regra = regra_turno_para(local.time(), regras)
+        return local.date() == turno.data and regra is not None and regra.id == turno.regra_id
 
     def conflitos(e, s):
         return [a for a in ancoras if _sobreposicao(e, s, a.entrada, a.saida) > TOLERANCIA_SOBREPOSICAO]
@@ -294,15 +327,21 @@ def analisar_horarios(registro, entrada, saida, maquina=None, tratamento=None, l
         if conflitos(e, s):
             continue
         fora_de_ordem = violacoes_ordem(e)
-        nota = abs(math.log(razao)) + custo + 0.4 * len(fora_de_ordem)
-        avaliados.append((nota, e, s, campo, descricao, fora_de_ordem))
+        no_turno = no_turno_da_linha(e)
+        nota = (abs(math.log(razao)) + custo + PESO_LOTE_FORA_DE_ORDEM * len(fora_de_ordem)
+                + (0 if no_turno else PESO_FORA_DO_TURNO))
+        avaliados.append((nota, e, s, campo, descricao, fora_de_ordem, no_turno))
 
     avaliados.sort(key=lambda x: x[0])
     sugestoes = []
-    for i, (nota, e, s, campo, descricao, fora_de_ordem) in enumerate(avaliados[:MAX_SUGESTOES]):
+    for i, (nota, e, s, campo, descricao, fora_de_ordem, no_turno) in enumerate(avaliados[:MAX_SUGESTOES]):
         anterior = max((a for a in ancoras if a.saida <= e + TOLERANCIA_SOBREPOSICAO), key=lambda a: a.saida, default=None)
         seguinte = min((a for a in ancoras if a.entrada >= s - TOLERANCIA_SOBREPOSICAO), key=lambda a: a.entrada, default=None)
-        motivos = [f"Duração resultante de {formatar_duracao(s - e)} (típica: {formatar_duracao(tipica)}, {base_tipica})."]
+        motivos = []
+        if rotulo_turno and regras:
+            motivos.append(f"Entrada coerente com a coluna Data da linha ({rotulo_turno})." if no_turno else
+                           f"Atenção: a entrada sairia da coluna Data da linha ({rotulo_turno}).")
+        motivos += [f"Duração resultante de {formatar_duracao(s - e)} (típica: {formatar_duracao(tipica)}, {base_tipica})."]
         if anterior or seguinte:
             partes = []
             if anterior:
@@ -314,13 +353,13 @@ def analisar_horarios(registro, entrada, saida, maquina=None, tratamento=None, l
             motivos.append("Não há ciclos próximos registrados nesta máquina para confirmar o encaixe.")
         if fora_de_ordem:
             motivos.append("Atenção: fica fora da ordem numérica em relação a "
-                           + ", ".join(sorted({f"lote {v.lote}" for v in fora_de_ordem})) + ".")
+                           + ", ".join(f"lote {n}" for n in fora_de_ordem) + ".")
         elif any(v.lote != lote and v.entrada for v in vizinhos):
             motivos.append("Respeita a ordem dos números de lote vizinhos.")
 
         segunda = avaliados[i + 1][0] if i + 1 < len(avaliados) else None
         confianca = "alta" if (
-            i == 0 and (segunda is None or segunda - nota >= 0.5) and (anterior or seguinte) and not fora_de_ordem
+            i == 0 and (segunda is None or segunda - nota >= 0.5) and (anterior or seguinte) and not fora_de_ordem and no_turno
         ) else "media"
         sugestoes.append({
             "hora_entrada": _fmt_input(e),
@@ -334,13 +373,13 @@ def analisar_horarios(registro, entrada, saida, maquina=None, tratamento=None, l
 
     # --- Contexto exibido ao usuário (lotes vizinhos na ordem numérica)
     linhas = [{
-        "lote": v.lote, "lado": v.lado, "atual": False,
+        "lote": v.lote, "lado": v.lado, "atual": False, "turno": v.turno,
         "entrada": _fmt_curto(v.entrada) if v.entrada else "—",
         "saida": _fmt_curto(v.saida) if v.saida else "—",
         "status": "ok" if v.valido else ("aberto" if v.entrada and not v.saida else "anomalia"),
     } for v in vizinhos]
     linhas.append({
-        "lote": lote, "lado": registro.lado, "atual": True,
+        "lote": lote, "lado": registro.lado, "atual": True, "turno": rotulo_turno,
         "entrada": _fmt_curto(entrada) if entrada else "—",
         "saida": _fmt_curto(saida) if saida else "—",
         "status": "anomalia" if anomalias else "ok",

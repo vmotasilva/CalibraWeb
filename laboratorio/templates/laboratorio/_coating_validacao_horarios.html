@@ -114,6 +114,7 @@ window.CoatingValidacao = (function () {
         };
         const linhas = ctx.vizinhos.map(v => `
             <tr class="${v.atual ? 'table-warning fw-bold' : ''}">
+                <td>${escapar(v.turno || '—')}</td>
                 <td>${v.atual ? '▶ ' : ''}${escapar(v.lote)}</td><td>${escapar(v.lado)}</td>
                 <td>${escapar(v.entrada)}</td><td>${escapar(v.saida)}</td>
                 <td>${v.atual ? '<span class="badge bg-dark">este lançamento</span>' : (status[v.status] || '')}</td>
@@ -125,7 +126,7 @@ window.CoatingValidacao = (function () {
                 </summary>
                 <div class="table-responsive mt-1">
                     <table class="table table-sm table-bordered bg-white mb-0">
-                        <thead><tr><th>Lote</th><th>Lado</th><th>Entrada</th><th>Saída</th><th></th></tr></thead>
+                        <thead><tr><th>Data</th><th>Lote</th><th>Lado</th><th>Entrada</th><th>Saída</th><th></th></tr></thead>
                         <tbody>${linhas}</tbody>
                     </table>
                 </div>
