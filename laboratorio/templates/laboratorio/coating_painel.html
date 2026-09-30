@@ -18,6 +18,16 @@
     .bg-lote-group {
         background-color: #e2e8f0 !important;
     }
+
+    /* Cabeçalhos ordenáveis */
+    .th-ordenavel {
+        color: inherit;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+    .th-ordenavel:hover { color: inherit; text-decoration: underline; }
+    .th-ordenavel .bi { font-size: 0.75em; opacity: 0.35; }
+    .th-ordenavel:hover .bi, .th-ordenavel.ativa .bi { opacity: 1; }
 </style>
 <div class="mt-3">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
@@ -159,6 +169,9 @@
             <a href="?audit=true&anomaly=missing" class="btn btn-sm {% if anomaly_filter == 'missing' %}btn-danger{% else %}btn-outline-danger{% endif %} fw-bold" title="Horários faltantes">
                 <i class="bi bi-question-circle"></i> Horários Incompletos
             </a>
+            <a href="?audit=true&anomaly=overlap" class="btn btn-sm {% if anomaly_filter == 'overlap' %}btn-danger{% else %}btn-outline-danger{% endif %} fw-bold" title="Lotes cujo horário se sobrepõe a outro lote na mesma máquina">
+                <i class="bi bi-intersect"></i> Conflito de Horários
+            </a>
         </div>
     </div>
     {% endif %}
@@ -287,17 +300,17 @@
             <table class="table table-hover align-middle mb-0 text-center text-nowrap w-100">
                 <thead class="table-dark">
                     <tr>
-                        <th style="width: 1%; white-space: nowrap;">Data</th>
-                        <th style="width: 1%; white-space: nowrap;">Turno</th>
-                        <th style="width: 1%; white-space: nowrap;">Lote</th>
-                        <th style="width: 1%; white-space: nowrap;">Lado</th>
-                        <th>Tratamento</th>
-                        <th>Entrada</th>
-                        <th>Saída</th>
-                        <th>T. Rodando</th>
+                        {% include "laboratorio/_coating_th_ordenavel.html" with link=links_ordenacao.data rotulo="Data" estilo="width: 1%; white-space: nowrap;" %}
+                        {% include "laboratorio/_coating_th_ordenavel.html" with link=links_ordenacao.turno rotulo="Turno" estilo="width: 1%; white-space: nowrap;" %}
+                        {% include "laboratorio/_coating_th_ordenavel.html" with link=links_ordenacao.lote rotulo="Lote" estilo="width: 1%; white-space: nowrap;" %}
+                        {% include "laboratorio/_coating_th_ordenavel.html" with link=links_ordenacao.lado rotulo="Lado" estilo="width: 1%; white-space: nowrap;" %}
+                        {% include "laboratorio/_coating_th_ordenavel.html" with link=links_ordenacao.tratamento rotulo="Tratamento" %}
+                        {% include "laboratorio/_coating_th_ordenavel.html" with link=links_ordenacao.entrada rotulo="Entrada" %}
+                        {% include "laboratorio/_coating_th_ordenavel.html" with link=links_ordenacao.saida rotulo="Saída" %}
+                        {% include "laboratorio/_coating_th_ordenavel.html" with link=links_ordenacao.rodando rotulo="T. Rodando" %}
                         <th>T. Parado</th>
-                        <th>Preparação</th>
-                        <th>Montagem</th>
+                        {% include "laboratorio/_coating_th_ordenavel.html" with link=links_ordenacao.preparacao rotulo="Preparação" %}
+                        {% include "laboratorio/_coating_th_ordenavel.html" with link=links_ordenacao.montagem rotulo="Montagem" %}
                         <th>Limpezas</th>
                         <th>Trocas</th>
                         <th>Verificações</th>
@@ -914,6 +927,7 @@
         botaoSalvar: document.getElementById('btnSalvarLoteCompleto'),
         getLado: () => editLoteLado,
         urlAnalise: "{% url 'laboratorio:api_analisar_horarios_coating' %}",
+        urlSalvarLinha: "{% url 'laboratorio:api_editar_linha_coating' %}",
         getDadosAnalise: () => ({
             id: document.getElementById('editLoteId').value,
             lote: document.getElementById('editLoteNum').value,

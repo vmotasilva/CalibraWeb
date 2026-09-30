@@ -246,14 +246,59 @@ class CoatingSugestaoCorrecaoTests(TestCase):
         self.assertEqual([a["codigo"] for a in data["anomalias"]], ["missing"])
         self.assertEqual(data["sugestoes"], [])
 
-    def test_horarios_validos_com_sobreposicao_geram_aviso(self):
+    def test_conflito_de_horario_e_anomalia(self):
         self._criar(13859, "CX", self._dt(0, 3, 0), self._dt(0, 3, 50))
         atual = self._criar(13859, "CC", self._dt(0, 2, 37), None)
 
         data = self._analisar(atual, self._dt(0, 2, 37), self._dt(0, 3, 30))
 
-        self.assertEqual(data["anomalias"], [])
-        self.assertEqual([a["codigo"] for a in data["avisos"]], ["overlap"])
+        self.assertEqual([a["codigo"] for a in data["anomalias"]], ["overlap"])
+        self.assertIn("13859 CX", data["anomalias"][0]["detalhe"])
+
+    def test_conflito_bloqueia_salvar(self):
+        self._criar(13859, "CX", self._dt(0, 3, 0), self._dt(0, 3, 50))
+        atual = self._criar(13859, "CC", self._dt(0, 2, 37), None)
+
+        response = self.client.post(
+            reverse("laboratorio:api_editar_linha_coating"),
+            data=json.dumps({"id": atual.id,
+                             "hora_entrada": timezone.localtime(self._dt(0, 2, 37)).strftime("%Y-%m-%dT%H:%M"),
+                             "hora_saida": timezone.localtime(self._dt(0, 3, 30)).strftime("%Y-%m-%dT%H:%M")}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual([a["codigo"] for a in response.json()["anomalias"]], ["overlap"])
+        atual.refresh_from_db()
+        self.assertIsNone(atual.hora_saida)
+
+    def test_conflito_sugere_corrigir_o_vizinho(self):
+        # Caso da tela: 13937 CC 22:37 com saída digitada no dia seguinte; o 13938 CC
+        # (22:35 → 00:05) ocupa o horário. Provável erro no vizinho: entrada 23:35.
+        vizinho = self._criar(13938, "CC", self._dt(0, 22, 35), self._dt(1, 0, 5))
+        atual = self._criar(13937, "CC", self._dt(0, 22, 37), None)
+
+        data = self._analisar(atual, self._dt(0, 22, 37), self._dt(1, 23, 32))
+
+        self.assertEqual(data["sugestoes"][0]["confianca"], "baixa")
+        correcao = data["correcoes_vizinhos"][0]
+        self.assertEqual(correcao["registro_id"], vizinho.id)
+        self.assertEqual(correcao["hora_entrada"], timezone.localtime(self._dt(0, 23, 35)).strftime("%Y-%m-%dT%H:%M"))
+        self.assertEqual(correcao["hora_saida"], timezone.localtime(self._dt(1, 0, 5)).strftime("%Y-%m-%dT%H:%M"))
+        self.assertEqual(correcao["conflitos"], [])
+        linha_vizinho = next(v for v in data["contexto"]["vizinhos"] if v["lote"] == 13938)
+        self.assertEqual(linha_vizinho["status"], "conflito")
+
+    def test_auditoria_filtra_conflito_de_horarios(self):
+        self._criar(13938, "CC", self._dt(0, 22, 35), self._dt(1, 0, 5))
+        self._criar(13937, "CC", self._dt(0, 22, 37), self._dt(0, 23, 32))
+        self.client.force_login(get_user_model().objects.create_superuser(username="coating.audit", password="x"))
+
+        for filtro in ("overlap", ""):
+            response = self.client.get(reverse("laboratorio:coating_painel"), {"audit": "true", "anomaly": filtro})
+            lotes = {r.lote for r in response.context["registros"]}
+            self.assertTrue({13937, 13938} <= lotes, filtro)
+            self.assertNotIn(10005, lotes, filtro)
 
     def test_paginas_de_edicao_carregam_validacao(self):
         self.client.force_login(get_user_model().objects.create_superuser(username="coating.admin", password="x"))

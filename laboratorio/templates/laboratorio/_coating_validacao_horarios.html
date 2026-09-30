@@ -12,8 +12,8 @@
  * Validação de horários do Coating no ato do lançamento.
  * - validar(): regras do Modo Auditoria (bloqueiam), espelhando validar_horarios em
  *   laboratorio/coating_horarios.py — mantenha as duas em sincronia. O servidor também bloqueia.
- * - A análise no servidor (lotes vizinhos, duração típica) acrescenta contexto, avisos e
- *   sugestões de correção automática ao alerta.
+ * - A análise no servidor (lotes vizinhos, duração típica) acrescenta o conflito de horário com
+ *   outros lotes (bloqueia), o contexto e as sugestões de correção deste lote e do vizinho.
  */
 window.CoatingValidacao = (function () {
     const DURACAO_MAXIMA_MS = 24 * 60 * 60 * 1000;
@@ -112,7 +112,8 @@ window.CoatingValidacao = (function () {
         const status = {
             ok: '<span class="badge bg-success">ok</span>',
             aberto: '<span class="badge bg-secondary">em aberto</span>',
-            anomalia: '<span class="badge bg-danger">anomalia</span>'
+            anomalia: '<span class="badge bg-danger">anomalia</span>',
+            conflito: '<span class="badge bg-danger">conflito</span>'
         };
         const linhas = ctx.vizinhos.map(v => `
             <tr class="${v.atual ? 'table-warning fw-bold' : ''}">
@@ -161,10 +162,30 @@ window.CoatingValidacao = (function () {
                 <div class="text-muted mt-1">A correção só preenche os campos — revise e clique em <strong>Salvar Alterações</strong>.</div></div>`;
     }
 
+    function renderCorrecoesVizinhos(correcoes) {
+        if (!correcoes || !correcoes.length) return '';
+        const itens = correcoes.map((c, i) => `
+            <div class="sugestao border border-primary p-2 mt-2">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div>
+                        <div class="text-muted">${escapar(c.premissa)}</div>
+                        <strong>${escapar(c.rotulo)} (hoje ${escapar(c.periodo_atual)}) — ${escapar(c.titulo)}</strong>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-primary text-nowrap" data-coating-vizinho="${i}">
+                        <i class="bi bi-wrench-adjustable me-1"></i>Corrigir ${escapar(c.rotulo)}
+                    </button>
+                </div>
+                <ul class="mb-0 ps-3 mt-1">${c.motivos.map(m => `<li>${escapar(m)}</li>`).join('')}</ul>
+            </div>`).join('');
+        return `<div class="mt-2"><div class="fw-bold"><i class="bi bi-intersect me-1"></i>Ou o erro pode estar no lote vizinho:</div>${itens}
+                <div class="text-muted mt-1">"Corrigir" salva na hora o horário sugerido no lote vizinho (pede confirmação).</div></div>`;
+    }
+
     /*
      * Liga a validação a um modal de edição.
      * cfg: { entradaId, saidaId, alertaId, botaoSalvar (elemento), getLado () => 'CC'|'CX',
-     *        urlAnalise, getDadosAnalise () => {id, lote, maquina_id, tratamento_id} }
+     *        urlAnalise, getDadosAnalise () => {id, lote, maquina_id, tratamento_id},
+     *        urlSalvarLinha (para corrigir o lote vizinho em conflito) }
      */
     function ligar(cfg) {
         const inEntrada = document.getElementById(cfg.entradaId);
@@ -178,12 +199,21 @@ window.CoatingValidacao = (function () {
         let chaveAnalise = '';     // valores a que a análise se refere
         let seq = 0;
         let timer = null;
+        let vizinhoCorrigido = false; // a tabela do painel precisa ser recarregada
 
         const chaveAtual = () => `${inEntrada.value}|${inSaida.value}`;
 
         function render() {
-            const anomalias = anomaliasAtuais;
             const analiseValida = analise && chaveAnalise === chaveAtual() ? analise : null;
+            // Conflito com outros lotes só o servidor detecta; também bloqueia o salvamento.
+            const anomalias = anomaliasAtuais.slice();
+            if (analiseValida) {
+                (analiseValida.anomalias || []).filter(a => a.codigo === 'overlap').forEach(a => {
+                    if (!anomalias.some(x => x.codigo === a.codigo && x.detalhe === a.detalhe)) {
+                        anomalias.push(Object.assign({ campos: ['entrada', 'saida'] }, a));
+                    }
+                });
+            }
             const avisos = analiseValida ? (analiseValida.avisos || []) : [];
 
             // Não alterar atributos dos inputs (min/max/value) aqui: render roda a cada tecla e,
@@ -210,7 +240,8 @@ window.CoatingValidacao = (function () {
             }
             if (analiseValida) {
                 if (anomalias.length) html += renderSugestoes(analiseValida.sugestoes);
-                if (anomalias.length && !(analiseValida.sugestoes || []).length) {
+                if (anomalias.length) html += renderCorrecoesVizinhos(analiseValida.correcoes_vizinhos);
+                if (anomalias.length && !(analiseValida.sugestoes || []).length && !(analiseValida.correcoes_vizinhos || []).length) {
                     html += `<div class="mt-2 text-muted">Não foi possível sugerir uma correção automática segura — confira os horários com o registro físico do lote.</div>`;
                 }
                 html += renderContexto(analiseValida.contexto);
@@ -222,6 +253,38 @@ window.CoatingValidacao = (function () {
             alerta.innerHTML = html;
             alerta.querySelectorAll('[data-coating-sugestao]').forEach(btn => {
                 btn.addEventListener('click', () => aplicarSugestao(analiseValida.sugestoes[+btn.dataset.coatingSugestao]));
+            });
+            alerta.querySelectorAll('[data-coating-vizinho]').forEach(btn => {
+                btn.addEventListener('click', () => corrigirVizinho(analiseValida.correcoes_vizinhos[+btn.dataset.coatingVizinho], btn));
+            });
+        }
+
+        function corrigirVizinho(c, btn) {
+            if (!c || !cfg.urlSalvarLinha) return;
+            const fmtInput = v => v ? v.replace(/^(\d{4})-(\d{2})-(\d{2})T/, '$3/$2/$1 ') : '—';
+            if (!confirm(`Salvar agora no ${c.rotulo}:\n\nEntrada: ${fmtInput(c.hora_entrada)}\nSaída: ${fmtInput(c.hora_saida)}\n\n(hoje: ${c.periodo_atual})`)) return;
+            btn.disabled = true;
+            fetch(cfg.urlSalvarLinha, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() },
+                body: JSON.stringify({ id: c.registro_id, hora_entrada: c.hora_entrada, hora_saida: c.hora_saida })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) {
+                    btn.disabled = false;
+                    alert(`Não foi possível corrigir o ${c.rotulo}:\n\n${data.error || 'Erro desconhecido'}`);
+                    return;
+                }
+                vizinhoCorrigido = true;
+                analise = null;
+                chaveAnalise = '';
+                revalidar();
+            })
+            .catch(err => {
+                console.error(err);
+                btn.disabled = false;
+                alert('Erro de rede ao corrigir o lote vizinho.');
             });
         }
 
@@ -285,6 +348,13 @@ window.CoatingValidacao = (function () {
             inSaida.addEventListener(ev, revalidar);
         });
 
+        const modal = alerta.closest('.modal');
+        if (modal) {
+            modal.addEventListener('hidden.bs.modal', () => {
+                if (vizinhoCorrigido) location.reload();
+            });
+        }
+
         return {
             checar: checar,
             // Chamar ao abrir o modal: descarta a análise do registro anterior
@@ -292,7 +362,13 @@ window.CoatingValidacao = (function () {
             // Exibe anomalias devolvidas pelo servidor ao salvar; retorna true se havia anomalias.
             mostrarErroServidor: function (data) {
                 if (!data || !Array.isArray(data.anomalias) || !data.anomalias.length) return false;
-                anomaliasAtuais = data.anomalias.map(a => Object.assign({ campos: ['entrada', 'saida'] }, a));
+                anomaliasAtuais = data.anomalias.filter(a => a.codigo !== 'overlap')
+                    .map(a => Object.assign({ campos: ['entrada', 'saida'] }, a));
+                if (anomaliasAtuais.length < data.anomalias.length) {
+                    // Conflito: força nova análise para exibir as correções deste lote e do vizinho
+                    analise = null;
+                    chaveAnalise = '';
+                }
                 render();
                 analisar();
                 alerta.scrollIntoView({ behavior: 'smooth', block: 'nearest' });

@@ -47,9 +47,11 @@ from .models import (
 from maquinas.models import Maquina
 from .coating_horarios import (
     analisar_horarios as analisar_horarios_coating,
+    anotar_conflito_horario,
+    filtro_conflito_horario,
     parse_hora as parse_hora_coating,
     regra_turno_para,
-    validar_horarios as validar_horarios_coating,
+    validar_horarios_com_conflitos as validar_horarios_coating,
 )
 
 
@@ -972,6 +974,60 @@ def tratamento_update(request, pk):
     )
 
 
+# Colunas ordenáveis do Painel de Coating (chave do ?ordem= -> campo do queryset)
+ORDENACAO_PAINEL_COATING = {
+    'data': 'turno_coating__data',
+    'turno': 'turno_coating__regra__nome',
+    'lote': 'lote',
+    'lado': 'lado',
+    'tratamento': 'tratamento__nome',
+    'entrada': 'hora_entrada',
+    'saida': 'hora_saida',
+    'rodando': 'tempo_rodando_ordem',
+    'preparacao': 'preparacao__nome_completo',
+    'montagem': 'montagem__nome_completo',
+}
+ORDENACAO_PADRAO_COATING = ('lote', 'desc')
+
+
+def _links_ordenacao_coating(request, ordem, direcao):
+    """Monta, para cada coluna ordenável, a URL do próximo estado do clique.
+
+    Ciclo: crescente -> decrescente -> padrão (lote decrescente). Os demais
+    filtros da URL são preservados e a página volta para 1.
+    """
+    from urllib.parse import urlencode
+
+    params = request.GET.copy()
+    for chave in ('ordem', 'dir', 'page'):
+        params.pop(chave, None)
+
+    links = {}
+    for coluna in ORDENACAO_PAINEL_COATING:
+        ativa = coluna == ordem
+        if not ativa or (coluna, direcao) == ORDENACAO_PADRAO_COATING:
+            proximo = (coluna, 'asc')
+        elif direcao == 'asc':
+            proximo = (coluna, 'desc')
+        else:
+            proximo = ORDENACAO_PADRAO_COATING
+
+        query = params.copy()
+        if proximo != ORDENACAO_PADRAO_COATING:
+            query['ordem'], query['dir'] = proximo
+        links[coluna] = {
+            'url': '?' + query.urlencode(),
+            'ativa': ativa,
+            'direcao': direcao if ativa else '',
+        }
+
+    # Sufixo para manter a ordenação em paginação/abas/busca
+    sufixo = ''
+    if (ordem, direcao) != ORDENACAO_PADRAO_COATING:
+        sufixo = '&' + urlencode({'ordem': ordem, 'dir': direcao})
+    return links, sufixo
+
+
 @login_required
 def coating_painel(request):
     from django.core.paginator import Paginator
@@ -1081,24 +1137,36 @@ def coating_painel(request):
                 duracao=ExpressionWrapper(F('hora_saida') - F('hora_entrada'), output_field=DurationField())
             ).filter(duracao__gt=timedelta(hours=24))
         elif anomaly_filter == 'negative':
-            base_qs = base_qs.filter(hora_saida__lt=F('hora_entrada'))
+            base_qs = base_qs.filter(hora_saida__lte=F('hora_entrada'))
         elif anomaly_filter == 'missing':
             base_qs = base_qs.filter(Q(hora_entrada__isnull=True, hora_saida__isnull=False) | Q(hora_entrada__isnull=False, hora_saida__isnull=True))
+        elif anomaly_filter == 'overlap':
+            base_qs = anotar_conflito_horario(base_qs).filter(filtro_conflito_horario())
         else:
-            base_qs = base_qs.annotate(
+            base_qs = anotar_conflito_horario(base_qs.annotate(
                 duracao=ExpressionWrapper(F('hora_saida') - F('hora_entrada'), output_field=DurationField())
-            ).filter(
+            )).filter(
                 Q(duracao__gt=timedelta(hours=24)) | 
-                Q(hora_saida__lt=F('hora_entrada')) | 
+                Q(hora_saida__lte=F('hora_entrada')) | 
                 Q(hora_entrada__isnull=True, hora_saida__isnull=False) | 
-                Q(hora_entrada__isnull=False, hora_saida__isnull=True)
+                Q(hora_entrada__isnull=False, hora_saida__isnull=True) |
+                filtro_conflito_horario()
             )
-            
-        todos_registros = base_qs.order_by('-lote', 'lado', '-id')
-    else:
-        # Fetch all records
-        todos_registros = base_qs.order_by('-lote', 'lado', '-id')
-    
+
+    # Ordenação: padrão é lote decrescente; demais colunas via ?ordem=<coluna>&dir=asc|desc
+    ordem = request.GET.get('ordem', '').strip()
+    direcao = request.GET.get('dir', '').strip()
+    if ordem not in ORDENACAO_PAINEL_COATING or direcao not in ('asc', 'desc'):
+        ordem, direcao = ORDENACAO_PADRAO_COATING
+    campo_ordem = ORDENACAO_PAINEL_COATING[ordem]
+    from django.db.models import F, ExpressionWrapper, DurationField
+    if ordem == 'rodando':
+        base_qs = base_qs.annotate(
+            tempo_rodando_ordem=ExpressionWrapper(F('hora_saida') - F('hora_entrada'), output_field=DurationField())
+        )
+    expr_ordem = F(campo_ordem).asc(nulls_last=True) if direcao == 'asc' else F(campo_ordem).desc(nulls_last=True)
+    todos_registros = base_qs.order_by(expr_ordem, '-lote', 'lado', '-id')
+
     # --- Paginação Server-side filtrada pela máquina ativa ---
     evaporadoras = Maquina.objects.filter(
         Q(categoria__nome__icontains='evaporadora') | 
@@ -1512,6 +1580,8 @@ def coating_painel(request):
     active_tab = str(maquina_ativa.id) if maquina_ativa else ''
     active_equipamento = maquina_ativa.codigo if maquina_ativa else ''
 
+    links_ordenacao, qs_ordenacao = _links_ordenacao_coating(request, ordem, direcao)
+
     context = {
         "registros": registros,
         "registros_page": registros_page,
@@ -1530,8 +1600,13 @@ def coating_painel(request):
         "lote_search": lote_search,
         "date_search": date_search,
         "active_tab": active_tab,
+        "ordem": ordem,
+        "direcao": direcao,
+        "ordenacao_padrao": (ordem, direcao) == ORDENACAO_PADRAO_COATING,
+        "links_ordenacao": links_ordenacao,
+        "qs_ordenacao": qs_ordenacao,
     }
-    
+
     return render(request, "laboratorio/coating_painel.html", context)
 
 @login_required
@@ -1616,7 +1691,8 @@ def api_editar_linha_coating(request):
             saida = parse_hora_coating(data['hora_saida']) if 'hora_saida' in data else registro.hora_saida
         except ValueError as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=400)
-        anomalias = validar_horarios_coating(entrada, saida, registro.lado)
+        maquina_final = data.get('maquina_id') or registro.maquina_id
+        anomalias = validar_horarios_coating(registro.pk, maquina_final, entrada, saida, registro.lado)
         if anomalias:
             return _resposta_anomalias_coating(anomalias)
 
@@ -1724,6 +1800,8 @@ def atualizar_celula_coating(request):
                 setattr(registro, campo, parsed)
 
             anomalias = validar_horarios_coating(
+                registro.pk,
+                registro.maquina_id,
                 parse_hora_coating(registro.hora_entrada),
                 parse_hora_coating(registro.hora_saida),
                 registro.lado,

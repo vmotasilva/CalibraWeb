@@ -951,6 +951,7 @@ const validacaoHorariosEdit = CoatingValidacao.ligar({
     botaoSalvar: document.getElementById('btnSalvarEdicaoLote'),
     getLado: () => editLoteLado,
     urlAnalise: "{% url 'laboratorio:api_analisar_horarios_coating' %}",
+    urlSalvarLinha: "{% url 'laboratorio:api_editar_linha_coating' %}",
     getDadosAnalise: () => ({
         id: document.getElementById('editLoteId').value,
         lote: document.getElementById('editLoteNum').value,
