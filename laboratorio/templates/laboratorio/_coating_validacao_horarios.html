@@ -13,7 +13,9 @@
  * - validar(): regras do Modo Auditoria (bloqueiam), espelhando validar_horarios em
  *   laboratorio/coating_horarios.py — mantenha as duas em sincronia. O servidor também bloqueia.
  * - A análise no servidor (lotes vizinhos, duração típica) acrescenta o conflito de horário com
- *   outros lotes (bloqueia), o contexto e as sugestões de correção deste lote e do vizinho.
+ *   outros lotes, o contexto e as sugestões de correção deste lote e do vizinho. O conflito
+ *   bloqueia até o usuário corrigir os horários ou confirmar mix de serviço (lote inserido no
+ *   meio de outro em andamento) — a confirmação vai no salvamento via confirmacoes().
  */
 window.CoatingValidacao = (function () {
     const DURACAO_MAXIMA_MS = 24 * 60 * 60 * 1000;
@@ -113,7 +115,8 @@ window.CoatingValidacao = (function () {
             ok: '<span class="badge bg-success">ok</span>',
             aberto: '<span class="badge bg-secondary">em aberto</span>',
             anomalia: '<span class="badge bg-danger">anomalia</span>',
-            conflito: '<span class="badge bg-danger">conflito</span>'
+            conflito: '<span class="badge bg-danger">conflito</span>',
+            mix: '<span class="badge bg-info text-dark">mix de serviço</span>'
         };
         const linhas = ctx.vizinhos.map(v => `
             <tr class="${v.atual ? 'table-warning fw-bold' : ''}">
@@ -200,20 +203,45 @@ window.CoatingValidacao = (function () {
         let seq = 0;
         let timer = null;
         let vizinhoCorrigido = false; // a tabela do painel precisa ser recarregada
+        let mixMarcado = '';          // horários para os quais o usuário confirmou mix de serviço
 
         const chaveAtual = () => `${inEntrada.value}|${inSaida.value}`;
 
+        function renderMix(mixJaConfirmado, infoMix) {
+            if (mixJaConfirmado) {
+                const quem = [infoMix.por && `por ${escapar(infoMix.por)}`, infoMix.em && `em ${escapar(infoMix.em)}`].filter(Boolean).join(' ');
+                return `<div class="mt-2"><i class="bi bi-check2-circle me-1"></i>Mix de serviço confirmado${quem ? ' ' + quem : ''}. Alterar os horários exige nova confirmação.</div>`;
+            }
+            const marcado = mixMarcado === chaveAtual();
+            return `
+                <div class="sugestao border ${marcado ? 'border-info' : 'border-danger'} p-2 mt-2">
+                    <div class="form-check mb-0">
+                        <input class="form-check-input" type="checkbox" id="${cfg.alertaId}-mix" data-coating-mix ${marcado ? 'checked' : ''}>
+                        <label class="form-check-label" for="${cfg.alertaId}-mix">
+                            <strong>É mix de serviço:</strong> este lote foi inserido no meio de outro lote em andamento
+                            nesta máquina. Confirmo que os horários estão corretos.
+                        </label>
+                    </div>
+                </div>`;
+        }
+
         function render() {
             const analiseValida = analise && chaveAnalise === chaveAtual() ? analise : null;
-            // Conflito com outros lotes só o servidor detecta; também bloqueia o salvamento.
             const anomalias = anomaliasAtuais.slice();
-            if (analiseValida) {
+            // Conflito com outros lotes só o servidor detecta. Bloqueia até corrigir os horários
+            // ou confirmar mix de serviço (lote inserido no meio de outro em andamento).
+            const conflitos = [];
+            if (analiseValida && !anomalias.length) {
                 (analiseValida.anomalias || []).filter(a => a.codigo === 'overlap').forEach(a => {
-                    if (!anomalias.some(x => x.codigo === a.codigo && x.detalhe === a.detalhe)) {
-                        anomalias.push(Object.assign({ campos: ['entrada', 'saida'] }, a));
+                    if (!conflitos.some(x => x.detalhe === a.detalhe)) {
+                        conflitos.push(Object.assign({ campos: ['entrada', 'saida'] }, a));
                     }
                 });
             }
+            const infoMix = (analiseValida && analiseValida.mix_servico) || {};
+            const mixJaConfirmado = !!infoMix.confirmado;
+            const mixOk = conflitos.length > 0 && (mixJaConfirmado || mixMarcado === chaveAtual());
+            if (!mixOk) anomalias.push(...conflitos);
             const avisos = analiseValida ? (analiseValida.avisos || []) : [];
 
             // Não alterar atributos dos inputs (min/max/value) aqui: render roda a cada tecla e,
@@ -224,20 +252,28 @@ window.CoatingValidacao = (function () {
             inSaida.classList.toggle('is-invalid', campos.has('saida'));
             if (cfg.botaoSalvar) cfg.botaoSalvar.disabled = anomalias.length > 0;
 
-            if (!anomalias.length && !avisos.length) {
+            if (!anomalias.length && !avisos.length && !conflitos.length) {
                 alerta.classList.add('d-none');
                 alerta.innerHTML = '';
                 return;
             }
 
+            const itens = lista => `<ul class="mb-0 ps-3">${lista.map(a => `<li><strong>${escapar(a.titulo)}:</strong> ${escapar(a.detalhe)}</li>`).join('')}</ul>`;
             let html = '';
-            if (anomalias.length) {
+            if (conflitos.length && anomalias.length === conflitos.length) {
+                html += `<div class="fw-bold mb-1"><i class="bi bi-intersect me-1"></i>Conflito de horário com outro lote — corrija os horários ou confirme o mix de serviço para salvar:</div>
+                         ${itens(conflitos)}`;
+            } else if (anomalias.length) {
                 html += `<div class="fw-bold mb-1"><i class="bi bi-shield-exclamation me-1"></i>Este lançamento cairia na Auditoria — corrija os horários para salvar:</div>
-                         <ul class="mb-0 ps-3">${anomalias.map(a => `<li><strong>${escapar(a.titulo)}:</strong> ${escapar(a.detalhe)}</li>`).join('')}</ul>`;
+                         ${itens(anomalias)}`;
+            } else if (mixOk) {
+                html += `<div class="fw-bold mb-1"><i class="bi bi-shuffle me-1"></i>Mix de serviço — horários sobrepostos a outro lote nesta máquina:</div>
+                         <ul class="mb-0 ps-3">${conflitos.map(a => `<li>${escapar(a.detalhe)}</li>`).join('')}</ul>`;
             } else {
                 html += `<div class="fw-bold mb-1"><i class="bi bi-exclamation-triangle me-1"></i>Confira antes de salvar:</div>
                          <ul class="mb-0 ps-3">${avisos.map(a => `<li><strong>${escapar(a.titulo)}:</strong> ${escapar(a.detalhe)}</li>`).join('')}</ul>`;
             }
+            if (conflitos.length) html += renderMix(mixJaConfirmado, infoMix);
             if (analiseValida) {
                 if (anomalias.length) html += renderSugestoes(analiseValida.sugestoes);
                 if (anomalias.length) html += renderCorrecoesVizinhos(analiseValida.correcoes_vizinhos);
@@ -249,8 +285,15 @@ window.CoatingValidacao = (function () {
                 html += `<div class="mt-2 text-muted"><span class="spinner-border spinner-border-sm me-1"></span>Analisando lotes vizinhos...</div>`;
             }
 
-            alerta.className = `coating-horarios-alerta alert ${anomalias.length ? 'alert-danger' : 'alert-warning'} small`;
+            alerta.className = `coating-horarios-alerta alert ${anomalias.length ? 'alert-danger' : (mixOk ? 'alert-info' : 'alert-warning')} small`;
             alerta.innerHTML = html;
+            const caixaMix = alerta.querySelector('[data-coating-mix]');
+            if (caixaMix) {
+                caixaMix.addEventListener('change', () => {
+                    mixMarcado = caixaMix.checked ? chaveAtual() : '';
+                    render();
+                });
+            }
             alerta.querySelectorAll('[data-coating-sugestao]').forEach(btn => {
                 btn.addEventListener('click', () => aplicarSugestao(analiseValida.sugestoes[+btn.dataset.coatingSugestao]));
             });
@@ -358,7 +401,11 @@ window.CoatingValidacao = (function () {
         return {
             checar: checar,
             // Chamar ao abrir o modal: descarta a análise do registro anterior
-            revalidar: function () { analise = null; chaveAnalise = ''; revalidar(); },
+            revalidar: function () { analise = null; chaveAnalise = ''; mixMarcado = ''; revalidar(); },
+            // Campos a enviar junto no salvamento (mix de serviço confirmado para os horários atuais)
+            confirmacoes: function () {
+                return mixMarcado && mixMarcado === chaveAtual() ? { confirmar_mix_servico: true } : {};
+            },
             // Exibe anomalias devolvidas pelo servidor ao salvar; retorna true se havia anomalias.
             mostrarErroServidor: function (data) {
                 if (!data || !Array.isArray(data.anomalias) || !data.anomalias.length) return false;

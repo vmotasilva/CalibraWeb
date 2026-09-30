@@ -5,7 +5,9 @@ Validação e correção assistida dos horários de entrada/saída do Coating.
   e bloqueiam o lançamento. Mantenha em sincronia com
   templates/laboratorio/_coating_validacao_horarios.html (validação no navegador).
 - validar_horarios_com_conflitos: acrescenta o conflito de horário com outros lotes gravados na
-  mesma máquina (uma máquina processa um ciclo por vez) — também é motivo de Auditoria.
+  mesma máquina (uma máquina processa um ciclo por vez) — também é motivo de Auditoria, exceto
+  quando o usuário confirma mix de serviço (lote inserido no meio de outro em andamento). Ciclos
+  com mix de serviço confirmado não entram na checagem de conflito, nem para os demais lotes.
 - analisar_horarios: usa os lotes vizinhos (por número e por horário, na mesma máquina) e a
   duração típica do processo para sugerir a correção mais provável de um erro de digitação,
   deste lote e, havendo conflito, do lote vizinho.
@@ -198,6 +200,7 @@ class _Ciclo:
         self.entrada = entrada if usar_valores else reg.hora_entrada
         self.saida = saida if usar_valores else reg.hora_saida
         self.valido = _duracao_valida(self.entrada, self.saida)
+        self.mix = reg.mix_servico
 
     def com_horarios(self, entrada, saida):
         copia = object.__new__(_Ciclo)
@@ -262,17 +265,19 @@ def _anomalia_conflito(entrada, saida, outro):
         "titulo": "Conflito de horário com outro lote",
         "detalhe": f"Este ciclo ({_fmt_curto(entrada)} → {_fmt_curto(saida)}) se sobrepõe ao {outro.rotulo} "
                    f"({outro.periodo}) na mesma máquina, que processa um ciclo por vez. "
-                   f"Corrija este lote ou o {outro.rotulo}.",
+                   f"Corrija este lote ou o {outro.rotulo} — ou, se foi mix de serviço "
+                   f"(lote inserido no meio de outro em andamento), confirme o mix de serviço.",
         "registro_id": outro.id,
     }
 
 
 def conflitos_horario(registro_id, maquina_id, entrada, saida):
-    """Ciclos válidos gravados na mesma máquina que se sobrepõem a [entrada, saida]."""
+    """Ciclos válidos gravados na mesma máquina que se sobrepõem a [entrada, saida] (sem mix de serviço)."""
     if not _duracao_valida(entrada, saida):
         return []
     qs = RegistroCoating.objects.filter(
         maquina_id=maquina_id,
+        mix_servico=False,
         hora_entrada__lt=saida - TOLERANCIA_SOBREPOSICAO,
         hora_saida__gt=entrada + TOLERANCIA_SOBREPOSICAO,
     ).exclude(pk=registro_id).select_related("turno_coating__regra", "tratamento")
@@ -290,13 +295,29 @@ def validar_horarios_com_conflitos(registro_id, maquina_id, entrada, saida, lado
     return anomalias
 
 
+def mix_servico_mantido(registro, entrada, saida, gravados=None):
+    """
+    O mix de serviço já confirmado continua valendo enquanto os horários não mudarem.
+    `gravados` = (entrada, saida) antes da edição, quando o registro já foi alterado em memória.
+    """
+    if not registro.mix_servico:
+        return False
+    entrada_gravada, saida_gravada = gravados or (registro.hora_entrada, registro.hora_saida)
+    return (_fmt_input(entrada) == _fmt_input(entrada_gravada)
+            and _fmt_input(saida) == _fmt_input(saida_gravada))
+
+
 def anotar_conflito_horario(qs):
-    """Anota `conflito_horario` (bool): o ciclo se sobrepõe a outro ciclo válido da mesma máquina."""
+    """
+    Anota `conflito_horario` (bool): o ciclo se sobrepõe a outro ciclo válido da mesma máquina.
+    Sobreposição com ciclo de mix de serviço confirmado não conta.
+    """
     from django.db.models import DateTimeField, DurationField, Exists, ExpressionWrapper, F, OuterRef
 
     duracao = ExpressionWrapper(F("hora_saida") - F("hora_entrada"), output_field=DurationField())
     outros = RegistroCoating.objects.annotate(_dur=duracao).filter(
         maquina=OuterRef("maquina"),
+        mix_servico=False,
         _dur__gt=TOLERANCIA_SOBREPOSICAO,
         _dur__lte=DURACAO_MAXIMA,
         hora_entrada__lt=ExpressionWrapper(OuterRef("hora_saida") - TOLERANCIA_SOBREPOSICAO, output_field=DateTimeField()),
@@ -306,9 +327,9 @@ def anotar_conflito_horario(qs):
 
 
 def filtro_conflito_horario():
-    """Q para um queryset anotado por anotar_conflito_horario: só ciclos válidos em conflito."""
+    """Q para um queryset anotado por anotar_conflito_horario: só ciclos válidos em conflito (sem mix de serviço)."""
     from django.db.models import Q
-    return Q(conflito_horario=True, _dur_conflito__gt=TOLERANCIA_SOBREPOSICAO, _dur_conflito__lte=DURACAO_MAXIMA)
+    return Q(conflito_horario=True, mix_servico=False, _dur_conflito__gt=TOLERANCIA_SOBREPOSICAO, _dur_conflito__lte=DURACAO_MAXIMA)
 
 
 class _Contexto:
@@ -332,9 +353,12 @@ class _Contexto:
         return self._tipicas[chave]
 
     def ancoras(self, ciclo, extras=()):
-        """Ciclos válidos que não podem se sobrepor a `ciclo` (extras substituem os gravados)."""
+        """
+        Ciclos válidos que não podem se sobrepor a `ciclo` (extras substituem os gravados).
+        Ciclos com mix de serviço confirmado podem se sobrepor a outros e ficam de fora.
+        """
         ignorar = {ciclo.id} | {x.id for x in extras}
-        return [a for a in self.ciclos if a.valido and a.id not in ignorar] + [x for x in extras if x.valido]
+        return [a for a in self.ciclos if a.valido and not a.mix and a.id not in ignorar] + [x for x in extras if x.valido]
 
     def violacoes_ordem(self, ciclo, e):
         """Números de lote vizinhos (até LOTES_VIZINHOS de cada lado) fora da ordem de entrada."""
@@ -445,7 +469,7 @@ def _sugerir(ctx, ciclo, extras=(), limite=MAX_SUGESTOES, somente_sem_conflito=F
 
 def analisar_horarios(registro, entrada, saida, maquina=None, tratamento=None, lote=None):
     """
-    Retorna {anomalias, avisos, contexto, sugestoes, correcoes_vizinhos} para os horários
+    Retorna {anomalias, avisos, contexto, sugestoes, correcoes_vizinhos, mix_servico} para os horários
     informados de uma linha. Sugestões só corrigem valores digitados (erro de data/hora);
     horários vazios não são inventados.
     """
@@ -515,6 +539,8 @@ def analisar_horarios(registro, entrada, saida, maquina=None, tratamento=None, l
     def status(c):
         if c.id in em_conflito:
             return "conflito"
+        if c.mix and c.valido:
+            return "mix"
         return "ok" if c.valido else ("aberto" if c.entrada and not c.saida else "anomalia")
 
     linhas = [{
@@ -531,11 +557,20 @@ def analisar_horarios(registro, entrada, saida, maquina=None, tratamento=None, l
     })
     linhas.sort(key=lambda l: (l["lote"], l["lado"]))
 
+    confirmado_por = registro.mix_servico_confirmado_por
+    mix_servico = {
+        # Conflito já confirmado como mix de serviço com estes mesmos horários: não bloqueia
+        "confirmado": mix_servico_mantido(registro, entrada, saida),
+        "por": (confirmado_por.get_full_name() or confirmado_por.get_username()) if confirmado_por else "",
+        "em": _fmt(registro.mix_servico_confirmado_em) if registro.mix_servico_confirmado_em else "",
+    }
+
     return {
         "anomalias": anomalias,
         "avisos": [],
         "sugestoes": sugestoes,
         "correcoes_vizinhos": correcoes_vizinhos,
+        "mix_servico": mix_servico,
         "contexto": {
             "maquina": ctx.nome_maquina,
             "duracao_tipica": formatar_duracao(tipica),

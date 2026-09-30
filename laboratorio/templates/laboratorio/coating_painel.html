@@ -170,7 +170,7 @@
             <a href="?audit=true&anomaly=missing" class="btn btn-sm {% if anomaly_filter == 'missing' %}btn-danger{% else %}btn-outline-danger{% endif %} fw-bold" title="Horários faltantes">
                 <i class="bi bi-question-circle"></i> Horários Incompletos
             </a>
-            <a href="?audit=true&anomaly=overlap" class="btn btn-sm {% if anomaly_filter == 'overlap' %}btn-danger{% else %}btn-outline-danger{% endif %} fw-bold" title="Lotes cujo horário se sobrepõe a outro lote na mesma máquina">
+            <a href="?audit=true&anomaly=overlap" class="btn btn-sm {% if anomaly_filter == 'overlap' %}btn-danger{% else %}btn-outline-danger{% endif %} fw-bold" title="Lotes cujo horário se sobrepõe a outro lote na mesma máquina (exceto mix de serviço confirmado)">
                 <i class="bi bi-intersect"></i> Conflito de Horários
             </a>
         </div>
@@ -323,7 +323,7 @@
                                         <tr class="align-middle {% if reg.bg_group == 1 %}bg-lote-group{% else %}bg-white{% endif %}" style="cursor:pointer;" onclick="abrirModalEditarLote(this, '{{ reg.id }}', '{{ reg.lote }}', '{{ reg.lado }}', '{{ reg.maquina_id }}', '{{ reg.tratamento_id }}', '{{ reg.hora_entrada|date:'Y-m-d\TH:i'|default:'' }}', '{{ reg.hora_saida|date:'Y-m-d\TH:i'|default:'' }}', '{{ reg.preparacao_id|default:'' }}', '{{ reg.montagem_id|default:'' }}')" data-observacao="{{ reg.observacao|escapejs|default:'' }}" data-lote-num="{{ reg.lote }}">
                                             <td>{{ reg.turno_coating.data|date:"d/m/Y" }}</td>
                                             <td>{{ reg.turno_coating.regra.nome }}</td>
-                                            <td><strong>{{ reg.lote }}</strong></td>
+                                            <td><strong>{{ reg.lote }}</strong>{% if reg.mix_servico %} <span class="badge bg-info text-dark" title="Mix de serviço: lote inserido no meio de outro em andamento (confirmado pelo usuário)"><i class="bi bi-shuffle"></i> mix</span>{% endif %}</td>
                                             <td>{{ reg.lado }}</td>
                                             <td><span class="badge rounded-pill" style="background-color: {{ reg.tratamento.cor|default:'#0d6efd' }}; color: #fff; font-weight: 500;">{{ reg.tratamento.nome }}</span></td>
                                             <td>{{ reg.hora_entrada|time:"H:i"|default:"-" }}</td>
@@ -499,6 +499,7 @@
                             <div class="d-flex align-items-center gap-1 flex-wrap">
                                 <span class="fw-bold fs-6 text-dark">Lote {{ reg.lote }}</span>
                                 <span class="badge bg-dark">{{ reg.lado }}</span>
+                                {% if reg.mix_servico %}<span class="badge bg-info text-dark" title="Mix de serviço: lote inserido no meio de outro em andamento (confirmado pelo usuário)"><i class="bi bi-shuffle"></i> mix</span>{% endif %}
                                 <span class="badge rounded-pill" style="background-color: {{ reg.tratamento.cor|default:'#0d6efd' }}; color: #fff;">{{ reg.tratamento.nome }}</span>
                             </div>
                             <div class="text-end text-muted small ms-2" style="font-size: 0.75rem;">
@@ -1384,17 +1385,17 @@
                 'Content-Type': 'application/json',
                 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
             },
-            body: JSON.stringify({
-                id: id, 
-                lote: lote, 
-                maquina_id: maquina, 
+            body: JSON.stringify(Object.assign({
+                id: id,
+                lote: lote,
+                maquina_id: maquina,
                 tratamento_id: tratamento,
                 hora_entrada: horaIn,
                 hora_saida: horaOut,
                 preparacao_id: prep,
                 montagem_id: mont,
                 observacao: observacao
-            })
+            }, validacaoHorariosEdit ? validacaoHorariosEdit.confirmacoes() : {}))
         })
         .then(response => response.json())
         .then(data => {
@@ -1500,24 +1501,31 @@
         showModalSafely('modalEdicaoRapida');
     }
     
-    function salvarEdicaoRapida() {
+    function salvarEdicaoRapida(confirmarMixServico) {
         const id = document.getElementById('editRegistroId').value;
         const campo = document.getElementById('editCampo').value;
         const input = document.getElementById('modalEditInput');
         let valor = input.value;
-        
+        const payload = {id: id, campo: campo, valor: valor};
+        if (confirmarMixServico === true) payload.confirmar_mix_servico = true;
+
         fetch("{% url 'laboratorio:atualizar_celula_coating' %}", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
             },
-            body: JSON.stringify({id: id, campo: campo, valor: valor})
+            body: JSON.stringify(payload)
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
                 location.reload();
+            } else if (data.requer_confirmacao_mix) {
+                // Conflito de horário: pode ser mix de serviço (lote inserido no meio de outro)
+                if (confirm(data.error + '\n\nÉ mix de serviço? Clique em OK para confirmar que este lote foi inserido no meio de outro lote em andamento e salvar, ou em Cancelar para corrigir os horários.')) {
+                    salvarEdicaoRapida(true);
+                }
             } else {
                 // data.error já traz o motivo de auditoria detalhado quando o servidor rejeita os horários
                 alert('Erro ao salvar: ' + (data.error || 'Desconhecido'));

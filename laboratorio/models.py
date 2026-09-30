@@ -369,8 +369,16 @@ class RegistroCoating(models.Model):
     preparacao = models.ForeignKey(Colaborador, on_delete=models.PROTECT, related_name="preparacoes_coating", verbose_name="Preparação", null=True, blank=True)
     montagem = models.ForeignKey(Colaborador, on_delete=models.PROTECT, related_name="montagens_coating", verbose_name="Montagem", null=True, blank=True)
     observacao = models.TextField(blank=True, null=True, verbose_name="Observação do Lote")
-    
-    
+
+    # Mix de serviço: lote inserido no meio de outro na mesma máquina. O usuário confirma a
+    # sobreposição de horários ao salvar; ciclos confirmados não contam como conflito na Auditoria.
+    mix_servico = models.BooleanField(default=False, verbose_name="Mix de serviço")
+    mix_servico_confirmado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="+", verbose_name="Mix de serviço confirmado por",
+    )
+    mix_servico_confirmado_em = models.DateTimeField(null=True, blank=True, verbose_name="Mix de serviço confirmado em")
+
     # Manutenções agora são registradas pela tabela ManutencaoRealizadaCoating
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)

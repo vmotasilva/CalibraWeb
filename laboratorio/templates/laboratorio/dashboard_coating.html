@@ -1142,17 +1142,17 @@ function salvarLoteEdicao() {
             'Content-Type': 'application/json',
             'X-CSRFToken': csrf
         },
-        body: JSON.stringify({
-            id: id, 
-            lote: lote, 
-            maquina_id: maquina, 
+        body: JSON.stringify(Object.assign({
+            id: id,
+            lote: lote,
+            maquina_id: maquina,
             tratamento_id: tratamento,
             hora_entrada: horaIn,
             hora_saida: horaOut,
             preparacao_id: prep,
             montagem_id: mont,
             observacao: observacao
-        })
+        }, validacaoHorariosEdit ? validacaoHorariosEdit.confirmacoes() : {}))
     })
     .then(response => response.json())
     .then(data => {

@@ -269,6 +269,7 @@ class CoatingSugestaoCorrecaoTests(TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertEqual([a["codigo"] for a in response.json()["anomalias"]], ["overlap"])
+        self.assertTrue(response.json()["requer_confirmacao_mix"])
         atual.refresh_from_db()
         self.assertIsNone(atual.hora_saida)
 
@@ -308,3 +309,116 @@ class CoatingSugestaoCorrecaoTests(TestCase):
             self.assertEqual(response.status_code, 200, nome)
             self.assertContains(response, "CoatingValidacao.ligar")
             self.assertContains(response, url_analise)
+
+
+class CoatingMixServicoTests(TestCase):
+    """Mix de serviço: lote inserido no meio de outro em andamento — sobreposição confirmada pelo usuário."""
+
+    _dt = CoatingSugestaoCorrecaoTests._dt
+    _criar = CoatingSugestaoCorrecaoTests._criar
+    _analisar = CoatingSugestaoCorrecaoTests._analisar
+
+    def setUp(self):
+        CoatingSugestaoCorrecaoTests.setUp(self)
+        # Caso da tela: 13973 CX 23:57 → 00:42 e 13974 CC inserido às 00:00 → 00:56
+        self.hospedeiro = self._criar(13973, "CX", self._dt(0, 23, 57), self._dt(1, 0, 42))
+        self.atual = self._criar(13974, "CC", self._dt(1, 0, 0), None)
+
+    def _salvar(self, registro, entrada, saida, **extra):
+        return self.client.post(
+            reverse("laboratorio:api_editar_linha_coating"),
+            data=json.dumps({"id": registro.id,
+                             "hora_entrada": timezone.localtime(entrada).strftime("%Y-%m-%dT%H:%M"),
+                             "hora_saida": timezone.localtime(saida).strftime("%Y-%m-%dT%H:%M"), **extra}),
+            content_type="application/json",
+        )
+
+    def _lotes_na_auditoria(self):
+        self.client.force_login(get_user_model().objects.get_or_create(
+            username="coating.mix.audit", defaults={"is_staff": True, "is_superuser": True})[0])
+        response = self.client.get(reverse("laboratorio:coating_painel"), {"audit": "true", "anomaly": "overlap"})
+        return {r.lote for r in response.context["registros"]}
+
+    def test_confirmacao_de_mix_libera_o_conflito(self):
+        response = self._salvar(self.atual, self._dt(1, 0, 0), self._dt(1, 0, 56), confirmar_mix_servico=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.atual.refresh_from_db()
+        self.assertTrue(self.atual.mix_servico)
+        self.assertEqual(self.atual.mix_servico_confirmado_por, self.user)
+        self.assertIsNotNone(self.atual.mix_servico_confirmado_em)
+
+    def test_mix_nao_libera_outras_anomalias(self):
+        response = self._salvar(self.atual, self._dt(1, 0, 0), self._dt(0, 23, 0), confirmar_mix_servico=True)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual([a["codigo"] for a in response.json()["anomalias"]], ["negative"])
+        self.assertNotIn("requer_confirmacao_mix", response.json())
+
+    def test_mix_confirmado_vale_enquanto_os_horarios_nao_mudam(self):
+        self._salvar(self.atual, self._dt(1, 0, 0), self._dt(1, 0, 56), confirmar_mix_servico=True)
+
+        mesmos = self._salvar(self.atual, self._dt(1, 0, 0), self._dt(1, 0, 56), observacao="ok")
+        self.assertEqual(mesmos.status_code, 200)
+
+        outros = self._salvar(self.atual, self._dt(1, 0, 5), self._dt(1, 0, 56))
+        self.assertEqual(outros.status_code, 400)
+        self.assertTrue(outros.json()["requer_confirmacao_mix"])
+
+    def test_sem_conflito_desfaz_o_mix(self):
+        self._salvar(self.atual, self._dt(1, 0, 0), self._dt(1, 0, 56), confirmar_mix_servico=True)
+        response = self._salvar(self.atual, self._dt(1, 0, 50), self._dt(1, 1, 40))
+
+        self.assertEqual(response.status_code, 200)
+        self.atual.refresh_from_db()
+        self.assertFalse(self.atual.mix_servico)
+        self.assertIsNone(self.atual.mix_servico_confirmado_por)
+
+    def test_mix_confirmado_sai_da_auditoria_dos_dois_lotes(self):
+        self.atual.hora_saida = self._dt(1, 0, 56)
+        self.atual.save()
+        self.assertTrue({13973, 13974} <= self._lotes_na_auditoria())
+
+        RegistroCoating.objects.filter(pk=self.atual.pk).update(mix_servico=True)
+        lotes = self._lotes_na_auditoria()
+        self.assertNotIn(13973, lotes)
+        self.assertNotIn(13974, lotes)
+
+    def test_lote_hospedeiro_nao_conflita_com_o_mix(self):
+        self._salvar(self.atual, self._dt(1, 0, 0), self._dt(1, 0, 56), confirmar_mix_servico=True)
+
+        response = self._salvar(self.hospedeiro, self._dt(0, 23, 57), self._dt(1, 0, 45))
+        self.assertEqual(response.status_code, 200)
+
+        data = self._analisar(self.hospedeiro, self._dt(0, 23, 57), self._dt(1, 0, 45))
+        self.assertEqual(data["anomalias"], [])
+        linha_mix = next(v for v in data["contexto"]["vizinhos"] if v["lote"] == 13974)
+        self.assertEqual(linha_mix["status"], "mix")
+
+    def test_analise_informa_mix_ja_confirmado(self):
+        self._salvar(self.atual, self._dt(1, 0, 0), self._dt(1, 0, 56), confirmar_mix_servico=True)
+
+        data = self._analisar(self.atual, self._dt(1, 0, 0), self._dt(1, 0, 56))
+        self.assertEqual([a["codigo"] for a in data["anomalias"]], ["overlap"])
+        self.assertTrue(data["mix_servico"]["confirmado"])
+        self.assertEqual(data["mix_servico"]["por"], "coating.sug")
+
+        alterado = self._analisar(self.atual, self._dt(1, 0, 5), self._dt(1, 0, 56))
+        self.assertFalse(alterado["mix_servico"]["confirmado"])
+
+    def test_edicao_rapida_pede_confirmacao_de_mix(self):
+        self.atual.hora_entrada = self._dt(1, 0, 0)
+        self.atual.save()
+        url = reverse("laboratorio:atualizar_celula_coating")
+        payload = {"id": self.atual.id, "campo": "hora_saida",
+                   "valor": timezone.localtime(self._dt(1, 0, 56)).strftime("%Y-%m-%dT%H:%M")}
+
+        response = self.client.post(url, data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(response.status_code, 400)
+        self.assertTrue(response.json()["requer_confirmacao_mix"])
+
+        response = self.client.post(url, data=json.dumps({**payload, "confirmar_mix_servico": True}),
+                                    content_type="application/json")
+        self.assertEqual(response.status_code, 200)
+        self.atual.refresh_from_db()
+        self.assertTrue(self.atual.mix_servico)

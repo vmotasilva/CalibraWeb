@@ -49,6 +49,7 @@ from .coating_horarios import (
     analisar_horarios as analisar_horarios_coating,
     anotar_conflito_horario,
     filtro_conflito_horario,
+    mix_servico_mantido,
     parse_hora as parse_hora_coating,
     regra_turno_para,
     validar_horarios_com_conflitos as validar_horarios_coating,
@@ -89,11 +90,40 @@ def _atualizar_turno_coating(registro):
         registro.turno_coating = turno_diario
 
 
+def _so_conflito_de_horario(anomalias):
+    return bool(anomalias) and all(a["codigo"] == "overlap" for a in anomalias)
+
+
 def _resposta_anomalias_coating(anomalias):
+    if _so_conflito_de_horario(anomalias):
+        # Pode ser mix de serviço (lote inserido no meio de outro): o usuário confirma e reenvia
+        texto = "Conflito de horário com outro lote na mesma máquina:\n" + "\n".join(
+            f"• {a['detalhe']}" for a in anomalias
+        )
+        return JsonResponse(
+            {"success": False, "error": texto, "anomalias": anomalias, "requer_confirmacao_mix": True}, status=400
+        )
     texto = "Horários inválidos — corrija antes de salvar:\n" + "\n".join(
         f"• {a['titulo']}: {a['detalhe']}" for a in anomalias
     )
     return JsonResponse({"success": False, "error": texto, "anomalias": anomalias}, status=400)
+
+
+def _mix_servico_liberado(anomalias, confirmou, mantido):
+    """Só o conflito de horário pode ser liberado, e só com o mix de serviço confirmado (agora ou antes)."""
+    return _so_conflito_de_horario(anomalias) and (confirmou or mantido)
+
+
+def _registrar_mix_servico(registro, anomalias, confirmou, usuario):
+    """Grava o mix de serviço: confirmado agora, mantido (mesmos horários) ou desfeito (sem conflito)."""
+    if not anomalias:
+        registro.mix_servico = False
+        registro.mix_servico_confirmado_por = None
+        registro.mix_servico_confirmado_em = None
+    elif confirmou:
+        registro.mix_servico = True
+        registro.mix_servico_confirmado_por = usuario
+        registro.mix_servico_confirmado_em = timezone.now()
 
 
 def _parse_date(value):
@@ -1693,7 +1723,10 @@ def api_editar_linha_coating(request):
             return JsonResponse({'success': False, 'error': str(e)}, status=400)
         maquina_final = data.get('maquina_id') or registro.maquina_id
         anomalias = validar_horarios_coating(registro.pk, maquina_final, entrada, saida, registro.lado)
-        if anomalias:
+        confirmou_mix = data.get('confirmar_mix_servico') is True
+        if anomalias and not _mix_servico_liberado(
+            anomalias, confirmou_mix, mix_servico_mantido(registro, entrada, saida)
+        ):
             return _resposta_anomalias_coating(anomalias)
 
         if 'lote' in data or 'maquina_id' in data or 'tratamento_id' in data:
@@ -1722,7 +1755,8 @@ def api_editar_linha_coating(request):
             if val is None or str(val).strip() == 'None':
                 val = ''
             registro.observacao = val
-            
+
+        _registrar_mix_servico(registro, anomalias, confirmou_mix, request.user)
         _atualizar_turno_coating(registro)
         registro.save()
         return JsonResponse({'success': True})
@@ -1775,6 +1809,7 @@ def atualizar_celula_coating(request):
             else:
                 setattr(registro, campo, int(valor))
         elif campo in ['hora_entrada', 'hora_saida']:
+            horarios_gravados = (registro.hora_entrada, registro.hora_saida)
             if not valor:
                 setattr(registro, campo, None)
             else:
@@ -1799,15 +1834,14 @@ def atualizar_celula_coating(request):
                         
                 setattr(registro, campo, parsed)
 
-            anomalias = validar_horarios_coating(
-                registro.pk,
-                registro.maquina_id,
-                parse_hora_coating(registro.hora_entrada),
-                parse_hora_coating(registro.hora_saida),
-                registro.lado,
-            )
-            if anomalias:
+            entrada = parse_hora_coating(registro.hora_entrada)
+            saida = parse_hora_coating(registro.hora_saida)
+            anomalias = validar_horarios_coating(registro.pk, registro.maquina_id, entrada, saida, registro.lado)
+            confirmou_mix = data.get('confirmar_mix_servico') is True
+            mantido = mix_servico_mantido(registro, entrada, saida, horarios_gravados)
+            if anomalias and not _mix_servico_liberado(anomalias, confirmou_mix, mantido):
                 return _resposta_anomalias_coating(anomalias)
+            _registrar_mix_servico(registro, anomalias, confirmou_mix, request.user)
         else:
             return JsonResponse({'success': False, 'error': 'Campo não permitido para edição rápida.'}, status=400)
 
@@ -1824,7 +1858,8 @@ def api_analisar_horarios_coating(request):
     try:
         data = json.loads(request.body)
         registro = get_object_or_404(
-            RegistroCoating.objects.select_related('maquina', 'tratamento', 'turno_coating'), pk=data.get('id')
+            RegistroCoating.objects.select_related('maquina', 'tratamento', 'turno_coating', 'mix_servico_confirmado_por'),
+            pk=data.get('id')
         )
         entrada = parse_hora_coating(data.get('hora_entrada'))
         saida = parse_hora_coating(data.get('hora_saida'))
