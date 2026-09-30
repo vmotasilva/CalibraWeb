@@ -16,6 +16,13 @@ from procedures.models import (
 from rh.models import Colaborador
 
 
+SPECIAL_VALIDAR_MATRIZ_PERM = 'core.nav_treinamentos_validar_matriz'
+
+
+def _pode_validar_qualquer_matriz(user) -> bool:
+    return bool(user.is_superuser or user.has_perm(SPECIAL_VALIDAR_MATRIZ_PERM))
+
+
 @login_required
 def solicitar_validacao_view(request, matriz_id):
     """
@@ -69,9 +76,9 @@ def validacoes_pendentes_view(request):
     """
     Mostra validações pendentes para o usuário atual
     """
-    # Superuser pode acessar mesmo sem perfil de colaborador.
+    # Superuser (ou permissão especial) pode acessar mesmo sem perfil de colaborador.
     # Nesse caso, deve enxergar todas as pendências (não apenas as sem validador).
-    if request.user.is_superuser:
+    if _pode_validar_qualquer_matriz(request.user):
         validacoes = SolicitacaoValidacaoMatriz.objects.filter(
             status='pendente'
         ).select_related('matriz', 'solicitante', 'validador').order_by('-criado_em')
@@ -102,8 +109,8 @@ def validar_matriz_view(request, solicitacao_id):
     solicitacao = get_object_or_404(SolicitacaoValidacaoMatriz, id=solicitacao_id)
     matriz = solicitacao.matriz
     
-    # Verificar permissão (superusers pode validar qualquer coisa)
-    if not request.user.is_superuser:
+    # Verificar permissão (superuser ou permissão especial podem validar qualquer matriz)
+    if not _pode_validar_qualquer_matriz(request.user):
         try:
             if request.user.colaborador != solicitacao.validador:
                 messages.error(request, 'Você não tem permissão para validar esta matriz!')

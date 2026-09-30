@@ -93,7 +93,7 @@
                     <i class="bi bi-bar-chart-line"></i> Dashboard
                 </a>
                 
-                {% if request.user.is_staff or request.user.is_superuser %}
+                {% if request.user.is_staff or request.user.is_superuser or perms.core.nav_laboratorio_coating_recalcular_todos %}
                 <button class="btn btn-outline-warning fw-bold shadow-sm" id="btnRecalcularTodos" onclick="recalcularTodosTurnos()" title="Recalcula o turno de todos os registros com hora de entrada preenchida">
                     <i class="bi bi-arrow-clockwise"></i> Recalcular Turnos
                 </button>
@@ -141,7 +141,7 @@
                         </a>
                     </li>
 
-                    {% if request.user.is_staff or request.user.is_superuser %}
+                    {% if request.user.is_staff or request.user.is_superuser or perms.core.nav_laboratorio_coating_recalcular_todos %}
                     <li><hr class="dropdown-divider my-1"></li>
                     <li>
                         <button class="dropdown-item py-2 px-3 fw-bold text-warning" onclick="recalcularTodosTurnos()">

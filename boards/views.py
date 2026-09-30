@@ -29,13 +29,18 @@ from rh.models import Colaborador
 def get_user_colaborador(user):
     return user.colaborador if hasattr(user, 'colaborador') else None
 
+def _is_board_admin(user):
+    """Superusuário ou permissão especial "Gerenciar Todos os Quadros": vê e altera qualquer quadro."""
+    return bool(user.is_superuser or user.has_perm("core.nav_boards_gerenciar_todos"))
+
+
 def can_edit_board(board, colab, user):
     """
     Retorna True se o usuário pode alterar estrutura (configurações, colunas, tags) do quadro.
     Somente superuser, criador e membros explícitos têm permissão de edição.
     Usuários que acessam via 'todos_colaboradores=True' são apenas leitores/associados.
     """
-    if user.is_superuser:
+    if _is_board_admin(user):
         return True
     if not colab:
         return False
@@ -117,7 +122,7 @@ def dashboard_view(request):
     colab = get_user_colaborador(request.user)
     
     # Superusuários vêm todos os quadros, colaboradores comuns vêm apenas os seus, onde são membros
-    if request.user.is_superuser:
+    if _is_board_admin(request.user):
         quadros_base = Board.objects.exclude(nome="Ações Corretivas e Preventivas").distinct()
     elif colab:
         quadros_base = Board.objects.filter(
@@ -218,7 +223,7 @@ def board_detail_view(request, board_id, focus_column_id=None):
     colab = get_user_colaborador(request.user)
     
     # Permissão de acesso
-    if request.user.is_superuser:
+    if _is_board_admin(request.user):
         board = get_object_or_404(Board.objects.exclude(nome="Ações Corretivas e Preventivas"), id=board_id)
     elif colab:
         board = get_object_or_404(
@@ -405,6 +410,7 @@ def board_detail_view(request, board_id, focus_column_id=None):
         'cartoes_atrasados': cartoes_atrasados,
         'atividades': atividades,
         'can_edit_board': can_edit_board(board, colab, request.user),
+        'is_board_admin': _is_board_admin(request.user),
         'todos_colaboradores': todos_colaboradores,
         'colaboradores_com_tarefas': colaboradores_com_tarefas,
         'colaboradores_sistema': Colaborador.objects.all().order_by('nome_completo'),
@@ -1469,7 +1475,7 @@ def archive_board_view(request, board_id):
     colab = get_user_colaborador(request.user)
     board = get_object_or_404(Board, id=board_id)
     
-    if board.criado_por != colab and not request.user.is_superuser:
+    if board.criado_por != colab and not _is_board_admin(request.user):
         messages.error(request, "Apenas o criador do quadro pode arquivá-lo.")
         return redirect('boards:dashboard')
         
@@ -1493,7 +1499,7 @@ def unarchive_board_view(request, board_id):
     colab = get_user_colaborador(request.user)
     board = get_object_or_404(Board, id=board_id)
     
-    if board.criado_por != colab and not request.user.is_superuser:
+    if board.criado_por != colab and not _is_board_admin(request.user):
         messages.error(request, "Apenas o criador do quadro pode desarquivá-lo.")
         return redirect('boards:dashboard')
         
@@ -1566,7 +1572,7 @@ def delete_subsection_view(request, subsection_id):
 def create_label_view(request, board_id):
     board = get_object_or_404(Board, id=board_id)
     colab = get_user_colaborador(request.user)
-    if not request.user.is_superuser:
+    if not _is_board_admin(request.user):
         if board.criado_por != colab and not board.membros.filter(id=colab.id).exists():
             messages.error(request, "Acesso negado.")
             return redirect('boards:dashboard')
@@ -1591,7 +1597,7 @@ def delete_label_view(request, label_id):
     label = get_object_or_404(BoardLabel, id=label_id)
     board = label.quadro
     colab = get_user_colaborador(request.user)
-    if not request.user.is_superuser:
+    if not _is_board_admin(request.user):
         if board.criado_por != colab and not board.membros.filter(id=colab.id).exists():
             messages.error(request, "Acesso negado.")
             return redirect('boards:dashboard')
@@ -1646,7 +1652,7 @@ def api_add_board_link_view(request, board_id):
 @require_board_edit_permission
 def api_delete_board_link_view(request, link_id):
     link = get_object_or_404(BoardLink, id=link_id)
-    if not request.user.is_superuser and link.criado_por != get_user_colaborador(request.user) and link.quadro.criado_por != get_user_colaborador(request.user):
+    if not _is_board_admin(request.user) and link.criado_por != get_user_colaborador(request.user) and link.quadro.criado_por != get_user_colaborador(request.user):
         return JsonResponse({'success': False, 'error': 'Permissão negada.'})
         
     try:
@@ -1677,7 +1683,7 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT
 def export_board_pdf_view(request, board_id):
     colab = get_user_colaborador(request.user)
     
-    if request.user.is_superuser:
+    if _is_board_admin(request.user):
         board = get_object_or_404(Board.objects.exclude(nome="Ações Corretivas e Preventivas"), id=board_id)
     elif colab:
         board = get_object_or_404(

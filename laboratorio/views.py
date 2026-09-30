@@ -166,7 +166,7 @@ def _get_ocorrencia_detail_queryset():
 def _can_user_close_occurrence(user, ocorrencia):
     if not user.is_authenticated:
         return False
-    if user.is_superuser or user.is_staff:
+    if user.is_superuser or user.is_staff or user.has_perm("core.nav_laboratorio_encerrar_qualquer_ocorrencia"):
         return True
     return ocorrencia.criado_por_id == user.id
 
@@ -2262,9 +2262,13 @@ def api_recalcular_todos_turnos(request):
     """
     Recalcula o turno de TODOS os RegistroCoating que possuem hora_entrada,
     com base nas regras de turno ativas.
-    Apenas superusuários ou staff podem executar.
+    Apenas superusuários, staff ou quem tem a permissão especial podem executar.
     """
-    if not (request.user.is_staff or request.user.is_superuser):
+    if not (
+        request.user.is_staff
+        or request.user.is_superuser
+        or request.user.has_perm("core.nav_laboratorio_coating_recalcular_todos")
+    ):
         return JsonResponse({'success': False, 'error': 'Acesso negado.'}, status=403)
 
     try:

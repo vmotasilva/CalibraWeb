@@ -567,7 +567,7 @@
                                 </button>
                             </li>
                             
-                            {% if board.criado_por == user.colaborador or user.is_superuser %}
+                            {% if board.criado_por == user.colaborador or is_board_admin %}
                             <li><hr class="dropdown-divider"></li>
                                 {% if board.arquivado %}
                                 <li>

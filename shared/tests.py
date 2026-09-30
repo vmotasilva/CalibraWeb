@@ -456,8 +456,9 @@ class Iso13485PermissionsTests(TestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'ISO 13485 - AUDITORIAS')
-        self.assertContains(response, 'ISO 13485 - SETUP')
+        self.assertContains(response, 'ISO 13485')
+        self.assertContains(response, 'Modo Entrevista &amp; Ferramentas')
+        self.assertContains(response, 'Setup: Normas ISO')
         self.assertContains(response, 'Modo Entrevista (Lista de Auditorias)')
         self.assertContains(response, 'Painel de Setup ISO')
         self.assertContains(response, 'Planos de Ação (CAPA)')

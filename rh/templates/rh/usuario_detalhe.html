@@ -387,6 +387,7 @@
                                 <h5 class="mb-0">{{ modulo.nome }}</h5>
                             </div>
                             <div class="d-flex align-items-center gap-3">
+                                {% if modulo.module_perm.codename %}
                                 <div class="form-check form-switch mb-0" onclick="event.stopPropagation()">
                                     <input type="checkbox" class="form-check-input perm-checkbox"
                                         id="perm_{{ modulo.module_perm.app_label }}_{{ modulo.module_perm.codename }}"
@@ -397,6 +398,9 @@
                                         for="perm_{{ modulo.module_perm.app_label }}_{{ modulo.module_perm.codename }}">No
                                         menu</label>
                                 </div>
+                                {% else %}
+                                <span class="badge bg-light text-dark">Vale para todos os módulos</span>
+                                {% endif %}
                                 <i class="bi bi-chevron-down collapse-icon"></i>
                             </div>
                         </div>
@@ -469,6 +473,49 @@
                                             </div>
                                         </div>
                                         {% endfor %}
+                                    </div>
+                                </div>
+                                {% elif item.especial %}
+                                <div class="card border border-warning mb-2">
+                                    <div class="card-header bg-warning bg-opacity-10 block-header collapsed p-0"
+                                        data-bs-toggle="collapse"
+                                        data-bs-target="#collapse{{ forloop.parentloop.counter }}_{{ forloop.counter }}"
+                                        aria-expanded="false">
+                                        <div class="d-flex align-items-center justify-content-between px-3 py-2">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <i class="bi bi-shield-lock-fill text-warning"></i>
+                                                <strong class="small text-uppercase">{{ item.nome }}</strong>
+                                                <span class="badge bg-warning text-dark rounded-pill">{{ item.funcoes|length }}</span>
+                                            </div>
+                                            <i class="bi bi-chevron-down collapse-icon text-muted"></i>
+                                        </div>
+                                    </div>
+                                    <div id="collapse{{ forloop.parentloop.counter }}_{{ forloop.counter }}"
+                                        class="collapse"
+                                        data-bs-parent="#blocosAccordion{{ forloop.parentloop.counter }}">
+                                        <div class="px-3 pt-2 small text-muted">
+                                            Não liberam telas: ampliam o escopo de dados ou sobrepõem regras de dono/hierarquia. Conceda com cuidado.
+                                        </div>
+                                        <div class="list-group list-group-flush">
+                                            {% for funcao in item.funcoes %}
+                                            <div
+                                                class="list-group-item d-flex justify-content-between align-items-center gap-3">
+                                                <div class="small">
+                                                    <div class="fw-semibold">{{ funcao.nome }}</div>
+                                                    {% if funcao.descricao %}<div class="text-muted">{{ funcao.descricao }}</div>{% endif %}
+                                                </div>
+                                                <div class="form-check form-switch mb-0 flex-shrink-0">
+                                                    <input type="checkbox" class="form-check-input perm-checkbox"
+                                                        id="perm_{{ funcao.perm.app_label }}_{{ funcao.perm.codename }}"
+                                                        data-codename="{{ funcao.perm.codename }}"
+                                                        data-user-id="{{ usuario.id }}"
+                                                        data-app-label="{{ funcao.perm.app_label }}" {% with perm_key=funcao.perm.full %} {% if perm_key in user_perms or usuario.is_superuser %}checked{% endif %} {% endwith %} {% if usuario.is_superuser or not request.user.is_superuser %}disabled{% endif %}>
+                                                    <label class="form-check-label small"
+                                                        for="perm_{{ funcao.perm.app_label }}_{{ funcao.perm.codename }}">Conceder</label>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
                                     </div>
                                 </div>
                                 {% else %}

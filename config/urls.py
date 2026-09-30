@@ -8,6 +8,7 @@ from django.urls import path, include
 from django.http import JsonResponse, FileResponse
 from django.views.static import serve
 from django.views.generic import RedirectView
+from django.views.decorators.csrf import csrf_exempt
 import os
 
 # Conditionally import 2FA URLs if two_factor is installed
@@ -50,10 +51,24 @@ def health_check(request):
         return JsonResponse({"status": "error", "message": str(e)}, status=500)
 
 
+@csrf_exempt
 def trigger_migrate_view(request):
-    """Executa as migrações sob demanda em ambiente serverless"""
+    """Executa as migrações sob demanda em ambiente serverless.
+
+    Protegido por token: exige POST com `Authorization: Bearer <MIGRATE_SECRET>`
+    (ou CRON_SECRET, se MIGRATE_SECRET não estiver definido). Sem token configurado, nega sempre.
+    """
+    import hmac
     import io
     from django.core.management import call_command
+
+    expected_secret = os.getenv("MIGRATE_SECRET") or os.getenv("CRON_SECRET")
+    auth_header = request.headers.get("authorization", "")
+    if request.method != "POST":
+        return JsonResponse({"status": "error", "message": "Método não permitido"}, status=405)
+    if not expected_secret or not hmac.compare_digest(auth_header, f"Bearer {expected_secret}"):
+        return JsonResponse({"status": "error", "message": "Não autorizado"}, status=403)
+
     out = io.StringIO()
     try:
         call_command('migrate', interactive=False, stdout=out)

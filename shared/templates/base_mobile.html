@@ -337,7 +337,7 @@
                             {% endif %}
                         {% endif %}
 
-                        {% can_nav_block user 'metrologia' 'gestao' as nav_met_gestao %}
+                        {% can_nav_block user 'metrologia' 'instrumentos' as nav_met_gestao %}
                         {% if nav_met_gestao %}
                             {% can_nav_view user 'modulo_metrologia' 'metrologia' as nav_met_lista %}
                             {% can_nav_view user 'qms:listar_historicos_calibracao' 'metrologia' as nav_met_hist %}
@@ -446,7 +446,7 @@
 
 
 
-                        {% can_nav_block user 'rh' 'importacao' as nav_pe_import %}
+                        {% can_nav_block user 'rh' 'equipe' as nav_pe_import %}
                         {% if nav_pe_import %}
                             {% can_nav_view user 'qms:importar_colaboradores' 'rh' as nav_pe_imp_p %}
                             {% can_nav_view user 'qms:importar_hierarquia' 'rh' as nav_pe_imp_h %}
@@ -574,7 +574,8 @@
                         {% if nav_tr_procedimentos %}
                             {% can_nav_view user 'procedures:procedimentos_list' 'procedures' as nav_tr_proc %}
                             {% can_nav_view user 'procedures:procedimento_matrizes_list' 'procedures' as nav_tr_proc_mat %}
-                            {% if nav_tr_proc or nav_tr_proc_mat %}
+                            {% can_nav_view user 'procedures:perguntas_avaliacao_list' 'procedures' as nav_tr_perg_auto %}
+                            {% if nav_tr_proc or nav_tr_proc_mat or nav_tr_perg_auto %}
                                 <li>
                                     <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapsePROCEDIMENTOS" style="cursor: pointer;">
                                         PROCEDIMENTOS <i class="bi bi-chevron-down transition-transform rotate-180"></i>
@@ -582,7 +583,7 @@
                                     <ul class="list-unstyled collapse show" id="collapsePROCEDIMENTOS">
                                 {% if nav_tr_proc %}<li><a class="dropdown-item" href="{% url 'procedures:procedimentos_list' %}"><i class="bi bi-journal-bookmark"></i> Procedimentos</a></li>{% endif %}
                                 {% if nav_tr_proc_mat %}<li><a class="dropdown-item" href="{% url 'procedures:procedimento_matrizes_list' %}"><i class="bi bi-diagram-3"></i> Matrizes e Sub-áreas</a></li>{% endif %}
-                                {% if nav_tr_proc %}<li><a class="dropdown-item" href="{% url 'procedures:perguntas_avaliacao_list' %}"><i class="bi bi-patch-question"></i> Perguntas Auto-Avaliação (FOR.141)</a></li>{% endif %}
+                                {% if nav_tr_perg_auto %}<li><a class="dropdown-item" href="{% url 'procedures:perguntas_avaliacao_list' %}"><i class="bi bi-patch-question"></i> Perguntas Auto-Avaliação (FOR.141)</a></li>{% endif %}
                                     </ul>
                                 </li>
                             {% endif %}

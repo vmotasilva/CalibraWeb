@@ -35,6 +35,10 @@ from shared.permissions import has_view_access
 
 SPECIAL_VIEW_ALL_COLABORADORES_PERM = 'core.nav_pessoas_ver_todos_colaboradores'
 SPECIAL_REGISTRAR_FERIAS_TODOS_PERM = 'core.nav_pessoas_registrar_ferias_todos'
+SPECIAL_PERFIL_RH_PERM = 'core.nav_pessoas_perfil_rh'
+SPECIAL_VER_SALARIO_PERM = 'core.nav_pessoas_ver_salario'
+SPECIAL_FERIAS_CONFIGURACAO_PERM = 'core.nav_pessoas_ferias_configuracao'
+FERIAS_STATUS_PERM = 'core.nav_pessoas_ferias_status'
 
 
 def _has_special_view_all_colaboradores_perm(user):
@@ -43,6 +47,15 @@ def _has_special_view_all_colaboradores_perm(user):
 
 def _has_special_registrar_ferias_todos_perm(user):
     return bool(user and user.has_perm(SPECIAL_REGISTRAR_FERIAS_TODOS_PERM))
+
+
+def _has_perfil_rh_perm(user):
+    """Permissão especial que equivale às liberações do setor RH/DP/Qualidade (a regra do setor segue como fallback)."""
+    return bool(user and user.has_perm(SPECIAL_PERFIL_RH_PERM))
+
+
+def _has_ver_salario_perm(user):
+    return bool(user and user.has_perm(SPECIAL_VER_SALARIO_PERM))
 
 
 def can_user_manage_ferias_for(request_user, target_colaborador=None):
@@ -60,7 +73,7 @@ def can_user_manage_ferias_for(request_user, target_colaborador=None):
     if request_user.is_superuser or request_user.is_staff:
         return True
 
-    if _has_special_registrar_ferias_todos_perm(request_user):
+    if _has_special_registrar_ferias_todos_perm(request_user) or _has_perfil_rh_perm(request_user):
         return True
 
     try:
@@ -272,7 +285,7 @@ def can_user_register_ocorrencia(request_user, target_colaborador=None):
     if request_user.is_superuser or request_user.is_staff:
         return True
 
-    if request_user.has_perm('rh.add_ocorrencia'):
+    if request_user.has_perm('rh.add_ocorrencia') or _has_perfil_rh_perm(request_user):
         return True
 
     try:
@@ -380,7 +393,7 @@ def modulo_rh_view(request):
     # SUPERUSERS SEMPRE VÊM TODOS SEM LIMITAÇÕES
     if request.user.is_superuser or request.user.is_staff:
         can_see_salary = True  # Também ver salários
-    elif _has_special_view_all_colaboradores_perm(request.user):
+    elif _has_special_view_all_colaboradores_perm(request.user) or _has_ver_salario_perm(request.user):
         can_see_salary = True
     elif colab:
         setor_nome = (colab.setor.nome.upper() if colab.setor else "")
@@ -546,7 +559,7 @@ def detalhe_colaborador_view(request, colab_id):
 
     # Permissão para ver salário
     can_see_salary = False
-    if request.user.is_superuser:
+    if request.user.is_superuser or _has_ver_salario_perm(request.user):
         can_see_salary = True
     elif usuario_logado:
         setor_nome = (usuario_logado.setor.nome.upper() if usuario_logado.setor else "")
@@ -871,7 +884,7 @@ def registrar_ocorrencia_view(request):
         # Restringir choices de colaborador para não expor lista completa
         try:
             qs_colabs = get_colaboradores_acessiveis(request.user).order_by('nome_completo')
-            if usuario_logado and not (request.user.is_superuser or request.user.is_staff or _is_admin_setor(usuario_logado) or request.user.has_perm('rh.add_ocorrencia')):
+            if usuario_logado and not (request.user.is_superuser or request.user.is_staff or _is_admin_setor(usuario_logado) or _has_perfil_rh_perm(request.user) or request.user.has_perm('rh.add_ocorrencia')):
                 qs_colabs = qs_colabs.exclude(id=usuario_logado.id)
             form.fields['colaborador'].queryset = qs_colabs
         except Exception:
@@ -904,7 +917,7 @@ def registrar_ocorrencia_view(request):
         # Restringir choices de colaborador para não expor lista completa
         try:
             qs_colabs = get_colaboradores_acessiveis(request.user).order_by('nome_completo')
-            if usuario_logado and not (request.user.is_superuser or request.user.is_staff or _is_admin_setor(usuario_logado) or request.user.has_perm('rh.add_ocorrencia')):
+            if usuario_logado and not (request.user.is_superuser or request.user.is_staff or _is_admin_setor(usuario_logado) or _has_perfil_rh_perm(request.user) or request.user.has_perm('rh.add_ocorrencia')):
                 qs_colabs = qs_colabs.exclude(id=usuario_logado.id)
             form.fields['colaborador'].queryset = qs_colabs
         except Exception:
@@ -944,8 +957,8 @@ def editar_ocorrencia_view(request, occ_id):
     permitido = False
     if request.user.is_superuser or request.user.is_staff:
         permitido = True
-    elif request.user.has_perm('rh.change_ocorrencia'):
-        # Usuário tem permissão Django para editar ocorrências
+    elif request.user.has_perm('rh.change_ocorrencia') or _has_perfil_rh_perm(request.user):
+        # Permissão Django para editar ocorrências ou Perfil RH/DP
         permitido = True
     elif usuario_logado:
         if usuario_logado.setor and "RH" in usuario_logado.setor.nome.upper():
@@ -1002,8 +1015,8 @@ def deletar_ocorrencia_view(request, occ_id):
     permitido = False
     if request.user.is_superuser or request.user.is_staff:
         permitido = True
-    elif request.user.has_perm('rh.delete_ocorrencia'):
-        # Usuário tem permissão Django para deletar ocorrências
+    elif request.user.has_perm('rh.delete_ocorrencia') or _has_perfil_rh_perm(request.user):
+        # Permissão Django para deletar ocorrências ou Perfil RH/DP
         permitido = True
     elif usuario_logado:
         if usuario_logado.setor and "RH" in usuario_logado.setor.nome.upper():
@@ -1037,8 +1050,8 @@ def listar_ocorrencias_view(request):
     permitido = False
     if request.user.is_superuser or request.user.is_staff:
         permitido = True
-    elif request.user.has_perm('rh.view_ocorrencia'):
-        # Usuário tem permissão Django para ver ocorrências
+    elif request.user.has_perm('rh.view_ocorrencia') or _has_perfil_rh_perm(request.user):
+        # Permissão Django para ver ocorrências ou Perfil RH/DP
         permitido = True
     elif usuario_logado:
         if usuario_logado.setor and "RH" in usuario_logado.setor.nome.upper():
@@ -1247,7 +1260,8 @@ def gestao_ferias_view(request):
     if (
         request.user.is_superuser or
         request.user.is_staff or
-        request.user.has_perm("rh.view_ferias")
+        request.user.has_perm("rh.view_ferias") or
+        _has_perfil_rh_perm(request.user)
     ):
         permitido = True
     elif usuario_logado:
@@ -1369,10 +1383,10 @@ def exportar_ferias_view(request):
     """
     import io
     from django.http import HttpResponse
-    
+
     # Verificar permissão
     permitido = False
-    if request.user.is_superuser or request.user.is_staff:
+    if request.user.is_superuser or request.user.is_staff or _has_perfil_rh_perm(request.user):
         permitido = True
     else:
         try:
@@ -1998,7 +2012,12 @@ def api_configuracao_ferias(request):
     config = ConfiguracaoFerias.get_config()
 
     if request.method == 'POST':
-        if not (request.user.is_superuser or request.user.is_staff or request.user.has_perm('rh.change_ferias')):
+        if not (
+            request.user.is_superuser
+            or request.user.is_staff
+            or request.user.has_perm('rh.change_ferias')
+            or request.user.has_perm(SPECIAL_FERIAS_CONFIGURACAO_PERM)
+        ):
             return JsonResponse({'ok': False, 'message': 'Sem permissão para alterar configurações.'}, status=403)
         try:
             is_json = (request.content_type and 'application/json' in request.content_type.lower())
@@ -2218,9 +2237,14 @@ def criar_ferias_view(request, colab_id=None):
 @login_required
 def atualizar_status_ferias_view(request):
     """View para atualizar status de férias em massa."""
-    # Verificar permissão - apenas staff/superuser/RH
+    # Verificar permissão - staff/superuser, setor RH ou permissões de navegação
     permitido = False
-    if request.user.is_superuser or request.user.is_staff:
+    if (
+        request.user.is_superuser
+        or request.user.is_staff
+        or request.user.has_perm(FERIAS_STATUS_PERM)
+        or _has_perfil_rh_perm(request.user)
+    ):
         permitido = True
     else:
         try:
@@ -2285,10 +2309,10 @@ def importar_ferias_view(request):
     if not request.user.is_authenticated:
         messages.error(request, "Você deve estar autenticado para acessar esta página.")
         return redirect("login")
-    
+
     # Verificar permissão
     permitido = False
-    if request.user.is_superuser or request.user.is_staff:
+    if request.user.is_superuser or request.user.is_staff or _has_perfil_rh_perm(request.user):
         permitido = True
     else:
         try:
@@ -3436,11 +3460,13 @@ def detalhe_usuario_view(request, user_id):
             bloco_data = {
                 "key": bloco.get("key"),
                 "nome": bloco.get("nome"),
+                "especial": bool(bloco.get("especial")),
                 "perm": _perm_parts(bloco.get("perm")),
                 "funcoes": [
                     {
                         "nome": func.get("nome"),
                         "view_name": func.get("view_name"),
+                        "descricao": func.get("descricao", ""),
                         "perm": _perm_parts(func.get("perm")),
                     }
                     for func in (bloco.get("funcoes") or [])
@@ -3480,7 +3506,7 @@ def detalhe_usuario_view(request, user_id):
     try:
         from django_otp.plugins.otp_totp.models import TOTPDevice
         totp_devices = TOTPDevice.objects.filter(user=user)
-    except ImportError:
+    except (ImportError, RuntimeError):  # RuntimeError: django_otp fora do INSTALLED_APPS (ex.: testes)
         totp_devices = []
         
     is_isento_totp = user.groups.filter(name='Isentos 2FA').exists()

@@ -50,7 +50,8 @@ from .models import (
 )
 
 
-SPECIAL_VIEW_ALL_COLABORADORES_PERM = 'core.nav_pessoas_ver_todos_colaboradores'
+SPECIAL_AUDITORIA_ADMIN_PERM = 'core.nav_auditoria_admin'
+SPECIAL_ISO_AVALIACAO_EXCLUIR_PERM = 'core.nav_auditoria_iso_avaliacao_excluir'
 REPORT_SHARE_SALT = "auditoria.registros_por_modelo.share"
 REPORT_SHARE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30  # 30 dias
 
@@ -153,8 +154,8 @@ def _read_registro_report_share_token(token: str) -> dict | None:
     }
 
 
-def _has_special_view_all_colaboradores_perm(user) -> bool:
-    return bool(user and user.has_perm(SPECIAL_VIEW_ALL_COLABORADORES_PERM))
+def _has_special_auditoria_admin_perm(user) -> bool:
+    return bool(user and user.has_perm(SPECIAL_AUDITORIA_ADMIN_PERM))
 
 
 def _parse_grid_itens(raw: str) -> list[str]:
@@ -692,7 +693,7 @@ def _auditoria_is_admin(user) -> bool:
     return bool(
         getattr(user, "is_staff", False)
         or getattr(user, "is_superuser", False)
-        or _has_special_view_all_colaboradores_perm(user)
+        or _has_special_auditoria_admin_perm(user)
     )
 
 
@@ -8907,6 +8908,11 @@ def api_iso_avaliacao_resumo(request, auditoria_id):
     return JsonResponse({
         "success": True,
         "is_superuser": bool(request.user and request.user.is_authenticated and request.user.is_superuser),
+        "can_delete": bool(
+            request.user
+            and request.user.is_authenticated
+            and (request.user.is_superuser or request.user.has_perm(SPECIAL_ISO_AVALIACAO_EXCLUIR_PERM))
+        ),
         "total_avaliacoes": total_avaliacoes,
         "media_geral": m_geral,
         "media_pontualidade": m_pont,
@@ -8921,13 +8927,13 @@ def api_iso_avaliacao_resumo(request, auditoria_id):
 @require_POST
 def api_iso_avaliacao_excluir(request, avaliacao_id):
     """
-    Exclui um registro individual de avaliação (apenas Superusuários).
+    Exclui um registro individual de avaliação (Superusuários ou permissão especial).
     """
     from .models import AvaliacaoAuditorIso
-    if not request.user.is_superuser:
+    if not (request.user.is_superuser or request.user.has_perm(SPECIAL_ISO_AVALIACAO_EXCLUIR_PERM)):
         return JsonResponse({
             "success": False,
-            "error": "Permissão negada. Apenas Superusuários podem excluir avaliações."
+            "error": "Permissão negada. Você não tem permissão para excluir avaliações."
         }, status=403)
 
     av = get_object_or_404(AvaliacaoAuditorIso, pk=avaliacao_id)
