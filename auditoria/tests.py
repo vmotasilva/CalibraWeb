@@ -1014,7 +1014,10 @@ class AuditoriaIsoImagensEvidenciaTests(TestCase):
         self.assertTrue(data["success"])
         self.assertEqual(data["imagem"]["legenda"], "Foto da OP assinada")
         self.assertEqual(data["imagem"]["nome"], "op_foto.png")
-        self.assertTrue(data["imagem"]["url"].startswith("data:image/png;base64,"))
+        self.assertEqual(
+            data["imagem"]["url"],
+            reverse("auditoria:iso_imagem_solicitacao_arquivo", args=[data["imagem"]["id"]]),
+        )
 
         from auditoria.models import ImagemSolicitacaoIso
         img_obj = ImagemSolicitacaoIso.objects.get(pk=data["imagem"]["id"])

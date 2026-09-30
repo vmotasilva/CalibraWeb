@@ -6,7 +6,7 @@ from django.views.decorators.cache import never_cache
 from django.core import signing
 from django.db import models, transaction
 from django.db.models.deletion import ProtectedError
-from django.db.models import Count, Max, Q
+from django.db.models import Count, Max, Prefetch, Q
 from django.core.paginator import Paginator
 from django.http import HttpResponse, JsonResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
@@ -47,6 +47,8 @@ from .models import (
     ItemNorma,
     BancoPergunta,
     AuditoriaIso,
+    ImagemSolicitacaoIso,
+    EvidenciaPlanoAcaoIso,
 )
 
 
@@ -3779,7 +3781,7 @@ def iso_entrevista_view(request, auditoria_id):
             })
 
     # Obter respostas já existentes e auto-migrar anotações antigas para Solicitações se necessário
-    respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).prefetch_related('solicitacoes', 'solicitacoes__imagens', 'pergunta__itens_norma')
+    respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).prefetch_related('solicitacoes', _prefetch_sem_base64('solicitacoes__imagens', ImagemSolicitacaoIso), 'pergunta__itens_norma')
     from .models import SolicitacaoEvidenciaIso
     respostas_dict = {}
     solicitacoes_por_item = {}
@@ -3815,7 +3817,7 @@ def iso_entrevista_view(request, auditoria_id):
             imgs_s = [
                 {
                     "id": img.id,
-                    "url": img.url_imagem,
+                    "url": img.url_servida,
                     "legenda": img.legenda,
                     "nome": img.nome_arquivo,
                     "criado_em": img.criado_em.strftime("%d/%m/%Y %H:%M")
@@ -4173,7 +4175,7 @@ def api_iso_solicitacao_upload_imagem(request, pk):
             "success": True,
             "imagem": {
                 "id": img_obj.id,
-                "url": img_obj.url_imagem,
+                "url": img_obj.url_servida,
                 "legenda": img_obj.legenda,
                 "nome": img_obj.nome_arquivo,
                 "criado_em": img_obj.criado_em.strftime("%d/%m/%Y %H:%M")
@@ -4181,6 +4183,112 @@ def api_iso_solicitacao_upload_imagem(request, pk):
         })
     except Exception as e:
         return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+
+# ------------------------------------------------------------------------------
+# ENTREGA DE FOTOS E ANEXOS (base64 no banco) COM CACHE NO NAVEGADOR
+# ------------------------------------------------------------------------------
+
+# Só estes tipos abrem no navegador; o resto vai como download, para não executar
+# HTML/SVG enviado por usuário (o Portal do Auditado aceita upload sem login).
+_MIMES_EXIBICAO_SEGURA = {"image/png", "image/jpeg", "image/gif", "image/webp", "image/bmp", "application/pdf"}
+
+
+def _prefetch_sem_base64(lookup, model):
+    """Prefetch que não traz a coluna arquivo_base64: a página usa url_servida no lugar."""
+    return Prefetch(lookup, queryset=model.objects.defer("arquivo_base64"))
+
+
+def _responder_arquivo_base64(obj, nome_arquivo, mime_padrao):
+    """
+    Entrega o conteúdo de uma foto/anexo (base64 no banco, com fallback para o FileField).
+    O conteúdo de um id nunca muda, então o cache é longo e o navegador não volta ao banco.
+    """
+    import base64
+    import mimetypes
+    from django.http import Http404
+    from django.utils.http import content_disposition_header
+
+    dados = obj.arquivo_base64 or ""
+    mime = mime_padrao
+    if dados.startswith("data:"):
+        cabecalho, _, dados = dados.partition(",")
+        mime = cabecalho[5:].split(";")[0] or mime
+
+    conteudo = None
+    if dados:
+        try:
+            conteudo = base64.b64decode(dados)
+        except Exception:
+            conteudo = None
+    if conteudo is None and obj.arquivo:
+        try:
+            with obj.arquivo.open("rb") as f:
+                conteudo = f.read()
+        except Exception:
+            conteudo = None
+    if conteudo is None:
+        raise Http404("Arquivo não encontrado.")
+
+    if "/" not in (mime or ""):
+        mime = mimetypes.guess_type(nome_arquivo or "")[0] or "application/octet-stream"
+    exibir = mime in _MIMES_EXIBICAO_SEGURA
+
+    resposta = HttpResponse(conteudo, content_type=mime if exibir else "application/octet-stream")
+    resposta["Content-Disposition"] = content_disposition_header(not exibir, nome_arquivo or f"arquivo-{obj.pk}")
+    resposta["Cache-Control"] = "private, max-age=31536000, immutable"
+    resposta["X-Content-Type-Options"] = "nosniff"
+    return resposta
+
+
+def _mime_imagem(nome_arquivo):
+    import mimetypes
+    return mimetypes.guess_type(nome_arquivo or "")[0] or "image/jpeg"
+
+
+def _magic_link_permite_solicitacao(token, solicitacao):
+    """Mesmo escopo do Portal do Auditado: link válido, mesma auditoria, setor e conclusões do link."""
+    from .models import PlanoAcaoMagicLink
+
+    magic_link = PlanoAcaoMagicLink.objects.filter(token=token).first()
+    if not magic_link or not magic_link.is_valid:
+        return False
+    if solicitacao.resposta.auditoria_id != magic_link.auditoria_id:
+        return False
+    if magic_link.agenda_id and solicitacao.agenda_id != magic_link.agenda_id:
+        return False
+    conclusoes_alvo = {"NC", "OBS", "OM"} if magic_link.incluir_om else {"NC", "OBS"}
+    return solicitacao.conclusao in conclusoes_alvo
+
+
+@login_required
+def iso_imagem_solicitacao_arquivo(request, pk):
+    img = get_object_or_404(ImagemSolicitacaoIso, pk=pk)
+    return _responder_arquivo_base64(img, img.nome_arquivo, _mime_imagem(img.nome_arquivo))
+
+
+@login_required
+def iso_capa_evidencia_arquivo(request, pk):
+    ev = get_object_or_404(EvidenciaPlanoAcaoIso, pk=pk)
+    return _responder_arquivo_base64(ev, ev.nome_arquivo, ev.tipo_arquivo)
+
+
+def capa_imagem_arquivo_publico(request, token, pk):
+    from django.http import Http404
+
+    img = get_object_or_404(ImagemSolicitacaoIso.objects.select_related("solicitacao__resposta"), pk=pk)
+    if not _magic_link_permite_solicitacao(token, img.solicitacao):
+        raise Http404("Arquivo não encontrado.")
+    return _responder_arquivo_base64(img, img.nome_arquivo, _mime_imagem(img.nome_arquivo))
+
+
+def capa_evidencia_arquivo_publico(request, token, pk):
+    from django.http import Http404
+
+    ev = get_object_or_404(EvidenciaPlanoAcaoIso.objects.select_related("solicitacao__resposta"), pk=pk)
+    if not _magic_link_permite_solicitacao(token, ev.solicitacao):
+        raise Http404("Arquivo não encontrado.")
+    return _responder_arquivo_base64(ev, ev.nome_arquivo, ev.tipo_arquivo)
 
 
 @login_required
@@ -4368,7 +4476,7 @@ def iso_matriz_view(request, auditoria_id):
             parent_ids.add(item.id)
             
     # Respostas já preenchidas
-    respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).prefetch_related('solicitacoes', 'solicitacoes__imagens')
+    respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).prefetch_related('solicitacoes', _prefetch_sem_base64('solicitacoes__imagens', ImagemSolicitacaoIso))
     respostas_map = {r.pergunta_id: r for r in respostas}
     
     # Mapeamento rápido de agendas por item da norma (usando .all() para aproveitar o prefetch)
@@ -4438,7 +4546,7 @@ def iso_matriz_view(request, auditoria_id):
                                 'imagens': [
                                     {
                                         'id': img.id,
-                                        'url': img.url_imagem,
+                                        'url': img.url_servida,
                                         'legenda': img.legenda,
                                         'nome': img.nome_arquivo,
                                         'criado_em': img.criado_em.strftime("%d/%m/%Y %H:%M")
@@ -7132,7 +7240,8 @@ def iso_auditoria_cronograma(request, auditoria_id):
     ).prefetch_related(
         'resposta__pergunta__itens_norma',
         'resposta__pergunta__agendas_vinculadas',
-        'imagens'
+        _prefetch_sem_base64('imagens', ImagemSolicitacaoIso),
+        _prefetch_sem_base64('evidencias_capa', EvidenciaPlanoAcaoIso),
     ).order_by('criado_em')
 
     # Filtrar solicitações em aberto (conclusão 'P' - Pendente)
@@ -7151,7 +7260,7 @@ def iso_auditoria_cronograma(request, auditoria_id):
         for img in s.imagens.all():
             imagens_list.append({
                 'id': img.id,
-                'url': img.url_imagem,
+                'url': img.url_servida,
                 'nome': img.nome_arquivo,
                 'legenda': img.legenda or '',
             })
@@ -7160,7 +7269,7 @@ def iso_auditoria_cronograma(request, auditoria_id):
         for ev in s.evidencias_capa.all():
             evidencias_capa_list.append({
                 'id': ev.id,
-                'url': ev.url_arquivo,
+                'url': ev.url_servida,
                 'nome': ev.nome_arquivo,
                 'tipo': ev.tipo_arquivo,
                 'criado_em': ev.criado_em.strftime('%d/%m/%Y %H:%M')
@@ -7990,7 +8099,7 @@ def iso_auditoria_sintese_wizard(request, auditoria_id):
         itens_escopo = list(ItemNorma.objects.filter(norma=auditoria.norma).order_by('referencia'))
 
     respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).prefetch_related(
-        'solicitacoes', 'solicitacoes__imagens', 'pergunta__itens_norma'
+        'solicitacoes', 'pergunta__itens_norma'
     )
     avaliacoes_finais = {av.item_norma_id: av for av in AvaliacaoFinalRequisitoIso.objects.filter(auditoria=auditoria)}
 
@@ -8239,8 +8348,8 @@ def iso_auditoria_capa(request, auditoria_id):
     ).prefetch_related(
         'resposta__pergunta__itens_norma',
         'resposta__pergunta__agendas_vinculadas',
-        'evidencias_capa',
-        'imagens'
+        _prefetch_sem_base64('evidencias_capa', EvidenciaPlanoAcaoIso),
+        _prefetch_sem_base64('imagens', ImagemSolicitacaoIso)
     ).order_by('id')
 
     solicitacoes_com_desvios = []
@@ -8258,7 +8367,7 @@ def iso_auditoria_capa(request, auditoria_id):
         for ev in s.evidencias_capa.all():
             evidencias_capa_list.append({
                 'id': ev.id,
-                'url': ev.url_arquivo,
+                'url': ev.url_servida,
                 'nome': ev.nome_arquivo,
                 'tipo': ev.tipo_arquivo,
                 'criado_em': ev.criado_em.strftime('%d/%m/%Y %H:%M') if ev.criado_em else ''
@@ -8497,8 +8606,8 @@ def capa_portal_publico_view(request, token):
         "resposta__pergunta", "agenda"
     ).prefetch_related(
         "resposta__pergunta__itens_norma",
-        "imagens",
-        "evidencias_capa"
+        _prefetch_sem_base64("imagens", ImagemSolicitacaoIso),
+        _prefetch_sem_base64("evidencias_capa", EvidenciaPlanoAcaoIso)
     ).order_by("agenda__titulo", "criado_em")
 
     if setor_filtrado:
@@ -8521,14 +8630,14 @@ def capa_portal_publico_view(request, token):
         itens_norma = list(s.resposta.pergunta.itens_norma.all()) if s.resposta and s.resposta.pergunta else []
         imagens_origem = [{
             "id": img.id,
-            "url": img.url_imagem,
+            "url": img.url_publica(token),
             "nome": img.nome_arquivo,
             "legenda": img.legenda or ""
         } for img in s.imagens.all()]
 
         evidencias_capa = [{
             "id": ev.id,
-            "url": ev.url_arquivo,
+            "url": ev.url_publica(token),
             "nome": ev.nome_arquivo,
             "tipo": ev.tipo_arquivo,
             "criado_em": ev.criado_em.strftime("%d/%m/%Y %H:%M")
@@ -8655,7 +8764,7 @@ def api_capa_salvar_resposta_publica(request, token):
                     )
                     novas_evidencias.append({
                         "id": ev_obj.id,
-                        "url": ev_obj.url_arquivo,
+                        "url": ev_obj.url_publica(token),
                         "nome": ev_obj.nome_arquivo,
                         "tipo": ev_obj.tipo_arquivo,
                         "criado_em": ev_obj.criado_em.strftime("%d/%m/%Y %H:%M")

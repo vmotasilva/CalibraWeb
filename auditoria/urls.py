@@ -94,6 +94,8 @@ urlpatterns = [
     path("iso/api/solicitacoes/<int:pk>/imagens/upload/", views.api_iso_solicitacao_upload_imagem, name="api_iso_solicitacao_upload_imagem"),
     path("iso/api/solicitacoes/imagens/<int:pk>/deletar/", views.api_iso_solicitacao_delete_imagem, name="api_iso_solicitacao_delete_imagem"),
     path("iso/api/solicitacoes/imagens/<int:pk>/legenda/", views.api_iso_solicitacao_update_legenda_imagem, name="api_iso_solicitacao_update_legenda_imagem"),
+    path("iso/arquivos/imagem/<int:pk>/", views.iso_imagem_solicitacao_arquivo, name="iso_imagem_solicitacao_arquivo"),
+    path("iso/arquivos/evidencia-capa/<int:pk>/", views.iso_capa_evidencia_arquivo, name="iso_capa_evidencia_arquivo"),
     path("iso/api/marcar-nao-aplicavel/", views.api_iso_marcar_nao_aplicavel, name="api_iso_marcar_nao_aplicavel"),
     # ISO 13485 (Setup CRUD)
     path("iso/setup/", views.iso_setup_dashboard, name="iso_setup_dashboard"),
@@ -162,6 +164,8 @@ urlpatterns = [
     path("capa/responder/<str:token>/", views.capa_portal_publico_view, name="capa_portal_publico"),
     path("capa/api/salvar-resposta/<str:token>/", views.api_capa_salvar_resposta_publica, name="api_capa_salvar_resposta_publica"),
     path("capa/api/remover-evidencia/<str:token>/<int:evidencia_id>/", views.api_capa_remover_evidencia_publica, name="api_capa_remover_evidencia_publica"),
+    path("capa/arquivos/<str:token>/imagem/<int:pk>/", views.capa_imagem_arquivo_publico, name="capa_imagem_arquivo_publico"),
+    path("capa/arquivos/<str:token>/evidencia/<int:pk>/", views.capa_evidencia_arquivo_publico, name="capa_evidencia_arquivo_publico"),
 
     # ==========================================
     # AVALIAÇÃO DO AUDITOR & FEEDBACK (MAGIC LINK)

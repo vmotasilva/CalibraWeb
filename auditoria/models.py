@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.urls import reverse
 from django.utils import timezone
 import re
 import unicodedata
@@ -1301,6 +1302,15 @@ class EvidenciaPlanoAcaoIso(models.Model):
                 return self.arquivo_base64
             mime = self.tipo_arquivo or "application/octet-stream"
             return f"data:{mime};base64,{self.arquivo_base64}"
+
+    @property
+    def url_servida(self) -> str:
+        """Endpoint com cache no navegador: evita reenviar o base64 do banco a cada abertura de página."""
+        return reverse("auditoria:iso_capa_evidencia_arquivo", args=[self.pk])
+
+    def url_publica(self, token: str) -> str:
+        """Mesmo endpoint para o Portal do Auditado, validado pelo token do magic link."""
+        return reverse("auditoria:capa_evidencia_arquivo_publico", args=[token, self.pk])
         return ""
 
 
@@ -1419,6 +1429,15 @@ class ImagemSolicitacaoIso(models.Model):
         if self.arquivo_base64:
             return f"data:image/jpeg;base64,{self.arquivo_base64}"
         return ""
+
+    @property
+    def url_servida(self) -> str:
+        """Endpoint com cache no navegador: evita reenviar o base64 do banco a cada abertura de página."""
+        return reverse("auditoria:iso_imagem_solicitacao_arquivo", args=[self.pk])
+
+    def url_publica(self, token: str) -> str:
+        """Mesmo endpoint para o Portal do Auditado, validado pelo token do magic link."""
+        return reverse("auditoria:capa_imagem_arquivo_publico", args=[token, self.pk])
 
 
 class AvaliacaoFinalRequisitoIso(models.Model):
