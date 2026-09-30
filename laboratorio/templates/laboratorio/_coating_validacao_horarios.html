@@ -186,7 +186,8 @@ window.CoatingValidacao = (function () {
             const analiseValida = analise && chaveAnalise === chaveAtual() ? analise : null;
             const avisos = analiseValida ? (analiseValida.avisos || []) : [];
 
-            inSaida.min = inEntrada.value || '';
+            // Não alterar atributos dos inputs (min/max/value) aqui: render roda a cada tecla e,
+            // no Chrome, isso reinicia a digitação do segmento (ex.: "15" no dia vira "01"/"05").
             const campos = new Set();
             anomalias.forEach(a => (a.campos || []).forEach(c => campos.add(c)));
             inEntrada.classList.toggle('is-invalid', campos.has('entrada'));
