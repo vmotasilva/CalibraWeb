@@ -1,0 +1,5 @@
+<th{% if estilo %} style="{{ estilo }}"{% endif %}{% if link.ativa %} aria-sort="{% if link.direcao == 'asc' %}ascending{% else %}descending{% endif %}"{% endif %}>
+    <a href="{{ link.url }}" class="th-ordenavel{% if link.ativa %} ativa{% endif %}" title="Ordenar por {{ rotulo }}">
+        {{ rotulo }}<i class="bi {% if link.ativa %}{% if link.direcao == 'asc' %}bi-caret-up-fill{% else %}bi-caret-down-fill{% endif %}{% else %}bi-chevron-expand{% endif %} ms-1"></i>
+    </a>
+</th>
