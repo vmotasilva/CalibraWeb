@@ -1869,6 +1869,29 @@ def api_ferias_detail(request, ferias_id):
 
     ferias = get_object_or_404(Ferias, id=ferias_id)
 
+    if request.method in ['DELETE', 'POST'] and (request.method == 'DELETE' or request.POST.get('action') == 'delete'):
+        try:
+            if not can_user_manage_ferias_for(request.user, ferias.colaborador):
+                return JsonResponse({'ok': False, 'message': 'Acesso Negado. Você não tem permissão para excluir férias deste colaborador.'}, status=403)
+            
+            colaborador = ferias.colaborador
+            ferias.delete()
+
+            hoje = date.today()
+            ferias_ativas = Ferias.objects.filter(
+                colaborador=colaborador,
+                aprovada=True,
+                data_inicio__lte=hoje,
+                data_fim__gte=hoje
+            ).exists()
+            colaborador.em_ferias = ferias_ativas
+            colaborador.save(update_fields=["em_ferias"])
+
+            return JsonResponse({'ok': True, 'message': 'Férias excluídas com sucesso!'})
+        except Exception as e:
+            logger.error(f"Erro ao excluir férias API: {e}", exc_info=True)
+            return JsonResponse({'ok': False, 'message': str(e)}, status=400)
+
     if request.method == 'POST':
         try:
             is_json = (request.content_type and 'application/json' in request.content_type.lower())
@@ -1876,6 +1899,9 @@ def api_ferias_detail(request, ferias_id):
                 data = json.loads(request.body.decode('utf-8') if isinstance(request.body, bytes) else request.body)
             else:
                 data = request.POST
+
+            if not can_user_manage_ferias_for(request.user, ferias.colaborador):
+                return JsonResponse({'ok': False, 'message': 'Acesso Negado. Você não tem permissão para editar férias deste colaborador.'}, status=403)
 
             if data.get('data_inicio'):
                 d_ini_val = data.get('data_inicio')
@@ -1929,6 +1955,17 @@ def api_ferias_detail(request, ferias_id):
                 ferias.descricao = data.get('descricao')
 
             ferias.save()
+
+            hoje = date.today()
+            ferias_ativas = Ferias.objects.filter(
+                colaborador=ferias.colaborador,
+                aprovada=True,
+                data_inicio__lte=hoje,
+                data_fim__gte=hoje
+            ).exists()
+            ferias.colaborador.em_ferias = ferias_ativas
+            ferias.colaborador.save(update_fields=["em_ferias"])
+
             return JsonResponse({'ok': True, 'message': 'Férias atualizadas com sucesso!'})
         except Exception as e:
             logger.error(f"Erro ao salvar férias API: {e}", exc_info=True)

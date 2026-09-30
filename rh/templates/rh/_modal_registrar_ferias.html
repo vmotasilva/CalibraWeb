@@ -147,11 +147,18 @@ Requer que a view passe "colaboradores" no contexto.
                     <div id="msgRegistroFerias" class="d-none mt-3"></div>
                 </form>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="submit" id="btnRegistrarFerias" form="formRegistrarFerias" class="btn btn-success">
-                    <i class="bi bi-calendar-plus"></i> Registrar Férias
-                </button>
+            <div class="modal-footer d-flex justify-content-between">
+                <div>
+                    <button type="button" id="btnExcluirFerias" class="btn btn-outline-danger d-none" onclick="excluirFeriasEmEdicao()">
+                        <i class="bi bi-trash me-1"></i> Excluir Férias
+                    </button>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" id="btnRegistrarFerias" form="formRegistrarFerias" class="btn btn-success">
+                        <i class="bi bi-calendar-plus"></i> Registrar Férias
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -248,6 +255,8 @@ Requer que a view passe "colaboradores" no contexto.
         document.getElementById('formRegistrarFerias').action =
             "{% url 'rh:criar_ferias_colab' colab_id=0 %}".replace('/0/', '/' + colab_id + '/');
         document.getElementById('btnRegistrarFerias').innerHTML = '<i class="bi bi-calendar-plus"></i> Registrar Férias';
+        const btnExcluir = document.getElementById('btnExcluirFerias');
+        if (btnExcluir) btnExcluir.classList.add('d-none');
         // Reset form
         ['reg_data_inicio','reg_dias_solicitados','reg_data_fim','reg_descricao'].forEach(id => {
             document.getElementById(id).value = '';
@@ -261,7 +270,12 @@ Requer que a view passe "colaboradores" no contexto.
         setTimeout(() => new bootstrap.Modal(document.getElementById('modalRegistrarFerias')).show(), 350);
     };
 
+    let feriasIdAtualEdicao = null;
+    let nomeColaboradorAtualEdicao = '';
+
     window.editarFerias = async function(feriasId, nomeColaborador) {
+        feriasIdAtualEdicao = feriasId;
+        nomeColaboradorAtualEdicao = nomeColaborador;
         try {
             const resp = await fetch('/rh/api/ferias/' + feriasId + '/');
             if (resp.ok) {
@@ -269,6 +283,12 @@ Requer que a view passe "colaboradores" no contexto.
                 document.getElementById('registroFeriasTitle').innerHTML = '<i class="bi bi-pencil-square"></i> Editar Férias — ' + nomeColaborador;
                 document.getElementById('formRegistrarFerias').action = '/rh/api/ferias/' + feriasId + '/';
                 document.getElementById('btnRegistrarFerias').innerHTML = '<i class="bi bi-save"></i> Salvar Alterações';
+                const btnExcluir = document.getElementById('btnExcluirFerias');
+                if (btnExcluir) {
+                    btnExcluir.classList.remove('d-none');
+                    btnExcluir.disabled = false;
+                    btnExcluir.innerHTML = '<i class="bi bi-trash me-1"></i> Excluir Férias';
+                }
                 
                 document.getElementById('reg_data_inicio').value = data.data_inicio;
                 document.getElementById('reg_dias_solicitados').value = data.dias_solicitados;
@@ -288,6 +308,58 @@ Requer que a view passe "colaboradores" no contexto.
         } catch (err) {
             console.error(err);
             alert('Erro de conexão ao carregar férias.');
+        }
+    };
+
+    window.excluirFeriasEmEdicao = async function() {
+        if (!feriasIdAtualEdicao) return;
+        const confirmou = confirm('Tem certeza de que deseja excluir permanentemente este período de férias de ' + (nomeColaboradorAtualEdicao || 'colaborador') + '?');
+        if (!confirmou) return;
+
+        const btnExcluir = document.getElementById('btnExcluirFerias');
+        const btnSalvar = document.getElementById('btnRegistrarFerias');
+        const msg = document.getElementById('msgRegistroFerias');
+        
+        btnExcluir.disabled = true;
+        btnSalvar.disabled = true;
+        btnExcluir.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Excluindo...';
+
+        try {
+            const csrfToken = document.querySelector('#formRegistrarFerias [name=csrfmiddlewaretoken]').value;
+            const resp = await fetch('/rh/api/ferias/' + feriasIdAtualEdicao + '/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: new URLSearchParams({
+                    'action': 'delete',
+                    'csrfmiddlewaretoken': csrfToken
+                })
+            });
+            const data = await resp.json();
+            if (resp.ok && data.ok) {
+                msg.className = 'alert alert-success';
+                msg.textContent = data.message || 'Férias excluídas com sucesso!';
+                msg.classList.remove('d-none');
+                setTimeout(() => window.location.reload(), 800);
+            } else {
+                msg.className = 'alert alert-danger';
+                msg.textContent = data.message || 'Erro ao excluir férias.';
+                msg.classList.remove('d-none');
+                btnExcluir.disabled = false;
+                btnSalvar.disabled = false;
+                btnExcluir.innerHTML = '<i class="bi bi-trash me-1"></i> Excluir Férias';
+            }
+        } catch(err) {
+            console.error(err);
+            msg.className = 'alert alert-danger';
+            msg.textContent = 'Erro de conexão ao excluir férias.';
+            msg.classList.remove('d-none');
+            btnExcluir.disabled = false;
+            btnSalvar.disabled = false;
+            btnExcluir.innerHTML = '<i class="bi bi-trash me-1"></i> Excluir Férias';
         }
     };
 
