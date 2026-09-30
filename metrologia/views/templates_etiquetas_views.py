@@ -26,7 +26,7 @@ def templates_etiquetas_list_view(request):
     Lista e gerencia templates de etiquetas em Excel para instrumentos de metrologia.
     Exibe guia de tags dinâmicas e estatísticas.
     """
-    templates = TemplateEtiquetaInstrumento.objects.all().order_by('tipo_variacao', '-padrao', 'nome')
+    templates = TemplateEtiquetaInstrumento.objects.defer('arquivo_base64').order_by('tipo_variacao', '-padrao', 'nome')
     
     total_templates = templates.count()
     total_ativos = templates.filter(ativo=True).count()

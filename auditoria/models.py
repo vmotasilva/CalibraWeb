@@ -830,6 +830,9 @@ class Norma(models.Model):
         verbose_name="Conteúdo Base64 Template XLSX"
     )
 
+    # Colunas pesadas (arquivos inteiros). Usar em .defer() nas consultas que não geram documentos.
+    CAMPOS_BASE64 = ("template_docx_base64", "template_xlsx_base64")
+
     class Meta:
         verbose_name = "Norma"
         verbose_name_plural = "Normas"

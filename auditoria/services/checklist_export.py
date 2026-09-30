@@ -496,7 +496,14 @@ def generate_auditoria_excel_buffer(auditoria) -> io.BytesIO:
         if any(other.referencia.startswith(prefix) for other in itens_list):
             parent_ids.add(item.id)
 
-    respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).prefetch_related('solicitacoes', 'solicitacoes__imagens', 'pergunta__itens_norma')
+    # Aqui as imagens só são contadas: não trazer o base64 de cada uma
+    from django.db.models import Prefetch
+    from ..models import ImagemSolicitacaoIso
+    respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).prefetch_related(
+        'solicitacoes',
+        Prefetch('solicitacoes__imagens', queryset=ImagemSolicitacaoIso.objects.only('id', 'solicitacao_id')),
+        'pergunta__itens_norma',
+    )
     respostas_map = {r.pergunta_id: r for r in respostas}
     na_item_ids = set(auditoria.itens_nao_aplicaveis.values_list('id', flat=True))
 

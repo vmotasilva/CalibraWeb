@@ -110,7 +110,7 @@ TAGS_REFERENCIA = {
 @login_required
 def templates_config_list_view(request):
     """Página principal de gerenciamento de templates de treinamentos."""
-    templates = TemplateDocumentoTreinamento.objects.select_related('criado_por').all()
+    templates = TemplateDocumentoTreinamento.objects.select_related('criado_por').defer('arquivo_base64')
     
     # Filtro por função
     funcao_filtro = request.GET.get('funcao', '')

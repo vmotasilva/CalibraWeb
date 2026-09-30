@@ -5509,7 +5509,7 @@ def api_iso_auditoria_editar_planejamento(request, auditoria_id):
 @login_required
 def iso_setup_dashboard(request):
     """Nível 1: Visão Global das Normas Cadastradas"""
-    normas = Norma.objects.all().order_by('codigo')
+    normas = Norma.objects.defer(*Norma.CAMPOS_BASE64).order_by('codigo')
     return render(request, "auditoria/iso/setup/dashboard.html", {
         "normas": normas,
     })
@@ -8459,7 +8459,12 @@ def capa_portal_publico_view(request, token):
     from django.utils import timezone
     from .models import PlanoAcaoMagicLink, SolicitacaoEvidenciaIso
 
-    magic_link = PlanoAcaoMagicLink.objects.filter(token=token).select_related("auditoria", "auditoria__norma", "agenda").first()
+    magic_link = (
+        PlanoAcaoMagicLink.objects.filter(token=token)
+        .select_related("auditoria", "auditoria__norma", "agenda")
+        .defer(*(f"auditoria__norma__{c}" for c in Norma.CAMPOS_BASE64))
+        .first()
+    )
 
     if not magic_link or not magic_link.ativo:
         return render(request, "auditoria/iso/capa/portal_publico.html", {
@@ -9406,7 +9411,7 @@ def iso_analytics_global_view(request):
     unidades = sorted(list(set(filter(None, unidades_raw))))
 
     # Obter lista de normas utilizadas
-    normas = Norma.objects.filter(auditorias__isnull=False).distinct().order_by("codigo")
+    normas = Norma.objects.filter(auditorias__isnull=False).defer(*Norma.CAMPOS_BASE64).distinct().order_by("codigo")
 
     context = {
         "unidades": unidades,
@@ -9585,7 +9590,9 @@ def api_iso_analytics_global_data(request):
         except ValueError:
             pass
 
-    auditorias_list = list(auditorias_qs.select_related("norma"))
+    auditorias_list = list(
+        auditorias_qs.select_related("norma").defer(*(f"norma__{c}" for c in Norma.CAMPOS_BASE64))
+    )
     auditoria_ids = [a.id for a in auditorias_list]
     total_auditorias = len(auditoria_ids)
 

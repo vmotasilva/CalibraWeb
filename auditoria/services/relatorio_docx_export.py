@@ -347,7 +347,7 @@ def compute_auditoria_metricas_completas(auditoria) -> Dict[str, Any]:
 
     if RespostaEntrevistaIso:
         respostas = RespostaEntrevistaIso.objects.filter(auditoria=auditoria).prefetch_related(
-            'solicitacoes', 'solicitacoes__imagens', 'pergunta__itens_norma'
+            'solicitacoes', 'pergunta__itens_norma'
         )
     else:
         respostas = []

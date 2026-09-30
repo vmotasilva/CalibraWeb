@@ -329,7 +329,7 @@ def modulo_metrologia_view(request):
         label = f"{meses_pt.get(mes, mes)}/{ano}"
         periodos_filtro.append({'value': p, 'label': label})
 
-    templates_etiquetas = TemplateEtiquetaInstrumento.objects.filter(ativo=True).order_by('tipo_variacao', '-padrao', 'nome')
+    templates_etiquetas = TemplateEtiquetaInstrumento.objects.filter(ativo=True).defer('arquivo_base64').order_by('tipo_variacao', '-padrao', 'nome')
 
     ctx = {
         "instrumentos": instrumentos,
