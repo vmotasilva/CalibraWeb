@@ -1491,4 +1491,11 @@ class PerguntaAvaliacao(models.Model):
     def __str__(self):
         ref = self.procedimento.codigo if self.procedimento else (self.matriz.nome if self.matriz else 'Geral')
         return f"[{ref}] P{self.ordem}: {self.enunciado[:50]}"
+
+
+# ==============================================================================
+# DIAGRAMAS E FLUXOGRAMAS DE PROCESSOS (DOC.071)
+# ==============================================================================
+from .models_diagram import Diagrama, DiagramaVersao, StatusDiagrama
+
 

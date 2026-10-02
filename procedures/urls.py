@@ -6,6 +6,8 @@ Consolida training + procurements
 
 from django.urls import path
 from . import views
+from .views import diagram_views
+
 from .views import (
     habilidades_views,
     perfis_views,
@@ -345,4 +347,23 @@ urlpatterns = [
     path('perguntas-avaliacao/<int:procedimento_id>/preview-excel/', perguntas_avaliacao_views.exportar_preview_for141_procedimento_view, name='exportar_preview_for141_procedimento'),
     path('perguntas-avaliacao/<int:procedimento_id>/preview-pdf/', perguntas_avaliacao_views.exportar_preview_for141_pdf_procedimento_view, name='exportar_preview_for141_pdf_procedimento'),
     path('perguntas-avaliacao/<int:procedimento_id>/imprimir/', perguntas_avaliacao_views.preview_for141_print_procedimento_view, name='preview_for141_print_procedimento'),
+
+    # ==========================
+    # MÓDULO DE DIAGRAMAS E FLUXOGRAMAS (DOC.071)
+    # ==========================
+    path('diagramas/', diagram_views.diagramas_lista_view, name='diagramas_lista'),
+    path('diagramas/novo/', diagram_views.diagrama_novo_view, name='diagrama_novo'),
+    path('diagramas/editor/<uuid:versao_id>/', diagram_views.diagrama_editor_view, name='diagrama_editor'),
+
+    # API Endpoints
+    path('api/diagramas/', diagram_views.api_diagramas_list_create, name='api_diagramas_list_create'),
+    path('api/diagramas/<uuid:diagrama_id>/', diagram_views.api_diagrama_detail, name='api_diagrama_detail'),
+    path('api/diagramas-versoes/<uuid:versao_id>/', diagram_views.api_diagrama_versao_detail, name='api_diagrama_versao_detail'),
+    path('api/diagramas-versoes/<uuid:versao_id>/auto-save/', diagram_views.api_diagrama_versao_autosave, name='api_diagrama_versao_autosave'),
+    path('api/diagramas-versoes/<uuid:versao_id>/submeter/', diagram_views.api_diagrama_versao_submeter, name='api_diagrama_versao_submeter'),
+    path('api/diagramas-versoes/<uuid:versao_id>/aprovar/', diagram_views.api_diagrama_versao_aprovar, name='api_diagrama_versao_aprovar'),
+    path('api/diagramas-versoes/<uuid:versao_id>/criar-nova-revisao/', diagram_views.api_diagrama_versao_criar_nova_revisao, name='api_diagrama_versao_criar_nova_revisao'),
+    path('api/diagramas-versoes/<uuid:versao_id>/exportar-pdf-doc071/', diagram_views.api_diagrama_versao_exportar_pdf, name='api_diagrama_versao_exportar_pdf'),
 ]
+
+

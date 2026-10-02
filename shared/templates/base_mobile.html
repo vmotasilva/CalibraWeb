@@ -401,7 +401,7 @@
                                     <ul class="list-unstyled collapse show" id="collapseEQUIPE">
                                 {% if nav_pe_colab %}<li><a class="dropdown-item" href="{% url 'modulo_rh' %}">👥 Colaboradores</a></li>{% endif %}
                                 {% if nav_pe_novo %}<li><a class="dropdown-item" href="{% url 'rh:criar_colaborador' %}"><i class="bi bi-plus-circle text-success"></i> Novo Colaborador</a></li>{% endif %}
-                                {% if nav_pe_ferias %}<li><a class="dropdown-item" href="{% url 'rh:gestao_ferias' %}">📅 Gestão de Férias</a></li>{% endif %}
+                                {% if nav_pe_ferias %}<li><a class="dropdown-item" href="{% url 'rh:projecao_mensal_ferias' %}">📅 Gestão de Férias</a></li>{% endif %}
                                 {% if nav_pe_lid %}<li><a class="dropdown-item" href="{% url 'rh:atualizar_liderancas_em_massa' %}">🛠️ Lideranças</a></li>{% endif %}
                                 {% if nav_pe_oco %}<li><a class="dropdown-item" href="{% url 'listar_ocorrencias' %}">⚠️ Ocorrências</a></li>{% endif %}
                                     </ul>
@@ -582,9 +582,11 @@
                                     </h6>
                                     <ul class="list-unstyled collapse show" id="collapsePROCEDIMENTOS">
                                 {% if nav_tr_proc %}<li><a class="dropdown-item" href="{% url 'procedures:procedimentos_list' %}"><i class="bi bi-journal-bookmark"></i> Procedimentos</a></li>{% endif %}
+                                {% if nav_tr_proc %}<li><a class="dropdown-item" href="{% url 'procedures:diagramas_lista' %}"><i class="bi bi-diagram-3-fill"></i> Fluxogramas (DOC.071)</a></li>{% endif %}
                                 {% if nav_tr_proc_mat %}<li><a class="dropdown-item" href="{% url 'procedures:procedimento_matrizes_list' %}"><i class="bi bi-diagram-3"></i> Matrizes e Sub-áreas</a></li>{% endif %}
                                 {% if nav_tr_perg_auto %}<li><a class="dropdown-item" href="{% url 'procedures:perguntas_avaliacao_list' %}"><i class="bi bi-patch-question"></i> Perguntas Auto-Avaliação (FOR.141)</a></li>{% endif %}
                                     </ul>
+
                                 </li>
                             {% endif %}
                         {% endif %}

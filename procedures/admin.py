@@ -311,3 +311,39 @@ admin_site.register(AvaliacaoFornecedor, AvaliacaoFornecedorAdmin)
 admin_site.register(ProcessoCotacao, ProcessoCotacaoAdmin)
 admin_site.register(Orcamento, OrcamentoAdmin)
 admin_site.register(PacoteIntegracao, PacoteIntegracaoAdmin)
+
+# ==============================================================================
+# DIAGRAMAS E FLUXOGRAMAS (DOC.071)
+# ==============================================================================
+from .models_diagram import Diagrama, DiagramaVersao
+
+
+class DiagramaVersaoInline(admin.TabularInline):
+    model = DiagramaVersao
+    extra = 0
+    fields = ('revisao', 'status', 'aprovado_por', 'data_aprovacao', 'atualizado_em')
+    readonly_fields = ('revisao', 'status', 'aprovado_por', 'data_aprovacao', 'atualizado_em')
+    can_delete = False
+
+
+class DiagramaAdmin(admin.ModelAdmin):
+    list_display = ('codigo', 'titulo', 'departamento', 'criado_por', 'ativo', 'atualizado_em')
+    list_filter = ('departamento', 'ativo', 'criado_em')
+    search_fields = ('codigo', 'titulo', 'descricao', 'departamento')
+    inlines = [DiagramaVersaoInline]
+    ordering = ('codigo',)
+
+
+class DiagramaVersaoAdmin(admin.ModelAdmin):
+    list_display = ('diagrama', 'revisao', 'status', 'aprovado_por', 'data_aprovacao', 'atualizado_em')
+    list_filter = ('status', 'data_aprovacao')
+    search_fields = ('diagrama__codigo', 'diagrama__titulo', 'motivo_revisao')
+    readonly_fields = ('criado_em', 'atualizado_em')
+    ordering = ('diagrama__codigo', '-revisao')
+
+
+admin.site.register(Diagrama, DiagramaAdmin)
+admin.site.register(DiagramaVersao, DiagramaVersaoAdmin)
+admin_site.register(Diagrama, DiagramaAdmin)
+admin_site.register(DiagramaVersao, DiagramaVersaoAdmin)
+

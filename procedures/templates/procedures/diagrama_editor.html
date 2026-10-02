@@ -1,0 +1,990 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}{{ diagrama.codigo }} - {{ diagrama.titulo }} (Rev. {{ versao.revisao|stringformat:"02d" }}){% endblock %}
+
+{% block extra_css %}
+<style>
+    .editor-container {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 170px);
+        min-height: 680px;
+        background: #ffffff;
+        border-radius: 10px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+    }
+
+    .editor-header {
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 12px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .nav-tabs-custom .nav-link {
+        color: #64748b;
+        font-weight: 600;
+        border: none;
+        padding: 8px 18px;
+        border-radius: 6px;
+        margin-right: 6px;
+        transition: all 0.2s ease;
+    }
+
+    .nav-tabs-custom .nav-link.active {
+        color: #2563eb;
+        background: #eff6ff;
+    }
+
+    .canvas-viewport {
+        position: relative;
+        flex: 1;
+        background-color: #f8fafc;
+        background-image: radial-gradient(#cbd5e1 1.2px, transparent 1.2px);
+        background-size: 24px 24px;
+        overflow: hidden;
+        cursor: grab;
+        user-select: none;
+    }
+
+    .canvas-viewport:active {
+        cursor: grabbing;
+    }
+
+    /* SVG Connections Layer */
+    .connections-layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 5000px;
+        height: 5000px;
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    .nodes-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 5000px;
+        height: 5000px;
+        z-index: 2;
+    }
+
+    /* Swimlanes Background Layer */
+    .swimlanes-layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 5000px;
+        height: 5000px;
+        z-index: 0;
+        pointer-events: none;
+    }
+
+    .swimlane-row {
+        position: absolute;
+        left: 20px;
+        width: 4800px;
+        border-bottom: 2px dashed #cbd5e1;
+        background: rgba(241, 245, 249, 0.45);
+        box-sizing: border-box;
+    }
+
+    .swimlane-label {
+        position: absolute;
+        top: 10px;
+        left: 20px;
+        background: #e2e8f0;
+        color: #475569;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 3px 10px;
+        border-radius: 4px;
+    }
+
+    /* Flow Nodes Styles */
+    .flow-node {
+        position: absolute;
+        background: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+        border: 2px solid #94a3b8;
+        cursor: move;
+        touch-action: none;
+        transition: box-shadow 0.15s, border-color 0.15s;
+    }
+
+    .flow-node:hover {
+        box-shadow: 0 6px 16px rgba(37,99,235,0.18);
+        border-color: #3b82f6;
+    }
+
+    .flow-node.selected {
+        border-color: #2563eb !important;
+        box-shadow: 0 0 0 3px rgba(37,99,235,0.3) !important;
+    }
+
+    /* Node Types */
+    .node-start-end {
+        width: 140px;
+        height: 48px;
+        border-radius: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 12px;
+        border-width: 2.5px;
+    }
+    .node-start {
+        background: #ecfdf5;
+        border-color: #10b981;
+        color: #065f46;
+    }
+    .node-end {
+        background: #f1f5f9;
+        border-color: #64748b;
+        color: #334155;
+    }
+
+    .node-process {
+        width: 180px;
+        min-height: 80px;
+        padding: 10px;
+        border-color: #94a3b8;
+    }
+
+    .node-critical {
+        width: 190px;
+        min-height: 90px;
+        border-color: #f43f5e;
+        border-width: 2px;
+        overflow: hidden;
+        padding: 0;
+    }
+    .node-critical .critical-header {
+        background: #f43f5e;
+        color: #ffffff;
+        font-size: 9px;
+        font-weight: 800;
+        text-transform: uppercase;
+        padding: 3px 8px;
+        display: flex;
+        justify-content: space-between;
+    }
+    .node-critical .critical-body {
+        padding: 8px 10px;
+    }
+
+    /* Decision Diamond Node */
+    .node-decision {
+        width: 110px;
+        height: 110px;
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .diamond-inner {
+        width: 78px;
+        height: 78px;
+        background: #fffbeb;
+        border: 2.5px solid #f59e0b;
+        transform: rotate(45deg);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.06);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .diamond-content {
+        transform: rotate(-45deg);
+        text-align: center;
+        font-size: 11px;
+        font-weight: 700;
+        color: #78350f;
+        padding: 2px;
+        line-height: 1.15;
+    }
+
+    /* Connection Handles */
+    .handle {
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #ffffff;
+        border: 2px solid #475569;
+        z-index: 10;
+    }
+    .handle-top { top: -6px; left: calc(50% - 5px); }
+    .handle-bottom { bottom: -6px; left: calc(50% - 5px); background: #10b981; border-color: #ffffff; }
+    .handle-right { right: -6px; top: calc(50% - 5px); background: #ef4444; border-color: #ffffff; }
+    .handle-left { left: -6px; top: calc(50% - 5px); background: #94a3b8; border-color: #ffffff; }
+
+    .badge-doc {
+        font-size: 9px;
+        font-family: monospace;
+        font-weight: 700;
+        padding: 2px 6px;
+        border-radius: 4px;
+        background: #eff6ff;
+        color: #1d4ed8;
+        border: 1px solid #bfdbfe;
+        display: inline-block;
+        margin-top: 4px;
+    }
+
+    .badge-step {
+        font-size: 9px;
+        font-weight: 800;
+        color: #94a3b8;
+        text-transform: uppercase;
+        margin-bottom: 2px;
+        display: block;
+    }
+
+    /* Floating Toolbar */
+    .canvas-toolbar {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        background: #ffffff;
+        padding: 6px;
+        border-radius: 8px;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+        border: 1px solid #e2e8f0;
+        display: flex;
+        gap: 6px;
+        z-index: 20;
+    }
+</style>
+{% endblock %}
+
+{% block main_content %}
+<div class="editor-container mb-4">
+    <!-- Header com Metadados e Ações QMS -->
+    <div class="editor-header">
+        <div class="d-flex align-items-center gap-3">
+            <div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-dark font-monospace fs-6">{{ diagrama.codigo }}</span>
+                    <h5 class="mb-0 fw-bold text-dark">{{ diagrama.titulo }}</h5>
+                    <span class="badge bg-secondary-subtle text-secondary font-monospace">Rev. {{ versao.revisao|stringformat:"02d" }}</span>
+                    
+                    {% if versao.status == 'APROVADO' %}
+                        <span class="badge bg-success-subtle text-success border border-success-subtle">
+                            <i class="bi bi-shield-check"></i> Aprovado (Imutável)
+                        </span>
+                    {% elif versao.status == 'EM_APROVACAO' %}
+                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle">
+                            <i class="bi bi-clock-history"></i> Em Aprovação
+                        </span>
+                    {% else %}
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+                            <i class="bi bi-pencil-square"></i> Rascunho
+                        </span>
+                    {% endif %}
+                </div>
+                <small class="text-muted">{{ diagrama.departamento }} &bull; Elaborado por {{ diagrama.criado_por.get_full_name|default:diagrama.criado_por.username }}</small>
+            </div>
+        </div>
+
+        <!-- Botões de Ação QMS -->
+        <div class="d-flex align-items-center gap-2">
+            <!-- Indicador de Status do Auto-Save -->
+            <div id="saveIndicator" class="text-muted small me-2 font-monospace">
+                {% if is_approved %}
+                    <span class="text-secondary"><i class="bi bi-lock-fill"></i> Somente Leitura</span>
+                {% else %}
+                    <span class="text-success"><i class="bi bi-check2-circle"></i> Sincronizado</span>
+                {% endif %}
+            </div>
+
+            <!-- Alternar Versão -->
+            {% if todas_versoes.count > 1 %}
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-layers"></i> Revisões
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                        {% for v in todas_versoes %}
+                            <li>
+                                <a class="dropdown-item d-flex justify-content-between align-items-center {% if v.id == versao.id %}active{% endif %}" href="{% url 'procedures:diagrama_editor' versao_id=v.id %}">
+                                    <span>Rev. {{ v.revisao|stringformat:"02d" }} ({{ v.get_status_display }})</span>
+                                    {% if v.status == 'APROVADO' %}<i class="bi bi-check text-success"></i>{% endif %}
+                                </a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+
+            {% if not is_approved %}
+                <button type="button" id="btnSubmeter" class="btn btn-outline-warning btn-sm" onclick="submeterParaAprovacao()">
+                    <i class="bi bi-send"></i> Submeter
+                </button>
+                <button type="button" id="btnAprovar" class="btn btn-outline-success btn-sm" onclick="aprovarVersao()">
+                    <i class="bi bi-check-circle"></i> Aprovar (QMS)
+                </button>
+            {% else %}
+                <button type="button" class="btn btn-outline-primary btn-sm" onclick="modalNovaRevisao()">
+                    <i class="bi bi-plus-circle"></i> Criar Nova Revisão
+                </button>
+            {% endif %}
+
+            <!-- Botão Exportar PDF DOC.071 -->
+            <button type="button" class="btn btn-danger btn-sm shadow-sm" onclick="exportarPDFDoc071()">
+                <i class="bi bi-file-earmark-pdf-fill"></i> Gerar PDF DOC.071
+            </button>
+        </div>
+    </div>
+
+    <!-- Navegação de Abas: Modo Grelha / Modo Canvas -->
+    <div class="px-3 pt-2 bg-white border-bottom d-flex justify-content-between align-items-center">
+        <ul class="nav nav-tabs nav-tabs-custom border-0" id="editorTabs" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active" id="tab-canvas-btn" data-bs-toggle="tab" data-bs-target="#tab-canvas" type="button">
+                    <i class="bi bi-diagram-3-fill me-1"></i> Modo Canvas (Visual Interativo)
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="tab-grid-btn" data-bs-toggle="tab" data-bs-target="#tab-grid" type="button">
+                    <i class="bi bi-table me-1"></i> Modo Grelha (Rascunho Tabular)
+                </button>
+            </li>
+        </ul>
+        <span class="text-muted small d-none d-md-inline">
+            <i class="bi bi-info-circle me-1"></i> Arraste os blocos no Canvas para ajustar a disposição visual.
+        </span>
+    </div>
+
+    <!-- Conteúdo das Abas -->
+    <div class="tab-content flex-grow-1 d-flex flex-column" style="position: relative; overflow: hidden;">
+        <!-- ABA 1: MODO CANVAS -->
+        <div class="tab-pane fade show active flex-grow-1" id="tab-canvas" style="position: relative; height: 100%;">
+            <div id="canvasViewport" class="canvas-viewport w-100 h-100">
+                <!-- Raias (Swimlanes) -->
+                <div id="swimlanesLayer" class="swimlanes-layer"></div>
+
+                <!-- Conexões SVG (Arestas / Setas) -->
+                <svg id="connectionsLayer" class="connections-layer">
+                    <defs>
+                        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="#475569" />
+                        </marker>
+                        <marker id="arrowhead-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="#10b981" />
+                        </marker>
+                        <marker id="arrowhead-red" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444" />
+                        </marker>
+                    </defs>
+                </svg>
+
+                <!-- Container de Nós Arrastáveis -->
+                <div id="nodesContainer" class="nodes-container"></div>
+
+                <!-- Toolbar Flutuante -->
+                <div class="canvas-toolbar">
+                    <button type="button" class="btn btn-sm btn-light border" onclick="recentralizarCanvas()" title="Centralizar Visualização">
+                        <i class="bi bi-arrows-fullscreen"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-light border" onclick="reorganizarAutoLayout()" title="Recalcular Layout Automático">
+                        <i class="bi bi-magic"></i> Auto-Layout
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ABA 2: MODO GRELHA (TABULAR) -->
+        <div class="tab-pane fade flex-grow-1 p-3 overflow-auto bg-light" id="tab-grid" style="height: 100%;">
+            <div class="card border-0 shadow-sm p-3 bg-white">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h6 class="fw-bold mb-0 text-dark">Sequência de Etapas e Regras do Processo</h6>
+                        <small class="text-muted">Adicione, edite ou reorganize as atividades na tabela.</small>
+                    </div>
+                    {% if not is_approved %}
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="adicionarLinhaGrelha()">
+                            <i class="bi bi-plus-lg"></i> Adicionar Etapa
+                        </button>
+                    {% endif %}
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover align-middle mb-0 text-sm" id="tabelaGrelha">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 70px;" class="text-center">Passo</th>
+                                <th style="width: 170px;">Raia / Setor</th>
+                                <th style="width: 180px;">Tipo de Bloco</th>
+                                <th>Descrição da Atividade</th>
+                                <th style="width: 150px;">Doc. / Formulário</th>
+                                <th style="width: 130px;" class="text-center">Próximo Passo</th>
+                                <th style="width: 60px;" class="text-center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corpoTabelaGrelha">
+                            <!-- Inserido dinamicamente via JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-3 text-end">
+                    <button type="button" class="btn btn-primary btn-sm px-3" onclick="aplicarGrelhaParaCanvas()">
+                        <i class="bi bi-arrow-repeat"></i> Atualizar e Sincronizar Canvas
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Criação de Nova Revisão -->
+<div class="modal fade" id="modalNovaRevisao" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Criar Nova Revisão (QMS)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">
+                    A versão vigente será clonada para uma nova revisão em <strong>Rascunho</strong>, permitindo edições controladas conforme a ISO 13485.
+                </p>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Justificativa / Motivo da Revisão <span class="text-danger">*</span></label>
+                    <textarea id="motivoNovaRevisao" rows="3" class="form-control" placeholder="Descreva as alterações a serem implementadas nesta revisão..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="confirmarNovaRevisao()">Criar Revisão</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const VERSAO_ID = "{{ versao.id }}";
+    const IS_APPROVED = {{ is_approved|yesno:"true,false" }};
+    const CSRF_TOKEN = "{{ csrf_token }}";
+
+    // Estado da Topologia
+    let topologia = {{ topologia_json|safe }};
+    if (!topologia.nodes) topologia.nodes = [];
+    if (!topologia.edges) topologia.edges = [];
+    if (!topologia.grid_data) topologia.grid_data = [];
+
+    let autoSaveTimer = null;
+    let isDragging = false;
+    let activeNode = null;
+    let dragOffset = { x: 0, y: 0 };
+
+    // =========================================================================
+    // INICIALIZAÇÃO
+    // =========================================================================
+    document.addEventListener('DOMContentLoaded', () => {
+        if (topologia.nodes.length === 0 && topologia.grid_data.length > 0) {
+            gerarNodesPorGridData();
+        } else if (topologia.grid_data.length === 0 && topologia.nodes.length > 0) {
+            gerarGridDataPorNodes();
+        }
+
+        renderizarCanvas();
+        renderizarGrelha();
+    });
+
+    // =========================================================================
+    // RENDERIZAÇÃO DO CANVAS INTERATIVO
+    // =========================================================================
+    function renderizarCanvas() {
+        const nodesContainer = document.getElementById('nodesContainer');
+        const swimlanesLayer = document.getElementById('swimlanesLayer');
+        nodesContainer.innerHTML = '';
+        swimlanesLayer.innerHTML = '';
+
+        // 1. Renderiza Raias (Swimlanes)
+        const lanes = Array.from(new Set(topologia.nodes.map(n => n.data?.lane || 'Geral')));
+        lanes.forEach((lane, idx) => {
+            const yPos = 40 + idx * 220;
+            const laneEl = document.createElement('div');
+            laneEl.className = 'swimlane-row';
+            laneEl.style.top = `${yPos}px`;
+            laneEl.style.height = '200px';
+            laneEl.innerHTML = `<span class="swimlane-label">RAIA: ${lane}</span>`;
+            swimlanesLayer.appendChild(laneEl);
+        });
+
+        // 2. Renderiza Nós
+        topologia.nodes.forEach(node => {
+            const nodeEl = document.createElement('div');
+            nodeEl.id = `node-${node.id}`;
+            nodeEl.style.left = `${node.position.x}px`;
+            nodeEl.style.top = `${node.position.y}px`;
+
+            if (node.type === 'start' || node.type === 'end') {
+                nodeEl.className = `flow-node node-start-end ${node.type === 'start' ? 'node-start' : 'node-end'}`;
+                nodeEl.innerHTML = `
+                    <span>${node.data.label || (node.type === 'start' ? 'INÍCIO' : 'FIM')}</span>
+                    ${node.type === 'start' ? '<div class="handle handle-bottom"></div>' : '<div class="handle handle-top"></div>'}
+                `;
+            } else if (node.type === 'decision') {
+                nodeEl.className = 'flow-node node-decision';
+                nodeEl.innerHTML = `
+                    <div class="diamond-inner">
+                        <div class="diamond-content">${node.data.label || 'Decisão?'}</div>
+                    </div>
+                    <div class="handle handle-top"></div>
+                    <div class="handle handle-bottom" title="Sim"></div>
+                    <div class="handle handle-right" title="Não"></div>
+                    <div class="handle handle-left"></div>
+                `;
+            } else if (node.type === 'critical_process') {
+                nodeEl.className = 'flow-node node-critical';
+                nodeEl.innerHTML = `
+                    <div class="critical-header">
+                        <span>⚠️ CRÍTICO (ISO 13485)</span>
+                        <span>#${node.data.stepId || ''}</span>
+                    </div>
+                    <div class="critical-body">
+                        <div class="fw-semibold text-dark small leading-tight">${node.data.label}</div>
+                        ${node.data.documentRef ? `<span class="badge-doc">📄 ${node.data.documentRef}</span>` : ''}
+                    </div>
+                    <div class="handle handle-top"></div>
+                    <div class="handle handle-bottom"></div>
+                `;
+            } else {
+                nodeEl.className = 'flow-node node-process';
+                nodeEl.innerHTML = `
+                    <span class="badge-step">Passo ${node.data.stepId || node.id}</span>
+                    <div class="fw-semibold text-dark small leading-tight">${node.data.label}</div>
+                    ${node.data.documentRef ? `<span class="badge-doc">📄 ${node.data.documentRef}</span>` : ''}
+                    <div class="handle handle-top"></div>
+                    <div class="handle handle-bottom"></div>
+                `;
+            }
+
+            // Eventos de Arrasto
+            if (!IS_APPROVED) {
+                nodeEl.addEventListener('mousedown', (e) => iniciarArrasto(e, node));
+            }
+
+            nodesContainer.appendChild(nodeEl);
+        });
+
+        desenharConexoes();
+    }
+
+    // =========================================================================
+    // ARRASTO DE NÓS (DRAG & DROP)
+    // =========================================================================
+    function iniciarArrasto(e, node) {
+        if (e.target.classList.contains('handle')) return;
+        isDragging = true;
+        activeNode = node;
+
+        const nodeEl = document.getElementById(`node-${node.id}`);
+        const rect = nodeEl.getBoundingClientRect();
+        dragOffset.x = e.clientX - rect.left;
+        dragOffset.y = e.clientY - rect.top;
+
+        document.querySelectorAll('.flow-node').forEach(el => el.classList.remove('selected'));
+        nodeEl.classList.add('selected');
+
+        window.addEventListener('mousemove', onArrasto);
+        window.addEventListener('mouseup', pararArrasto);
+    }
+
+    function onArrasto(e) {
+        if (!isDragging || !activeNode) return;
+
+        const canvasViewport = document.getElementById('canvasViewport');
+        const canvasRect = canvasViewport.getBoundingClientRect();
+
+        const x = Math.max(20, e.clientX - canvasRect.left - dragOffset.x + canvasViewport.scrollLeft);
+        const y = Math.max(20, e.clientY - canvasRect.top - dragOffset.y + canvasViewport.scrollTop);
+
+        activeNode.position.x = x;
+        activeNode.position.y = y;
+
+        const nodeEl = document.getElementById(`node-${activeNode.id}`);
+        if (nodeEl) {
+            nodeEl.style.left = `${x}px`;
+            nodeEl.style.top = `${y}px`;
+        }
+
+        desenharConexoes();
+        dispararAutoSave();
+    }
+
+    function pararArrasto() {
+        isDragging = false;
+        activeNode = null;
+        window.removeEventListener('mousemove', onArrasto);
+        window.removeEventListener('mouseup', pararArrasto);
+    }
+
+    // =========================================================================
+    // DESENHO DE ARESTAS SVG (CONEXÕES / SETAS)
+    // =========================================================================
+    function desenharConexoes() {
+        const svg = document.getElementById('connectionsLayer');
+        // Limpa arestas anteriores mantendo apenas os defs (markers)
+        const defs = svg.querySelector('defs');
+        svg.innerHTML = '';
+        svg.appendChild(defs);
+
+        topologia.edges.forEach(edge => {
+            const sourceNode = topologia.nodes.find(n => n.id === edge.source);
+            const targetNode = topologia.nodes.find(n => n.id === edge.target);
+            if (!sourceNode || !targetNode) return;
+
+            const sourceEl = document.getElementById(`node-${sourceNode.id}`);
+            const targetEl = document.getElementById(`node-${targetNode.id}`);
+            if (!sourceEl || !targetEl) return;
+
+            // Calcula coordenadas dos centros/handles
+            const sW = sourceEl.offsetWidth || 180;
+            const sH = sourceEl.offsetHeight || 80;
+            const tW = targetEl.offsetWidth || 180;
+            const tH = targetEl.offsetHeight || 80;
+
+            let startX = sourceNode.position.x + sW / 2;
+            let startY = sourceNode.position.y + sH;
+            let marker = 'url(#arrowhead)';
+            let strokeColor = '#475569';
+
+            if (edge.sourceHandle === 'right') {
+                startX = sourceNode.position.x + sW;
+                startY = sourceNode.position.y + sH / 2;
+                marker = 'url(#arrowhead-red)';
+                strokeColor = '#ef4444';
+            } else if (edge.label?.toLowerCase() === 'sim') {
+                marker = 'url(#arrowhead-green)';
+                strokeColor = '#10b981';
+            }
+
+            const endX = targetNode.position.x + tW / 2;
+            const endY = targetNode.position.y;
+
+            // Curva suave de bezier cúbica
+            const deltaY = Math.max(30, (endY - startY) / 2);
+            const pathData = `M ${startX} ${startY} C ${startX} ${startY + deltaY}, ${endX} ${endY - deltaY}, ${endX} ${endY}`;
+
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', pathData);
+            path.setAttribute('fill', 'none');
+            path.setAttribute('stroke', strokeColor);
+            path.setAttribute('stroke-width', '2');
+            path.setAttribute('marker-end', marker);
+            svg.appendChild(path);
+
+            // Label da conexão se existir
+            if (edge.label) {
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', (startX + endX) / 2 + 8);
+                text.setAttribute('y', (startY + endY) / 2);
+                text.setAttribute('fill', strokeColor);
+                text.setAttribute('font-size', '10px');
+                text.setAttribute('font-weight', 'bold');
+                text.textContent = edge.label;
+                svg.appendChild(text);
+            }
+        });
+    }
+
+    // =========================================================================
+    // MODO GRELHA (TABULAR)
+    // =========================================================================
+    function renderizarGrelha() {
+        const corpo = document.getElementById('corpoTabelaGrelha');
+        corpo.innerHTML = '';
+
+        topologia.grid_data.forEach((row, idx) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="text-center font-monospace fw-bold">${row.stepId}</td>
+                <td>
+                    <input type="text" class="form-control form-control-sm" value="${row.lane || ''}" 
+                        ${IS_APPROVED ? 'disabled' : ''} onchange="atualizarGrelha(${idx}, 'lane', this.value)">
+                </td>
+                <td>
+                    <select class="form-select form-select-sm" ${IS_APPROVED ? 'disabled' : ''} onchange="atualizarGrelha(${idx}, 'type', this.value)">
+                        <option value="start" ${row.type === 'start' ? 'selected' : ''}>Início</option>
+                        <option value="process" ${row.type === 'process' ? 'selected' : ''}>Processo Padrão</option>
+                        <option value="critical_process" ${row.type === 'critical_process' ? 'selected' : ''}>Processo Crítico</option>
+                        <option value="decision" ${row.type === 'decision' ? 'selected' : ''}>Decisão</option>
+                        <option value="end" ${row.type === 'end' ? 'selected' : ''}>Fim</option>
+                    </select>
+                </td>
+                <td>
+                    <input type="text" class="form-control form-control-sm" value="${row.label || ''}" 
+                        ${IS_APPROVED ? 'disabled' : ''} onchange="atualizarGrelha(${idx}, 'label', this.value)">
+                </td>
+                <td>
+                    <input type="text" class="form-control form-control-sm font-monospace" value="${row.documentRef || ''}" 
+                        placeholder="Ex: FOR.143" ${IS_APPROVED ? 'disabled' : ''} onchange="atualizarGrelha(${idx}, 'documentRef', this.value)">
+                </td>
+                <td class="text-center">
+                    <input type="text" class="form-control form-control-sm text-center font-monospace" value="${row.next?.[0]?.targetId || ''}" 
+                        placeholder="Ex: 2" ${IS_APPROVED ? 'disabled' : ''} onchange="atualizarConexaoGrelha(${idx}, this.value)">
+                </td>
+                <td class="text-center">
+                    ${!IS_APPROVED ? `
+                        <button type="button" class="btn btn-outline-danger btn-sm p-1" onclick="removerLinhaGrelha(${idx})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    ` : '-'}
+                </td>
+            `;
+            corpo.appendChild(tr);
+        });
+    }
+
+    function atualizarGrelha(idx, campo, valor) {
+        topologia.grid_data[idx][campo] = valor;
+        dispararAutoSave();
+    }
+
+    function atualizarConexaoGrelha(idx, targetId) {
+        topologia.grid_data[idx].next = targetId ? [{ targetId }] : [];
+        dispararAutoSave();
+    }
+
+    function adicionarLinhaGrelha() {
+        const nextId = String(topologia.grid_data.length + 1);
+        topologia.grid_data.push({
+            stepId: nextId,
+            lane: topologia.grid_data[topologia.grid_data.length - 1]?.lane || 'Qualidade',
+            type: 'process',
+            label: 'Nova Atividade',
+            next: []
+        });
+        renderizarGrelha();
+        dispararAutoSave();
+    }
+
+    function removerLinhaGrelha(idx) {
+        topologia.grid_data.splice(idx, 1);
+        renderizarGrelha();
+        dispararAutoSave();
+    }
+
+    function aplicarGrelhaParaCanvas() {
+        gerarNodesPorGridData();
+        renderizarCanvas();
+        const tabBtn = new bootstrap.Tab(document.getElementById('tab-canvas-btn'));
+        tabBtn.show();
+        dispararAutoSave();
+    }
+
+    function gerarNodesPorGridData() {
+        const existingPos = new Map();
+        topologia.nodes.forEach(n => existingPos.set(n.id, n.position));
+
+        const lanes = Array.from(new Set(topologia.grid_data.map(r => r.lane || 'Geral')));
+        const laneY = new Map();
+        lanes.forEach((l, i) => laneY.set(l, 80 + i * 220));
+
+        topologia.nodes = topologia.grid_data.map((r, i) => ({
+            id: r.stepId,
+            type: r.type,
+            position: existingPos.get(r.stepId) || { x: 80 + i * 240, y: laneY.get(r.lane || 'Geral') || 80 },
+            data: { stepId: r.stepId, lane: r.lane, label: r.label, documentRef: r.documentRef }
+        }));
+
+        topologia.edges = [];
+        topologia.grid_data.forEach(r => {
+            if (r.next && r.next.length > 0) {
+                r.next.forEach((conn, cIdx) => {
+                    if (!conn.targetId) return;
+                    topologia.edges.push({
+                        id: `e-${r.stepId}-${conn.targetId}-${cIdx}`,
+                        source: r.stepId,
+                        target: conn.targetId,
+                        sourceHandle: r.type === 'decision' && conn.condition?.toLowerCase() === 'não' ? 'right' : 'bottom',
+                        targetHandle: 'top',
+                        label: conn.condition || ''
+                    });
+                });
+            }
+        });
+    }
+
+    function gerarGridDataPorNodes() {
+        topologia.grid_data = topologia.nodes.map(n => {
+            const outEdges = topologia.edges.filter(e => e.source === n.id);
+            return {
+                stepId: n.id,
+                lane: n.data?.lane || 'Qualidade',
+                type: n.type || 'process',
+                label: n.data?.label || '',
+                documentRef: n.data?.documentRef,
+                next: outEdges.map(e => ({ targetId: e.target, condition: e.label }))
+            };
+        });
+    }
+
+    function reorganizarAutoLayout() {
+        const lanes = Array.from(new Set(topologia.nodes.map(n => n.data?.lane || 'Geral')));
+        const laneY = new Map();
+        lanes.forEach((l, i) => laneY.set(l, 80 + i * 220));
+
+        topologia.nodes.forEach((n, i) => {
+            n.position = { x: 80 + i * 240, y: laneY.get(n.data?.lane || 'Geral') || 80 };
+        });
+
+        renderizarCanvas();
+        dispararAutoSave();
+    }
+
+    function recentralizarCanvas() {
+        const canvasViewport = document.getElementById('canvasViewport');
+        canvasViewport.scrollTo({ left: 0, top: 0, behavior: 'smooth' });
+    }
+
+    // =========================================================================
+    // AUTO-SAVE DE ALTA FREQUÊNCIA (DEBOUNCE 800ms)
+    // =========================================================================
+    function dispararAutoSave() {
+        if (IS_APPROVED) return;
+
+        const indicator = document.getElementById('saveIndicator');
+        indicator.innerHTML = '<span class="text-warning"><i class="bi bi-arrow-repeat spin"></i> Salvando...</span>';
+
+        if (autoSaveTimer) clearTimeout(autoSaveTimer);
+
+        autoSaveTimer = setTimeout(async () => {
+            try {
+                const resp = await fetch(`/procedures/api/diagramas-versoes/${VERSAO_ID}/auto-save/`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN
+                    },
+                    body: JSON.stringify({ dados_topologia: topologia })
+                });
+
+                if (resp.ok) {
+                    indicator.innerHTML = '<span class="text-success"><i class="bi bi-check2-circle"></i> Sincronizado</span>';
+                } else if (resp.status === 423) {
+                    indicator.innerHTML = '<span class="text-secondary"><i class="bi bi-lock-fill"></i> Bloqueado (Aprovado)</span>';
+                } else {
+                    indicator.innerHTML = '<span class="text-danger"><i class="bi bi-exclamation-triangle"></i> Erro ao salvar</span>';
+                }
+            } catch (err) {
+                indicator.innerHTML = '<span class="text-danger"><i class="bi bi-exclamation-triangle"></i> Erro de rede</span>';
+            }
+        }, 800);
+    }
+
+    // =========================================================================
+    // AÇÕES QMS (SUBMETER, APROVAR, NOVA REVISÃO, EXPORTAR PDF)
+    // =========================================================================
+    async function submeterParaAprovacao() {
+        if (!confirm("Deseja submeter este fluxograma para aprovação formal de qualidade?")) return;
+
+        const resp = await fetch(`/procedures/api/diagramas-versoes/${VERSAO_ID}/submeter/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': CSRF_TOKEN }
+        });
+
+        if (resp.ok) {
+            location.reload();
+        } else {
+            const data = await resp.json();
+            alert("Erro: " + (data.error || "Não foi possível submeter."));
+        }
+    }
+
+    async function aprovarVersao() {
+        if (!confirm("Atenção: A aprovação tornará esta versão IMUTÁVEL e oficial no QMS. Deseja confirmar?")) return;
+
+        const resp = await fetch(`/procedures/api/diagramas-versoes/${VERSAO_ID}/aprovar/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': CSRF_TOKEN }
+        });
+
+        if (resp.ok) {
+            location.reload();
+        } else {
+            const data = await resp.json();
+            alert("Erro: " + (data.error || "Não foi possível aprovar."));
+        }
+    }
+
+    function modalNovaRevisao() {
+        const modal = new bootstrap.Modal(document.getElementById('modalNovaRevisao'));
+        modal.show();
+    }
+
+    async function confirmarNovaRevisao() {
+        const motivo = document.getElementById('motivoNovaRevisao').value.trim();
+        if (!motivo) {
+            alert("Por favor, preencha o motivo da nova revisão.");
+            return;
+        }
+
+        const resp = await fetch(`/procedures/api/diagramas-versoes/${VERSAO_ID}/criar-nova-revisao/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+            body: JSON.stringify({ motivo_revisao: motivo })
+        });
+
+        if (resp.ok) {
+            const novaVersao = await resp.json();
+            window.location.href = `/procedures/diagramas/editor/${novaVersao.id}/`;
+        } else {
+            const data = await resp.json();
+            alert("Erro: " + (data.error || "Falha ao criar nova revisão."));
+        }
+    }
+
+    async function exportarPDFDoc071() {
+        const btn = event.currentTarget;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Gerando PDF...';
+        btn.disabled = true;
+
+        try {
+            const resp = await fetch(`/procedures/api/diagramas-versoes/${VERSAO_ID}/exportar-pdf-doc071/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                body: JSON.stringify({ image_base64: null })
+            });
+
+            if (resp.ok) {
+                const blob = await resp.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `DOC.071_{{ diagrama.codigo }}_Rev{{ versao.revisao|stringformat:"02d" }}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            } else {
+                alert("Erro ao gerar PDF.");
+            }
+        } catch (err) {
+            alert("Erro de comunicação ao gerar o relatório.");
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    }
+</script>
+{% endblock %}
