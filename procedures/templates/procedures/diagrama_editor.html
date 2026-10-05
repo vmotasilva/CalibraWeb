@@ -7,46 +7,100 @@
     .editor-container {
         display: flex;
         flex-direction: column;
-        height: calc(100vh - 170px);
-        min-height: 680px;
+        height: calc(100vh - 160px);
+        min-height: 720px;
         background: #ffffff;
-        border-radius: 10px;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.06);
         overflow: hidden;
         border: 1px solid #e2e8f0;
+        transition: all 0.3s ease;
+    }
+
+    /* Modo ZEN / Tela Cheia */
+    .editor-container.zen-mode {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: 1050;
+        border-radius: 0;
+        border: none;
     }
 
     .editor-header {
         background: #f8fafc;
         border-bottom: 1px solid #e2e8f0;
-        padding: 12px 20px;
+        padding: 10px 18px;
         display: flex;
         justify-content: space-between;
         align-items: center;
         flex-wrap: wrap;
-        gap: 12px;
+        gap: 10px;
     }
 
-    .nav-tabs-custom .nav-link {
-        color: #64748b;
+    /* Ribbon / Barra de Ferramentas Superior estilo XMind */
+    .editor-ribbon {
+        background: #ffffff;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 6px 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .ribbon-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.82rem;
         font-weight: 600;
-        border: none;
-        padding: 8px 18px;
+        color: #475569;
+        padding: 5px 12px;
         border-radius: 6px;
-        margin-right: 6px;
-        transition: all 0.2s ease;
+        border: 1px solid transparent;
+        background: transparent;
+        transition: all 0.15s ease;
     }
 
-    .nav-tabs-custom .nav-link.active {
-        color: #2563eb;
+    .ribbon-btn:hover {
+        background: #f1f5f9;
+        color: #0f172a;
+        border-color: #e2e8f0;
+    }
+
+    .ribbon-btn.active {
         background: #eff6ff;
+        color: #2563eb;
+        border-color: #bfdbfe;
+    }
+
+    .ribbon-kbd {
+        font-size: 10px;
+        font-family: monospace;
+        background: #f1f5f9;
+        padding: 1px 4px;
+        border-radius: 4px;
+        border: 1px solid #cbd5e1;
+        color: #64748b;
+    }
+
+    /* Layout do Corpo: Área Central + Painel Lateral */
+    .editor-body-wrapper {
+        display: flex;
+        flex: 1;
+        position: relative;
+        overflow: hidden;
     }
 
     .canvas-viewport {
         position: relative;
         flex: 1;
-        background-color: #f8fafc;
-        background-image: radial-gradient(#cbd5e1 1.2px, transparent 1.2px);
+        background-color: #fdf6ea; /* Tom acolhedor padrão XMind */
+        background-image: radial-gradient(#e5d8c3 1.2px, transparent 1.2px);
         background-size: 24px 24px;
         overflow: hidden;
         cursor: grab;
@@ -57,6 +111,11 @@
         cursor: grabbing;
     }
 
+    .canvas-viewport.clean-bg {
+        background-color: #f8fafc;
+        background-image: radial-gradient(#cbd5e1 1.2px, transparent 1.2px);
+    }
+
     /* SVG Connections Layer */
     .connections-layer {
         position: absolute;
@@ -65,7 +124,7 @@
         width: 5000px;
         height: 5000px;
         pointer-events: none;
-        z-index: 1;
+        z-index: 2;
     }
 
     .nodes-container {
@@ -74,7 +133,7 @@
         left: 0;
         width: 5000px;
         height: 5000px;
-        z-index: 2;
+        z-index: 3;
     }
 
     /* Swimlanes Background Layer */
@@ -155,25 +214,27 @@
     .flow-node {
         position: absolute;
         background: #ffffff;
-        border-radius: 8px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.07);
         border: 2px solid #94a3b8;
         cursor: move;
         touch-action: none;
-        transition: box-shadow 0.15s, border-color 0.15s;
+        transition: box-shadow 0.15s, border-color 0.15s, transform 0.15s;
+        box-sizing: border-box;
     }
 
     .flow-node:hover {
-        box-shadow: 0 6px 16px rgba(37,99,235,0.18);
+        box-shadow: 0 8px 20px rgba(37,99,235,0.18);
         border-color: #3b82f6;
     }
 
     .flow-node.selected {
         border-color: #2563eb !important;
         box-shadow: 0 0 0 3px rgba(37,99,235,0.3) !important;
+        transform: scale(1.02);
     }
 
-    /* Node Types */
+    /* Node Types & Shapes */
     .node-start-end {
         width: 140px;
         height: 48px;
@@ -183,55 +244,43 @@
         justify-content: center;
         font-weight: 700;
         font-size: 12px;
-        border-width: 2.5px;
+        text-align: center;
+        letter-spacing: 0.5px;
     }
-    .node-start {
-        background: #ecfdf5;
-        border-color: #10b981;
-        color: #065f46;
-    }
-    .node-end {
-        background: #f1f5f9;
-        border-color: #64748b;
-        color: #334155;
-    }
+    .node-start { background: #eff6ff; border-color: #3b82f6; color: #1d4ed8; }
+    .node-end { background: #ecfdf5; border-color: #10b981; color: #047857; }
 
     .node-process {
         width: 180px;
-        min-height: 80px;
-        padding: 10px;
-        border-color: #94a3b8;
+        min-height: 64px;
+        padding: 8px 12px;
     }
 
-    .node-critical {
-        width: 190px;
-        min-height: 90px;
-        border-color: #f43f5e;
-        border-width: 2px;
-        overflow: hidden;
-        padding: 0;
-    }
-    .node-critical .critical-header {
-        background: #f43f5e;
-        color: #ffffff;
-        font-size: 9px;
-        font-weight: 800;
-        text-transform: uppercase;
-        padding: 3px 8px;
-        display: flex;
-        justify-content: space-between;
-    }
-    .node-critical .critical-body {
-        padding: 8px 10px;
+    .node-pill {
+        border-radius: 30px !important;
+        padding: 10px 18px !important;
+        text-align: center;
     }
 
-    /* Decision Diamond Node */
+    .node-central {
+        background: #2563eb !important;
+        border-color: #1d4ed8 !important;
+        color: #ffffff !important;
+        font-weight: 700;
+        font-size: 14px;
+        border-radius: 8px;
+    }
+
+    .node-central * {
+        color: #ffffff !important;
+    }
+
     .node-decision {
         width: 110px;
         height: 110px;
-        background: transparent;
-        border: none;
-        box-shadow: none;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -294,7 +343,14 @@
         display: block;
     }
 
-    /* Floating Toolbar */
+    .node-marker-badge {
+        font-size: 11px;
+        display: inline-flex;
+        align-items: center;
+        margin-right: 4px;
+    }
+
+    /* Floating Canvas Toolbar */
     .canvas-toolbar {
         position: absolute;
         bottom: 20px;
@@ -305,15 +361,111 @@
         box-shadow: 0 4px 14px rgba(0,0,0,0.12);
         border: 1px solid #e2e8f0;
         display: flex;
+        align-items: center;
         gap: 6px;
         z-index: 20;
+    }
+
+    /* Painel Lateral Direito (Inspector de Estilos e Marcadores) */
+    .inspector-panel {
+        width: 300px;
+        background: #ffffff;
+        border-left: 1px solid #e2e8f0;
+        display: flex;
+        flex-direction: column;
+        transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1), margin-right 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 30;
+    }
+
+    .inspector-panel.collapsed {
+        width: 0;
+        margin-right: -1px;
+        overflow: hidden;
+        border-left: none;
+    }
+
+    .inspector-header {
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 10px 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .inspector-body {
+        padding: 14px;
+        overflow-y: auto;
+        flex: 1;
+    }
+
+    .color-swatch-btn {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        border: 2px solid #ffffff;
+        box-shadow: 0 0 0 1px #cbd5e1;
+        cursor: pointer;
+        padding: 0;
+        transition: transform 0.15s;
+    }
+
+    .color-swatch-btn:hover {
+        transform: scale(1.15);
+    }
+
+    .marker-pill-btn {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 4px 8px;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: all 0.15s;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .marker-pill-btn:hover {
+        background: #eff6ff;
+        border-color: #bfdbfe;
+    }
+
+    /* Modo Outliner */
+    .outliner-container {
+        background: #ffffff;
+        padding: 24px;
+        height: 100%;
+        overflow-y: auto;
+    }
+
+    .outliner-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
+        border-radius: 6px;
+        transition: background 0.15s;
+    }
+
+    .outliner-item:hover {
+        background: #f8fafc;
+    }
+
+    .outliner-bullet {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #2563eb;
+        flex-shrink: 0;
     }
 </style>
 {% endblock %}
 
 {% block main_content %}
-<div class="editor-container mb-4">
-    <!-- Header com Metadados e Ações QMS -->
+<div class="editor-container mb-4" id="editorMainContainer">
+    <!-- 1. Header com Metadados e Ações QMS -->
     <div class="editor-header">
         <div class="d-flex align-items-center gap-3">
             <div>
@@ -351,7 +503,6 @@
 
         <!-- Botões de Ação QMS -->
         <div class="d-flex align-items-center gap-2">
-            <!-- Indicador de Status do Auto-Save -->
             <div id="saveIndicator" class="text-muted small me-2 font-monospace">
                 {% if is_approved %}
                     <span class="text-secondary"><i class="bi bi-lock-fill"></i> Somente Leitura</span>
@@ -360,7 +511,6 @@
                 {% endif %}
             </div>
 
-            <!-- Alternar Versão -->
             {% if todas_versoes.count > 1 %}
                 <div class="dropdown">
                     <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
@@ -395,36 +545,63 @@
                 </button>
             {% endif %}
 
-            <!-- Botão Exportar PDF DOC.071 -->
             <button type="button" class="btn btn-danger btn-sm shadow-sm" onclick="exportarPDFDoc071()">
                 <i class="bi bi-file-earmark-pdf-fill"></i> Gerar PDF DOC.071
             </button>
         </div>
     </div>
 
-    <!-- Navegação de Abas: Modo Grelha / Modo Canvas -->
-    <div class="px-3 pt-2 bg-white border-bottom d-flex justify-content-between align-items-center">
-        <ul class="nav nav-tabs nav-tabs-custom border-0" id="editorTabs" role="tablist">
-            <li class="nav-item">
-                <button class="nav-link active" id="tab-canvas-btn" data-bs-toggle="tab" data-bs-target="#tab-canvas" type="button">
-                    <i class="bi bi-diagram-3-fill me-1"></i> Modo Canvas (Visual Interativo)
+    <!-- 2. Ribbon Toolbar (Barra de Ferramentas com Atalhos Enter / Tab / Zen / Inspector) -->
+    <div class="editor-ribbon">
+        <!-- Alternador de Modos (Canvas, Outliner, Grelha) -->
+        <div class="d-flex align-items-center gap-1 border-end pe-3">
+            <button type="button" class="ribbon-btn active" id="btnModoCanvas" onclick="alternarModoEditor('canvas')" title="Visualização Canvas / Mapa Mental">
+                <i class="bi bi-diagram-3-fill text-primary"></i> Canvas
+            </button>
+            <button type="button" class="ribbon-btn" id="btnModoOutliner" onclick="alternarModoEditor('outliner')" title="Modo Estrutura em Lista com Indentação">
+                <i class="bi bi-list-task text-primary"></i> Outliner
+            </button>
+            <button type="button" class="ribbon-btn" id="btnModoGrelha" onclick="alternarModoEditor('grelha')" title="Modo Tabela Matricial DOC.071">
+                <i class="bi bi-table text-primary"></i> Grelha DOC.071
+            </button>
+        </div>
+
+        <!-- Ações Rápidas de Criação com Teclado -->
+        <div class="d-flex align-items-center gap-2">
+            {% if not is_approved %}
+                <button type="button" class="ribbon-btn border" onclick="adicionarTopicoIrmao()" title="Adicionar Tópico Irmão (Atalho: Enter)">
+                    <i class="bi bi-plus-square text-success"></i> + Tópico <span class="ribbon-kbd">Enter</span>
                 </button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link" id="tab-grid-btn" data-bs-toggle="tab" data-bs-target="#tab-grid" type="button">
-                    <i class="bi bi-table me-1"></i> Modo Grelha (Rascunho Tabular)
+                <button type="button" class="ribbon-btn border" onclick="adicionarSubtopicoFilho()" title="Adicionar Subtópico Filho (Atalho: Tab)">
+                    <i class="bi bi-node-plus-fill text-primary"></i> + Subtópico <span class="ribbon-kbd">Tab</span>
                 </button>
-            </li>
-        </ul>
-        <span class="text-muted small d-none d-md-inline">
-            <i class="bi bi-info-circle me-1"></i> Arraste os blocos no Canvas para ajustar a disposição visual.
-        </span>
+                <button type="button" class="ribbon-btn border" onclick="conectarNosSelecionados()" title="Conectar 2 Blocos com Seta">
+                    <i class="bi bi-arrow-right-short text-secondary fs-5"></i> Conexão
+                </button>
+                <button type="button" class="ribbon-btn border" onclick="excluirNoSelecionado()" title="Excluir Bloco Selecionado (Atalho: Del)">
+                    <i class="bi bi-trash text-danger"></i> <span class="ribbon-kbd">Del</span>
+                </button>
+            {% endif %}
+        </div>
+
+        <!-- Ações de Visualização & Painel -->
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="ribbon-btn" onclick="alternarFundoCanvas()" title="Alternar entre fundo acolhedor e fundo claro">
+                <i class="bi bi-palette2"></i> Fundo
+            </button>
+            <button type="button" class="ribbon-btn" onclick="alternarModoZen()" title="Modo Foco / Tela Cheia (ZEN)">
+                <i class="bi bi-aspect-ratio"></i> ZEN
+            </button>
+            <button type="button" class="ribbon-btn border active" id="btnToggleInspector" onclick="toggleInspectorPanel()" title="Abrir / Fechar Painel Lateral de Formatação">
+                <i class="bi bi-layout-sidebar-reverse"></i> Painel
+            </button>
+        </div>
     </div>
 
-    <!-- Conteúdo das Abas -->
-    <div class="tab-content flex-grow-1 d-flex flex-column" style="position: relative; overflow: hidden;">
-        <!-- ABA 1: MODO CANVAS -->
-        <div class="tab-pane fade show active flex-grow-1" id="tab-canvas" style="position: relative; height: 100%;">
+    <!-- 3. Corpo Principal do Editor -->
+    <div class="editor-body-wrapper">
+        <!-- VISTA 1: MODO CANVAS (VISUAL) -->
+        <div id="viewCanvasContainer" class="flex-grow-1 position-relative d-flex flex-column h-100">
             <div id="canvasViewport" class="canvas-viewport w-100 h-100">
                 <!-- Raias (Swimlanes) -->
                 <div id="swimlanesLayer" class="swimlanes-layer"></div>
@@ -468,8 +645,45 @@
             </div>
         </div>
 
-        <!-- ABA 2: MODO GRELHA (TABULAR) -->
-        <div class="tab-pane fade flex-grow-1 p-3 overflow-auto bg-light" id="tab-grid" style="height: 100%;">
+        <!-- VISTA 2: MODO OUTLINER (LISTA ESTRUTURADA) -->
+        <div id="viewOutlinerContainer" class="flex-grow-1 p-4 bg-white overflow-auto d-none" style="height: 100%;">
+            <div class="max-w-700 mx-auto" style="max-width: 750px;">
+                <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+                    <div>
+                        <h5 class="fw-bold mb-1 text-dark d-flex align-items-center gap-2">
+                            <i class="bi bi-list-task text-primary"></i> Modo Outliner (Edição Estruturada em Lista)
+                        </h5>
+                        <small class="text-muted">Edite a hierarquia e os tópicos como texto. A sincronização com o Canvas é automática.</small>
+                    </div>
+                    {% if not is_approved %}
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="outdentOutlinerItem()" title="Desrecuar (Shift+Tab)">
+                                <i class="bi bi-arrow-left"></i> Desrecuar
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="indentOutlinerItem()" title="Recuar / Criar Subtópico (Tab)">
+                                <i class="bi bi-arrow-right"></i> Recuar
+                            </button>
+                            <button type="button" class="btn btn-sm btn-primary" onclick="adicionarItemOutliner()">
+                                <i class="bi bi-plus-lg"></i> + Novo Tópico
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div id="outlinerList" class="d-flex flex-column gap-2">
+                    <!-- Gerado dinamicamente via JS -->
+                </div>
+
+                <div class="mt-4 pt-3 border-top text-end">
+                    <button type="button" class="btn btn-primary" onclick="alternarModoEditor('canvas')">
+                        <i class="bi bi-diagram-3-fill me-1"></i> Concluir e Visualizar no Canvas
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- VISTA 3: MODO GRELHA (TABULAR DOC.071) -->
+        <div id="viewGrelhaContainer" class="flex-grow-1 p-3 overflow-auto bg-light d-none" style="height: 100%;">
             <div class="card border-0 shadow-sm p-3 bg-white">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <div>
@@ -506,6 +720,132 @@
                     <button type="button" class="btn btn-primary btn-sm px-3" onclick="aplicarGrelhaParaCanvas()">
                         <i class="bi bi-arrow-repeat"></i> Atualizar e Sincronizar Canvas
                     </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Painel Lateral Direito (Inspector de Estilos e Marcadores) -->
+        <div class="inspector-panel" id="inspectorPanel">
+            <div class="inspector-header">
+                <span class="fw-bold text-dark small d-flex align-items-center gap-1">
+                    <i class="bi bi-palette text-primary"></i> Inspetor de Bloco
+                </span>
+                <button type="button" class="btn-close btn-sm" onclick="toggleInspectorPanel()" style="font-size: 10px;"></button>
+            </div>
+
+            <!-- Abas do Inspector -->
+            <ul class="nav nav-tabs nav-tabs-custom px-2 pt-2 border-bottom" id="inspectorTabs">
+                <li class="nav-item">
+                    <button class="nav-link active py-1 px-3 small" data-bs-toggle="tab" data-bs-target="#inspTabStyle" type="button">
+                        <i class="bi bi-brush"></i> Estilo
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link py-1 px-3 small" data-bs-toggle="tab" data-bs-target="#inspTabMarkers" type="button">
+                        <i class="bi bi-bookmark-star"></i> Marcadores
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content inspector-body">
+                <!-- ABA ESTILO -->
+                <div class="tab-pane fade show active" id="inspTabStyle">
+                    <div id="inspectorEmptyState" class="text-center py-4 text-muted small">
+                        <i class="bi bi-cursor display-6 d-block mb-2 opacity-50"></i>
+                        Selecione um bloco no Canvas para personalizar forma, cor e texto.
+                    </div>
+
+                    <div id="inspectorControls" class="d-none">
+                        <!-- Texto do Bloco -->
+                        <div class="mb-3">
+                            <label class="form-label text-muted small fw-bold mb-1">Texto / Descrição</label>
+                            <input type="text" id="inspNodeLabel" class="form-control form-control-sm" oninput="aplicarEstiloNoSelecionado('label', this.value)">
+                        </div>
+
+                        <!-- Raia / Setor -->
+                        <div class="mb-3">
+                            <label class="form-label text-muted small fw-bold mb-1">Raia / Setor</label>
+                            <input type="text" id="inspNodeLane" class="form-control form-control-sm" oninput="aplicarEstiloNoSelecionado('lane', this.value)">
+                        </div>
+
+                        <!-- Formato do Bloco (Shape) -->
+                        <div class="mb-3">
+                            <label class="form-label text-muted small fw-bold mb-1">Formato do Bloco</label>
+                            <div class="d-flex gap-1 flex-wrap">
+                                <button type="button" class="btn btn-sm btn-light border py-1 px-2" onclick="aplicarEstiloNoSelecionado('shape', 'rect')" title="Retângulo Arredondado">
+                                    <i class="bi bi-square"></i> Retângulo
+                                </button>
+                                <button type="button" class="btn btn-sm btn-light border py-1 px-2" onclick="aplicarEstiloNoSelecionado('shape', 'pill')" title="Pílula / Oval">
+                                    <i class="bi bi-capsule"></i> Pílula
+                                </button>
+                                <button type="button" class="btn btn-sm btn-light border py-1 px-2" onclick="aplicarEstiloNoSelecionado('shape', 'decision')" title="Decisão / Losango">
+                                    <i class="bi bi-diamond"></i> Decisão
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Cores Temáticas de Preenchimento -->
+                        <div class="mb-3">
+                            <label class="form-label text-muted small fw-bold mb-1">Cor de Preenchimento</label>
+                            <div class="d-flex gap-2 flex-wrap align-items-center">
+                                <button type="button" class="color-swatch-btn" style="background: #ffffff;" onclick="aplicarEstiloNoSelecionado('bgColor', '#ffffff')" title="Branco Padrão"></button>
+                                <button type="button" class="color-swatch-btn" style="background: #2563eb;" onclick="aplicarEstiloNoSelecionado('bgColor', '#2563eb')" title="Azul Royal"></button>
+                                <button type="button" class="color-swatch-btn" style="background: #10b981;" onclick="aplicarEstiloNoSelecionado('bgColor', '#10b981')" title="Verde Esmeralda"></button>
+                                <button type="button" class="color-swatch-btn" style="background: #f59e0b;" onclick="aplicarEstiloNoSelecionado('bgColor', '#f59e0b')" title="Âmbar / Amarelo"></button>
+                                <button type="button" class="color-swatch-btn" style="background: #8b5cf6;" onclick="aplicarEstiloNoSelecionado('bgColor', '#8b5cf6')" title="Roxo"></button>
+                                <button type="button" class="color-swatch-btn" style="background: #ef4444;" onclick="aplicarEstiloNoSelecionado('bgColor', '#ef4444')" title="Vermelho Carmim"></button>
+                                <button type="button" class="color-swatch-btn" style="background: #334155;" onclick="aplicarEstiloNoSelecionado('bgColor', '#334155')" title="Ardósia / Grafite"></button>
+                            </div>
+                        </div>
+
+                        <!-- Referência Documental -->
+                        <div class="mb-3">
+                            <label class="form-label text-muted small fw-bold mb-1">Doc. Referência / Formulário</label>
+                            <input type="text" id="inspNodeDocRef" class="form-control form-control-sm font-monospace" placeholder="Ex: FOR.141, POP-002" oninput="aplicarEstiloNoSelecionado('documentRef', this.value)">
+                        </div>
+
+                        {% if not is_approved %}
+                            <div class="pt-2 border-top">
+                                <button type="button" class="btn btn-outline-danger btn-sm w-100" onclick="excluirNoSelecionado()">
+                                    <i class="bi bi-trash"></i> Excluir Bloco
+                                </button>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- ABA MARCADORES -->
+                <div class="tab-pane fade" id="inspTabMarkers">
+                    <div id="inspectorMarkersControls">
+                        <div class="mb-3">
+                            <label class="form-label text-muted small fw-bold mb-1">Prioridade QMS</label>
+                            <div class="d-flex gap-1 flex-wrap">
+                                <button type="button" class="marker-pill-btn" onclick="aplicarMarcadorNoSelecionado('priority', '1')">❶ Alta</button>
+                                <button type="button" class="marker-pill-btn" onclick="aplicarMarcadorNoSelecionado('priority', '2')">❷ Média</button>
+                                <button type="button" class="marker-pill-btn" onclick="aplicarMarcadorNoSelecionado('priority', '3')">❸ Normal</button>
+                                <button type="button" class="marker-pill-btn text-muted" onclick="aplicarMarcadorNoSelecionado('priority', null)">Remover</button>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label text-muted small fw-bold mb-1">Status / Progresso</label>
+                            <div class="d-flex gap-1 flex-wrap">
+                                <button type="button" class="marker-pill-btn" onclick="aplicarMarcadorNoSelecionado('status', '⏳')">⏳ Pendente</button>
+                                <button type="button" class="marker-pill-btn" onclick="aplicarMarcadorNoSelecionado('status', '🔄')">🔄 Em Andamento</button>
+                                <button type="button" class="marker-pill-btn" onclick="aplicarMarcadorNoSelecionado('status', '✅')">✅ Concluído</button>
+                                <button type="button" class="marker-pill-btn" onclick="aplicarMarcadorNoSelecionado('status', '⚠️')">⚠️ Crítico</button>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label text-muted small fw-bold mb-1">Bandeiras de Auditoria</label>
+                            <div class="d-flex gap-1 flex-wrap">
+                                <button type="button" class="marker-pill-btn" onclick="aplicarMarcadorNoSelecionado('flag', '🚩')">🚩 Risco ISO</button>
+                                <button type="button" class="marker-pill-btn" onclick="aplicarMarcadorNoSelecionado('flag', '🟡')">🟡 Atenção</button>
+                                <button type="button" class="marker-pill-btn" onclick="aplicarMarcadorNoSelecionado('flag', '🟢')">🟢 Conforme</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -594,10 +934,12 @@
     let autoSaveTimer = null;
     let isDragging = false;
     let activeNode = null;
+    let selectedNodeId = null;
     let dragOffset = { x: 0, y: 0 };
+    let modoAtual = 'canvas';
 
     // =========================================================================
-    // INICIALIZAÇÃO
+    // INICIALIZAÇÃO E ATALHOS DE TECLADO (ENTER / TAB / DEL / ESC)
     // =========================================================================
     document.addEventListener('DOMContentLoaded', () => {
         if (topologia.nodes.length === 0 && topologia.grid_data.length > 0) {
@@ -608,7 +950,76 @@
 
         renderizarCanvas();
         renderizarGrelha();
+        renderizarOutliner();
+
+        // Atalhos de Teclado Globais no Canvas
+        window.addEventListener('keydown', (e) => {
+            if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
+            if (IS_APPROVED) return;
+
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                adicionarTopicoIrmao();
+            } else if (e.key === 'Tab') {
+                e.preventDefault();
+                adicionarSubtopicoFilho();
+            } else if (e.key === 'Delete' || e.key === 'Backspace') {
+                if (selectedNodeId) {
+                    e.preventDefault();
+                    excluirNoSelecionado();
+                }
+            } else if (e.key === 'Escape') {
+                desmarcarTodosNos();
+            }
+        });
     });
+
+    // =========================================================================
+    // ALTERNAÇÃO DE MODOS (CANVAS / OUTLINER / GRELHA)
+    // =========================================================================
+    function alternarModoEditor(modo) {
+        modoAtual = modo;
+        const btnCanvas = document.getElementById('btnModoCanvas');
+        const btnOutliner = document.getElementById('btnModoOutliner');
+        const btnGrelha = document.getElementById('btnModoGrelha');
+
+        const vCanvas = document.getElementById('viewCanvasContainer');
+        const vOutliner = document.getElementById('viewOutlinerContainer');
+        const vGrelha = document.getElementById('viewGrelhaContainer');
+
+        [btnCanvas, btnOutliner, btnGrelha].forEach(b => b.classList.remove('active'));
+        [vCanvas, vOutliner, vGrelha].forEach(v => v.classList.add('d-none'));
+
+        if (modo === 'canvas') {
+            btnCanvas.classList.add('active');
+            vCanvas.classList.remove('d-none');
+            renderizarCanvas();
+        } else if (modo === 'outliner') {
+            btnOutliner.classList.add('active');
+            vOutliner.classList.remove('d-none');
+            renderizarOutliner();
+        } else if (modo === 'grelha') {
+            btnGrelha.classList.add('active');
+            vGrelha.classList.remove('d-none');
+            renderizarGrelha();
+        }
+    }
+
+    function alternarModoZen() {
+        document.getElementById('editorMainContainer').classList.toggle('zen-mode');
+        setTimeout(recentralizarCanvas, 200);
+    }
+
+    function alternarFundoCanvas() {
+        document.getElementById('canvasViewport').classList.toggle('clean-bg');
+    }
+
+    function toggleInspectorPanel() {
+        const panel = document.getElementById('inspectorPanel');
+        const btn = document.getElementById('btnToggleInspector');
+        panel.classList.toggle('collapsed');
+        btn.classList.toggle('active');
+    }
 
     // =========================================================================
     // RENDERIZAÇÃO DO CANVAS INTERATIVO
@@ -657,47 +1068,58 @@
             nodeEl.style.left = `${node.position.x}px`;
             nodeEl.style.top = `${node.position.y}px`;
 
+            if (node.id === selectedNodeId) {
+                nodeEl.classList.add('selected');
+            }
+
+            // Marcadores (Priority / Status / Flag)
+            let markersHtml = '';
+            if (node.data?.status) markersHtml += `<span class="node-marker-badge">${node.data.status}</span>`;
+            if (node.data?.priority) markersHtml += `<span class="badge bg-danger rounded-pill px-1 py-0 me-1" style="font-size: 9px;">${node.data.priority}</span>`;
+            if (node.data?.flag) markersHtml += `<span class="node-marker-badge">${node.data.flag}</span>`;
+
+            // Cores e Estilos Customizados
+            if (node.data?.bgColor) {
+                nodeEl.style.backgroundColor = node.data.bgColor;
+                if (['#2563eb', '#334155', '#ef4444', '#8b5cf6'].includes(node.data.bgColor)) {
+                    nodeEl.style.color = '#ffffff';
+                }
+            }
+
             if (node.type === 'start' || node.type === 'end') {
                 nodeEl.className = `flow-node node-start-end ${node.type === 'start' ? 'node-start' : 'node-end'}`;
                 nodeEl.innerHTML = `
-                    <span>${node.data.label || (node.type === 'start' ? 'INÍCIO' : 'FIM')}</span>
+                    <span>${markersHtml}${escapeHtml(node.data.label) || (node.type === 'start' ? 'INÍCIO' : 'FIM')}</span>
                     ${node.type === 'start' ? '<div class="handle handle-bottom"></div>' : '<div class="handle handle-top"></div>'}
                 `;
             } else if (node.type === 'decision') {
                 nodeEl.className = 'flow-node node-decision';
                 nodeEl.innerHTML = `
                     <div class="diamond-inner">
-                        <div class="diamond-content">${node.data.label || 'Decisão?'}</div>
+                        <div class="diamond-content">${markersHtml}${escapeHtml(node.data.label) || 'Decisão?'}</div>
                     </div>
                     <div class="handle handle-top"></div>
                     <div class="handle handle-bottom" title="Sim"></div>
                     <div class="handle handle-right" title="Não"></div>
                     <div class="handle handle-left"></div>
                 `;
-            } else if (node.type === 'critical_process') {
-                nodeEl.className = 'flow-node node-critical';
-                nodeEl.innerHTML = `
-                    <div class="critical-header">
-                        <span>⚠️ CRÍTICO (ISO 13485)</span>
-                        <span>#${node.data.stepId || ''}</span>
-                    </div>
-                    <div class="critical-body">
-                        <div class="fw-semibold text-dark small leading-tight">${node.data.label}</div>
-                        ${node.data.documentRef ? `<span class="badge-doc">📄 ${node.data.documentRef}</span>` : ''}
-                    </div>
-                    <div class="handle handle-top"></div>
-                    <div class="handle handle-bottom"></div>
-                `;
             } else {
-                nodeEl.className = 'flow-node node-process';
+                const shapeClass = node.data?.shape === 'pill' ? 'node-pill' : (node.data?.isCentral ? 'node-central' : '');
+                nodeEl.className = `flow-node node-process ${shapeClass}`;
                 nodeEl.innerHTML = `
-                    <span class="badge-step">Passo ${node.data.stepId || node.id}</span>
-                    <div class="fw-semibold text-dark small leading-tight">${node.data.label}</div>
-                    ${node.data.documentRef ? `<span class="badge-doc">📄 ${node.data.documentRef}</span>` : ''}
+                    <span class="badge-step">${markersHtml}Passo ${node.data.stepId || node.id}</span>
+                    <div class="fw-semibold small leading-tight">${escapeHtml(node.data.label)}</div>
+                    ${node.data.documentRef ? `<span class="badge-doc">📄 ${escapeHtml(node.data.documentRef)}</span>` : ''}
                     <div class="handle handle-top"></div>
                     <div class="handle handle-bottom"></div>
                 `;
             }
+
+            // Clique para Seleção
+            nodeEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selecionarNo(node.id);
+            });
 
             // Eventos de Arrasto
             if (!IS_APPROVED) {
@@ -710,6 +1132,75 @@
         desenharConexoes();
     }
 
+    function selecionarNo(nodeId) {
+        selectedNodeId = nodeId;
+        document.querySelectorAll('.flow-node').forEach(el => el.classList.remove('selected'));
+        const el = document.getElementById(`node-${nodeId}`);
+        if (el) el.classList.add('selected');
+
+        // Atualiza o Inspector Lateral
+        const node = topologia.nodes.find(n => n.id === nodeId);
+        if (node) {
+            document.getElementById('inspectorEmptyState').classList.add('d-none');
+            document.getElementById('inspectorControls').classList.remove('d-none');
+            document.getElementById('inspNodeLabel').value = node.data?.label || '';
+            document.getElementById('inspNodeLane').value = node.data?.lane || '';
+            document.getElementById('inspNodeDocRef').value = node.data?.documentRef || '';
+
+            // Abre o painel lateral se estiver fechado
+            const panel = document.getElementById('inspectorPanel');
+            if (panel.classList.contains('collapsed')) {
+                toggleInspectorPanel();
+            }
+        }
+    }
+
+    function desmarcarTodosNos() {
+        selectedNodeId = null;
+        document.querySelectorAll('.flow-node').forEach(el => el.classList.remove('selected'));
+        document.getElementById('inspectorEmptyState').classList.remove('d-none');
+        document.getElementById('inspectorControls').classList.add('d-none');
+    }
+
+    function aplicarEstiloNoSelecionado(prop, valor) {
+        if (!selectedNodeId) return;
+        const node = topologia.nodes.find(n => n.id === selectedNodeId);
+        if (!node) return;
+
+        if (!node.data) node.data = {};
+
+        if (prop === 'shape') {
+            node.data.shape = valor;
+            if (valor === 'decision') node.type = 'decision';
+            else if (node.type === 'decision') node.type = 'process';
+        } else {
+            node.data[prop] = valor;
+        }
+
+        // Sincroniza com o grid_data
+        const gridRow = topologia.grid_data.find(r => r.stepId === node.id);
+        if (gridRow) {
+            if (prop === 'label') gridRow.label = valor;
+            if (prop === 'lane') gridRow.lane = valor;
+            if (prop === 'documentRef') gridRow.documentRef = valor;
+        }
+
+        renderizarCanvas();
+        dispararAutoSave();
+    }
+
+    function aplicarMarcadorNoSelecionado(tipo, valor) {
+        if (!selectedNodeId) return;
+        const node = topologia.nodes.find(n => n.id === selectedNodeId);
+        if (!node) return;
+
+        if (!node.data) node.data = {};
+        node.data[tipo] = valor;
+
+        renderizarCanvas();
+        dispararAutoSave();
+    }
+
     // =========================================================================
     // ARRASTO DE NÓS (DRAG & DROP)
     // =========================================================================
@@ -717,14 +1208,12 @@
         if (e.target.classList.contains('handle')) return;
         isDragging = true;
         activeNode = node;
+        selecionarNo(node.id);
 
         const nodeEl = document.getElementById(`node-${node.id}`);
         const rect = nodeEl.getBoundingClientRect();
         dragOffset.x = e.clientX - rect.left;
         dragOffset.y = e.clientY - rect.top;
-
-        document.querySelectorAll('.flow-node').forEach(el => el.classList.remove('selected'));
-        nodeEl.classList.add('selected');
 
         window.addEventListener('mousemove', onArrasto);
         window.addEventListener('mouseup', pararArrasto);
@@ -760,11 +1249,10 @@
     }
 
     // =========================================================================
-    // DESENHO DE ARESTAS SVG (CONEXÕES / SETAS)
+    // DESENHO DE ARESTAS SVG (CONEXÕES / SETAS COM BÉZIER SUAVE)
     // =========================================================================
     function desenharConexoes() {
         const svg = document.getElementById('connectionsLayer');
-        // Limpa arestas anteriores mantendo apenas os defs (markers)
         const defs = svg.querySelector('defs');
         svg.innerHTML = '';
         svg.appendChild(defs);
@@ -778,54 +1266,238 @@
             const targetEl = document.getElementById(`node-${targetNode.id}`);
             if (!sourceEl || !targetEl) return;
 
-            // Calcula coordenadas dos centros/handles
             const sW = sourceEl.offsetWidth || 180;
-            const sH = sourceEl.offsetHeight || 80;
+            const sH = sourceEl.offsetHeight || 70;
             const tW = targetEl.offsetWidth || 180;
-            const tH = targetEl.offsetHeight || 80;
+            const tH = targetEl.offsetHeight || 70;
 
             let startX = sourceNode.position.x + sW / 2;
             let startY = sourceNode.position.y + sH;
             let marker = 'url(#arrowhead)';
-            let strokeColor = '#475569';
+            let strokeColor = '#64748b';
 
-            if (edge.sourceHandle === 'right') {
+            if (edge.sourceHandle === 'right' || sourceNode.position.x < targetNode.position.x - 100) {
                 startX = sourceNode.position.x + sW;
                 startY = sourceNode.position.y + sH / 2;
-                marker = 'url(#arrowhead-red)';
-                strokeColor = '#ef4444';
-            } else if (edge.label?.toLowerCase() === 'sim') {
-                marker = 'url(#arrowhead-green)';
-                strokeColor = '#10b981';
             }
 
-            const endX = targetNode.position.x + tW / 2;
-            const endY = targetNode.position.y;
+            let endX = targetNode.position.x + tW / 2;
+            let endY = targetNode.position.y;
+            if (targetNode.position.x > sourceNode.position.x + 100) {
+                endX = targetNode.position.x;
+                endY = targetNode.position.y + tH / 2;
+            }
 
-            // Curva suave de bezier cúbica
-            const deltaY = Math.max(30, (endY - startY) / 2);
-            const pathData = `M ${startX} ${startY} C ${startX} ${startY + deltaY}, ${endX} ${endY - deltaY}, ${endX} ${endY}`;
+            if (edge.label?.toLowerCase() === 'sim') {
+                marker = 'url(#arrowhead-green)';
+                strokeColor = '#10b981';
+            } else if (edge.label?.toLowerCase() === 'não') {
+                marker = 'url(#arrowhead-red)';
+                strokeColor = '#ef4444';
+            }
+
+            // Traçado Bézier Suave estilo Mind Map
+            const deltaX = (endX - startX) * 0.5;
+            const deltaY = (endY - startY) * 0.5;
+            const pathData = `M ${startX} ${startY} C ${startX + deltaX} ${startY}, ${endX - deltaX} ${endY}, ${endX} ${endY}`;
 
             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             path.setAttribute('d', pathData);
             path.setAttribute('fill', 'none');
             path.setAttribute('stroke', strokeColor);
-            path.setAttribute('stroke-width', '2');
+            path.setAttribute('stroke-width', '2.2');
             path.setAttribute('marker-end', marker);
             svg.appendChild(path);
 
-            // Label da conexão se existir
             if (edge.label) {
                 const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                text.setAttribute('x', (startX + endX) / 2 + 8);
-                text.setAttribute('y', (startY + endY) / 2);
+                text.setAttribute('x', (startX + endX) / 2);
+                text.setAttribute('y', (startY + endY) / 2 - 4);
                 text.setAttribute('fill', strokeColor);
                 text.setAttribute('font-size', '10px');
                 text.setAttribute('font-weight', 'bold');
+                text.setAttribute('text-anchor', 'middle');
                 text.textContent = edge.label;
                 svg.appendChild(text);
             }
         });
+    }
+
+    // =========================================================================
+    // CRIAÇÃO RÁPIDA DE TÓPICOS (ATALHOS ENTER E TAB)
+    // =========================================================================
+    function adicionarTopicoIrmao() {
+        if (IS_APPROVED) return;
+        const nextId = String(topologia.nodes.length + 1);
+        const refNode = topologia.nodes.find(n => n.id === selectedNodeId) || topologia.nodes[topologia.nodes.length - 1];
+        const lane = refNode?.data?.lane || 'Geral';
+
+        const posX = refNode ? refNode.position.x + 220 : 100;
+        const posY = refNode ? refNode.position.y : 100;
+
+        topologia.nodes.push({
+            id: nextId,
+            type: 'process',
+            position: { x: posX, y: posY },
+            data: { stepId: nextId, lane: lane, label: `Novo Tópico ${nextId}` }
+        });
+
+        topologia.grid_data.push({
+            stepId: nextId,
+            lane: lane,
+            type: 'process',
+            label: `Novo Tópico ${nextId}`,
+            next: []
+        });
+
+        renderizarCanvas();
+        selecionarNo(nextId);
+        dispararAutoSave();
+    }
+
+    function adicionarSubtopicoFilho() {
+        if (IS_APPROVED) return;
+        const parentNode = topologia.nodes.find(n => n.id === selectedNodeId) || topologia.nodes[0];
+        if (!parentNode) {
+            adicionarTopicoIrmao();
+            return;
+        }
+
+        const nextId = String(topologia.nodes.length + 1);
+        const posX = parentNode.position.x + 220;
+        const posY = parentNode.position.y + 70;
+
+        topologia.nodes.push({
+            id: nextId,
+            type: 'process',
+            position: { x: posX, y: posY },
+            data: { stepId: nextId, lane: parentNode.data?.lane || 'Geral', label: `Subtópico ${nextId}` }
+        });
+
+        // Cria a aresta pai -> filho
+        topologia.edges.push({
+            id: `e-${parentNode.id}-${nextId}`,
+            source: parentNode.id,
+            target: nextId,
+            sourceHandle: 'right',
+            targetHandle: 'left'
+        });
+
+        topologia.grid_data.push({
+            stepId: nextId,
+            lane: parentNode.data?.lane || 'Geral',
+            type: 'process',
+            label: `Subtópico ${nextId}`,
+            next: []
+        });
+
+        // Atualiza no grid do pai
+        const parentGrid = topologia.grid_data.find(r => r.stepId === parentNode.id);
+        if (parentGrid) {
+            if (!parentGrid.next) parentGrid.next = [];
+            parentGrid.next.push({ targetId: nextId });
+        }
+
+        renderizarCanvas();
+        selecionarNo(nextId);
+        dispararAutoSave();
+    }
+
+    function conectarNosSelecionados() {
+        if (IS_APPROVED) return;
+        const sourceId = selectedNodeId;
+        if (!sourceId) {
+            alert("Selecione primeiro o nó de origem no canvas.");
+            return;
+        }
+        const targetId = prompt(`Conectar nó #${sourceId} ao nó de ID:`);
+        if (!targetId || targetId === sourceId) return;
+
+        const targetNode = topologia.nodes.find(n => n.id === targetId.trim());
+        if (!targetNode) {
+            alert(`Nó #${targetId} não encontrado.`);
+            return;
+        }
+
+        topologia.edges.push({
+            id: `e-${sourceId}-${targetNode.id}`,
+            source: sourceId,
+            target: targetNode.id,
+            sourceHandle: 'bottom',
+            targetHandle: 'top'
+        });
+
+        const sourceGrid = topologia.grid_data.find(r => r.stepId === sourceId);
+        if (sourceGrid) {
+            if (!sourceGrid.next) sourceGrid.next = [];
+            sourceGrid.next.push({ targetId: targetNode.id });
+        }
+
+        renderizarCanvas();
+        dispararAutoSave();
+    }
+
+    function excluirNoSelecionado() {
+        if (IS_APPROVED || !selectedNodeId) return;
+        const id = selectedNodeId;
+
+        topologia.nodes = topologia.nodes.filter(n => n.id !== id);
+        topologia.edges = topologia.edges.filter(e => e.source !== id && e.target !== id);
+        topologia.grid_data = topologia.grid_data.filter(r => r.stepId !== id);
+
+        desmarcarTodosNos();
+        renderizarCanvas();
+        renderizarGrelha();
+        renderizarOutliner();
+        dispararAutoSave();
+    }
+
+    // =========================================================================
+    // MODO OUTLINER (ESTRUTURA EM LISTA)
+    // =========================================================================
+    function renderizarOutliner() {
+        const listEl = document.getElementById('outlinerList');
+        listEl.innerHTML = '';
+
+        topologia.nodes.forEach((node, idx) => {
+            const hasParent = topologia.edges.some(e => e.target === node.id);
+            const indentLevel = hasParent ? 1 : 0;
+
+            const itemEl = document.createElement('div');
+            itemEl.className = 'outliner-item';
+            itemEl.style.paddingLeft = `${indentLevel * 32 + 8}px`;
+            itemEl.innerHTML = `
+                <div class="outliner-bullet"></div>
+                <input type="text" class="form-control form-control-sm border-0 shadow-none fw-semibold" 
+                    value="${escapeHtml(node.data?.label || '')}" 
+                    ${IS_APPROVED ? 'disabled' : ''}
+                    onchange="atualizarTextoOutliner('${node.id}', this.value)">
+                <span class="badge bg-light text-secondary border small font-monospace">${node.data?.lane || 'Geral'}</span>
+                ${!IS_APPROVED ? `
+                    <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="selectedNodeId='${node.id}'; excluirNoSelecionado();">
+                        <i class="bi bi-x-circle"></i>
+                    </button>
+                ` : ''}
+            `;
+            listEl.appendChild(itemEl);
+        });
+    }
+
+    function atualizarTextoOutliner(nodeId, novoTexto) {
+        const node = topologia.nodes.find(n => n.id === nodeId);
+        if (node) {
+            node.data.label = novoTexto;
+        }
+        const gridRow = topologia.grid_data.find(r => r.stepId === nodeId);
+        if (gridRow) {
+            gridRow.label = novoTexto;
+        }
+        dispararAutoSave();
+    }
+
+    function adicionarItemOutliner() {
+        adicionarTopicoIrmao();
+        renderizarOutliner();
     }
 
     // =========================================================================
@@ -890,7 +1562,7 @@
         const nextId = String(topologia.grid_data.length + 1);
         topologia.grid_data.push({
             stepId: nextId,
-            lane: topologia.grid_data[topologia.grid_data.length - 1]?.lane || 'Qualidade',
+            lane: topologia.grid_data[topologia.grid_data.length - 1]?.lane || 'Geral',
             type: 'process',
             label: 'Nova Atividade',
             next: []
@@ -926,8 +1598,7 @@
         gerarNodesPorGridData();
         posicionarAutomaticoPorRaias(true);
         renderizarCanvas();
-        const tabBtn = new bootstrap.Tab(document.getElementById('tab-canvas-btn'));
-        tabBtn.show();
+        alternarModoEditor('canvas');
         dispararAutoSave();
     }
 
@@ -937,7 +1608,6 @@
 
         const lanes = obterListaRaiasOrdenada();
 
-        // 1. Constrói / Atualiza Nós
         topologia.nodes = topologia.grid_data.map(r => {
             const existing = existingMap.get(r.stepId);
             return {
@@ -953,7 +1623,6 @@
             };
         });
 
-        // 2. Constrói Arestas (Conexões)
         topologia.edges = [];
         topologia.grid_data.forEach(r => {
             if (r.next && r.next.length > 0) {
@@ -1000,7 +1669,6 @@
             const nodesInLane = topologia.nodes.filter(n => (n.data?.lane || 'Geral') === lane);
             if (nodesInLane.length === 0) return;
 
-            // Ordena nós numericamente pelo stepId se possível
             nodesInLane.sort((a, b) => {
                 const numA = parseInt(a.data?.stepId || a.id, 10);
                 const numB = parseInt(b.data?.stepId || b.id, 10);
@@ -1032,12 +1700,10 @@
             const nodesInLane = topologia.nodes.filter(n => (n.data?.lane || 'Geral') === lane);
             if (nodesInLane.length === 0) return;
 
-            // Alinha todos na mesma altura Y média
             nodesInLane.forEach(n => {
                 n.position.y = yBase;
             });
 
-            // Distribui horizontalmente mantendo a ordem atual do X
             nodesInLane.sort((a, b) => a.position.x - b.position.x);
             const startX = Math.min(...nodesInLane.map(n => n.position.x));
             const gap = 60;
@@ -1075,7 +1741,7 @@
     }
 
     // =========================================================================
-    // GERENCIAMENTO INTERATIVO DE RAIAS (RENOMEAR, REORDENAR, ADICIONAR, EXCLUIR)
+    // GERENCIAMENTO INTERATIVO DE RAIAS
     // =========================================================================
     function abrirRenomearRaia(encodedLane) {
         if (IS_APPROVED) return;
@@ -1085,14 +1751,12 @@
 
         const nomeLimpo = novoNome.trim();
 
-        // 1. Atualiza nos nós do canvas
         topologia.nodes.forEach(n => {
             if (n.data && (n.data.lane === raiaAtual || (!n.data.lane && raiaAtual === 'Geral'))) {
                 n.data.lane = nomeLimpo;
             }
         });
 
-        // 2. Atualiza na grelha
         topologia.grid_data.forEach(r => {
             if (r.lane === raiaAtual || (!r.lane && raiaAtual === 'Geral')) {
                 r.lane = nomeLimpo;
@@ -1101,6 +1765,7 @@
 
         renderizarCanvas();
         renderizarGrelha();
+        renderizarOutliner();
         dispararAutoSave();
     }
 
@@ -1118,7 +1783,6 @@
         lanes[curIdx] = otherLane;
         lanes[targetIdx] = lane;
 
-        // Reatribui as posições Y para refletir a nova ordem
         lanes.forEach((l, lIdx) => {
             const yBase = 40 + lIdx * 240 + 60;
             topologia.nodes.filter(n => (n.data?.lane || 'Geral') === l).forEach(n => {
@@ -1141,7 +1805,6 @@
         const lanes = obterListaRaiasOrdenada();
         const newY = 40 + lanes.length * 240 + 60;
 
-        // Adiciona um nó inicial na nova raia
         topologia.nodes.push({
             id: nextId,
             type: 'process',
@@ -1159,6 +1822,7 @@
 
         renderizarCanvas();
         renderizarGrelha();
+        renderizarOutliner();
         recentralizarCanvas();
         dispararAutoSave();
     }
@@ -1172,7 +1836,6 @@
 
         const idsToRemove = new Set(nodesInLane.map(n => n.id));
 
-        // Remove nós e arestas ligadas
         topologia.nodes = topologia.nodes.filter(n => !idsToRemove.has(n.id));
         topologia.edges = topologia.edges.filter(e => !idsToRemove.has(e.source) && !idsToRemove.has(e.target));
         topologia.grid_data = topologia.grid_data.filter(r => !idsToRemove.has(r.stepId));
@@ -1180,6 +1843,7 @@
         posicionarAutomaticoPorRaias(true);
         renderizarCanvas();
         renderizarGrelha();
+        renderizarOutliner();
         dispararAutoSave();
     }
 
@@ -1219,7 +1883,7 @@
     }
 
     // =========================================================================
-    // AÇÕES QMS (SUBMETER, APROVAR, NOVA REVISÃO, EXPORTAR PDF)
+    // AÇÕES QMS (SUBMETER, APROVAR, NOVA REVISÃO, EXPORTAR PDF, TEMPLATES)
     // =========================================================================
     async function submeterParaAprovacao() {
         if (!confirm("Deseja submeter este fluxograma para aprovação formal de qualidade?")) return;
@@ -1331,6 +1995,7 @@
                 topologia = versaoAtualizada.dados_topologia || { nodes: [], edges: [], grid_data: [] };
                 renderizarCanvas();
                 renderizarGrelha();
+                renderizarOutliner();
                 const modalEl = document.getElementById('modalAplicarTemplate');
                 const modal = bootstrap.Modal.getInstance(modalEl);
                 if (modal) modal.hide();
