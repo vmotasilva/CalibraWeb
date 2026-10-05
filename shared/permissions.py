@@ -186,8 +186,74 @@ NAV_STRUCTURE = [
         ]
     },
     {
+        "key": "diagramas",
+        "nome": "Diagramas",
+        "cor": "purple",
+        "icone": "bi bi-diagram-3-fill",
+        "module_perm": "core.nav_mod_diagramas",
+        "blocos": [
+            {
+                "key": "fluxogramas",
+                "nome": "Fluxogramas de Processos (DOC.071)",
+                "perm": "core.nav_diagramas_fluxos_bloco",
+                "funcoes": [
+                    {
+                        "nome": "Listar Fluxogramas",
+                        "view_name": "procedures:diagramas_lista",
+                        "perm": "core.nav_diagramas_lista",
+                        "descricao": "Acessa a listagem geral de diagramas e fluxogramas cadastrados.",
+                    },
+                    {
+                        "nome": "Novo Fluxograma",
+                        "view_name": "procedures:diagrama_novo",
+                        "perm": "core.nav_diagramas_novo",
+                        "descricao": "Cria um novo fluxograma com código documental e versão inicial.",
+                    },
+                    {
+                        "nome": "Editor de Fluxograma (Canvas / Grelha)",
+                        "view_name": "procedures:diagrama_editor",
+                        "perm": "core.nav_diagramas_editor",
+                        "descricao": "Edita a topologia, raias, nós e conexões nos modos Canvas e Grelha.",
+                    },
+                    {
+                        "nome": "Exportar Relatório PDF DOC.071",
+                        "view_name": "procedures:api_diagrama_versao_exportar_pdf",
+                        "perm": "core.nav_diagramas_export_pdf",
+                        "descricao": "Gera e faz download do documento oficial controlado DOC.071 em PDF.",
+                    },
+                ],
+            },
+            {
+                "key": "qms_workflow",
+                "nome": "Governança QMS e Aprovação",
+                "perm": "core.nav_diagramas_qms_bloco",
+                "funcoes": [
+                    {
+                        "nome": "Submeter para Aprovação",
+                        "view_name": "procedures:api_diagrama_versao_submeter",
+                        "perm": "core.nav_diagramas_submeter",
+                        "descricao": "Submete uma revisão em rascunho para aprovação da Qualidade.",
+                    },
+                    {
+                        "nome": "Aprovar Fluxograma (ISO 13485)",
+                        "view_name": "procedures:api_diagrama_versao_aprovar",
+                        "perm": "core.nav_diagramas_aprovar",
+                        "descricao": "Aprova formalmente a versão, tornando o documento imutável.",
+                    },
+                    {
+                        "nome": "Criar Nova Revisão (R01...)",
+                        "view_name": "procedures:api_diagrama_versao_criar_nova_revisao",
+                        "perm": "core.nav_diagramas_nova_revisao",
+                        "descricao": "Clona uma versão aprovada e inicia nova revisão em Rascunho com justificativa.",
+                    },
+                ],
+            },
+        ],
+    },
+    {
         "key": "metrologia",
         "nome": "Metrologia",
+
         "cor": "success",
         "icone": "bi bi-tools",
         "module_perm": "core.nav_mod_metrologia",
@@ -678,24 +744,12 @@ NAV_STRUCTURE = [
                 "funcoes": [
                     {
                         "nome": "Procedimentos",
-                        "view_name": [
-                            "procedures:procedimentos_list",
-                            "procedures:detalhe_procedimento",
-                            "qms:procedimentos_lista",
-                            "qms:detalhe_procedimento",
-                            "procedures:diagramas_lista",
-                            "procedures:diagrama_novo",
-                            "procedures:diagrama_editor",
-                        ],
-                        "perm": "core.nav_treinamentos_procedimentos",
-                    },
-                    {
-                        "nome": "Fluxogramas e Diagramas (DOC.071)",
-                        "view_name": ["procedures:diagramas_lista", "procedures:diagrama_novo", "procedures:diagrama_editor"],
+                        "view_name": ["procedures:procedimentos_list", "procedures:detalhe_procedimento", "qms:procedimentos_lista", "qms:detalhe_procedimento"],
                         "perm": "core.nav_treinamentos_procedimentos",
                     },
                     {"nome": "Novo Procedimento", "view_name": ["procedures:novo_procedimento", "qms:novo_procedimento"], "perm": "core.nav_treinamentos_novo_procedimento"},
                     {"nome": "Editar Procedimento", "view_name": ["procedures:editar_procedimento", "qms:editar_procedimento"], "perm": "core.nav_treinamentos_editar_procedimento"},
+
                     {
                         "nome": "Importar Procedimentos",
                         "view_name": ["procedures:importar_procedimentos", "procedures:dl_template_procedimentos", "dl_template_procedimentos"],

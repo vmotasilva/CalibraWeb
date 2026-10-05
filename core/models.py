@@ -63,7 +63,20 @@ class NavigationPermission(models.Model):
             ("nav_boards_archive", "NAV: Quadros / Arquivar Quadro"),
             ("nav_boards_gerenciar_todos", "NAV: Quadros / Permissão Especial: Gerenciar Todos os Quadros"),
 
+            # --- DIAGRAMAS E FLUXOGRAMAS ---
+            ("nav_mod_diagramas", "NAV: Módulo Diagramas"),
+            ("nav_diagramas_fluxos_bloco", "NAV: Diagramas / Bloco Fluxogramas (DOC.071)"),
+            ("nav_diagramas_lista", "NAV: Diagramas / Listar Fluxogramas"),
+            ("nav_diagramas_novo", "NAV: Diagramas / Novo Fluxograma"),
+            ("nav_diagramas_editor", "NAV: Diagramas / Editor de Fluxograma (Canvas / Grelha)"),
+            ("nav_diagramas_export_pdf", "NAV: Diagramas / Exportar PDF DOC.071"),
+            ("nav_diagramas_qms_bloco", "NAV: Diagramas / Bloco Governança QMS"),
+            ("nav_diagramas_submeter", "NAV: Diagramas / Submeter para Aprovação"),
+            ("nav_diagramas_aprovar", "NAV: Diagramas / Aprovar Fluxograma (ISO 13485)"),
+            ("nav_diagramas_nova_revisao", "NAV: Diagramas / Criar Nova Revisão"),
+
             # --- METROLOGIA ---
+
             ("nav_mod_metrologia", "NAV: Módulo Metrologia"),
             ("nav_metrologia_visao_geral", "NAV: Metrologia / Bloco Visão Geral"),
             ("nav_metrologia_dashboard", "NAV: Metrologia / Dashboard"),
