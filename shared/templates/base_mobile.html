@@ -485,6 +485,15 @@
                         </a>
                     </li>
                 {% endif %}
+                {% can_nav_view user 'procedures:diagramas_lista' 'procedures' as nav_diagramas_list %}
+                {% if nav_diagramas_list %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'procedures:diagramas_lista' %}">
+                            <i class="bi bi-diagram-3-fill nav-icon"></i><span class="nav-text">Diagramas (DOC.071)</span>
+                        </a>
+                    </li>
+                {% endif %}
+
 
                 {% if nav_treinamentos %}
                 <li class="nav-item dropdown">

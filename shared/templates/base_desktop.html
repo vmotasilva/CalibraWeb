@@ -601,6 +601,18 @@
                     </a>
                 </li>
 
+                {% can_nav_view user 'procedures:diagramas_lista' 'procedures' as nav_diagramas_list %}
+                {% if nav_diagramas_list %}
+                <li class="nav-divider"></li>
+                <li class="nav-item">
+                    <a class="nav-link position-relative d-flex align-items-center" href="{% url 'procedures:diagramas_lista' %}">
+                        <i class="bi bi-diagram-3-fill nav-icon"></i>
+                        <span class="nav-text">Diagramas</span>
+                    </a>
+                </li>
+                {% endif %}
+
+
                 {% if user.is_superuser or user.is_staff %}
                 {% if nav_acoes or nav_auditoria or nav_forn or nav_laboratorio or nav_metrologia or nav_pessoas or nav_treinamentos %}<li class="nav-divider"></li>{% endif %}
                 <li class="nav-item">

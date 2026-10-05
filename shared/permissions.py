@@ -678,7 +678,20 @@ NAV_STRUCTURE = [
                 "funcoes": [
                     {
                         "nome": "Procedimentos",
-                        "view_name": ["procedures:procedimentos_list", "procedures:detalhe_procedimento", "qms:procedimentos_lista", "qms:detalhe_procedimento"],
+                        "view_name": [
+                            "procedures:procedimentos_list",
+                            "procedures:detalhe_procedimento",
+                            "qms:procedimentos_lista",
+                            "qms:detalhe_procedimento",
+                            "procedures:diagramas_lista",
+                            "procedures:diagrama_novo",
+                            "procedures:diagrama_editor",
+                        ],
+                        "perm": "core.nav_treinamentos_procedimentos",
+                    },
+                    {
+                        "nome": "Fluxogramas e Diagramas (DOC.071)",
+                        "view_name": ["procedures:diagramas_lista", "procedures:diagrama_novo", "procedures:diagrama_editor"],
                         "perm": "core.nav_treinamentos_procedimentos",
                     },
                     {"nome": "Novo Procedimento", "view_name": ["procedures:novo_procedimento", "qms:novo_procedimento"], "perm": "core.nav_treinamentos_novo_procedimento"},
@@ -690,6 +703,7 @@ NAV_STRUCTURE = [
                     },
                     {"nome": "Exportar Procedimentos (Excel)", "view_name": "procedures:export_procedimentos_excel", "perm": "core.nav_treinamentos_exportar_procedimentos"},
                 ],
+
             },
             {
                 "key": "procedimentos_matrizes",

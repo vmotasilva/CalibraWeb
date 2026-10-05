@@ -410,7 +410,7 @@ MODULE_HUBS_CONFIG = {
                 "title": "Gestão e Escala de Férias",
                 "description": "Programação de descanso anual, controle de períodos aquisitivos e calendário de férias da equipe.",
                 "icon": "bi-calendar-check",
-                "view_name": "rh:gestao_ferias",
+                "view_name": "rh:projecao_mensal_ferias",
                 "badge": "Férias",
             },
             {
@@ -783,6 +783,18 @@ SYSTEM_FEATURES_CATALOG = [
         "keywords": ["pop", "it", "procedimentos", "instrucoes", "documentos", "qualidade"],
     },
     {
+        "title": "Fluxogramas e Diagramas (DOC.071)",
+        "module": "Treinamentos",
+        "module_key": "procedures",
+        "session": "Normativos",
+        "description": "Crie, edite e exporte fluxogramas de processos com editor visual (Modo Grelha + Canvas).",
+        "icon": "bi-diagram-3-fill",
+        "color": "#2563eb",
+        "view_name": "procedures:diagramas_lista",
+        "keywords": ["fluxograma", "diagrama", "doc071", "doc.071", "processo", "canvas", "fluxo", "qualidade"],
+    },
+
+    {
         "title": "Planejamento de Treinamentos",
         "module": "Treinamentos",
         "module_key": "procedures",
@@ -1008,7 +1020,7 @@ SYSTEM_FEATURES_CATALOG = [
         "description": "Programação de descanso anual, controle de períodos aquisitivos e calendário de férias da equipe.",
         "icon": "bi-calendar-check",
         "color": "#ea580c",
-        "view_name": "rh:gestao_ferias",
+        "view_name": "rh:projecao_mensal_ferias",
         "keywords": ["ferias", "escala", "descanso", "periodo aquisitivo", "calendario"],
     },
     {
