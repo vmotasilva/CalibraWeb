@@ -1,6 +1,6 @@
 {% extends "procedures/procedimento_base.html" %}
 
-{% block title %}{{ diagrama.codigo }} - {{ diagrama.titulo }} (Rev. {{ versao.revisao|stringformat:"02d" }}){% endblock %}
+{% block title %}{{ diagrama.codigo_exibicao }} - {{ diagrama.titulo }} (Rev. {{ versao.revisao|stringformat:"02d" }}){% endblock %}
 
 {% block extra_css %}
 <style>
@@ -278,7 +278,16 @@
         <div class="d-flex align-items-center gap-3">
             <div>
                 <div class="d-flex align-items-center gap-2">
-                    <span class="badge bg-dark font-monospace fs-6">{{ diagrama.codigo }}</span>
+                    <span class="badge bg-primary font-monospace fs-6">{{ diagrama.identificador }}</span>
+                    {% if diagrama.procedimento %}
+                        <span class="badge bg-dark-subtle text-dark font-monospace border">
+                            <i class="bi bi-file-earmark-text me-1"></i>{{ diagrama.procedimento.codigo }}
+                        </span>
+                    {% elif diagrama.codigo %}
+                        <span class="badge bg-secondary-subtle text-secondary font-monospace border">
+                            {{ diagrama.codigo }}
+                        </span>
+                    {% endif %}
                     <h5 class="mb-0 fw-bold text-dark">{{ diagrama.titulo }}</h5>
                     <span class="badge bg-secondary-subtle text-secondary font-monospace">Rev. {{ versao.revisao|stringformat:"02d" }}</span>
                     

@@ -103,3 +103,23 @@ class DiagramaQMSTestCase(TestCase):
         pdf_bytes = gerar_pdf_diagrama_doc071(self.versao_r00)
         self.assertTrue(pdf_bytes.startswith(b'%PDF-'))
         self.assertGreater(len(pdf_bytes), 1000)
+
+    def test_numeracao_sequencial_e_identificacao(self):
+        """Valida geração automática de numeração sequencial (#001, #002) sem exigência de código documental."""
+        d1 = Diagrama.objects.create(
+            titulo='Fluxograma Sem Código',
+            departamento='Qualidade',
+            criado_por=self.user
+        )
+        self.assertIsNotNone(d1.numero)
+        self.assertEqual(d1.identificador, f"#{d1.numero:03d}")
+        self.assertEqual(d1.codigo_exibicao, f"#{d1.numero:03d}")
+
+        d2 = Diagrama.objects.create(
+            titulo='Segundo Fluxograma Sem Código',
+            departamento='Engenharia',
+            criado_por=self.user
+        )
+        self.assertEqual(d2.numero, d1.numero + 1)
+        self.assertEqual(d2.identificador, f"#{d2.numero:03d}")
+

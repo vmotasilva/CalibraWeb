@@ -20,35 +20,46 @@ class StatusDiagrama(models.TextChoices):
 class Diagrama(models.Model):
     """
     Entidade Principal / Cabeçalho do Fluxograma de Processo.
-    Ex: DOC.071 - Fluxo de Calibração e Controle Metrológico.
+    Identificado por Numeração sequencial e Título, com associação opcional a Procedimentos.
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    codigo = models.CharField(
-        max_length=60,
+    numero = models.PositiveIntegerField(
         unique=True,
+        blank=True,
+        null=True,
         db_index=True,
-        verbose_name="Código Documental",
-        help_text="Identificador único no QMS. Ex: DOC.071-FLX-001"
+        verbose_name="Número do Diagrama",
+        help_text="Numeração sequencial do diagrama (#001, #002...)"
     )
     titulo = models.CharField(max_length=255, verbose_name="Título do Processo")
-    departamento = models.CharField(max_length=120, verbose_name="Departamento/Área")
+    departamento = models.CharField(max_length=120, default="Metrologia", verbose_name="Departamento/Área")
 
-    # Vínculo opcional com a Matriz ou Procedimento Operacional existente no CalibraWeb
-    matriz_procedimento = models.ForeignKey(
-        'procedures.MatrizProcedimento',
-        on_delete=models.SET_NULL,
-        null=True,
+    # Código opcional para compatibilidade
+    codigo = models.CharField(
+        max_length=60,
         blank=True,
-        related_name='diagramas_associados',
-        verbose_name="Matriz de Procedimento"
+        null=True,
+        db_index=True,
+        verbose_name="Código Documental / Referência",
+        help_text="Código opcional para identificação adicional"
     )
+
+    # Vínculo opcional com Procedimento Operacional existente no CalibraWeb (ex: POP, IT, DEX...)
     procedimento = models.ForeignKey(
         'procedures.Procedimento',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name='diagramas_fluxo',
-        verbose_name="Procedimento Operacional Vinculado"
+        verbose_name="Procedimento Vinculado (Opcional)"
+    )
+    matriz_procedimento = models.ForeignKey(
+        'procedures.MatrizProcedimento',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='diagramas_associados',
+        verbose_name="Matriz de Procedimento (Opcional)"
     )
 
     descricao = models.TextField(blank=True, verbose_name="Descrição / Objetivo do Fluxo")
@@ -65,10 +76,30 @@ class Diagrama(models.Model):
     class Meta:
         verbose_name = "Diagrama de Processo"
         verbose_name_plural = "Diagramas de Processos"
-        ordering = ["codigo"]
+        ordering = ["numero", "titulo"]
+
+    def save(self, *args, **kwargs):
+        if not self.numero:
+            max_num = Diagrama.objects.aggregate(models.Max('numero'))['numero__max'] or 0
+            self.numero = max_num + 1
+        super().save(*args, **kwargs)
+
+    @property
+    def identificador(self):
+        """Retorna o identificador formatado (ex: #001, #002)."""
+        return f"#{self.numero:03d}" if self.numero else "#001"
+
+    @property
+    def codigo_exibicao(self):
+        """Retorna a referência textual completa (ex: POP-001 (#001) ou apenas #001)."""
+        if self.procedimento and self.procedimento.codigo:
+            return f"{self.procedimento.codigo} ({self.identificador})"
+        if self.codigo:
+            return f"{self.codigo} ({self.identificador})"
+        return self.identificador
 
     def __str__(self):
-        return f"{self.codigo} - {self.titulo}"
+        return f"{self.codigo_exibicao} - {self.titulo}"
 
     @property
     def versao_vigente(self):
@@ -137,7 +168,7 @@ class DiagramaVersao(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.diagrama.codigo} - Rev. {self.revisao:02d} ({self.get_status_display()})"
+        return f"{self.diagrama.codigo_exibicao} - Rev. {self.revisao:02d} ({self.get_status_display()})"
 
     def clean(self):
         """Validação QMS: Bloqueia alterações em versões já Aprovadas."""

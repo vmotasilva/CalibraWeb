@@ -13,6 +13,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, render, redirect
 from django.core.exceptions import ValidationError
 
+from ..models import Procedimento
 from ..models_diagram import Diagrama, DiagramaVersao, StatusDiagrama
 from ..services.diagram_qms_service import DiagramaQMSService
 from ..services.pdf_doc071_generator import gerar_pdf_diagrama_doc071
@@ -43,14 +44,19 @@ def serialize_diagrama_versao(versao: DiagramaVersao) -> dict:
 def serialize_diagrama(diagrama: Diagrama, include_versoes: bool = False) -> dict:
     """Serializa o cabeçalho do diagrama para JSON."""
     criador_nome = diagrama.criado_por.get_full_name() or diagrama.criado_por.username if diagrama.criado_por else None
-    
+
     data = {
         "id": str(diagrama.id),
+        "numero": diagrama.numero,
+        "identificador": diagrama.identificador,
+        "codigo_exibicao": diagrama.codigo_exibicao,
         "codigo": diagrama.codigo,
         "titulo": diagrama.titulo,
         "departamento": diagrama.departamento,
-        "matriz_procedimento_id": diagrama.matriz_procedimento_id,
         "procedimento_id": diagrama.procedimento_id,
+        "procedimento_codigo": diagrama.procedimento.codigo if diagrama.procedimento else None,
+        "procedimento_nome": diagrama.procedimento.nome if diagrama.procedimento else None,
+        "matriz_procedimento_id": diagrama.matriz_procedimento_id,
         "descricao": diagrama.descricao,
         "criado_por_id": diagrama.criado_por_id,
         "criado_por_nome": criador_nome,
@@ -79,10 +85,10 @@ def api_diagramas_list_create(request):
 
     if request.method == "GET":
         departamento = request.GET.get('departamento')
-        qs = Diagrama.objects.select_related('criado_por').prefetch_related('versoes').filter(ativo=True)
+        qs = Diagrama.objects.select_related('criado_por', 'procedimento').prefetch_related('versoes').filter(ativo=True)
         if departamento:
             qs = qs.filter(departamento=departamento)
-        
+
         results = [serialize_diagrama(d, include_versoes=True) for d in qs]
         return JsonResponse({"results": results, "count": len(results)}, status=200)
 
@@ -92,25 +98,22 @@ def api_diagramas_list_create(request):
         except Exception:
             return JsonResponse({"error": "JSON inválido no corpo da requisição."}, status=400)
 
-        codigo = payload.get("codigo", "").strip()
         titulo = payload.get("titulo", "").strip()
         departamento = payload.get("departamento", "").strip()
+        procedimento_id = payload.get("procedimento_id")
 
-        if not codigo or not titulo:
-            return JsonResponse({"error": "Código e Título são obrigatórios."}, status=400)
-
-        if Diagrama.objects.filter(codigo=codigo).exists():
-            return JsonResponse({"error": f"Já existe um diagrama cadastrado com o código '{codigo}'."}, status=400)
+        if not titulo:
+            return JsonResponse({"error": "Título é obrigatório."}, status=400)
 
         with transaction.atomic():
             diagrama = Diagrama.objects.create(
-                codigo=codigo,
                 titulo=titulo,
-                departamento=departamento or "Geral",
+                departamento=departamento or "Metrologia",
                 descricao=payload.get("descricao", ""),
                 criado_por=request.user,
+                procedimento_id=procedimento_id,
                 matriz_procedimento_id=payload.get("matriz_procedimento_id"),
-                procedimento_id=payload.get("procedimento_id"),
+                codigo=payload.get("codigo", ""),
             )
             # Versão R00 inicial
             DiagramaVersao.objects.create(
@@ -147,10 +150,10 @@ def api_diagrama_detail(request, diagrama_id):
             diagrama.departamento = payload["departamento"]
         if "descricao" in payload:
             diagrama.descricao = payload["descricao"]
-        if "matriz_procedimento_id" in payload:
-            diagrama.matriz_procedimento_id = payload["matriz_procedimento_id"]
         if "procedimento_id" in payload:
             diagrama.procedimento_id = payload["procedimento_id"]
+        if "codigo" in payload:
+            diagrama.codigo = payload["codigo"]
 
         diagrama.save()
         return JsonResponse(serialize_diagrama(diagrama, include_versoes=True), status=200)
@@ -273,7 +276,8 @@ def api_diagrama_versao_exportar_pdf(request, versao_id):
     image_base64 = payload.get("image_base64")
     pdf_bytes = gerar_pdf_diagrama_doc071(versao, image_base64=image_base64)
 
-    filename = f"DOC.071_{versao.diagrama.codigo}_Rev{versao.revisao:02d}.pdf"
+    nome_doc = versao.diagrama.codigo_exibicao.replace(" ", "_").replace("/", "-")
+    filename = f"DOC.071_{nome_doc}_Rev{versao.revisao:02d}.pdf"
     response = HttpResponse(pdf_bytes, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
@@ -289,12 +293,18 @@ def diagramas_lista_view(request):
     departamento = request.GET.get('departamento', '')
     busca = request.GET.get('busca', '').strip()
 
-    diagramas = Diagrama.objects.filter(ativo=True).select_related('criado_por', 'matriz_procedimento').prefetch_related('versoes').order_by('codigo')
+    diagramas = Diagrama.objects.filter(ativo=True).select_related('criado_por', 'procedimento', 'matriz_procedimento').prefetch_related('versoes').order_by('numero')
 
     if departamento:
         diagramas = diagramas.filter(departamento=departamento)
     if busca:
-        diagramas = diagramas.filter(models.Q(codigo__icontains=busca) | models.Q(titulo__icontains=busca) | models.Q(descricao__icontains=busca))
+        diagramas = diagramas.filter(
+            models.Q(titulo__icontains=busca) |
+            models.Q(codigo__icontains=busca) |
+            models.Q(descricao__icontains=busca) |
+            models.Q(procedimento__codigo__icontains=busca) |
+            models.Q(procedimento__nome__icontains=busca)
+        )
 
     departamentos = Diagrama.objects.filter(ativo=True).values_list('departamento', flat=True).distinct()
 
@@ -309,30 +319,30 @@ def diagramas_lista_view(request):
 
 @login_required
 def diagrama_novo_view(request):
-    """Tela/Formulário para criar um novo fluxograma."""
+    """Tela/Formulário para criar um novo fluxograma com numeração sequencial e vínculo opcional."""
+    procedimentos = Procedimento.objects.filter(codigo__isnull=False).order_by('codigo')
+
     if request.method == 'POST':
-        codigo = request.POST.get('codigo', '').strip().upper()
         titulo = request.POST.get('titulo', '').strip()
         departamento = request.POST.get('departamento', '').strip()
+        procedimento_id = request.POST.get('procedimento_id') or None
         descricao = request.POST.get('descricao', '').strip()
 
-        if not codigo or not titulo:
+        if not titulo:
             return render(request, 'procedures/diagrama_form.html', {
-                'error': 'Código e Título são campos obrigatórios.',
-                'codigo': codigo, 'titulo': titulo, 'departamento': departamento, 'descricao': descricao
-            })
-
-        if Diagrama.objects.filter(codigo=codigo).exists():
-            return render(request, 'procedures/diagrama_form.html', {
-                'error': f'Já existe um diagrama com o código {codigo}.',
-                'codigo': codigo, 'titulo': titulo, 'departamento': departamento, 'descricao': descricao
+                'error': 'O Título do Processo é obrigatório.',
+                'titulo': titulo,
+                'departamento': departamento,
+                'descricao': descricao,
+                'procedimento_id': procedimento_id,
+                'procedimentos': procedimentos,
             })
 
         with transaction.atomic():
             diagrama = Diagrama.objects.create(
-                codigo=codigo,
                 titulo=titulo,
-                departamento=departamento or "Qualidade",
+                departamento=departamento or "Metrologia",
+                procedimento_id=procedimento_id,
                 descricao=descricao,
                 criado_por=request.user
             )
@@ -342,10 +352,10 @@ def diagrama_novo_view(request):
                 status=StatusDiagrama.RASCUNHO,
                 dados_topologia={
                     "nodes": [
-                        {"id": "1", "type": "start", "position": {"x": 80, "y": 80}, "data": {"label": "Início do Processo", "stepId": "1", "lane": departamento or "Qualidade"}},
-                        {"id": "2", "type": "process", "position": {"x": 340, "y": 80}, "data": {"label": "Executar Atividade", "stepId": "2", "lane": departamento or "Qualidade"}},
-                        {"id": "3", "type": "decision", "position": {"x": 600, "y": 60}, "data": {"label": "Conforme?", "stepId": "3", "lane": departamento or "Qualidade"}},
-                        {"id": "4", "type": "end", "position": {"x": 860, "y": 80}, "data": {"label": "Fim do Processo", "stepId": "4", "lane": departamento or "Qualidade"}}
+                        {"id": "1", "type": "start", "position": {"x": 80, "y": 80}, "data": {"label": "Início do Processo", "stepId": "1", "lane": departamento or "Metrologia"}},
+                        {"id": "2", "type": "process", "position": {"x": 340, "y": 80}, "data": {"label": "Executar Atividade", "stepId": "2", "lane": departamento or "Metrologia"}},
+                        {"id": "3", "type": "decision", "position": {"x": 600, "y": 60}, "data": {"label": "Conforme?", "stepId": "3", "lane": departamento or "Metrologia"}},
+                        {"id": "4", "type": "end", "position": {"x": 860, "y": 80}, "data": {"label": "Fim do Processo", "stepId": "4", "lane": departamento or "Metrologia"}}
                     ],
                     "edges": [
                         {"id": "e-1-2", "source": "1", "target": "2", "sourceHandle": "bottom", "targetHandle": "top"},
@@ -353,10 +363,10 @@ def diagrama_novo_view(request):
                         {"id": "e-3-4", "source": "3", "target": "4", "sourceHandle": "bottom", "targetHandle": "top", "label": "Sim"}
                     ],
                     "grid_data": [
-                        {"stepId": "1", "lane": departamento or "Qualidade", "type": "start", "label": "Início do Processo", "next": [{"targetId": "2"}]},
-                        {"stepId": "2", "lane": departamento or "Qualidade", "type": "process", "label": "Executar Atividade", "next": [{"targetId": "3"}]},
-                        {"stepId": "3", "lane": departamento or "Qualidade", "type": "decision", "label": "Conforme?", "next": [{"targetId": "4", "condition": "Sim"}]},
-                        {"stepId": "4", "lane": departamento or "Qualidade", "type": "end", "label": "Fim do Processo", "next": []}
+                        {"stepId": "1", "lane": departamento or "Metrologia", "type": "start", "label": "Início do Processo", "next": [{"targetId": "2"}]},
+                        {"stepId": "2", "lane": departamento or "Metrologia", "type": "process", "label": "Executar Atividade", "next": [{"targetId": "3"}]},
+                        {"stepId": "3", "lane": departamento or "Metrologia", "type": "decision", "label": "Conforme?", "next": [{"targetId": "4", "condition": "Sim"}]},
+                        {"stepId": "4", "lane": departamento or "Metrologia", "type": "end", "label": "Fim do Processo", "next": []}
                     ]
                 },
                 motivo_revisao="Criação inicial do fluxograma."
@@ -364,13 +374,13 @@ def diagrama_novo_view(request):
 
         return redirect('procedures:diagrama_editor', versao_id=versao.id)
 
-    return render(request, 'procedures/diagrama_form.html')
+    return render(request, 'procedures/diagrama_form.html', {'procedimentos': procedimentos})
 
 
 @login_required
 def diagrama_editor_view(request, versao_id):
     """Editor Interativo Híbrido: Modo Grelha + Modo Canvas xyflow."""
-    versao = get_object_or_404(DiagramaVersao.objects.select_related('diagrama', 'aprovado_por'), id=versao_id)
+    versao = get_object_or_404(DiagramaVersao.objects.select_related('diagrama', 'diagrama__procedimento', 'aprovado_por'), id=versao_id)
     diagrama = versao.diagrama
     todas_versoes = diagrama.versoes.all().order_by('-revisao')
 
@@ -383,4 +393,3 @@ def diagrama_editor_view(request, versao_id):
         'is_locked': versao.status != StatusDiagrama.RASCUNHO,
     }
     return render(request, 'procedures/diagrama_editor.html', context)
-

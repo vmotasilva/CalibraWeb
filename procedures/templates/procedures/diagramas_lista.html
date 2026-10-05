@@ -15,8 +15,8 @@
         <div class="card border-0 shadow-sm p-3 bg-white">
             <form method="GET" class="row g-2 align-items-end">
                 <div class="col-md-5">
-                    <label class="form-label text-muted small fw-bold mb-1">Buscar por Código ou Título</label>
-                    <input type="text" name="busca" value="{{ busca }}" class="form-control" placeholder="Ex: DOC.071, Calibração, Termômetro...">
+                    <label class="form-label text-muted small fw-bold mb-1">Buscar por Título, Procedimento ou Nº</label>
+                    <input type="text" name="busca" value="{{ busca }}" class="form-control" placeholder="Ex: Calibração, POP-001, #001...">
                 </div>
                 <div class="col-md-4">
                     <label class="form-label text-muted small fw-bold mb-1">Filtrar por Departamento</label>
@@ -47,25 +47,40 @@
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
                 <tr>
-                    <th class="ps-3" style="width: 160px;">Código</th>
+                    <th class="ps-3" style="width: 90px;">#</th>
+                    <th style="width: 200px;">Procedimento</th>
                     <th>Título do Processo</th>
                     <th>Departamento</th>
-                    <th style="width: 140px;">Revisão Vigente</th>
+                    <th style="width: 130px;">Revisão</th>
                     <th style="width: 140px;">Status QMS</th>
-                    <th class="text-end pe-3" style="width: 180px;">Ações</th>
+                    <th class="text-end pe-3" style="width: 160px;">Ações</th>
                 </tr>
             </thead>
             <tbody>
                 {% for diagrama in diagramas %}
                     {% with versao=diagrama.versoes.first %}
                     <tr>
-                        <td class="ps-3 fw-bold text-primary font-monospace">
-                            {{ diagrama.codigo }}
+                        <td class="ps-3 font-monospace fw-bold text-primary">
+                            {{ diagrama.identificador }}
+                        </td>
+                        <td>
+                            {% if diagrama.procedimento %}
+                                <span class="badge bg-dark-subtle text-dark font-monospace border">
+                                    <i class="bi bi-file-earmark-text me-1"></i>{{ diagrama.procedimento.codigo }}
+                                </span>
+                                <small class="text-muted d-block text-truncate" style="max-width: 180px;">{{ diagrama.procedimento.nome }}</small>
+                            {% elif diagrama.codigo %}
+                                <span class="badge bg-secondary-subtle text-secondary font-monospace border">
+                                    {{ diagrama.codigo }}
+                                </span>
+                            {% else %}
+                                <span class="badge bg-light text-muted border">Avulso / Geral</span>
+                            {% endif %}
                         </td>
                         <td>
                             <div class="fw-semibold text-dark">{{ diagrama.titulo }}</div>
                             {% if diagrama.descricao %}
-                                <small class="text-muted text-truncate d-block" style="max-width: 450px;">{{ diagrama.descricao }}</small>
+                                <small class="text-muted text-truncate d-block" style="max-width: 420px;">{{ diagrama.descricao }}</small>
                             {% endif %}
                         </td>
                         <td>
@@ -110,7 +125,7 @@
                     {% endwith %}
                 {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center py-5 text-muted">
+                        <td colspan="7" class="text-center py-5 text-muted">
                             <i class="bi bi-diagram-3 display-4 d-block mb-2 opacity-50"></i>
                             <p class="mb-2 fw-medium">Nenhum fluxograma cadastrado ainda.</p>
                             <a href="{% url 'procedures:diagrama_novo' %}" class="btn btn-sm btn-primary">

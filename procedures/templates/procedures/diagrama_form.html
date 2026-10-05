@@ -20,18 +20,32 @@
                 </div>
             {% endif %}
 
+            <div class="alert alert-light border d-flex align-items-center mb-4 py-2 px-3">
+                <i class="bi bi-info-circle-fill text-primary fs-5 me-3"></i>
+                <div class="small text-secondary">
+                    Os fluxogramas recebem uma <strong>numeração sequencial automática</strong> (ex: #001, #002) e podem ser associados opcionalmente a um <strong>Procedimento Operacional</strong> existente no CalibraWeb.
+                </div>
+            </div>
+
             <form method="POST">
                 {% csrf_token %}
                 <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label fw-semibold text-dark">Código Documental (QMS) <span class="text-danger">*</span></label>
-                        <input type="text" name="codigo" value="{{ codigo|default:'' }}" class="form-control font-monospace text-uppercase" placeholder="Ex: DOC.071-FLX-001" required autofocus>
-                        <small class="text-muted">Padrão de codificação ISO 13485.</small>
+                    <div class="col-md-12">
+                        <label class="form-label fw-semibold text-dark">Título do Processo / Diagrama <span class="text-danger">*</span></label>
+                        <input type="text" name="titulo" value="{{ titulo|default:'' }}" class="form-control" placeholder="Ex: Fluxo de Calibração de Manômetros e Vacuômetros" required autofocus>
                     </div>
 
-                    <div class="col-md-8">
-                        <label class="form-label fw-semibold text-dark">Título do Processo <span class="text-danger">*</span></label>
-                        <input type="text" name="titulo" value="{{ titulo|default:'' }}" class="form-control" placeholder="Ex: Fluxo de Calibração de Manômetros e Vacuômetros" required>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold text-dark">Procedimento Vinculado <span class="text-muted small fw-normal">(Opcional)</span></label>
+                        <select name="procedimento_id" class="form-select">
+                            <option value="">-- Nenhum (Fluxograma Avulso / Geral) --</option>
+                            {% for proc in procedimentos %}
+                                <option value="{{ proc.id }}" {% if proc.id|stringformat:"s" == procedimento_id|stringformat:"s" %}selected{% endif %}>
+                                    {{ proc.codigo }} - {{ proc.nome }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">Associe a um POP, IT ou DEX cadastrado.</small>
                     </div>
 
                     <div class="col-md-6">
@@ -41,7 +55,7 @@
 
                     <div class="col-md-12">
                         <label class="form-label fw-semibold text-dark">Objetivo / Descrição Sumária</label>
-                        <textarea name="descricao" rows="3" class="form-control" placeholder="Descreva sucintamente o objetivo deste procedimento operacional...">{{ descricao|default:'' }}</textarea>
+                        <textarea name="descricao" rows="3" class="form-control" placeholder="Descreva sucintamente o objetivo deste procedimento ou fluxo de trabalho...">{{ descricao|default:'' }}</textarea>
                     </div>
 
                     <div class="col-12 mt-4 pt-3 border-top d-flex justify-content-end gap-2">

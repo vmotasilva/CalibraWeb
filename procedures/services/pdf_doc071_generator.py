@@ -79,11 +79,12 @@ def gerar_pdf_diagrama_doc071(versao: DiagramaVersao, image_base64: str = None) 
 
     # 1. Cabeçalho Padronizado DOC.071
     diagrama = versao.diagrama
+    proc_info = f"<b>Procedimento:</b> {diagrama.procedimento.codigo}<br/>" if diagrama.procedimento else ""
     header_data = [
         [
             Paragraph("<b>CALIBRAWEB</b><br/><font size=6 color='#64748B'>SGI / METROLOGIA</font>", cell_style),
             Paragraph(f"<b>PROCEDIMENTO OPERACIONAL PADRÃO</b><br/>{diagrama.titulo.upper()}", title_style),
-            Paragraph(f"<b>Código:</b> {diagrama.codigo}<br/><b>Revisão:</b> R{versao.revisao:02d}<br/><b>Status:</b> {versao.get_status_display()}", cell_style)
+            Paragraph(f"{proc_info}<b>Identificador:</b> {diagrama.identificador}<br/><b>Revisão:</b> R{versao.revisao:02d}<br/><b>Status:</b> {versao.get_status_display()}", cell_style)
         ]
     ]
 
