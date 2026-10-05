@@ -84,7 +84,7 @@
         left: 0;
         width: 5000px;
         height: 5000px;
-        z-index: 0;
+        z-index: 1;
         pointer-events: none;
     }
 
@@ -95,20 +95,60 @@
         border-bottom: 2px dashed #cbd5e1;
         background: rgba(241, 245, 249, 0.45);
         box-sizing: border-box;
+        pointer-events: none;
     }
 
-    .swimlane-label {
+    .swimlane-header-container {
         position: absolute;
         top: 10px;
         left: 20px;
-        background: #e2e8f0;
-        color: #475569;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        pointer-events: auto;
+        z-index: 10;
+        background: #f8fafc;
+        padding: 3px 8px;
+        border-radius: 6px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+
+    .swimlane-label-btn {
+        background: transparent;
+        border: none;
+        color: #334155;
         font-size: 11px;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        padding: 3px 10px;
+        cursor: pointer;
+        padding: 2px 4px;
         border-radius: 4px;
+        transition: all 0.15s;
+    }
+
+    .swimlane-label-btn:hover {
+        background: #e2e8f0;
+        color: #1d4ed8;
+    }
+
+    .swimlane-action-btn {
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        color: #64748b;
+        border-radius: 4px;
+        font-size: 10px;
+        padding: 1px 5px;
+        cursor: pointer;
+        transition: all 0.15s;
+        line-height: 1.2;
+    }
+
+    .swimlane-action-btn:hover {
+        background: #f1f5f9;
+        color: #0f172a;
+        border-color: #94a3b8;
     }
 
     /* Flow Nodes Styles */
@@ -407,14 +447,23 @@
                 <!-- Container de Nós Arrastáveis -->
                 <div id="nodesContainer" class="nodes-container"></div>
 
-                <!-- Toolbar Flutuante -->
+                <!-- Toolbar Flutuante com Automações -->
                 <div class="canvas-toolbar">
-                    <button type="button" class="btn btn-sm btn-light border" onclick="recentralizarCanvas()" title="Centralizar Visualização">
-                        <i class="bi bi-arrows-fullscreen"></i>
+                    <button type="button" class="btn btn-sm btn-light border shadow-sm" onclick="recentralizarCanvas()" title="Centralizar e Enquadrar Visualização (Fit View)">
+                        <i class="bi bi-arrows-fullscreen text-primary"></i> <span class="d-none d-md-inline small">Centralizar Visão</span>
                     </button>
-                    <button type="button" class="btn btn-sm btn-light border" onclick="reorganizarAutoLayout()" title="Recalcular Layout Automático">
-                        <i class="bi bi-magic"></i> Auto-Layout
+                    <button type="button" class="btn btn-sm btn-light border shadow-sm" onclick="alinharNosPorRaias()" title="Alinhar e Distribuir Blocos Dentro das Raias">
+                        <i class="bi bi-distribute-horizontal text-primary"></i> <span class="d-none d-md-inline small">Alinhar por Raias</span>
                     </button>
+                    <button type="button" class="btn btn-sm btn-primary border shadow-sm" onclick="reorganizarAutoLayout()" title="Recalcular Layout Automático Inteligente">
+                        <i class="bi bi-magic"></i> <span class="small">Auto-Layout</span>
+                    </button>
+                    {% if not is_approved %}
+                    <div class="vr my-1"></div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="adicionarNovaRaia()" title="Adicionar Nova Raia de Setor / Departamento">
+                        <i class="bi bi-plus-circle"></i> <span class="d-none d-md-inline small">Nova Raia</span>
+                    </button>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -570,15 +619,34 @@
         nodesContainer.innerHTML = '';
         swimlanesLayer.innerHTML = '';
 
-        // 1. Renderiza Raias (Swimlanes)
-        const lanes = Array.from(new Set(topologia.nodes.map(n => n.data?.lane || 'Geral')));
+        // 1. Renderiza Raias (Swimlanes) com Ações Interativas
+        const lanes = obterListaRaiasOrdenada();
         lanes.forEach((lane, idx) => {
-            const yPos = 40 + idx * 220;
+            const yPos = 40 + idx * 240;
             const laneEl = document.createElement('div');
             laneEl.className = 'swimlane-row';
             laneEl.style.top = `${yPos}px`;
-            laneEl.style.height = '200px';
-            laneEl.innerHTML = `<span class="swimlane-label">RAIA: ${lane}</span>`;
+            laneEl.style.height = '220px';
+
+            const safeLane = escapeHtml(lane);
+            laneEl.innerHTML = `
+                <div class="swimlane-header-container">
+                    <button type="button" class="swimlane-label-btn" onclick="abrirRenomearRaia('${encodeURIComponent(lane)}')" title="Clique para renomear esta Raia / Setor">
+                        <i class="bi bi-pencil-square me-1"></i> RAIA: <strong>${safeLane}</strong>
+                    </button>
+                    ${!IS_APPROVED ? `
+                        <button type="button" class="swimlane-action-btn" onclick="moverRaia('${encodeURIComponent(lane)}', -1)" title="Mover raia para cima" ${idx === 0 ? 'disabled' : ''}>
+                            <i class="bi bi-chevron-up"></i>
+                        </button>
+                        <button type="button" class="swimlane-action-btn" onclick="moverRaia('${encodeURIComponent(lane)}', 1)" title="Mover raia para baixo" ${idx === lanes.length - 1 ? 'disabled' : ''}>
+                            <i class="bi bi-chevron-down"></i>
+                        </button>
+                        <button type="button" class="swimlane-action-btn text-danger" onclick="excluirRaia('${encodeURIComponent(lane)}')" title="Excluir esta raia">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    ` : ''}
+                </div>
+            `;
             swimlanesLayer.appendChild(laneEl);
         });
 
@@ -837,8 +905,26 @@
         dispararAutoSave();
     }
 
+    function escapeHtml(text) {
+        if (!text) return '';
+        return String(text)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    function obterListaRaiasOrdenada() {
+        const fromNodes = (topologia.nodes || []).map(n => n.data?.lane || 'Geral');
+        const fromGrid = (topologia.grid_data || []).map(r => r.lane || 'Geral');
+        const all = Array.from(new Set([...fromNodes, ...fromGrid])).filter(Boolean);
+        return all.length > 0 ? all : ['Geral'];
+    }
+
     function aplicarGrelhaParaCanvas() {
         gerarNodesPorGridData();
+        posicionarAutomaticoPorRaias(true);
         renderizarCanvas();
         const tabBtn = new bootstrap.Tab(document.getElementById('tab-canvas-btn'));
         tabBtn.show();
@@ -846,20 +932,28 @@
     }
 
     function gerarNodesPorGridData() {
-        const existingPos = new Map();
-        topologia.nodes.forEach(n => existingPos.set(n.id, n.position));
+        const existingMap = new Map();
+        topologia.nodes.forEach(n => existingMap.set(n.id, n));
 
-        const lanes = Array.from(new Set(topologia.grid_data.map(r => r.lane || 'Geral')));
-        const laneY = new Map();
-        lanes.forEach((l, i) => laneY.set(l, 80 + i * 220));
+        const lanes = obterListaRaiasOrdenada();
 
-        topologia.nodes = topologia.grid_data.map((r, i) => ({
-            id: r.stepId,
-            type: r.type,
-            position: existingPos.get(r.stepId) || { x: 80 + i * 240, y: laneY.get(r.lane || 'Geral') || 80 },
-            data: { stepId: r.stepId, lane: r.lane, label: r.label, documentRef: r.documentRef }
-        }));
+        // 1. Constrói / Atualiza Nós
+        topologia.nodes = topologia.grid_data.map(r => {
+            const existing = existingMap.get(r.stepId);
+            return {
+                id: r.stepId,
+                type: r.type,
+                position: existing ? { ...existing.position } : { x: 100, y: 100 },
+                data: {
+                    stepId: r.stepId,
+                    lane: r.lane || (lanes[0] || 'Geral'),
+                    label: r.label,
+                    documentRef: r.documentRef
+                }
+            };
+        });
 
+        // 2. Constrói Arestas (Conexões)
         topologia.edges = [];
         topologia.grid_data.forEach(r => {
             if (r.next && r.next.length > 0) {
@@ -883,7 +977,7 @@
             const outEdges = topologia.edges.filter(e => e.source === n.id);
             return {
                 stepId: n.id,
-                lane: n.data?.lane || 'Qualidade',
+                lane: n.data?.lane || 'Geral',
                 type: n.type || 'process',
                 label: n.data?.label || '',
                 documentRef: n.data?.documentRef,
@@ -892,13 +986,65 @@
         });
     }
 
-    function reorganizarAutoLayout() {
-        const lanes = Array.from(new Set(topologia.nodes.map(n => n.data?.lane || 'Geral')));
-        const laneY = new Map();
-        lanes.forEach((l, i) => laneY.set(l, 80 + i * 220));
+    // =========================================================================
+    // AUTOMAÇÕES DE POSICIONAMENTO, CENTRALIZAÇÃO E ALINHAMENTO POR RAIAS
+    // =========================================================================
+    function posicionarAutomaticoPorRaias(centralizar = true) {
+        const lanes = obterListaRaiasOrdenada();
+        const nodeWidth = 190;
+        const gap = 60;
+        const canvasTargetWidth = 1150;
 
-        topologia.nodes.forEach((n, i) => {
-            n.position = { x: 80 + i * 240, y: laneY.get(n.data?.lane || 'Geral') || 80 };
+        lanes.forEach((lane, lIdx) => {
+            const yBase = 40 + lIdx * 240;
+            const nodesInLane = topologia.nodes.filter(n => (n.data?.lane || 'Geral') === lane);
+            if (nodesInLane.length === 0) return;
+
+            // Ordena nós numericamente pelo stepId se possível
+            nodesInLane.sort((a, b) => {
+                const numA = parseInt(a.data?.stepId || a.id, 10);
+                const numB = parseInt(b.data?.stepId || b.id, 10);
+                if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                return String(a.id).localeCompare(String(b.id));
+            });
+
+            const totalWidth = nodesInLane.length * nodeWidth + (nodesInLane.length - 1) * gap;
+            const startX = centralizar ? Math.max(80, Math.round((canvasTargetWidth - totalWidth) / 2)) : 80;
+
+            nodesInLane.forEach((node, i) => {
+                node.position.x = startX + i * (nodeWidth + gap);
+                node.position.y = yBase + 60;
+            });
+        });
+    }
+
+    function reorganizarAutoLayout() {
+        posicionarAutomaticoPorRaias(true);
+        renderizarCanvas();
+        recentralizarCanvas();
+        dispararAutoSave();
+    }
+
+    function alinharNosPorRaias() {
+        const lanes = obterListaRaiasOrdenada();
+        lanes.forEach((lane, lIdx) => {
+            const yBase = 40 + lIdx * 240 + 60;
+            const nodesInLane = topologia.nodes.filter(n => (n.data?.lane || 'Geral') === lane);
+            if (nodesInLane.length === 0) return;
+
+            // Alinha todos na mesma altura Y média
+            nodesInLane.forEach(n => {
+                n.position.y = yBase;
+            });
+
+            // Distribui horizontalmente mantendo a ordem atual do X
+            nodesInLane.sort((a, b) => a.position.x - b.position.x);
+            const startX = Math.min(...nodesInLane.map(n => n.position.x));
+            const gap = 60;
+            const width = 190;
+            nodesInLane.forEach((n, i) => {
+                n.position.x = startX + i * (width + gap);
+            });
         });
 
         renderizarCanvas();
@@ -906,8 +1052,135 @@
     }
 
     function recentralizarCanvas() {
-        const canvasViewport = document.getElementById('canvasViewport');
-        canvasViewport.scrollTo({ left: 0, top: 0, behavior: 'smooth' });
+        const viewport = document.getElementById('canvasViewport');
+        if (!viewport || topologia.nodes.length === 0) {
+            viewport?.scrollTo({ left: 0, top: 0, behavior: 'smooth' });
+            return;
+        }
+
+        const xs = topologia.nodes.map(n => n.position.x);
+        const ys = topologia.nodes.map(n => n.position.y);
+        const minX = Math.min(...xs);
+        const maxX = Math.max(...xs) + 200;
+        const minY = Math.min(...ys);
+        const maxY = Math.max(...ys) + 120;
+
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+
+        const scrollX = Math.max(0, centerX - viewport.clientWidth / 2);
+        const scrollY = Math.max(0, centerY - viewport.clientHeight / 2);
+
+        viewport.scrollTo({ left: scrollX, top: scrollY, behavior: 'smooth' });
+    }
+
+    // =========================================================================
+    // GERENCIAMENTO INTERATIVO DE RAIAS (RENOMEAR, REORDENAR, ADICIONAR, EXCLUIR)
+    // =========================================================================
+    function abrirRenomearRaia(encodedLane) {
+        if (IS_APPROVED) return;
+        const raiaAtual = decodeURIComponent(encodedLane);
+        const novoNome = prompt(`Renomear a Raia / Setor "${raiaAtual}" para:`, raiaAtual);
+        if (!novoNome || !novoNome.trim() || novoNome.trim() === raiaAtual) return;
+
+        const nomeLimpo = novoNome.trim();
+
+        // 1. Atualiza nos nós do canvas
+        topologia.nodes.forEach(n => {
+            if (n.data && (n.data.lane === raiaAtual || (!n.data.lane && raiaAtual === 'Geral'))) {
+                n.data.lane = nomeLimpo;
+            }
+        });
+
+        // 2. Atualiza na grelha
+        topologia.grid_data.forEach(r => {
+            if (r.lane === raiaAtual || (!r.lane && raiaAtual === 'Geral')) {
+                r.lane = nomeLimpo;
+            }
+        });
+
+        renderizarCanvas();
+        renderizarGrelha();
+        dispararAutoSave();
+    }
+
+    function moverRaia(encodedLane, direcao) {
+        if (IS_APPROVED) return;
+        const lane = decodeURIComponent(encodedLane);
+        const lanes = obterListaRaiasOrdenada();
+        const curIdx = lanes.indexOf(lane);
+        if (curIdx === -1) return;
+
+        const targetIdx = curIdx + direcao;
+        if (targetIdx < 0 || targetIdx >= lanes.length) return;
+
+        const otherLane = lanes[targetIdx];
+        lanes[curIdx] = otherLane;
+        lanes[targetIdx] = lane;
+
+        // Reatribui as posições Y para refletir a nova ordem
+        lanes.forEach((l, lIdx) => {
+            const yBase = 40 + lIdx * 240 + 60;
+            topologia.nodes.filter(n => (n.data?.lane || 'Geral') === l).forEach(n => {
+                n.position.y = yBase;
+            });
+        });
+
+        renderizarCanvas();
+        renderizarGrelha();
+        dispararAutoSave();
+    }
+
+    function adicionarNovaRaia() {
+        if (IS_APPROVED) return;
+        const nomeRaia = prompt("Digite o nome da nova Raia / Setor (ex: Engenharia, Qualidade, Operação):");
+        if (!nomeRaia || !nomeRaia.trim()) return;
+
+        const nomeLimpo = nomeRaia.trim();
+        const nextId = String(topologia.nodes.length + 1);
+        const lanes = obterListaRaiasOrdenada();
+        const newY = 40 + lanes.length * 240 + 60;
+
+        // Adiciona um nó inicial na nova raia
+        topologia.nodes.push({
+            id: nextId,
+            type: 'process',
+            position: { x: 100, y: newY },
+            data: { stepId: nextId, lane: nomeLimpo, label: `Nova Etapa (${nomeLimpo})` }
+        });
+
+        topologia.grid_data.push({
+            stepId: nextId,
+            lane: nomeLimpo,
+            type: 'process',
+            label: `Nova Etapa (${nomeLimpo})`,
+            next: []
+        });
+
+        renderizarCanvas();
+        renderizarGrelha();
+        recentralizarCanvas();
+        dispararAutoSave();
+    }
+
+    function excluirRaia(encodedLane) {
+        if (IS_APPROVED) return;
+        const lane = decodeURIComponent(encodedLane);
+        const nodesInLane = topologia.nodes.filter(n => (n.data?.lane || 'Geral') === lane);
+
+        if (!confirm(`Deseja realmente excluir a raia "${lane}" com ${nodesInLane.length} etapa(s)?`)) return;
+
+        const idsToRemove = new Set(nodesInLane.map(n => n.id));
+
+        // Remove nós e arestas ligadas
+        topologia.nodes = topologia.nodes.filter(n => !idsToRemove.has(n.id));
+        topologia.edges = topologia.edges.filter(e => !idsToRemove.has(e.source) && !idsToRemove.has(e.target));
+        topologia.grid_data = topologia.grid_data.filter(r => !idsToRemove.has(r.stepId));
+
+        posicionarAutomaticoPorRaias(true);
+        renderizarCanvas();
+        renderizarGrelha();
+        dispararAutoSave();
     }
 
     // =========================================================================
